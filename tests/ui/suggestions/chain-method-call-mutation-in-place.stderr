@@ -1,5 +1,33 @@
 error[E0308]: mismatched types
-  --> $DIR/chain-method-call-mutation-in-place.rs:3:5
+  --> $DIR/chain-method-call-mutation-in-place.rs:2:23
+   |
+LL |     let x: Vec<i32> = vec![1, 2, 3].into_iter().collect::<Vec<i32>>().sort_by_key(|i| i);
+   |            --------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Vec<i32>`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Vec<i32>`
+           found unit type `()`
+note: method `sort_by_key` modifies its receiver in-place, it is not meant to be used in method chains.
+  --> $DIR/chain-method-call-mutation-in-place.rs:2:71
+   |
+LL |     let x: Vec<i32> = vec![1, 2, 3].into_iter().collect::<Vec<i32>>().sort_by_key(|i| i);
+   |                                                                       ^^^^^^^^^^^ this call modifies its receiver in-place
+
+error[E0599]: no method named `sort` found for unit type `()` in the current scope
+  --> $DIR/chain-method-call-mutation-in-place.rs:3:72
+   |
+LL |     vec![1, 2, 3].into_iter().collect::<Vec<i32>>().sort_by_key(|i| i).sort();
+   |                                                                        ^^^^ method not found in `()`
+   |
+note: method `sort_by_key` modifies its receiver in-place, it is not meant to be used in method chains.
+  --> $DIR/chain-method-call-mutation-in-place.rs:3:53
+   |
+LL |     vec![1, 2, 3].into_iter().collect::<Vec<i32>>().sort_by_key(|i| i).sort();
+   |                                                     ^^^^^^^^^^^ this call modifies its receiver in-place
+
+error[E0308]: mismatched types
+  --> $DIR/chain-method-call-mutation-in-place.rs:7:5
    |
 LL | fn foo(mut s: String) -> String {
    |                          ------ expected `String` because of return type
@@ -7,7 +35,7 @@ LL |     s.push_str("asdf")
    |     ^^^^^^^^^^^^^^^^^^ expected `String`, found `()`
    |
 note: method `push_str` modifies its receiver in-place
-  --> $DIR/chain-method-call-mutation-in-place.rs:3:7
+  --> $DIR/chain-method-call-mutation-in-place.rs:7:7
    |
 LL |     s.push_str("asdf")
    |     - ^^^^^^^^ this call modifies `s` in-place
@@ -15,6 +43,7 @@ LL |     s.push_str("asdf")
    |     you probably want to use this value after calling the method...
    = note: ...instead of the `()` output of method `push_str`
 
-error: aborting due to previous error
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0308, E0599.
+For more information about an error, try `rustc --explain E0308`.

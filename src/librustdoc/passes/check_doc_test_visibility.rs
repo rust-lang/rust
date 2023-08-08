@@ -7,11 +7,11 @@
 
 use super::Pass;
 use crate::clean;
+use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
 use crate::visit::DocVisitor;
-use crate::visit_ast::inherits_doc_hidden;
 use rustc_hir as hir;
 use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
@@ -34,9 +34,7 @@ pub(crate) fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -
 
 impl<'a, 'tcx> DocVisitor for DocTestVisibilityLinter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
-        let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
-
-        look_for_tests(self.cx, &dox, item);
+        look_for_tests(self.cx, &item.doc_value(), item);
 
         self.visit_item_recur(item)
     }
@@ -94,8 +92,8 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
         return false;
     }
 
-    if cx.tcx.is_doc_hidden(def_id.to_def_id())
-        || inherits_doc_hidden(cx.tcx, def_id)
+    if (!cx.render_options.document_hidden
+        && (cx.tcx.is_doc_hidden(def_id.to_def_id()) || inherits_doc_hidden(cx.tcx, def_id, None)))
         || cx.tcx.def_span(def_id.to_def_id()).in_derive_expansion()
     {
         return false;
@@ -108,8 +106,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
 }
 
 pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
-    let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id)
-    else {
+    let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id) else {
         // If non-local, no need to check anything.
         return;
     };

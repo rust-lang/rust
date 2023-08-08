@@ -19,7 +19,7 @@ fn foo<R, S: FnOnce()>(
     let bar = || {
         bar(|| {})
     };
-    let _ = bar();
+    bar();
 }
 
 fn main() {

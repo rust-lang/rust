@@ -1,0 +1,74 @@
+- // MIR for `match_guard` before CleanupPostBorrowck
++ // MIR for `match_guard` after CleanupPostBorrowck
+  
+  fn match_guard(_1: Option<&&i32>, _2: bool) -> i32 {
+      debug x => _1;
+      debug c => _2;
+      let mut _0: i32;
+      let mut _3: isize;
+      let mut _4: &std::option::Option<&&i32>;
+      let mut _5: &&i32;
+      let mut _6: &&&i32;
+      let mut _7: &i32;
+      let mut _8: bool;
+  
+      bb0: {
+-         FakeRead(ForMatchedPlace(None), _1);
++         nop;
+          _3 = discriminant(_1);
+          switchInt(move _3) -> [1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const 1_i32;
+          goto -> bb7;
+      }
+  
+      bb2: {
+          switchInt((*(*((_1 as Some).0: &&i32)))) -> [0: bb3, otherwise: bb1];
+      }
+  
+      bb3: {
+-         falseEdge -> [real: bb4, imaginary: bb1];
++         goto -> bb4;
+      }
+  
+      bb4: {
+-         _4 = &shallow _1;
+-         _5 = &shallow (*((_1 as Some).0: &&i32));
+-         _6 = &shallow ((_1 as Some).0: &&i32);
+-         _7 = &shallow (*(*((_1 as Some).0: &&i32)));
++         nop;
++         nop;
++         nop;
++         nop;
+          StorageLive(_8);
+          _8 = _2;
+          switchInt(move _8) -> [0: bb6, otherwise: bb5];
+      }
+  
+      bb5: {
+          StorageDead(_8);
+-         FakeRead(ForMatchGuard, _4);
+-         FakeRead(ForMatchGuard, _5);
+-         FakeRead(ForMatchGuard, _6);
+-         FakeRead(ForMatchGuard, _7);
++         nop;
++         nop;
++         nop;
++         nop;
+          _0 = const 0_i32;
+          goto -> bb7;
+      }
+  
+      bb6: {
+          StorageDead(_8);
+-         falseEdge -> [real: bb1, imaginary: bb1];
++         goto -> bb1;
+      }
+  
+      bb7: {
+          return;
+      }
+  }
+  

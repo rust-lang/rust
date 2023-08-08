@@ -1,5 +1,4 @@
 // revisions: normal over_aligned
-//[normal] check-pass
 
 #![feature(dyn_star)]
 //~^ WARN the feature `dyn_star` is incomplete and may not be safe to use and/or cause compiler crashes
@@ -13,5 +12,5 @@ struct AlignedUsize(usize);
 
 fn main() {
     let x = AlignedUsize(12) as dyn* Debug;
-    //[over_aligned]~^ ERROR `AlignedUsize` needs to have the same alignment and size as a pointer
+    //~^ ERROR `AlignedUsize` needs to have the same ABI as a pointer
 }

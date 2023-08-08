@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

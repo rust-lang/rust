@@ -1,7 +1,8 @@
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 fn main() {}
 
+#[rustfmt::skip]
 trait A<'a> {
     type B<'b>: Clone
     // FIXME(generic_associated_types): Remove one of the below bounds

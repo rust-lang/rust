@@ -6,6 +6,7 @@ use rustc_mir_dataflow::move_paths::{
 };
 use rustc_span::{BytePos, Span};
 
+use crate::diagnostics::CapturedMessageOpt;
 use crate::diagnostics::{DescribePlaceOpt, UseSpans};
 use crate::prefixes::PrefixSet;
 use crate::MirBorrowckCtxt;
@@ -102,14 +103,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         //
                         // opt_match_place is None for let [mut] x = ... statements,
                         // whether or not the right-hand side is a place expression
-                        if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
-                            VarBindingForm {
-                                opt_match_place: Some((opt_match_place, match_span)),
-                                binding_mode: _,
-                                opt_ty_info: _,
-                                pat_span: _,
-                            },
-                        )))) = local_decl.local_info
+                        if let LocalInfo::User(BindingForm::Var(VarBindingForm {
+                            opt_match_place: Some((opt_match_place, match_span)),
+                            binding_mode: _,
+                            opt_ty_info: _,
+                            pat_span: _,
+                        })) = *local_decl.local_info()
                         {
                             let stmt_source_info = self.body.source_info(location);
                             self.append_binding_error(
@@ -185,7 +184,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             // Error with the pattern
             LookupResult::Exact(_) => {
-                let LookupResult::Parent(Some(mpi)) = self.move_data.rev_lookup.find(move_from.as_ref()) else {
+                let LookupResult::Parent(Some(mpi)) =
+                    self.move_data.rev_lookup.find(move_from.as_ref())
+                else {
                     // move_from should be a projection from match_place.
                     unreachable!("Probably not unreachable...");
                 };
@@ -323,10 +324,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             ty::Array(..) | ty::Slice(..) => {
                 self.cannot_move_out_of_interior_noncopy(span, ty, None)
             }
-            ty::Closure(def_id, closure_substs)
+            ty::Closure(def_id, closure_args)
                 if def_id.as_local() == Some(self.mir_def_id()) && upvar_field.is_some() =>
             {
-                let closure_kind_ty = closure_substs.as_closure().kind_ty();
+                let closure_kind_ty = closure_args.as_closure().kind_ty();
                 let closure_kind = match closure_kind_ty.to_opt_closure_kind() {
                     Some(kind @ (ty::ClosureKind::Fn | ty::ClosureKind::FnMut)) => kind,
                     Some(ty::ClosureKind::FnOnce) => {
@@ -399,10 +400,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
         };
+        let msg_opt = CapturedMessageOpt {
+            is_partial_move: false,
+            is_loop_message: false,
+            is_move_msg: false,
+            is_loop_move: false,
+            maybe_reinitialized_locations_is_empty: true,
+        };
         if let Some(use_spans) = use_spans {
-            self.explain_captures(
-                &mut err, span, span, use_spans, move_place, "", "", "", false, true,
-            );
+            self.explain_captures(&mut err, span, span, use_spans, move_place, msg_opt);
         }
         err
     }
@@ -418,13 +424,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         None => "value".to_string(),
                     };
 
-                    self.note_type_does_not_implement_copy(
-                        err,
-                        &place_desc,
-                        place_ty,
-                        Some(span),
-                        "",
-                    );
+                    err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
+                        is_partial_move: false,
+                        ty: place_ty,
+                        place: &place_desc,
+                        span,
+                    });
                 } else {
                     binds_to.sort();
                     binds_to.dedup();
@@ -446,9 +451,19 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Some(desc) => format!("`{desc}`"),
                     None => "value".to_string(),
                 };
-                self.note_type_does_not_implement_copy(err, &place_desc, place_ty, Some(span), "");
+                err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
+                    is_partial_move: false,
+                    ty: place_ty,
+                    place: &place_desc,
+                    span,
+                });
 
-                use_spans.args_span_label(err, format!("{place_desc} is moved here"));
+                use_spans.args_subdiag(err, |args_span| {
+                    crate::session_diagnostics::CaptureArgLabel::MoveOutPlace {
+                        place: place_desc,
+                        args_span,
+                    }
+                });
             }
         }
     }
@@ -478,12 +493,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut suggestions: Vec<(Span, String, String)> = Vec::new();
         for local in binds_to {
             let bind_to = &self.body.local_decls[*local];
-            if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
-                VarBindingForm { pat_span, .. },
-            )))) = bind_to.local_info
+            if let LocalInfo::User(BindingForm::Var(VarBindingForm { pat_span, .. })) =
+                *bind_to.local_info()
             {
-                let Ok(pat_snippet) =
-                    self.infcx.tcx.sess.source_map().span_to_snippet(pat_span) else { continue; };
+                let Ok(pat_snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(pat_span)
+                else {
+                    continue;
+                };
                 let Some(stripped) = pat_snippet.strip_prefix('&') else {
                     suggestions.push((
                         bind_to.source_info.span.shrink_to_lo(),
@@ -521,7 +537,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         suggestions.sort_unstable_by_key(|&(span, _, _)| span);
         suggestions.dedup_by_key(|&mut (span, _, _)| span);
         for (span, msg, suggestion) in suggestions {
-            err.span_suggestion_verbose(span, &msg, suggestion, Applicability::MachineApplicable);
+            err.span_suggestion_verbose(span, msg, suggestion, Applicability::MachineApplicable);
         }
     }
 
@@ -537,13 +553,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             if binds_to.len() == 1 {
-                self.note_type_does_not_implement_copy(
-                    err,
-                    &format!("`{}`", self.local_names[*local].unwrap()),
-                    bind_to.ty,
-                    Some(binding_span),
-                    "",
-                );
+                let place_desc = &format!("`{}`", self.local_names[*local].unwrap());
+                err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
+                    is_partial_move: false,
+                    ty: bind_to.ty,
+                    place: &place_desc,
+                    span: binding_span,
+                });
             }
         }
 

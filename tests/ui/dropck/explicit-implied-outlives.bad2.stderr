@@ -1,0 +1,15 @@
+error[E0367]: `Drop` impl requires `'a: 'static` but the struct it is implemented for does not
+  --> $DIR/explicit-implied-outlives.rs:37:9
+   |
+LL |     'a: 'static,
+   |         ^^^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/explicit-implied-outlives.rs:7:1
+   |
+LL | struct DropMe<'a, T>(&'a T);
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0367`.

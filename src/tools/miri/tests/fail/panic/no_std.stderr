@@ -1,4 +1,5 @@
-panicked at 'blarg I am dead', $DIR/no_std.rs:LL:CC
+panicked at $DIR/no_std.rs:LL:CC:
+blarg I am dead
 error: abnormal termination: the program aborted execution
   --> $DIR/no_std.rs:LL:CC
    |
@@ -11,7 +12,7 @@ note: inside `start`
    |
 LL |     panic!("blarg I am dead")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

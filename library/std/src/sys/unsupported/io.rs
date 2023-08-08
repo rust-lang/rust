@@ -30,7 +30,7 @@ impl<'a> IoSliceMut<'a> {
 
     #[inline]
     pub fn advance(&mut self, n: usize) {
-        let slice = mem::replace(&mut self.0, &mut []);
+        let slice = mem::take(&mut self.0);
         let (_, remaining) = slice.split_at_mut(n);
         self.0 = remaining;
     }

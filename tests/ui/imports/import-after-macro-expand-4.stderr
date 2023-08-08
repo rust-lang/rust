@@ -1,0 +1,53 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/import-after-macro-expand-4.rs:12:22
+   |
+LL |     pub struct S(Vec<P>);
+   |                      ^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` on by default
+help: use `dyn`
+   |
+LL |     pub struct S(Vec<dyn P>);
+   |                      +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/import-after-macro-expand-4.rs:12:22
+   |
+LL |     pub struct S(Vec<P>);
+   |                      ^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     pub struct S(Vec<dyn P>);
+   |                      +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/import-after-macro-expand-4.rs:12:22
+   |
+LL |     pub struct S(Vec<P>);
+   |                      ^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     pub struct S(Vec<dyn P>);
+   |                      +++
+
+error[E0277]: the size for values of type `(dyn a::P + 'static)` cannot be known at compilation time
+  --> $DIR/import-after-macro-expand-4.rs:12:18
+   |
+LL |     pub struct S(Vec<P>);
+   |                  ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn a::P + 'static)`
+note: required by a bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error: aborting due to previous error; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0277`.

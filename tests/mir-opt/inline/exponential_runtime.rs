@@ -1,3 +1,4 @@
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // Checks that code with exponential runtime does not have exponential behavior in inlining.
 
 trait A {

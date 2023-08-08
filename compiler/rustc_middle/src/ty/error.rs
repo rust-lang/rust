@@ -28,7 +28,7 @@ impl<T> ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, TypeVisitable, Lift, PartialEq, Eq)]
 #[rustc_pass_by_value]
 pub enum TypeError<'tcx> {
     Mismatch,
@@ -45,7 +45,6 @@ pub enum TypeError<'tcx> {
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
     RegionsInsufficientlyPolymorphic(BoundRegionKind, Region<'tcx>),
-    RegionsOverlyPolymorphic(BoundRegionKind, Region<'tcx>),
     RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<Ty<'tcx>>),
@@ -74,7 +73,6 @@ impl TypeError<'_> {
         match self {
             TypeError::RegionsDoesNotOutlive(_, _)
             | TypeError::RegionsInsufficientlyPolymorphic(_, _)
-            | TypeError::RegionsOverlyPolymorphic(_, _)
             | TypeError::RegionsPlaceholderMismatch => true,
             _ => false,
         }
@@ -92,16 +90,11 @@ impl<'tcx> TypeError<'tcx> {
             // A naive approach to making sure that we're not reporting silly errors such as:
             // (expected closure, found closure).
             if expected == found {
-                format!("expected {}, found a different {}", expected, found)
+                format!("expected {expected}, found a different {found}")
             } else {
-                format!("expected {}, found {}", expected, found)
+                format!("expected {expected}, found {found}")
             }
         }
-
-        let br_string = |br: ty::BoundRegionKind| match br {
-            ty::BrNamed(_, name) => format!(" {}", name),
-            _ => String::new(),
-        };
 
         match self {
             CyclicTy(_) => "cyclic type of infinite size".into(),
@@ -138,25 +131,16 @@ impl<'tcx> TypeError<'tcx> {
             )
             .into(),
             ArgCount => "incorrect number of function parameters".into(),
-            FieldMisMatch(adt, field) => format!("field type mismatch: {}.{}", adt, field).into(),
+            FieldMisMatch(adt, field) => format!("field type mismatch: {adt}.{field}").into(),
             RegionsDoesNotOutlive(..) => "lifetime mismatch".into(),
             // Actually naming the region here is a bit confusing because context is lacking
             RegionsInsufficientlyPolymorphic(..) => {
                 "one type is more general than the other".into()
             }
-            RegionsOverlyPolymorphic(br, _) => format!(
-                "expected concrete lifetime, found bound lifetime parameter{}",
-                br_string(br)
-            )
-            .into(),
             RegionsPlaceholderMismatch => "one type is more general than the other".into(),
             ArgumentSorts(values, _) | Sorts(values) => {
-                let mut expected = values.expected.sort_string(tcx);
-                let mut found = values.found.sort_string(tcx);
-                if expected == found {
-                    expected = values.expected.sort_string(tcx);
-                    found = values.found.sort_string(tcx);
-                }
+                let expected = values.expected.sort_string(tcx);
+                let found = values.found.sort_string(tcx);
                 report_maybe_different(&expected, &found).into()
             }
             Traits(values) => {
@@ -180,7 +164,7 @@ impl<'tcx> TypeError<'tcx> {
                     ty::IntVarValue::IntType(ty) => ty.name_str(),
                     ty::IntVarValue::UintType(ty) => ty.name_str(),
                 };
-                format!("expected `{}`, found `{}`", expected, found).into()
+                format!("expected `{expected}`, found `{found}`").into()
             }
             FloatMismatch(ref values) => format!(
                 "expected `{}`, found `{}`",
@@ -232,7 +216,6 @@ impl<'tcx> TypeError<'tcx> {
             | FieldMisMatch(..)
             | RegionsDoesNotOutlive(..)
             | RegionsInsufficientlyPolymorphic(..)
-            | RegionsOverlyPolymorphic(..)
             | RegionsPlaceholderMismatch
             | Traits(_)
             | ProjectionMismatched(_)
@@ -269,7 +252,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::FreshTy(_)) => "fresh type".into(),
             ty::Infer(ty::FreshIntTy(_)) => "fresh integral type".into(),
             ty::Infer(ty::FreshFloatTy(_)) => "fresh floating-point type".into(),
-            ty::Alias(ty::Projection, _) => "associated type".into(),
+            ty::Alias(ty::Projection | ty::Inherent, _) => "associated type".into(),
             ty::Param(p) => format!("type parameter `{p}`").into(),
             ty::Alias(ty::Opaque, ..) => if tcx.ty_is_opaque_future(self) { "future".into() } else { "opaque type".into() },
             ty::Error(_) => "type error".into(),
@@ -316,7 +299,8 @@ impl<'tcx> Ty<'tcx> {
             ty::Tuple(..) => "tuple".into(),
             ty::Placeholder(..) => "higher-ranked type".into(),
             ty::Bound(..) => "bound type variable".into(),
-            ty::Alias(ty::Projection, _) => "associated type".into(),
+            ty::Alias(ty::Projection | ty::Inherent, _) => "associated type".into(),
+            ty::Alias(ty::Weak, _) => "type alias".into(),
             ty::Param(_) => "type parameter".into(),
             ty::Alias(ty::Opaque, ..) => "opaque type".into(),
         }
@@ -355,12 +339,17 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn short_ty_string(self, ty: Ty<'tcx>) -> (String, Option<PathBuf>) {
-        let width = self.sess.diagnostic_width();
-        let length_limit = width.saturating_sub(30);
         let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
             .pretty_print_type(ty)
             .expect("could not write to `String`")
             .into_buffer();
+
+        if !self.sess.opts.unstable_opts.write_long_types_to_disk {
+            return (regular, None);
+        }
+
+        let width = self.sess.diagnostic_width();
+        let length_limit = width.saturating_sub(30);
         if regular.len() <= width {
             return (regular, None);
         }

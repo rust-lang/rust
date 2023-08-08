@@ -1,4 +1,5 @@
 //@normalize-stderr-test: "\| +\^+" -> "| ^"
+//@compile-flags: -Cdebug-assertions=no
 
 fn main() {
     // No retry needed, this fails reliably.

@@ -7,7 +7,6 @@ mod tests;
 
 use crate::os::unix::prelude::*;
 
-use crate::convert::TryFrom;
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
@@ -64,7 +63,13 @@ extern "C" {
     #[cfg_attr(any(target_os = "solaris", target_os = "illumos"), link_name = "___errno")]
     #[cfg_attr(target_os = "nto", link_name = "__get_errno_ptr")]
     #[cfg_attr(
-        any(target_os = "macos", target_os = "ios", target_os = "freebsd", target_os = "watchos"),
+        any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "freebsd",
+            target_os = "watchos"
+        ),
         link_name = "__error"
     )]
     #[cfg_attr(target_os = "haiku", link_name = "_errnop")]
@@ -115,7 +120,10 @@ pub fn set_errno(e: i32) {
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
     extern "C" {
-        #[cfg_attr(any(target_os = "linux", target_env = "newlib"), link_name = "__xpg_strerror_r")]
+        #[cfg_attr(
+            all(any(target_os = "linux", target_env = "newlib"), not(target_env = "ohos")),
+            link_name = "__xpg_strerror_r"
+        )]
         fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t) -> c_int;
     }
 
@@ -373,7 +381,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     Ok(PathBuf::from(OsString::from_vec(e)))
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         let mut sz: u32 = 0;
@@ -458,7 +466,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     path.canonicalize()
 }
 
-#[cfg(any(target_os = "espidf", target_os = "horizon"))]
+#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     super::unsupported::unsupported()
 }
@@ -607,12 +615,14 @@ pub fn home_dir() -> Option<PathBuf> {
     #[cfg(any(
         target_os = "android",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "emscripten",
         target_os = "redox",
         target_os = "vxworks",
         target_os = "espidf",
-        target_os = "horizon"
+        target_os = "horizon",
+        target_os = "vita",
     ))]
     unsafe fn fallback() -> Option<OsString> {
         None
@@ -620,12 +630,14 @@ pub fn home_dir() -> Option<PathBuf> {
     #[cfg(not(any(
         target_os = "android",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "emscripten",
         target_os = "redox",
         target_os = "vxworks",
         target_os = "espidf",
-        target_os = "horizon"
+        target_os = "horizon",
+        target_os = "vita",
     )))]
     unsafe fn fallback() -> Option<OsString> {
         let amt = match libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) {

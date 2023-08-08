@@ -1,5 +1,5 @@
 // Local js definitions:
-/* global getSettingValue, getVirtualKey, updateLocalStorage, updateTheme */
+/* global getSettingValue, updateLocalStorage, updateTheme */
 /* global addClass, removeClass, onEach, onEachLazy, blurHandler, elemIsInParent */
 /* global MAIN_ID, getVar, getSettingsButton */
 
@@ -28,21 +28,6 @@
                 } else {
                     window.rustdoc_remove_line_numbers_from_examples();
                 }
-                break;
-        }
-    }
-
-    function handleKey(ev) {
-        // Don't interfere with browser shortcuts
-        if (ev.ctrlKey || ev.altKey || ev.metaKey) {
-            return;
-        }
-        switch (getVirtualKey(ev)) {
-            case "Enter":
-            case "Return":
-            case "Space":
-                ev.target.checked = !ev.target.checked;
-                ev.preventDefault();
                 break;
         }
     }
@@ -77,8 +62,6 @@
             toggle.onchange = function() {
                 changeSetting(this.id, this.checked);
             };
-            toggle.onkeyup = handleKey;
-            toggle.onkeyrelease = handleKey;
         });
         onEachLazy(settingsElement.querySelectorAll("input[type=\"radio\"]"), elem => {
             const settingId = elem.name;
@@ -86,12 +69,8 @@
             if (settingId === "theme") {
                 const useSystem = getSettingValue("use-system-theme");
                 if (useSystem === "true" || settingValue === null) {
-                    if (useSystem !== "false") {
-                        settingValue = "system preference";
-                    } else {
-                        // This is the default theme.
-                        settingValue = "light";
-                    }
+                    // "light" is the default theme
+                    settingValue = useSystem === "false" ? "light" : "system preference";
                 }
             }
             if (settingValue !== null && settingValue !== "null") {

@@ -1,7 +1,7 @@
 // This ensures that the `<details>`/`<summary>` elements are displayed as expected.
-goto: "file://" + |DOC_PATH| + "/test_docs/details/struct.Details.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/details/struct.Details.html"
 show-text: true
-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
 reload:
 
 // We first check that the headers in the `.top-doc` doc block still have their
@@ -9,7 +9,7 @@ reload:
 assert-text: (".top-doc .docblock > h3", "Hello")
 assert-css: (
     ".top-doc .docblock > h3",
-    {"border-bottom": "1px solid rgb(210, 210, 210)"},
+    {"border-bottom": "1px solid #d2d2d2"},
 )
 // We now check that the `<summary>` doesn't have a bottom border and has the correct display.
 assert-css: (

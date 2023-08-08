@@ -111,7 +111,7 @@ LL |     let _bar1 = &mut foo.bar1;
 help: consider changing this to be a mutable reference
    |
 LL | fn borrow_mut_from_imm(foo: &mut Foo) {
-   |                             ~~~~~~~~
+   |                              +++
 
 error: aborting due to 11 previous errors
 

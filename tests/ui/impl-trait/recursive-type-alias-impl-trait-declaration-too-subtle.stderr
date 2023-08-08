@@ -43,6 +43,11 @@ LL |         fn eq(&self, _other: &(Bar, i32)) -> bool {
    |
    = note: expected signature `fn(&b::Bar, &(b::Foo, i32)) -> _`
               found signature `fn(&b::Bar, &(b::Bar, i32)) -> _`
+note: this item must have the opaque type in its signature in order to be able to register hidden types
+  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:24:12
+   |
+LL |         fn eq(&self, _other: &(Bar, i32)) -> bool {
+   |            ^^
 
 error: aborting due to 4 previous errors
 

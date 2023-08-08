@@ -20,6 +20,7 @@ use crate::{utils::required_hashes, AssistContext, AssistId, AssistKind, Assists
 // }
 // ```
 pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    // FIXME: This should support byte and c strings as well.
     let token = ctx.find_token_at_offset::<ast::String>()?;
     if token.is_raw() {
         return None;
@@ -157,9 +158,8 @@ pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
-
     use super::*;
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn make_raw_string_target() {

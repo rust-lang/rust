@@ -6,8 +6,8 @@
 #[lang="sized"]
 trait Sized { }
 
-// Test that the "vectorcall-unwind" ABI is feature-gated, and cannot be used when
-// the `c_unwind` feature gate is not used.
+// Test that the "vectorcall" ABI is feature-gated, and cannot be used when
+// the `vectorcall` feature gate is not used.
 
 extern "vectorcall" fn f() {} //~ ERROR vectorcall is experimental
 

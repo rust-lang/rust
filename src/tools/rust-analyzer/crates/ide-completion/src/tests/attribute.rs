@@ -300,6 +300,7 @@ struct Foo;
             at deprecated
             at derive           macro derive
             at derive(…)
+            at derive_const     macro derive_const
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
@@ -857,9 +858,9 @@ mod lint {
     #[test]
     fn lint_feature() {
         check_edit(
-            "box_syntax",
+            "box_patterns",
             r#"#[feature(box_$0)] struct Test;"#,
-            r#"#[feature(box_syntax)] struct Test;"#,
+            r#"#[feature(box_patterns)] struct Test;"#,
         )
     }
 

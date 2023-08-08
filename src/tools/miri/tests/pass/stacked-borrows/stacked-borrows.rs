@@ -1,4 +1,3 @@
-//@compile-flags: -Zmiri-retag-fields
 #![feature(allocator_api)]
 use std::ptr;
 
@@ -11,7 +10,7 @@ fn main() {
     mut_raw_mut();
     partially_invalidate_mut();
     drop_after_sharing();
-    direct_mut_to_const_raw();
+    // direct_mut_to_const_raw();
     two_raw();
     shr_and_raw();
     disjoint_mutable_subborrows();
@@ -20,6 +19,7 @@ fn main() {
     mut_below_shr();
     wide_raw_ptr_in_tuple();
     not_unpin_not_protected();
+    write_does_not_invalidate_all_aliases();
 }
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
@@ -90,7 +90,7 @@ fn mut_raw_mut() {
         assert_eq!(unsafe { *xraw }, 4);
         assert_eq!(*xref1, 4);
         assert_eq!(unsafe { *xraw }, 4);
-        // we cannot use xref2; see `compile-fail/stacked-borows/illegal_read4.rs`
+        // we cannot use xref2; see `compile-fail/stacked-borrows/illegal_read4.rs`
     }
     assert_eq!(x, 4);
 }
@@ -104,21 +104,20 @@ fn partially_invalidate_mut() {
     assert_eq!(*data, (1, 1));
 }
 
-// Make sure that we can handle the situation where a loaction is frozen when being dropped.
+// Make sure that we can handle the situation where a location is frozen when being dropped.
 fn drop_after_sharing() {
     let x = String::from("hello!");
     let _len = x.len();
 }
 
 // Make sure that coercing &mut T to *const T produces a writeable pointer.
-fn direct_mut_to_const_raw() {
-    // TODO: This is currently disabled, waiting on a decision on <https://github.com/rust-lang/rust/issues/56604>
-    /*let x = &mut 0;
+// TODO: This is currently disabled, waiting on a decision on <https://github.com/rust-lang/rust/issues/56604>
+/*fn direct_mut_to_const_raw() {
+    let x = &mut 0;
     let y: *const i32 = x;
     unsafe { *(y as *mut i32) = 1; }
     assert_eq!(*x, 1);
-    */
-}
+}*/
 
 // Make sure that we can create two raw pointers from a mutable reference and use them both.
 fn two_raw() {
@@ -224,7 +223,7 @@ fn wide_raw_ptr_in_tuple() {
 fn not_unpin_not_protected() {
     // `&mut !Unpin`, at least for now, does not get `noalias` nor `dereferenceable`, so we also
     // don't add protectors. (We could, but until we have a better idea for where we want to go with
-    // the self-referntial-generator situation, it does not seem worth the potential trouble.)
+    // the self-referential-generator situation, it does not seem worth the potential trouble.)
     use std::marker::PhantomPinned;
 
     pub struct NotUnpin(i32, PhantomPinned);
@@ -238,4 +237,29 @@ fn not_unpin_not_protected() {
         let raw = x as *mut _;
         drop(unsafe { Box::from_raw(raw) });
     });
+}
+
+fn write_does_not_invalidate_all_aliases() {
+    mod other {
+        /// Some private memory to store stuff in.
+        static mut S: *mut i32 = 0 as *mut i32;
+
+        pub fn lib1(x: &&mut i32) {
+            unsafe {
+                S = (x as *const &mut i32).cast::<*mut i32>().read();
+            }
+        }
+
+        pub fn lib2() {
+            unsafe {
+                *S = 1337;
+            }
+        }
+    }
+
+    let x = &mut 0;
+    other::lib1(&x);
+    *x = 42; // a write to x -- invalidates other pointers?
+    other::lib2();
+    assert_eq!(*x, 1337); // oops, the value changed! I guess not all pointers were invalidated
 }

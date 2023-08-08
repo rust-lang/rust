@@ -68,7 +68,6 @@ pub fn expand_deriving_clone(
         _ => cx.span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
     }
 
-    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let trait_def = TraitDef {
         span,
         path: path_std!(clone::Clone),
@@ -82,7 +81,7 @@ pub fn expand_deriving_clone(
             explicit_self: true,
             nonself_args: Vec::new(),
             ret_ty: Self_,
-            attributes: attrs,
+            attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: substructure,
         }],
@@ -145,7 +144,7 @@ fn cs_clone_simple(
             }
             _ => cx.span_bug(
                 trait_span,
-                &format!("unexpected substructure in simple `derive({})`", name),
+                format!("unexpected substructure in simple `derive({name})`"),
             ),
         }
     }
@@ -179,10 +178,10 @@ fn cs_clone(
             vdata = &variant.data;
         }
         EnumTag(..) | AllFieldlessEnum(..) => {
-            cx.span_bug(trait_span, &format!("enum tags in `derive({})`", name,))
+            cx.span_bug(trait_span, format!("enum tags in `derive({name})`",))
         }
         StaticEnum(..) | StaticStruct(..) => {
-            cx.span_bug(trait_span, &format!("associated function in `derive({})`", name))
+            cx.span_bug(trait_span, format!("associated function in `derive({name})`"))
         }
     }
 
@@ -194,7 +193,7 @@ fn cs_clone(
                     let Some(ident) = field.name else {
                         cx.span_bug(
                             trait_span,
-                            &format!("unnamed field in normal struct in `derive({})`", name,),
+                            format!("unnamed field in normal struct in `derive({name})`",),
                         );
                     };
                     let call = subcall(cx, field);

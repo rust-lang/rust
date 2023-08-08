@@ -1,30 +1,30 @@
 // MIR for `b` after Inline
 
 fn b(_1: &mut Box<T>) -> &mut T {
-    debug x => _1;                       // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+0:13: +0:14
-    let mut _0: &mut T;                  // return place in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+0:32: +0:38
-    let mut _2: &mut T;                  // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-    let mut _3: &mut T;                  // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-    let mut _4: &mut std::boxed::Box<T>; // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-    scope 1 (inlined <Box<T> as AsMut<T>>::as_mut) { // at $DIR/issue_58867_inline_as_ref_as_mut.rs:8:7: 8:15
-        debug self => _4;                // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        let mut _5: std::boxed::Box<T>;  // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        let mut _6: *const T;            // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+    debug x => _1;
+    let mut _0: &mut T;
+    let mut _2: &mut T;
+    let mut _3: &mut T;
+    let mut _4: &mut std::boxed::Box<T>;
+    scope 1 (inlined <Box<T> as AsMut<T>>::as_mut) {
+        debug self => _4;
+        let mut _5: std::boxed::Box<T>;
+        let mut _6: *const T;
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        StorageLive(_3);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        StorageLive(_4);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        _4 = &mut (*_1);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        _5 = deref_copy (*_4);           // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        _6 = (((_5.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>).0: *const T); // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        _3 = &mut (*_6);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        _2 = &mut (*_3);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        StorageDead(_4);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:14: +1:15
-        _0 = &mut (*_2);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        StorageDead(_3);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+2:1: +2:2
-        StorageDead(_2);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+2:1: +2:2
-        return;                          // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+2:2: +2:2
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = &mut (*_1);
+        _5 = deref_copy (*_4);
+        _6 = (((_5.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>).0: *const T);
+        _3 = &mut (*_6);
+        _2 = &mut (*_3);
+        StorageDead(_4);
+        _0 = &mut (*_2);
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
     }
 }

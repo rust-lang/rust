@@ -10,7 +10,7 @@ error[E0560]: struct `Foo` has no field named `absent`
 LL |     let _ = Foo { present: (), #[cfg(all())] absent: () };
    |                                              ^^^^^^ `Foo` does not have this field
    |
-   = note: available fields are: `present`
+   = note: all struct fields are already assigned
 
 error[E0027]: pattern does not mention field `present`
   --> $DIR/struct-field-cfg.rs:13:9

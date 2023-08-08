@@ -17,7 +17,7 @@ LL |     impl Trait for () {}
    |
 help: consider importing this trait
    |
-LL |     use a::Trait;
+LL +     use a::Trait;
    |
 
 error: aborting due to 2 previous errors

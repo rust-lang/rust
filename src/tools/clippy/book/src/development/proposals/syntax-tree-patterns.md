@@ -16,7 +16,7 @@ lints. For non-trivial lints, it often requires nested pattern matching of AST /
 HIR nodes. For example, testing that an expression is a boolean literal requires
 the following checks:
 
-```rust
+```rust,ignore
 if let ast::ExprKind::Lit(lit) = &expr.node {
     if let ast::LitKind::Bool(_) = &lit.node {
         ...
@@ -28,7 +28,7 @@ Writing this kind of matching code quickly becomes a complex task and the
 resulting code is often hard to comprehend. The code below shows a simplified
 version of the pattern matching required by the `collapsible_if` lint:
 
-```rust
+```rust,ignore
 // simplified version of the collapsible_if lint
 if let ast::ExprKind::If(check, then, None) = &expr.node {
     if then.stmts.len() == 1 {
@@ -68,13 +68,13 @@ The second part of the motivation is clippy's dependence on unstable
 compiler-internal data structures. Clippy lints are currently written against
 the compiler's AST / HIR which means that even small changes in these data
 structures might break a lot of lints. The second goal of this RFC is to **make
-lints independant of the compiler's AST / HIR data structures**.
+lints independent of the compiler's AST / HIR data structures**.
 
 # Approach
 
 A lot of complexity in writing lints currently seems to come from having to
 manually implement the matching logic (see code samples above). It's an
-imparative style that describes *how* to match a syntax tree node instead of
+imperative style that describes *how* to match a syntax tree node instead of
 specifying *what* should be matched against declaratively. In other areas, it's
 common to use declarative patterns to describe desired information and let the
 implementation do the actual matching. A well-known example of this approach are
@@ -111,7 +111,7 @@ expressions that are boolean literals with value `false`.
 
 The pattern can then be used to implement lints in the following way:
 
-```rust
+```rust,ignore
 ...
 
 impl EarlyLintPass for MyAwesomeLint {
@@ -139,7 +139,7 @@ whether the pattern matched.
 
 ## Pattern syntax
 
-The following examples demonstate the pattern syntax:
+The following examples demonstrate the pattern syntax:
 
 
 #### Any (`_`)
@@ -270,7 +270,7 @@ pattern!{
     // matches if expressions that **may or may not** have an else block
     // Attn: `If(_, _, _)` matches only ifs that **have** an else block
     //
-    //              | if with else block | if witout else block
+    //              | if with else block | if without else block
     // If(_, _, _)  |       match        |       no match
     // If(_, _, _?) |       match        |        match
     // If(_, _, ()) |      no match      |        match
@@ -346,7 +346,7 @@ pattern!{
 one could get references to the nodes that matched the subpatterns in the
 following way:
 
-```rust
+```rust,ignore
 ...
 fn check_expr(expr: &syntax::ast::Expr) {
     if let Some(result) = my_pattern(expr) {
@@ -372,7 +372,7 @@ matches arrays that consist of any number of literal expressions. Because those
 expressions are named `foo`, the result struct contains a `foo` attribute which
 is a vector of expressions:
 
-```rust
+```rust,ignore
 ...
 if let Some(result) = my_pattern_seq(expr) {
     result.foo        // type: Vec<&syntax::ast::Expr>
@@ -394,7 +394,7 @@ In the pattern above, the `bar` name is only defined if the pattern matches a
 boolean literal. If it matches an integer literal, the name isn't set. To
 account for this, the result struct's `bar` attribute is an option type:
 
-```rust
+```rust,ignore
 ...
 if let Some(result) = my_pattern_alt(expr) {
     result.bar        // type: Option<&bool>
@@ -404,7 +404,7 @@ if let Some(result) = my_pattern_alt(expr) {
 It's also possible to use a name in multiple alternation branches if they have
 compatible types:
 
-```rust
+```rust,ignore
 pattern!{
     // matches if expression is a boolean or integer literal
     my_pattern_mult: Expr =
@@ -519,7 +519,7 @@ The `Alt`, `Seq` and `Opt` structs look like these:
 > Note: The current implementation can be found
 > [here](https://github.com/fkohlgrueber/pattern-matching/blob/dfb3bc9fbab69cec7c91e72564a63ebaa2ede638/pattern-match/src/matchers.rs#L35-L60).
 
-```rust
+```rust,ignore
 pub enum Alt<T> {
     Any,
     Elmt(Box<T>),
@@ -568,7 +568,7 @@ another example, `Array( Lit(_)* )` is a valid pattern because the parameter of
 
 ## The IsMatch Trait
 
-The pattern syntax and the *PatternTree* are independant of specific syntax tree
+The pattern syntax and the *PatternTree* are independent of specific syntax tree
 implementations (rust ast / hir, syn, ...). When looking at the different
 pattern examples in the previous sections, it can be seen that the patterns
 don't contain any information specific to a certain syntax tree implementation.
@@ -580,7 +580,7 @@ implementations is the `IsMatch` trait. It defines how to match *PatternTree*
 nodes against specific syntax tree nodes. A simplified implementation of the
 `IsMatch` trait is shown below:
 
-```rust
+```rust,ignore
 pub trait IsMatch<O> {
     fn is_match(&self, other: &'o O) -> bool;
 }
@@ -619,7 +619,7 @@ approach (matching against the coarse pattern first and checking for additional
 properties later) might be slower than the current practice of checking for
 structure and additional properties in one pass. For example, the following lint
 
-```rust
+```rust,ignore
 pattern!{
     pat_if_without_else: Expr =
         If(
@@ -644,7 +644,7 @@ first matches against the pattern and then checks that the `then` block doesn't
 start with a comment. Using clippy's current approach, it's possible to check
 for these conditions earlier:
 
-```rust
+```rust,ignore
 fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
     if_chain! {
         if let ast::ExprKind::If(ref check, ref then, None) = expr.node;
@@ -708,7 +708,7 @@ is similar to actual Rust syntax (probably like the `quote!` macro). For
 example, a pattern that matches `if` expressions that have `false` in their
 condition could look like this:
 
-```rust
+```rust,ignore
 if false {
     #[*]
 }
@@ -717,7 +717,7 @@ if false {
 #### Problems
 
 Extending Rust syntax (which is quite complex by itself) with additional syntax
-needed for specifying patterns (alternations, sequences, repetisions, named
+needed for specifying patterns (alternations, sequences, repetitions, named
 submatches, ...) might become difficult to read and really hard to parse
 properly.
 
@@ -742,7 +742,7 @@ affects the structure of the resulting AST. `1 + 0 + 0` is parsed as `(1 + 0) +
 Another example of a problem would be named submatches. Take a look at this
 pattern:
 
-```rust
+```rust,ignore
 fn test() {
     1 #foo
 }
@@ -858,11 +858,11 @@ would be evaluated as soon as the `Block(_)#then` was matched.
 Another idea in this area would be to introduce a syntax for backreferences.
 They could be used to require that multiple parts of a pattern should match the
 same value. For example, the `assign_op_pattern` lint that searches for `a = a
-op b` and recommends changing it to `a op= b` requires that both occurrances of
+op b` and recommends changing it to `a op= b` requires that both occurrences of
 `a` are the same. Using `=#...` as syntax for backreferences, the lint could be
 implemented like this:
 
-```rust
+```rust,ignore
 pattern!{
     assign_op_pattern: Expr =
         Assign(_#target, Binary(_, =#target, _)
@@ -882,7 +882,7 @@ least two return statements" could be a practical addition.
 For patterns like "a literal that is not a boolean literal" one currently needs
 to list all alternatives except the boolean case. Introducing a negation
 operator that allows to write `Lit(!Bool(_))` might be a good idea. This pattern
-would be eqivalent to `Lit( Char(_) | Int(_) )` (given that currently only three
+would be equivalent to `Lit( Char(_) | Int(_) )` (given that currently only three
 literal types are implemented).
 
 #### Functional composition

@@ -1,0 +1,94 @@
+- // MIR for `discriminant` before LowerIntrinsics
++ // MIR for `discriminant` after LowerIntrinsics
+  
+  fn discriminant(_1: T) -> () {
+      debug t => _1;
+      let mut _0: ();
+      let _2: <T as std::marker::DiscriminantKind>::Discriminant;
+      let mut _3: &T;
+      let _4: &T;
+      let _5: u8;
+      let mut _6: &i32;
+      let _7: &i32;
+      let _8: i32;
+      let _9: u8;
+      let mut _10: &();
+      let _11: &();
+      let _12: ();
+      let _13: isize;
+      let mut _14: &E;
+      let _15: &E;
+      let _16: E;
+      let mut _17: &E;
+      let mut _18: &();
+      let mut _19: &i32;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = &_1;
+          _3 = &(*_4);
+-         _2 = discriminant_value::<T>(move _3) -> [return: bb1, unwind unreachable];
++         _2 = discriminant((*_3));
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          StorageDead(_4);
+          StorageDead(_2);
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _19 = const _;
+          _7 = &(*_19);
+          _6 = &(*_7);
+-         _5 = discriminant_value::<i32>(move _6) -> [return: bb2, unwind unreachable];
++         _5 = discriminant((*_6));
++         goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_6);
+          StorageDead(_7);
+          StorageDead(_5);
+          StorageLive(_9);
+          StorageLive(_10);
+          StorageLive(_11);
+          _18 = const _;
+          _11 = &(*_18);
+          _10 = &(*_11);
+-         _9 = discriminant_value::<()>(move _10) -> [return: bb3, unwind unreachable];
++         _9 = discriminant((*_10));
++         goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_10);
+          StorageDead(_11);
+          StorageDead(_9);
+          StorageLive(_13);
+          StorageLive(_14);
+          StorageLive(_15);
+          _17 = const _;
+          _15 = &(*_17);
+          _14 = &(*_15);
+-         _13 = discriminant_value::<E>(move _14) -> [return: bb4, unwind unreachable];
++         _13 = discriminant((*_14));
++         goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_14);
+          StorageDead(_15);
+          StorageDead(_13);
+          _0 = const ();
+          drop(_1) -> [return: bb5, unwind unreachable];
+      }
+  
+      bb5: {
+          return;
+      }
+  }
+  

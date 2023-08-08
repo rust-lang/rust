@@ -1,0 +1,65 @@
+- // MIR for `main` before UnreachablePropagation
++ // MIR for `main` after UnreachablePropagation
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: bool;
+      let mut _2: std::option::Option<Empty>;
+      let mut _3: isize;
+      let _5: ();
+      let mut _6: bool;
+      let mut _7: !;
+      scope 1 {
+          debug x => _1;
+          scope 2 {
+              debug bomb => _4;
+              let _4: Empty;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const true;
+          StorageLive(_2);
+          _2 = empty() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _3 = discriminant(_2);
+          switchInt(move _3) -> [1: bb2, otherwise: bb6];
+      }
+  
+      bb2: {
+          StorageLive(_4);
+          _4 = move ((_2 as Some).0: Empty);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = _1;
+          switchInt(move _6) -> [0: bb4, otherwise: bb3];
+      }
+  
+      bb3: {
+          _5 = loop_forever() -> [return: bb5, unwind unreachable];
+      }
+  
+      bb4: {
+-         _5 = const ();
+-         goto -> bb5;
++         unreachable;
+      }
+  
+      bb5: {
+-         StorageDead(_6);
+-         StorageDead(_5);
+-         StorageLive(_7);
+          unreachable;
+      }
+  
+      bb6: {
+          _0 = const ();
+          StorageDead(_1);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

@@ -1,10 +1,20 @@
 use super::sealed::Sealed;
-use crate::simd::{intrinsics, LaneCount, Simd, SupportedLaneCount};
+use crate::simd::{intrinsics, LaneCount, Simd, SimdCast, SimdElement, SupportedLaneCount};
 
 /// Operations on SIMD vectors of unsigned integers.
 pub trait SimdUint: Copy + Sealed {
     /// Scalar type contained by this SIMD vector type.
     type Scalar;
+
+    /// A SIMD vector with a different element type.
+    type Cast<T: SimdElement>;
+
+    /// Performs elementwise conversion of this vector's elements to another SIMD-valid type.
+    ///
+    /// This follows the semantics of Rust's `as` conversion for casting integers (wrapping to
+    /// other integer types, and saturating to float types).
+    #[must_use]
+    fn cast<T: SimdCast>(self) -> Self::Cast<T>;
 
     /// Lanewise saturating add.
     ///
@@ -77,6 +87,13 @@ macro_rules! impl_trait {
             LaneCount<LANES>: SupportedLaneCount,
         {
             type Scalar = $ty;
+            type Cast<T: SimdElement> = Simd<T, LANES>;
+
+            #[inline]
+            fn cast<T: SimdCast>(self) -> Self::Cast<T> {
+                // Safety: supported types are guaranteed by SimdCast
+                unsafe { intrinsics::simd_as(self) }
+            }
 
             #[inline]
             fn saturating_add(self, second: Self) -> Self {

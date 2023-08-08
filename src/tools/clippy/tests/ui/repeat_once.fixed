@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::repeat_once)]
 #[allow(unused, clippy::redundant_clone)]
 fn main() {

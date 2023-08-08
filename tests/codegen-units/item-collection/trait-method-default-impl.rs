@@ -1,4 +1,4 @@
-// compile-flags:-Zprint-mono-items=eager -Zpolymorphize=on
+// compile-flags:-Zprint-mono-items=eager -Zpolymorphize=on -Zinline-mir=no
 
 #![deny(dead_code)]
 #![feature(start)]

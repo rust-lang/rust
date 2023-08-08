@@ -39,7 +39,10 @@ use std::collections::{HashMap, VecDeque};
 
 use serde::{Deserialize, Serialize};
 
-use crate::tt::{self, TokenId};
+use crate::{
+    msg::ENCODE_CLOSE_SPAN_VERSION,
+    tt::{self, TokenId},
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FlatTree {
@@ -52,7 +55,8 @@ pub struct FlatTree {
 }
 
 struct SubtreeRepr {
-    id: tt::TokenId,
+    open: tt::TokenId,
+    close: tt::TokenId,
     kind: tt::DelimiterKind,
     tt: [u32; 2],
 }
@@ -74,7 +78,7 @@ struct IdentRepr {
 }
 
 impl FlatTree {
-    pub fn new(subtree: &tt::Subtree) -> FlatTree {
+    pub fn new(subtree: &tt::Subtree, version: u32) -> FlatTree {
         let mut w = Writer {
             string_table: HashMap::new(),
             work: VecDeque::new(),
@@ -89,7 +93,11 @@ impl FlatTree {
         w.write(subtree);
 
         return FlatTree {
-            subtree: write_vec(w.subtree, SubtreeRepr::write),
+            subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
+                write_vec(w.subtree, SubtreeRepr::write_with_close_span)
+            } else {
+                write_vec(w.subtree, SubtreeRepr::write)
+            },
             literal: write_vec(w.literal, LiteralRepr::write),
             punct: write_vec(w.punct, PunctRepr::write),
             ident: write_vec(w.ident, IdentRepr::write),
@@ -102,9 +110,13 @@ impl FlatTree {
         }
     }
 
-    pub fn to_subtree(self) -> tt::Subtree {
+    pub fn to_subtree(self, version: u32) -> tt::Subtree {
         return Reader {
-            subtree: read_vec(self.subtree, SubtreeRepr::read),
+            subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
+                read_vec(self.subtree, SubtreeRepr::read_with_close_span)
+            } else {
+                read_vec(self.subtree, SubtreeRepr::read)
+            },
             literal: read_vec(self.literal, LiteralRepr::read),
             punct: read_vec(self.punct, PunctRepr::read),
             ident: read_vec(self.ident, IdentRepr::read),
@@ -130,9 +142,9 @@ impl SubtreeRepr {
             tt::DelimiterKind::Brace => 2,
             tt::DelimiterKind::Bracket => 3,
         };
-        [self.id.0, kind, self.tt[0], self.tt[1]]
+        [self.open.0, kind, self.tt[0], self.tt[1]]
     }
-    fn read([id, kind, lo, len]: [u32; 4]) -> SubtreeRepr {
+    fn read([open, kind, lo, len]: [u32; 4]) -> SubtreeRepr {
         let kind = match kind {
             0 => tt::DelimiterKind::Invisible,
             1 => tt::DelimiterKind::Parenthesis,
@@ -140,7 +152,26 @@ impl SubtreeRepr {
             3 => tt::DelimiterKind::Bracket,
             other => panic!("bad kind {other}"),
         };
-        SubtreeRepr { id: TokenId(id), kind, tt: [lo, len] }
+        SubtreeRepr { open: TokenId(open), close: TokenId::UNSPECIFIED, kind, tt: [lo, len] }
+    }
+    fn write_with_close_span(self) -> [u32; 5] {
+        let kind = match self.kind {
+            tt::DelimiterKind::Invisible => 0,
+            tt::DelimiterKind::Parenthesis => 1,
+            tt::DelimiterKind::Brace => 2,
+            tt::DelimiterKind::Bracket => 3,
+        };
+        [self.open.0, self.close.0, kind, self.tt[0], self.tt[1]]
+    }
+    fn read_with_close_span([open, close, kind, lo, len]: [u32; 5]) -> SubtreeRepr {
+        let kind = match kind {
+            0 => tt::DelimiterKind::Invisible,
+            1 => tt::DelimiterKind::Parenthesis,
+            2 => tt::DelimiterKind::Brace,
+            3 => tt::DelimiterKind::Bracket,
+            other => panic!("bad kind {other}"),
+        };
+        SubtreeRepr { open: TokenId(open), close: TokenId(close), kind, tt: [lo, len] }
     }
 }
 
@@ -244,9 +275,10 @@ impl<'a> Writer<'a> {
 
     fn enqueue(&mut self, subtree: &'a tt::Subtree) -> u32 {
         let idx = self.subtree.len();
-        let delimiter_id = subtree.delimiter.open;
+        let open = subtree.delimiter.open;
+        let close = subtree.delimiter.close;
         let delimiter_kind = subtree.delimiter.kind;
-        self.subtree.push(SubtreeRepr { id: delimiter_id, kind: delimiter_kind, tt: [!0, !0] });
+        self.subtree.push(SubtreeRepr { open, close, kind: delimiter_kind, tt: [!0, !0] });
         self.work.push_back((idx, subtree));
         idx as u32
     }
@@ -277,11 +309,7 @@ impl Reader {
             let repr = &self.subtree[i];
             let token_trees = &self.token_tree[repr.tt[0] as usize..repr.tt[1] as usize];
             let s = tt::Subtree {
-                delimiter: tt::Delimiter {
-                    open: repr.id,
-                    close: TokenId::UNSPECIFIED,
-                    kind: repr.kind,
-                },
+                delimiter: tt::Delimiter { open: repr.open, close: repr.close, kind: repr.kind },
                 token_trees: token_trees
                     .iter()
                     .copied()

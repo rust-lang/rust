@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![feature(lint_reasons)]
 #![warn(clippy::implicit_return)]
 #![allow(clippy::needless_return, clippy::needless_bool, unused, clippy::never_loop)]

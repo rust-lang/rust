@@ -10,10 +10,12 @@ error[E0308]: mismatched types
   --> $DIR/str-array-assignment.rs:5:27
    |
 LL |   let u: &str = if true { s[..2] } else { s };
-   |                           ^^^^^^
-   |                           |
-   |                           expected `&str`, found `str`
-   |                           help: consider borrowing here: `&s[..2]`
+   |                           ^^^^^^ expected `&str`, found `str`
+   |
+help: consider borrowing here
+   |
+LL |   let u: &str = if true { &s[..2] } else { s };
+   |                           +
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/str-array-assignment.rs:7:7
@@ -33,11 +35,14 @@ error[E0308]: mismatched types
   --> $DIR/str-array-assignment.rs:9:17
    |
 LL |   let w: &str = s[..2];
-   |          ----   ^^^^^^
-   |          |      |
-   |          |      expected `&str`, found `str`
-   |          |      help: consider borrowing here: `&s[..2]`
+   |          ----   ^^^^^^ expected `&str`, found `str`
+   |          |
    |          expected due to this
+   |
+help: consider borrowing here
+   |
+LL |   let w: &str = &s[..2];
+   |                 +
 
 error: aborting due to 4 previous errors
 

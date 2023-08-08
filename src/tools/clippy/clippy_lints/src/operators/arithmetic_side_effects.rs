@@ -1,25 +1,24 @@
 use super::ARITHMETIC_SIDE_EFFECTS;
-use clippy_utils::{
-    consts::{constant, constant_simple, Constant},
-    diagnostics::span_lint,
-    is_lint_allowed, peel_hir_expr_refs, peel_hir_expr_unary,
-};
-use rustc_ast as ast;
+use clippy_utils::consts::{constant, constant_simple, Constant};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{expr_or_init, is_from_proc_macro, is_lint_allowed, peel_hir_expr_refs, peel_hir_expr_unary};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::{Span, Spanned};
+use rustc_span::Symbol;
+use {rustc_ast as ast, rustc_hir as hir};
 
 const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[
     ["f32", "f32"],
     ["f64", "f64"],
-    ["std::num::Saturating", "std::num::Saturating"],
-    ["std::num::Wrapping", "std::num::Wrapping"],
-    ["std::string::String", "&str"],
+    ["std::num::Saturating", "*"],
+    ["std::num::Wrapping", "*"],
+    ["std::string::String", "str"],
 ];
 const HARD_CODED_ALLOWED_UNARY: &[&str] = &["f32", "f64", "std::num::Saturating", "std::num::Wrapping"];
+const INTEGER_METHODS: &[&str] = &["saturating_div", "wrapping_div", "wrapping_rem", "wrapping_rem_euclid"];
 
 #[derive(Debug)]
 pub struct ArithmeticSideEffects {
@@ -28,6 +27,7 @@ pub struct ArithmeticSideEffects {
     // Used to check whether expressions are constants, such as in enum discriminants and consts
     const_span: Option<Span>,
     expr_span: Option<Span>,
+    integer_methods: FxHashSet<Symbol>,
 }
 
 impl_lint_pass!(ArithmeticSideEffects => [ARITHMETIC_SIDE_EFFECTS]);
@@ -53,6 +53,7 @@ impl ArithmeticSideEffects {
             allowed_unary,
             const_span: None,
             expr_span: None,
+            integer_methods: INTEGER_METHODS.iter().map(|el| Symbol::intern(el)).collect(),
         }
     }
 
@@ -103,10 +104,10 @@ impl ArithmeticSideEffects {
     /// like `i32::MAX` or constant references like `N` from `const N: i32 = 1;`,
     fn literal_integer(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<u128> {
         let actual = peel_hir_expr_unary(expr).0;
-        if let hir::ExprKind::Lit(ref lit) = actual.kind && let ast::LitKind::Int(n, _) = lit.node {
+        if let hir::ExprKind::Lit(lit) = actual.kind && let ast::LitKind::Int(n, _) = lit.node {
             return Some(n)
         }
-        if let Some((Constant::Int(n), _)) = constant(cx, cx.typeck_results(), expr) {
+        if let Some(Constant::Int(n)) = constant(cx, cx.typeck_results(), expr) {
             return Some(n);
         }
         None
@@ -137,24 +138,41 @@ impl ArithmeticSideEffects {
         ) {
             return;
         };
-        let lhs_ty = cx.typeck_results().expr_ty(lhs);
-        let rhs_ty = cx.typeck_results().expr_ty(rhs);
+        let (mut actual_lhs, lhs_ref_counter) = peel_hir_expr_refs(lhs);
+        let (mut actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
+        actual_lhs = expr_or_init(cx, actual_lhs);
+        actual_rhs = expr_or_init(cx, actual_rhs);
+        let lhs_ty = cx.typeck_results().expr_ty(actual_lhs).peel_refs();
+        let rhs_ty = cx.typeck_results().expr_ty(actual_rhs).peel_refs();
         if self.has_allowed_binary(lhs_ty, rhs_ty) {
             return;
         }
         let has_valid_op = if Self::is_integral(lhs_ty) && Self::is_integral(rhs_ty) {
-            let (actual_lhs, lhs_ref_counter) = peel_hir_expr_refs(lhs);
-            let (actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
+            if let hir::BinOpKind::Shl | hir::BinOpKind::Shr = op.node {
+                // At least for integers, shifts are already handled by the CTFE
+                return;
+            }
             match (
                 Self::literal_integer(cx, actual_lhs),
                 Self::literal_integer(cx, actual_rhs),
             ) {
                 (None, None) => false,
-                (None, Some(n)) | (Some(n), None) => match (&op.node, n) {
-                    (hir::BinOpKind::Div | hir::BinOpKind::Rem, 0) => false,
+                (None, Some(n)) => match (&op.node, n) {
+                    // Division and module are always valid if applied to non-zero integers
+                    (hir::BinOpKind::Div | hir::BinOpKind::Rem, local_n) if local_n != 0 => true,
+                    // Adding or subtracting zeros is always a no-op
                     (hir::BinOpKind::Add | hir::BinOpKind::Sub, 0)
-                    | (hir::BinOpKind::Div | hir::BinOpKind::Rem, _)
-                    | (hir::BinOpKind::Mul, 0 | 1) => true,
+                    // Multiplication by 1 or 0 will never overflow
+                    | (hir::BinOpKind::Mul, 0 | 1)
+                    => true,
+                    _ => false,
+                },
+                (Some(n), None) => match (&op.node, n) {
+                    // Adding or subtracting zeros is always a no-op
+                    (hir::BinOpKind::Add | hir::BinOpKind::Sub, 0)
+                    // Multiplication by 1 or 0 will never overflow
+                    | (hir::BinOpKind::Mul, 0 | 1)
+                    => true,
                     _ => false,
                 },
                 (Some(_), Some(_)) => {
@@ -169,6 +187,35 @@ impl ArithmeticSideEffects {
         }
     }
 
+    /// There are some integer methods like `wrapping_div` that will panic depending on the
+    /// provided input.
+    fn manage_method_call<'tcx>(
+        &mut self,
+        args: &[hir::Expr<'tcx>],
+        cx: &LateContext<'tcx>,
+        ps: &hir::PathSegment<'tcx>,
+        receiver: &hir::Expr<'tcx>,
+    ) {
+        let Some(arg) = args.first() else {
+            return;
+        };
+        if constant_simple(cx, cx.typeck_results(), receiver).is_some() {
+            return;
+        }
+        let instance_ty = cx.typeck_results().expr_ty(receiver);
+        if !Self::is_integral(instance_ty) {
+            return;
+        }
+        if !self.integer_methods.contains(&ps.ident.name) {
+            return;
+        }
+        let (actual_arg, _) = peel_hir_expr_refs(arg);
+        match Self::literal_integer(cx, actual_arg) {
+            None | Some(0) => self.issue_lint(cx, arg),
+            Some(_) => {},
+        }
+    }
+
     fn manage_unary_ops<'tcx>(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -176,7 +223,9 @@ impl ArithmeticSideEffects {
         un_expr: &hir::Expr<'tcx>,
         un_op: hir::UnOp,
     ) {
-        let hir::UnOp::Neg = un_op else { return; };
+        let hir::UnOp::Neg = un_op else {
+            return;
+        };
         if constant(cx, cx.typeck_results(), un_expr).is_some() {
             return;
         }
@@ -191,8 +240,9 @@ impl ArithmeticSideEffects {
         self.issue_lint(cx, expr);
     }
 
-    fn should_skip_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    fn should_skip_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) -> bool {
         is_lint_allowed(cx, ARITHMETIC_SIDE_EFFECTS, expr.hir_id)
+            || is_from_proc_macro(cx, expr)
             || self.expr_span.is_some()
             || self.const_span.map_or(false, |sp| sp.contains(expr.span))
     }
@@ -206,6 +256,9 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
         match &expr.kind {
             hir::ExprKind::AssignOp(op, lhs, rhs) | hir::ExprKind::Binary(op, lhs, rhs) => {
                 self.manage_bin_ops(cx, expr, op, lhs, rhs);
+            },
+            hir::ExprKind::MethodCall(ps, receiver, args, _) => {
+                self.manage_method_call(args, cx, ps, receiver);
             },
             hir::ExprKind::Unary(un_op, un_expr) => {
                 self.manage_unary_ops(cx, expr, un_expr, *un_op);

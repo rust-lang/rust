@@ -32,9 +32,10 @@ use rustc_ast::visit::{self, Visitor};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{pluralize, MultiSpan};
+use rustc_hir::def::{DefKind, Res};
 use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
 struct UnusedImport<'a> {
@@ -58,6 +59,7 @@ struct UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     base_use_tree: Option<&'a ast::UseTree>,
     base_id: ast::NodeId,
     item_span: Span,
+    base_use_is_pub: bool,
 }
 
 struct ExternCrateToLint {
@@ -110,6 +112,30 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             unused: Default::default(),
         })
     }
+
+    fn check_import_as_underscore(&mut self, item: &ast::UseTree, id: ast::NodeId) {
+        match item.kind {
+            ast::UseTreeKind::Simple(Some(ident)) => {
+                if ident.name == kw::Underscore
+                    && !self.r.import_res_map.get(&id).is_some_and(|per_ns| {
+                        per_ns.iter().filter_map(|res| res.as_ref()).any(|res| {
+                            matches!(res, Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
+                        })
+                    })
+                {
+                    self.unused_import(self.base_id).add(id);
+                }
+            }
+            ast::UseTreeKind::Nested(ref items) => self.check_imports_as_underscore(items),
+            _ => {}
+        }
+    }
+
+    fn check_imports_as_underscore(&mut self, items: &[(ast::UseTree, ast::NodeId)]) {
+        for (item, id) in items {
+            self.check_import_as_underscore(item, *id);
+        }
+    }
 }
 
 impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
@@ -119,7 +145,8 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             // whether they're used or not. Also ignore imports with a dummy span
             // because this means that they were generated in some fashion by the
             // compiler and we don't need to consider them.
-            ast::ItemKind::Use(..) if item.vis.kind.is_pub() || item.span.is_dummy() => return,
+            ast::ItemKind::Use(..) if item.span.is_dummy() => return,
+            ast::ItemKind::Use(..) => self.base_use_is_pub = item.vis.kind.is_pub(),
             ast::ItemKind::ExternCrate(orig_name) => {
                 self.extern_crate_items.push(ExternCrateToLint {
                     id: item.id,
@@ -144,6 +171,11 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
         if !nested {
             self.base_id = id;
             self.base_use_tree = Some(use_tree);
+        }
+
+        if self.base_use_is_pub {
+            self.check_import_as_underscore(use_tree, id);
+            return;
         }
 
         if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
@@ -300,6 +332,7 @@ impl Resolver<'_, '_> {
             base_use_tree: None,
             base_id: ast::DUMMY_NODE_ID,
             item_span: DUMMY_SP,
+            base_use_is_pub: false,
         };
         visit::walk_crate(&mut visitor, krate);
 
@@ -329,7 +362,7 @@ impl Resolver<'_, '_> {
             let mut span_snippets = spans
                 .iter()
                 .filter_map(|s| match tcx.sess.source_map().span_to_snippet(*s) {
-                    Ok(s) => Some(format!("`{}`", s)),
+                    Ok(s) => Some(format!("`{s}`")),
                     _ => None,
                 })
                 .collect::<Vec<String>>();
@@ -355,7 +388,7 @@ impl Resolver<'_, '_> {
             // If we are in the `--test` mode, suppress a help that adds the `#[cfg(test)]`
             // attribute; however, if not, suggest adding the attribute. There is no way to
             // retrieve attributes here because we do not have a `TyCtxt` yet.
-            let test_module_span = if tcx.sess.opts.test {
+            let test_module_span = if tcx.sess.is_test_crate() {
                 None
             } else {
                 let parent_module = visitor.r.get_nearest_non_block_module(
@@ -380,7 +413,7 @@ impl Resolver<'_, '_> {
                 UNUSED_IMPORTS,
                 unused.use_tree_id,
                 ms,
-                &msg,
+                msg,
                 BuiltinLintDiagnostics::UnusedImports(fix_msg.into(), fixes, test_module_span),
             );
         }
@@ -407,7 +440,7 @@ impl Resolver<'_, '_> {
 
             // If we are not in Rust 2018 edition, then we don't make any further
             // suggestions.
-            if !tcx.sess.rust_2018() {
+            if !tcx.sess.at_least_rust_2018() {
                 continue;
             }
 
@@ -431,7 +464,7 @@ impl Resolver<'_, '_> {
                 .r
                 .extern_prelude
                 .get(&extern_crate.ident)
-                .map_or(false, |entry| !entry.introduced_by_item)
+                .is_some_and(|entry| !entry.introduced_by_item)
             {
                 continue;
             }

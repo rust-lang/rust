@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::use_self)]
 #![allow(dead_code)]
@@ -33,7 +33,7 @@ impl SelfTrait for Bad {
     fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {}
 
     fn vals(_: Bad) -> Bad {
-        Bad::default()
+        Bad
     }
 }
 
@@ -70,7 +70,7 @@ impl SelfTrait for Good {
     fn nested(_p1: Box<Self>, _p2: (&u8, &Self)) {}
 
     fn vals(_: Self) -> Self {
-        Self::default()
+        Self
     }
 }
 

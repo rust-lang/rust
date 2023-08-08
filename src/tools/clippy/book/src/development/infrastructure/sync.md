@@ -19,8 +19,7 @@ to beta. For reference, the first sync following this cadence was performed the
 2020-08-27.
 
 This process is described in detail in the following sections. For general
-information about `subtree`s in the Rust repository see [Rust's
-`CONTRIBUTING.md`][subtree].
+information about `subtree`s in the Rust repository see [the rustc-dev-guide][subtree].
 
 ## Patching git-subtree to work with big repos
 
@@ -47,7 +46,7 @@ sudo chown --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subt
 
 > _Note:_ If you are a Debian user, `dash` is the shell used by default for
 > scripts instead of `sh`. This shell has a hardcoded recursion limit set to
-> 1000. In order to make this process work, you need to force the script to run
+> 1,000. In order to make this process work, you need to force the script to run
 > `bash` instead. You can do this by editing the first line of the `git-subtree`
 > script and changing `sh` to `bash`.
 
@@ -71,10 +70,10 @@ $ git remote add clippy-local /path/to/rust-clippy
 
 ## Performing the sync from [`rust-lang/rust`] to Clippy
 
-Here is a TL;DR version of the sync process (all of the following commands have
+Here is a TL;DR version of the sync process (all the following commands have
 to be run inside the `rust` directory):
 
-1. Clone the [`rust-lang/rust`] repository or make sure it is up to date.
+1. Clone the [`rust-lang/rust`] repository or make sure it is up-to-date.
 2. Checkout the commit from the latest available nightly. You can get it using
    `rustup check`.
 3. Sync the changes to the rust-copy of Clippy to your Clippy fork:
@@ -107,7 +106,7 @@ to be run inside the `rust` directory):
 
 ## Performing the sync from Clippy to [`rust-lang/rust`]
 
-All of the following commands have to be run inside the `rust` directory.
+All the following commands have to be run inside the `rust` directory.
 
 1. Make sure you have checked out the latest `master` of `rust-lang/rust`.
 2. Sync the `rust-lang/rust-clippy` master to the rust-copy of Clippy:
@@ -118,5 +117,5 @@ All of the following commands have to be run inside the `rust` directory.
 3. Open a PR to [`rust-lang/rust`]
 
 [gitgitgadget-pr]: https://github.com/gitgitgadget/git/pull/493
-[subtree]: https://rustc-dev-guide.rust-lang.org/contributing.html#external-dependencies-subtree
+[subtree]: https://rustc-dev-guide.rust-lang.org/external-repos.html#external-dependencies-subtree
 [`rust-lang/rust`]: https://github.com/rust-lang/rust

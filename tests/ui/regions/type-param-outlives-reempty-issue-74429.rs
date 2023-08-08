@@ -3,6 +3,8 @@
 
 // check-pass
 
+#![allow(dropping_copy_types)]
+
 use std::marker::PhantomData;
 
 fn apply<T, F: FnOnce(T)>(_: T, _: F) {}

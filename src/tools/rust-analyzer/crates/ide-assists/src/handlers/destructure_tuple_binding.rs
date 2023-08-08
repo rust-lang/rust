@@ -91,7 +91,7 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleDat
         return None;
     }
 
-    let ty = ctx.sema.type_of_pat(&ident_pat.clone().into())?.adjusted();
+    let ty = ctx.sema.type_of_binding_in_pat(&ident_pat)?;
     let ref_type = if ty.is_mutable_reference() {
         Some(RefType::Mutable)
     } else if ty.is_reference() {
@@ -114,7 +114,7 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleDat
     let usages = ctx.sema.to_def(&ident_pat).map(|def| {
         Definition::Local(def)
             .usages(&ctx.sema)
-            .in_scope(SearchScope::single_file(ctx.file_id()))
+            .in_scope(&SearchScope::single_file(ctx.file_id()))
             .all()
     });
 

@@ -22,6 +22,7 @@
 use crate::errors;
 use rustc_ast::{self as ast, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit;
 use rustc_hir::Node as HirNode;
@@ -125,7 +126,7 @@ const LABELS_ADT: &[&[&str]] = &[BASE_HIR, BASE_STRUCT];
 //
 //     type_of for these.
 
-type Labels = FxHashSet<String>;
+type Labels = UnordSet<String>;
 
 /// Represents the requested configuration by rustc_clean/dirty
 struct Assertion {
@@ -139,7 +140,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         return;
     }
 
-    // can't add `#[rustc_clean]` etc without opting in to this feature
+    // can't add `#[rustc_clean]` etc without opting into this feature
     if !tcx.features().rustc_attrs {
         return;
     }
@@ -197,7 +198,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         let (name, mut auto) = self.auto_labels(item_id, attr);
         let except = self.except(attr);
         let loaded_from_disk = self.loaded_from_disk(attr);
-        for e in except.iter() {
+        for e in except.items().into_sorted_stable_ord() {
             if !auto.remove(e) {
                 self.tcx.sess.emit_fatal(errors::AssertionAuto { span: attr.span, name, e });
             }
@@ -299,7 +300,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
             },
             _ => self.tcx.sess.emit_fatal(errors::UndefinedCleanDirty {
                 span: attr.span,
-                kind: format!("{:?}", node),
+                kind: format!("{node:?}"),
             }),
         };
         let labels =
@@ -371,20 +372,20 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
     fn check_item(&mut self, item_id: LocalDefId) {
         let item_span = self.tcx.def_span(item_id.to_def_id());
         let def_path_hash = self.tcx.def_path_hash(item_id.to_def_id());
-        for attr in self.tcx.get_attrs(item_id.to_def_id(), sym::rustc_clean) {
+        for attr in self.tcx.get_attrs(item_id, sym::rustc_clean) {
             let Some(assertion) = self.assertion_maybe(item_id, attr) else {
                 continue;
             };
             self.checked_attrs.insert(attr.id);
-            for label in assertion.clean {
+            for label in assertion.clean.items().into_sorted_stable_ord() {
                 let dep_node = DepNode::from_label_string(self.tcx, &label, def_path_hash).unwrap();
                 self.assert_clean(item_span, dep_node);
             }
-            for label in assertion.dirty {
+            for label in assertion.dirty.items().into_sorted_stable_ord() {
                 let dep_node = DepNode::from_label_string(self.tcx, &label, def_path_hash).unwrap();
                 self.assert_dirty(item_span, dep_node);
             }
-            for label in assertion.loaded_from_disk {
+            for label in assertion.loaded_from_disk.items().into_sorted_stable_ord() {
                 let dep_node = DepNode::from_label_string(self.tcx, &label, def_path_hash).unwrap();
                 self.assert_loaded_from_disk(item_span, dep_node);
             }

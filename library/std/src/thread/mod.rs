@@ -131,7 +131,8 @@
 //!
 //! * Build the thread with [`Builder`] and pass the desired stack size to [`Builder::stack_size`].
 //! * Set the `RUST_MIN_STACK` environment variable to an integer representing the desired stack
-//!   size (in bytes). Note that setting [`Builder::stack_size`] will override this.
+//!   size (in bytes). Note that setting [`Builder::stack_size`] will override this. Be aware that
+//!   changes to `RUST_MIN_STACK` may be ignored after program start.
 //!
 //! Note that the stack size of the main thread is *not* determined by Rust.
 //!
@@ -192,55 +193,23 @@ pub use scoped::{scope, Scope, ScopedJoinHandle};
 #[macro_use]
 mod local;
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::local::{AccessError, LocalKey};
+cfg_if::cfg_if! {
+    if #[cfg(test)] {
+        // Avoid duplicating the global state associated with thread-locals between this crate and
+        // realstd. Miri relies on this.
+        pub use realstd::thread::{local_impl, AccessError, LocalKey};
+    } else {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub use self::local::{AccessError, LocalKey};
 
-// Provide the type used by the thread_local! macro to access TLS keys. This
-// needs to be kept in sync with the macro itself (in `local.rs`).
-// There are three types: "static", "fast", "OS". The "OS" thread local key
-// type is accessed via platform-specific API calls and is slow, while the "fast"
-// key type is accessed via code generated via LLVM, where TLS keys are set up
-// by the elf linker. "static" is for single-threaded platforms where a global
-// static is sufficient.
-
-#[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(not(test))]
-#[cfg(all(
-    target_thread_local,
-    not(all(target_family = "wasm", not(target_feature = "atomics"))),
-))]
-#[doc(hidden)]
-pub use self::local::fast::Key as __FastLocalKeyInner;
-// when building for tests, use real std's type
-#[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(test)]
-#[cfg(all(
-    target_thread_local,
-    not(all(target_family = "wasm", not(target_feature = "atomics"))),
-))]
-pub use realstd::thread::__FastLocalKeyInner;
-
-#[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(not(test))]
-#[cfg(all(
-    not(target_thread_local),
-    not(all(target_family = "wasm", not(target_feature = "atomics"))),
-))]
-#[doc(hidden)]
-pub use self::local::os::Key as __OsLocalKeyInner;
-// when building for tests, use real std's type
-#[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(test)]
-#[cfg(all(
-    not(target_thread_local),
-    not(all(target_family = "wasm", not(target_feature = "atomics"))),
-))]
-pub use realstd::thread::__OsLocalKeyInner;
-
-#[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
-#[doc(hidden)]
-pub use self::local::statik::Key as __StaticLocalKeyInner;
+        // Implementation details used by the thread_local!{} macro.
+        #[doc(hidden)]
+        #[unstable(feature = "thread_local_internals", issue = "none")]
+        pub mod local_impl {
+            pub use crate::sys::common::thread_local::{thread_local_inner, Key, abort_on_dtor_unwind};
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
@@ -528,7 +497,7 @@ impl Builder {
                 MaybeDangling(mem::MaybeUninit::new(x))
             }
             fn into_inner(self) -> T {
-                // SAFETY: we are always initiailized.
+                // SAFETY: we are always initialized.
                 let ret = unsafe { self.0.assume_init_read() };
                 // Make sure we don't drop.
                 mem::forget(self);
@@ -537,7 +506,7 @@ impl Builder {
         }
         impl<T> Drop for MaybeDangling<T> {
             fn drop(&mut self) {
-                // SAFETY: we are always initiailized.
+                // SAFETY: we are always initialized.
                 unsafe { self.0.assume_init_drop() };
             }
         }
@@ -920,7 +889,7 @@ impl Drop for PanicGuard {
 /// it is guaranteed that this function will not panic (it may abort the
 /// process if the implementation encounters some rare errors).
 ///
-/// # park and unpark
+/// # `park` and `unpark`
 ///
 /// Every thread is equipped with some basic low-level blocking support, via the
 /// [`thread::park`][`park`] function and [`thread::Thread::unpark`][`unpark`]
@@ -941,14 +910,6 @@ impl Drop for PanicGuard {
 ///   if it wasn't already. Because the token is initially absent, [`unpark`]
 ///   followed by [`park`] will result in the second call returning immediately.
 ///
-/// In other words, each [`Thread`] acts a bit like a spinlock that can be
-/// locked and unlocked using `park` and `unpark`.
-///
-/// Notice that being unblocked does not imply any synchronization with someone
-/// that unparked this thread, it could also be spurious.
-/// For example, it would be a valid, but inefficient, implementation to make both [`park`] and
-/// [`unpark`] return immediately without doing anything.
-///
 /// The API is typically used by acquiring a handle to the current thread,
 /// placing that handle in a shared data structure so that other threads can
 /// find it, and then `park`ing in a loop. When some desired condition is met, another
@@ -961,6 +922,23 @@ impl Drop for PanicGuard {
 ///   blocking/signaling.
 ///
 /// * It can be implemented very efficiently on many platforms.
+///
+/// # Memory Ordering
+///
+/// Calls to `park` _synchronize-with_ calls to `unpark`, meaning that memory
+/// operations performed before a call to `unpark` are made visible to the thread that
+/// consumes the token and returns from `park`. Note that all `park` and `unpark`
+/// operations for a given thread form a total order and `park` synchronizes-with
+/// _all_ prior `unpark` operations.
+///
+/// In atomic ordering terms, `unpark` performs a `Release` operation and `park`
+/// performs the corresponding `Acquire` operation. Calls to `unpark` for the same
+/// thread form a [release sequence].
+///
+/// Note that being unblocked does not imply a call was made to `unpark`, because
+/// wakeups can also be spurious. For example, a valid, but inefficient,
+/// implementation could have `park` and `unpark` return immediately without doing anything,
+/// making *all* wakeups spurious.
 ///
 /// # Examples
 ///
@@ -975,7 +953,7 @@ impl Drop for PanicGuard {
 /// let parked_thread = thread::spawn(move || {
 ///     // We want to wait until the flag is set. We *could* just spin, but using
 ///     // park/unpark is more efficient.
-///     while !flag2.load(Ordering::Acquire) {
+///     while !flag2.load(Ordering::Relaxed) {
 ///         println!("Parking thread");
 ///         thread::park();
 ///         // We *could* get here spuriously, i.e., way before the 10ms below are over!
@@ -992,7 +970,7 @@ impl Drop for PanicGuard {
 /// // There is no race condition here, if `unpark`
 /// // happens first, `park` will return immediately.
 /// // Hence there is no risk of a deadlock.
-/// flag.store(true, Ordering::Release);
+/// flag.store(true, Ordering::Relaxed);
 /// println!("Unpark the thread");
 /// parked_thread.thread().unpark();
 ///
@@ -1001,6 +979,7 @@ impl Drop for PanicGuard {
 ///
 /// [`unpark`]: Thread::unpark
 /// [`thread::park_timeout`]: park_timeout
+/// [release sequence]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release_sequence
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn park() {
     let guard = PanicGuard;

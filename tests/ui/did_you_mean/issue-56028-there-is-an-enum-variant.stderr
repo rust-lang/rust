@@ -24,13 +24,13 @@ LL | fn setup() -> Set { Set }
    |
 help: consider importing one of these items
    |
-LL | use AffixHeart::Set;
+LL + use AffixHeart::Set;
    |
-LL | use CauseToBe::Set;
+LL + use CauseToBe::Set;
    |
-LL | use Determine::Set;
+LL + use Determine::Set;
    |
-LL | use PutDown::Set;
+LL + use PutDown::Set;
    |
      and 3 other candidates
 

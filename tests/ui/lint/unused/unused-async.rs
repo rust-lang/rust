@@ -33,7 +33,7 @@ async fn test() {
     foo().await; //~ ERROR unused output of future returned by `foo` that must be used
     bar(); //~ ERROR unused return value of `bar` that must be used
     //~^ ERROR unused implementer of `Future` that must be used
-    bar().await; //~ ERROR unused output of future returned by `bar` that must be used
+    bar().await; // ok, it's not an async fn
     baz(); //~ ERROR unused implementer of `Future` that must be used
     baz().await; // ok
 }

@@ -1,10 +1,9 @@
 // exact-check
 
-const QUERY = '"true"';
-
 const FILTER_CRATE = 'doc_alias_filter';
 
 const EXPECTED = {
+    'query': '"true"',
     'others': [
         {
             'path': 'doc_alias_filter',

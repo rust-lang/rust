@@ -16,10 +16,10 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
 
     - name: Setup Node.js
-      uses: actions/setup-node@v1.4.4
+      uses: actions/setup-node@v3
       with:
         node-version: '14.x'
 
@@ -29,13 +29,19 @@ jobs:
     - name: Install mdbook
       run: |
         mkdir mdbook
-        curl -Lf https://github.com/rust-lang/mdBook/releases/download/v0.4.18/mdbook-v0.4.18-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook
+        curl -Lf https://github.com/rust-lang/mdBook/releases/download/v0.4.28/mdbook-v0.4.28-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook
         echo `pwd`/mdbook >> $GITHUB_PATH
 
     # Run
     - name: Check *.md files
       run: git ls-files -z '*.md' | xargs -0 -n 1 -I {} ./node_modules/.bin/remark {} -u lint -f > /dev/null
 
+    - name: Linkcheck book
+      run: |
+        rustup toolchain install nightly --component rust-docs
+        curl https://raw.githubusercontent.com/rust-lang/rust/master/src/tools/linkchecker/linkcheck.sh -o linkcheck.sh
+        sh linkcheck.sh clippy --path ./book
+        
     - name: Build mdbook
       run: mdbook build book
 

@@ -1,0 +1,10 @@
+error: unneeded sub `cfg` when there is no condition
+  --> $DIR/non_minimal_cfg2.rs:3:7
+   |
+LL | #[cfg(all())]
+   |       ^^^^^
+   |
+   = note: `-D clippy::non-minimal-cfg` implied by `-D warnings`
+
+error: aborting due to previous error
+

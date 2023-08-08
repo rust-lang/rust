@@ -2,8 +2,8 @@
 
 use super::combine::{CombineFields, ObligationEmittingRelation};
 use super::lattice::{self, LatticeDir};
-use super::InferCtxt;
 use super::Subtype;
+use super::{DefineOpaqueTypes, InferCtxt};
 
 use crate::traits::{ObligationCause, PredicateObligations};
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
@@ -29,11 +29,6 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
         "Glb"
     }
 
-    fn intercrate(&self) -> bool {
-        assert!(!self.fields.infcx.intercrate);
-        false
-    }
-
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.fields.tcx()
     }
@@ -44,10 +39,6 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         self.a_is_expected
-    }
-
-    fn mark_ambiguous(&mut self) {
-        bug!("mark_ambiguous used outside of coherence");
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
@@ -142,7 +133,7 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
         Ok(())
     }
 
-    fn define_opaque_types(&self) -> bool {
+    fn define_opaque_types(&self) -> DefineOpaqueTypes {
         self.fields.define_opaque_types
     }
 }
@@ -154,5 +145,10 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for Glb<'_, '_, 'tcx> {
 
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
         self.fields.register_obligations(obligations);
+    }
+
+    fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
+        // FIXME(deferred_projection_equality): This isn't right, I think?
+        ty::AliasRelationDirection::Equate
     }
 }

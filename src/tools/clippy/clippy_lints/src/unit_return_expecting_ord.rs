@@ -4,7 +4,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Closure, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_middle::ty::{Clause, GenericPredicates, PredicateKind, ProjectionPredicate, TraitPredicate};
+use rustc_middle::ty::{ClauseKind, GenericPredicates, ProjectionPredicate, TraitPredicate};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, BytePos, Span};
 
@@ -45,7 +45,7 @@ fn get_trait_predicates_for_trait_id<'tcx>(
     let mut preds = Vec::new();
     for (pred, _) in generics.predicates {
         if_chain! {
-            if let PredicateKind::Clause(Clause::Trait(poly_trait_pred)) = pred.kind().skip_binder();
+            if let ClauseKind::Trait(poly_trait_pred) = pred.kind().skip_binder();
             let trait_pred = cx.tcx.erase_late_bound_regions(pred.kind().rebind(poly_trait_pred));
             if let Some(trait_def_id) = trait_id;
             if trait_def_id == trait_pred.trait_ref.def_id;
@@ -63,9 +63,9 @@ fn get_projection_pred<'tcx>(
     trait_pred: TraitPredicate<'tcx>,
 ) -> Option<ProjectionPredicate<'tcx>> {
     generics.predicates.iter().find_map(|(proj_pred, _)| {
-        if let ty::PredicateKind::Clause(Clause::Projection(pred)) = proj_pred.kind().skip_binder() {
+        if let ClauseKind::Projection(pred) = proj_pred.kind().skip_binder() {
             let projection_pred = cx.tcx.erase_late_bound_regions(proj_pred.kind().rebind(pred));
-            if projection_pred.projection_ty.substs == trait_pred.trait_ref.substs {
+            if projection_pred.projection_ty.args == trait_pred.trait_ref.args {
                 return Some(projection_pred);
             }
         }
@@ -76,7 +76,7 @@ fn get_projection_pred<'tcx>(
 fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Vec<(usize, String)> {
     let mut args_to_check = Vec::new();
     if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-        let fn_sig = cx.tcx.fn_sig(def_id).subst_identity();
+        let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity();
         let generics = cx.tcx.predicates_of(def_id);
         let fn_mut_preds = get_trait_predicates_for_trait_id(cx, generics, cx.tcx.lang_items().fn_mut_trait());
         let ord_preds = get_trait_predicates_for_trait_id(cx, generics, cx.tcx.get_diagnostic_item(sym::Ord));
@@ -120,8 +120,8 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
 fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Span, Option<Span>)> {
     if_chain! {
         if let ExprKind::Closure(&Closure { body, fn_decl_span, .. }) = arg.kind;
-        if let ty::Closure(_def_id, substs) = &cx.typeck_results().node_type(arg.hir_id).kind();
-        let ret_ty = substs.as_closure().sig().output();
+        if let ty::Closure(_def_id, args) = &cx.typeck_results().node_type(arg.hir_id).kind();
+        let ret_ty = args.as_closure().sig().output();
         let ty = cx.tcx.erase_late_bound_regions(ret_ty);
         if ty.is_unit();
         then {

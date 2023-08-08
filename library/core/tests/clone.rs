@@ -1,4 +1,5 @@
 #[test]
+#[allow(suspicious_double_ref_op)]
 fn test_borrowed_clone() {
     let x = 5;
     let y: &i32 = &x;

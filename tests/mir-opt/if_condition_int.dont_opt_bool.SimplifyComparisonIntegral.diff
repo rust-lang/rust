@@ -2,29 +2,29 @@
 + // MIR for `dont_opt_bool` after SimplifyComparisonIntegral
   
   fn dont_opt_bool(_1: bool) -> u32 {
-      debug x => _1;                       // in scope 0 at $DIR/if_condition_int.rs:+0:18: +0:19
-      let mut _0: u32;                     // return place in scope 0 at $DIR/if_condition_int.rs:+0:30: +0:33
-      let mut _2: bool;                    // in scope 0 at $DIR/if_condition_int.rs:+1:8: +1:9
+      debug x => _1;
+      let mut _0: u32;
+      let mut _2: bool;
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:9
-          _2 = _1;                         // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:9
-          switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:9
+          StorageLive(_2);
+          _2 = _1;
+          switchInt(move _2) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
-          _0 = const 0_u32;                // scope 0 at $DIR/if_condition_int.rs:+1:12: +1:13
-          goto -> bb3;                     // scope 0 at $DIR/if_condition_int.rs:+1:5: +1:26
+          _0 = const 0_u32;
+          goto -> bb3;
       }
   
       bb2: {
-          _0 = const 1_u32;                // scope 0 at $DIR/if_condition_int.rs:+1:23: +1:24
-          goto -> bb3;                     // scope 0 at $DIR/if_condition_int.rs:+1:5: +1:26
+          _0 = const 1_u32;
+          goto -> bb3;
       }
   
       bb3: {
-          StorageDead(_2);                 // scope 0 at $DIR/if_condition_int.rs:+1:25: +1:26
-          return;                          // scope 0 at $DIR/if_condition_int.rs:+2:2: +2:2
+          StorageDead(_2);
+          return;
       }
   }
   

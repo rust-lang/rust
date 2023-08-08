@@ -1,9 +1,10 @@
+use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
 use rustc_errors::error_code;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{ItemId, Node, CRATE_HIR_ID};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{sigpipe, CrateType, EntryFnType};
 use rustc_session::parse::feature_err;
@@ -37,7 +38,7 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     }
 
     // If the user wants no main function at all, then stop here.
-    if tcx.sess.contains_name(&tcx.hir().attrs(CRATE_HIR_ID), sym::no_main) {
+    if attr::contains_name(&tcx.hir().attrs(CRATE_HIR_ID), sym::no_main) {
         return None;
     }
 
@@ -57,9 +58,9 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
 // An equivalent optimization was not applied to the duplicated code in test_harness.rs.
 fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> EntryPointType {
     let attrs = ctxt.tcx.hir().attrs(id.hir_id());
-    if ctxt.tcx.sess.contains_name(attrs, sym::start) {
+    if attr::contains_name(attrs, sym::start) {
         EntryPointType::Start
-    } else if ctxt.tcx.sess.contains_name(attrs, sym::rustc_main) {
+    } else if attr::contains_name(attrs, sym::rustc_main) {
         EntryPointType::RustcMainAttr
     } else {
         if let Some(name) = ctxt.tcx.opt_item_name(id.owner_id.to_def_id())
@@ -78,7 +79,7 @@ fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> Entry
 
 fn attr_span_by_symbol(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol) -> Option<Span> {
     let attrs = ctxt.tcx.hir().attrs(id.hir_id());
-    ctxt.tcx.sess.find_by_name(attrs, sym).map(|attr| attr.span)
+    attr::find_by_name(attrs, sym).map(|attr| attr.span)
 }
 
 fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
@@ -186,7 +187,7 @@ fn sigpipe(tcx: TyCtxt<'_>, def_id: DefId) -> u8 {
 
 fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
     let sp = tcx.def_span(CRATE_DEF_ID);
-    if *tcx.sess.parse_sess.reached_eof.borrow() {
+    if tcx.sess.parse_sess.reached_eof.load(rustc_data_structures::sync::Ordering::Relaxed) {
         // There's an unclosed brace that made the parser reach `Eof`, we shouldn't complain about
         // the missing `fn main()` then as it might have been hidden inside an unclosed block.
         tcx.sess.delay_span_bug(sp, "`main` not found, but expected unclosed brace error");
@@ -205,7 +206,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
     // The file may be empty, which leads to the diagnostic machinery not emitting this
     // note. This is a relatively simple way to detect that case and emit a span-less
     // note instead.
-    let file_empty = !tcx.sess.source_map().lookup_line(sp.hi()).is_ok();
+    let file_empty = tcx.sess.source_map().lookup_line(sp.hi()).is_err();
 
     tcx.sess.emit_err(NoMainErr {
         sp,

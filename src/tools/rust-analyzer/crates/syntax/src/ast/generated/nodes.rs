@@ -121,6 +121,8 @@ impl ast::HasTypeBounds for AssocTypeArg {}
 impl AssocTypeArg {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn generic_arg_list(&self) -> Option<GenericArgList> { support::child(&self.syntax) }
+    pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
+    pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn const_arg(&self) -> Option<ConstArg> { support::child(&self.syntax) }
@@ -194,6 +196,20 @@ pub struct MacroItems {
 }
 impl ast::HasModuleItem for MacroItems {}
 impl MacroItems {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MacroEagerInput {
+    pub(crate) syntax: SyntaxNode,
+}
+impl MacroEagerInput {
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    pub fn exprs(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
+    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
+    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroStmts {
@@ -407,7 +423,21 @@ impl Trait {
     pub fn auto_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![auto]) }
     pub fn trait_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![trait]) }
     pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TraitAlias {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::HasAttrs for TraitAlias {}
+impl ast::HasName for TraitAlias {}
+impl ast::HasVisibility for TraitAlias {}
+impl ast::HasGenericParams for TraitAlias {}
+impl ast::HasDocComments for TraitAlias {}
+impl TraitAlias {
+    pub fn trait_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![trait]) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn type_bound_list(&self) -> Option<TypeBoundList> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
 
@@ -1191,7 +1221,7 @@ impl ArrayType {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn const_arg(&self) -> Option<ConstArg> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
 
@@ -1361,6 +1391,7 @@ pub struct LiteralPat {
     pub(crate) syntax: SyntaxNode,
 }
 impl LiteralPat {
+    pub fn minus_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![-]) }
     pub fn literal(&self) -> Option<Literal> { support::child(&self.syntax) }
 }
 
@@ -1573,6 +1604,7 @@ pub enum Item {
     Static(Static),
     Struct(Struct),
     Trait(Trait),
+    TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
     Union(Union),
     Use(Use),
@@ -1904,6 +1936,17 @@ impl AstNode for MacroItems {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for MacroEagerInput {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_EAGER_INPUT }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for MacroStmts {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_STMTS }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2049,6 +2092,17 @@ impl AstNode for Struct {
 }
 impl AstNode for Trait {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TRAIT }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for TraitAlias {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TRAIT_ALIAS }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3570,6 +3624,9 @@ impl From<Struct> for Item {
 impl From<Trait> for Item {
     fn from(node: Trait) -> Item { Item::Trait(node) }
 }
+impl From<TraitAlias> for Item {
+    fn from(node: TraitAlias) -> Item { Item::TraitAlias(node) }
+}
 impl From<TypeAlias> for Item {
     fn from(node: TypeAlias) -> Item { Item::TypeAlias(node) }
 }
@@ -3596,6 +3653,7 @@ impl AstNode for Item {
                 | STATIC
                 | STRUCT
                 | TRAIT
+                | TRAIT_ALIAS
                 | TYPE_ALIAS
                 | UNION
                 | USE
@@ -3616,6 +3674,7 @@ impl AstNode for Item {
             STATIC => Item::Static(Static { syntax }),
             STRUCT => Item::Struct(Struct { syntax }),
             TRAIT => Item::Trait(Trait { syntax }),
+            TRAIT_ALIAS => Item::TraitAlias(TraitAlias { syntax }),
             TYPE_ALIAS => Item::TypeAlias(TypeAlias { syntax }),
             UNION => Item::Union(Union { syntax }),
             USE => Item::Use(Use { syntax }),
@@ -3638,6 +3697,7 @@ impl AstNode for Item {
             Item::Static(it) => &it.syntax,
             Item::Struct(it) => &it.syntax,
             Item::Trait(it) => &it.syntax,
+            Item::TraitAlias(it) => &it.syntax,
             Item::TypeAlias(it) => &it.syntax,
             Item::Union(it) => &it.syntax,
             Item::Use(it) => &it.syntax,
@@ -3950,6 +4010,7 @@ impl AstNode for AnyHasAttrs {
                 | STATIC
                 | STRUCT
                 | TRAIT
+                | TRAIT_ALIAS
                 | TYPE_ALIAS
                 | UNION
                 | USE
@@ -4035,6 +4096,7 @@ impl AstNode for AnyHasDocComments {
                 | STATIC
                 | STRUCT
                 | TRAIT
+                | TRAIT_ALIAS
                 | TYPE_ALIAS
                 | UNION
                 | USE
@@ -4056,7 +4118,7 @@ impl AnyHasGenericParams {
 }
 impl AstNode for AnyHasGenericParams {
     fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(kind, ENUM | FN | IMPL | STRUCT | TRAIT | TYPE_ALIAS | UNION)
+        matches!(kind, ENUM | FN | IMPL | STRUCT | TRAIT | TRAIT_ALIAS | TYPE_ALIAS | UNION)
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         Self::can_cast(syntax.kind()).then_some(AnyHasGenericParams { syntax })
@@ -4108,6 +4170,7 @@ impl AstNode for AnyHasName {
                 | STATIC
                 | STRUCT
                 | TRAIT
+                | TRAIT_ALIAS
                 | TYPE_ALIAS
                 | UNION
                 | RENAME
@@ -4163,6 +4226,7 @@ impl AstNode for AnyHasVisibility {
                 | STATIC
                 | STRUCT
                 | TRAIT
+                | TRAIT_ALIAS
                 | TYPE_ALIAS
                 | UNION
                 | USE
@@ -4321,6 +4385,11 @@ impl std::fmt::Display for MacroItems {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for MacroEagerInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for MacroStmts {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -4387,6 +4456,11 @@ impl std::fmt::Display for Struct {
     }
 }
 impl std::fmt::Display for Trait {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TraitAlias {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

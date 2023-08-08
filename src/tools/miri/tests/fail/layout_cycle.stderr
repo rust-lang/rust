@@ -1,0 +1,29 @@
+error[E0391]: cycle detected when computing layout of `S<S<()>>`
+   |
+   = note: ...which requires computing layout of `<S<()> as Tr>::I`...
+   = note: ...which again requires computing layout of `S<S<()>>`, completing the cycle
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: post-monomorphization error: a cycle occurred during layout computation
+  --> RUSTLIB/core/src/mem/mod.rs:LL:CC
+   |
+LL |     intrinsics::size_of::<T>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ a cycle occurred during layout computation
+   |
+   = note: inside `std::mem::size_of::<S<S<()>>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
+note: inside `foo::<S<()>>`
+  --> $DIR/layout_cycle.rs:LL:CC
+   |
+LL |     mem::size_of::<S<T>>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: inside `main`
+  --> $DIR/layout_cycle.rs:LL:CC
+   |
+LL |     println!("{}", foo::<S<()>>());
+   |                    ^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

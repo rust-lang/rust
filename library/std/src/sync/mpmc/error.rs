@@ -35,7 +35,7 @@ impl<T> fmt::Display for SendTimeoutError<T> {
     }
 }
 
-impl<T: Send> error::Error for SendTimeoutError<T> {}
+impl<T> error::Error for SendTimeoutError<T> {}
 
 impl<T> From<SendError<T>> for SendTimeoutError<T> {
     fn from(err: SendError<T>) -> SendTimeoutError<T> {

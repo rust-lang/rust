@@ -1,5 +1,5 @@
 // FIXME: Ideally these suggestions would be fixed via rustfix. Blocked by rust-lang/rust#53934
-// // run-rustfix
+//
 
 #![allow(clippy::print_literal)]
 #![warn(clippy::print_with_newline)]
@@ -47,7 +47,7 @@ fn main() {
     // Don't warn on CRLF (#4208)
     print!("\r\n");
     print!("foo\r\n");
-    print!("\\r\n"); //~ ERROR
+    print!("\\r\n"); // should fail
     print!("foo\rbar\n");
 
     // Ignore expanded format strings

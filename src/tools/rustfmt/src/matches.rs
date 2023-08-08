@@ -592,10 +592,9 @@ fn can_flatten_block_around_this(body: &ast::Expr) -> bool {
         | ast::ExprKind::Struct(..)
         | ast::ExprKind::Tup(..) => true,
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
-        | ast::ExprKind::Index(ref expr, _)
+        | ast::ExprKind::Index(ref expr, _, _)
         | ast::ExprKind::Cast(ref expr, _) => can_flatten_block_around_this(expr),
         _ => false,
     }

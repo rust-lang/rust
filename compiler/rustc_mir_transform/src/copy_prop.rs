@@ -1,5 +1,5 @@
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexSlice;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -33,9 +33,8 @@ impl<'tcx> MirPass<'tcx> for CopyProp {
 }
 
 fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
     let borrowed_locals = borrowed_locals(body);
-    let ssa = SsaLocals::new(tcx, param_env, body, &borrowed_locals);
+    let ssa = SsaLocals::new(body);
 
     let fully_moved = fully_moved_locals(&ssa, body);
     debug!(?fully_moved);
@@ -76,10 +75,12 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> BitSet<Local> {
     let mut fully_moved = BitSet::new_filled(body.local_decls.len());
 
-    for (_, rvalue) in ssa.assignments(body) {
-        let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) | Rvalue::CopyForDeref(place))
-            = rvalue
-        else { continue };
+    for (_, rvalue, _) in ssa.assignments(body) {
+        let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
+        | Rvalue::CopyForDeref(place)) = rvalue
+        else {
+            continue;
+        };
 
         let Some(rhs) = place.as_local() else { continue };
         if !ssa.is_ssa(rhs) {
@@ -102,7 +103,7 @@ struct Replacer<'a, 'tcx> {
     fully_moved: BitSet<Local>,
     storage_to_remove: BitSet<Local>,
     borrowed_locals: BitSet<Local>,
-    copy_classes: &'a IndexVec<Local, Local>,
+    copy_classes: &'a IndexSlice<Local, Local>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
@@ -131,7 +132,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::SharedBorrow
                 | NonMutatingUseContext::ShallowBorrow
-                | NonMutatingUseContext::UniqueBorrow
                 | NonMutatingUseContext::AddressOf,
             ) => true,
             // For debuginfo, merging locals is ok.
@@ -154,7 +154,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {
         if let Operand::Move(place) = *operand
             // A move out of a projection of a copy is equivalent to a copy of the original projection.
-            && !place.has_deref()
+            && !place.is_indirect_first_projection()
             && !self.fully_moved.contains(place.local)
         {
             *operand = Operand::Copy(place);
@@ -163,20 +163,22 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
     }
 
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, loc: Location) {
-        match stmt.kind {
-            // When removing storage statements, we need to remove both (#107511).
-            StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
-                if self.storage_to_remove.contains(l) =>
-            {
-                stmt.make_nop()
-            }
-            StatementKind::Assign(box (ref place, ref mut rvalue))
-                if place.as_local().is_some() =>
-            {
-                // Do not replace assignments.
-                self.visit_rvalue(rvalue, loc)
-            }
-            _ => self.super_statement(stmt, loc),
+        // When removing storage statements, we need to remove both (#107511).
+        if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = stmt.kind
+            && self.storage_to_remove.contains(l)
+        {
+            stmt.make_nop();
+            return
+        }
+
+        self.super_statement(stmt, loc);
+
+        // Do not leave tautological assignments around.
+        if let StatementKind::Assign(box (lhs, ref rhs)) = stmt.kind
+            && let Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)) | Rvalue::CopyForDeref(rhs) = *rhs
+            && lhs == rhs
+        {
+            stmt.make_nop();
         }
     }
 }

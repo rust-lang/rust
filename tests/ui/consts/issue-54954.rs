@@ -9,8 +9,6 @@ trait Tt {
 }
 
 fn f(z: [f32; ARR_LEN]) -> [f32; ARR_LEN] {
-  //~^ constant
-  //~| constant
     z
 }
 

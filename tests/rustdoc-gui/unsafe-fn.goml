@@ -1,5 +1,5 @@
 // Check position and color of the `<sup>` for unsafe elements.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // If the text isn't displayed, the browser doesn't compute color style correctly...
 show-text: true
 
@@ -16,7 +16,7 @@ define-function: (
     (theme, color),
     block {
         // Set the theme.
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         // We reload the page so the local storage settings are being used.
         reload:
         assert-css: (".item-name sup", {"color": |color|})

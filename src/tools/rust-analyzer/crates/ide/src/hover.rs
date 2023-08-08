@@ -6,10 +6,10 @@ mod tests;
 use std::iter;
 
 use either::Either;
-use hir::{HasSource, Semantics};
+use hir::{db::DefDatabase, HasSource, LangItem, Semantics};
 use ide_db::{
     base_db::FileRange,
-    defs::{Definition, IdentClass, OperatorClass},
+    defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
     FxIndexSet, RootDatabase,
@@ -27,9 +27,25 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
     pub links_in_hover: bool,
+    pub memory_layout: Option<MemoryLayoutHoverConfig>,
     pub documentation: bool,
     pub keywords: bool,
     pub format: HoverDocFormat,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct MemoryLayoutHoverConfig {
+    pub size: Option<MemoryLayoutHoverRenderKind>,
+    pub offset: Option<MemoryLayoutHoverRenderKind>,
+    pub alignment: Option<MemoryLayoutHoverRenderKind>,
+    pub niches: bool,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum MemoryLayoutHoverRenderKind {
+    Decimal,
+    Hexadecimal,
+    Both,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -55,7 +71,7 @@ impl HoverAction {
                     mod_path: render::path(
                         db,
                         it.module(db)?,
-                        it.name(db).map(|name| name.to_string()),
+                        it.name(db).map(|name| name.display(db).to_string()),
                     ),
                     nav: it.try_to_nav(db)?,
                 })
@@ -118,8 +134,8 @@ fn hover_simple(
         | T![crate]
         | T![Self]
         | T![_] => 4,
-        // index and prefix ops
-        T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] => 3,
+        // index and prefix ops and closure pipe
+        T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] | T![|] => 3,
         kind if kind.is_keyword() => 2,
         T!['('] | T![')'] => 2,
         kind if kind.is_trivia() => 0,
@@ -170,7 +186,20 @@ fn hover_simple(
                         // rendering poll is very confusing
                         return None;
                     }
-                    Some(class.definitions().into_iter().zip(iter::once(node).cycle()))
+                    if let IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand {
+                        decl,
+                        ..
+                    }) = class
+                    {
+                        return Some(vec![(Definition::ExternCrateDecl(decl), node)]);
+                    }
+                    Some(
+                        class
+                            .definitions()
+                            .into_iter()
+                            .zip(iter::once(node).cycle())
+                            .collect::<Vec<_>>(),
+                    )
                 })
                 .flatten()
                 .unique_by(|&(def, _)| def)
@@ -217,6 +246,16 @@ fn hover_simple(
                     }
                 };
                 render::type_info_of(sema, config, &Either::Left(call_expr))
+            })
+        })
+        // try closure
+        .or_else(|| {
+            descended().find_map(|token| {
+                if token.kind() != T![|] {
+                    return None;
+                }
+                let c = token.parent().and_then(|x| x.parent()).and_then(ast::ClosureExpr::cast)?;
+                render::closure_expr(sema, config, c)
             })
         });
 
@@ -343,7 +382,14 @@ fn goto_type_action_for_def(db: &RootDatabase, def: Definition) -> Option<HoverA
     };
 
     if let Definition::GenericParam(hir::GenericParam::TypeParam(it)) = def {
-        it.trait_bounds(db).into_iter().for_each(|it| push_new_def(it.into()));
+        let krate = it.module(db).krate();
+        let sized_trait =
+            db.lang_item(krate.into(), LangItem::Sized).and_then(|lang_item| lang_item.as_trait());
+
+        it.trait_bounds(db)
+            .into_iter()
+            .filter(|&it| Some(it.into()) != sized_trait)
+            .for_each(|it| push_new_def(it.into()));
     } else {
         let ty = match def {
             Definition::Local(it) => it.ty(db),

@@ -99,7 +99,7 @@ where
                 //
                 // This generates a `switchInt() -> [0: 0, 1: 1, otherwise: unreachable]`, which allows us or LLVM to
                 // turn it into just `x` later. Without the unreachable, such a transformation would be illegal.
-                // If the otherwise branch is unreachable, we can delete all other unreacahble targets, as they will
+                // If the otherwise branch is unreachable, we can delete all other unreachable targets, as they will
                 // still point to the unreachable and therefore not lose reachability information.
                 let reachable_iter = targets.iter().filter(|(_, bb)| !is_unreachable(*bb));
 

@@ -21,7 +21,7 @@ impl Agent {
         let mut info = self.info_result.clone();
         info.node = Some("bar".into());
         let element = parse_info(info);
-        let _ = send_element(element).await;
+        send_element(element).await;
     }
 }
 

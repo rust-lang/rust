@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![deny(clippy::internal)]
 #![allow(clippy::missing_clippy_version_attribute)]

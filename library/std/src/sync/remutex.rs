@@ -7,7 +7,7 @@ use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 use crate::sys::locks as sys;
 
-/// A re-entrant mutual exclusion
+/// A reentrant mutual exclusion
 ///
 /// This mutex will block *other* threads waiting for the lock to become
 /// available. The thread which has already locked the mutex can lock it
@@ -35,7 +35,7 @@ use crate::sys::locks as sys;
 /// `owner` can be checked by other threads that want to see if they already
 /// hold the lock, so needs to be atomic. If it compares equal, we're on the
 /// same thread that holds the mutex and memory access can use relaxed ordering
-/// since we're not dealing with multiple threads. If it compares unequal,
+/// since we're not dealing with multiple threads. If it's not equal,
 /// synchronization is left to the mutex, making relaxed memory ordering for
 /// the `owner` field fine in all cases.
 pub struct ReentrantMutex<T> {

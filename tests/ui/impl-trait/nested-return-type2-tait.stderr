@@ -8,10 +8,6 @@ LL | fn foo() -> impl Trait<Assoc = Sendable> {
    |                        ^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(opaque_hidden_inferred_bound)]` on by default
-help: add this bound
-   |
-LL | type Sendable = impl Send + Duh;
-   |                           +++++
 
 warning: 1 warning emitted
 

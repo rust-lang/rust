@@ -8,6 +8,7 @@ use std::hash::Hash;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir;
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Align, Size};
@@ -16,8 +17,8 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use crate::const_eval::CheckAlignment;
 
 use super::{
-    AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, Frame, ImmTy, InterpCx,
-    InterpResult, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar, StackPopUnwind,
+    AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, FnArg, Frame, ImmTy, InterpCx,
+    InterpResult, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -83,7 +84,7 @@ pub trait AllocMap<K: Hash + Eq, V> {
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied.
-pub trait Machine<'mir, 'tcx>: Sized {
+pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
     type MemoryKind: Debug + std::fmt::Display + MayLeak + Eq + 'static;
 
@@ -103,7 +104,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     type FrameExtra;
 
     /// Extra data stored in every allocation.
-    type AllocExtra: Debug + Clone + 'static;
+    type AllocExtra: Debug + Clone + 'tcx;
 
     /// Type for the bytes of the allocation.
     type Bytes: AllocBytes + 'static;
@@ -145,8 +146,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
         check: CheckAlignment,
     ) -> InterpResult<'tcx, ()>;
 
-    /// Whether to enforce the validity invariant
-    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    /// Whether to enforce the validity invariant for a specific layout.
+    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>, layout: TyAndLayout<'tcx>) -> bool;
 
     /// Whether function calls should be [ABI](CallAbi)-checked.
     fn enforce_abi(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
@@ -155,7 +156,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Whether Assert(OverflowNeg) and Assert(Overflow) MIR terminators should actually
     /// check for overflow.
-    fn ignore_checkable_overflow_assertions(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    fn ignore_optional_overflow_checks(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Entry point for obtaining the MIR of anything that should get evaluated.
     /// So not just functions and shims, but also const/static initializers, anonymous
@@ -181,10 +182,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         abi: CallAbi,
-        args: &[OpTy<'tcx, Self::Provenance>],
+        args: &[FnArg<'tcx, Self::Provenance>],
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
-        unwind: StackPopUnwind,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>>;
 
     /// Execute `fn_val`. It is the hook's responsibility to advance the instruction
@@ -193,10 +194,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: Self::ExtraFnVal,
         abi: CallAbi,
-        args: &[OpTy<'tcx, Self::Provenance>],
+        args: &[FnArg<'tcx, Self::Provenance>],
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
-        unwind: StackPopUnwind,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
 
     /// Directly process an intrinsic without pushing a stack frame. It is the hook's
@@ -207,17 +208,17 @@ pub trait Machine<'mir, 'tcx>: Sized {
         args: &[OpTy<'tcx, Self::Provenance>],
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
-        unwind: StackPopUnwind,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
 
     /// Called to evaluate `Assert` MIR terminators that trigger a panic.
     fn assert_panic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         msg: &mir::AssertMessage<'tcx>,
-        unwind: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
 
-    /// Called to evaluate `Abort` MIR terminator.
+    /// Called to abort evaluation.
     fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _msg: String) -> InterpResult<'tcx, !> {
         throw_unsup_format!("aborting execution is not supported")
     }
@@ -417,6 +418,18 @@ pub trait Machine<'mir, 'tcx>: Sized {
         Ok(())
     }
 
+    /// Called on places used for in-place function argument and return value handling.
+    ///
+    /// These places need to be protected to make sure the program cannot tell whether the
+    /// argument/return value was actually copied or passed in-place..
+    fn protect_in_place_function_argument(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        place: &PlaceTy<'tcx, Self::Provenance>,
+    ) -> InterpResult<'tcx> {
+        // Without an aliasing model, all we can do is put `Uninit` into the place.
+        ecx.write_uninit(place)
+    }
+
     /// Called immediately before a new stack frame gets pushed.
     fn init_frame_extra(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -435,6 +448,14 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Called immediately after a stack frame got pushed and its locals got initialized.
     fn after_stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called just before the return value is copied to the caller-provided return place.
+    fn before_stack_pop(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _frame: &Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 
@@ -474,7 +495,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn ignore_checkable_overflow_assertions(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+    fn ignore_optional_overflow_checks(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
         false
     }
 
@@ -483,10 +504,10 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         _ecx: &mut InterpCx<$mir, $tcx, Self>,
         fn_val: !,
         _abi: CallAbi,
-        _args: &[OpTy<$tcx>],
+        _args: &[FnArg<$tcx>],
         _destination: &PlaceTy<$tcx, Self::Provenance>,
         _target: Option<mir::BasicBlock>,
-        _unwind: StackPopUnwind,
+        _unwind: mir::UnwindAction,
     ) -> InterpResult<$tcx> {
         match fn_val {}
     }

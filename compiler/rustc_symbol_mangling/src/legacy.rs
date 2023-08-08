@@ -1,9 +1,9 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::ty::print::{PrettyPrinter, Print, Printer};
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_middle::util::common::record_time;
 
 use std::fmt::{self, Write};
@@ -26,7 +26,7 @@ pub(super) fn mangle<'tcx>(
         let key = tcx.def_key(ty_def_id);
         match key.disambiguated_data.data {
             DefPathData::TypeNs(_) | DefPathData::ValueNs(_) => {
-                instance_ty = tcx.type_of(ty_def_id).subst_identity();
+                instance_ty = tcx.type_of(ty_def_id).instantiate_identity();
                 debug!(?instance_ty);
                 break;
             }
@@ -58,12 +58,16 @@ pub(super) fn mangle<'tcx>(
             def_id,
             if let ty::InstanceDef::DropGlue(_, _) = instance.def {
                 // Add the name of the dropped type to the symbol name
-                &*instance.substs
+                &*instance.args
             } else {
                 &[]
             },
         )
         .unwrap();
+
+    if let ty::InstanceDef::ThreadLocalShim(..) = instance.def {
+        let _ = printer.write_str("{{tls-shim}}");
+    }
 
     if let ty::InstanceDef::VTableShim(..) = instance.def {
         let _ = printer.write_str("{{vtable-shim}}");
@@ -89,10 +93,10 @@ fn get_symbol_hash<'tcx>(
     item_type: Ty<'tcx>,
 
     instantiating_crate: Option<CrateNum>,
-) -> u64 {
+) -> Hash64 {
     let def_id = instance.def_id();
-    let substs = instance.substs;
-    debug!("get_symbol_hash(def_id={:?}, parameters={:?})", def_id, substs);
+    let args = instance.args;
+    debug!("get_symbol_hash(def_id={:?}, parameters={:?})", def_id, args);
 
     tcx.with_stable_hashing_context(|mut hcx| {
         let mut hasher = StableHasher::new();
@@ -104,7 +108,7 @@ fn get_symbol_hash<'tcx>(
             tcx.def_path_hash(def_id).hash_stable(&mut hcx, &mut hasher);
 
             // Include the main item-type. Note that, in this case, the
-            // assertions about `needs_subst` may not hold, but this item-type
+            // assertions about `has_param` may not hold, but this item-type
             // ought to be the same for every reference anyway.
             assert!(!item_type.has_erasable_regions());
             hcx.while_hashing_spans(false, |hcx| {
@@ -118,7 +122,7 @@ fn get_symbol_hash<'tcx>(
                 }
 
                 // also include any type parameters (for generic items)
-                substs.hash_stable(hcx, &mut hasher);
+                args.hash_stable(hcx, &mut hasher);
 
                 if let Some(instantiating_crate) = instantiating_crate {
                     tcx.def_path_hash(instantiating_crate.as_def_id())
@@ -134,7 +138,7 @@ fn get_symbol_hash<'tcx>(
         });
 
         // 64 bits should be enough to avoid collisions.
-        hasher.finish::<u64>()
+        hasher.finish::<Hash64>()
     })
 }
 
@@ -172,7 +176,7 @@ impl SymbolPath {
         }
     }
 
-    fn finish(mut self, hash: u64) -> String {
+    fn finish(mut self, hash: Hash64) -> String {
         self.finalize_pending_component();
         // E = end name-sequence
         let _ = write!(self.result, "17h{hash:016x}E");
@@ -215,10 +219,10 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
     fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
         match *ty.kind() {
             // Print all nominal types as paths (unlike `pretty_print_type`).
-            ty::FnDef(def_id, substs)
-            | ty::Alias(_, ty::AliasTy { def_id, substs, .. })
-            | ty::Closure(def_id, substs)
-            | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
+            ty::FnDef(def_id, args)
+            | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
+            | ty::Closure(def_id, args)
+            | ty::Generator(def_id, args, _) => self.print_def_path(def_id, args),
 
             // The `pretty_print_type` formatting of array size depends on
             // -Zverbose flag, so we cannot reuse it here.
@@ -226,7 +230,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
                 self.write_str("[")?;
                 self = self.print_type(ty)?;
                 self.write_str("; ")?;
-                if let Some(size) = size.kind().try_to_bits(self.tcx().data_layout.pointer_size) {
+                if let Some(size) = size.try_to_bits(self.tcx().data_layout.pointer_size) {
                     write!(self, "{size}")?
                 } else if let ty::ConstKind::Param(param) = size.kind() {
                     self = param.print(self)?
@@ -236,6 +240,8 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
                 self.write_str("]")?;
                 Ok(self)
             }
+
+            ty::Alias(ty::Inherent, _) => panic!("unexpected inherent projection"),
 
             _ => self.pretty_print_type(ty),
         }

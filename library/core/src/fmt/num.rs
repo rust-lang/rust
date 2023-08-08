@@ -52,8 +52,12 @@ impl_int! { i8 i16 i32 i64 i128 isize }
 impl_uint! { u8 u16 u32 u64 u128 usize }
 
 /// A type that represents a specific radix
+///
+/// # Safety
+///
+/// `digit` must return an ASCII character.
 #[doc(hidden)]
-trait GenericRadix: Sized {
+unsafe trait GenericRadix: Sized {
     /// The number of digits.
     const BASE: u8;
 
@@ -129,7 +133,7 @@ struct UpperHex;
 
 macro_rules! radix {
     ($T:ident, $base:expr, $prefix:expr, $($x:pat => $conv:expr),+) => {
-        impl GenericRadix for $T {
+        unsafe impl GenericRadix for $T {
             const BASE: u8 = $base;
             const PREFIX: &'static str = $prefix;
             fn digit(x: u8) -> u8 {
@@ -407,7 +411,7 @@ macro_rules! impl_Exp {
             let parts = &[
                 numfmt::Part::Copy(buf_slice),
                 numfmt::Part::Zero(added_precision),
-                numfmt::Part::Copy(exp_slice)
+                numfmt::Part::Copy(exp_slice),
             ];
             let sign = if !is_nonnegative {
                 "-"
@@ -416,8 +420,9 @@ macro_rules! impl_Exp {
             } else {
                 ""
             };
-            let formatted = numfmt::Formatted{sign, parts};
-            f.pad_formatted_parts(&formatted)
+            let formatted = numfmt::Formatted { sign, parts };
+            // SAFETY: `buf_slice` and `exp_slice` contain only ASCII characters.
+            unsafe { f.pad_formatted_parts(&formatted) }
         }
 
         $(

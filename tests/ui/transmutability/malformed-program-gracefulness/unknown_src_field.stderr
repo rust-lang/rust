@@ -4,6 +4,22 @@ error[E0412]: cannot find type `Missing` in this scope
 LL |     #[repr(C)] struct Dst(Missing);
    |                           ^^^^^^^ not found in this scope
 
-error: aborting due to previous error
+error[E0277]: `Src` cannot be safely transmuted into `Dst` in the defining scope of `should_gracefully_handle_unknown_dst_field::Context`
+  --> $DIR/unknown_src_field.rs:21:36
+   |
+LL |     assert::is_transmutable::<Src, Dst, Context>();
+   |                                    ^^^ `Dst` has an unknown layout
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/unknown_src_field.rs:13:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this function
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
-For more information about this error, try `rustc --explain E0412`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0412.
+For more information about an error, try `rustc --explain E0277`.

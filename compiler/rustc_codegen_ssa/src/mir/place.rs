@@ -48,9 +48,17 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
+        Self::alloca_aligned(bx, layout, layout.align.abi)
+    }
+
+    pub fn alloca_aligned<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
+        layout: TyAndLayout<'tcx>,
+        align: Align,
+    ) -> Self {
         assert!(layout.is_sized(), "tried to statically allocate unsized place");
-        let tmp = bx.alloca(bx.cx().backend_type(layout), layout.align.abi);
-        Self::new_sized(tmp, layout)
+        let tmp = bx.alloca(bx.cx().backend_type(layout), align);
+        Self::new_sized_aligned(tmp, layout, align)
     }
 
     /// Returns a place for an indirect reference to an unsized place.
@@ -61,7 +69,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         layout: TyAndLayout<'tcx>,
     ) -> Self {
         assert!(layout.is_unsized(), "tried to allocate indirect place for sized values");
-        let ptr_ty = bx.cx().tcx().mk_mut_ptr(layout.ty);
+        let ptr_ty = Ty::new_mut_ptr(bx.cx().tcx(), layout.ty);
         let ptr_layout = bx.cx().layout_of(ptr_ty);
         Self::alloca(bx, ptr_layout)
     }
@@ -107,8 +115,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 }
                 Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } if field.is_zst() => {
                     // ZST fields are not included in Scalar, ScalarPair, and Vector layouts, so manually offset the pointer.
-                    let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
-                    bx.gep(bx.cx().type_i8(), byte_ptr, &[bx.const_usize(offset.bytes())])
+                    bx.gep(bx.cx().type_i8(), self.llval, &[bx.const_usize(offset.bytes())])
                 }
                 Abi::Scalar(_) | Abi::ScalarPair(..) => {
                     // All fields of Scalar and ScalarPair layouts must have been handled by this point.
@@ -125,8 +132,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 }
             };
             PlaceRef {
-                // HACK(eddyb): have to bitcast pointers until LLVM removes pointee types.
-                llval: bx.pointercast(llval, bx.cx().type_ptr_to(bx.cx().backend_type(field))),
+                llval,
                 llextra: if bx.cx().type_has_metadata(field.ty) { self.llextra } else { None },
                 layout: field,
                 align: effective_field_align,
@@ -186,20 +192,10 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
 
         debug!("struct_field_ptr: DST field offset: {:?}", offset);
 
-        // Cast and adjust pointer.
-        let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
-        let byte_ptr = bx.gep(bx.cx().type_i8(), byte_ptr, &[offset]);
+        // Adjust pointer.
+        let ptr = bx.gep(bx.cx().type_i8(), self.llval, &[offset]);
 
-        // Finally, cast back to the type expected.
-        let ll_fty = bx.cx().backend_type(field);
-        debug!("struct_field_ptr: Field type is {:?}", ll_fty);
-
-        PlaceRef {
-            llval: bx.pointercast(byte_ptr, bx.cx().type_ptr_to(ll_fty)),
-            llextra: self.llextra,
-            layout: field,
-            align: effective_field_align,
-        }
+        PlaceRef { llval: ptr, llextra: self.llextra, layout: field, align: effective_field_align }
     }
 
     /// Obtain the actual discriminant of a value.
@@ -211,10 +207,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     ) -> V {
         let dl = &bx.tcx().data_layout;
         let cast_to_layout = bx.cx().layout_of(cast_to);
-        let cast_to_size = cast_to_layout.layout.size();
         let cast_to = bx.cx().immediate_backend_type(cast_to_layout);
         if self.layout.abi.is_uninhabited() {
-            return bx.cx().const_undef(cast_to);
+            return bx.cx().const_poison(cast_to);
         }
         let (tag_scalar, tag_encoding, tag_field) = match self.layout.variants {
             Variants::Single { index } => {
@@ -261,21 +256,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     _ => (tag_imm, bx.cx().immediate_backend_type(tag_op.layout)),
                 };
 
-                let tag_size = tag_scalar.size(bx.cx());
-                let max_unsigned = tag_size.unsigned_int_max();
-                let max_signed = tag_size.signed_int_max() as u128;
-                let min_signed = max_signed + 1;
                 let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
-                let niche_end = niche_start.wrapping_add(relative_max as u128) & max_unsigned;
-                let range = tag_scalar.valid_range(bx.cx());
-
-                let sle = |lhs: u128, rhs: u128| -> bool {
-                    // Signed and unsigned comparisons give the same results,
-                    // except that in signed comparisons an integer with the
-                    // sign bit set is less than one with the sign bit clear.
-                    // Toggle the sign bit to do a signed comparison.
-                    (lhs ^ min_signed) <= (rhs ^ min_signed)
-                };
 
                 // We have a subrange `niche_start..=niche_end` inside `range`.
                 // If the value of the tag is inside this subrange, it's a
@@ -291,49 +272,6 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 //     untagged_variant
                 // }
                 // However, we will likely be able to emit simpler code.
-
-                // Find the least and greatest values in `range`, considered
-                // both as signed and unsigned.
-                let (low_unsigned, high_unsigned) = if range.start <= range.end {
-                    (range.start, range.end)
-                } else {
-                    (0, max_unsigned)
-                };
-                let (low_signed, high_signed) = if sle(range.start, range.end) {
-                    (range.start, range.end)
-                } else {
-                    (min_signed, max_signed)
-                };
-
-                let niches_ule = niche_start <= niche_end;
-                let niches_sle = sle(niche_start, niche_end);
-                let cast_smaller = cast_to_size <= tag_size;
-
-                // In the algorithm above, we can change
-                // cast(relative_tag) + niche_variants.start()
-                // into
-                // cast(tag + (niche_variants.start() - niche_start))
-                // if either the casted type is no larger than the original
-                // type, or if the niche values are contiguous (in either the
-                // signed or unsigned sense).
-                let can_incr = cast_smaller || niches_ule || niches_sle;
-
-                let data_for_boundary_niche = || -> Option<(IntPredicate, u128)> {
-                    if !can_incr {
-                        None
-                    } else if niche_start == low_unsigned {
-                        Some((IntPredicate::IntULE, niche_end))
-                    } else if niche_end == high_unsigned {
-                        Some((IntPredicate::IntUGE, niche_start))
-                    } else if niche_start == low_signed {
-                        Some((IntPredicate::IntSLE, niche_end))
-                    } else if niche_end == high_signed {
-                        Some((IntPredicate::IntSGE, niche_start))
-                    } else {
-                        None
-                    }
-                };
-
                 let (is_niche, tagged_discr, delta) = if relative_max == 0 {
                     // Best case scenario: only one tagged variant. This will
                     // likely become just a comparison and a jump.
@@ -349,40 +287,6 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     let tagged_discr =
                         bx.cx().const_uint(cast_to, niche_variants.start().as_u32() as u64);
                     (is_niche, tagged_discr, 0)
-                } else if let Some((predicate, constant)) = data_for_boundary_niche() {
-                    // The niche values are either the lowest or the highest in
-                    // `range`. We can avoid the first subtraction in the
-                    // algorithm.
-                    // The algorithm is now this:
-                    // is_niche = tag <= niche_end
-                    // discr = if is_niche {
-                    //     cast(tag + (niche_variants.start() - niche_start))
-                    // } else {
-                    //     untagged_variant
-                    // }
-                    // (the first line may instead be tag >= niche_start,
-                    // and may be a signed or unsigned comparison)
-                    // The arithmetic must be done before the cast, so we can
-                    // have the correct wrapping behavior. See issue #104519 for
-                    // the consequences of getting this wrong.
-                    let is_niche =
-                        bx.icmp(predicate, tag, bx.cx().const_uint_big(tag_llty, constant));
-                    let delta = (niche_variants.start().as_u32() as u128).wrapping_sub(niche_start);
-                    let incr_tag = if delta == 0 {
-                        tag
-                    } else {
-                        bx.add(tag, bx.cx().const_uint_big(tag_llty, delta))
-                    };
-
-                    let cast_tag = if cast_smaller {
-                        bx.intcast(incr_tag, cast_to, false)
-                    } else if niches_ule {
-                        bx.zext(incr_tag, cast_to)
-                    } else {
-                        bx.sext(incr_tag, cast_to)
-                    };
-
-                    (is_niche, cast_tag, 0)
                 } else {
                     // The special cases don't apply, so we'll have to go with
                     // the general algorithm.
@@ -500,11 +404,6 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     ) -> Self {
         let mut downcast = *self;
         downcast.layout = self.layout.for_variant(bx.cx(), variant_index);
-
-        // Cast to the appropriate variant struct type.
-        let variant_ty = bx.cx().backend_type(downcast.layout);
-        downcast.llval = bx.pointercast(downcast.llval, bx.cx().type_ptr_to(variant_ty));
-
         downcast
     }
 
@@ -515,11 +414,6 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     ) -> Self {
         let mut downcast = *self;
         downcast.layout = bx.cx().layout_of(ty);
-
-        // Cast to the appropriate type.
-        let variant_ty = bx.cx().backend_type(downcast.layout);
-        downcast.llval = bx.pointercast(downcast.llval, bx.cx().type_ptr_to(variant_ty));
-
         downcast
     }
 
@@ -547,7 +441,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::Place(place) => place,
             LocalRef::UnsizedPlace(place) => bx.load_operand(place).deref(cx),
             LocalRef::Operand(..) => {
-                if place_ref.has_deref() {
+                if place_ref.is_indirect_first_projection() {
                     base = 1;
                     let cg_base = self.codegen_consume(
                         bx,
@@ -557,6 +451,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     bug!("using operand local {:?} as place", place_ref);
                 }
+            }
+            LocalRef::PendingOperand => {
+                bug!("using still-pending operand local {:?} as place", place_ref);
             }
         };
         for elem in place_ref.projection[base..].iter() {
@@ -595,13 +492,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bx.cx().const_usize((from as u64) + (to as u64)),
                         ));
                     }
-
-                    // Cast the place pointer type to the new
-                    // array or slice type (`*[%_; new_len]`).
-                    subslice.llval = bx.pointercast(
-                        subslice.llval,
-                        bx.cx().type_ptr_to(bx.cx().backend_type(subslice.layout)),
-                    );
 
                     subslice
                 }

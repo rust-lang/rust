@@ -1,7 +1,7 @@
 // check-pass
 // compile-flags: -Z unpretty=expanded
 
-#![feature(core_intrinsics, generic_assert, generic_assert_internals)]
+#![feature(core_intrinsics, generic_assert)]
 
 fn arbitrary_consuming_method_for_demonstration_purposes() {
     let elem = 1i32;

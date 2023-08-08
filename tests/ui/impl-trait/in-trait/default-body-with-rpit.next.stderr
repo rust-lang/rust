@@ -1,0 +1,24 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/default-body-with-rpit.rs:13:9
+   |
+LL |         ""
+   |         ^^ expected `impl Debug`, got `&'static str`
+   |
+note: previous use here
+  --> $DIR/default-body-with-rpit.rs:12:39
+   |
+LL |       async fn baz(&self) -> impl Debug {
+   |  _______________________________________^
+LL | |         ""
+LL | |     }
+   | |_____^
+
+error[E0720]: cannot resolve opaque type
+  --> $DIR/default-body-with-rpit.rs:12:28
+   |
+LL |     async fn baz(&self) -> impl Debug {
+   |                            ^^^^^^^^^^ cannot resolve opaque type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0720`.

@@ -5,8 +5,8 @@ LL |     foo11("bar", &"baz");
    |           ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: required for the cast from `str` to the object type `dyn AsRef<Path>`
-help: consider borrowing the value, since `&str` can be coerced into `dyn AsRef<Path>`
+   = note: required for the cast from `&'static str` to `&dyn AsRef<Path>`
+help: consider borrowing the value, since `&&'static str` can be coerced into `&dyn AsRef<Path>`
    |
 LL |     foo11(&"bar", &"baz");
    |           +
@@ -18,8 +18,8 @@ LL |     foo12(&"bar", "baz");
    |                   ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: required for the cast from `str` to the object type `dyn AsRef<Path>`
-help: consider borrowing the value, since `&str` can be coerced into `dyn AsRef<Path>`
+   = note: required for the cast from `&'static str` to `&dyn AsRef<Path>`
+help: consider borrowing the value, since `&&'static str` can be coerced into `&dyn AsRef<Path>`
    |
 LL |     foo12(&"bar", &"baz");
    |                   +
@@ -31,8 +31,8 @@ LL |     foo21("bar", &"baz");
    |           ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: required for the cast from `str` to the object type `dyn AsRef<str>`
-help: consider borrowing the value, since `&str` can be coerced into `dyn AsRef<str>`
+   = note: required for the cast from `&'static str` to `&dyn AsRef<str>`
+help: consider borrowing the value, since `&&'static str` can be coerced into `&dyn AsRef<str>`
    |
 LL |     foo21(&"bar", &"baz");
    |           +
@@ -44,8 +44,8 @@ LL |     foo22(&"bar", "baz");
    |                   ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: required for the cast from `str` to the object type `dyn AsRef<str>`
-help: consider borrowing the value, since `&str` can be coerced into `dyn AsRef<str>`
+   = note: required for the cast from `&'static str` to `&dyn AsRef<str>`
+help: consider borrowing the value, since `&&'static str` can be coerced into `&dyn AsRef<str>`
    |
 LL |     foo22(&"bar", &"baz");
    |                   +

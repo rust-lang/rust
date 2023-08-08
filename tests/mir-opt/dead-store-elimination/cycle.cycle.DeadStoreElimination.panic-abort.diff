@@ -1,0 +1,73 @@
+- // MIR for `cycle` before DeadStoreElimination
++ // MIR for `cycle` after DeadStoreElimination
+  
+  fn cycle(_1: i32, _2: i32, _3: i32) -> () {
+      debug x => _1;
+      debug y => _2;
+      debug z => _3;
+      let mut _0: ();
+-     let mut _4: ();
+-     let mut _5: bool;
+-     let _6: i32;
+-     let mut _7: i32;
+-     let mut _8: i32;
+-     let mut _9: i32;
+-     let mut _10: !;
+-     let _11: ();
+-     let mut _12: !;
++     let mut _4: bool;
++     let _5: i32;
+      scope 1 {
+-         debug temp => _6;
++         debug temp => _5;
+      }
+  
+      bb0: {
+          goto -> bb1;
+      }
+  
+      bb1: {
+-         StorageLive(_5);
+-         _5 = cond() -> [return: bb2, unwind unreachable];
++         StorageLive(_4);
++         _4 = cond() -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+-         switchInt(move _5) -> [0: bb4, otherwise: bb3];
++         switchInt(move _4) -> [0: bb4, otherwise: bb3];
+      }
+  
+      bb3: {
+-         StorageLive(_6);
+-         _6 = _3;
+-         StorageLive(_7);
+-         _7 = _2;
+-         _3 = move _7;
+-         StorageDead(_7);
+-         StorageLive(_8);
+-         _8 = _1;
+-         _2 = move _8;
+-         StorageDead(_8);
+-         StorageLive(_9);
+-         _9 = _6;
+-         _1 = move _9;
+-         StorageDead(_9);
+-         _4 = const ();
+-         StorageDead(_6);
++         StorageLive(_5);
+          StorageDead(_5);
++         StorageDead(_4);
+          goto -> bb1;
+      }
+  
+      bb4: {
+-         StorageLive(_11);
+          _0 = const ();
+-         StorageDead(_11);
+-         StorageDead(_5);
++         StorageDead(_4);
+          return;
+      }
+  }
+  

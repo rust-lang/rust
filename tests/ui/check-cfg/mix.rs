@@ -12,6 +12,10 @@ fn do_windows_stuff() {}
 //~^ WARNING unexpected `cfg` condition name
 fn do_windows_stuff() {}
 
+#[cfg(feature)]
+//~^ WARNING unexpected `cfg` condition value
+fn no_feature() {}
+
 #[cfg(feature = "foo")]
 fn use_foo() {}
 

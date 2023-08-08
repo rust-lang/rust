@@ -24,7 +24,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:42:1
    |
 LL | const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute(1u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(B)>.0: encountered a value of the never type `!`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 1, align: 1) {
@@ -35,7 +35,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:44:1
    |
 LL | const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(D)>.0: encountered a value of uninhabited type Never
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 1, align: 1) {
@@ -266,7 +266,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:144:1
    |
 LL | const STR_NO_INIT: &str = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8> { uninit: () }]) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>: encountered uninitialized data in `str`
+   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>: encountered uninitialized memory, but expected a string
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
@@ -277,7 +277,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:146:1
    |
 LL | const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8> { uninit: () }]) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.0: encountered uninitialized data in `str`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.0: encountered uninitialized memory, but expected a string
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
@@ -288,13 +288,14 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:148:1
    |
 LL | const MYSTR_NO_INIT_ISSUE83182: &MyStr = unsafe { mem::transmute::<&[_], _>(&[&()]) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.0: encountered a pointer, but expected a string
    |
-   = help: this code performed an operation that depends on the underlying bytes representing a pointer
-   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
                ╾ALLOC_ID╼ 01 00 00 00 00 00 00 00 │ ╾──────╼........
            }
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:152:1
@@ -465,7 +466,7 @@ LL | const LAYOUT_INVALID_ZERO: Layout = unsafe { Layout::from_size_align_unchec
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
-               00 10 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
+               00 00 00 00 00 00 00 00 00 10 00 00 00 00 00 00 │ ................
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -476,7 +477,7 @@ LL | const LAYOUT_INVALID_THREE: Layout = unsafe { Layout::from_size_align_unche
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
-               09 00 00 00 00 00 00 00 03 00 00 00 00 00 00 00 │ ................
+               03 00 00 00 00 00 00 00 09 00 00 00 00 00 00 00 │ ................
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -516,7 +517,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:215:1
    |
 LL | pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) };
-   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered uninitialized bytes
+   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered uninitialized memory, but expected an integer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
@@ -527,13 +528,14 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:218:1
    |
 LL | pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, mem::size_of::<&u32>()) };
-   | ^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
+   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered a pointer, but expected an integer
    |
-   = help: this code performed an operation that depends on the underlying bytes representing a pointer
-   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
                ╾ALLOC_ID╼ 08 00 00 00 00 00 00 00 │ ╾──────╼........
            }
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:221:1
@@ -550,7 +552,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:225:1
    |
 LL | pub static S7: &[u16] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[1]: encountered uninitialized bytes
+   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[1]: encountered uninitialized memory, but expected an integer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
@@ -561,7 +563,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:232:1
    |
 LL | pub static R4: &[u8] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered uninitialized bytes
+   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered uninitialized memory, but expected an integer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
@@ -572,13 +574,14 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:237:1
    |
 LL | pub static R5: &[u8] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
+   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered a pointer, but expected an integer
    |
-   = help: this code performed an operation that depends on the underlying bytes representing a pointer
-   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
                ╾ALLOC_ID╼ 08 00 00 00 00 00 00 00 │ ╾──────╼........
            }
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:242:1

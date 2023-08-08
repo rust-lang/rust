@@ -12,17 +12,20 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Install rustfmt
+    - name: Avoid installing rustc-dev
       run: |
-        rustup component add rustfmt
+        sed -i 's/components.*/components = ["rustfmt"]/' rust-toolchain
+        echo 'profile = "minimal"' >> rust-toolchain
+        rustfmt -v
 
     - name: Rustfmt
       run: |
         cargo fmt --check
-        rustfmt --check build_system/mod.rs
+        rustfmt --check build_system/main.rs
+        rustfmt --check example/*
 
 
-  build:
+  test:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
 
@@ -89,87 +92,53 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y gcc-s390x-linux-gnu qemu-user
 
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
-
     - name: Prepare dependencies
-      run: ./y.rs prepare
-
-    - name: Build without unstable features
-      env:
-        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      # This is the config rust-lang/rust uses for builds
-      run: ./y.rs build --no-unstable-features
+      run: ./y.sh prepare
 
     - name: Build
-      run: ./y.rs build --sysroot none
+      run: ./y.sh build --sysroot none
 
     - name: Test
       env:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      run: ./y.rs test
+      run: ./y.sh test
+
+    - name: Install LLVM standard library
+      run: rustup target add ${{ matrix.env.TARGET_TRIPLE }}
+
+    # This is roughly config rust-lang/rust uses for testing
+    - name: Test with LLVM sysroot
+      # Skip native x86_64-pc-windows-gnu. It is way too slow and cross-compiled
+      # x86_64-pc-windows-gnu covers at least part of the tests.
+      if: matrix.os != 'windows-latest' || matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
+      env:
+        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
+      run: ./y.sh test --sysroot llvm --no-unstable-features
 
 
-  abi_cafe:
-    runs-on: ${{ matrix.os }}
+  # This job doesn't use cg_clif in any way. It checks that all cg_clif tests work with cg_llvm too.
+  test_llvm:
+    runs-on: ubuntu-latest
     timeout-minutes: 60
 
     defaults:
       run:
         shell: bash
 
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - os: ubuntu-latest
-            env:
-              TARGET_TRIPLE: x86_64-unknown-linux-gnu
-          - os: macos-latest
-            env:
-              TARGET_TRIPLE: x86_64-apple-darwin
-          - os: windows-latest
-            env:
-              TARGET_TRIPLE: x86_64-pc-windows-msvc
-          - os: windows-latest
-            env:
-              TARGET_TRIPLE: x86_64-pc-windows-gnu
-
     steps:
     - uses: actions/checkout@v3
 
-    - name: Cache cargo target dir
-      uses: actions/cache@v3
-      with:
-        path: build/cg_clif
-        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
-
-    - name: Set MinGW as the default toolchain
-      if: matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
-      run: rustup set default-host x86_64-pc-windows-gnu
-
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
-
     - name: Prepare dependencies
-      run: ./y.rs prepare
+      run: ./y.sh prepare
 
-    - name: Build
-      run: ./y.rs build --sysroot none
+    - name: Disable JIT tests
+      run: |
+        sed -i 's/jit./#jit./' config.txt
 
-    - name: Test abi-cafe
+    - name: Test
       env:
-        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      run: ./y.rs abi-cafe
-
+        TARGET_TRIPLE: x86_64-unknown-linux-gnu
+      run: ./y.sh test --use-backend llvm
 
   bench:
     runs-on: ubuntu-latest
@@ -194,24 +163,17 @@ jobs:
         path: ~/.cargo/bin
         key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-bin-dir-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
 
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
-
     - name: Install hyperfine
       run: cargo install hyperfine || true
 
     - name: Prepare dependencies
-      run: ./y.rs prepare
+      run: ./y.sh prepare
 
     - name: Build
-      run: CI_OPT=1 ./y.rs build --sysroot none
+      run: CI_OPT=1 ./y.sh build --sysroot none
 
     - name: Benchmark
-      run: CI_OPT=1 ./y.rs bench
+      run: CI_OPT=1 ./y.sh bench
 
 
   dist:
@@ -263,21 +225,14 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
 
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
-
     - name: Prepare dependencies
-      run: ./y.rs prepare
+      run: ./y.sh prepare
 
     - name: Build backend
-      run: CI_OPT=1 ./y.rs build --sysroot none
+      run: CI_OPT=1 ./y.sh build --sysroot none
 
     - name: Build sysroot
-      run: CI_OPT=1 ./y.rs build
+      run: CI_OPT=1 ./y.sh build
 
     - name: Package prebuilt cg_clif
       run: tar cvfJ cg_clif.tar.xz dist
@@ -295,3 +250,43 @@ jobs:
       with:
         name: cg_clif-${{ runner.os }}-cross-x86_64-mingw
         path: cg_clif.tar.xz
+
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ github.ref == 'refs/heads/master' }}
+    needs: [rustfmt, test, bench, dist]
+
+    concurrency:
+      group: release-dev
+      cancel-in-progress: true
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download all built artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts/
+
+      - run: |
+          ls -R artifacts/
+          mkdir release/
+          pushd artifacts/
+          for dir in *; do
+            mv $dir/cg_clif.tar.xz ../release/$dir.tar.xz
+            rmdir $dir/ # verify $dir is empty
+          done
+          popd
+          rmdir artifacts/ # verify all artifacts are represented in release/
+          ls -R release/
+
+      - run: npm install --production
+        working-directory: .github/actions/github-release
+
+      - name: Publish Release
+        uses: ./.github/actions/github-release
+        with:
+          files: "release/*"
+          token: ${{ github.token }}
+        continue-on-error: true

@@ -1,9 +1,0 @@
-error[E0271]: type mismatch resolving `char == <u8 as Add>::Output`
-  --> $DIR/cast-checks-handling-projections.rs:5:5
-   |
-LL |     (0u8 + 0u8) as char;
-   |     ^^^^^^^^^^^ types differ
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0271`.

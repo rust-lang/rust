@@ -101,7 +101,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
             if let (&ty::Generator(_, _, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
             {
-                write!(&mut name, "::{}", ty::GeneratorSubsts::variant_name(index)).unwrap();
+                write!(&mut name, "::{}", ty::GeneratorArgs::variant_name(index)).unwrap();
             }
             Some(name)
         }
@@ -159,8 +159,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     fn is_gcc_immediate(&self) -> bool {
         match self.abi {
             Abi::Scalar(_) | Abi::Vector { .. } => true,
-            Abi::ScalarPair(..) => false,
-            Abi::Uninhabited | Abi::Aggregate { .. } => self.is_zst(),
+            Abi::ScalarPair(..) | Abi::Uninhabited | Abi::Aggregate { .. } => false,
         }
     }
 
@@ -283,8 +282,8 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             }
             // only wide pointer boxes are handled as pointers
             // thin pointer boxes with scalar allocators are handled by the general logic below
-            ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
-                let ptr_ty = cx.tcx.mk_mut_ptr(self.ty.boxed_ty());
+            ty::Adt(def, args) if def.is_box() && cx.layout_of(args.type_at(1)).is_zst() => {
+                let ptr_ty = Ty::new_mut_ptr(cx.tcx,self.ty.boxed_ty());
                 return cx.layout_of(ptr_ty).scalar_pair_element_gcc_type(cx, index, immediate);
             }
             _ => {}
@@ -384,8 +383,8 @@ impl<'gcc, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn fn_decl_backend_type(&self, _fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Type<'gcc> {
-        // FIXME(antoyo): return correct type.
-        self.type_void()
+    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Type<'gcc> {
+        let (return_type, param_types, variadic, _) = fn_abi.gcc_type(self);
+        self.context.new_function_pointer_type(None, return_type, &param_types, variadic)
     }
 }

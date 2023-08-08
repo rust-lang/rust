@@ -1,0 +1,33 @@
+- // MIR for `generic` before InstSimplify
++ // MIR for `generic` after InstSimplify
+  
+  fn generic() -> () {
+      let mut _0: ();
+      let _1: ();
+      let _2: ();
+      let _3: ();
+  
+      bb0: {
+          nop;
+          _1 = assert_inhabited::<T>() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          nop;
+          nop;
+          _2 = assert_zero_valid::<T>() -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          nop;
+          nop;
+          _3 = assert_mem_uninitialized_valid::<T>() -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          nop;
+          nop;
+          return;
+      }
+  }
+  

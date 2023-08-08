@@ -5,6 +5,7 @@
 // [drop_tracking_mir] build-pass
 
 #![feature(generators, negative_impls)]
+#![allow(dropping_references, dropping_copy_types)]
 
 macro_rules! type_combinations {
     (

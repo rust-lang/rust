@@ -9,7 +9,11 @@ struct ArithArrayLen<const N: usize>([u32; 0 + N]);
 //[full]~^ ERROR unconstrained generic constant
 //[min]~^^ ERROR generic parameters may not be used in const operations
 
+#[cfg(full)]
+use std::marker::ConstParamTy;
+
 #[derive(PartialEq, Eq)]
+#[cfg_attr(full, derive(ConstParamTy))]
 struct Config {
     arr_size: usize,
 }

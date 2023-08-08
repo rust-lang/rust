@@ -18,6 +18,19 @@ pub static DOESNOTLINT2: [u8; 512_001] = {
     [x; 512_001]
 };
 
+fn issue_10741() {
+    #[derive(Copy, Clone)]
+    struct Large([u32; 100_000]);
+
+    fn build() -> Large {
+        Large([0; 100_000])
+    }
+
+    let _x = [build(); 3];
+
+    let _y = [build(), build(), build()];
+}
+
 fn main() {
     let bad = (
         [0u32; 20_000_000],

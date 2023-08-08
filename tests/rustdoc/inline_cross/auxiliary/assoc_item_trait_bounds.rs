@@ -44,3 +44,20 @@ pub trait Helper {
 pub trait Aid<'src> {
     type Result<'inter: 'src>;
 }
+
+pub trait Implementee {
+    type Alias<T: Eq>
+    where
+        String: From<T>;
+}
+
+pub struct Implementor;
+
+impl Implementee for Implementor {
+    type Alias<T: Eq> = T
+    where
+        String: From<T>,
+        // We will check that this bound doesn't get turned into an item bound since
+        // associated types in impls are not allowed to have any.
+        Self::Alias<T>: From<Self::Alias<T>>;
+}

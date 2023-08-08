@@ -6,6 +6,11 @@
 	3. Copy the filenames with updated suffixes from the directory.
 */
 
+:root {
+	--nav-sub-mobile-padding: 8px;
+	--search-typename-width: 6.75rem;
+}
+
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
 @font-face {
 	font-family: 'Fira Sans';
@@ -85,21 +90,6 @@
 
 * {
 	box-sizing: border-box;
-}
-
-/* This part handles the "default" theme being used depending on the system one. */
-html {
-	content: "";
-}
-@media (prefers-color-scheme: light) {
-	html {
-		content: "light";
-	}
-}
-@media (prefers-color-scheme: dark) {
-	html {
-		content: "dark";
-	}
 }
 
 /* General structure and fonts */
@@ -204,7 +194,7 @@ h1, h2, h3, h4, h5, h6,
 .item-name > a,
 .out-of-band,
 span.since,
-a.srclink,
+a.src,
 #help-button > a,
 summary.hideme,
 .scraped-example-list,
@@ -216,55 +206,55 @@ ul.all-items {
 #toggle-all-docs,
 a.anchor,
 .small-section-header a,
-#source-sidebar a,
-pre.rust a,
+#src-sidebar a,
+.rust a,
 .sidebar h2 a,
 .sidebar h3 a,
 .mobile-topbar h2 a,
 h1 a,
 .search-results a,
 .stab,
-.result-name .primitive > i, .result-name .keyword > i {
+.result-name i {
 	color: var(--main-color);
 }
 
-.content span.enum, .content a.enum,
-.content span.struct, .content a.struct,
-.content span.union, .content a.union,
-.content span.primitive, .content a.primitive,
-.content span.type, .content a.type,
-.content span.foreigntype, .content a.foreigntype {
+span.enum, a.enum,
+span.struct, a.struct,
+span.union, a.union,
+span.primitive, a.primitive,
+span.type, a.type,
+span.foreigntype, a.foreigntype {
 	color: var(--type-link-color);
 }
 
-.content span.trait, .content a.trait,
-.content span.traitalias, .content a.traitalias {
+span.trait, a.trait,
+span.traitalias, a.traitalias {
 	color: var(--trait-link-color);
 }
 
-.content span.associatedtype, .content a.associatedtype,
-.content span.constant, .content a.constant,
-.content span.static, .content a.static {
+span.associatedtype, a.associatedtype,
+span.constant, a.constant,
+span.static, a.static {
 	color: var(--assoc-item-link-color);
 }
 
-.content span.fn, .content a.fn,
-.content span.method, .content a.method,
-.content span.tymethod, .content a.tymethod {
+span.fn, a.fn,
+span.method, a.method,
+span.tymethod, a.tymethod {
 	color: var(--function-link-color);
 }
 
-.content span.attr, .content a.attr,
-.content span.derive, .content a.derive,
-.content span.macro, .content a.macro {
+span.attr, a.attr,
+span.derive, a.derive,
+span.macro, a.macro {
 	color: var(--macro-link-color);
 }
 
-.content span.mod, .content a.mod {
+span.mod, a.mod {
 	color: var(--mod-link-color);
 }
 
-.content span.keyword, .content a.keyword {
+span.keyword, a.keyword {
 	color: var(--keyword-link-color);
 }
 
@@ -325,7 +315,7 @@ main {
 	min-width: 0; /* avoid growing beyond the size limit */
 }
 
-.source main {
+.src main {
 	padding: 15px;
 }
 
@@ -360,10 +350,10 @@ pre.item-decl {
 	contain: initial;
 }
 
-.source .content pre {
+.src .content pre {
 	padding: 20px;
 }
-.rustdoc.source .example-wrap > pre.src-line-numbers  {
+.rustdoc.src .example-wrap pre.src-line-numbers  {
 	padding: 20px 0 20px 4px;
 }
 
@@ -395,22 +385,24 @@ img {
 	font-size: 0.875rem;
 	flex: 0 0 200px;
 	overflow-y: scroll;
+	overscroll-behavior: contain;
 	position: sticky;
 	height: 100vh;
 	top: 0;
 	left: 0;
 }
 
-.rustdoc.source .sidebar {
+.rustdoc.src .sidebar {
 	flex-basis: 50px;
 	border-right: 1px solid;
 	overflow-x: hidden;
 	/* The sidebar is by default hidden  */
 	overflow-y: hidden;
+	z-index: 1;
 }
 
 .sidebar, .mobile-topbar, .sidebar-menu-toggle,
-#src-sidebar-toggle, #source-sidebar {
+#src-sidebar-toggle, #src-sidebar {
 	background-color: var(--sidebar-background-color);
 }
 
@@ -418,16 +410,16 @@ img {
 	background-color: var(--sidebar-background-color-hover);
 }
 
-.source .sidebar > *:not(#src-sidebar-toggle) {
+.src .sidebar > *:not(#src-sidebar-toggle) {
 	visibility: hidden;
 }
 
-.source-sidebar-expanded .source .sidebar {
+.src-sidebar-expanded .src .sidebar {
 	overflow-y: auto;
 	flex-basis: 300px;
 }
 
-.source-sidebar-expanded .source .sidebar > *:not(#src-sidebar-toggle) {
+.src-sidebar-expanded .src .sidebar > *:not(#src-sidebar-toggle) {
 	visibility: visible;
 }
 
@@ -547,14 +539,17 @@ ul.block, .block li {
 	margin-bottom: 0px;
 }
 
-.rustdoc .example-wrap > pre {
+.rustdoc .example-wrap pre {
 	margin: 0;
 	flex-grow: 1;
+}
+
+.rustdoc:not(.src) .example-wrap pre {
 	overflow: auto hidden;
 }
 
-.rustdoc .example-wrap > pre.example-line-numbers,
-.rustdoc .example-wrap > pre.src-line-numbers {
+.rustdoc .example-wrap pre.example-line-numbers,
+.rustdoc .example-wrap pre.src-line-numbers {
 	flex-grow: 0;
 	min-width: fit-content; /* prevent collapsing into nothing in truncated scraped examples */
 	overflow: initial;
@@ -565,7 +560,7 @@ ul.block, .block li {
 	color: var(--src-line-numbers-span-color);
 }
 
-.rustdoc .example-wrap > pre.src-line-numbers {
+.rustdoc .example-wrap pre.src-line-numbers {
 	padding: 14px 0;
 }
 .src-line-numbers a, .src-line-numbers span {
@@ -624,7 +619,7 @@ ul.block, .block li {
 }
 
 .docblock code, .docblock-short code,
-pre, .rustdoc.source .example-wrap {
+pre, .rustdoc.src .example-wrap {
 	background-color: var(--code-block-background-color);
 }
 
@@ -681,7 +676,7 @@ nav.sub {
 	height: 34px;
 	flex-grow: 1;
 }
-.source nav.sub {
+.src nav.sub {
 	margin: 0 0 15px 0;
 }
 
@@ -713,7 +708,7 @@ h2.small-section-header > .anchor {
 }
 
 .main-heading a:hover,
-.example-wrap > pre.rust a:hover,
+.example-wrap .rust a:hover,
 .all-items a:hover,
 .docblock a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover,
 .docblock-short a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover,
@@ -781,7 +776,6 @@ table,
 }
 #crate-search {
 	min-width: 115px;
-	/* keep these two in sync with "@-moz-document url-prefix()" below */
 	padding: 0 23px 0 4px;
 	/* prevents the <select> from overflowing the containing div in case it's shrunk */
 	max-width: 100%;
@@ -802,14 +796,6 @@ table,
 }
 #crate-search:hover, #crate-search:focus {
 	border-color: var(--crate-search-hover-border);
-}
-/* cancel stylistic differences in padding in firefox
-for "appearance: none"-style (or equivalent) <select>s */
-@-moz-document url-prefix() {
-	#crate-search {
-		padding-left: 0px; /* == 4px - 4px */
-		padding-right: 19px; /* == 23px - 4px */
-	}
 }
 /* pseudo-element for holding the dropdown-arrow image; needs to be a separate thing
 so that we can apply CSS-filters to change the arrow color in themes */
@@ -875,14 +861,11 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	gap: 1em;
 }
 
-.search-results > a > div {
-	flex: 1;
-}
-
 .search-results > a > div.desc {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
+	flex: 2;
 }
 
 .search-results a:hover,
@@ -890,11 +873,30 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	background-color: var(--search-result-link-focus-background-color);
 }
 
-.search-results .result-name span.alias {
+.search-results .result-name {
+	display: flex;
+	align-items: center;
+	justify-content: start;
+	flex: 3;
+}
+.search-results .result-name .alias {
 	color: var(--search-results-alias-color);
 }
-.search-results .result-name span.grey {
+.search-results .result-name .grey {
 	color: var(--search-results-grey-color);
+}
+.search-results .result-name .typename {
+	color: var(--search-results-grey-color);
+	font-size: 0.875rem;
+	width: var(--search-typename-width);
+}
+.search-results .result-name .path {
+	word-break: break-all;
+	max-width: calc(100% - var(--search-typename-width));
+	display: inline-block;
+}
+.search-results .result-name .path > * {
+	display: inline;
 }
 
 .popover {
@@ -963,6 +965,8 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	display: flex;
 	padding: 3px;
 	margin-bottom: 5px;
+	align-items: center;
+	vertical-align: text-bottom;
 }
 .item-name .stab {
 	margin-left: 0.3125em;
@@ -974,11 +978,9 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	color: var(--main-color);
 	background-color: var(--stab-background-color);
 	width: fit-content;
-	align-items: center;
 	white-space: pre-wrap;
 	border-radius: 3px;
-	display: inline-flex;
-	vertical-align: text-bottom;
+	display: inline;
 }
 
 .stab.portability > code {
@@ -1066,7 +1068,7 @@ pre.rust .doccomment {
 	color: var(--code-highlight-doc-comment-color);
 }
 
-.rustdoc.source .example-wrap pre.rust a {
+.rustdoc.src .example-wrap pre.rust a {
 	background: var(--codeblock-link-background);
 }
 
@@ -1185,6 +1187,10 @@ a.test-arrow:hover {
 	position: relative;
 }
 
+.code-header a.tooltip:hover {
+	color: var(--link-color);
+}
+
 /* placeholder thunk so that the mouse can easily travel from "(i)" to popover
 	the resulting "hover tunnel" is a stepped triangle, approximating
 	https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown */
@@ -1195,6 +1201,14 @@ a.tooltip:hover::after {
 	right: -15px;
 	height: 20px;
 	content: "\00a0";
+}
+
+/* This animation is layered onto the mistake-proofing delay for dismissing
+	a hovered tooltip, to ensure it feels responsive even with the delay.
+	*/
+.fade-out {
+	opacity: 0;
+	transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
 }
 
 .popover.tooltip .content {
@@ -1265,6 +1279,10 @@ a.tooltip:hover::after {
 	background-color: var(--search-error-code-background-color);
 }
 
+.search-corrections {
+	font-weight: normal;
+}
+
 #src-sidebar-toggle {
 	position: sticky;
 	top: 0;
@@ -1277,22 +1295,22 @@ a.tooltip:hover::after {
 	align-items: stretch;
 	z-index: 10;
 }
-#source-sidebar {
+#src-sidebar {
 	width: 100%;
 	overflow: auto;
 }
-#source-sidebar > .title {
+#src-sidebar > .title {
 	font-size: 1.5rem;
 	text-align: center;
 	border-bottom: 1px solid var(--border-color);
 	margin-bottom: 6px;
 }
-#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
-#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
-	background-color: var(--source-sidebar-background-hover);
+#src-sidebar div.files > a:hover, details.dir-entry summary:hover,
+#src-sidebar div.files > a:focus, details.dir-entry summary:focus {
+	background-color: var(--src-sidebar-background-hover);
 }
-#source-sidebar div.files > a.selected {
-	background-color: var(--source-sidebar-background-selected);
+#src-sidebar div.files > a.selected {
+	background-color: var(--src-sidebar-background-selected);
 }
 #src-sidebar-toggle > button {
 	font-size: inherit;
@@ -1538,7 +1556,7 @@ However, it's not needed with smaller screen width because the doc/code block is
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning
-in storage.js
+in src-script.js
 */
 @media (max-width: 700px) {
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
@@ -1595,8 +1613,8 @@ in storage.js
 
 	/* The source view uses a different design for the sidebar toggle, and doesn't have a topbar,
 	   so don't bump down the main content or the sidebar. */
-	.source main,
-	.rustdoc.source .sidebar {
+	.src main,
+	.rustdoc.src .sidebar {
 		top: 0;
 		padding: 0;
 		height: 100vh;
@@ -1604,8 +1622,8 @@ in storage.js
 	}
 
 	.sidebar.shown,
-	.source-sidebar-expanded .source .sidebar,
-	.rustdoc:not(.source) .sidebar:focus-within {
+	.src-sidebar-expanded .src .sidebar,
+	.rustdoc:not(.src) .sidebar:focus-within {
 		left: 0;
 	}
 
@@ -1685,7 +1703,7 @@ in storage.js
 		border-left: 0;
 	}
 
-	.source-sidebar-expanded #src-sidebar-toggle {
+	.src-sidebar-expanded #src-sidebar-toggle {
 		left: unset;
 		top: unset;
 		width: unset;
@@ -1714,8 +1732,18 @@ in storage.js
 	.search-results > a > div.desc, .item-table > li > div.desc {
 		padding-left: 2em;
 	}
+	.search-results .result-name {
+		display: block;
+	}
+	.search-results .result-name .typename {
+		width: initial;
+		margin-right: 0;
+	}
+	.search-results .result-name .typename, .search-results .result-name .path {
+		display: inline;
+	}
 
-	.source-sidebar-expanded .source .sidebar {
+	.src-sidebar-expanded .src .sidebar {
 		max-width: 100vw;
 		width: 100vw;
 	}
@@ -1735,9 +1763,9 @@ in storage.js
 		margin-left: 34px;
 	}
 
-	.source nav.sub {
+	.src nav.sub {
 		margin: 0;
-		padding: 8px;
+		padding: var(--nav-sub-mobile-padding);
 	}
 }
 
@@ -1758,7 +1786,7 @@ in storage.js
 }
 
 @media print {
-	nav.sidebar, nav.sub, .out-of-band, a.srclink, #copy-path,
+	nav.sidebar, nav.sub, .out-of-band, a.src, #copy-path,
 	details.toggle[open] > summary::before, details.toggle > summary::before,
 	details.toggle.top-doc > summary {
 		display: none;
@@ -1794,6 +1822,7 @@ in storage.js
 	.sub-logo-container > img {
 		height: 35px;
 		width: 35px;
+		margin-bottom: var(--nav-sub-mobile-padding);
 	}
 }
 

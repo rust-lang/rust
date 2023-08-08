@@ -1,5 +1,5 @@
 // build-pass (FIXME(62277): could be check-pass?)
-
+#![feature(impl_trait_in_assoc_type)]
 #![feature(type_alias_impl_trait)]
 #![deny(private_in_public)]
 

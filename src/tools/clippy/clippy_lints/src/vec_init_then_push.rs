@@ -74,7 +74,7 @@ impl VecPushSearcher {
         let mut needs_mut = false;
         let res = for_each_local_use_after_expr(cx, self.local_id, self.last_push_expr, |e| {
             let Some(parent) = get_parent_expr(cx, e) else {
-                return ControlFlow::Continue(())
+                return ControlFlow::Continue(());
             };
             let adjusted_ty = cx.typeck_results().expr_ty_adjusted(e);
             let adjusted_mut = adjusted_ty.ref_mutability().unwrap_or(Mutability::Not);
@@ -88,7 +88,7 @@ impl VecPushSearcher {
                     let mut last_place = parent;
                     while let Some(parent) = get_parent_expr(cx, last_place) {
                         if matches!(parent.kind, ExprKind::Unary(UnOp::Deref, _) | ExprKind::Field(..))
-                            || matches!(parent.kind, ExprKind::Index(e, _) if e.hir_id == last_place.hir_id)
+                            || matches!(parent.kind, ExprKind::Index(e, _, _) if e.hir_id == last_place.hir_id)
                         {
                             last_place = parent;
                         } else {

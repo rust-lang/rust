@@ -6,5 +6,4 @@ const FOO: *const u32 = {
 fn main() {
     let FOO = FOO;
     //~^ ERROR could not evaluate constant pattern
-    //~| ERROR could not evaluate constant pattern
 }

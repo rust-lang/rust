@@ -4,9 +4,16 @@
     clippy::unused_unit,
     clippy::let_unit_value,
     clippy::match_single_binding,
-    clippy::never_loop
+    clippy::never_loop,
+    clippy::needless_if
 )]
 #![warn(clippy::manual_let_else)]
+
+enum Variant {
+    A(usize, usize),
+    B(usize),
+    C,
+}
 
 fn g() -> Option<()> {
     None
@@ -121,8 +128,8 @@ fn fire() {
         return;
     };
 
-    // Tuples supported for the identity block and pattern
-    let v = if let (Some(v_some), w_some) = (g(), 0) {
+    // Tuples supported with multiple bindings
+    let (w, S { v }) = if let (Some(v_some), w_some) = (g().map(|_| S { v: 0 }), 0) {
         (w_some, v_some)
     } else {
         return;
@@ -135,6 +142,49 @@ fn fire() {
         };
     }
     create_binding_if_some!(w, g());
+
+    fn e() -> Variant {
+        Variant::A(0, 0)
+    }
+
+    let v = if let Variant::A(a, 0) = e() { a } else { return };
+
+    // `mut v` is inserted into the pattern
+    let mut v = if let Variant::B(b) = e() { b } else { return };
+
+    // Nesting works
+    let nested = Ok(Some(e()));
+    let v = if let Ok(Some(Variant::B(b))) | Err(Some(Variant::A(b, _))) = nested {
+        b
+    } else {
+        return;
+    };
+    // dot dot works
+    let v = if let Variant::A(.., a) = e() { a } else { return };
+
+    // () is preserved: a bit of an edge case but make sure it stays around
+    let w = if let (Some(v), ()) = (g(), ()) { v } else { return };
+
+    // Tuple structs work
+    let w = if let Some(S { v: x }) = Some(S { v: 0 }) {
+        x
+    } else {
+        return;
+    };
+
+    // Field init shorthand is suggested
+    let v = if let Some(S { v: x }) = Some(S { v: 0 }) {
+        x
+    } else {
+        return;
+    };
+
+    // Multi-field structs also work
+    let (x, S { v }, w) = if let Some(U { v, w, x }) = None::<U<S<()>>> {
+        (x, v, w)
+    } else {
+        return;
+    };
 }
 
 fn not_fire() {
@@ -229,7 +279,9 @@ fn not_fire() {
     create_binding_if_some_nf!(v, g());
 
     // Already a let-else
-    let Some(a) = (if let Some(b) = Some(Some(())) { b } else { return }) else { panic!() };
+    let Some(a) = (if let Some(b) = Some(Some(())) { b } else { return }) else {
+        panic!()
+    };
 
     // If a type annotation is present, don't lint as
     // expressing the type might be too hard
@@ -254,9 +306,26 @@ fn not_fire() {
     let _x = if let Some(x) = Some(1) {
         x
     } else {
-        let Some(_z) = Some(3) else {
-            return
-        };
+        let Some(_z) = Some(3) else { return };
         1
     };
+
+    // This would require creation of a suggestion of the form
+    // let v @ (Some(_), _) = (...) else { return };
+    // Which is too advanced for our code, so we just bail.
+    let v = if let (Some(v_some), w_some) = (g(), 0) {
+        (w_some, v_some)
+    } else {
+        return;
+    };
+}
+
+struct S<T> {
+    v: T,
+}
+
+struct U<T> {
+    v: T,
+    w: T,
+    x: T,
 }

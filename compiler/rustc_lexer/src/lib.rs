@@ -34,6 +34,7 @@ pub use crate::cursor::Cursor;
 use self::LiteralKind::*;
 use self::TokenKind::*;
 use crate::cursor::EOF_CHAR;
+use unicode_properties::UnicodeEmoji;
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,
@@ -95,7 +96,7 @@ pub enum TokenKind {
     Literal { kind: LiteralKind, suffix_start: u32 },
 
     /// "'a"
-    Lifetime { starts_with_number: bool, contains_emoji: bool },
+    Lifetime { starts_with_number: bool },
 
     // One-char tokens:
     /// ";"
@@ -186,12 +187,16 @@ pub enum LiteralKind {
     Str { terminated: bool },
     /// "b"abc"", "b"abc"
     ByteStr { terminated: bool },
+    /// `c"abc"`, `c"abc`
+    CStr { terminated: bool },
     /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a". `None` indicates
     /// an invalid literal.
     RawStr { n_hashes: Option<u8> },
     /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a". `None`
     /// indicates an invalid literal.
     RawByteStr { n_hashes: Option<u8> },
+    /// `cr"abc"`, "cr#"abc"#", `cr#"a`. `None` indicates an invalid literal.
+    RawCStr { n_hashes: Option<u8> },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -357,39 +362,18 @@ impl Cursor<'_> {
             },
 
             // Byte literal, byte string literal, raw byte string literal or identifier.
-            'b' => match (self.first(), self.second()) {
-                ('\'', _) => {
-                    self.bump();
-                    let terminated = self.single_quoted_string();
-                    let suffix_start = self.pos_within_token();
-                    if terminated {
-                        self.eat_literal_suffix();
-                    }
-                    let kind = Byte { terminated };
-                    Literal { kind, suffix_start }
-                }
-                ('"', _) => {
-                    self.bump();
-                    let terminated = self.double_quoted_string();
-                    let suffix_start = self.pos_within_token();
-                    if terminated {
-                        self.eat_literal_suffix();
-                    }
-                    let kind = ByteStr { terminated };
-                    Literal { kind, suffix_start }
-                }
-                ('r', '"') | ('r', '#') => {
-                    self.bump();
-                    let res = self.raw_double_quoted_string(2);
-                    let suffix_start = self.pos_within_token();
-                    if res.is_ok() {
-                        self.eat_literal_suffix();
-                    }
-                    let kind = RawByteStr { n_hashes: res.ok() };
-                    Literal { kind, suffix_start }
-                }
-                _ => self.ident_or_unknown_prefix(),
-            },
+            'b' => self.c_or_byte_string(
+                |terminated| ByteStr { terminated },
+                |n_hashes| RawByteStr { n_hashes },
+                Some(|terminated| Byte { terminated }),
+            ),
+
+            // c-string literal, raw c-string literal or identifier.
+            'c' => self.c_or_byte_string(
+                |terminated| CStr { terminated },
+                |n_hashes| RawCStr { n_hashes },
+                None,
+            ),
 
             // Identifier (this should be checked after other variant that can
             // start as identifier).
@@ -445,9 +429,7 @@ impl Cursor<'_> {
                 Literal { kind, suffix_start }
             }
             // Identifier starting with an emoji. Only lexed for graceful error recovery.
-            c if !c.is_ascii() && unic_emoji_char::is_emoji(c) => {
-                self.fake_ident_or_unknown_prefix()
-            }
+            c if !c.is_ascii() && c.is_emoji_char() => self.fake_ident_or_unknown_prefix(),
             _ => Unknown,
         };
         let res = Token::new(token_kind, self.pos_within_token());
@@ -531,9 +513,7 @@ impl Cursor<'_> {
         // we see a prefix here, it is definitely an unknown prefix.
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
-            c if !c.is_ascii() && unic_emoji_char::is_emoji(c) => {
-                self.fake_ident_or_unknown_prefix()
-            }
+            c if !c.is_ascii() && c.is_emoji_char() => self.fake_ident_or_unknown_prefix(),
             _ => Ident,
         }
     }
@@ -542,7 +522,7 @@ impl Cursor<'_> {
         // Start is already eaten, eat the rest of identifier.
         self.eat_while(|c| {
             unicode_xid::UnicodeXID::is_xid_continue(c)
-                || (!c.is_ascii() && unic_emoji_char::is_emoji(c))
+                || (!c.is_ascii() && c.is_emoji_char())
                 || c == '\u{200d}'
         });
         // Known prefixes must have been handled earlier. So if
@@ -553,39 +533,84 @@ impl Cursor<'_> {
         }
     }
 
+    fn c_or_byte_string(
+        &mut self,
+        mk_kind: impl FnOnce(bool) -> LiteralKind,
+        mk_kind_raw: impl FnOnce(Option<u8>) -> LiteralKind,
+        single_quoted: Option<fn(bool) -> LiteralKind>,
+    ) -> TokenKind {
+        match (self.first(), self.second(), single_quoted) {
+            ('\'', _, Some(mk_kind)) => {
+                self.bump();
+                let terminated = self.single_quoted_string();
+                let suffix_start = self.pos_within_token();
+                if terminated {
+                    self.eat_literal_suffix();
+                }
+                let kind = mk_kind(terminated);
+                Literal { kind, suffix_start }
+            }
+            ('"', _, _) => {
+                self.bump();
+                let terminated = self.double_quoted_string();
+                let suffix_start = self.pos_within_token();
+                if terminated {
+                    self.eat_literal_suffix();
+                }
+                let kind = mk_kind(terminated);
+                Literal { kind, suffix_start }
+            }
+            ('r', '"', _) | ('r', '#', _) => {
+                self.bump();
+                let res = self.raw_double_quoted_string(2);
+                let suffix_start = self.pos_within_token();
+                if res.is_ok() {
+                    self.eat_literal_suffix();
+                }
+                let kind = mk_kind_raw(res.ok());
+                Literal { kind, suffix_start }
+            }
+            _ => self.ident_or_unknown_prefix(),
+        }
+    }
+
     fn number(&mut self, first_digit: char) -> LiteralKind {
         debug_assert!('0' <= self.prev() && self.prev() <= '9');
         let mut base = Base::Decimal;
         if first_digit == '0' {
             // Attempt to parse encoding base.
-            let has_digits = match self.first() {
+            match self.first() {
                 'b' => {
                     base = Base::Binary;
                     self.bump();
-                    self.eat_decimal_digits()
+                    if !self.eat_decimal_digits() {
+                        return Int { base, empty_int: true };
+                    }
                 }
                 'o' => {
                     base = Base::Octal;
                     self.bump();
-                    self.eat_decimal_digits()
+                    if !self.eat_decimal_digits() {
+                        return Int { base, empty_int: true };
+                    }
                 }
                 'x' => {
                     base = Base::Hexadecimal;
                     self.bump();
-                    self.eat_hexadecimal_digits()
+                    if !self.eat_hexadecimal_digits() {
+                        return Int { base, empty_int: true };
+                    }
                 }
-                // Not a base prefix.
-                '0'..='9' | '_' | '.' | 'e' | 'E' => {
+                // Not a base prefix; consume additional digits.
+                '0'..='9' | '_' => {
                     self.eat_decimal_digits();
-                    true
                 }
+
+                // Also not a base prefix; nothing more to do here.
+                '.' | 'e' | 'E' => {}
+
                 // Just a 0.
                 _ => return Int { base, empty_int: false },
-            };
-            // Base prefix was provided, but there were no digits
-            // after it, e.g. "0x".
-            if !has_digits {
-                return Int { base, empty_int: true };
             }
         } else {
             // No base prefix, parse number in the usual way.
@@ -632,13 +657,7 @@ impl Cursor<'_> {
             // If the first symbol is valid for identifier, it can be a lifetime.
             // Also check if it's a number for a better error reporting (so '0 will
             // be reported as invalid lifetime and not as unterminated char literal).
-            // We also have to account for potential `'🐱` emojis to avoid reporting
-            // it as an unterminated char literal.
-            is_id_start(self.first())
-                || self.first().is_digit(10)
-                // FIXME(#108019): `unic-emoji-char` seems to have data tables only up to Unicode
-                // 5.0, but Unicode is already newer than this.
-                || unic_emoji_char::is_emoji(self.first())
+            is_id_start(self.first()) || self.first().is_digit(10)
         };
 
         if !can_be_a_lifetime {
@@ -651,33 +670,16 @@ impl Cursor<'_> {
             return Literal { kind, suffix_start };
         }
 
-        // Either a lifetime or a character literal.
+        // Either a lifetime or a character literal with
+        // length greater than 1.
 
         let starts_with_number = self.first().is_digit(10);
-        let mut contains_emoji = false;
 
-        // FIXME(#108019): `unic-emoji-char` seems to have data tables only up to Unicode
-        // 5.0, but Unicode is already newer than this.
-        if unic_emoji_char::is_emoji(self.first()) {
-            contains_emoji = true;
-        } else {
-            // Skip the literal contents.
-            // First symbol can be a number (which isn't a valid identifier start),
-            // so skip it without any checks.
-            self.bump();
-        }
-        self.eat_while(|c| {
-            if is_id_continue(c) {
-                true
-            // FIXME(#108019): `unic-emoji-char` seems to have data tables only up to Unicode
-            // 5.0, but Unicode is already newer than this.
-            } else if unic_emoji_char::is_emoji(c) {
-                contains_emoji = true;
-                true
-            } else {
-                false
-            }
-        });
+        // Skip the literal contents.
+        // First symbol can be a number (which isn't a valid identifier start),
+        // so skip it without any checks.
+        self.bump();
+        self.eat_while(is_id_continue);
 
         // Check if after skipping literal contents we've met a closing
         // single quote (which means that user attempted to create a
@@ -687,7 +689,7 @@ impl Cursor<'_> {
             let kind = Char { terminated: true };
             Literal { kind, suffix_start: self.pos_within_token() }
         } else {
-            Lifetime { starts_with_number, contains_emoji }
+            Lifetime { starts_with_number }
         }
     }
 

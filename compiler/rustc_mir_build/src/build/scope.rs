@@ -86,12 +86,13 @@ use std::mem;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
-use rustc_index::vec::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{Expr, LintLevel};
-
-use rustc_span::{DesugaringKind, Span, DUMMY_SP};
+use rustc_middle::ty::Ty;
+use rustc_session::lint::Level;
+use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Debug)]
 pub struct Scopes<'tcx> {
@@ -325,10 +326,10 @@ impl DropTree {
         entry_points.sort();
 
         for (drop_idx, drop_data) in self.drops.iter_enumerated().rev() {
-            if entry_points.last().map_or(false, |entry_point| entry_point.0 == drop_idx) {
+            if entry_points.last().is_some_and(|entry_point| entry_point.0 == drop_idx) {
                 let block = *blocks[drop_idx].get_or_insert_with(|| T::make_block(cfg));
                 needs_block[drop_idx] = Block::Own;
-                while entry_points.last().map_or(false, |entry_point| entry_point.0 == drop_idx) {
+                while entry_points.last().is_some_and(|entry_point| entry_point.0 == drop_idx) {
                     let entry_block = entry_points.pop().unwrap().1;
                     T::add_entry(cfg, entry_block, block);
                 }
@@ -360,7 +361,7 @@ impl DropTree {
     fn link_blocks<'tcx>(
         &self,
         cfg: &mut CFG<'tcx>,
-        blocks: &IndexVec<DropIdx, Option<BasicBlock>>,
+        blocks: &IndexSlice<DropIdx, Option<BasicBlock>>,
     ) {
         for (drop_idx, drop_data) in self.drops.iter_enumerated().rev() {
             let Some(block) = blocks[drop_idx] else { continue };
@@ -369,8 +370,9 @@ impl DropTree {
                     let terminator = TerminatorKind::Drop {
                         target: blocks[drop_data.1].unwrap(),
                         // The caller will handle this if needed.
-                        unwind: None,
+                        unwind: UnwindAction::Terminate,
                         place: drop_data.0.local.into(),
+                        replace: false,
                     };
                     cfg.terminate(block, drop_data.0.source_info, terminator);
                 }
@@ -644,24 +646,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         };
 
-        if let Some(destination) = destination {
-            if let Some(value) = value {
+        match (destination, value) {
+            (Some(destination), Some(value)) => {
                 debug!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
                 unpack!(block = self.expr_into_dest(destination, block, value));
                 self.block_context.pop();
-            } else {
+            }
+            (Some(destination), None) => {
                 self.cfg.push_assign_unit(block, source_info, destination, self.tcx)
             }
-        } else {
-            assert!(value.is_none(), "`return` and `break` should have a destination");
-            if self.tcx.sess.instrument_coverage() {
+            (None, Some(_)) => {
+                panic!("`return`, `become` and `break` with value and must have a destination")
+            }
+            (None, None) if self.tcx.sess.instrument_coverage() => {
                 // Unlike `break` and `return`, which push an `Assign` statement to MIR, from which
                 // a Coverage code region can be generated, `continue` needs no `Assign`; but
                 // without one, the `InstrumentCoverage` MIR pass cannot generate a code region for
                 // `continue`. Coverage will be missing unless we add a dummy `Assign` to MIR.
                 self.add_dummy_assignment(span, block, source_info);
             }
+            (None, None) => {}
         }
 
         let region_scope = self.scopes.breakable_scopes[break_index].region_scope;
@@ -671,12 +676,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         } else {
             self.scopes.breakable_scopes[break_index].continue_drops.as_mut().unwrap()
         };
-        let mut drop_idx = ROOT_NODE;
-        for scope in &self.scopes.scopes[scope_index + 1..] {
-            for drop in &scope.drops {
-                drop_idx = drops.add_drop(*drop, drop_idx);
-            }
-        }
+
+        let drop_idx = self.scopes.scopes[scope_index + 1..]
+            .iter()
+            .flat_map(|scope| &scope.drops)
+            .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
+
         drops.add_entry(block, drop_idx);
 
         // `build_drop_trees` doesn't have access to our source_info, so we
@@ -720,7 +725,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Add a dummy `Assign` statement to the CFG, with the span for the source code's `continue`
     // statement.
     fn add_dummy_assignment(&mut self, span: Span, block: BasicBlock, source_info: SourceInfo) {
-        let local_decl = LocalDecl::new(self.tcx.mk_unit(), span).internal();
+        let local_decl = LocalDecl::new(Ty::new_unit(self.tcx), span).internal();
         let temp_place = Place::from(self.local_decls.push(local_decl));
         self.cfg.push_assign_unit(block, source_info, temp_place, self.tcx);
     }
@@ -728,7 +733,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn leave_top_scope(&mut self, block: BasicBlock) -> BasicBlock {
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
-        let needs_cleanup = self.scopes.scopes.last().map_or(false, |scope| scope.needs_cleanup());
+        let needs_cleanup = self.scopes.scopes.last().is_some_and(|scope| scope.needs_cleanup());
         let is_generator = self.generator_kind.is_some();
         let unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
 
@@ -755,20 +760,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let (current_root, parent_root) =
             if self.tcx.sess.opts.unstable_opts.maximal_hir_to_mir_coverage {
-                // Some consumers of rustc need to map MIR locations back to HIR nodes. Currently the
-                // the only part of rustc that tracks MIR -> HIR is the `SourceScopeLocalData::lint_root`
-                // field that tracks lint levels for MIR locations. Normally the number of source scopes
-                // is limited to the set of nodes with lint annotations. The -Zmaximal-hir-to-mir-coverage
-                // flag changes this behavior to maximize the number of source scopes, increasing the
-                // granularity of the MIR->HIR mapping.
+                // Some consumers of rustc need to map MIR locations back to HIR nodes. Currently
+                // the the only part of rustc that tracks MIR -> HIR is the
+                // `SourceScopeLocalData::lint_root` field that tracks lint levels for MIR
+                // locations. Normally the number of source scopes is limited to the set of nodes
+                // with lint annotations. The -Zmaximal-hir-to-mir-coverage flag changes this
+                // behavior to maximize the number of source scopes, increasing the granularity of
+                // the MIR->HIR mapping.
                 (current_id, parent_id)
             } else {
-                // Use `maybe_lint_level_root_bounded` with `self.hir_id` as a bound
-                // to avoid adding Hir dependencies on our parents.
-                // We estimate the true lint roots here to avoid creating a lot of source scopes.
+                // Use `maybe_lint_level_root_bounded` to avoid adding Hir dependencies on our
+                // parents. We estimate the true lint roots here to avoid creating a lot of source
+                // scopes.
                 (
-                    self.tcx.maybe_lint_level_root_bounded(current_id, self.hir_id),
-                    self.tcx.maybe_lint_level_root_bounded(parent_id, self.hir_id),
+                    self.maybe_lint_level_root_bounded(current_id),
+                    if parent_id == self.hir_id {
+                        parent_id // this is very common
+                    } else {
+                        self.maybe_lint_level_root_bounded(parent_id)
+                    },
                 )
             };
 
@@ -776,6 +786,50 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let lint_level = LintLevel::Explicit(current_root);
             self.source_scope = self.new_source_scope(span, lint_level, safety);
         }
+    }
+
+    /// Walks upwards from `orig_id` to find a node which might change lint levels with attributes.
+    /// It stops at `self.hir_id` and just returns it if reached.
+    fn maybe_lint_level_root_bounded(&mut self, orig_id: HirId) -> HirId {
+        // This assertion lets us just store `ItemLocalId` in the cache, rather
+        // than the full `HirId`.
+        assert_eq!(orig_id.owner, self.hir_id.owner);
+
+        let mut id = orig_id;
+        let hir = self.tcx.hir();
+        loop {
+            if id == self.hir_id {
+                // This is a moderately common case, mostly hit for previously unseen nodes.
+                break;
+            }
+
+            if hir.attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
+                // This is a rare case. It's for a node path that doesn't reach the root due to an
+                // intervening lint level attribute. This result doesn't get cached.
+                return id;
+            }
+
+            let next = hir.parent_id(id);
+            if next == id {
+                bug!("lint traversal reached the root of the crate");
+            }
+            id = next;
+
+            // This lookup is just an optimization; it can be removed without affecting
+            // functionality. It might seem strange to see this at the end of this loop, but the
+            // `orig_id` passed in to this function is almost always previously unseen, for which a
+            // lookup will be a miss. So we only do lookups for nodes up the parent chain, where
+            // cache lookups have a very high hit rate.
+            if self.lint_level_roots_cache.contains(id.local_id) {
+                break;
+            }
+        }
+
+        // `orig_id` traced to `self_id`; record this fact. If `orig_id` is a leaf node it will
+        // rarely (never?) subsequently be searched for, but it's hard to know if that is the case.
+        // The performance wins from the cache all come from caching non-leaf nodes.
+        self.lint_level_roots_cache.insert(orig_id.local_id);
+        self.hir_id
     }
 
     /// Creates a new source scope, nested in the current one.
@@ -1125,9 +1179,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: Place<'tcx>,
         value: Rvalue<'tcx>,
     ) -> BlockAnd<()> {
-        let span = self.tcx.with_stable_hashing_context(|hcx| {
-            span.mark_with_reason(None, DesugaringKind::Replace, self.tcx.sess.edition(), hcx)
-        });
         let source_info = self.source_info(span);
 
         // create the new block for the assignment
@@ -1141,7 +1192,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::Drop { place, target: assign, unwind: Some(assign_unwind) },
+            TerminatorKind::Drop {
+                place,
+                target: assign,
+                unwind: UnwindAction::Cleanup(assign_unwind),
+                replace: true,
+            },
         );
         self.diverge_from(block);
 
@@ -1165,7 +1221,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::Assert { cond, expected, msg, target: success_block, cleanup: None },
+            TerminatorKind::Assert {
+                cond,
+                expected,
+                msg: Box::new(msg),
+                target: success_block,
+                unwind: UnwindAction::Continue,
+            },
         );
         self.diverge_from(block);
 
@@ -1244,7 +1306,12 @@ fn build_scope_drops<'tcx>(
                 cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Drop { place: local.into(), target: next, unwind: None },
+                    TerminatorKind::Drop {
+                        place: local.into(),
+                        target: next,
+                        unwind: UnwindAction::Continue,
+                        replace: false,
+                    },
                 );
                 block = next;
             }
@@ -1424,23 +1491,23 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
         let term = &mut cfg.block_data_mut(from).terminator_mut();
         match &mut term.kind {
             TerminatorKind::Drop { unwind, .. } => {
-                if let Some(unwind) = *unwind {
+                if let UnwindAction::Cleanup(unwind) = *unwind {
                     let source_info = term.source_info;
                     cfg.terminate(unwind, source_info, TerminatorKind::Goto { target: to });
                 } else {
-                    *unwind = Some(to);
+                    *unwind = UnwindAction::Cleanup(to);
                 }
             }
             TerminatorKind::FalseUnwind { unwind, .. }
-            | TerminatorKind::Call { cleanup: unwind, .. }
-            | TerminatorKind::Assert { cleanup: unwind, .. }
-            | TerminatorKind::InlineAsm { cleanup: unwind, .. } => {
-                *unwind = Some(to);
+            | TerminatorKind::Call { unwind, .. }
+            | TerminatorKind::Assert { unwind, .. }
+            | TerminatorKind::InlineAsm { unwind, .. } => {
+                *unwind = UnwindAction::Cleanup(to);
             }
             TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }

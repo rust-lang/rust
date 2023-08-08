@@ -20,7 +20,7 @@ impl<N: ItemTreeNode> HasSource for AssocItemLoc<N> {
     fn source(&self, db: &dyn DefDatabase) -> InFile<N::Source> {
         let tree = self.id.item_tree(db);
         let ast_id_map = db.ast_id_map(self.id.file_id());
-        let root = db.parse_or_expand(self.id.file_id()).unwrap();
+        let root = db.parse_or_expand(self.id.file_id());
         let node = &tree[self.id.value];
 
         InFile::new(self.id.file_id(), ast_id_map.get(node.ast_id()).to_node(&root))
@@ -33,7 +33,7 @@ impl<N: ItemTreeNode> HasSource for ItemLoc<N> {
     fn source(&self, db: &dyn DefDatabase) -> InFile<N::Source> {
         let tree = self.id.item_tree(db);
         let ast_id_map = db.ast_id_map(self.id.file_id());
-        let root = db.parse_or_expand(self.id.file_id()).unwrap();
+        let root = db.parse_or_expand(self.id.file_id());
         let node = &tree[self.id.value];
 
         InFile::new(self.id.file_id(), ast_id_map.get(node.ast_id()).to_node(&root))
@@ -46,7 +46,7 @@ impl HasSource for Macro2Loc {
     fn source(&self, db: &dyn DefDatabase) -> InFile<Self::Value> {
         let tree = self.id.item_tree(db);
         let ast_id_map = db.ast_id_map(self.id.file_id());
-        let root = db.parse_or_expand(self.id.file_id()).unwrap();
+        let root = db.parse_or_expand(self.id.file_id());
         let node = &tree[self.id.value];
 
         InFile::new(self.id.file_id(), ast_id_map.get(node.ast_id()).to_node(&root))
@@ -59,7 +59,7 @@ impl HasSource for MacroRulesLoc {
     fn source(&self, db: &dyn DefDatabase) -> InFile<Self::Value> {
         let tree = self.id.item_tree(db);
         let ast_id_map = db.ast_id_map(self.id.file_id());
-        let root = db.parse_or_expand(self.id.file_id()).unwrap();
+        let root = db.parse_or_expand(self.id.file_id());
         let node = &tree[self.id.value];
 
         InFile::new(self.id.file_id(), ast_id_map.get(node.ast_id()).to_node(&root))
@@ -72,7 +72,7 @@ impl HasSource for ProcMacroLoc {
     fn source(&self, db: &dyn DefDatabase) -> InFile<Self::Value> {
         let tree = self.id.item_tree(db);
         let ast_id_map = db.ast_id_map(self.id.file_id());
-        let root = db.parse_or_expand(self.id.file_id()).unwrap();
+        let root = db.parse_or_expand(self.id.file_id());
         let node = &tree[self.id.value];
 
         InFile::new(self.id.file_id(), ast_id_map.get(node.ast_id()).to_node(&root))

@@ -6,7 +6,7 @@ LL |     Command::new("git");
    |
 help: consider importing this struct
    |
-LL | use std::process::Command;
+LL + use std::process::Command;
    |
 
 error[E0433]: failed to resolve: use of undeclared type `Command`
@@ -17,7 +17,7 @@ LL |         Command::new("git");
    |
 help: consider importing this struct
    |
-LL |     use std::process::Command;
+LL +     use std::process::Command;
    |
 
 error: aborting due to 2 previous errors

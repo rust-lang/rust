@@ -1,7 +1,7 @@
-// run-rustfix
+//@run-rustfix
 
 #![deny(clippy::useless_conversion)]
-#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::needless_if, clippy::unnecessary_wraps)]
 
 fn test_generic<T: Copy>(val: T) -> T {
     let _ = val;
@@ -31,6 +31,11 @@ fn test_issue_3913() -> Result<(), std::io::Error> {
     for _ in fs::read_dir(path)? {}
 
     Ok(())
+}
+
+fn dont_lint_on_type_alias() {
+    type A = i32;
+    _ = A::from(0i32);
 }
 
 fn dont_lint_into_iter_on_immutable_local_implementing_iterator_in_expr() {
@@ -106,6 +111,7 @@ fn main() {
     test_questionmark().unwrap();
     test_issue_3913().unwrap();
 
+    dont_lint_on_type_alias();
     dont_lint_into_iter_on_immutable_local_implementing_iterator_in_expr();
     lint_into_iter_on_mutable_local_implementing_iterator_in_expr();
     lint_into_iter_on_expr_implementing_iterator();
@@ -147,6 +153,35 @@ fn main() {
     let _ = s3;
     let s4: Foo<'a'> = Foo;
     let _ = vec![s4, s4, s4].into_iter();
+}
+
+#[allow(dead_code)]
+fn explicit_into_iter_fn_arg() {
+    fn a<T>(_: T) {}
+    fn b<T: IntoIterator<Item = i32>>(_: T) {}
+    fn c(_: impl IntoIterator<Item = i32>) {}
+    fn d<T>(_: T)
+    where
+        T: IntoIterator<Item = i32>,
+    {
+    }
+    fn f(_: std::vec::IntoIter<i32>) {}
+
+    a(vec![1, 2].into_iter());
+    b(vec![1, 2]);
+    c(vec![1, 2]);
+    d(vec![1, 2]);
+    b([&1, &2, &3].into_iter().cloned());
+
+    b(vec![1, 2]);
+    b(vec![1, 2]);
+
+    macro_rules! macro_generated {
+        () => {
+            vec![1, 2].into_iter()
+        };
+    }
+    b(macro_generated!());
 }
 
 #[derive(Copy, Clone)]

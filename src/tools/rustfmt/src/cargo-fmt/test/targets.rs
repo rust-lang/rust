@@ -2,7 +2,7 @@ use super::*;
 
 struct ExpTarget {
     path: &'static str,
-    edition: &'static str,
+    edition: Edition,
     kind: &'static str,
 }
 
@@ -26,7 +26,7 @@ mod all_targets {
         for target in exp_targets {
             assert!(targets.contains(&Target {
                 path: get_path(target.path),
-                edition: target.edition.to_owned(),
+                edition: target.edition,
                 kind: target.kind.to_owned(),
             }));
         }
@@ -39,17 +39,17 @@ mod all_targets {
             let exp_targets = vec![
                 ExpTarget {
                     path: "dependency-dir-name/subdep-dir-name/src/lib.rs",
-                    edition: "2018",
+                    edition: Edition::E2018,
                     kind: "lib",
                 },
                 ExpTarget {
                     path: "dependency-dir-name/src/lib.rs",
-                    edition: "2018",
+                    edition: Edition::E2018,
                     kind: "lib",
                 },
                 ExpTarget {
                     path: "src/main.rs",
-                    edition: "2018",
+                    edition: Edition::E2018,
                     kind: "main",
                 },
             ];
@@ -79,32 +79,32 @@ mod all_targets {
             let exp_targets = vec![
                 ExpTarget {
                     path: "ws/a/src/main.rs",
-                    edition: "2018",
+                    edition: Edition::E2018,
                     kind: "bin",
                 },
                 ExpTarget {
                     path: "ws/b/src/main.rs",
-                    edition: "2018",
+                    edition: Edition::E2018,
                     kind: "bin",
                 },
                 ExpTarget {
                     path: "ws/c/src/lib.rs",
-                    edition: "2018",
+                    edition: Edition::E2018,
                     kind: "lib",
                 },
                 ExpTarget {
                     path: "ws/a/d/src/lib.rs",
-                    edition: "2018",
+                    edition: Edition::E2018,
                     kind: "lib",
                 },
                 ExpTarget {
                     path: "e/src/main.rs",
-                    edition: "2018",
+                    edition: Edition::E2018,
                     kind: "main",
                 },
                 ExpTarget {
                     path: "ws/a/d/f/src/lib.rs",
-                    edition: "2018",
+                    edition: Edition::E2018,
                     kind: "lib",
                 },
             ];

@@ -23,7 +23,7 @@
 
 use crate::infer::MemberConstraint;
 use crate::mir::ConstraintCategory;
-use crate::ty::subst::GenericArg;
+use crate::ty::GenericArg;
 use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
 use rustc_macros::HashStable;
 use smallvec::SmallVec;
@@ -35,9 +35,9 @@ use std::ops::Index;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct Canonical<'tcx, V> {
+    pub value: V,
     pub max_universe: ty::UniverseIndex,
     pub variables: CanonicalVarInfos<'tcx>,
-    pub value: V,
 }
 
 pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
@@ -63,7 +63,7 @@ impl<'tcx> ty::TypeFoldable<TyCtxt<'tcx>> for CanonicalVarInfos<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct CanonicalVarValues<'tcx> {
-    pub var_values: ty::SubstsRef<'tcx>,
+    pub var_values: ty::GenericArgsRef<'tcx>,
 }
 
 impl CanonicalVarValues<'_> {
@@ -79,6 +79,43 @@ impl CanonicalVarValues<'_> {
                 matches!(ct.kind(), ty::ConstKind::Bound(ty::INNERMOST, bc) if bc.as_usize() == bv)
             }
         })
+    }
+
+    pub fn is_identity_modulo_regions(&self) -> bool {
+        let mut var = ty::BoundVar::from_u32(0);
+        for arg in self.var_values {
+            match arg.unpack() {
+                ty::GenericArgKind::Lifetime(r) => {
+                    if let ty::ReLateBound(ty::INNERMOST, br) = *r
+                        && var == br.var
+                    {
+                        var = var + 1;
+                    } else {
+                        // It's ok if this region var isn't unique
+                    }
+                },
+                ty::GenericArgKind::Type(ty) => {
+                    if let ty::Bound(ty::INNERMOST, bt) = *ty.kind()
+                        && var == bt.var
+                    {
+                        var = var + 1;
+                    } else {
+                        return false;
+                    }
+                }
+                ty::GenericArgKind::Const(ct) => {
+                    if let ty::ConstKind::Bound(ty::INNERMOST, bc) = ct.kind()
+                        && var == bc
+                    {
+                        var = var + 1;
+                    } else {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
     }
 }
 
@@ -149,15 +186,15 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
         }
     }
 
-    pub fn expect_anon_placeholder(self) -> u32 {
+    pub fn expect_placeholder_index(self) -> usize {
         match self.kind {
             CanonicalVarKind::Ty(_)
             | CanonicalVarKind::Region(_)
             | CanonicalVarKind::Const(_, _) => bug!("expected placeholder: {self:?}"),
 
-            CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.name.expect_anon(),
-            CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.name.expect_anon(),
-            CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.name.as_u32(),
+            CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.bound.var.as_usize(),
+            CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.bound.var.as_usize(),
+            CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.bound.as_usize(),
         }
     }
 }
@@ -268,7 +305,7 @@ pub struct QueryResponse<'tcx, R> {
     /// should get its hidden type inferred. So we bubble the opaque type
     /// and the type it was compared against upwards and let the query caller
     /// handle it.
-    pub opaque_types: Vec<(Ty<'tcx>, Ty<'tcx>)>,
+    pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
     pub value: R,
 }
 
@@ -336,14 +373,6 @@ impl<'tcx, R> Canonical<'tcx, QueryResponse<'tcx, R>> {
     }
 }
 
-impl<'tcx, R> Canonical<'tcx, ty::ParamEnvAnd<'tcx, R>> {
-    #[inline]
-    pub fn without_const(mut self) -> Self {
-        self.value = self.value.without_const();
-        self
-    }
-}
-
 impl<'tcx, V> Canonical<'tcx, V> {
     /// Allows you to map the `value` of a canonical while keeping the
     /// same set of bound variables.
@@ -388,10 +417,8 @@ pub type QueryOutlivesConstraint<'tcx> =
     (ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>, ConstraintCategory<'tcx>);
 
 TrivialTypeTraversalAndLiftImpls! {
-    for <'tcx> {
-        crate::infer::canonical::Certainty,
-        crate::infer::canonical::CanonicalTyVarKind,
-    }
+    crate::infer::canonical::Certainty,
+    crate::infer::canonical::CanonicalTyVarKind,
 }
 
 impl<'tcx> CanonicalVarValues<'tcx> {
@@ -402,26 +429,28 @@ impl<'tcx> CanonicalVarValues<'tcx> {
         infos: CanonicalVarInfos<'tcx>,
     ) -> CanonicalVarValues<'tcx> {
         CanonicalVarValues {
-            var_values: tcx.mk_substs_from_iter(infos.iter().enumerate().map(
+            var_values: tcx.mk_args_from_iter(infos.iter().enumerate().map(
                 |(i, info)| -> ty::GenericArg<'tcx> {
                     match info.kind {
                         CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {
-                            tcx.mk_bound(ty::INNERMOST, ty::BoundVar::from_usize(i).into()).into()
+                            Ty::new_bound(tcx, ty::INNERMOST, ty::BoundVar::from_usize(i).into())
+                                .into()
                         }
                         CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
                             let br = ty::BoundRegion {
                                 var: ty::BoundVar::from_usize(i),
-                                kind: ty::BrAnon(i as u32, None),
+                                kind: ty::BrAnon(None),
                             };
-                            tcx.mk_re_late_bound(ty::INNERMOST, br).into()
+                            ty::Region::new_late_bound(tcx, ty::INNERMOST, br).into()
                         }
                         CanonicalVarKind::Const(_, ty)
-                        | CanonicalVarKind::PlaceholderConst(_, ty) => tcx
-                            .mk_const(
-                                ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i)),
-                                ty,
-                            )
-                            .into(),
+                        | CanonicalVarKind::PlaceholderConst(_, ty) => ty::Const::new_bound(
+                            tcx,
+                            ty::INNERMOST,
+                            ty::BoundVar::from_usize(i),
+                            ty,
+                        )
+                        .into(),
                     }
                 },
             )),

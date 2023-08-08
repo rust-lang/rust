@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 # Regression test for issue #85401
 # Verify that we do not ICE when trying to access MIR for statics,

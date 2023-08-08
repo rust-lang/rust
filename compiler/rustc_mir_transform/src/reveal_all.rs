@@ -35,10 +35,22 @@ impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
     }
 
     #[inline]
+    fn visit_constant(&mut self, constant: &mut Constant<'tcx>, _: Location) {
+        // We have to use `try_normalize_erasing_regions` here, since it's
+        // possible that we visit impossible-to-satisfy where clauses here,
+        // see #91745
+        if let Ok(c) = self.tcx.try_normalize_erasing_regions(self.param_env, constant.literal) {
+            constant.literal = c;
+        }
+    }
+
+    #[inline]
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: TyContext) {
         // We have to use `try_normalize_erasing_regions` here, since it's
         // possible that we visit impossible-to-satisfy where clauses here,
         // see #91745
-        *ty = self.tcx.try_normalize_erasing_regions(self.param_env, *ty).unwrap_or(*ty);
+        if let Ok(t) = self.tcx.try_normalize_erasing_regions(self.param_env, *ty) {
+            *ty = t;
+        }
     }
 }

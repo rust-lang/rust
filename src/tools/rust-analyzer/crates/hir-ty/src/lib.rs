@@ -1,6 +1,5 @@
 //! The type system. We currently use this to infer types for completion, hover
 //! information and various assists.
-
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
 #[allow(unused)]
@@ -8,11 +7,9 @@ macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
 }
 
-mod autoderef;
 mod builder;
 mod chalk_db;
 mod chalk_ext;
-pub mod consteval;
 mod infer;
 mod inhabitedness;
 mod interner;
@@ -20,21 +17,28 @@ mod lower;
 mod mapping;
 mod tls;
 mod utils;
+
+pub mod autoderef;
+pub mod consteval;
 pub mod db;
 pub mod diagnostics;
 pub mod display;
+pub mod lang_items;
+pub mod layout;
 pub mod method_resolution;
+pub mod mir;
 pub mod primitive;
 pub mod traits;
-pub mod layout;
-pub mod lang_items;
 
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod test_db;
 
-use std::sync::Arc;
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    hash::Hash,
+};
 
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
@@ -42,12 +46,14 @@ use chalk_ir::{
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
     NoSolution, TyData,
 };
-use hir_def::{expr::ExprId, type_ref::Rawness, TypeOrConstParamId};
+use either::Either;
+use hir_def::{hir::ExprId, type_ref::Rawness, GeneralConstId, TypeOrConstParamId};
 use hir_expand::name;
-use itertools::Either;
 use la_arena::{Arena, Idx};
+use mir::{MirEvalError, VTableMap};
 use rustc_hash::FxHashSet;
 use traits::FnTrait;
+use triomphe::Arc;
 use utils::Generics;
 
 use crate::{
@@ -58,6 +64,7 @@ pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
 pub use infer::{
+    closure::{CaptureKind, CapturedItem},
     could_coerce, could_unify, Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic,
     InferenceResult, OverloadedDeref, PointerCast,
 };
@@ -144,6 +151,79 @@ pub type Solution = chalk_solve::Solution<Interner>;
 pub type ConstrainedSubst = chalk_ir::ConstrainedSubst<Interner>;
 pub type Guidance = chalk_solve::Guidance<Interner>;
 pub type WhereClause = chalk_ir::WhereClause<Interner>;
+
+/// A constant can have reference to other things. Memory map job is holding
+/// the necessary bits of memory of the const eval session to keep the constant
+/// meaningful.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct MemoryMap {
+    pub memory: HashMap<usize, Vec<u8>>,
+    pub vtable: VTableMap,
+}
+
+impl MemoryMap {
+    fn insert(&mut self, addr: usize, x: Vec<u8>) {
+        match self.memory.entry(addr) {
+            Entry::Occupied(mut e) => {
+                if e.get().len() < x.len() {
+                    e.insert(x);
+                }
+            }
+            Entry::Vacant(e) => {
+                e.insert(x);
+            }
+        }
+    }
+
+    /// This functions convert each address by a function `f` which gets the byte intervals and assign an address
+    /// to them. It is useful when you want to load a constant with a memory map in a new memory. You can pass an
+    /// allocator function as `f` and it will return a mapping of old addresses to new addresses.
+    fn transform_addresses(
+        &self,
+        mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError>,
+    ) -> Result<HashMap<usize, usize>, MirEvalError> {
+        self.memory
+            .iter()
+            .map(|x| {
+                let addr = *x.0;
+                let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
+                Ok((addr, f(x.1, align)?))
+            })
+            .collect()
+    }
+
+    fn get<'a>(&'a self, addr: usize, size: usize) -> Option<&'a [u8]> {
+        if size == 0 {
+            Some(&[])
+        } else {
+            self.memory.get(&addr)?.get(0..size)
+        }
+    }
+}
+
+/// A concrete constant value
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConstScalar {
+    Bytes(Vec<u8>, MemoryMap),
+    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
+    // constants
+    UnevaluatedConst(GeneralConstId, Substitution),
+    /// Case of an unknown value that rustc might know but we don't
+    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
+    // constants
+    // https://github.com/rust-lang/rust-analyzer/pull/8813#issuecomment-840679177
+    // https://rust-lang.zulipchat.com/#narrow/stream/144729-wg-traits/topic/Handling.20non.20evaluatable.20constants'.20equality/near/238386348
+    Unknown,
+}
+
+impl Hash for ConstScalar {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        core::mem::discriminant(self).hash(state);
+        if let ConstScalar::Bytes(b, _) = self {
+            b.hash(state)
+        }
+    }
+}
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
@@ -238,16 +318,19 @@ impl CallableSig {
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
         CallableSig {
             // FIXME: what to do about lifetime params? -> return PolyFnSig
-            params_and_return: fn_ptr
-                .substitution
-                .clone()
-                .shifted_out_to(Interner, DebruijnIndex::ONE)
-                .expect("unexpected lifetime vars in fn ptr")
-                .0
-                .as_slice(Interner)
-                .iter()
-                .map(|arg| arg.assert_ty_ref(Interner).clone())
-                .collect(),
+            // FIXME: use `Arc::from_iter` when it becomes available
+            params_and_return: Arc::from(
+                fn_ptr
+                    .substitution
+                    .clone()
+                    .shifted_out_to(Interner, DebruijnIndex::ONE)
+                    .expect("unexpected lifetime vars in fn ptr")
+                    .0
+                    .as_slice(Interner)
+                    .iter()
+                    .map(|arg| arg.assert_ty_ref(Interner).clone())
+                    .collect::<Vec<_>>(),
+            ),
             is_varargs: fn_ptr.sig.variadic,
             safety: fn_ptr.sig.safety,
         }
@@ -531,15 +614,19 @@ where
 }
 
 pub fn callable_sig_from_fnonce(
-    self_ty: &Ty,
+    mut self_ty: &Ty,
     env: Arc<TraitEnvironment>,
     db: &dyn HirDatabase,
 ) -> Option<CallableSig> {
+    if let Some((ty, _, _)) = self_ty.as_reference() {
+        // This will happen when it implements fn or fn mut, since we add a autoborrow adjustment
+        self_ty = ty;
+    }
     let krate = env.krate;
     let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
     let output_assoc_type = db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
 
-    let mut table = InferenceTable::new(db, env.clone());
+    let mut table = InferenceTable::new(db, env);
     let b = TyBuilder::trait_ref(db, fn_once_trait);
     if b.remaining() != 2 {
         return None;

@@ -2,34 +2,20 @@
     parents: unsafe {
         #[allow(unused_unsafe)]
         ::zerovec::ZeroMap::from_parts_unchecked(
-            unsafe {
-                ::zerovec::VarZeroVec::from_bytes_unchecked(&[
-                    1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 121u8, 117u8, 101u8,
-                ])
-            },
-            unsafe {
-                ::zerovec::ZeroVec::from_bytes_unchecked(&[
-                    122u8, 104u8, 0u8, 1u8, 72u8, 97u8, 110u8, 116u8, 0u8, 0u8, 0u8, 0u8,
-                ])
-            },
+            unsafe { ::zerovec::VarZeroVec::from_bytes_unchecked(b"\x01\0\0\0\0\0yue") },
+            unsafe { ::zerovec::ZeroVec::from_bytes_unchecked(b"zh\0\x01Hant\0\0\0\0") },
         )
     },
     unicode_extension_defaults: unsafe {
         #[allow(unused_unsafe)]
         ::zerovec::ZeroMap2d::from_parts_unchecked(
-            unsafe { ::zerovec::ZeroVec::from_bytes_unchecked(&[99u8, 111u8]) },
-            unsafe { ::zerovec::ZeroVec::from_bytes_unchecked(&[2u8, 0u8, 0u8, 0u8]) },
+            unsafe { ::zerovec::ZeroVec::from_bytes_unchecked(b"co") },
+            unsafe { ::zerovec::ZeroVec::from_bytes_unchecked(b"\x02\0\0\0") },
             unsafe {
-                ::zerovec::VarZeroVec::from_bytes_unchecked(&[
-                    2u8, 0u8, 0u8, 0u8, 0u8, 0u8, 2u8, 0u8, 122u8, 104u8, 122u8, 104u8, 45u8,
-                    72u8, 97u8, 110u8, 116u8,
-                ])
+                ::zerovec::VarZeroVec::from_bytes_unchecked(b"\x02\0\0\0\0\0\x02\0zhzh-Hant")
             },
             unsafe {
-                ::zerovec::VarZeroVec::from_bytes_unchecked(&[
-                    2u8, 0u8, 0u8, 0u8, 0u8, 0u8, 6u8, 0u8, 112u8, 105u8, 110u8, 121u8, 105u8,
-                    110u8, 115u8, 116u8, 114u8, 111u8, 107u8, 101u8,
-                ])
+                ::zerovec::VarZeroVec::from_bytes_unchecked(b"\x02\0\0\0\0\0\x06\0pinyinstroke")
             },
         )
     },

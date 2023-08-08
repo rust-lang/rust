@@ -1,11 +1,12 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::match_like_matches_macro)]
 #![allow(
     unreachable_patterns,
     dead_code,
     clippy::equatable_if_let,
-    clippy::needless_borrowed_reference
+    clippy::needless_borrowed_reference,
+    clippy::redundant_guards
 )]
 
 fn main() {

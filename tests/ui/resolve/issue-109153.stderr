@@ -1,0 +1,23 @@
+error[E0659]: `bar` is ambiguous
+  --> $DIR/issue-109153.rs:11:5
+   |
+LL | use bar::bar;
+   |     ^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `bar` could refer to the module imported here
+  --> $DIR/issue-109153.rs:1:5
+   |
+LL | use foo::*;
+   |     ^^^^^^
+   = help: consider adding an explicit import of `bar` to disambiguate
+note: `bar` could also refer to the module imported here
+  --> $DIR/issue-109153.rs:12:5
+   |
+LL | use bar::*;
+   |     ^^^^^^
+   = help: consider adding an explicit import of `bar` to disambiguate
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.

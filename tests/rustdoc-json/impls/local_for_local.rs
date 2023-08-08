@@ -9,7 +9,7 @@ pub trait Trait {}
 /// impl
 impl Trait for Struct {}
 
-// @is "$.index[*][?(@.name=='Struct')].inner.impls[*]" $impl
-// @is "$.index[*][?(@.name=='Trait')].inner.implementations[*]" $impl
-// @is "$.index[*][?(@.docs=='impl')].inner.trait.id" $trait
-// @is "$.index[*][?(@.docs=='impl')].inner.for.inner.id" $struct
+// @is "$.index[*][?(@.name=='Struct')].inner.struct.impls[*]" $impl
+// @is "$.index[*][?(@.name=='Trait')].inner.trait.implementations[*]" $impl
+// @is "$.index[*][?(@.docs=='impl')].inner.impl.trait.id" $trait
+// @is "$.index[*][?(@.docs=='impl')].inner.impl.for.resolved_path.id" $struct

@@ -3,11 +3,9 @@
 #![no_core]
 #![feature(no_core)]
 
-// @is "$.index[*][?(@.name=='mod1')].kind" \"module\"
-// @is "$.index[*][?(@.name=='mod1')].inner.is_stripped" "true"
+// @is "$.index[*][?(@.name=='mod1')].inner.module.is_stripped" "true"
 mod mod1 {
-    // @is "$.index[*][?(@.name=='mod2')].kind" \"module\"
-    // @is "$.index[*][?(@.name=='mod2')].inner.is_stripped" "true"
+    // @is "$.index[*][?(@.name=='mod2')].inner.module.is_stripped" "true"
     mod mod2 {
         // @set m2pub_id = "$.index[*][?(@.name=='Mod2Public')].id"
         pub struct Mod2Public;
@@ -16,7 +14,9 @@ mod mod1 {
         struct Mod2Private;
     }
 
-    // @set mod2_use_id = "$.index[*][?(@.kind=='import' && @.inner.name=='mod2')].id"
+    // @set mod2_use_id = "$.index[*][?(@.docs=='Mod2 re-export')].id"
+    // @is "$.index[*][?(@.docs=='Mod2 re-export')].inner.import.name" \"mod2\"
+    /// Mod2 re-export
     pub use self::mod2::*;
 
     // @set m1pub_id = "$.index[*][?(@.name=='Mod1Public')].id"
@@ -25,9 +25,11 @@ mod mod1 {
     struct Mod1Private;
 }
 
-// @set mod1_use_id = "$.index[*][?(@.kind=='import' && @.inner.name=='mod1')].id"
+// @set mod1_use_id = "$.index[*][?(@.docs=='Mod1 re-export')].id"
+// @is "$.index[*][?(@.docs=='Mod1 re-export')].inner.import.name" \"mod1\"
+/// Mod1 re-export
 pub use mod1::*;
 
-// @ismany "$.index[*][?(@.name=='mod2')].inner.items[*]" $m2pub_id
-// @ismany "$.index[*][?(@.name=='mod1')].inner.items[*]" $m1pub_id $mod2_use_id
-// @ismany "$.index[*][?(@.name=='glob_private')].inner.items[*]" $mod1_use_id
+// @ismany "$.index[*][?(@.name=='mod2')].inner.module.items[*]" $m2pub_id
+// @ismany "$.index[*][?(@.name=='mod1')].inner.module.items[*]" $m1pub_id $mod2_use_id
+// @ismany "$.index[*][?(@.name=='glob_private')].inner.module.items[*]" $mod1_use_id

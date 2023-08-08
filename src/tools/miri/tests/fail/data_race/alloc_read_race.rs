@@ -26,6 +26,7 @@ pub fn main() {
     //  2. write
     unsafe {
         let j1 = spawn(move || {
+            let ptr = ptr; // avoid field capturing
             // Concurrent allocate the memory.
             // Uses relaxed semantics to not generate
             // a release sequence.
@@ -34,6 +35,7 @@ pub fn main() {
         });
 
         let j2 = spawn(move || {
+            let ptr = ptr; // avoid field capturing
             let pointer = &*ptr.0;
 
             // Note: could also error due to reading uninitialized memory, but the data-race detector triggers first.

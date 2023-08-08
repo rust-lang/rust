@@ -169,7 +169,7 @@ where
                 };
 
                 let ident_span = path.ident.span;
-                (tcx.type_of(def_id).subst_identity(), call_span, ident_span)
+                (tcx.type_of(def_id).instantiate_identity(), call_span, ident_span)
             }
             _ => {
                 return;
@@ -286,7 +286,7 @@ pub(crate) fn run(
         let (cx, _) = Context::init(krate, renderopts, cache, tcx).map_err(|e| e.to_string())?;
 
         // Collect CrateIds corresponding to provided target crates
-        // If two different versions of the crate in the dependency tree, then examples will be collcted from both.
+        // If two different versions of the crate in the dependency tree, then examples will be collected from both.
         let all_crates = tcx
             .crates(())
             .iter()
@@ -331,7 +331,7 @@ pub(crate) fn run(
     };
 
     if let Err(e) = inner() {
-        tcx.sess.fatal(&e);
+        tcx.sess.fatal(e);
     }
 
     Ok(())
@@ -358,7 +358,7 @@ pub(crate) fn load_call_locations(
     };
 
     inner().map_err(|e: String| {
-        diag.err(&format!("failed to load examples: {}", e));
+        diag.err(format!("failed to load examples: {}", e));
         1
     })
 }

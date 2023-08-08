@@ -1,0 +1,70 @@
+warning: the feature `negative_bounds` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/simple.rs:1:12
+   |
+LL | #![feature(negative_bounds, negative_impls)]
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: the trait bound `T: !Copy` is not satisfied
+  --> $DIR/simple.rs:11:16
+   |
+LL |     not_copy::<T>();
+   |                ^ the trait `!Copy` is not implemented for `T`
+   |
+note: required by a bound in `not_copy`
+  --> $DIR/simple.rs:4:16
+   |
+LL | fn not_copy<T: !Copy>() {}
+   |                ^^^^^ required by this bound in `not_copy`
+
+error[E0277]: the trait bound `T: !Copy` is not satisfied
+  --> $DIR/simple.rs:16:16
+   |
+LL |     not_copy::<T>();
+   |                ^ the trait `!Copy` is not implemented for `T`
+   |
+note: required by a bound in `not_copy`
+  --> $DIR/simple.rs:4:16
+   |
+LL | fn not_copy<T: !Copy>() {}
+   |                ^^^^^ required by this bound in `not_copy`
+
+error[E0277]: the trait bound `Copyable: !Copy` is not satisfied
+  --> $DIR/simple.rs:31:16
+   |
+LL |     not_copy::<Copyable>();
+   |                ^^^^^^^^ the trait `!Copy` is not implemented for `Copyable`
+   |
+   = help: the trait `Copy` is implemented for `Copyable`
+note: required by a bound in `not_copy`
+  --> $DIR/simple.rs:4:16
+   |
+LL | fn not_copy<T: !Copy>() {}
+   |                ^^^^^ required by this bound in `not_copy`
+help: consider annotating `Copyable` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | struct Copyable;
+   |
+
+error[E0277]: the trait bound `NotNecessarilyCopyable: !Copy` is not satisfied
+  --> $DIR/simple.rs:38:16
+   |
+LL |     not_copy::<NotNecessarilyCopyable>();
+   |                ^^^^^^^^^^^^^^^^^^^^^^ the trait `!Copy` is not implemented for `NotNecessarilyCopyable`
+   |
+note: required by a bound in `not_copy`
+  --> $DIR/simple.rs:4:16
+   |
+LL | fn not_copy<T: !Copy>() {}
+   |                ^^^^^ required by this bound in `not_copy`
+help: consider annotating `NotNecessarilyCopyable` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | struct NotNecessarilyCopyable;
+   |
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

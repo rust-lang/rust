@@ -65,7 +65,7 @@ pub union GenericUnion<T: Copy> { // Unions with non-`Copy` fields are unstable.
 pub const THIS_IS_OKAY: GenericUnion<()> = GenericUnion { field: () };
 ```
 
-Like transarent `struct`s, a transparent `union` of type `U` has the same
+Like transparent `struct`s, a transparent `union` of type `U` has the same
 layout, size, and ABI as its single non-ZST field. If it is generic over a type
 `T`, and all its fields are ZSTs except for exactly one field of type `T`, then
 it has the same layout and ABI as `T` (even if `T` is a ZST when monomorphized).

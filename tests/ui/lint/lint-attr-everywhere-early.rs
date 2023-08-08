@@ -134,12 +134,20 @@ fn expressions() {
         }
     }
 
+    match f {
+        #[deny(ellipsis_inclusive_range_patterns)]
+        Match{f1: 0...100} => {}
+        //~^ ERROR range patterns are deprecated
+        //~| WARNING this is accepted in the current edition
+        _ => {}
+    }
+
     // Statement Block
     {
         #![deny(unsafe_code)]
         unsafe {} //~ ERROR usage of an `unsafe` block
     }
-    let block_tail = {
+    let block_tail: () = {
         #[deny(unsafe_code)]
         unsafe {} //~ ERROR usage of an `unsafe` block
     };

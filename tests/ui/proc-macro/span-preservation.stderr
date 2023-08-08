@@ -32,7 +32,7 @@ error[E0560]: struct `Foo` has no field named `b`
 LL |     let y = Foo { a: 10, b: 10isize };
    |                          ^ `Foo` does not have this field
    |
-   = note: available fields are: `a`
+   = note: all struct fields are already assigned
 
 error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:39:5

@@ -1,0 +1,53 @@
+error[E0433]: failed to resolve: could not find `doesnt_exist` in `inner`
+  --> $DIR/diagnostics-cross-crate.rs:18:23
+   |
+LL |     cfged_out::inner::doesnt_exist::hello();
+   |                       ^^^^^^^^^^^^ could not find `doesnt_exist` in `inner`
+
+error[E0425]: cannot find function `uwu` in crate `cfged_out`
+  --> $DIR/diagnostics-cross-crate.rs:7:16
+   |
+LL |     cfged_out::uwu();
+   |                ^^^ not found in `cfged_out`
+
+error[E0425]: cannot find function `uwu` in module `cfged_out::inner`
+  --> $DIR/diagnostics-cross-crate.rs:11:23
+   |
+LL |     cfged_out::inner::uwu();
+   |                       ^^^ not found in `cfged_out::inner`
+   |
+note: found an item that was configured out
+  --> $DIR/auxiliary/cfged_out.rs:3:12
+   |
+LL |     pub fn uwu() {}
+   |            ^^^
+
+error[E0425]: cannot find function `meow` in module `cfged_out::inner::right`
+  --> $DIR/diagnostics-cross-crate.rs:22:30
+   |
+LL |     cfged_out::inner::right::meow();
+   |                              ^^^^ not found in `cfged_out::inner::right`
+   |
+note: found an item that was configured out
+  --> $DIR/auxiliary/cfged_out.rs:17:16
+   |
+LL |         pub fn meow() {}
+   |                ^^^^
+   = note: the item is gated behind the `what-a-cool-feature` feature
+
+error[E0425]: cannot find function `vanished` in crate `cfged_out`
+  --> $DIR/diagnostics-cross-crate.rs:28:16
+   |
+LL |     cfged_out::vanished();
+   |                ^^^^^^^^ not found in `cfged_out`
+   |
+note: found an item that was configured out
+  --> $DIR/auxiliary/cfged_out.rs:22:8
+   |
+LL | pub fn vanished() {}
+   |        ^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.

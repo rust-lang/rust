@@ -6,13 +6,13 @@ use rustc_codegen_ssa::{
     traits::ConstMethods,
 };
 
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::{
     bug,
     ty::{
         self,
         layout::{LayoutOf, TyAndLayout},
-        AdtDef, GeneratorSubsts, Ty,
+        AdtDef, GeneratorArgs, Ty,
     },
 };
 use rustc_target::abi::{Align, Endian, Size, TagEncoding, VariantIdx, Variants};
@@ -62,7 +62,7 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 
 /// In CPP-like mode, we generate a union with a field for each variant and an
 /// explicit tag field. The field of each variant has a struct type
-/// that encodes the discrimiant of the variant and it's data layout.
+/// that encodes the discriminant of the variant and it's data layout.
 /// The union also has a nested enumeration type that is only used for encoding
 /// variant names in an efficient way. Its enumerator values do _not_ correspond
 /// to the enum's discriminant values.
@@ -199,7 +199,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     let enum_type = unique_type_id.expect_ty();
     let &ty::Adt(enum_adt_def, _) = enum_type.kind() else {
         bug!("build_enum_type_di_node() called with non-enum type: `{:?}`", enum_type)
-        };
+    };
 
     let enum_type_and_layout = cx.layout_of(enum_type);
     let enum_type_name = compute_debuginfo_type_name(cx.tcx, enum_type, false);
@@ -667,20 +667,21 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
     generator_type_and_layout: TyAndLayout<'tcx>,
     generator_type_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
-    let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } = generator_type_and_layout.variants else {
+    let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } =
+        generator_type_and_layout.variants
+    else {
         bug!("This function only supports layouts with directly encoded tags.")
     };
 
-    let (generator_def_id, generator_substs) = match generator_type_and_layout.ty.kind() {
-        &ty::Generator(def_id, substs, _) => (def_id, substs.as_generator()),
+    let (generator_def_id, generator_args) = match generator_type_and_layout.ty.kind() {
+        &ty::Generator(def_id, args, _) => (def_id, args.as_generator()),
         _ => unreachable!(),
     };
 
-    let (generator_layout, state_specific_upvar_names) =
-        cx.tcx.generator_layout_and_saved_local_names(generator_def_id);
+    let generator_layout = cx.tcx.optimized_mir(generator_def_id).generator_layout().unwrap();
 
     let common_upvar_names = cx.tcx.closure_saved_names_of_captured_variables(generator_def_id);
-    let variant_range = generator_substs.variant_range(generator_def_id, cx.tcx);
+    let variant_range = generator_args.variant_range(generator_def_id, cx.tcx);
     let variant_count = (variant_range.start.as_u32()..variant_range.end.as_u32()).len();
 
     let tag_base_type = tag_base_type(cx, generator_type_and_layout);
@@ -690,11 +691,11 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
         generator_type_di_node,
         variant_range
             .clone()
-            .map(|variant_index| (variant_index, GeneratorSubsts::variant_name(variant_index))),
+            .map(|variant_index| (variant_index, GeneratorArgs::variant_name(variant_index))),
     );
 
     let discriminants: IndexVec<VariantIdx, DiscrResult> = {
-        let discriminants_iter = generator_substs.discriminants(generator_def_id, cx.tcx);
+        let discriminants_iter = generator_args.discriminants(generator_def_id, cx.tcx);
         let mut discriminants: IndexVec<VariantIdx, DiscrResult> =
             IndexVec::with_capacity(variant_count);
         for (variant_index, discr) in discriminants_iter {
@@ -714,7 +715,6 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
                 generator_type_and_layout,
                 generator_type_di_node,
                 generator_layout,
-                &state_specific_upvar_names,
                 &common_upvar_names,
             );
 

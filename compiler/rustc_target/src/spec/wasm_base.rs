@@ -1,3 +1,4 @@
+use super::crt_objects::LinkSelfContainedDefault;
 use super::{cvs, Cc, LinkerFlavor, PanicStrategy, RelocModel, TargetOptions, TlsModel};
 
 pub fn options() -> TargetOptions {
@@ -93,6 +94,13 @@ pub fn options() -> TargetOptions {
         linker_flavor: LinkerFlavor::WasmLld(Cc::No),
 
         pre_link_args,
+
+        // FIXME: Figure out cases in which WASM needs to link with a native toolchain.
+        //
+        // rust-lang/rust#104137: cannot blindly remove this without putting in
+        // some other way to compensate for lack of `-nostartfiles` in linker
+        // invocation.
+        link_self_contained: LinkSelfContainedDefault::True,
 
         // This has no effect in LLVM 8 or prior, but in LLVM 9 and later when
         // PIC code is implemented this has quite a drastic effect if it stays

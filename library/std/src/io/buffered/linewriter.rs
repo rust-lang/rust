@@ -64,7 +64,7 @@ use crate::io::{self, buffered::LineWriterShim, BufWriter, IntoInnerError, IoSli
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct LineWriter<W: Write> {
+pub struct LineWriter<W: ?Sized + Write> {
     inner: BufWriter<W>,
 }
 
@@ -107,27 +107,6 @@ impl<W: Write> LineWriter<W> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize, inner: W) -> LineWriter<W> {
         LineWriter { inner: BufWriter::with_capacity(capacity, inner) }
-    }
-
-    /// Gets a reference to the underlying writer.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::fs::File;
-    /// use std::io::LineWriter;
-    ///
-    /// fn main() -> std::io::Result<()> {
-    ///     let file = File::create("poem.txt")?;
-    ///     let file = LineWriter::new(file);
-    ///
-    ///     let reference = file.get_ref();
-    ///     Ok(())
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_ref(&self) -> &W {
-        self.inner.get_ref()
     }
 
     /// Gets a mutable reference to the underlying writer.
@@ -184,8 +163,31 @@ impl<W: Write> LineWriter<W> {
     }
 }
 
+impl<W: ?Sized + Write> LineWriter<W> {
+    /// Gets a reference to the underlying writer.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    /// use std::io::LineWriter;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let file = File::create("poem.txt")?;
+    ///     let file = LineWriter::new(file);
+    ///
+    ///     let reference = file.get_ref();
+    ///     Ok(())
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn get_ref(&self) -> &W {
+        self.inner.get_ref()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<W: Write> Write for LineWriter<W> {
+impl<W: ?Sized + Write> Write for LineWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         LineWriterShim::new(&mut self.inner).write(buf)
     }
@@ -216,7 +218,7 @@ impl<W: Write> Write for LineWriter<W> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<W: Write> fmt::Debug for LineWriter<W>
+impl<W: ?Sized + Write> fmt::Debug for LineWriter<W>
 where
     W: fmt::Debug,
 {

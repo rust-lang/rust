@@ -1,7 +1,7 @@
 // Regression test for issue 67856
 
 #![feature(unboxed_closures)]
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 #![feature(fn_traits)]
 
 trait MyTrait {}

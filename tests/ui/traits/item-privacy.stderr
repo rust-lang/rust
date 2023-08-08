@@ -29,7 +29,7 @@ LL |     S.b();
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL | use method::B;
+LL + use method::B;
    |
 
 error[E0624]: method `a` is private
@@ -69,7 +69,7 @@ LL |     S::b(&S);
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL | use method::B;
+LL + use method::B;
    |
 
 error[E0624]: method `a` is private
@@ -109,7 +109,7 @@ LL |     S::B;
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL | use assoc_const::B;
+LL + use assoc_const::B;
    |
 
 error[E0624]: associated constant `A` is private

@@ -1,0 +1,22 @@
+error[E0308]: mismatched types
+  --> $DIR/not-matching-trait-refs-isnt-defining.rs:17:54
+   |
+LL |     type Assoc = impl Sized;
+   |                  ---------- the expected opaque type
+...
+LL |         let _: <Self as Foo<DefinesOpaque>>::Assoc = "";
+   |                -----------------------------------   ^^ expected opaque type, found `&str`
+   |                |
+   |                expected due to this
+   |
+   = note: expected opaque type `<() as Foo<DefinesOpaque>>::Assoc`
+                found reference `&'static str`
+note: this item must have the opaque type in its signature in order to be able to register hidden types
+  --> $DIR/not-matching-trait-refs-isnt-defining.rs:16:8
+   |
+LL |     fn test() -> <() as Foo<NoOpaques>>::Assoc {
+   |        ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

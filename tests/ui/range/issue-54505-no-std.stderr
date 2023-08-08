@@ -14,10 +14,8 @@ error[E0308]: mismatched types
   --> $DIR/issue-54505-no-std.rs:29:16
    |
 LL |     take_range(0..1);
-   |     ---------- ^^^^
-   |     |          |
-   |     |          expected `&_`, found `Range<{integer}>`
-   |     |          help: consider borrowing here: `&(0..1)`
+   |     ---------- ^^^^ expected `&_`, found `Range<{integer}>`
+   |     |
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
@@ -27,15 +25,17 @@ note: function defined here
    |
 LL | fn take_range(_r: &impl RangeBounds<i8>) {}
    |    ^^^^^^^^^^ -------------------------
+help: consider borrowing here
+   |
+LL |     take_range(&(0..1));
+   |                ++    +
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-std.rs:34:16
    |
 LL |     take_range(1..);
-   |     ---------- ^^^
-   |     |          |
-   |     |          expected `&_`, found `RangeFrom<{integer}>`
-   |     |          help: consider borrowing here: `&(1..)`
+   |     ---------- ^^^ expected `&_`, found `RangeFrom<{integer}>`
+   |     |
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
@@ -45,15 +45,17 @@ note: function defined here
    |
 LL | fn take_range(_r: &impl RangeBounds<i8>) {}
    |    ^^^^^^^^^^ -------------------------
+help: consider borrowing here
+   |
+LL |     take_range(&(1..));
+   |                ++   +
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-std.rs:39:16
    |
 LL |     take_range(..);
-   |     ---------- ^^
-   |     |          |
-   |     |          expected `&_`, found `RangeFull`
-   |     |          help: consider borrowing here: `&(..)`
+   |     ---------- ^^ expected `&_`, found `RangeFull`
+   |     |
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
@@ -63,15 +65,17 @@ note: function defined here
    |
 LL | fn take_range(_r: &impl RangeBounds<i8>) {}
    |    ^^^^^^^^^^ -------------------------
+help: consider borrowing here
+   |
+LL |     take_range(&(..));
+   |                ++  +
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-std.rs:44:16
    |
 LL |     take_range(0..=1);
-   |     ---------- ^^^^^
-   |     |          |
-   |     |          expected `&_`, found `RangeInclusive<{integer}>`
-   |     |          help: consider borrowing here: `&(0..=1)`
+   |     ---------- ^^^^^ expected `&_`, found `RangeInclusive<{integer}>`
+   |     |
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
@@ -81,15 +85,17 @@ note: function defined here
    |
 LL | fn take_range(_r: &impl RangeBounds<i8>) {}
    |    ^^^^^^^^^^ -------------------------
+help: consider borrowing here
+   |
+LL |     take_range(&(0..=1));
+   |                ++     +
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-std.rs:49:16
    |
 LL |     take_range(..5);
-   |     ---------- ^^^
-   |     |          |
-   |     |          expected `&_`, found `RangeTo<{integer}>`
-   |     |          help: consider borrowing here: `&(..5)`
+   |     ---------- ^^^ expected `&_`, found `RangeTo<{integer}>`
+   |     |
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
@@ -99,15 +105,17 @@ note: function defined here
    |
 LL | fn take_range(_r: &impl RangeBounds<i8>) {}
    |    ^^^^^^^^^^ -------------------------
+help: consider borrowing here
+   |
+LL |     take_range(&(..5));
+   |                ++   +
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-std.rs:54:16
    |
 LL |     take_range(..=42);
-   |     ---------- ^^^^^
-   |     |          |
-   |     |          expected `&_`, found `RangeToInclusive<{integer}>`
-   |     |          help: consider borrowing here: `&(..=42)`
+   |     ---------- ^^^^^ expected `&_`, found `RangeToInclusive<{integer}>`
+   |     |
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
@@ -117,6 +125,10 @@ note: function defined here
    |
 LL | fn take_range(_r: &impl RangeBounds<i8>) {}
    |    ^^^^^^^^^^ -------------------------
+help: consider borrowing here
+   |
+LL |     take_range(&(..=42));
+   |                ++     +
 
 error: aborting due to 8 previous errors
 

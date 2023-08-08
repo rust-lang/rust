@@ -2,14 +2,14 @@
 // Playground. That button is hidden until the user hovers over the code block.
 // This test checks that it is hidden, and that it shows on hover. It also
 // checks for its color.
-goto: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 show-text: true
 
 define-function: (
     "check-run-button",
     (theme, color, background, hover_color, hover_background),
     block {
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         assert-css: (".test-arrow", {"visibility": "hidden"})
         move-cursor-to: ".example-wrap"
@@ -33,22 +33,22 @@ define-function: (
 
 call-function: ("check-run-button", {
     "theme": "ayu",
-    "color": "rgb(120, 135, 151)",
+    "color": "#788797",
     "background": "rgba(57, 175, 215, 0.09)",
-    "hover_color": "rgb(197, 197, 197)",
+    "hover_color": "#c5c5c5",
     "hover_background": "rgba(57, 175, 215, 0.37)",
 })
 call-function: ("check-run-button", {
     "theme": "dark",
-    "color": "rgb(222, 222, 222)",
+    "color": "#dedede",
     "background": "rgba(78, 139, 202, 0.2)",
-    "hover_color": "rgb(222, 222, 222)",
+    "hover_color": "#dedede",
     "hover_background": "rgb(78, 139, 202)",
 })
 call-function: ("check-run-button", {
     "theme": "light",
-    "color": "rgb(245, 245, 245)",
+    "color": "#f5f5f5",
     "background": "rgba(78, 139, 202, 0.2)",
-    "hover_color": "rgb(245, 245, 245)",
+    "hover_color": "#f5f5f5",
     "hover_background": "rgb(78, 139, 202)",
 })

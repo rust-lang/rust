@@ -1,5 +1,6 @@
 //! Diagnostics related methods for `Ty`.
 
+use std::borrow::Cow;
 use std::ops::ControlFlow;
 
 use crate::ty::{
@@ -13,8 +14,8 @@ use rustc_errors::{Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnostic
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::WherePredicate;
-use rustc_span::Span;
+use rustc_hir::{PredicateOrigin, WherePredicate};
+use rustc_span::{BytePos, Span};
 use rustc_type_ir::sty::TyKind::*;
 
 impl<'tcx> IntoDiagnosticArg for Ty<'tcx> {
@@ -70,7 +71,7 @@ impl<'tcx> Ty<'tcx> {
     /// ADTs with no type arguments.
     pub fn is_simple_text(self) -> bool {
         match self.kind() {
-            Adt(_, substs) => substs.non_erasable_generics().next().is_none(),
+            Adt(_, args) => args.non_erasable_generics().next().is_none(),
             Ref(_, ty, _) => ty.is_simple_text(),
             _ => self.is_simple_ty(),
         }
@@ -117,7 +118,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     }
 
     let param_name = trait_pred.skip_binder().self_ty().to_string();
-    let mut constraint = trait_pred.print_modifiers_and_trait_path().to_string();
+    let mut constraint = trait_pred.to_string();
 
     if let Some((name, term)) = associated_ty {
         // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
@@ -125,7 +126,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
         if constraint.ends_with('>') {
             constraint = format!("{}, {} = {}>", &constraint[..constraint.len() - 1], name, term);
         } else {
-            constraint.push_str(&format!("<{} = {}>", name, term));
+            constraint.push_str(&format!("<{name} = {term}>"));
         }
     }
 
@@ -139,12 +140,12 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     // Suggest a where clause bound for a non-type parameter.
     err.span_suggestion_verbose(
         generics.tail_span_for_predicate_suggestion(),
-        &format!(
+        format!(
             "consider {} `where` clause, but there might be an alternative better way to express \
              this requirement",
             if generics.where_clause_span.is_empty() { "introducing a" } else { "extending the" },
         ),
-        format!("{} {}: {}", generics.add_where_or_trailing_comma(), param_name, constraint),
+        format!("{} {constraint}", generics.add_where_or_trailing_comma()),
         Applicability::MaybeIncorrect,
     );
     true
@@ -155,10 +156,11 @@ enum SuggestChangingConstraintsMessage<'a> {
     RestrictBoundFurther,
     RestrictType { ty: &'a str },
     RestrictTypeFurther { ty: &'a str },
-    RemovingQSized,
+    RemoveMaybeUnsized,
+    ReplaceMaybeUnsizedWithSized,
 }
 
-fn suggest_removing_unsized_bound(
+fn suggest_changing_unsized_bound(
     generics: &hir::Generics<'_>,
     suggestions: &mut Vec<(Span, String, SuggestChangingConstraintsMessage<'_>)>,
     param: &hir::GenericParam<'_>,
@@ -182,12 +184,25 @@ fn suggest_removing_unsized_bound(
             if poly.trait_ref.trait_def_id() != def_id {
                 continue;
             }
-            let sp = generics.span_for_bound_removal(where_pos, pos);
-            suggestions.push((
-                sp,
-                String::new(),
-                SuggestChangingConstraintsMessage::RemovingQSized,
-            ));
+            if predicate.origin == PredicateOrigin::ImplTrait && predicate.bounds.len() == 1 {
+                // For `impl ?Sized` with no other bounds, suggest `impl Sized` instead.
+                let bound_span = bound.span();
+                if bound_span.can_be_used_for_suggestions() {
+                    let question_span = bound_span.with_hi(bound_span.lo() + BytePos(1));
+                    suggestions.push((
+                        question_span,
+                        String::new(),
+                        SuggestChangingConstraintsMessage::ReplaceMaybeUnsizedWithSized,
+                    ));
+                }
+            } else {
+                let sp = generics.span_for_bound_removal(where_pos, pos);
+                suggestions.push((
+                    sp,
+                    String::new(),
+                    SuggestChangingConstraintsMessage::RemoveMaybeUnsized,
+                ));
+            }
         }
     }
 }
@@ -236,15 +251,12 @@ pub fn suggest_constraining_type_params<'a>(
 
         {
             let mut sized_constraints =
-                constraints.drain_filter(|(_, def_id)| *def_id == tcx.lang_items().sized_trait());
-            if let Some((constraint, def_id)) = sized_constraints.next() {
+                constraints.extract_if(|(_, def_id)| *def_id == tcx.lang_items().sized_trait());
+            if let Some((_, def_id)) = sized_constraints.next() {
                 applicability = Applicability::MaybeIncorrect;
 
-                err.span_label(
-                    param.span,
-                    &format!("this type parameter needs to be `{}`", constraint),
-                );
-                suggest_removing_unsized_bound(generics, &mut suggestions, param, def_id);
+                err.span_label(param.span, "this type parameter needs to be `Sized`");
+                suggest_changing_unsized_bound(generics, &mut suggestions, param, def_id);
             }
         }
 
@@ -262,9 +274,9 @@ pub fn suggest_constraining_type_params<'a>(
                 if span_to_replace.is_some() {
                     constraint.clone()
                 } else if bound_list_non_empty {
-                    format!(" + {}", constraint)
+                    format!(" + {constraint}")
                 } else {
-                    format!(" {}", constraint)
+                    format!(" {constraint}")
                 },
                 SuggestChangingConstraintsMessage::RestrictBoundFurther,
             ))
@@ -325,7 +337,7 @@ pub fn suggest_constraining_type_params<'a>(
                 generics.tail_span_for_predicate_suggestion(),
                 constraints
                     .iter()
-                    .map(|&(constraint, _)| format!(", {}: {}", param_name, constraint))
+                    .map(|&(constraint, _)| format!(", {param_name}: {constraint}"))
                     .collect::<String>(),
                 SuggestChangingConstraintsMessage::RestrictTypeFurther { ty: param_name },
             ));
@@ -346,7 +358,7 @@ pub fn suggest_constraining_type_params<'a>(
             // default (`<T=Foo>`), so we suggest adding `where T: Bar`.
             suggestions.push((
                 generics.tail_span_for_predicate_suggestion(),
-                format!(" where {}: {}", param_name, constraint),
+                format!(" where {param_name}: {constraint}"),
                 SuggestChangingConstraintsMessage::RestrictTypeFurther { ty: param_name },
             ));
             continue;
@@ -359,7 +371,7 @@ pub fn suggest_constraining_type_params<'a>(
         if let Some(colon_span) = param.colon_span {
             suggestions.push((
                 colon_span.shrink_to_hi(),
-                format!(" {}", constraint),
+                format!(" {constraint}"),
                 SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
             ));
             continue;
@@ -371,7 +383,7 @@ pub fn suggest_constraining_type_params<'a>(
         //          - help: consider restricting this type parameter with `T: Foo`
         suggestions.push((
             param.span.shrink_to_hi(),
-            format!(": {}", constraint),
+            format!(": {constraint}"),
             SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
         ));
     }
@@ -384,22 +396,21 @@ pub fn suggest_constraining_type_params<'a>(
 
     if suggestions.len() == 1 {
         let (span, suggestion, msg) = suggestions.pop().unwrap();
-
-        let s;
         let msg = match msg {
             SuggestChangingConstraintsMessage::RestrictBoundFurther => {
-                "consider further restricting this bound"
+                Cow::from("consider further restricting this bound")
             }
             SuggestChangingConstraintsMessage::RestrictType { ty } => {
-                s = format!("consider restricting type parameter `{}`", ty);
-                &s
+                Cow::from(format!("consider restricting type parameter `{ty}`"))
             }
             SuggestChangingConstraintsMessage::RestrictTypeFurther { ty } => {
-                s = format!("consider further restricting type parameter `{}`", ty);
-                &s
+                Cow::from(format!("consider further restricting type parameter `{ty}`"))
             }
-            SuggestChangingConstraintsMessage::RemovingQSized => {
-                "consider removing the `?Sized` bound to make the type parameter `Sized`"
+            SuggestChangingConstraintsMessage::RemoveMaybeUnsized => {
+                Cow::from("consider removing the `?Sized` bound to make the type parameter `Sized`")
+            }
+            SuggestChangingConstraintsMessage::ReplaceMaybeUnsizedWithSized => {
+                Cow::from("consider replacing `?Sized` with `Sized`")
             }
         };
 
@@ -480,8 +491,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
 
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
-                let parent_ty = self.tcx.type_of(parent).subst_identity();
-                if let DefKind::TyAlias | DefKind::AssocTy = self.tcx.def_kind(parent)
+                let parent_ty = self.tcx.type_of(parent).instantiate_identity();
+                if let DefKind::TyAlias { .. } | DefKind::AssocTy = self.tcx.def_kind(parent)
                     && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {
@@ -547,8 +558,8 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
         let t = match *t.kind() {
             Infer(InferTy::TyVar(_)) if self.infer_suggestable => t,
 
-            FnDef(def_id, substs) => {
-                self.tcx.mk_fn_ptr(self.tcx.fn_sig(def_id).subst(self.tcx, substs))
+            FnDef(def_id, args) => {
+                Ty::new_fn_ptr(self.tcx, self.tcx.fn_sig(def_id).instantiate(self.tcx, args))
             }
 
             // FIXME(compiler-errors): We could replace these with infer, I guess.
@@ -564,8 +575,8 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
 
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
-                let parent_ty = self.tcx.type_of(parent).subst_identity();
-                if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
+                let parent_ty = self.tcx.type_of(parent).instantiate_identity();
+                if let hir::def::DefKind::TyAlias { .. } | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
                     && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {

@@ -110,7 +110,8 @@ LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 help: consider annotating `NonClone` with `#[derive(Copy)]`
    |
-LL | #[derive(Copy)]
+LL + #[derive(Copy)]
+LL | struct NonClone;
    |
 
 error[E0277]: the trait bound `NonClone: Clone` is not satisfied in `[generator@$DIR/clone-impl.rs:62:25: 62:32]`
@@ -134,7 +135,8 @@ LL | fn check_clone<T: Clone>(_x: &T) {}
    |                   ^^^^^ required by this bound in `check_clone`
 help: consider annotating `NonClone` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | struct NonClone;
    |
 
 error: aborting due to 6 previous errors

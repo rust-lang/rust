@@ -549,6 +549,18 @@ impl<T> Channel<T> {
         let mut head = self.head.index.load(Ordering::Acquire);
         let mut block = self.head.block.load(Ordering::Acquire);
 
+        // If we're going to be dropping messages we need to synchronize with initialization
+        if head >> SHIFT != tail >> SHIFT {
+            // The block can be null here only if a sender is in the process of initializing the
+            // channel while another sender managed to send a message by inserting it into the
+            // semi-initialized channel and advanced the tail.
+            // In that case, just wait until it gets initialized.
+            while block.is_null() {
+                backoff.spin_heavy();
+                block = self.head.block.load(Ordering::Acquire);
+            }
+        }
+
         unsafe {
             // Drop all messages between head and tail and deallocate the heap-allocated blocks.
             while head >> SHIFT != tail >> SHIFT {

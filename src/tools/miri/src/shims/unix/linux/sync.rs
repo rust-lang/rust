@@ -85,8 +85,11 @@ pub fn futex<'tcx>(
                 return Ok(());
             }
 
-            // `deref_operand` but not actually dereferencing the ptr yet (it might be NULL!).
-            let timeout = this.ref_to_mplace(&this.read_immediate(&args[3])?)?;
+            // `read_timespec` will check the place when it is not null.
+            let timeout = this.deref_pointer_unchecked(
+                &this.read_immediate(&args[3])?,
+                this.libc_ty_layout("timespec"),
+            )?;
             let timeout_time = if this.ptr_is_null(timeout.ptr)? {
                 None
             } else {
@@ -247,7 +250,7 @@ pub fn futex<'tcx>(
             // before doing the syscall.
             this.atomic_fence(AtomicFenceOrd::SeqCst)?;
             let mut n = 0;
-            #[allow(clippy::integer_arithmetic)]
+            #[allow(clippy::arithmetic_side_effects)]
             for _ in 0..val {
                 if let Some(thread) = this.futex_wake(addr_usize, bitset) {
                     this.unblock_thread(thread);

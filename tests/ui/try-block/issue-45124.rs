@@ -8,7 +8,7 @@ fn main() {
     let mut a = 0;
     let () = {
         let _: Result<(), ()> = try {
-            let _ = Err(())?;
+            let () = Err(())?;
             return
         };
         a += 1;

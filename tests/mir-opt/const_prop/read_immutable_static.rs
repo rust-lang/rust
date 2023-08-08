@@ -1,5 +1,4 @@
-// unit-test
-// compile-flags: -O
+// unit-test: ConstProp
 
 static FOO: u8 = 2;
 

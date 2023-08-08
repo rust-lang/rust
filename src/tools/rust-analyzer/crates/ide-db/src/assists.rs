@@ -98,7 +98,7 @@ impl FromStr for AssistKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AssistId(pub &'static str, pub AssistKind);
 
-/// A way to control how many asssist to resolve during the assist resolution.
+/// A way to control how many assist to resolve during the assist resolution.
 /// When an assist is resolved, its edits are calculated that might be costly to always do by default.
 #[derive(Debug)]
 pub enum AssistResolveStrategy {

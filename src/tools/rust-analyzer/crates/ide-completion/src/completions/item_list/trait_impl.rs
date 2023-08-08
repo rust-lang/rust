@@ -150,21 +150,24 @@ fn complete_trait_impl(
     impl_def: &ast::Impl,
 ) {
     if let Some(hir_impl) = ctx.sema.to_def(impl_def) {
-        get_missing_assoc_items(&ctx.sema, impl_def).into_iter().for_each(|item| {
-            use self::ImplCompletionKind::*;
-            match (item, kind) {
-                (hir::AssocItem::Function(func), All | Fn) => {
-                    add_function_impl(acc, ctx, replacement_range, func, hir_impl)
+        get_missing_assoc_items(&ctx.sema, impl_def)
+            .into_iter()
+            .filter(|item| ctx.check_stability(Some(&item.attrs(ctx.db))))
+            .for_each(|item| {
+                use self::ImplCompletionKind::*;
+                match (item, kind) {
+                    (hir::AssocItem::Function(func), All | Fn) => {
+                        add_function_impl(acc, ctx, replacement_range, func, hir_impl)
+                    }
+                    (hir::AssocItem::TypeAlias(type_alias), All | TypeAlias) => {
+                        add_type_alias_impl(acc, ctx, replacement_range, type_alias, hir_impl)
+                    }
+                    (hir::AssocItem::Const(const_), All | Const) => {
+                        add_const_impl(acc, ctx, replacement_range, const_, hir_impl)
+                    }
+                    _ => {}
                 }
-                (hir::AssocItem::TypeAlias(type_alias), All | TypeAlias) => {
-                    add_type_alias_impl(acc, ctx, replacement_range, type_alias, hir_impl)
-                }
-                (hir::AssocItem::Const(const_), All | Const) => {
-                    add_const_impl(acc, ctx, replacement_range, const_, hir_impl)
-                }
-                _ => {}
-            }
-        });
+            });
     }
 }
 
@@ -179,7 +182,7 @@ fn add_function_impl(
 
     let label = format!(
         "fn {}({})",
-        fn_name,
+        fn_name.display(ctx.db),
         if func.assoc_fn_params(ctx.db).is_empty() { "" } else { ".." }
     );
 
@@ -190,7 +193,7 @@ fn add_function_impl(
     };
 
     let mut item = CompletionItem::new(completion_kind, replacement_range, label);
-    item.lookup_by(format!("fn {fn_name}"))
+    item.lookup_by(format!("fn {}", fn_name.display(ctx.db)))
         .set_documentation(func.docs(ctx.db))
         .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
 
@@ -213,7 +216,7 @@ fn add_function_impl(
                     item.text_edit(TextEdit::replace(replacement_range, header));
                 }
             };
-            item.add_to(acc);
+            item.add_to(acc, ctx.db);
         }
     }
 }
@@ -224,9 +227,8 @@ fn get_transformed_assoc_item(
     assoc_item: ast::AssocItem,
     impl_def: hir::Impl,
 ) -> Option<ast::AssocItem> {
-    let assoc_item = assoc_item.clone_for_update();
     let trait_ = impl_def.trait_(ctx.db)?;
-    let source_scope = &ctx.sema.scope_for_def(trait_);
+    let source_scope = &ctx.sema.scope(assoc_item.syntax())?;
     let target_scope = &ctx.sema.scope(ctx.sema.source(impl_def)?.syntax().value)?;
     let transform = PathTransform::trait_impl(
         target_scope,
@@ -235,6 +237,9 @@ fn get_transformed_assoc_item(
         ctx.sema.source(impl_def)?.value,
     );
 
+    let assoc_item = assoc_item.clone_for_update();
+    // FIXME: Paths in nested macros are not handled well. See
+    // `macro_generated_assoc_item2` test.
     transform.apply(assoc_item.syntax());
     assoc_item.remove_attrs_and_docs();
     Some(assoc_item)
@@ -297,7 +302,7 @@ fn add_type_alias_impl(
                     item.text_edit(TextEdit::replace(replacement_range, decl));
                 }
             };
-            item.add_to(acc);
+            item.add_to(acc, ctx.db);
         }
     }
 }
@@ -337,7 +342,7 @@ fn add_const_impl(
                     ),
                     None => item.text_edit(TextEdit::replace(replacement_range, replacement)),
                 };
-                item.add_to(acc);
+                item.add_to(acc, ctx.db);
             }
         }
     }
@@ -831,6 +836,33 @@ impl Test for () {
     }
 
     #[test]
+    fn fn_with_lifetimes() {
+        check_edit(
+            "fn foo",
+            r#"
+trait Test<'a, 'b, T> {
+    fn foo(&self, a: &'a T, b: &'b T) -> &'a T;
+}
+
+impl<'x, 'y, A> Test<'x, 'y, A> for () {
+    t$0
+}
+"#,
+            r#"
+trait Test<'a, 'b, T> {
+    fn foo(&self, a: &'a T, b: &'b T) -> &'a T;
+}
+
+impl<'x, 'y, A> Test<'x, 'y, A> for () {
+    fn foo(&self, a: &'x A, b: &'y A) -> &'x A {
+    $0
+}
+}
+"#,
+        );
+    }
+
+    #[test]
     fn complete_without_name() {
         let test = |completion: &str, hint: &str, completed: &str, next_sibling: &str| {
             check_edit(
@@ -1183,6 +1215,81 @@ struct Test;
 
 impl Foo for Test {
     fn foo(&mut self,bar:i64,baz: &mut u32) -> Result<(),u32> {
+    $0
+}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn macro_generated_assoc_item() {
+        check_edit(
+            "fn method",
+            r#"
+macro_rules! ty { () => { i32 } }
+trait SomeTrait { type Output; }
+impl SomeTrait for i32 { type Output = i64; }
+macro_rules! define_method {
+    () => {
+        fn method(&mut self, params: <ty!() as SomeTrait>::Output);
+    };
+}
+trait AnotherTrait { define_method!(); }
+impl AnotherTrait for () {
+    $0
+}
+"#,
+            r#"
+macro_rules! ty { () => { i32 } }
+trait SomeTrait { type Output; }
+impl SomeTrait for i32 { type Output = i64; }
+macro_rules! define_method {
+    () => {
+        fn method(&mut self, params: <ty!() as SomeTrait>::Output);
+    };
+}
+trait AnotherTrait { define_method!(); }
+impl AnotherTrait for () {
+    fn method(&mut self,params: <ty!()as SomeTrait>::Output) {
+    $0
+}
+}
+"#,
+        );
+    }
+
+    // FIXME: `T` in `ty!(T)` should be replaced by `PathTransform`.
+    #[test]
+    fn macro_generated_assoc_item2() {
+        check_edit(
+            "fn method",
+            r#"
+macro_rules! ty { ($me:ty) => { $me } }
+trait SomeTrait { type Output; }
+impl SomeTrait for i32 { type Output = i64; }
+macro_rules! define_method {
+    ($t:ty) => {
+        fn method(&mut self, params: <ty!($t) as SomeTrait>::Output);
+    };
+}
+trait AnotherTrait<T: SomeTrait> { define_method!(T); }
+impl AnotherTrait<i32> for () {
+    $0
+}
+"#,
+            r#"
+macro_rules! ty { ($me:ty) => { $me } }
+trait SomeTrait { type Output; }
+impl SomeTrait for i32 { type Output = i64; }
+macro_rules! define_method {
+    ($t:ty) => {
+        fn method(&mut self, params: <ty!($t) as SomeTrait>::Output);
+    };
+}
+trait AnotherTrait<T: SomeTrait> { define_method!(T); }
+impl AnotherTrait<i32> for () {
+    fn method(&mut self,params: <ty!(T)as SomeTrait>::Output) {
     $0
 }
 }

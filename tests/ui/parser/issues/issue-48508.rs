@@ -7,7 +7,6 @@
 // issue-48508-aux.rs
 
 // compile-flags:-g
-// ignore-pretty issue #37195
 // ignore-asmjs wasm2js does not support source maps yet
 
 #![allow(uncommon_codepoints)]

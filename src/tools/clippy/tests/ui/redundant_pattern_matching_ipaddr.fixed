@@ -1,16 +1,15 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::all, clippy::redundant_pattern_matching)]
 #![allow(unused_must_use)]
 #![allow(
     clippy::match_like_matches_macro,
     clippy::needless_bool,
+    clippy::needless_if,
     clippy::uninlined_format_args
 )]
 
-use std::net::{
-    IpAddr::{self, V4, V6},
-    Ipv4Addr, Ipv6Addr,
-};
+use std::net::IpAddr::{self, V4, V6};
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 fn main() {
     let ipaddr: IpAddr = V4(Ipv4Addr::LOCALHOST);

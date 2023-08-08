@@ -1,0 +1,31 @@
+error[E0283]: type annotations needed: cannot satisfy `&'static (): Marker`
+  --> $DIR/overlap-marker-trait-with-static-lifetime.rs:11:17
+   |
+LL | impl Marker for &'static () {}
+   |                 ^^^^^^^^^^^
+   |
+note: multiple `impl`s satisfying `&'static (): Marker` found
+  --> $DIR/overlap-marker-trait-with-static-lifetime.rs:11:1
+   |
+LL | impl Marker for &'static () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl Marker for &'static () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0283]: type annotations needed: cannot satisfy `&'static (): Marker`
+  --> $DIR/overlap-marker-trait-with-static-lifetime.rs:12:17
+   |
+LL | impl Marker for &'static () {}
+   |                 ^^^^^^^^^^^
+   |
+note: multiple `impl`s satisfying `&'static (): Marker` found
+  --> $DIR/overlap-marker-trait-with-static-lifetime.rs:11:1
+   |
+LL | impl Marker for &'static () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl Marker for &'static () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

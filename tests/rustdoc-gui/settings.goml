@@ -1,6 +1,6 @@
 // This test ensures that the settings menu display is working as expected and that
 // the settings page is also rendered as expected.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true // needed when we check for colors below.
 // First, we check that the settings page doesn't exist.
 assert-false: "#settings"
@@ -10,7 +10,7 @@ wait-for: "#settings"
 assert-css: ("#settings", {"display": "block"})
 
 // Store the line margin to compare with the settings.html later.
-store-css: (setting_line_margin, ".setting-line", "margin")
+store-css: (".setting-line", {"margin": setting_line_margin})
 
 // Let's close it by clicking on the same button.
 click: "#settings-menu"
@@ -35,7 +35,7 @@ wait-for: "#alternative-display #search"
 assert: "#main-content.hidden"
 
 // Now let's check the content of the settings menu.
-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
 reload:
 click: "#settings-menu"
 wait-for: "#settings"
@@ -56,38 +56,49 @@ move-cursor-to: "#settings-menu > a"
 assert-css: (
     "#theme-dark",
     {
-        "border-color": "rgb(221, 221, 221)",
-        "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset",
+        "border-color": "#999",
+        "box-shadow": "#353535 0px 0px 0px 3px inset",
+        "border-width": "2px",
     },
 )
-assert-css: ("#theme-light", {"border-color": "rgb(221, 221, 221)", "box-shadow": "none"})
+assert-css: ("#theme-light", {"border-color": "#999", "box-shadow": "none"})
 // Let's start with the hover for radio buttons.
 move-cursor-to: "#theme-dark"
 assert-css: (
     "#theme-dark",
     {
-        "border-color": "rgb(33, 150, 243)",
-        "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset",
+        "border-color": "#2196f3",
+        "box-shadow": "#353535 0px 0px 0px 3px inset",
+        "border-width": "2px",
     },
 )
 move-cursor-to: "#theme-light"
-assert-css: ("#theme-light", {"border-color": "rgb(33, 150, 243)", "box-shadow": "none"})
+assert-css: (
+    "#theme-light",
+    {
+        "border-color": "#2196f3",
+        "box-shadow": "none",
+        "border-width": "2px",
+    }
+)
 move-cursor-to: "#theme-ayu"
 // Let's now check with the focus for radio buttons.
 focus: "#theme-dark"
 assert-css: (
     "#theme-dark",
     {
-        "border-color": "rgb(221, 221, 221)",
-        "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset, rgb(33, 150, 243) 0px 0px 2px 2px",
+        "border-color": "#999",
+        "box-shadow": "#353535 0px 0px 0px 3px inset, #2196f3 0px 0px 2px 2px",
+        "border-width": "2px",
     },
 )
 focus: "#theme-light"
 assert-css: (
     "#theme-light",
     {
-        "border-color": "rgb(221, 221, 221)",
-        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+        "border-color": "#999",
+        "box-shadow": "#2196f3 0px 0px 1px 1px",
+        "border-width": "2px",
     },
 )
 // Now we check we both focus and hover for radio buttons.
@@ -96,8 +107,9 @@ focus: "#theme-dark"
 assert-css: (
     "#theme-dark",
     {
-        "border-color": "rgb(33, 150, 243)",
-        "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset, rgb(33, 150, 243) 0px 0px 2px 2px",
+        "border-color": "#2196f3",
+        "box-shadow": "#353535 0px 0px 0px 3px inset, #2196f3 0px 0px 2px 2px",
+        "border-width": "2px",
     },
 )
 move-cursor-to: "#theme-light"
@@ -105,8 +117,9 @@ focus: "#theme-light"
 assert-css: (
     "#theme-light",
     {
-        "border-color": "rgb(33, 150, 243)",
-        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+        "border-color": "#2196f3",
+        "box-shadow": "#2196f3 0px 0px 1px 1px",
+        "border-width": "2px",
     },
 )
 // Now we check the setting-radio-name is on a different line than the label.
@@ -141,8 +154,19 @@ compare-elements-position-near: (
 assert-css: (
     "#auto-hide-large-items",
     {
-        "background-color": "rgb(33, 150, 243)",
-        "border-color": "rgb(221, 221, 221)",
+        "background-color": "#2196f3",
+        "border-color": "#999",
+        // 1px border when checked
+        "border-width": "1px",
+    },
+)
+assert-css: (
+    "#auto-hide-method-docs",
+    {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-color": "#999",
+        // 2px border when unchecked
+        "border-width": "2px",
     },
 )
 // Let's start with the hover for toggles.
@@ -150,8 +174,20 @@ move-cursor-to: "#auto-hide-large-items"
 assert-css: (
     "#auto-hide-large-items",
     {
-        "background-color": "rgb(33, 150, 243)",
-        "border-color": "rgb(33, 150, 243)",
+        "background-color": "#2196f3",
+        "border-color": "#2196f3",
+        // 1px border when checked
+        "border-width": "1px",
+    },
+)
+move-cursor-to: "#auto-hide-method-docs"
+assert-css: (
+    "#auto-hide-method-docs",
+    {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-color": "#2196f3",
+        // 2px border when unchecked
+        "border-width": "2px",
     },
 )
 move-cursor-to: "#settings-menu > a"
@@ -160,9 +196,22 @@ focus: "#auto-hide-large-items"
 assert-css: (
     "#auto-hide-large-items",
     {
-        "background-color": "rgb(33, 150, 243)",
-        "border-color": "rgb(221, 221, 221)",
-        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+        "background-color": "#2196f3",
+        "border-color": "#999",
+        "box-shadow": "#2196f3 0px 0px 1px 1px",
+        // 1px border when checked
+        "border-width": "1px",
+    },
+)
+focus: "#auto-hide-method-docs"
+assert-css: (
+    "#auto-hide-method-docs",
+    {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-color": "#999",
+        "box-shadow": "#2196f3 0px 0px 1px 1px",
+        // 2px border when unchecked
+        "border-width": "2px",
     },
 )
 // Now we check we both focus and hover for toggles.
@@ -171,9 +220,23 @@ focus: "#auto-hide-large-items"
 assert-css: (
     "#auto-hide-large-items",
     {
-        "background-color": "rgb(33, 150, 243)",
-        "border-color": "rgb(33, 150, 243)",
-        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+        "background-color": "#2196f3",
+        "border-color": "#2196f3",
+        "box-shadow": "#2196f3 0px 0px 1px 1px",
+        // 1px border when checked
+        "border-width": "1px",
+    },
+)
+move-cursor-to: "#auto-hide-method-docs"
+focus: "#auto-hide-method-docs"
+assert-css: (
+    "#auto-hide-method-docs",
+    {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-color": "#2196f3",
+        "box-shadow": "#2196f3 0px 0px 1px 1px",
+        // 2px border when unchecked
+        "border-width": "2px",
     },
 )
 
@@ -189,8 +252,17 @@ assert-text: ("#preferred-light-theme .setting-radio-name", "Preferred light the
 
 // We now check that clicking on the toggles' text is like clicking on the checkbox.
 // To test it, we use the "Disable keyboard shortcuts".
-local-storage: {"rustdoc-disable-shortcuts": "false"}
+set-local-storage: {"rustdoc-disable-shortcuts": "false"}
 click: ".setting-line:last-child .setting-check span"
+assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
+
+// We now check that focusing a toggle and pressing Space is like clicking on it.
+assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
+focus: ".setting-line:last-child .setting-check input"
+press-key: "Space"
+assert-local-storage: {"rustdoc-disable-shortcuts": "false"}
+focus: ".setting-line:last-child .setting-check input"
+press-key: "Space"
 assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
 
 // Make sure that "Disable keyboard shortcuts" actually took effect.
@@ -227,9 +299,9 @@ wait-for-css: ("#settings-menu .popover", {"display": "none"})
 wait-for-css: ("#help-button .popover", {"display": "block"})
 
 // Now we go to the settings page to check that the CSS is loaded as expected.
-goto: "file://" + |DOC_PATH| + "/settings.html"
+go-to: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"
-assert-css: (".setting-line", {"position": "relative"})
+assert-css: (".setting-radio", {"cursor": "pointer"})
 
 assert-attribute-false: ("#settings", {"class": "popover"}, CONTAINS)
 compare-elements-position: (".sub form", "#settings", ("x"))
@@ -247,7 +319,7 @@ javascript: true
 // Check for the display on small screen
 show-text: true
 reload:
-size: (300, 1000)
+set-window-size: (300, 1000)
 click: "#settings-menu"
 wait-for: "#settings"
-assert-css: (".setting-line", {"position": "relative"})
+assert-css: (".setting-radio", {"cursor": "pointer"})

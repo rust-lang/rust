@@ -118,7 +118,7 @@ use rustc_middle::mir::spanview::{self, SpanViewable};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::coverage::*;
-use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
+use rustc_middle::mir::{self, BasicBlock};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
@@ -246,7 +246,7 @@ impl Default for ExpressionFormat {
     }
 }
 
-/// If enabled, this struct maintains a map from `CoverageKind` IDs (as `ExpressionOperandId`) to
+/// If enabled, this struct maintains a map from `CoverageKind` IDs (as `Operand`) to
 /// the `CoverageKind` data and optional label (normally, the counter's associated
 /// `BasicCoverageBlock` format string, if any).
 ///
@@ -258,7 +258,7 @@ impl Default for ExpressionFormat {
 /// `DebugCounters` supports a recursive rendering of `Expression` counters, so they can be
 /// presented as nested expressions such as `(bcb3 - (bcb0 + bcb1))`.
 pub(super) struct DebugCounters {
-    some_counters: Option<FxHashMap<ExpressionOperandId, DebugCounter>>,
+    some_counters: Option<FxHashMap<Operand, DebugCounter>>,
 }
 
 impl DebugCounters {
@@ -277,25 +277,16 @@ impl DebugCounters {
 
     pub fn add_counter(&mut self, counter_kind: &CoverageKind, some_block_label: Option<String>) {
         if let Some(counters) = &mut self.some_counters {
-            let id: ExpressionOperandId = match *counter_kind {
-                CoverageKind::Counter { id, .. } => id.into(),
-                CoverageKind::Expression { id, .. } => id.into(),
-                _ => bug!(
-                    "the given `CoverageKind` is not an counter or expression: {:?}",
-                    counter_kind
-                ),
-            };
+            let id = counter_kind.as_operand();
             counters
                 .try_insert(id, DebugCounter::new(counter_kind.clone(), some_block_label))
                 .expect("attempt to add the same counter_kind to DebugCounters more than once");
         }
     }
 
-    pub fn some_block_label(&self, operand: ExpressionOperandId) -> Option<&String> {
-        self.some_counters.as_ref().map_or(None, |counters| {
-            counters
-                .get(&operand)
-                .map_or(None, |debug_counter| debug_counter.some_block_label.as_ref())
+    pub fn some_block_label(&self, operand: Operand) -> Option<&String> {
+        self.some_counters.as_ref().and_then(|counters| {
+            counters.get(&operand).and_then(|debug_counter| debug_counter.some_block_label.as_ref())
         })
     }
 
@@ -332,30 +323,24 @@ impl DebugCounters {
             }
         }
 
-        let id: ExpressionOperandId = match *counter_kind {
-            CoverageKind::Counter { id, .. } => id.into(),
-            CoverageKind::Expression { id, .. } => id.into(),
-            _ => {
-                bug!("the given `CoverageKind` is not an counter or expression: {:?}", counter_kind)
-            }
-        };
+        let id = counter_kind.as_operand();
         if self.some_counters.is_some() && (counter_format.block || !counter_format.id) {
             let counters = self.some_counters.as_ref().unwrap();
             if let Some(DebugCounter { some_block_label: Some(block_label), .. }) =
                 counters.get(&id)
             {
                 return if counter_format.id {
-                    format!("{}#{}", block_label, id.index())
+                    format!("{}#{:?}", block_label, id)
                 } else {
                     block_label.to_string()
                 };
             }
         }
-        format!("#{}", id.index())
+        format!("#{:?}", id)
     }
 
-    fn format_operand(&self, operand: ExpressionOperandId) -> String {
-        if operand.index() == 0 {
+    fn format_operand(&self, operand: Operand) -> String {
+        if matches!(operand, Operand::Zero) {
             return String::from("0");
         }
         if let Some(counters) = &self.some_counters {
@@ -373,7 +358,7 @@ impl DebugCounters {
                 return self.format_counter_kind(counter_kind);
             }
         }
-        format!("#{}", operand.index())
+        format!("#{:?}", operand)
     }
 }
 
@@ -500,8 +485,7 @@ impl GraphvizData {
 /// _not_ used are retained in the `unused_expressions` Vec, to be included in debug output (logs
 /// and/or a `CoverageGraph` graphviz output).
 pub(super) struct UsedExpressions {
-    some_used_expression_operands:
-        Option<FxHashMap<ExpressionOperandId, Vec<InjectedExpressionId>>>,
+    some_used_expression_operands: Option<FxHashMap<Operand, Vec<ExpressionId>>>,
     some_unused_expressions:
         Option<Vec<(CoverageKind, Option<BasicCoverageBlock>, BasicCoverageBlock)>>,
 }
@@ -532,7 +516,7 @@ impl UsedExpressions {
 
     pub fn expression_is_used(&self, expression: &CoverageKind) -> bool {
         if let Some(used_expression_operands) = self.some_used_expression_operands.as_ref() {
-            used_expression_operands.contains_key(&expression.as_operand_id())
+            used_expression_operands.contains_key(&expression.as_operand())
         } else {
             false
         }
@@ -545,7 +529,7 @@ impl UsedExpressions {
         target_bcb: BasicCoverageBlock,
     ) {
         if let Some(used_expression_operands) = self.some_used_expression_operands.as_ref() {
-            if !used_expression_operands.contains_key(&expression.as_operand_id()) {
+            if !used_expression_operands.contains_key(&expression.as_operand()) {
                 self.some_unused_expressions.as_mut().unwrap().push((
                     expression.clone(),
                     edge_from_bcb,
@@ -641,11 +625,11 @@ pub(super) fn dump_coverage_spanview<'tcx>(
     let def_id = mir_source.def_id();
 
     let span_viewables = span_viewables(tcx, mir_body, basic_coverage_blocks, &coverage_spans);
-    let mut file = create_dump_file(tcx, "html", false, pass_name, &0, mir_body)
+    let mut file = create_dump_file(tcx, "html", false, pass_name, &0i32, mir_body)
         .expect("Unexpected error creating MIR spanview HTML file");
     let crate_name = tcx.crate_name(def_id.krate);
     let item_name = tcx.def_path(def_id).to_filename_friendly_no_crate();
-    let title = format!("{}.{} - Coverage Spans", crate_name, item_name);
+    let title = format!("{crate_name}.{item_name} - Coverage Spans");
     spanview::write_document(tcx, body_span, span_viewables, &title, &mut file)
         .expect("Unexpected IO error dumping coverage spans as HTML");
 }
@@ -742,7 +726,7 @@ pub(super) fn dump_coverage_graphviz<'tcx>(
                 .join("\n  ")
         ));
     }
-    let mut file = create_dump_file(tcx, "dot", false, pass_name, &0, mir_body)
+    let mut file = create_dump_file(tcx, "dot", false, pass_name, &0i32, mir_body)
         .expect("Unexpected error creating BasicCoverageBlock graphviz DOT file");
     graphviz_writer
         .write_graphviz(tcx, &mut file)
@@ -794,11 +778,11 @@ fn bcb_to_string_sections<'tcx>(
         ));
     }
     if let Some(counter_kind) = &bcb_data.counter_kind {
-        sections.push(format!("{:?}", counter_kind));
+        sections.push(format!("{counter_kind:?}"));
     }
     let non_term_blocks = bcb_data.basic_blocks[0..len - 1]
         .iter()
-        .map(|&bb| format!("{:?}: {}", bb, term_type(&mir_body[bb].terminator().kind)))
+        .map(|&bb| format!("{:?}: {}", bb, mir_body[bb].terminator().kind.name()))
         .collect::<Vec<_>>();
     if non_term_blocks.len() > 0 {
         sections.push(non_term_blocks.join("\n"));
@@ -806,28 +790,7 @@ fn bcb_to_string_sections<'tcx>(
     sections.push(format!(
         "{:?}: {}",
         bcb_data.basic_blocks.last().unwrap(),
-        term_type(&bcb_data.terminator(mir_body).kind)
+        bcb_data.terminator(mir_body).kind.name(),
     ));
     sections
-}
-
-/// Returns a simple string representation of a `TerminatorKind` variant, independent of any
-/// values it might hold.
-pub(super) fn term_type(kind: &TerminatorKind<'_>) -> &'static str {
-    match kind {
-        TerminatorKind::Goto { .. } => "Goto",
-        TerminatorKind::SwitchInt { .. } => "SwitchInt",
-        TerminatorKind::Resume => "Resume",
-        TerminatorKind::Abort => "Abort",
-        TerminatorKind::Return => "Return",
-        TerminatorKind::Unreachable => "Unreachable",
-        TerminatorKind::Drop { .. } => "Drop",
-        TerminatorKind::Call { .. } => "Call",
-        TerminatorKind::Assert { .. } => "Assert",
-        TerminatorKind::Yield { .. } => "Yield",
-        TerminatorKind::GeneratorDrop => "GeneratorDrop",
-        TerminatorKind::FalseEdge { .. } => "FalseEdge",
-        TerminatorKind::FalseUnwind { .. } => "FalseUnwind",
-        TerminatorKind::InlineAsm { .. } => "InlineAsm",
-    }
 }

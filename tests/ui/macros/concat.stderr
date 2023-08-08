@@ -16,7 +16,7 @@ error: expected a literal
 LL |     concat!(foo);
    |             ^^^
    |
-   = note: only literals (like `"foo"`, `42` and `3.14`) can be passed to `concat!()`
+   = note: only literals (like `"foo"`, `-42` and `3.14`) can be passed to `concat!()`
 
 error: expected a literal
   --> $DIR/concat.rs:5:13
@@ -24,7 +24,7 @@ error: expected a literal
 LL |     concat!(foo());
    |             ^^^^^
    |
-   = note: only literals (like `"foo"`, `42` and `3.14`) can be passed to `concat!()`
+   = note: only literals (like `"foo"`, `-42` and `3.14`) can be passed to `concat!()`
 
 error: aborting due to 4 previous errors
 

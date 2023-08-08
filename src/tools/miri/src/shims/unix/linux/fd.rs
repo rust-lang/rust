@@ -71,16 +71,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let epoll_ctl_del = this.eval_libc_i32("EPOLL_CTL_DEL");
 
         if op == epoll_ctl_add || op == epoll_ctl_mod {
-            let event = this.deref_operand(event)?;
+            let event = this.deref_pointer_as(event, this.libc_ty_layout("epoll_event"))?;
 
-            let events = this.mplace_field(&event, 0)?;
-            let events = this.read_scalar(&events.into())?.to_u32()?;
-            let data = this.mplace_field(&event, 1)?;
-            let data = this.read_scalar(&data.into())?;
+            let events = this.project_field(&event, 0)?;
+            let events = this.read_scalar(&events)?.to_u32()?;
+            let data = this.project_field(&event, 1)?;
+            let data = this.read_scalar(&data)?;
             let event = EpollEvent { events, data };
 
             if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
-                let epfd = epfd.as_epoll_handle()?;
+                let epfd = epfd
+                    .as_any_mut()
+                    .downcast_mut::<Epoll>()
+                    .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
 
                 epfd.file_descriptors.insert(fd, event);
                 Ok(Scalar::from_i32(0))
@@ -89,7 +92,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         } else if op == epoll_ctl_del {
             if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
-                let epfd = epfd.as_epoll_handle()?;
+                let epfd = epfd
+                    .as_any_mut()
+                    .downcast_mut::<Epoll>()
+                    .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
 
                 epfd.file_descriptors.remove(&fd);
                 Ok(Scalar::from_i32(0))
@@ -146,12 +152,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let _maxevents = this.read_scalar(maxevents)?.to_i32()?;
         let _timeout = this.read_scalar(timeout)?.to_i32()?;
 
-        let numevents = 0;
         if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
-            let _epfd = epfd.as_epoll_handle()?;
+            let _epfd = epfd
+                .as_any_mut()
+                .downcast_mut::<Epoll>()
+                .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
 
             // FIXME return number of events ready when scheme for marking events ready exists
-            Ok(Scalar::from_i32(numevents))
+            throw_unsup_format!("returning ready events from epoll_wait is not yet implemented");
         } else {
             Ok(Scalar::from_i32(this.handle_not_found()?))
         }
@@ -173,6 +181,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// `EFD_SEMAPHORE` - miri does not support semaphore-like semantics.
     ///
     /// <https://linux.die.net/man/2/eventfd>
+    #[expect(clippy::needless_if)]
     fn eventfd(
         &mut self,
         val: &OpTy<'tcx, Provenance>,
@@ -231,7 +240,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let _domain = this.read_scalar(domain)?.to_i32()?;
         let _type_ = this.read_scalar(type_)?.to_i32()?;
         let _protocol = this.read_scalar(protocol)?.to_i32()?;
-        let sv = this.deref_operand(sv)?;
+        let sv = this.deref_pointer(sv)?;
 
         let fh = &mut this.machine.file_handler;
         let sv0 = fh.insert_fd(Box::new(SocketPair));
@@ -239,8 +248,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let sv1 = fh.insert_fd(Box::new(SocketPair));
         let sv1 = ScalarInt::try_from_int(sv1, sv.layout.size).unwrap();
 
-        this.write_scalar(sv0, &sv.into())?;
-        this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?.into())?;
+        this.write_scalar(sv0, &sv)?;
+        this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?)?;
 
         Ok(Scalar::from_i32(0))
     }

@@ -1,24 +1,38 @@
 error[E0493]: destructor of `SafeStruct` cannot be evaluated at compile-time
-  --> $DIR/check-static-values-constraints.rs:65:43
+  --> $DIR/check-static-values-constraints.rs:64:7
    |
-LL |                                           ..SafeStruct{field1: SafeEnum::Variant3(WithDtor),
-   |  ___________________________________________^
+LL |       ..SafeStruct {
+   |  _______^
 LL | |
-LL | |                                                      field2: SafeEnum::Variant1}};
-   | |                                                                                ^- value is dropped here
-   | |________________________________________________________________________________|
-   |                                                                                  the destructor for this type cannot be evaluated in statics
+LL | |         field1: SafeEnum::Variant3(WithDtor),
+LL | |         field2: SafeEnum::Variant1,
+LL | |     }
+   | |_____^ the destructor for this type cannot be evaluated in statics
+LL |   };
+   |   - value is dropped here
 
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/check-static-values-constraints.rs:79:33
+  --> $DIR/check-static-values-constraints.rs:81:33
    |
-LL | static STATIC11: Box<MyOwned> = box MyOwned;
-   |                                 ^^^^^^^^^^^ allocation not allowed in statics
+LL | static STATIC11: Vec<MyOwned> = vec![MyOwned];
+   |                                 ^^^^^^^^^^^^^ allocation not allowed in statics
+   |
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0015]: cannot call non-const fn `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
+  --> $DIR/check-static-values-constraints.rs:81:33
+   |
+LL | static STATIC11: Vec<MyOwned> = vec![MyOwned];
+   |                                 ^^^^^^^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const fn `<str as ToString>::to_string` in statics
-  --> $DIR/check-static-values-constraints.rs:89:38
+  --> $DIR/check-static-values-constraints.rs:92:38
    |
-LL |     field2: SafeEnum::Variant4("str".to_string())
+LL |     field2: SafeEnum::Variant4("str".to_string()),
    |                                      ^^^^^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
@@ -26,53 +40,125 @@ LL |     field2: SafeEnum::Variant4("str".to_string())
    = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
 
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/check-static-values-constraints.rs:94:5
+  --> $DIR/check-static-values-constraints.rs:96:5
    |
-LL |     box MyOwned,
-   |     ^^^^^^^^^^^ allocation not allowed in statics
+LL |     vec![MyOwned],
+   |     ^^^^^^^^^^^^^ allocation not allowed in statics
+   |
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0015]: cannot call non-const fn `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
+  --> $DIR/check-static-values-constraints.rs:96:5
+   |
+LL |     vec![MyOwned],
+   |     ^^^^^^^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/check-static-values-constraints.rs:95:5
+  --> $DIR/check-static-values-constraints.rs:98:5
    |
-LL |     box MyOwned,
-   |     ^^^^^^^^^^^ allocation not allowed in statics
+LL |     vec![MyOwned],
+   |     ^^^^^^^^^^^^^ allocation not allowed in statics
+   |
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0015]: cannot call non-const fn `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
+  --> $DIR/check-static-values-constraints.rs:98:5
+   |
+LL |     vec![MyOwned],
+   |     ^^^^^^^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/check-static-values-constraints.rs:99:6
+  --> $DIR/check-static-values-constraints.rs:103:6
    |
-LL |     &box MyOwned,
-   |      ^^^^^^^^^^^ allocation not allowed in statics
+LL |     &vec![MyOwned],
+   |      ^^^^^^^^^^^^^ allocation not allowed in statics
+   |
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0015]: cannot call non-const fn `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
+  --> $DIR/check-static-values-constraints.rs:103:6
+   |
+LL |     &vec![MyOwned],
+   |      ^^^^^^^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/check-static-values-constraints.rs:100:6
+  --> $DIR/check-static-values-constraints.rs:105:6
    |
-LL |     &box MyOwned,
-   |      ^^^^^^^^^^^ allocation not allowed in statics
+LL |     &vec![MyOwned],
+   |      ^^^^^^^^^^^^^ allocation not allowed in statics
+   |
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0015]: cannot call non-const fn `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
+  --> $DIR/check-static-values-constraints.rs:105:6
+   |
+LL |     &vec![MyOwned],
+   |      ^^^^^^^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/check-static-values-constraints.rs:106:5
+  --> $DIR/check-static-values-constraints.rs:111:31
    |
-LL |     box 3;
-   |     ^^^^^ allocation not allowed in statics
+LL | static STATIC19: Vec<isize> = vec![3];
+   |                               ^^^^^^^ allocation not allowed in statics
+   |
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0015]: cannot call non-const fn `slice::<impl [isize]>::into_vec::<std::alloc::Global>` in statics
+  --> $DIR/check-static-values-constraints.rs:111:31
+   |
+LL | static STATIC19: Vec<isize> = vec![3];
+   |                               ^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0507]: cannot move out of static item `x`
-  --> $DIR/check-static-values-constraints.rs:110:45
+  --> $DIR/check-static-values-constraints.rs:119:9
    |
-LL |     let y = { static x: Box<isize> = box 3; x };
-   |                                             ^ move occurs because `x` has type `Box<isize>`, which does not implement the `Copy` trait
+LL |         x
+   |         ^ move occurs because `x` has type `Vec<isize>`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
-LL |     let y = { static x: Box<isize> = box 3; &x };
-   |                                             +
+LL |         &x
+   |         +
 
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/check-static-values-constraints.rs:110:38
+  --> $DIR/check-static-values-constraints.rs:117:32
    |
-LL |     let y = { static x: Box<isize> = box 3; x };
-   |                                      ^^^^^ allocation not allowed in statics
+LL |         static x: Vec<isize> = vec![3];
+   |                                ^^^^^^^ allocation not allowed in statics
+   |
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 10 previous errors
+error[E0015]: cannot call non-const fn `slice::<impl [isize]>::into_vec::<std::alloc::Global>` in statics
+  --> $DIR/check-static-values-constraints.rs:117:32
+   |
+LL |         static x: Vec<isize> = vec![3];
+   |                                ^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 17 previous errors
 
 Some errors have detailed explanations: E0010, E0015, E0493, E0507.
 For more information about an error, try `rustc --explain E0010`.

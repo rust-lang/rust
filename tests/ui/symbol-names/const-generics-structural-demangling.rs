@@ -1,13 +1,12 @@
 // build-fail
 // compile-flags: -C symbol-mangling-version=v0 --crate-name=c
 
-// NOTE(eddyb) we need `core` for `core::option::Option`, normalize away its
-// disambiguator hash, which can/should change (including between stage{1,2}).
-// normalize-stderr-test: "core\[[0-9a-f]+\]" -> "core[HASH]"
 // normalize-stderr-test: "c\[[0-9a-f]+\]" -> "c[HASH]"
 
 #![feature(adt_const_params, decl_macro, rustc_attrs)]
 #![allow(incomplete_features)]
+
+use std::marker::ConstParamTy;
 
 pub struct RefByte<const RB: &'static u8>;
 
@@ -43,25 +42,31 @@ pub struct TupleByteBool<const TBB: (u8, bool)>;
 //~| ERROR demangling-alt(<c::TupleByteBool<{(1, false)}>>)
 impl TupleByteBool<{(1, false)}> {}
 
-pub struct OptionUsize<const OU: Option<usize>>;
+#[derive(PartialEq, Eq, ConstParamTy)]
+pub enum MyOption<T> {
+    Some(T),
+    None,
+}
+
+pub struct OptionUsize<const OU: MyOption<usize>>;
 
 // HACK(eddyb) the full mangling is only in `.stderr` because we can normalize
 // the `core` disambiguator hash away there, but not here.
 #[rustc_symbol_name]
 //~^ ERROR symbol-name
 //~| ERROR demangling
-//~| ERROR demangling-alt(<c::OptionUsize<{core::option::Option::<usize>::None}>>)
-impl OptionUsize<{None}> {}
+//~| ERROR demangling-alt(<c::OptionUsize<{c::MyOption::<usize>::None}>>)
+impl OptionUsize<{MyOption::None}> {}
 
 // HACK(eddyb) the full mangling is only in `.stderr` because we can normalize
 // the `core` disambiguator hash away there, but not here.
 #[rustc_symbol_name]
 //~^ ERROR symbol-name
 //~| ERROR demangling
-//~| ERROR demangling-alt(<c::OptionUsize<{core::option::Option::<usize>::Some(0)}>>)
-impl OptionUsize<{Some(0)}> {}
+//~| ERROR demangling-alt(<c::OptionUsize<{c::MyOption::<usize>::Some(0)}>>)
+impl OptionUsize<{MyOption::Some(0)}> {}
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, ConstParamTy)]
 pub struct Foo {
     s: &'static str,
     ch: char,
@@ -78,7 +83,7 @@ impl Foo_<{Foo { s: "abc", ch: 'x', slice: &[1, 2, 3] }}> {}
 // NOTE(eddyb) this tests specifically the use of disambiguators in field names,
 // using macros 2.0 hygiene to create a `struct` with conflicting field names.
 macro duplicate_field_name_test($x:ident) {
-    #[derive(PartialEq, Eq)]
+    #[derive(PartialEq, Eq, ConstParamTy)]
     pub struct Bar {
         $x: u8,
         x: u16,

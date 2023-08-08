@@ -143,7 +143,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Paren(l), _) => eq_expr(l, r),
         (_, Paren(r)) => eq_expr(l, r),
         (Err, Err) => true,
-        (Box(l), Box(r)) | (Try(l), Try(r)) | (Await(l), Await(r)) => eq_expr(l, r),
+        (Try(l), Try(r)) | (Await(l, _), Await(r, _)) => eq_expr(l, r),
         (Array(l), Array(r)) => over(l, r, |l, r| eq_expr(l, r)),
         (Tup(l), Tup(r)) => over(l, r, |l, r| eq_expr(l, r)),
         (Repeat(le, ls), Repeat(re, rs)) => eq_expr(le, re) && eq_expr(&ls.value, &rs.value),
@@ -178,7 +178,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Yield(l), Yield(r)) | (Ret(l), Ret(r)) => eq_expr_opt(l, r),
         (Break(ll, le), Break(rl, re)) => eq_label(ll, rl) && eq_expr_opt(le, re),
         (Continue(ll), Continue(rl)) => eq_label(ll, rl),
-        (Assign(l1, l2, _), Assign(r1, r2, _)) | (Index(l1, l2), Index(r1, r2)) => eq_expr(l1, r1) && eq_expr(l2, r2),
+        (Assign(l1, l2, _), Assign(r1, r2, _)) | (Index(l1, l2, _), Index(r1, r2, _)) => eq_expr(l1, r1) && eq_expr(l2, r2),
         (AssignOp(lo, lp, lv), AssignOp(ro, rp, rv)) => lo.node == ro.node && eq_expr(lp, rp) && eq_expr(lv, rv),
         (Field(lp, lf), Field(rp, rf)) => eq_id(*lf, *rf) && eq_expr(lp, rp),
         (Match(ls, la), Match(rs, ra)) => eq_expr(ls, rs) && over(la, ra, eq_arm),
@@ -209,7 +209,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
                 && eq_fn_decl(lf, rf)
                 && eq_expr(le, re)
         },
-        (Async(lc, _, lb), Async(rc, _, rb)) => lc == rc && eq_block(lb, rb),
+        (Async(lc, lb), Async(rc, rb)) => lc == rc && eq_block(lb, rb),
         (Range(lf, lt, ll), Range(rf, rt, rl)) => ll == rl && eq_expr_opt(lf, rf) && eq_expr_opt(lt, rt),
         (AddrOf(lbk, lm, le), AddrOf(rbk, rm, re)) => lbk == rbk && lm == rm && eq_expr(le, re),
         (Path(lq, lp), Path(rq, rp)) => both(lq, rq, eq_qself) && eq_path(lp, rp),
@@ -286,8 +286,32 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
     match (l, r) {
         (ExternCrate(l), ExternCrate(r)) => l == r,
         (Use(l), Use(r)) => eq_use_tree(l, r),
-        (Static(lt, lm, le), Static(rt, rm, re)) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
-        (Const(ld, lt, le), Const(rd, rt, re)) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (
+            Static(box ast::StaticItem {
+                ty: lt,
+                mutability: lm,
+                expr: le,
+            }),
+            Static(box ast::StaticItem {
+                ty: rt,
+                mutability: rm,
+                expr: re,
+            }),
+        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (
+            Const(box ast::ConstItem {
+                defaultness: ld,
+                generics: lg,
+                ty: lt,
+                expr: le,
+            }),
+            Const(box ast::ConstItem {
+                defaultness: rd,
+                generics: rg,
+                ty: rt,
+                expr: re,
+            }),
+        ) => eq_defaultness(*ld, *rd) && eq_generics(lg, rg) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,
@@ -451,7 +475,20 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
 pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
     use AssocItemKind::*;
     match (l, r) {
-        (Const(ld, lt, le), Const(rd, rt, re)) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (
+            Const(box ast::ConstItem {
+                defaultness: ld,
+                generics: lg,
+                ty: lt,
+                expr: le,
+            }),
+            Const(box ast::ConstItem {
+                defaultness: rd,
+                generics: rg,
+                ty: rt,
+                expr: re,
+            }),
+        ) => eq_defaultness(*ld, *rd) && eq_generics(lg, rg) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,

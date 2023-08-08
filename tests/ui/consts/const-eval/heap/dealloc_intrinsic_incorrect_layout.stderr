@@ -20,7 +20,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/dealloc_intrinsic_incorrect_layout.rs:25:5
    |
 LL |     intrinsics::const_deallocate(ptr, 4, 3);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ align has to be a power of 2, `3` is not a power of 2
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid align passed to `const_deallocate`: 3 is not a power of 2
 
 error: aborting due to 4 previous errors
 

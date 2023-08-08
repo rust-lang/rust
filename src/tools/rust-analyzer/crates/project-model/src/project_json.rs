@@ -49,12 +49,12 @@
 //! user explores them belongs to that extension (it's totally valid to change
 //! rust-project.json over time via configuration request!)
 
-use std::path::PathBuf;
-
 use base_db::{CrateDisplayName, CrateId, CrateName, Dependency, Edition};
+use la_arena::RawIdx;
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use serde::{de, Deserialize};
+use std::path::PathBuf;
 
 use crate::cfg_flag::CfgFlag;
 
@@ -98,26 +98,23 @@ impl ProjectJson {
     /// * `data` - The parsed contents of `rust-project.json`, or project json that's passed via
     ///            configuration.
     pub fn new(base: &AbsPath, data: ProjectJsonData) -> ProjectJson {
+        let absolutize_on_base = |p| base.absolutize(p);
         ProjectJson {
-            sysroot: data.sysroot.map(|it| base.join(it)),
-            sysroot_src: data.sysroot_src.map(|it| base.join(it)),
+            sysroot: data.sysroot.map(absolutize_on_base),
+            sysroot_src: data.sysroot_src.map(absolutize_on_base),
             project_root: base.to_path_buf(),
             crates: data
                 .crates
                 .into_iter()
                 .map(|crate_data| {
-                    let is_workspace_member = crate_data.is_workspace_member.unwrap_or_else(|| {
-                        crate_data.root_module.is_relative()
-                            && !crate_data.root_module.starts_with("..")
-                            || crate_data.root_module.starts_with(base)
-                    });
-                    let root_module = base.join(crate_data.root_module).normalize();
+                    let root_module = absolutize_on_base(crate_data.root_module);
+                    let is_workspace_member = crate_data
+                        .is_workspace_member
+                        .unwrap_or_else(|| root_module.starts_with(base));
                     let (include, exclude) = match crate_data.source {
                         Some(src) => {
                             let absolutize = |dirs: Vec<PathBuf>| {
-                                dirs.into_iter()
-                                    .map(|it| base.join(it).normalize())
-                                    .collect::<Vec<_>>()
+                                dirs.into_iter().map(absolutize_on_base).collect::<Vec<_>>()
                             };
                             (absolutize(src.include_dirs), absolutize(src.exclude_dirs))
                         }
@@ -135,7 +132,10 @@ impl ProjectJson {
                             .deps
                             .into_iter()
                             .map(|dep_data| {
-                                Dependency::new(dep_data.name, CrateId(dep_data.krate as u32))
+                                Dependency::new(
+                                    dep_data.name,
+                                    CrateId::from_raw(RawIdx::from(dep_data.krate as u32)),
+                                )
                             })
                             .collect::<Vec<_>>(),
                         cfg: crate_data.cfg,
@@ -143,7 +143,7 @@ impl ProjectJson {
                         env: crate_data.env,
                         proc_macro_dylib_path: crate_data
                             .proc_macro_dylib_path
-                            .map(|it| base.join(it)),
+                            .map(absolutize_on_base),
                         is_workspace_member,
                         include,
                         exclude,
@@ -151,7 +151,7 @@ impl ProjectJson {
                         repository: crate_data.repository,
                     }
                 })
-                .collect::<Vec<_>>(),
+                .collect(),
         }
     }
 
@@ -162,7 +162,10 @@ impl ProjectJson {
 
     /// Returns an iterator over the crates in the project.
     pub fn crates(&self) -> impl Iterator<Item = (CrateId, &Crate)> + '_ {
-        self.crates.iter().enumerate().map(|(idx, krate)| (CrateId(idx as u32), krate))
+        self.crates
+            .iter()
+            .enumerate()
+            .map(|(idx, krate)| (CrateId::from_raw(RawIdx::from(idx as u32)), krate))
     }
 
     /// Returns the path to the project's root folder.
@@ -236,7 +239,7 @@ struct CrateSource {
     exclude_dirs: Vec<PathBuf>,
 }
 
-fn deserialize_crate_name<'de, D>(de: D) -> Result<CrateName, D::Error>
+fn deserialize_crate_name<'de, D>(de: D) -> std::result::Result<CrateName, D::Error>
 where
     D: de::Deserializer<'de>,
 {

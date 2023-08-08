@@ -1,5 +1,6 @@
-// run-pass
 #![allow(dead_code)]
+#![allow(dropping_copy_types)]
+
 // "guessing" in trait selection can affect `copy_or_move`. Check that this
 // is correctly handled. I am not sure what is the "correct" behaviour,
 // but we should at least not ICE.
@@ -17,6 +18,7 @@ fn assert_impls_fn<R,T: Fn()->R>(_: &T){}
 
 fn main() {
     let n = None;
+    //~^ ERROR type annotations needed for `Option<T>`
     let e = S(&n);
     let f = || {
         // S being copy is critical for this to work

@@ -1,7 +1,7 @@
 // compile-flags: --crate-type lib --edition 2018
 
 #![crate_name = "foo"]
-#![feature(rustdoc_internals)]
+#![feature(rustc_attrs)]
 
 // @has foo/primitive.slice.html '//a[@class="primitive"]' 'slice'
 // @has - '//h1' 'Primitive Type slice'
@@ -9,6 +9,6 @@
 // @has - '//h2[@id="synthetic-implementations"]' 'Auto Trait Implementations'
 // @has - '//div[@id="synthetic-implementations-list"]//h3' 'impl<T> Send for [T]where T: Send'
 // @has - '//div[@id="synthetic-implementations-list"]//h3' 'impl<T> Sync for [T]where T: Sync'
-#[doc(primitive = "slice")]
+#[rustc_doc_primitive = "slice"]
 /// this is a test!
 mod slice_prim {}

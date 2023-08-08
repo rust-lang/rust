@@ -8,7 +8,7 @@ fn diamond() {
 
     let dominators = dominators(&graph);
     let immediate_dominators = &dominators.immediate_dominators;
-    assert_eq!(immediate_dominators[0], Some(0));
+    assert_eq!(immediate_dominators[0], None);
     assert_eq!(immediate_dominators[1], Some(0));
     assert_eq!(immediate_dominators[2], Some(0));
     assert_eq!(immediate_dominators[3], Some(0));
@@ -30,7 +30,7 @@ fn paper() {
     assert_eq!(immediate_dominators[3], Some(6));
     assert_eq!(immediate_dominators[4], Some(6));
     assert_eq!(immediate_dominators[5], Some(6));
-    assert_eq!(immediate_dominators[6], Some(6));
+    assert_eq!(immediate_dominators[6], None);
 }
 
 #[test]
@@ -42,4 +42,41 @@ fn paper_slt() {
     );
 
     dominators(&graph);
+}
+
+#[test]
+fn immediate_dominator() {
+    let graph = TestGraph::new(1, &[(1, 2), (2, 3)]);
+    let dominators = dominators(&graph);
+    assert_eq!(dominators.immediate_dominator(0), None);
+    assert_eq!(dominators.immediate_dominator(1), None);
+    assert_eq!(dominators.immediate_dominator(2), Some(1));
+    assert_eq!(dominators.immediate_dominator(3), Some(2));
+}
+
+#[test]
+fn transitive_dominator() {
+    let graph = TestGraph::new(
+        0,
+        &[
+            // First tree branch.
+            (0, 1),
+            (1, 2),
+            (2, 3),
+            (3, 4),
+            // Second tree branch.
+            (1, 5),
+            (5, 6),
+            // Third tree branch.
+            (0, 7),
+            // These links make 0 the dominator for 2 and 3.
+            (7, 2),
+            (5, 3),
+        ],
+    );
+
+    let dom_tree = dominators(&graph);
+    let immediate_dominators = &dom_tree.immediate_dominators;
+    assert_eq!(immediate_dominators[2], Some(0));
+    assert_eq!(immediate_dominators[3], Some(0)); // This used to return Some(1).
 }

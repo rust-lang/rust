@@ -1,34 +1,41 @@
 //! Various extensions traits for Chalk types.
 
-use chalk_ir::{FloatTy, IntTy, Mutability, Scalar, TyVariableKind, UintTy};
+use chalk_ir::{cast::Cast, FloatTy, IntTy, Mutability, Scalar, TyVariableKind, UintTy};
 use hir_def::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType, BuiltinUint},
     generics::TypeOrConstParamData,
     lang_item::LangItem,
     type_ref::Rawness,
-    FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
+    DefWithBodyId, FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
 };
 
 use crate::{
-    db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
-    from_placeholder_idx, to_chalk_trait_id, utils::generics, AdtId, AliasEq, AliasTy, Binders,
-    CallableDefId, CallableSig, FnPointer, ImplTraitId, Interner, Lifetime, ProjectionTy,
-    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, WhereClause,
+    db::HirDatabase,
+    from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
+    to_chalk_trait_id,
+    utils::{generics, ClosureSubst},
+    AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Canonical, CanonicalVarKinds,
+    ClosureId, DynTy, FnPointer, ImplTraitId, InEnvironment, Interner, Lifetime, ProjectionTy,
+    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeFlags, WhereClause,
 };
 
 pub trait TyExt {
     fn is_unit(&self) -> bool;
     fn is_integral(&self) -> bool;
+    fn is_scalar(&self) -> bool;
     fn is_floating_point(&self) -> bool;
     fn is_never(&self) -> bool;
     fn is_unknown(&self) -> bool;
+    fn contains_unknown(&self) -> bool;
     fn is_ty_var(&self) -> bool;
 
     fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)>;
     fn as_builtin(&self) -> Option<BuiltinType>;
     fn as_tuple(&self) -> Option<&Substitution>;
+    fn as_closure(&self) -> Option<ClosureId>;
     fn as_fn_def(&self, db: &dyn HirDatabase) -> Option<FunctionId>;
     fn as_reference(&self) -> Option<(&Ty, Lifetime, Mutability)>;
+    fn as_raw_ptr(&self) -> Option<(&Ty, Mutability)>;
     fn as_reference_or_ptr(&self) -> Option<(&Ty, Rawness, Mutability)>;
     fn as_generic_def(&self, db: &dyn HirDatabase) -> Option<GenericDefId>;
 
@@ -43,6 +50,7 @@ pub trait TyExt {
 
     fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<QuantifiedWhereClause>>;
     fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId>;
+    fn is_copy(self, db: &dyn HirDatabase, owner: DefWithBodyId) -> bool;
 
     /// FIXME: Get rid of this, it's not a good abstraction
     fn equals_ctor(&self, other: &Ty) -> bool;
@@ -61,6 +69,10 @@ impl TyExt for Ty {
         )
     }
 
+    fn is_scalar(&self) -> bool {
+        matches!(self.kind(Interner), TyKind::Scalar(_))
+    }
+
     fn is_floating_point(&self) -> bool {
         matches!(
             self.kind(Interner),
@@ -74,6 +86,10 @@ impl TyExt for Ty {
 
     fn is_unknown(&self) -> bool {
         matches!(self.kind(Interner), TyKind::Error)
+    }
+
+    fn contains_unknown(&self) -> bool {
+        self.data(Interner).flags.contains(TypeFlags::HAS_ERROR)
     }
 
     fn is_ty_var(&self) -> bool {
@@ -123,15 +139,30 @@ impl TyExt for Ty {
         }
     }
 
+    fn as_closure(&self) -> Option<ClosureId> {
+        match self.kind(Interner) {
+            TyKind::Closure(id, _) => Some(*id),
+            _ => None,
+        }
+    }
+
     fn as_fn_def(&self, db: &dyn HirDatabase) -> Option<FunctionId> {
         match self.callable_def(db) {
             Some(CallableDefId::FunctionId(func)) => Some(func),
             Some(CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_)) | None => None,
         }
     }
+
     fn as_reference(&self) -> Option<(&Ty, Lifetime, Mutability)> {
         match self.kind(Interner) {
             TyKind::Ref(mutability, lifetime, ty) => Some((ty, lifetime.clone(), *mutability)),
+            _ => None,
+        }
+    }
+
+    fn as_raw_ptr(&self) -> Option<(&Ty, Mutability)> {
+        match self.kind(Interner) {
+            TyKind::Raw(mutability, ty) => Some((ty, *mutability)),
             _ => None,
         }
     }
@@ -171,10 +202,7 @@ impl TyExt for Ty {
                 let sig = db.callable_item_signature(callable_def);
                 Some(sig.substitute(Interner, parameters))
             }
-            TyKind::Closure(.., substs) => {
-                let sig_param = substs.at(Interner, 0).assert_ty_ref(Interner);
-                sig_param.callable_sig(db)
-            }
+            TyKind::Closure(.., substs) => ClosureSubst(substs).sig_ty().callable_sig(db),
             _ => None,
         }
     }
@@ -313,6 +341,21 @@ impl TyExt for Ty {
         }
     }
 
+    fn is_copy(self, db: &dyn HirDatabase, owner: DefWithBodyId) -> bool {
+        let crate_id = owner.module(db.upcast()).krate();
+        let Some(copy_trait) = db.lang_item(crate_id, LangItem::Copy).and_then(|it| it.as_trait())
+        else {
+            return false;
+        };
+        let trait_ref = TyBuilder::trait_ref(db, copy_trait).push(self).build();
+        let env = db.trait_environment_for_body(owner);
+        let goal = Canonical {
+            value: InEnvironment::new(&env.env, trait_ref.cast(Interner)),
+            binders: CanonicalVarKinds::empty(Interner),
+        };
+        db.trait_solve(crate_id, None, goal).is_some()
+    }
+
     fn equals_ctor(&self, other: &Ty) -> bool {
         match (self.kind(Interner), other.kind(Interner)) {
             (TyKind::Adt(adt, ..), TyKind::Adt(adt2, ..)) => adt == adt2,
@@ -370,6 +413,19 @@ impl ProjectionTyExt for ProjectionTy {
 
     fn self_type_parameter(&self, db: &dyn HirDatabase) -> Ty {
         self.trait_ref(db).self_type_parameter(Interner)
+    }
+}
+
+pub trait DynTyExt {
+    fn principal(&self) -> Option<&TraitRef>;
+}
+
+impl DynTyExt for DynTy {
+    fn principal(&self) -> Option<&TraitRef> {
+        self.bounds.skip_binders().interned().get(0).and_then(|b| match b.skip_binders() {
+            crate::WhereClause::Implemented(trait_ref) => Some(trait_ref),
+            _ => None,
+        })
     }
 }
 

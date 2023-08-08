@@ -2,7 +2,7 @@ error: Undefined Behavior: trying to retag from <TAG> for SharedReadWrite permis
   --> $DIR/interior_mut1.rs:LL:CC
    |
 LL |         let _val = *inner_shr.get();
-   |                     ^^^^^^^^^^^^^^^
+   |                     ^^^^^^^^^
    |                     |
    |                     trying to retag from <TAG> for SharedReadWrite permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
    |                     this error occurs as part of retag at ALLOC[0x0..0x4]

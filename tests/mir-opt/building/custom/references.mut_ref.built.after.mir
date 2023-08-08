@@ -1,13 +1,13 @@
 // MIR for `mut_ref` after built
 
 fn mut_ref(_1: &mut i32) -> &mut i32 {
-    let mut _0: &mut i32;                // return place in scope 0 at $DIR/references.rs:+0:32: +0:40
-    let mut _2: *mut i32;                // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _0: &mut i32;
+    let mut _2: *mut i32;
 
     bb0: {
-        _2 = &raw mut (*_1);             // scope 0 at $DIR/references.rs:+5:13: +5:33
-        _0 = &mut (*_2);                 // scope 0 at $DIR/references.rs:+6:13: +6:26
-        Retag(_0);                       // scope 0 at $DIR/references.rs:+7:13: +7:23
-        return;                          // scope 0 at $DIR/references.rs:+8:13: +8:21
+        _2 = &raw mut (*_1);
+        _0 = &mut (*_2);
+        Retag(_0);
+        return;
     }
 }

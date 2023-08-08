@@ -1,5 +1,7 @@
 // check-pass
 
+#![allow(dropping_references)]
+
 fn main() {}
 
 struct U;

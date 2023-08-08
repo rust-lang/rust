@@ -425,14 +425,16 @@ fn duration_const() {
     const SECONDS_F32: f32 = Duration::SECOND.as_secs_f32();
     assert_eq!(SECONDS_F32, 1.0);
 
-    const FROM_SECONDS_F32: Duration = Duration::from_secs_f32(1.0);
-    assert_eq!(FROM_SECONDS_F32, Duration::SECOND);
+    // FIXME(#110395)
+    // const FROM_SECONDS_F32: Duration = Duration::from_secs_f32(1.0);
+    // assert_eq!(FROM_SECONDS_F32, Duration::SECOND);
 
     const SECONDS_F64: f64 = Duration::SECOND.as_secs_f64();
     assert_eq!(SECONDS_F64, 1.0);
 
-    const FROM_SECONDS_F64: Duration = Duration::from_secs_f64(1.0);
-    assert_eq!(FROM_SECONDS_F64, Duration::SECOND);
+    // FIXME(#110395)
+    // const FROM_SECONDS_F64: Duration = Duration::from_secs_f64(1.0);
+    // assert_eq!(FROM_SECONDS_F64, Duration::SECOND);
 
     const MILLIS: u128 = Duration::SECOND.as_millis();
     assert_eq!(MILLIS, 1_000);
@@ -463,6 +465,7 @@ fn duration_const() {
     const CHECKED_MUL: Option<Duration> = Duration::SECOND.checked_mul(1);
     assert_eq!(CHECKED_MUL, Some(Duration::SECOND));
 
+/*  FIXME(#110395)
     const MUL_F32: Duration = Duration::SECOND.mul_f32(1.0);
     assert_eq!(MUL_F32, Duration::SECOND);
 
@@ -477,6 +480,7 @@ fn duration_const() {
 
     const DIV_F64: Duration = Duration::SECOND.div_f64(1.0);
     assert_eq!(DIV_F64, Duration::SECOND);
+*/
 
     const DIV_DURATION_F32: f32 = Duration::SECOND.div_duration_f32(Duration::SECOND);
     assert_eq!(DIV_DURATION_F32, 1.0);

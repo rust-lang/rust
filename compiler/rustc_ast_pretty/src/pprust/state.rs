@@ -210,6 +210,10 @@ pub fn literal_to_string(lit: token::Lit) -> String {
         token::ByteStrRaw(n) => {
             format!("br{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = symbol)
         }
+        token::CStr => format!("c\"{symbol}\""),
+        token::CStrRaw(n) => {
+            format!("cr{delim}\"{symbol}\"{delim}", delim = "#".repeat(n as usize))
+        }
         token::Integer | token::Float | token::Bool | token::Err => symbol.to_string(),
     };
 
@@ -472,7 +476,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 Some(MacHeader::Path(&item.path)),
                 false,
                 None,
-                delim.to_token(),
+                *delim,
                 tokens,
                 true,
                 span,
@@ -636,7 +640,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             Some(MacHeader::Keyword(kw)),
             has_bang,
             Some(*ident),
-            macro_def.body.delim.to_token(),
+            macro_def.body.delim,
             &macro_def.body.tokens.clone(),
             true,
             sp,
@@ -686,7 +690,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn bclose_maybe_open(&mut self, span: rustc_span::Span, empty: bool, close_box: bool) {
         let has_comment = self.maybe_print_comment(span.hi());
         if !empty || has_comment {
-            self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
+            self.break_offset_if_not_bol(1, -INDENT_UNIT);
         }
         self.word("}");
         if close_box {
@@ -818,6 +822,13 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn bounds_to_string(&self, bounds: &[ast::GenericBound]) -> String {
         Self::to_string(|s| s.print_type_bounds(bounds))
+    }
+
+    fn where_bound_predicate_to_string(
+        &self,
+        where_bound_predicate: &ast::WhereBoundPredicate,
+    ) -> String {
+        Self::to_string(|s| s.print_where_bound_predicate(where_bound_predicate))
     }
 
     fn pat_to_string(&self, pat: &ast::Pat) -> String {
@@ -984,7 +995,9 @@ impl<'a> State<'a> {
 
     pub fn print_assoc_constraint(&mut self, constraint: &ast::AssocConstraint) {
         self.print_ident(constraint.ident);
-        constraint.gen_args.as_ref().map(|args| self.print_generic_args(args, false));
+        if let Some(args) = constraint.gen_args.as_ref() {
+            self.print_generic_args(args, false)
+        }
         self.space();
         match &constraint.kind {
             ast::AssocConstraintKind::Equality { term } => {
@@ -1227,7 +1240,7 @@ impl<'a> State<'a> {
             Some(MacHeader::Path(&m.path)),
             true,
             None,
-            m.args.delim.to_token(),
+            m.args.delim,
             &m.args.tokens.clone(),
             true,
             m.span(),
@@ -1568,11 +1581,18 @@ impl<'a> State<'a> {
                 GenericBound::Trait(tref, modifier) => {
                     match modifier {
                         TraitBoundModifier::None => {}
+                        TraitBoundModifier::Negative => {
+                            self.word("!");
+                        }
                         TraitBoundModifier::Maybe => {
                             self.word("?");
                         }
                         TraitBoundModifier::MaybeConst => {
                             self.word_space("~const");
+                        }
+                        TraitBoundModifier::MaybeConstNegative => {
+                            self.word_space("~const");
+                            self.word("!");
                         }
                         TraitBoundModifier::MaybeConstMaybe => {
                             self.word_space("~const");

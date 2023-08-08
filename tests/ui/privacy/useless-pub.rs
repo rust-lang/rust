@@ -5,12 +5,12 @@ pub trait E {
 }
 
 impl E for A {
-    pub fn foo(&self) {} //~ ERROR: unnecessary visibility qualifier
+    pub fn foo(&self) {} //~ ERROR: visibility qualifiers are not permitted here
 }
 
 enum Foo {
-    V1 { pub f: i32 }, //~ ERROR unnecessary visibility qualifier
-    V2(pub i32), //~ ERROR unnecessary visibility qualifier
+    V1 { pub f: i32 }, //~ ERROR visibility qualifiers are not permitted here
+    V2(pub i32), //~ ERROR visibility qualifiers are not permitted here
 }
 
 fn main() {}

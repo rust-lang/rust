@@ -11,8 +11,7 @@ LL | trait Trait: Sized {}
    |       -----  ^^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
-   = note: required for `Box<S>` to implement `CoerceUnsized<Box<dyn Trait>>`
-   = note: required by cast to type `Box<dyn Trait>`
+   = note: required for the cast from `Box<S>` to `Box<dyn Trait>`
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-convert-unsafe-trait-obj-box.rs:17:15
@@ -27,8 +26,7 @@ LL | trait Trait: Sized {}
    |       -----  ^^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
-   = note: required for `Box<S>` to implement `CoerceUnsized<Box<dyn Trait>>`
-   = note: required by cast to type `Box<(dyn Trait + 'static)>`
+   = note: required for the cast from `Box<S>` to `Box<(dyn Trait + 'static)>`
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-convert-unsafe-trait-obj-box.rs:15:5
@@ -43,8 +41,7 @@ LL | trait Trait: Sized {}
    |       -----  ^^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
-   = note: required for `Box<S>` to implement `CoerceUnsized<Box<dyn Trait>>`
-   = note: required by cast to type `Box<dyn Trait>`
+   = note: required for the cast from `Box<S>` to `Box<dyn Trait>`
 
 error: aborting due to 3 previous errors
 

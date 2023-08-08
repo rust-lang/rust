@@ -1,3 +1,4 @@
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // unit-test: CopyProp
 
 #![feature(custom_mir, core_intrinsics)]

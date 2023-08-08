@@ -46,6 +46,7 @@ unsafe fn wait_timeout(
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "espidf",
         target_os = "horizon",
@@ -73,6 +74,7 @@ unsafe fn wait_timeout(
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "espidf",
         target_os = "horizon",
@@ -120,10 +122,12 @@ impl Parker {
             if #[cfg(any(
                 target_os = "macos",
                 target_os = "ios",
+                target_os = "tvos",
                 target_os = "watchos",
                 target_os = "l4re",
                 target_os = "android",
-                target_os = "redox"
+                target_os = "redox",
+                target_os = "vita",
             ))] {
                 addr_of_mut!((*parker).cvar).write(UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER));
             } else if #[cfg(any(target_os = "espidf", target_os = "horizon"))] {

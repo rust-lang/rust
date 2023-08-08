@@ -4,7 +4,7 @@ error: expected a byte literal
 LL |     concat_bytes!(pie);
    |                   ^^^
    |
-   = note: only byte literals (like `b"foo"`, `b's'`, and `[3, 4, 5]`) can be passed to `concat_bytes!()`
+   = note: only byte literals (like `b"foo"`, `b's'` and `[3, 4, 5]`) can be passed to `concat_bytes!()`
 
 error: expected a byte literal
   --> $DIR/concat-bytes-error.rs:5:19
@@ -12,7 +12,7 @@ error: expected a byte literal
 LL |     concat_bytes!(pie, pie);
    |                   ^^^  ^^^
    |
-   = note: only byte literals (like `b"foo"`, `b's'`, and `[3, 4, 5]`) can be passed to `concat_bytes!()`
+   = note: only byte literals (like `b"foo"`, `b's'` and `[3, 4, 5]`) can be passed to `concat_bytes!()`
 
 error: cannot concatenate string literals
   --> $DIR/concat-bytes-error.rs:6:19
@@ -98,7 +98,7 @@ error: expected a byte literal
 LL |         -33,
    |         ^^^
    |
-   = note: only byte literals (like `b"foo"`, `b's'`, and `[3, 4, 5]`) can be passed to `concat_bytes!()`
+   = note: only byte literals (like `b"foo"`, `b's'` and `[3, 4, 5]`) can be passed to `concat_bytes!()`
 
 error: cannot concatenate doubly nested array
   --> $DIR/concat-bytes-error.rs:35:9
@@ -151,7 +151,7 @@ error: expected a byte literal
 LL |     concat_bytes!([pie; 2]);
    |                    ^^^
    |
-   = note: only byte literals (like `b"foo"`, `b's'`, and `[3, 4, 5]`) can be passed to `concat_bytes!()`
+   = note: only byte literals (like `b"foo"`, `b's'` and `[3, 4, 5]`) can be passed to `concat_bytes!()`
 
 error: cannot concatenate float literals
   --> $DIR/concat-bytes-error.rs:46:20

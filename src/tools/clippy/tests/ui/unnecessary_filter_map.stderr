@@ -34,5 +34,11 @@ error: this `.filter_map` can be written more simply using `.map`
 LL |     let _ = (0..4).filter_map(|x| Some(x + 1));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: this `.filter_map` can be written more simply using `.filter`
+  --> $DIR/unnecessary_filter_map.rs:155:14
+   |
+LL |     let _x = std::iter::once(1).filter_map(|n| (n > 1).then_some(n));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 

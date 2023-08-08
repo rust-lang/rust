@@ -13,7 +13,7 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
-use crate::ast::StmtKind;
+use crate::ast::{AttrStyle, StmtKind};
 use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
 use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
 use crate::AttrVec;
@@ -22,10 +22,11 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
-use std::{fmt, iter};
+use std::borrow::Cow;
+use std::{cmp, fmt, iter, mem};
 
 /// When the main Rust parser encounters a syntax-extension invocation, it
 /// parses the arguments to the invocation as a token tree. This is a very
@@ -48,14 +49,15 @@ pub enum TokenTree {
     Delimited(DelimSpan, Delimiter, TokenStream),
 }
 
-// Ensure all fields of `TokenTree` is `Send` and `Sync`.
+// Ensure all fields of `TokenTree` are `DynSend` and `DynSync`.
 #[cfg(parallel_compiler)]
 fn _dummy()
 where
-    Token: Send + Sync,
-    DelimSpan: Send + Sync,
-    Delimiter: Send + Sync,
-    TokenStream: Send + Sync,
+    Token: sync::DynSend + sync::DynSync,
+    Spacing: sync::DynSend + sync::DynSync,
+    DelimSpan: sync::DynSend + sync::DynSync,
+    Delimiter: sync::DynSend + sync::DynSync,
+    TokenStream: sync::DynSend + sync::DynSync,
 {
 }
 
@@ -97,12 +99,13 @@ impl TokenTree {
         TokenTree::Token(Token::new(kind, span), Spacing::Joint)
     }
 
-    pub fn uninterpolate(self) -> TokenTree {
+    pub fn uninterpolate(&self) -> Cow<'_, TokenTree> {
         match self {
-            TokenTree::Token(token, spacing) => {
-                TokenTree::Token(token.uninterpolate().into_owned(), spacing)
-            }
-            tt => tt,
+            TokenTree::Token(token, spacing) => match token.uninterpolate() {
+                Cow::Owned(token) => Cow::Owned(TokenTree::Token(token, *spacing)),
+                Cow::Borrowed(_) => Cow::Borrowed(self),
+            },
+            _ => Cow::Borrowed(self),
         }
     }
 }
@@ -118,7 +121,7 @@ where
     }
 }
 
-pub trait ToAttrTokenStream: sync::Send + sync::Sync {
+pub trait ToAttrTokenStream: sync::DynSend + sync::DynSync {
     fn to_attr_token_stream(&self) -> AttrTokenStream;
 }
 
@@ -409,8 +412,17 @@ impl TokenStream {
         t1.next().is_none() && t2.next().is_none()
     }
 
-    pub fn map_enumerated<F: FnMut(usize, &TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
-        TokenStream(Lrc::new(self.0.iter().enumerate().map(|(i, tree)| f(i, tree)).collect()))
+    /// Applies the supplied function to each `TokenTree` and its index in `self`, returning a new `TokenStream`
+    ///
+    /// It is equivalent to `TokenStream::new(self.trees().cloned().enumerate().map(|(i, tt)| f(i, tt)).collect())`.
+    pub fn map_enumerated_owned(
+        mut self,
+        mut f: impl FnMut(usize, TokenTree) -> TokenTree,
+    ) -> TokenStream {
+        let owned = Lrc::make_mut(&mut self.0); // clone if necessary
+        // rely on vec's in-place optimizations to avoid another allocation
+        *owned = mem::take(owned).into_iter().enumerate().map(|(i, tree)| f(i, tree)).collect();
+        self
     }
 
     /// Create a token stream containing a single token with alone spacing.
@@ -550,6 +562,96 @@ impl TokenStream {
             vec_mut.extend(stream_iter);
         }
     }
+
+    pub fn chunks(&self, chunk_size: usize) -> core::slice::Chunks<'_, TokenTree> {
+        self.0.chunks(chunk_size)
+    }
+
+    /// Desugar doc comments like `/// foo` in the stream into `#[doc =
+    /// r"foo"]`. Modifies the `TokenStream` via `Lrc::make_mut`, but as little
+    /// as possible.
+    pub fn desugar_doc_comments(&mut self) {
+        if let Some(desugared_stream) = desugar_inner(self.clone()) {
+            *self = desugared_stream;
+        }
+
+        // The return value is `None` if nothing in `stream` changed.
+        fn desugar_inner(mut stream: TokenStream) -> Option<TokenStream> {
+            let mut i = 0;
+            let mut modified = false;
+            while let Some(tt) = stream.0.get(i) {
+                match tt {
+                    &TokenTree::Token(
+                        Token { kind: token::DocComment(_, attr_style, data), span },
+                        _spacing,
+                    ) => {
+                        let desugared = desugared_tts(attr_style, data, span);
+                        let desugared_len = desugared.len();
+                        Lrc::make_mut(&mut stream.0).splice(i..i + 1, desugared);
+                        modified = true;
+                        i += desugared_len;
+                    }
+
+                    &TokenTree::Token(..) => i += 1,
+
+                    &TokenTree::Delimited(sp, delim, ref delim_stream) => {
+                        if let Some(desugared_delim_stream) = desugar_inner(delim_stream.clone()) {
+                            let new_tt = TokenTree::Delimited(sp, delim, desugared_delim_stream);
+                            Lrc::make_mut(&mut stream.0)[i] = new_tt;
+                            modified = true;
+                        }
+                        i += 1;
+                    }
+                }
+            }
+            if modified { Some(stream) } else { None }
+        }
+
+        fn desugared_tts(attr_style: AttrStyle, data: Symbol, span: Span) -> Vec<TokenTree> {
+            // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
+            // required to wrap the text. E.g.
+            // - `abc d` is wrapped as `r"abc d"` (num_of_hashes = 0)
+            // - `abc "d"` is wrapped as `r#"abc "d""#` (num_of_hashes = 1)
+            // - `abc "##d##"` is wrapped as `r###"abc ##"d"##"###` (num_of_hashes = 3)
+            let mut num_of_hashes = 0;
+            let mut count = 0;
+            for ch in data.as_str().chars() {
+                count = match ch {
+                    '"' => 1,
+                    '#' if count > 0 => count + 1,
+                    _ => 0,
+                };
+                num_of_hashes = cmp::max(num_of_hashes, count);
+            }
+
+            // `/// foo` becomes `doc = r"foo"`.
+            let delim_span = DelimSpan::from_single(span);
+            let body = TokenTree::Delimited(
+                delim_span,
+                Delimiter::Bracket,
+                [
+                    TokenTree::token_alone(token::Ident(sym::doc, false), span),
+                    TokenTree::token_alone(token::Eq, span),
+                    TokenTree::token_alone(
+                        TokenKind::lit(token::StrRaw(num_of_hashes), data, None),
+                        span,
+                    ),
+                ]
+                .into_iter()
+                .collect::<TokenStream>(),
+            );
+
+            if attr_style == AttrStyle::Inner {
+                vec![
+                    TokenTree::token_alone(token::Pound, span),
+                    TokenTree::token_alone(token::Not, span),
+                    body,
+                ]
+            } else {
+                vec![TokenTree::token_alone(token::Pound, span), body]
+            }
+        }
+    }
 }
 
 /// By-reference iterator over a [`TokenStream`], that produces `&TokenTree`
@@ -581,24 +683,19 @@ impl<'t> Iterator for RefTokenTreeCursor<'t> {
     }
 }
 
-/// Owning by-value iterator over a [`TokenStream`], that produces `TokenTree`
+/// Owning by-value iterator over a [`TokenStream`], that produces `&TokenTree`
 /// items.
-// FIXME: Many uses of this can be replaced with by-reference iterator to avoid clones.
+///
+/// Doesn't impl `Iterator` because Rust doesn't permit an owning iterator to
+/// return `&T` from `next`; the need for an explicit lifetime in the `Item`
+/// associated type gets in the way. Instead, use `next_ref` (which doesn't
+/// involve associated types) for getting individual elements, or
+/// `RefTokenTreeCursor` if you really want an `Iterator`, e.g. in a `for`
+/// loop.
 #[derive(Clone)]
 pub struct TokenTreeCursor {
     pub stream: TokenStream,
     index: usize,
-}
-
-impl Iterator for TokenTreeCursor {
-    type Item = TokenTree;
-
-    fn next(&mut self) -> Option<TokenTree> {
-        self.stream.0.get(self.index).map(|tree| {
-            self.index += 1;
-            tree.clone()
-        })
-    }
 }
 
 impl TokenTreeCursor {
@@ -616,15 +713,6 @@ impl TokenTreeCursor {
 
     pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
         self.stream.0.get(self.index + n)
-    }
-
-    // Replace the previously obtained token tree with `tts`, and rewind to
-    // just before them.
-    pub fn replace_prev_and_rewind(&mut self, tts: Vec<TokenTree>) {
-        assert!(self.index > 0);
-        self.index -= 1;
-        let stream = Lrc::make_mut(&mut self.stream.0);
-        stream.splice(self.index..self.index + 1, tts);
     }
 }
 

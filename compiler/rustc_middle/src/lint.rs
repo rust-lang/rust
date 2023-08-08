@@ -169,26 +169,6 @@ impl TyCtxt<'_> {
     pub fn lint_level_at_node(self, lint: &'static Lint, id: HirId) -> (Level, LintLevelSource) {
         self.shallow_lint_levels_on(id.owner).lint_level_id_at_node(self, LintId::of(lint), id)
     }
-
-    /// Walks upwards from `id` to find a node which might change lint levels with attributes.
-    /// It stops at `bound` and just returns it if reached.
-    pub fn maybe_lint_level_root_bounded(self, mut id: HirId, bound: HirId) -> HirId {
-        let hir = self.hir();
-        loop {
-            if id == bound {
-                return bound;
-            }
-
-            if hir.attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
-                return id;
-            }
-            let next = hir.parent_id(id);
-            if next == id {
-                bug!("lint traversal reached the root of the crate");
-            }
-            id = next;
-        }
-    }
 }
 
 /// This struct represents a lint expectation and holds all required information
@@ -231,34 +211,31 @@ pub fn explain_lint_level_source(
     let name = lint.name_lower();
     match src {
         LintLevelSource::Default => {
-            err.note_once(&format!("`#[{}({})]` on by default", level.as_str(), name));
+            err.note_once(format!("`#[{}({})]` on by default", level.as_str(), name));
         }
         LintLevelSource::CommandLine(lint_flag_val, orig_level) => {
             let flag = orig_level.to_cmd_flag();
             let hyphen_case_lint_name = name.replace('_', "-");
             if lint_flag_val.as_str() == name {
-                err.note_once(&format!(
-                    "requested on the command line with `{} {}`",
-                    flag, hyphen_case_lint_name
+                err.note_once(format!(
+                    "requested on the command line with `{flag} {hyphen_case_lint_name}`"
                 ));
             } else {
                 let hyphen_case_flag_val = lint_flag_val.as_str().replace('_', "-");
-                err.note_once(&format!(
-                    "`{} {}` implied by `{} {}`",
-                    flag, hyphen_case_lint_name, flag, hyphen_case_flag_val
+                err.note_once(format!(
+                    "`{flag} {hyphen_case_lint_name}` implied by `{flag} {hyphen_case_flag_val}`"
                 ));
             }
         }
         LintLevelSource::Node { name: lint_attr_name, span, reason, .. } => {
             if let Some(rationale) = reason {
-                err.note(rationale.as_str());
+                err.note(rationale.to_string());
             }
             err.span_note_once(span, "the lint level is defined here");
             if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();
-                err.note_once(&format!(
-                    "`#[{}({})]` implied by `#[{}({})]`",
-                    level_str, name, level_str, lint_attr_name
+                err.note_once(format!(
+                    "`#[{level_str}({name})]` implied by `#[{level_str}({lint_attr_name})]`"
                 ));
             }
         }
@@ -298,6 +275,7 @@ pub fn explain_lint_level_source(
 ///     //          ^^^^^^^^^^^^^^^^^^^^^ returns `&mut DiagnosticBuilder` by default
 /// )
 /// ```
+#[track_caller]
 pub fn struct_lint_level(
     sess: &Session,
     lint: &'static Lint,
@@ -311,6 +289,7 @@ pub fn struct_lint_level(
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
+    #[track_caller]
     fn struct_lint_level_impl(
         sess: &Session,
         lint: &'static Lint,
@@ -388,10 +367,11 @@ pub fn struct_lint_level(
             // it'll become a hard error, so we have to emit *something*. Also,
             // if this lint occurs in the expansion of a macro from an external crate,
             // allow individual lints to opt-out from being reported.
-            let not_future_incompatible =
-                future_incompatible.map(|f| f.reason.edition().is_some()).unwrap_or(true);
-            if not_future_incompatible && !lint.report_in_external_macro {
+            let incompatible = future_incompatible.is_some_and(|f| f.reason.edition().is_none());
+
+            if !incompatible && !lint.report_in_external_macro {
                 err.cancel();
+
                 // Don't continue further, since we don't want to have
                 // `diag_span_note_once` called for a diagnostic that isn't emitted.
                 return;
@@ -433,23 +413,22 @@ pub fn struct_lint_level(
                 FutureIncompatibilityReason::EditionError(edition) => {
                     let current_edition = sess.edition();
                     format!(
-                        "this is accepted in the current edition (Rust {}) but is a hard error in Rust {}!",
-                        current_edition, edition
+                        "this is accepted in the current edition (Rust {current_edition}) but is a hard error in Rust {edition}!"
                     )
                 }
                 FutureIncompatibilityReason::EditionSemanticsChange(edition) => {
-                    format!("this changes meaning in Rust {}", edition)
+                    format!("this changes meaning in Rust {edition}")
                 }
                 FutureIncompatibilityReason::Custom(reason) => reason.to_owned(),
             };
 
             if future_incompatible.explain_reason {
-                err.warn(&explanation);
+                err.warn(explanation);
             }
             if !future_incompatible.reference.is_empty() {
                 let citation =
                     format!("for more information, see {}", future_incompatible.reference);
-                err.note(&citation);
+                err.note(citation);
             }
         }
 
@@ -468,10 +447,13 @@ pub fn struct_lint_level(
 pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     let expn_data = span.ctxt().outer_expn_data();
     match expn_data.kind {
-        ExpnKind::Inlined
-        | ExpnKind::Root
+        ExpnKind::Root
         | ExpnKind::Desugaring(
-            DesugaringKind::ForLoop | DesugaringKind::WhileLoop | DesugaringKind::OpaqueTy,
+            DesugaringKind::ForLoop
+            | DesugaringKind::WhileLoop
+            | DesugaringKind::OpaqueTy
+            | DesugaringKind::Async
+            | DesugaringKind::Await,
         ) => false,
         ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {
@@ -479,5 +461,14 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
             expn_data.def_site.is_dummy() || sess.source_map().is_imported(expn_data.def_site)
         }
         ExpnKind::Macro { .. } => true, // definitely a plugin
+    }
+}
+
+/// Return whether `span` is generated by `async` or `await`.
+pub fn is_from_async_await(span: Span) -> bool {
+    let expn_data = span.ctxt().outer_expn_data();
+    match expn_data.kind {
+        ExpnKind::Desugaring(DesugaringKind::Async | DesugaringKind::Await) => true,
+        _ => false,
     }
 }

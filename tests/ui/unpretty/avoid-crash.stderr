@@ -1,4 +1,4 @@
-error: pretty-print failed to write `/tmp/` due to $ERROR_MESSAGE
+error: failed to write `/tmp/` due to $ERROR_MESSAGE
 
 error: aborting due to previous error
 

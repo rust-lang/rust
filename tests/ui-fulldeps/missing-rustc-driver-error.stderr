@@ -2,23 +2,5 @@ error: crate `rustc_serialize` required to be available in rlib format, but was 
    |
    = help: try adding `extern crate rustc_driver;` at the top level of this crate
 
-error: crate `smallvec` required to be available in rlib format, but was not found in this form
-
-error: crate `thin_vec` required to be available in rlib format, but was not found in this form
-
-error: crate `indexmap` required to be available in rlib format, but was not found in this form
-
-error: crate `hashbrown` required to be available in rlib format, but was not found in this form
-
-error: crate `ahash` required to be available in rlib format, but was not found in this form
-
-error: crate `once_cell` required to be available in rlib format, but was not found in this form
-
-error: crate `getrandom` required to be available in rlib format, but was not found in this form
-
-error: crate `cfg_if` required to be available in rlib format, but was not found in this form
-
-error: crate `libc` required to be available in rlib format, but was not found in this form
-
-error: aborting due to 10 previous errors
+error: aborting due to NUMBER previous errors
 

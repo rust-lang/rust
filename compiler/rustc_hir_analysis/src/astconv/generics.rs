@@ -1,9 +1,8 @@
 use super::IsMethodCall;
 use crate::astconv::{
-    CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
-    GenericArgCountResult, GenericArgPosition,
+    errors::prohibit_assoc_ty_binding, CreateSubstsForGenericArgsCtxt, ExplicitLateBound,
+    GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,
 };
-use crate::errors::AssocTypeBindingNotAllowed;
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
@@ -12,7 +11,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
 use rustc_middle::ty::{
-    self, subst, subst::SubstsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty, TyCtxt,
+    self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty, TyCtxt,
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::{symbol::kw, Span};
@@ -25,7 +24,7 @@ fn generic_arg_mismatch_err(
     arg: &GenericArg<'_>,
     param: &GenericParamDef,
     possible_ordering_error: bool,
-    help: Option<&str>,
+    help: Option<String>,
 ) -> ErrorGuaranteed {
     let sess = tcx.sess;
     let mut err = struct_span_err!(
@@ -77,12 +76,12 @@ fn generic_arg_mismatch_err(
             Res::Def(DefKind::TyParam, src_def_id) => {
                 if let Some(param_local_id) = param.def_id.as_local() {
                     let param_name = tcx.hir().ty_param_name(param_local_id);
-                    let param_type = tcx.type_of(param.def_id).subst_identity();
+                    let param_type = tcx.type_of(param.def_id).instantiate_identity();
                     if param_type.is_suggestable(tcx, false) {
                         err.span_suggestion(
                             tcx.def_span(src_def_id),
                             "consider changing this type parameter to a const parameter",
-                            format!("const {}: {}", param_name, param_type),
+                            format!("const {param_name}: {param_type}"),
                             Applicability::MaybeIncorrect,
                         );
                     };
@@ -103,7 +102,7 @@ fn generic_arg_mismatch_err(
                 err.span_suggestion(
                     arg.span(),
                     "array type provided where a `usize` was expected, try",
-                    format!("{{ {} }}", snippet),
+                    format!("{{ {snippet} }}"),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -113,7 +112,7 @@ fn generic_arg_mismatch_err(
             if let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) = body.value.kind
             {
                 if let Res::Def(DefKind::Fn { .. }, id) = path.res {
-                    err.help(&format!("`{}` is a function item, not a type", tcx.item_name(id)));
+                    err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
                     err.help("function item types cannot be named directly");
                 }
             }
@@ -131,7 +130,7 @@ fn generic_arg_mismatch_err(
         } else {
             (arg.descr(), param.kind.descr())
         };
-        err.note(&format!("{} arguments must be provided before {} arguments", first, last));
+        err.note(format!("{first} arguments must be provided before {last} arguments"));
         if let Some(help) = help {
             err.help(help);
         }
@@ -147,14 +146,14 @@ fn generic_arg_mismatch_err(
 ///
 /// To start, we are given the `def_id` of the thing we are
 /// creating the substitutions for, and a partial set of
-/// substitutions `parent_substs`. In general, the substitutions
+/// substitutions `parent_args`. In general, the substitutions
 /// for an item begin with substitutions for all the "parents" of
 /// that item -- e.g., for a method it might include the
 /// parameters from the impl.
 ///
 /// Therefore, the method begins by walking down these parents,
 /// starting with the outermost parent and proceed inwards until
-/// it reaches `def_id`. For each parent `P`, it will check `parent_substs`
+/// it reaches `def_id`. For each parent `P`, it will check `parent_args`
 /// first to see if the parent's substitutions are listed in there. If so,
 /// we can append those and move on. Otherwise, it invokes the
 /// three callback functions:
@@ -169,15 +168,15 @@ fn generic_arg_mismatch_err(
 ///   instantiate a `GenericArg`.
 /// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
 ///   creates a suitable inference variable.
-pub fn create_substs_for_generic_args<'tcx, 'a>(
+pub fn create_args_for_parent_generic_args<'tcx, 'a>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    parent_substs: &[subst::GenericArg<'tcx>],
+    parent_args: &[ty::GenericArg<'tcx>],
     has_self: bool,
     self_ty: Option<Ty<'tcx>>,
     arg_count: &GenericArgCountResult,
     ctx: &mut impl CreateSubstsForGenericArgsCtxt<'a, 'tcx>,
-) -> SubstsRef<'tcx> {
+) -> GenericArgsRef<'tcx> {
     // Collect the segments of the path; we need to substitute arguments
     // for parameters throughout the entire path (wherever there are
     // generic parameters).
@@ -192,27 +191,27 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
     // We manually build up the substitution, rather than using convenience
     // methods in `subst.rs`, so that we can iterate over the arguments and
     // parameters in lock-step linearly, instead of trying to match each pair.
-    let mut substs: SmallVec<[subst::GenericArg<'tcx>; 8]> = SmallVec::with_capacity(count);
+    let mut args: SmallVec<[ty::GenericArg<'tcx>; 8]> = SmallVec::with_capacity(count);
     // Iterate over each segment of the path.
     while let Some((def_id, defs)) = stack.pop() {
         let mut params = defs.params.iter().peekable();
 
         // If we have already computed substitutions for parents, we can use those directly.
         while let Some(&param) = params.peek() {
-            if let Some(&kind) = parent_substs.get(param.index as usize) {
-                substs.push(kind);
+            if let Some(&kind) = parent_args.get(param.index as usize) {
+                args.push(kind);
                 params.next();
             } else {
                 break;
             }
         }
 
-        // `Self` is handled first, unless it's been handled in `parent_substs`.
+        // `Self` is handled first, unless it's been handled in `parent_args`.
         if has_self {
             if let Some(&param) = params.peek() {
                 if param.index == 0 {
                     if let GenericParamDefKind::Type { .. } = param.kind {
-                        substs.push(
+                        args.push(
                             self_ty
                                 .map(|ty| ty.into())
                                 .unwrap_or_else(|| ctx.inferred_kind(None, param, true)),
@@ -227,7 +226,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
         let (generic_args, infer_args) = ctx.args_for_def_id(def_id);
 
         let args_iter = generic_args.iter().flat_map(|generic_args| generic_args.args.iter());
-        let mut args = args_iter.clone().peekable();
+        let mut args_iter = args_iter.clone().peekable();
 
         // If we encounter a type or const when we expect a lifetime, we infer the lifetimes.
         // If we later encounter a lifetime, we know that the arguments were provided in the
@@ -240,7 +239,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
             // provided, matching them with the generic parameters we expect.
             // Mismatches can occur as a result of elided lifetimes, or for malformed
             // input. We try to handle both sensibly.
-            match (args.peek(), params.peek()) {
+            match (args_iter.peek(), params.peek()) {
                 (Some(&arg), Some(&param)) => {
                     match (arg, &param.kind, arg_count.explicit_late_bound) {
                         (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
@@ -254,8 +253,8 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
                             GenericParamDefKind::Const { .. },
                             _,
                         ) => {
-                            substs.push(ctx.provided_kind(param, arg));
-                            args.next();
+                            args.push(ctx.provided_kind(param, arg));
+                            args_iter.next();
                             params.next();
                         }
                         (
@@ -265,7 +264,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
                         ) => {
                             // We expected a lifetime argument, but got a type or const
                             // argument. That means we're inferring the lifetimes.
-                            substs.push(ctx.inferred_kind(None, param, infer_args));
+                            args.push(ctx.inferred_kind(None, param, infer_args));
                             force_infer_lt = Some((arg, param));
                             params.next();
                         }
@@ -274,7 +273,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
                             // the presence of explicit late bounds. This is most likely
                             // due to the presence of the explicit bound so we're just going to
                             // ignore it.
-                            args.next();
+                            args_iter.next();
                         }
                         (_, _, _) => {
                             // We expected one kind of parameter, but the user provided
@@ -301,11 +300,11 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
                                     arg,
                                     param,
                                     !args_iter.clone().is_sorted_by_key(|arg| arg.to_ord()),
-                                    Some(&format!(
+                                    Some(format!(
                                         "reorder the arguments: {}: `<{}>`",
                                         param_types_present
                                             .into_iter()
-                                            .map(|ord| format!("{}s", ord))
+                                            .map(|ord| format!("{ord}s"))
                                             .collect::<Vec<String>>()
                                             .join(", then "),
                                         ordered_params
@@ -328,7 +327,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
                             // errors. In this case, we're simply going to ignore the argument
                             // and any following arguments. The rest of the parameters will be
                             // inferred.
-                            while args.next().is_some() {}
+                            while args_iter.next().is_some() {}
                         }
                     }
                 }
@@ -361,7 +360,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
                 (None, Some(&param)) => {
                     // If there are fewer arguments than parameters, it means
                     // we're inferring the remaining arguments.
-                    substs.push(ctx.inferred_kind(Some(&substs), param, infer_args));
+                    args.push(ctx.inferred_kind(Some(&args), param, infer_args));
                     params.next();
                 }
 
@@ -370,7 +369,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
         }
     }
 
-    tcx.mk_substs(&substs)
+    tcx.mk_args(&args)
 }
 
 /// Checks that the correct number of generic arguments have been provided.
@@ -433,7 +432,7 @@ pub(crate) fn check_generic_arg_count(
         (gen_pos != GenericArgPosition::Type || infer_args) && !gen_args.has_lifetime_params();
 
     if gen_pos != GenericArgPosition::Type && let Some(b) = gen_args.bindings.first() {
-            prohibit_assoc_ty_binding(tcx, b.span);
+             prohibit_assoc_ty_binding(tcx, b.span, None);
         }
 
     let explicit_late_bound =
@@ -589,11 +588,6 @@ pub(crate) fn check_generic_arg_count(
     }
 }
 
-/// Emits an error regarding forbidden type binding associations
-pub fn prohibit_assoc_ty_binding(tcx: TyCtxt<'_>, span: Span) {
-    tcx.sess.emit_err(AssocTypeBindingNotAllowed { span });
-}
-
 /// Prohibits explicit lifetime arguments if late-bound lifetime parameters
 /// are present. This is used both for datatypes and function calls.
 pub(crate) fn prohibit_explicit_late_bound_lifetimes(
@@ -618,7 +612,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         if position == GenericArgPosition::Value
             && args.num_lifetime_params() != param_counts.lifetimes
         {
-            let mut err = tcx.sess.struct_span_err(span, msg);
+            let mut err = struct_span_err!(tcx.sess, span, E0794, "{}", msg);
             err.span_note(span_late, note);
             err.emit();
         } else {

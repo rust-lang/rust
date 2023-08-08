@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(dead_code)]
 
@@ -264,6 +264,64 @@ pub enum NonExhaustiveEnum {
 impl Default for NonExhaustiveEnum {
     fn default() -> Self {
         NonExhaustiveEnum::Bar
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/10396
+
+#[derive(Default)]
+struct DefaultType;
+
+struct GenericType<T = DefaultType> {
+    t: T,
+}
+
+impl Default for GenericType {
+    fn default() -> Self {
+        Self { t: Default::default() }
+    }
+}
+
+struct InnerGenericType<T> {
+    t: T,
+}
+
+impl Default for InnerGenericType<DefaultType> {
+    fn default() -> Self {
+        Self { t: Default::default() }
+    }
+}
+
+struct OtherGenericType<T = DefaultType> {
+    inner: InnerGenericType<T>,
+}
+
+impl Default for OtherGenericType {
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+        }
+    }
+}
+
+mod issue10158 {
+    pub trait T {}
+
+    #[derive(Default)]
+    pub struct S {}
+    impl T for S {}
+
+    pub struct Outer {
+        pub inner: Box<dyn T>,
+    }
+
+    impl Default for Outer {
+        fn default() -> Self {
+            Outer {
+                // Box::<S>::default() adjusts to Box<dyn T>
+                inner: Box::<S>::default(),
+            }
+        }
     }
 }
 

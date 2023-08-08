@@ -13,7 +13,7 @@
 //! instance, a walker looking for item names in a module will miss all of
 //! those that are created by the expansion of a macro.
 
-use crate::ast::*;
+use crate::{ast::*, StaticItem};
 
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
@@ -188,6 +188,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_variant(&mut self, v: &'ast Variant) {
         walk_variant(self, v)
     }
+    fn visit_variant_discr(&mut self, discr: &'ast AnonConst) {
+        self.visit_anon_const(discr);
+    }
     fn visit_label(&mut self, label: &'ast Label) {
         walk_label(self, label)
     }
@@ -305,8 +308,13 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     match &item.kind {
         ItemKind::ExternCrate(_) => {}
         ItemKind::Use(use_tree) => visitor.visit_use_tree(use_tree, item.id, false),
-        ItemKind::Static(typ, _, expr) | ItemKind::Const(_, typ, expr) => {
-            visitor.visit_ty(typ);
+        ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
+            visitor.visit_ty(ty);
+            walk_list!(visitor, visit_expr, expr);
+        }
+        ItemKind::Const(box ConstItem { defaultness: _, generics, ty, expr }) => {
+            visitor.visit_generics(generics);
+            visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
         ItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
@@ -379,7 +387,7 @@ where
     visitor.visit_ident(variant.ident);
     visitor.visit_vis(&variant.vis);
     visitor.visit_variant_data(&variant.data);
-    walk_list!(visitor, visit_anon_const, &variant.disr_expr);
+    walk_list!(visitor, visit_variant_discr, &variant.disr_expr);
     walk_list!(visitor, visit_attribute, &variant.attrs);
 }
 
@@ -673,7 +681,8 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
     visitor.visit_ident(ident);
     walk_list!(visitor, visit_attribute, attrs);
     match kind {
-        AssocItemKind::Const(_, ty, expr) => {
+        AssocItemKind::Const(box ConstItem { defaultness: _, generics, ty, expr }) => {
+            visitor.visit_generics(generics);
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
@@ -772,7 +781,6 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
     walk_list!(visitor, visit_attribute, expression.attrs.iter());
 
     match &expression.kind {
-        ExprKind::Box(subexpression) => visitor.visit_expr(subexpression),
         ExprKind::Array(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
@@ -861,10 +869,10 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             walk_list!(visitor, visit_label, opt_label);
             visitor.visit_block(block);
         }
-        ExprKind::Async(_, _, body) => {
+        ExprKind::Async(_, body) => {
             visitor.visit_block(body);
         }
-        ExprKind::Await(expr) => visitor.visit_expr(expr),
+        ExprKind::Await(expr, _) => visitor.visit_expr(expr),
         ExprKind::Assign(lhs, rhs, _) => {
             visitor.visit_expr(lhs);
             visitor.visit_expr(rhs);
@@ -877,7 +885,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_ident(*ident);
         }
-        ExprKind::Index(main_expression, index_expression) => {
+        ExprKind::Index(main_expression, index_expression, _) => {
             visitor.visit_expr(main_expression);
             visitor.visit_expr(index_expression)
         }
@@ -905,10 +913,17 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Yeet(optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }
+        ExprKind::Become(expr) => visitor.visit_expr(expr),
         ExprKind::MacCall(mac) => visitor.visit_mac_call(mac),
         ExprKind::Paren(subexpression) => visitor.visit_expr(subexpression),
         ExprKind::InlineAsm(asm) => visitor.visit_inline_asm(asm),
         ExprKind::FormatArgs(f) => visitor.visit_format_args(f),
+        ExprKind::OffsetOf(container, fields) => {
+            visitor.visit_ty(container);
+            for &field in fields {
+                visitor.visit_ident(field);
+            }
+        }
         ExprKind::Yield(optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }

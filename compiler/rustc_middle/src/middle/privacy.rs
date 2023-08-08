@@ -4,9 +4,10 @@
 use crate::ty::{TyCtxt, Visibility};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::def::DefKind;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
 use std::hash::Hash;
 
 /// Represents the levels of effective visibility an item can have.
@@ -64,13 +65,25 @@ impl EffectiveVisibility {
         self.at_level(level).is_public()
     }
 
-    pub fn from_vis(vis: Visibility) -> EffectiveVisibility {
+    pub const fn from_vis(vis: Visibility) -> EffectiveVisibility {
         EffectiveVisibility {
             direct: vis,
             reexported: vis,
             reachable: vis,
             reachable_through_impl_trait: vis,
         }
+    }
+
+    #[must_use]
+    pub fn min(mut self, lhs: EffectiveVisibility, tcx: TyCtxt<'_>) -> Self {
+        for l in Level::all_levels() {
+            let rhs_vis = self.at_level_mut(l);
+            let lhs_vis = *lhs.at_level(l);
+            if rhs_vis.is_at_least(lhs_vis, tcx) {
+                *rhs_vis = lhs_vis;
+            };
+        }
+        self
     }
 }
 
@@ -82,8 +95,7 @@ pub struct EffectiveVisibilities<Id = LocalDefId> {
 
 impl EffectiveVisibilities {
     pub fn is_public_at_level(&self, id: LocalDefId, level: Level) -> bool {
-        self.effective_vis(id)
-            .map_or(false, |effective_vis| effective_vis.is_public_at_level(level))
+        self.effective_vis(id).is_some_and(|effective_vis| effective_vis.is_public_at_level(level))
     }
 
     /// See `Level::Reachable`.
@@ -105,6 +117,10 @@ impl EffectiveVisibilities {
         self.effective_vis(id).and_then(|effective_vis| {
             Level::all_levels().into_iter().find(|&level| effective_vis.is_public_at_level(level))
         })
+    }
+
+    pub fn update_root(&mut self) {
+        self.map.insert(CRATE_DEF_ID, EffectiveVisibility::from_vis(Visibility::Public));
     }
 
     // FIXME: Share code with `fn update`.
@@ -133,31 +149,12 @@ impl EffectiveVisibilities {
         };
     }
 
-    pub fn set_public_at_level(
-        &mut self,
-        id: LocalDefId,
-        lazy_private_vis: impl FnOnce() -> Visibility,
-        level: Level,
-    ) {
-        let mut effective_vis = self
-            .effective_vis(id)
-            .copied()
-            .unwrap_or_else(|| EffectiveVisibility::from_vis(lazy_private_vis()));
-        for l in Level::all_levels() {
-            if l <= level {
-                *effective_vis.at_level_mut(l) = Visibility::Public;
-            }
-        }
-        self.map.insert(id, effective_vis);
-    }
-
-    pub fn check_invariants(&self, tcx: TyCtxt<'_>, early: bool) {
+    pub fn check_invariants(&self, tcx: TyCtxt<'_>) {
         if !cfg!(debug_assertions) {
             return;
         }
         for (&def_id, ev) in &self.map {
             // More direct visibility levels can never go farther than less direct ones,
-            // neither of effective visibilities can go farther than nominal visibility,
             // and all effective visibilities are larger or equal than private visibility.
             let private_vis = Visibility::Restricted(tcx.parent_module_from_def_id(def_id));
             let span = tcx.def_span(def_id.to_def_id());
@@ -178,17 +175,25 @@ impl EffectiveVisibilities {
                     ev.reachable_through_impl_trait
                 );
             }
-            let nominal_vis = tcx.visibility(def_id);
-            // FIXME: `rustc_privacy` is not yet updated for the new logic and can set
-            // effective visibilities that are larger than the nominal one.
-            if !nominal_vis.is_at_least(ev.reachable_through_impl_trait, tcx) && early {
-                span_bug!(
-                    span,
-                    "{:?}: reachable_through_impl_trait {:?} > nominal {:?}",
-                    def_id,
-                    ev.reachable_through_impl_trait,
-                    nominal_vis
-                );
+            // All effective visibilities except `reachable_through_impl_trait` are limited to
+            // nominal visibility. For some items nominal visibility doesn't make sense so we
+            // don't check this condition for them.
+            let is_impl = matches!(tcx.def_kind(def_id), DefKind::Impl { .. });
+            let is_associated_item_in_trait_impl = tcx
+                .impl_of_method(def_id.to_def_id())
+                .and_then(|impl_id| tcx.trait_id_of_impl(impl_id))
+                .is_some();
+            if !is_impl && !is_associated_item_in_trait_impl {
+                let nominal_vis = tcx.visibility(def_id);
+                if !nominal_vis.is_at_least(ev.reachable, tcx) {
+                    span_bug!(
+                        span,
+                        "{:?}: reachable {:?} > nominal {:?}",
+                        def_id,
+                        ev.reachable,
+                        nominal_vis,
+                    );
+                }
             }
         }
     }
@@ -215,7 +220,7 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
     pub fn update(
         &mut self,
         id: Id,
-        nominal_vis: Visibility,
+        max_vis: Option<Visibility>,
         lazy_private_vis: impl FnOnce() -> Visibility,
         inherited_effective_vis: EffectiveVisibility,
         level: Level,
@@ -239,12 +244,11 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
                 if !(inherited_effective_vis_at_prev_level == inherited_effective_vis_at_level
                     && level != l)
                 {
-                    calculated_effective_vis =
-                        if nominal_vis.is_at_least(inherited_effective_vis_at_level, tcx) {
-                            inherited_effective_vis_at_level
-                        } else {
-                            nominal_vis
-                        };
+                    calculated_effective_vis = if let Some(max_vis) = max_vis && !max_vis.is_at_least(inherited_effective_vis_at_level, tcx) {
+                        max_vis
+                    } else {
+                        inherited_effective_vis_at_level
+                    }
                 }
                 // effective visibility can't be decreased at next update call for the
                 // same id

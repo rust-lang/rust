@@ -62,7 +62,8 @@ pub use paths::{AbsPath, AbsPathBuf};
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct FileId(pub u32);
 
-impl stdx::hash::NoHashHashable for FileId {}
+/// safe because `FileId` is a newtype of `u32`
+impl nohash_hasher::IsEnabled for FileId {}
 
 /// Storage for all files read by rust-analyzer.
 ///
@@ -108,13 +109,6 @@ pub enum ChangeKind {
 }
 
 impl Vfs {
-    /// Amount of files currently stored.
-    ///
-    /// Note that this includes deleted files.
-    pub fn len(&self) -> usize {
-        self.data.len()
-    }
-
     /// Id of the given path if it exists in the `Vfs` and is not deleted.
     pub fn file_id(&self, path: &VfsPath) -> Option<FileId> {
         self.interner.get(path).filter(|&it| self.get(it).is_some())
@@ -139,6 +133,11 @@ impl Vfs {
         self.get(file_id).as_deref().unwrap()
     }
 
+    /// Returns the overall memory usage for the stored files.
+    pub fn memory_usage(&self) -> usize {
+        self.data.iter().flatten().map(|d| d.capacity()).sum()
+    }
+
     /// Returns an iterator over the stored ids and their corresponding paths.
     ///
     /// This will skip deleted files.
@@ -158,16 +157,18 @@ impl Vfs {
     ///
     /// If the path does not currently exists in the `Vfs`, allocates a new
     /// [`FileId`] for it.
-    pub fn set_file_contents(&mut self, path: VfsPath, contents: Option<Vec<u8>>) -> bool {
+    pub fn set_file_contents(&mut self, path: VfsPath, mut contents: Option<Vec<u8>>) -> bool {
         let file_id = self.alloc_file_id(path);
-        let change_kind = match (&self.get(file_id), &contents) {
+        let change_kind = match (self.get(file_id), &contents) {
             (None, None) => return false,
             (Some(old), Some(new)) if old == new => return false,
             (None, Some(_)) => ChangeKind::Create,
             (Some(_), None) => ChangeKind::Delete,
             (Some(_), Some(_)) => ChangeKind::Modify,
         };
-
+        if let Some(contents) = &mut contents {
+            contents.shrink_to_fit();
+        }
         *self.get_mut(file_id) = contents;
         self.changes.push(ChangedFile { file_id, change_kind });
         true

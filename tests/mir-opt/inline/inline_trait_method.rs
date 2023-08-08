@@ -1,3 +1,4 @@
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // compile-flags: -Z span_free_formats
 
 fn main() {

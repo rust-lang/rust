@@ -312,7 +312,6 @@ macro_rules! debug_assert_ne {
 /// let c = Ok("abc".to_string());
 /// debug_assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
-#[macro_export]
 #[unstable(feature = "assert_matches", issue = "82775")]
 #[allow_internal_unstable(assert_matches)]
 #[rustc_macro_transparency = "semitransparent"]
@@ -340,9 +339,9 @@ pub macro debug_assert_matches($($arg:tt)*) {
 #[stable(feature = "matches_macro", since = "1.42.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "matches_macro")]
 macro_rules! matches {
-    ($expression:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
+    ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
         match $expression {
-            $( $pattern )|+ $( if $guard )? => true,
+            $pattern $(if $guard)? => true,
             _ => false
         }
     };
@@ -498,7 +497,6 @@ macro_rules! r#try {
 /// In a `no_std` setup you are responsible for the implementation details of the components.
 ///
 /// ```no_run
-/// # extern crate core;
 /// use core::fmt::Write;
 ///
 /// struct Example;
@@ -712,8 +710,8 @@ macro_rules! unimplemented {
 
 /// Indicates unfinished code.
 ///
-/// This can be useful if you are prototyping and are just looking to have your
-/// code typecheck.
+/// This can be useful if you are prototyping and just
+/// want a placeholder to let your code pass type analysis.
 ///
 /// The difference between [`unimplemented!`] and `todo!` is that while `todo!` conveys
 /// an intent of implementing the functionality later and the message is "not yet
@@ -961,6 +959,8 @@ pub(crate) mod builtin {
     ///
     /// A compile time error is never emitted when using this macro regardless
     /// of whether the environment variable is present or not.
+    /// To emit a compile error if the environment variable is not present,
+    /// use the [`env!`] macro instead.
     ///
     /// # Examples
     ///
@@ -1428,7 +1428,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     #[rustc_diagnostic_item = "assert_macro"]
-    #[allow_internal_unstable(core_panic, edition_panic)]
+    #[allow_internal_unstable(core_panic, edition_panic, generic_assert_internals)]
     macro_rules! assert {
         ($cond:expr $(,)?) => {{ /* compiler built-in */ }};
         ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};

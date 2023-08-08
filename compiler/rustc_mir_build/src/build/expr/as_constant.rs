@@ -52,7 +52,7 @@ pub fn as_constant_inner<'tcx>(
                 match lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg }) {
                     Ok(c) => c,
                     Err(LitToConstError::Reported(guar)) => {
-                        ConstantKind::Ty(tcx.const_error_with_guaranteed(ty, guar))
+                        ConstantKind::Ty(ty::Const::new_error(tcx, guar, ty))
                     }
                     Err(LitToConstError::TypeError) => {
                         bug!("encountered type error in `lit_to_mir_constant`")
@@ -62,35 +62,35 @@ pub fn as_constant_inner<'tcx>(
             Constant { span, user_ty: None, literal }
         }
         ExprKind::NonHirLiteral { lit, ref user_ty } => {
-            let user_ty = user_ty.as_ref().map(push_cuta).flatten();
+            let user_ty = user_ty.as_ref().and_then(push_cuta);
 
             let literal = ConstantKind::Val(ConstValue::Scalar(Scalar::Int(lit)), ty);
 
             Constant { span, user_ty, literal }
         }
         ExprKind::ZstLiteral { ref user_ty } => {
-            let user_ty = user_ty.as_ref().map(push_cuta).flatten();
+            let user_ty = user_ty.as_ref().and_then(push_cuta);
 
             let literal = ConstantKind::Val(ConstValue::ZeroSized, ty);
 
             Constant { span, user_ty, literal }
         }
-        ExprKind::NamedConst { def_id, substs, ref user_ty } => {
-            let user_ty = user_ty.as_ref().map(push_cuta).flatten();
+        ExprKind::NamedConst { def_id, args, ref user_ty } => {
+            let user_ty = user_ty.as_ref().and_then(push_cuta);
 
-            let uneval = mir::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
+            let uneval = mir::UnevaluatedConst::new(def_id, args);
             let literal = ConstantKind::Unevaluated(uneval, ty);
 
             Constant { user_ty, span, literal }
         }
         ExprKind::ConstParam { param, def_id: _ } => {
-            let const_param = tcx.mk_const(ty::ConstKind::Param(param), expr.ty);
+            let const_param = ty::Const::new_param(tcx, param, expr.ty);
             let literal = ConstantKind::Ty(const_param);
 
             Constant { user_ty: None, span, literal }
         }
-        ExprKind::ConstBlock { did: def_id, substs } => {
-            let uneval = mir::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
+        ExprKind::ConstBlock { did: def_id, args } => {
+            let uneval = mir::UnevaluatedConst::new(def_id, args);
             let literal = ConstantKind::Unevaluated(uneval, ty);
 
             Constant { user_ty: None, span, literal }
@@ -106,7 +106,7 @@ pub fn as_constant_inner<'tcx>(
 }
 
 #[instrument(skip(tcx, lit_input))]
-pub(crate) fn lit_to_mir_constant<'tcx>(
+fn lit_to_mir_constant<'tcx>(
     tcx: TyCtxt<'tcx>,
     lit_input: LitToConstInput<'tcx>,
 ) -> Result<ConstantKind<'tcx>, LitToConstError> {
@@ -145,6 +145,12 @@ pub(crate) fn lit_to_mir_constant<'tcx>(
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
             let id = tcx.allocate_bytes(data);
             ConstValue::Scalar(Scalar::from_pointer(id.into(), &tcx))
+        }
+        (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().c_str()) =>
+        {
+            let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
+            let allocation = tcx.mk_const_alloc(allocation);
+            ConstValue::Slice { data: allocation, start: 0, end: data.len() }
         }
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))

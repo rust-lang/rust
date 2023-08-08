@@ -1,4 +1,3 @@
-use either::Either;
 use hir::{PathResolution, Semantics};
 use ide_db::{
     base_db::FileId,
@@ -205,11 +204,13 @@ fn inline_usage(
         return None;
     }
 
-    // FIXME: Handle multiple local definitions
-    let bind_pat = match local.source(sema.db).value {
-        Either::Left(ident) => ident,
-        _ => return None,
+    let sources = local.sources(sema.db);
+    let [source] = sources.as_slice() else {
+        // Not applicable with locals with multiple definitions (i.e. or patterns)
+        return None;
     };
+
+    let bind_pat = source.as_ident_pat()?;
 
     let let_stmt = ast::LetStmt::cast(bind_pat.syntax().parent()?)?;
 

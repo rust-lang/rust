@@ -9,7 +9,7 @@
 //! algorithm can be found in "ParseNumberF64 by Simple Decimal Conversion",
 //! available online: <https://nigeltao.github.io/blog/2020/parse-number-f64-simple.html>.
 
-use crate::num::dec2flt::common::{is_8digits, parse_digits, ByteSlice, ByteSliceMut};
+use crate::num::dec2flt::common::{is_8digits, ByteSlice};
 
 #[derive(Clone)]
 pub struct Decimal {
@@ -205,29 +205,32 @@ impl Decimal {
 pub fn parse_decimal(mut s: &[u8]) -> Decimal {
     let mut d = Decimal::default();
     let start = s;
-    s = s.skip_chars(b'0');
-    parse_digits(&mut s, |digit| d.try_add_digit(digit));
-    if s.first_is(b'.') {
-        s = s.advance(1);
+
+    while let Some((&b'0', s_next)) = s.split_first() {
+        s = s_next;
+    }
+
+    s = s.parse_digits(|digit| d.try_add_digit(digit));
+
+    if let Some((b'.', s_next)) = s.split_first() {
+        s = s_next;
         let first = s;
         // Skip leading zeros.
         if d.num_digits == 0 {
-            s = s.skip_chars(b'0');
+            while let Some((&b'0', s_next)) = s.split_first() {
+                s = s_next;
+            }
         }
         while s.len() >= 8 && d.num_digits + 8 < Decimal::MAX_DIGITS {
-            // SAFETY: s is at least 8 bytes.
-            let v = unsafe { s.read_u64_unchecked() };
+            let v = s.read_u64();
             if !is_8digits(v) {
                 break;
             }
-            // SAFETY: d.num_digits + 8 is less than d.digits.len()
-            unsafe {
-                d.digits[d.num_digits..].write_u64_unchecked(v - 0x3030_3030_3030_3030);
-            }
+            d.digits[d.num_digits..].write_u64(v - 0x3030_3030_3030_3030);
             d.num_digits += 8;
-            s = s.advance(8);
+            s = &s[8..];
         }
-        parse_digits(&mut s, |digit| d.try_add_digit(digit));
+        s = s.parse_digits(|digit| d.try_add_digit(digit));
         d.decimal_point = s.len() as i32 - first.len() as i32;
     }
     if d.num_digits != 0 {
@@ -248,22 +251,26 @@ pub fn parse_decimal(mut s: &[u8]) -> Decimal {
             d.num_digits = Decimal::MAX_DIGITS;
         }
     }
-    if s.first_is2(b'e', b'E') {
-        s = s.advance(1);
-        let mut neg_exp = false;
-        if s.first_is(b'-') {
-            neg_exp = true;
-            s = s.advance(1);
-        } else if s.first_is(b'+') {
-            s = s.advance(1);
-        }
-        let mut exp_num = 0_i32;
-        parse_digits(&mut s, |digit| {
-            if exp_num < 0x10000 {
-                exp_num = 10 * exp_num + digit as i32;
+    if let Some((&ch, s_next)) = s.split_first() {
+        if ch == b'e' || ch == b'E' {
+            s = s_next;
+            let mut neg_exp = false;
+            if let Some((&ch, s_next)) = s.split_first() {
+                neg_exp = ch == b'-';
+                if ch == b'-' || ch == b'+' {
+                    s = s_next;
+                }
             }
-        });
-        d.decimal_point += if neg_exp { -exp_num } else { exp_num };
+            let mut exp_num = 0_i32;
+
+            s.parse_digits(|digit| {
+                if exp_num < 0x10000 {
+                    exp_num = 10 * exp_num + digit as i32;
+                }
+            });
+
+            d.decimal_point += if neg_exp { -exp_num } else { exp_num };
+        }
     }
     for i in d.num_digits..Decimal::MAX_DIGITS_WITHOUT_OVERFLOW {
         d.digits[i] = 0;

@@ -41,7 +41,7 @@ impl MetaVarExpr {
         };
         check_trailing_token(&mut tts, sess)?;
         let mut iter = args.trees();
-        let rslt = match &*ident.as_str() {
+        let rslt = match ident.as_str() {
             "count" => parse_count(&mut iter, sess, ident.span)?,
             "ignore" => MetaVarExpr::Ignore(parse_ident(&mut iter, sess, ident.span)?),
             "index" => MetaVarExpr::Index(parse_depth(&mut iter, sess, ident.span)?),
@@ -78,7 +78,7 @@ fn check_trailing_token<'sess>(
     if let Some(tt) = iter.next() {
         let mut diag = sess
             .span_diagnostic
-            .struct_span_err(tt.span(), &format!("unexpected token: {}", pprust::tt_to_string(tt)));
+            .struct_span_err(tt.span(), format!("unexpected token: {}", pprust::tt_to_string(tt)));
         diag.span_note(tt.span(), "meta-variable expression must not have trailing tokens");
         Err(diag)
     } else {
@@ -104,13 +104,10 @@ fn parse_depth<'sess>(
     span: Span,
 ) -> PResult<'sess, usize> {
     let Some(tt) = iter.next() else { return Ok(0) };
-    let TokenTree::Token(token::Token {
-        kind: token::TokenKind::Literal(lit), ..
-    }, _) = tt else {
-        return Err(sess.span_diagnostic.struct_span_err(
-            span,
-            "meta-variable expression depth must be a literal"
-        ));
+    let TokenTree::Token(token::Token { kind: token::TokenKind::Literal(lit), .. }, _) = tt else {
+        return Err(sess
+            .span_diagnostic
+            .struct_span_err(span, "meta-variable expression depth must be a literal"));
     };
     if let Ok(lit_kind) = LitKind::from_token_lit(*lit)
         && let LitKind::Int(n_u128, LitIntType::Unsuffixed) = lit_kind
@@ -137,11 +134,11 @@ fn parse_ident<'sess>(
         let token_str = pprust::token_to_string(token);
         let mut err = sess.span_diagnostic.struct_span_err(
             span,
-            &format!("expected identifier, found `{}`", &token_str)
+            format!("expected identifier, found `{}`", &token_str)
         );
         err.span_suggestion(
             token.span,
-            &format!("try removing `{}`", &token_str),
+            format!("try removing `{}`", &token_str),
             "",
             Applicability::MaybeIncorrect,
         );

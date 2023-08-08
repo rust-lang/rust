@@ -3,7 +3,6 @@
 use crate::convert;
 use crate::ops::{self, ControlFlow};
 use crate::result::Result;
-use crate::task::Ready;
 
 /// Indicates whether a value is available or if the current task has been
 /// scheduled to receive a wakeup instead.
@@ -94,38 +93,6 @@ impl<T> Poll<T> {
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub const fn is_pending(&self) -> bool {
         !self.is_ready()
-    }
-
-    /// Extracts the successful type of a [`Poll<T>`].
-    ///
-    /// When combined with the `?` operator, this function will
-    /// propagate any [`Poll::Pending`] values to the caller, and
-    /// extract the `T` from [`Poll::Ready`].
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// #![feature(poll_ready)]
-    ///
-    /// use std::task::{Context, Poll};
-    /// use std::future::{self, Future};
-    /// use std::pin::Pin;
-    ///
-    /// pub fn do_poll(cx: &mut Context<'_>) -> Poll<()> {
-    ///     let mut fut = future::ready(42);
-    ///     let fut = Pin::new(&mut fut);
-    ///
-    ///     let num = fut.poll(cx).ready()?;
-    ///     # drop(num);
-    ///     // ... use num
-    ///
-    ///     Poll::Ready(())
-    /// }
-    /// ```
-    #[inline]
-    #[unstable(feature = "poll_ready", issue = "89780")]
-    pub fn ready(self) -> Ready<T> {
-        Ready(self)
     }
 }
 
@@ -247,8 +214,7 @@ impl<T, E> Poll<Option<Result<T, E>>> {
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T> const From<T> for Poll<T> {
+impl<T> From<T> for Poll<T> {
     /// Moves the value into a [`Poll::Ready`] to make a `Poll<T>`.
     ///
     /// # Example

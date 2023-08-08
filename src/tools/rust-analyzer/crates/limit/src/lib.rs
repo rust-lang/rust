@@ -6,6 +6,7 @@
 use std::sync::atomic::AtomicUsize;
 
 /// Represents a struct used to enforce a numerical limit.
+#[derive(Debug)]
 pub struct Limit {
     upper_bound: usize,
     #[cfg(feature = "tracking")]

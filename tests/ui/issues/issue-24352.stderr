@@ -6,10 +6,10 @@ LL |     1.0f64 - 1
    |
    = help: the trait `Sub<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Sub<Rhs>`:
+             <f64 as Sub>
+             <f64 as Sub<&f64>>
              <&'a f64 as Sub<f64>>
              <&f64 as Sub<&f64>>
-             <f64 as Sub<&f64>>
-             <f64 as Sub>
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     1.0f64 - 1.0

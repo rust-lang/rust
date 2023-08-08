@@ -65,19 +65,6 @@ note: required by a bound in `test`
 LL | fn test<T: Sync>() {}
    |            ^^^^ required by this bound in `test`
 
-error[E0277]: `Sender<i32>` cannot be shared between threads safely
-  --> $DIR/not-sync.rs:20:12
-   |
-LL |     test::<Sender<i32>>();
-   |            ^^^^^^^^^^^ `Sender<i32>` cannot be shared between threads safely
-   |
-   = help: the trait `Sync` is not implemented for `Sender<i32>`
-note: required by a bound in `test`
-  --> $DIR/not-sync.rs:5:12
-   |
-LL | fn test<T: Sync>() {}
-   |            ^^^^ required by this bound in `test`
-
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

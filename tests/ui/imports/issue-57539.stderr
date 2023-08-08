@@ -4,7 +4,7 @@ error[E0659]: `core` is ambiguous
 LL |     use core;
    |         ^^^^ ambiguous name
    |
-   = note: ambiguous because of multiple potential import sources
+   = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
    = note: `core` could refer to a built-in crate
    = help: use `::core` to refer to this crate unambiguously
 note: `core` could also refer to the module imported here
@@ -12,7 +12,8 @@ note: `core` could also refer to the module imported here
    |
 LL |     use crate::*;
    |         ^^^^^^^^
-   = help: use `self::core` to refer to this module unambiguously
+   = help: consider adding an explicit import of `core` to disambiguate
+   = help: or use `self::core` to refer to this module unambiguously
 
 error: aborting due to previous error
 

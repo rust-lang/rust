@@ -1,4 +1,4 @@
-DefId(0:3 ~ thir_tree[8f1d]::main):
+DefId(0:3 ~ thir_tree[7aaa]::main):
 params: [
 ]
 body:
@@ -18,7 +18,7 @@ body:
                         kind: 
                             Scope {
                                 region_scope: Node(2)
-                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree[8f1d]::main).2))
+                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree[7aaa]::main).2))
                                 value:
                                     Expr {
                                         ty: ()

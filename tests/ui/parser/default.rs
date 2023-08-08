@@ -14,7 +14,7 @@ impl Foo for u8 {
 }
 
 impl Foo for u16 {
-    pub default fn foo<T: Default>() -> T { //~ ERROR unnecessary visibility qualifier
+    pub default fn foo<T: Default>() -> T { //~ ERROR visibility qualifiers are not permitted here
         T::default()
     }
 }

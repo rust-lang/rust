@@ -18,11 +18,6 @@ pub fn expand_deriving_eq(
     is_const: bool,
 ) {
     let span = cx.with_def_site_ctxt(span);
-    let attrs = thin_vec![
-        cx.attr_word(sym::inline, span),
-        cx.attr_nested_word(sym::doc, sym::hidden, span),
-        cx.attr_word(sym::no_coverage, span)
-    ];
     let trait_def = TraitDef {
         span,
         path: path_std!(cmp::Eq),
@@ -36,7 +31,11 @@ pub fn expand_deriving_eq(
             explicit_self: true,
             nonself_args: vec![],
             ret_ty: Unit,
-            attributes: attrs,
+            attributes: thin_vec![
+                cx.attr_word(sym::inline, span),
+                cx.attr_nested_word(sym::doc, sym::hidden, span),
+                cx.attr_word(sym::no_coverage, span)
+            ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 cs_total_eq_assert(a, b, c)

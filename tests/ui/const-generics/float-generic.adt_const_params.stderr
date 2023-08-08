@@ -3,8 +3,6 @@ error[E0741]: `f32` is forbidden as the type of a const generic parameter
    |
 LL | fn foo<const F: f32>() {}
    |                 ^^^
-   |
-   = note: floats do not derive `Eq` or `Ord`, which are required for const parameters
 
 error: aborting due to previous error
 

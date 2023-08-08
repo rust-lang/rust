@@ -83,6 +83,12 @@ impl IntoDiagnosticArg for DebugArgPath<'_> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_binary_output_to_tty)]
+pub struct BinaryOutputToTty {
+    pub shorthand: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_ignoring_emit_path)]
 pub struct IgnoringEmitPath {
     pub extension: String,
@@ -171,31 +177,31 @@ impl IntoDiagnostic<'_> for ThorinErrorWrapper {
             }
             thorin::Error::NamelessSection(_, offset) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_section_without_name);
-                diag.set_arg("offset", format!("0x{:08x}", offset));
+                diag.set_arg("offset", format!("0x{offset:08x}"));
                 diag
             }
             thorin::Error::RelocationWithInvalidSymbol(section, offset) => {
                 diag =
                     handler.struct_err(fluent::codegen_ssa_thorin_relocation_with_invalid_symbol);
                 diag.set_arg("section", section);
-                diag.set_arg("offset", format!("0x{:08x}", offset));
+                diag.set_arg("offset", format!("0x{offset:08x}"));
                 diag
             }
             thorin::Error::MultipleRelocations(section, offset) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_multiple_relocations);
                 diag.set_arg("section", section);
-                diag.set_arg("offset", format!("0x{:08x}", offset));
+                diag.set_arg("offset", format!("0x{offset:08x}"));
                 diag
             }
             thorin::Error::UnsupportedRelocation(section, offset) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_unsupported_relocation);
                 diag.set_arg("section", section);
-                diag.set_arg("offset", format!("0x{:08x}", offset));
+                diag.set_arg("offset", format!("0x{offset:08x}"));
                 diag
             }
             thorin::Error::MissingDwoName(id) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_missing_dwo_name);
-                diag.set_arg("id", format!("0x{:08x}", id));
+                diag.set_arg("id", format!("0x{id:08x}"));
                 diag
             }
             thorin::Error::NoCompilationUnits => {
@@ -245,7 +251,7 @@ impl IntoDiagnostic<'_> for ThorinErrorWrapper {
             }
             thorin::Error::StrAtOffset(_, offset) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_str_at_offset);
-                diag.set_arg("offset", format!("0x{:08x}", offset));
+                diag.set_arg("offset", format!("0x{offset:08x}"));
                 diag
             }
             thorin::Error::ParseIndex(_, section) => {
@@ -255,7 +261,7 @@ impl IntoDiagnostic<'_> for ThorinErrorWrapper {
             }
             thorin::Error::UnitNotInIndex(unit) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_unit_not_in_index);
-                diag.set_arg("unit", format!("0x{:08x}", unit));
+                diag.set_arg("unit", format!("0x{unit:08x}"));
                 diag
             }
             thorin::Error::RowNotInIndex(_, row) => {
@@ -269,7 +275,7 @@ impl IntoDiagnostic<'_> for ThorinErrorWrapper {
             }
             thorin::Error::EmptyUnit(unit) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_empty_unit);
-                diag.set_arg("unit", format!("0x{:08x}", unit));
+                diag.set_arg("unit", format!("0x{unit:08x}"));
                 diag
             }
             thorin::Error::MultipleDebugInfoSection => {
@@ -286,12 +292,12 @@ impl IntoDiagnostic<'_> for ThorinErrorWrapper {
             }
             thorin::Error::DuplicateUnit(unit) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_duplicate_unit);
-                diag.set_arg("unit", format!("0x{:08x}", unit));
+                diag.set_arg("unit", format!("0x{unit:08x}"));
                 diag
             }
             thorin::Error::MissingReferencedUnit(unit) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_missing_referenced_unit);
-                diag.set_arg("unit", format!("0x{:08x}", unit));
+                diag.set_arg("unit", format!("0x{unit:08x}"));
                 diag
             }
             thorin::Error::NoOutputObjectCreated => {
@@ -336,7 +342,7 @@ pub struct LinkingFailed<'a> {
     pub linker_path: &'a PathBuf,
     pub exit_status: ExitStatus,
     pub command: &'a Command,
-    pub escaped_output: &'a str,
+    pub escaped_output: String,
 }
 
 impl IntoDiagnostic<'_> for LinkingFailed<'_> {
@@ -345,11 +351,13 @@ impl IntoDiagnostic<'_> for LinkingFailed<'_> {
         diag.set_arg("linker_path", format!("{}", self.linker_path.display()));
         diag.set_arg("exit_status", format!("{}", self.exit_status));
 
+        let contains_undefined_ref = self.escaped_output.contains("undefined reference to");
+
         diag.note(format!("{:?}", self.command)).note(self.escaped_output);
 
         // Trying to match an error from OS linkers
         // which by now we have no way to translate.
-        if self.escaped_output.contains("undefined reference to") {
+        if contains_undefined_ref {
             diag.note(fluent::codegen_ssa_extern_funcs_not_found)
                 .note(fluent::codegen_ssa_specify_libraries_to_link)
                 .note(fluent::codegen_ssa_use_cargo_directive);
@@ -405,8 +413,8 @@ pub struct MsvcMissingLinker;
 pub struct CheckInstalledVisualStudio;
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_unsufficient_vs_code_product)]
-pub struct UnsufficientVSCodeProduct;
+#[diag(codegen_ssa_insufficient_vs_code_product)]
+pub struct InsufficientVSCodeProduct;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_processing_dymutil_failed)]
@@ -424,7 +432,7 @@ pub struct UnableToRunDsymutil {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_stripping_debu_info_failed)]
+#[diag(codegen_ssa_stripping_debug_info_failed)]
 #[note]
 pub struct StrippingDebugInfoFailed<'a> {
     pub util: &'a str,
@@ -446,6 +454,12 @@ pub struct LinkerFileStem;
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_static_library_native_artifacts)]
 pub struct StaticLibraryNativeArtifacts;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_static_library_native_artifacts_to_file)]
+pub struct StaticLibraryNativeArtifactsToFile<'a> {
+    pub path: &'a Path,
+}
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_link_script_unavailable)]
@@ -980,4 +994,44 @@ impl IntoDiagnosticArg for ExpectedPointerMutability {
             ExpectedPointerMutability::Not => DiagnosticArgValue::Str(Cow::Borrowed("*_")),
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_no_sanitize)]
+#[note]
+pub struct InvalidNoSanitize {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_link_ordinal_nargs)]
+#[note]
+pub struct InvalidLinkOrdinalNargs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_illegal_link_ordinal_format)]
+#[note]
+pub struct InvalidLinkOrdinalFormat {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_target_feature_safe_trait)]
+pub struct TargetFeatureSafeTrait {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(codegen_ssa_label_def)]
+    pub def: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_error_creating_remark_dir)]
+pub struct ErrorCreatingRemarkDir {
+    pub error: std::io::Error,
 }

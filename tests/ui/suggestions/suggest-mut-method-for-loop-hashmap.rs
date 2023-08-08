@@ -11,7 +11,7 @@ fn main() {
     let mut map = HashMap::new();
     map.insert("a", Test { v: 0 });
 
-    for (_k, mut v) in map.iter() {
+    for (_k, v) in map.iter() {
         //~^ HELP use mutable method
         //~| NOTE this iterator yields `&` references
         v.v += 1;

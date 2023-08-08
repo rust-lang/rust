@@ -58,7 +58,7 @@ impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
 
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, NoError> {
         // We pick the value of the least universe because it is compatible with more variables.
-        // This is *not* neccessary for soundness, but it allows more region variables to be
+        // This is *not* necessary for soundness, but it allows more region variables to be
         // resolved to the said value.
         #[cold]
         fn min_universe<'tcx>(r1: Region<'tcx>, r2: Region<'tcx>) -> Region<'tcx> {
@@ -90,15 +90,15 @@ impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
 impl ToType for ty::IntVarValue {
     fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
-            ty::IntType(i) => tcx.mk_mach_int(i),
-            ty::UintType(i) => tcx.mk_mach_uint(i),
+            ty::IntType(i) => Ty::new_int(tcx, i),
+            ty::UintType(i) => Ty::new_uint(tcx, i),
         }
     }
 }
 
 impl ToType for ty::FloatVarValue {
     fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        tcx.mk_mach_float(self.0)
+        Ty::new_float(tcx, self.0)
     }
 }
 
@@ -116,7 +116,6 @@ pub enum ConstVariableOriginKind {
     MiscVariable,
     ConstInference,
     ConstParameterDefinition(Symbol, DefId),
-    SubstitutionPlaceholder,
 }
 
 #[derive(Copy, Clone, Debug)]

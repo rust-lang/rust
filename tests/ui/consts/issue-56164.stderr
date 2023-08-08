@@ -14,18 +14,6 @@ error: function pointer calls are not allowed in constant functions
 LL |     input()
    |     ^^^^^^^
 
-note: erroneous constant used
-  --> $DIR/issue-56164.rs:1:18
-   |
-LL | const fn foo() { (||{})() }
-   |                  ^^^^^^
-
-note: erroneous constant used
-  --> $DIR/issue-56164.rs:1:18
-   |
-LL | const fn foo() { (||{})() }
-   |                  ^^^^^^
-
 error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0015`.

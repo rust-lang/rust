@@ -18,5 +18,5 @@ fn main() {
     let w = Wrapper(x);
     needs_foo(w);
     x = 1;
-    drop(x);
+    let _ = x;
 }

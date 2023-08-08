@@ -51,10 +51,10 @@ pub const unwinder_private_data_size: usize = 5;
 #[cfg(target_arch = "m68k")]
 pub const unwinder_private_data_size: usize = 2;
 
-#[cfg(target_arch = "mips")]
+#[cfg(any(target_arch = "mips", target_arch = "mips32r6"))]
 pub const unwinder_private_data_size: usize = 2;
 
-#[cfg(target_arch = "mips64")]
+#[cfg(any(target_arch = "mips64", target_arch = "mips64r6"))]
 pub const unwinder_private_data_size: usize = 2;
 
 #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
@@ -74,6 +74,9 @@ pub const unwinder_private_data_size: usize = 20;
 
 #[cfg(all(target_arch = "hexagon", target_os = "linux"))]
 pub const unwinder_private_data_size: usize = 35;
+
+#[cfg(target_arch = "loongarch64")]
+pub const unwinder_private_data_size: usize = 2;
 
 #[repr(C)]
 pub struct _Unwind_Exception {
@@ -114,7 +117,7 @@ extern "C" {
 }
 
 cfg_if::cfg_if! {
-if #[cfg(any(target_os = "ios", target_os = "watchos", target_os = "netbsd", not(target_arch = "arm")))] {
+if #[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos", target_os = "netbsd", not(target_arch = "arm")))] {
     // Not ARM EHABI
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq)]

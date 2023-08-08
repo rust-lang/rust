@@ -36,8 +36,9 @@ impl<T> Context for io::Result<T> {
 /// # Errors
 ///
 /// This function errors out if the files couldn't be created or written to.
+#[allow(clippy::missing_panics_doc)]
 pub fn create(
-    pass: Option<&String>,
+    pass: &String,
     lint_name: Option<&String>,
     category: Option<&str>,
     mut ty: Option<&str>,
@@ -49,7 +50,7 @@ pub fn create(
     }
 
     let lint = LintData {
-        pass: pass.map_or("", String::as_str),
+        pass,
         name: lint_name.expect("`name` argument is validated by clap"),
         category: category.expect("`category` argument is validated by clap"),
         ty,
@@ -61,6 +62,14 @@ pub fn create(
 
     if lint.ty.is_none() {
         add_lint(&lint, msrv).context("Unable to add lint to clippy_lints/src/lib.rs")?;
+    }
+
+    if pass == "early" {
+        println!(
+            "\n\
+            NOTE: Use a late pass unless you need something specific from\
+            an early pass, as they lack many features and utilities"
+        );
     }
 
     Ok(())
@@ -87,8 +96,7 @@ fn create_test(lint: &LintData<'_>) -> io::Result<()> {
 
         path.push("src");
         fs::create_dir(&path)?;
-        let header = format!("// compile-flags: --crate-name={lint_name}");
-        write_file(path.join("main.rs"), get_test_file_contents(lint_name, Some(&header)))?;
+        write_file(path.join("main.rs"), get_test_file_contents(lint_name))?;
 
         Ok(())
     }
@@ -104,7 +112,7 @@ fn create_test(lint: &LintData<'_>) -> io::Result<()> {
         println!("Generated test directories: `{relative_test_dir}/pass`, `{relative_test_dir}/fail`");
     } else {
         let test_path = format!("tests/ui/{}.rs", lint.name);
-        let test_contents = get_test_file_contents(lint.name, None);
+        let test_contents = get_test_file_contents(lint.name);
         write_file(lint.project_root.join(&test_path), test_contents)?;
 
         println!("Generated test file: `{test_path}`");
@@ -186,23 +194,16 @@ pub(crate) fn get_stabilization_version() -> String {
     parse_manifest(&contents).expect("Unable to find package version in `Cargo.toml`")
 }
 
-fn get_test_file_contents(lint_name: &str, header_commands: Option<&str>) -> String {
-    let mut contents = formatdoc!(
+fn get_test_file_contents(lint_name: &str) -> String {
+    formatdoc!(
         r#"
-        #![allow(unused)]
         #![warn(clippy::{lint_name})]
 
         fn main() {{
             // test code goes here
         }}
     "#
-    );
-
-    if let Some(header) = header_commands {
-        contents = format!("{header}\n{contents}");
-    }
-
-    contents
+    )
 }
 
 fn get_manifest_contents(lint_name: &str, hint: &str) -> String {
@@ -349,6 +350,10 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
 
     let mod_file_path = ty_dir.join("mod.rs");
     let context_import = setup_mod_file(&mod_file_path, lint)?;
+    let pass_lifetimes = match context_import {
+        "LateContext" => "<'_>",
+        _ => "",
+    };
 
     let name_upper = lint.name.to_uppercase();
     let mut lint_file_contents = String::new();
@@ -363,15 +368,13 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
                 use super::{name_upper};
 
                 // TODO: Adjust the parameters as necessary
-                pub(super) fn check(cx: &{context_import}, msrv: &Msrv) {{
+                pub(super) fn check(cx: &{context_import}{pass_lifetimes}, msrv: &Msrv) {{
                     if !msrv.meets(todo!("Add a new entry in `clippy_utils/src/msrvs`")) {{
                         return;
                     }}
                     todo!();
                 }}
-           "#,
-            context_import = context_import,
-            name_upper = name_upper,
+           "#
         );
     } else {
         let _: fmt::Result = writedoc!(
@@ -382,12 +385,10 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
                 use super::{name_upper};
 
                 // TODO: Adjust the parameters as necessary
-                pub(super) fn check(cx: &{context_import}) {{
+                pub(super) fn check(cx: &{context_import}{pass_lifetimes}) {{
                     todo!();
                 }}
-           "#,
-            context_import = context_import,
-            name_upper = name_upper,
+           "#
         );
     }
 

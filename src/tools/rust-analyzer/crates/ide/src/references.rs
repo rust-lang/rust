@@ -17,7 +17,7 @@ use ide_db::{
     RootDatabase,
 };
 use itertools::Itertools;
-use stdx::hash::NoHashHashMap;
+use nohash_hasher::IntMap;
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, HasName},
@@ -31,7 +31,7 @@ use crate::{FilePosition, NavigationTarget, TryToNav};
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
     pub declaration: Option<Declaration>,
-    pub references: NoHashHashMap<FileId, Vec<(TextRange, Option<ReferenceCategory>)>>,
+    pub references: IntMap<FileId, Vec<(TextRange, Option<ReferenceCategory>)>>,
 }
 
 #[derive(Debug, Clone)]
@@ -74,7 +74,7 @@ pub(crate) fn find_all_refs(
                 }
             });
             let mut usages =
-                def.usages(sema).set_scope(search_scope.clone()).include_self_refs().all();
+                def.usages(sema).set_scope(search_scope.as_ref()).include_self_refs().all();
 
             if literal_search {
                 retain_adt_literal_usages(&mut usages, def, sema);
@@ -136,6 +136,9 @@ pub(crate) fn find_defs<'a>(
                             NameRefClass::Definition(def) => def,
                             NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
                                 Definition::Local(local_ref)
+                            }
+                            NameRefClass::ExternCrateShorthand { decl, .. } => {
+                                Definition::ExternCrateDecl(decl)
                             }
                         }
                     }
@@ -715,7 +718,7 @@ fn f() {
 }
 "#,
             expect![[r#"
-                Foo Struct FileId(1) 17..51 28..31
+                Foo Struct FileId(1) 17..51 28..31 foo
 
                 FileId(0) 53..56
                 FileId(2) 79..82
@@ -803,7 +806,7 @@ pub(super) struct Foo$0 {
 }
 "#,
             expect![[r#"
-                Foo Struct FileId(2) 0..41 18..21
+                Foo Struct FileId(2) 0..41 18..21 some
 
                 FileId(1) 20..23 Import
                 FileId(1) 47..50
@@ -1289,7 +1292,7 @@ trait Foo where Self$0 {
 impl Foo for () {}
 "#,
             expect![[r#"
-                Self TypeParam FileId(0) 6..9 6..9
+                Self TypeParam FileId(0) 0..44 6..9
 
                 FileId(0) 16..20
                 FileId(0) 37..41
@@ -1351,6 +1354,38 @@ impl Foo {
                 Bar Variant FileId(0) 11..16 11..14
 
                 FileId(0) 89..92
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_trait_alias() {
+        check(
+            r#"
+trait Foo {}
+trait Bar$0 = Foo where Self: ;
+fn foo<T: Bar>(_: impl Bar, _: &dyn Bar) {}
+"#,
+            expect![[r#"
+                Bar TraitAlias FileId(0) 13..42 19..22
+
+                FileId(0) 53..56
+                FileId(0) 66..69
+                FileId(0) 79..82
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_trait_alias_self() {
+        check(
+            r#"
+trait Foo = where Self$0: ;
+"#,
+            expect![[r#"
+                Self TypeParam FileId(0) 0..25 6..9
+
+                FileId(0) 18..22
             "#]],
         );
     }
@@ -1510,7 +1545,7 @@ fn f() {
                 FileId(0) 161..165
 
 
-                func Function FileId(0) 137..146 140..144
+                func Function FileId(0) 137..146 140..144 module
 
                 FileId(0) 181..185
             "#]],
@@ -1549,7 +1584,7 @@ trait Trait {
 }
 "#,
             expect![[r#"
-                func Function FileId(0) 48..87 51..55
+                func Function FileId(0) 48..87 51..55 Trait
 
                 FileId(0) 74..78
             "#]],
@@ -1660,7 +1695,7 @@ fn f<T: Trait>() {
 }
 "#,
             expect![[r#"
-                CONST Const FileId(0) 18..37 24..29
+                CONST Const FileId(0) 18..37 24..29 Trait
 
                 FileId(0) 71..76
                 FileId(0) 125..130
@@ -1689,7 +1724,7 @@ fn f<T: Trait>() {
 }
 "#,
             expect![[r#"
-                TypeAlias TypeAlias FileId(0) 18..33 23..32
+                TypeAlias TypeAlias FileId(0) 18..33 23..32 Trait
 
                 FileId(0) 66..75
                 FileId(0) 117..126
@@ -1718,7 +1753,7 @@ fn f<T: Trait>() {
 }
 "#,
             expect![[r#"
-                function Function FileId(0) 18..34 21..29
+                function Function FileId(0) 18..34 21..29 Trait
 
                 FileId(0) 65..73
                 FileId(0) 112..120
@@ -1862,7 +1897,7 @@ fn f<T: Trait>() {
 }
 "#,
             expect![[r#"
-                TypeAlias TypeAlias FileId(0) 18..33 23..32
+                TypeAlias TypeAlias FileId(0) 18..33 23..32 Trait
 
                 FileId(0) 66..75
                 FileId(0) 117..126
@@ -1918,7 +1953,7 @@ impl Foo for Bar {
 fn method() {}
 "#,
             expect![[r#"
-                method Function FileId(0) 16..39 19..25
+                method Function FileId(0) 16..39 19..25 Foo
 
                 FileId(0) 101..107
             "#]],

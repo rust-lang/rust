@@ -1,10 +1,10 @@
-error[E0771]: use of non-static lifetime `'a` in const generic
+error[E0770]: the type of const parameters must not depend on other generic parameters
   --> $DIR/E0771.rs:4:41
    |
 LL | fn function_with_str<'a, const STRING: &'a str>() {}
-   |                                         ^^
+   |                                         ^^ the type must not depend on the parameter `'a`
    |
-   = note: for more information, see issue #74052 <https://github.com/rust-lang/rust/issues/74052>
+   = note: lifetime parameters may not be used in the type of const parameters
 
 warning: the feature `adt_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/E0771.rs:1:12
@@ -17,4 +17,4 @@ LL | #![feature(adt_const_params)]
 
 error: aborting due to previous error; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0771`.
+For more information about this error, try `rustc --explain E0770`.

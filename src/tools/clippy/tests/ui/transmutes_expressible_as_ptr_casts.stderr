@@ -58,5 +58,11 @@ error: transmute from a reference to a pointer
 LL |     unsafe { transmute::<&[i32; 1], *const u8>(in_param) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `in_param as *const [i32; 1] as *const u8`
 
-error: aborting due to 9 previous errors
+error: transmute from `fn()` to `*const u8` which could be expressed as a pointer cast instead
+  --> $DIR/transmutes_expressible_as_ptr_casts.rs:84:28
+   |
+LL |     let _x: u8 = unsafe { *std::mem::transmute::<fn(), *const u8>(f) };
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(f as *const u8)`
+
+error: aborting due to 10 previous errors
 

@@ -33,6 +33,7 @@
 #![feature(min_specialization)]
 #![feature(strict_provenance)]
 #![recursion_limit = "256"]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
@@ -43,11 +44,10 @@ mod diagnostic;
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
-use std::cmp::Ordering;
-use std::ops::RangeBounds;
+use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::{error, fmt, iter};
+use std::{error, fmt};
 
 /// Determines whether proc_macro has been made accessible to the currently
 /// running program.
@@ -178,6 +178,7 @@ impl FromStr for TokenStream {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenStream {
     fn to_string(&self) -> String {
@@ -310,7 +311,7 @@ impl ConcatStreamsHelper {
 
 /// Collects a number of token trees into a single stream.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-impl iter::FromIterator<TokenTree> for TokenStream {
+impl FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
         let iter = trees.into_iter();
         let mut builder = ConcatTreesHelper::new(iter.size_hint().0);
@@ -322,7 +323,7 @@ impl iter::FromIterator<TokenTree> for TokenStream {
 /// A "flattening" operation on token streams, collects token trees
 /// from multiple token streams into a single stream.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl iter::FromIterator<TokenStream> for TokenStream {
+impl FromIterator<TokenStream> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
         let iter = streams.into_iter();
         let mut builder = ConcatStreamsHelper::new(iter.size_hint().0);
@@ -488,28 +489,38 @@ impl Span {
         Span(self.0.source())
     }
 
-    /// Gets the starting line/column in the source file for this span.
+    /// Returns the span's byte position range in the source file.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub fn start(&self) -> LineColumn {
-        self.0.start().add_1_to_column()
-    }
-
-    /// Gets the ending line/column in the source file for this span.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub fn end(&self) -> LineColumn {
-        self.0.end().add_1_to_column()
+    pub fn byte_range(&self) -> Range<usize> {
+        self.0.byte_range()
     }
 
     /// Creates an empty span pointing to directly before this span.
-    #[unstable(feature = "proc_macro_span_shrink", issue = "87552")]
-    pub fn before(&self) -> Span {
-        Span(self.0.before())
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn start(&self) -> Span {
+        Span(self.0.start())
     }
 
     /// Creates an empty span pointing to directly after this span.
-    #[unstable(feature = "proc_macro_span_shrink", issue = "87552")]
-    pub fn after(&self) -> Span {
-        Span(self.0.after())
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn end(&self) -> Span {
+        Span(self.0.end())
+    }
+
+    /// The one-indexed line of the source file where the span starts.
+    ///
+    /// To obtain the line of the span's end, use `span.end().line()`.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn line(&self) -> usize {
+        self.0.line()
+    }
+
+    /// The one-indexed column of the source file where the span starts.
+    ///
+    /// To obtain the column of the span's end, use `span.end().column()`.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn column(&self) -> usize {
+        self.0.column()
     }
 
     /// Creates a new span encompassing `self` and `other`.
@@ -577,44 +588,6 @@ impl Span {
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
-    }
-}
-
-/// A line-column pair representing the start or end of a `Span`.
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct LineColumn {
-    /// The 1-indexed line in the source file on which the span starts or ends (inclusive).
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub line: usize,
-    /// The 1-indexed column (number of bytes in UTF-8 encoding) in the source
-    /// file on which the span starts or ends (inclusive).
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub column: usize,
-}
-
-impl LineColumn {
-    fn add_1_to_column(self) -> Self {
-        LineColumn { line: self.line, column: self.column + 1 }
-    }
-}
-
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl !Send for LineColumn {}
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl !Sync for LineColumn {}
-
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl Ord for LineColumn {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.line.cmp(&other.line).then(self.column.cmp(&other.column))
-    }
-}
-
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl PartialOrd for LineColumn {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 
@@ -767,6 +740,7 @@ impl From<Literal> for TokenTree {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenTree {
     fn to_string(&self) -> String {
@@ -901,6 +875,7 @@ impl Group {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for Group {
     fn to_string(&self) -> String {
@@ -1010,6 +985,7 @@ impl Punct {
     }
 }
 
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl ToString for Punct {
     fn to_string(&self) -> String {
@@ -1112,8 +1088,7 @@ impl Ident {
     }
 }
 
-/// Converts the identifier to a string that should be losslessly convertible
-/// back into the same identifier.
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl ToString for Ident {
     fn to_string(&self) -> String {
@@ -1452,6 +1427,7 @@ impl FromStr for Literal {
     }
 }
 
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl ToString for Literal {
     fn to_string(&self) -> String {

@@ -1,6 +1,5 @@
 // run-pass
 #![allow(unused_unsafe)]
-// ignore-pretty issue #37199
 #![allow(while_true)]
 
 fn main() {

@@ -1,4 +1,4 @@
-include ../tools.mk
+include ../../run-make/tools.mk
 
 # This example shows how to implement a rustc driver that retrieves MIR bodies
 # together with the borrow checker information.

@@ -1,13 +1,12 @@
+// rustfix
+
 struct Reactor {
     input_cells: Vec<usize>,
 }
 
 impl Reactor {
-    pub fn new() -> Self {
+    pub fn new() -> Self { //~ ERROR struct literal body without path
         input_cells: Vec::new()
-        //~^ ERROR cannot find value `input_cells` in this scope
-        //~| ERROR parenthesized type parameters may only be used with a `Fn` trait
-        //~| ERROR missing generics for struct `Vec`
     }
 }
 

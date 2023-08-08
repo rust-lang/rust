@@ -31,7 +31,6 @@
 //! this in the long term.
 
 use crate::walk::{filter_dirs, walk};
-use std::iter::Iterator;
 use std::path::Path;
 
 // Paths that may contain platform-specific code.
@@ -40,7 +39,6 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/panic_unwind",
     "library/unwind",
     "library/rtstartup", // Not sure what to do about this. magic stuff for mingw
-    "library/term",      // Not sure how to make this crate portable, but test crate needs it.
     "library/test",      // Probably should defer to unstable `std::sys` APIs.
     // The `VaList` implementation must have platform specific code.
     // The Windows implementation of a `va_list` is always a character
@@ -54,21 +52,16 @@ const EXCEPTION_PATHS: &[&str] = &[
     // FIXME: platform-specific code should be moved to `sys`
     "library/std/src/io/copy.rs",
     "library/std/src/io/stdio.rs",
-    "library/std/src/f32.rs",
-    "library/std/src/f64.rs",
     "library/std/src/path.rs",
     "library/std/src/sys_common", // Should only contain abstractions over platforms
     "library/std/src/net/test.rs", // Utility helpers for tests
-    "library/std/src/panic.rs",   // fuchsia-specific panic backtrace handling
-    "library/std/src/personality.rs",
-    "library/std/src/personality/",
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {
     // Sanity check that the complex parsing here works.
     let mut saw_target_arch = false;
     let mut saw_cfg_bang = false;
-    walk(path, filter_dirs, &mut |entry, contents| {
+    walk(path, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
         let file = entry.path();
         let filestr = file.to_string_lossy().replace("\\", "/");
         if !filestr.ends_with(".rs") {
@@ -128,6 +121,7 @@ fn check_cfgs(
             || cfg.contains("target_env")
             || cfg.contains("target_abi")
             || cfg.contains("target_vendor")
+            || cfg.contains("target_family")
             || cfg.contains("unix")
             || cfg.contains("windows");
 

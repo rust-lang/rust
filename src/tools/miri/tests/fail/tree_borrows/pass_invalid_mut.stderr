@@ -1,0 +1,43 @@
+error: Undefined Behavior: write access through <TAG> is forbidden
+  --> $DIR/pass_invalid_mut.rs:LL:CC
+   |
+LL |     *nope = 31;
+   |     ^^^^^^^^^^ write access through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
+   = help: the conflicting tag <TAG> has state Frozen which forbids this child write access
+help: the accessed tag <TAG> was created here
+  --> $DIR/pass_invalid_mut.rs:LL:CC
+   |
+LL | fn foo(nope: &mut i32) {
+   |        ^^^^
+help: the conflicting tag <TAG> was created here, in the initial state Reserved
+  --> $DIR/pass_invalid_mut.rs:LL:CC
+   |
+LL |     let xref = unsafe { &mut *xraw };
+   |                         ^^^^^^^^^^
+help: the conflicting tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x4]
+  --> $DIR/pass_invalid_mut.rs:LL:CC
+   |
+LL |     *xref = 18; // activate xref
+   |     ^^^^^^^^^^
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
+help: the conflicting tag <TAG> later transitioned to Frozen due to a foreign read access at offsets [0x0..0x4]
+  --> $DIR/pass_invalid_mut.rs:LL:CC
+   |
+LL |     let _val = unsafe { *xraw }; // invalidate xref for writing
+   |                         ^^^^^
+   = help: this transition corresponds to a loss of write permissions
+   = note: BACKTRACE (of the first span):
+   = note: inside `foo` at $DIR/pass_invalid_mut.rs:LL:CC
+note: inside `main`
+  --> $DIR/pass_invalid_mut.rs:LL:CC
+   |
+LL |     foo(xref);
+   |     ^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

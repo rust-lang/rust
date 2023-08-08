@@ -2,12 +2,12 @@
 + // MIR for `r` after SimplifyLocals-before-const-prop
   
   fn r() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/simplify_locals.rs:+0:8: +0:8
-      let mut _1: i32;                     // in scope 0 at $DIR/simplify_locals.rs:+1:9: +1:14
--     let mut _2: &i32;                    // in scope 0 at $DIR/simplify_locals.rs:+3:13: +3:15
--     let mut _3: &mut i32;                // in scope 0 at $DIR/simplify_locals.rs:+4:13: +4:19
+      let mut _0: ();
+      let mut _1: i32;
+-     let mut _2: &i32;
+-     let mut _3: &mut i32;
       scope 1 {
-          debug a => _1;                   // in scope 1 at $DIR/simplify_locals.rs:+1:9: +1:14
+          debug a => _1;
           scope 2 {
               scope 3 {
               }
@@ -15,17 +15,17 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/simplify_locals.rs:+1:9: +1:14
-          _1 = const 1_i32;                // scope 0 at $DIR/simplify_locals.rs:+1:17: +1:18
--         StorageLive(_2);                 // scope 1 at $DIR/simplify_locals.rs:+3:13: +3:15
--         _2 = &_1;                        // scope 1 at $DIR/simplify_locals.rs:+3:13: +3:15
--         StorageDead(_2);                 // scope 1 at $DIR/simplify_locals.rs:+3:15: +3:16
--         StorageLive(_3);                 // scope 2 at $DIR/simplify_locals.rs:+4:13: +4:19
--         _3 = &mut _1;                    // scope 2 at $DIR/simplify_locals.rs:+4:13: +4:19
--         StorageDead(_3);                 // scope 2 at $DIR/simplify_locals.rs:+4:19: +4:20
-          _0 = const ();                   // scope 0 at $DIR/simplify_locals.rs:+0:8: +5:2
-          StorageDead(_1);                 // scope 0 at $DIR/simplify_locals.rs:+5:1: +5:2
-          return;                          // scope 0 at $DIR/simplify_locals.rs:+5:2: +5:2
+          StorageLive(_1);
+          _1 = const 1_i32;
+-         StorageLive(_2);
+-         _2 = &_1;
+-         StorageDead(_2);
+-         StorageLive(_3);
+-         _3 = &mut _1;
+-         StorageDead(_3);
+          _0 = const ();
+          StorageDead(_1);
+          return;
       }
   }
   

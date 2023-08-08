@@ -1,13 +1,13 @@
 // MIR for `simple_index` after built
 
 fn simple_index(_1: [i32; 10], _2: &[i32]) -> i32 {
-    let mut _0: i32;                     // return place in scope 0 at $DIR/projections.rs:+0:45: +0:48
-    let mut _3: usize;                   // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _0: i32;
+    let mut _3: usize;
 
     bb0: {
-        _3 = const 3_usize;              // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-        _0 = _1[_3];                     // scope 0 at $DIR/projections.rs:+3:9: +3:22
-        _0 = (*_2)[_3];                  // scope 0 at $DIR/projections.rs:+4:9: +4:25
-        return;                          // scope 0 at $DIR/projections.rs:+5:9: +5:17
+        _3 = const 3_usize;
+        _0 = _1[_3];
+        _0 = (*_2)[_3];
+        return;
     }
 }

@@ -224,8 +224,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
             ast::ExprKind::Closure(box ast::Closure {
                 asyncness: ast::Async::Yes { closure_id, .. },
                 ..
-            })
-            | ast::ExprKind::Async(_, closure_id, ..) => self.check_id(closure_id),
+            }) => self.check_id(closure_id),
             _ => {}
         }
     }
@@ -341,7 +340,7 @@ pub trait EarlyCheckNode<'a>: Copy {
         'a: 'b;
 }
 
-impl<'a> EarlyCheckNode<'a> for &'a ast::Crate {
+impl<'a> EarlyCheckNode<'a> for (&'a ast::Crate, &'a [ast::Attribute]) {
     fn id(self) -> ast::NodeId {
         ast::CRATE_NODE_ID
     }
@@ -349,15 +348,15 @@ impl<'a> EarlyCheckNode<'a> for &'a ast::Crate {
     where
         'a: 'b,
     {
-        &self.attrs
+        &self.1
     }
     fn check<'b, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, T>)
     where
         'a: 'b,
     {
-        lint_callback!(cx, check_crate, self);
-        ast_visit::walk_crate(cx, self);
-        lint_callback!(cx, check_crate_post, self);
+        lint_callback!(cx, check_crate, self.0);
+        ast_visit::walk_crate(cx, self.0);
+        lint_callback!(cx, check_crate_post, self.0);
     }
 }
 
@@ -429,7 +428,7 @@ pub fn check_ast_node_inner<'a, T: EarlyLintPass>(
         for early_lint in lints {
             sess.delay_span_bug(
                 early_lint.span,
-                &format!(
+                format!(
                     "failed to process buffered lint here (dummy = {})",
                     id == ast::DUMMY_NODE_ID
                 ),

@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> $DIR/dont-record-adjustments-when-pointing-at-arg.rs:26:37
+   |
+LL |         ns_window.setFrame_display_(0);
+   |                   ----------------- ^ expected `()`, found integer
+   |                   |
+   |                   arguments to this method are incorrect
+   |
+note: method defined here
+  --> $DIR/dont-record-adjustments-when-pointing-at-arg.rs:5:8
+   |
+LL |     fn setFrame_display_(self, display: ()) {}
+   |        ^^^^^^^^^^^^^^^^^       -----------
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

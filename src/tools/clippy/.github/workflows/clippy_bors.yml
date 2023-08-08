@@ -11,7 +11,6 @@ env:
   CARGO_TARGET_DIR: '${{ github.workspace }}/target'
   NO_FMT_TEST: 1
   CARGO_INCREMENTAL: 0
-  CARGO_UNSTABLE_SPARSE_REGISTRY: true
 
 defaults:
   run:
@@ -27,7 +26,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
       with:
         ref: ${{ github.ref }}
 
@@ -83,7 +82,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -107,7 +106,7 @@ jobs:
         echo "$SYSROOT/bin" >> $GITHUB_PATH
 
     - name: Build
-      run: cargo build --features deny-warnings,internal
+      run: cargo build --tests --features deny-warnings,internal
 
     - name: Test
       if: runner.os == 'Linux'
@@ -149,7 +148,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -173,29 +172,29 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
 
     - name: Install toolchain
       run: rustup show active-toolchain
 
     # Run
     - name: Build Integration Test
+      env:
+        CARGO_PROFILE_DEV_SPLIT_DEBUGINFO: off
       run: cargo test --test integration --features integration --no-run
 
     # Upload
     - name: Extract Binaries
       run: |
         DIR=$CARGO_TARGET_DIR/debug
-        rm $DIR/deps/integration-*.d
-        mv $DIR/deps/integration-* $DIR/integration
+        find $DIR/deps/integration-* -executable ! -type d | xargs -I {} mv {} $DIR/integration
         find $DIR ! -executable -o -type d ! -path $DIR | xargs rm -rf
-        rm -rf $CARGO_TARGET_DIR/release
 
     - name: Upload Binaries
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
-        name: target
-        path: target
+        name: binaries
+        path: target/debug
 
   integration:
     needs: integration_build
@@ -205,22 +204,20 @@ jobs:
       matrix:
         integration:
         - 'rust-lang/cargo'
-        # FIXME: re-enable once fmt_macros is renamed in RLS
-        # - 'rust-lang/rls'
         - 'rust-lang/chalk'
         - 'rust-lang/rustfmt'
         - 'Marwes/combine'
         - 'Geal/nom'
         - 'rust-lang/stdarch'
         - 'serde-rs/serde'
-        # FIXME: chrono currently cannot be compiled with `--all-targets`
-        # - 'chronotope/chrono'
+        - 'chronotope/chrono'
         - 'hyperium/hyper'
         - 'rust-random/rand'
         - 'rust-lang/futures-rs'
         - 'rust-itertools/itertools'
         - 'rust-lang-nursery/failure'
         - 'rust-lang/log'
+        - 'matthiaskrgr/clippy_ci_panic_test'
 
     runs-on: ubuntu-latest
 
@@ -231,17 +228,22 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
 
     - name: Install toolchain
       run: rustup show active-toolchain
 
+    - name: Set LD_LIBRARY_PATH
+      run: |
+        SYSROOT=$(rustc --print sysroot)
+        echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
+
     # Download
     - name: Download target dir
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v3
       with:
-        name: target
-        path: target
+        name: binaries
+        path: target/debug
 
     - name: Make Binaries Executable
       run: chmod +x $CARGO_TARGET_DIR/debug/*
@@ -250,7 +252,7 @@ jobs:
     - name: Test ${{ matrix.integration }}
       run: |
         RUSTUP_TOOLCHAIN="$(rustup show active-toolchain | grep -o -E "nightly-[0-9]{4}-[0-9]{2}-[0-9]{2}")" \
-          $CARGO_TARGET_DIR/debug/integration
+          $CARGO_TARGET_DIR/debug/integration --show-output
       env:
         INTEGRATION: ${{ matrix.integration }}
 

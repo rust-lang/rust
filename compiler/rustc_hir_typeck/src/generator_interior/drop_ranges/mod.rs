@@ -17,10 +17,10 @@ use self::record_consumed_borrow::find_consumed_and_borrowed;
 use crate::FnCtxt;
 use hir::def_id::DefId;
 use hir::{Body, HirId, HirIdMap, Node};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId};
 use rustc_middle::ty;
@@ -63,7 +63,7 @@ pub fn compute_drop_ranges<'a, 'tcx>(
         // If drop range tracking is not enabled, skip all the analysis and produce an
         // empty set of DropRanges.
         DropRanges {
-            tracked_value_map: FxHashMap::default(),
+            tracked_value_map: UnordMap::default(),
             nodes: IndexVec::new(),
             borrowed_temporaries: None,
         }
@@ -125,8 +125,8 @@ impl Debug for TrackedValue {
                 write!(f, "{}", tcx.hir().node_to_string(self.hir_id()))
             } else {
                 match self {
-                    Self::Variable(hir_id) => write!(f, "Variable({:?})", hir_id),
-                    Self::Temporary(hir_id) => write!(f, "Temporary({:?})", hir_id),
+                    Self::Variable(hir_id) => write!(f, "Variable({hir_id:?})"),
+                    Self::Temporary(hir_id) => write!(f, "Temporary({hir_id:?})"),
                 }
             }
         })
@@ -182,9 +182,9 @@ impl TryFrom<&PlaceWithHirId<'_>> for TrackedValue {
 }
 
 pub struct DropRanges {
-    tracked_value_map: FxHashMap<TrackedValue, TrackedValueIndex>,
+    tracked_value_map: UnordMap<TrackedValue, TrackedValueIndex>,
     nodes: IndexVec<PostOrderId, NodeInfo>,
-    borrowed_temporaries: Option<FxHashSet<HirId>>,
+    borrowed_temporaries: Option<UnordSet<HirId>>,
 }
 
 impl DropRanges {
@@ -193,7 +193,7 @@ impl DropRanges {
             .get(&TrackedValue::Temporary(hir_id))
             .or(self.tracked_value_map.get(&TrackedValue::Variable(hir_id)))
             .cloned()
-            .map_or(false, |tracked_value_id| {
+            .is_some_and(|tracked_value_id| {
                 self.expect_node(location.into()).drop_state.contains(tracked_value_id)
             })
     }
@@ -227,7 +227,7 @@ struct DropRangesBuilder {
     /// (see NodeInfo::drop_state). The hir_id_map field stores the mapping
     /// from HirIds to the HirIdIndex that is used to represent that value in
     /// bitvector.
-    tracked_value_map: FxHashMap<TrackedValue, TrackedValueIndex>,
+    tracked_value_map: UnordMap<TrackedValue, TrackedValueIndex>,
 
     /// When building the control flow graph, we don't always know the
     /// post-order index of the target node at the point we encounter it.
@@ -268,8 +268,7 @@ impl DropRangesBuilder {
 
     fn node_mut(&mut self, id: PostOrderId) -> &mut NodeInfo {
         let size = self.num_values();
-        self.nodes.ensure_contains_elem(id, || NodeInfo::new(size));
-        &mut self.nodes[id]
+        self.nodes.ensure_contains_elem(id, || NodeInfo::new(size))
     }
 
     fn add_control_edge(&mut self, from: PostOrderId, to: PostOrderId) {

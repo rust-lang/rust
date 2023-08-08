@@ -9,6 +9,7 @@ fn infer_slice_method() {
     check_types(
         r#"
 impl<T> [T] {
+    #[rustc_allow_incoherent_impl]
     fn foo(&self) -> T {
         loop {}
     }
@@ -35,6 +36,7 @@ fn test() {
 //- /lib.rs crate:other_crate
 mod foo {
     impl f32 {
+        #[rustc_allow_incoherent_impl]
         pub fn foo(self) -> f32 { 0. }
     }
 }
@@ -47,6 +49,7 @@ fn infer_array_inherent_impl() {
     check_types(
         r#"
 impl<T, const N: usize> [T; N] {
+    #[rustc_allow_incoherent_impl]
     fn foo(&self) -> T {
         loop {}
     }
@@ -380,6 +383,24 @@ mod bar_test {
         S.method();
       //^^^^^^^^^^ i128
     }
+}
+        "#,
+    );
+}
+
+#[test]
+fn infer_trait_method_multiple_mutable_reference() {
+    check_types(
+        r#"
+trait Trait {
+    fn method(&mut self) -> i32 { 5 }
+}
+struct S;
+impl Trait for &mut &mut S {}
+fn test() {
+    let s = &mut &mut &mut S;
+    s.method();
+  //^^^^^^^^^^ i32
 }
         "#,
     );
@@ -1167,7 +1188,6 @@ fn test() {
             123..167 '{     ...o(); }': ()
             133..134 's': &S
             137..151 'unsafe { f() }': &S
-            137..151 'unsafe { f() }': &S
             146..147 'f': fn f() -> &S
             146..149 'f()': &S
             157..158 's': &S
@@ -1191,6 +1211,73 @@ fn main() {
     let foo: Slice<u32>;
     foo.into_vec(); // we shouldn't crash on this at least
 } //^^^^^^^^^^^^^^ {unknown}
+"#,
+    );
+}
+
+#[test]
+fn inherent_method_deref_raw() {
+    check_types(
+        r#"
+struct Val;
+
+impl Val {
+    pub fn method(self: *const Val) -> u32 {
+        0
+    }
+}
+
+fn main() {
+    let foo: *const Val;
+    foo.method();
+ // ^^^^^^^^^^^^ u32
+}
+"#,
+    );
+}
+
+#[test]
+fn inherent_method_ref_self_deref_raw() {
+    check_types(
+        r#"
+struct Val;
+
+impl Val {
+    pub fn method(&self) -> u32 {
+        0
+    }
+}
+
+fn main() {
+    let foo: *const Val;
+    foo.method();
+ // ^^^^^^^^^^^^ {unknown}
+}
+"#,
+    );
+}
+
+#[test]
+fn trait_method_deref_raw() {
+    check_types(
+        r#"
+trait Trait {
+    fn method(self: *const Self) -> u32;
+}
+
+struct Val;
+
+impl Trait for Val {
+    fn method(self: *const Self) -> u32 {
+        0
+    }
+}
+
+fn main() {
+    let foo: *const Val;
+    foo.method();
+ // ^^^^^^^^^^^^ u32
+}
 "#,
     );
 }
@@ -1274,7 +1361,7 @@ mod a {
 mod b {
     fn foo() {
         let x = super::a::Bar::new().0;
-             // ^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Not)))
+             // ^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Some(Not))))
              // ^^^^^^^^^^^^^^^^^^^^^^ type: char
     }
 }
@@ -1437,6 +1524,7 @@ fn resolve_const_generic_array_methods() {
         r#"
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {
+    #[rustc_allow_incoherent_impl]
     pub fn map<F, U>(self, f: F) -> [U; N]
     where
         F: FnMut(T) -> U,
@@ -1445,6 +1533,7 @@ impl<T, const N: usize> [T; N] {
 
 #[lang = "slice"]
 impl<T> [T] {
+    #[rustc_allow_incoherent_impl]
     pub fn map<F, U>(self, f: F) -> &[U]
     where
         F: FnMut(T) -> U,
@@ -1468,6 +1557,7 @@ struct Const<const N: usize>;
 
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {
+    #[rustc_allow_incoherent_impl]
     pub fn my_map<F, U, const X: usize>(self, f: F, c: Const<X>) -> [U; X]
     where
         F: FnMut(T) -> U,
@@ -1476,6 +1566,7 @@ impl<T, const N: usize> [T; N] {
 
 #[lang = "slice"]
 impl<T> [T] {
+    #[rustc_allow_incoherent_impl]
     pub fn my_map<F, const X: usize, U>(self, f: F, c: Const<X>) -> &[U]
     where
         F: FnMut(T) -> U,
@@ -1716,7 +1807,7 @@ fn test() {
     Foo.foo();
   //^^^ adjustments: Borrow(Ref(Not))
     (&Foo).foo();
-  // ^^^^ adjustments: ,
+  // ^^^^ adjustments: Deref(None), Borrow(Ref(Not))
 }
 "#,
     );
@@ -1874,14 +1965,14 @@ fn incoherent_impls() {
 pub struct Box<T>(T);
 use core::error::Error;
 
-#[rustc_allow_incoherent_impl]
 impl dyn Error {
+    #[rustc_allow_incoherent_impl]
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error>> {
         loop {}
     }
 }
-#[rustc_allow_incoherent_impl]
 impl dyn Error + Send {
+    #[rustc_allow_incoherent_impl]
     /// Attempts to downcast the box to a concrete type.
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error + Send>> {
         let err: Box<dyn Error> = self;
@@ -1911,6 +2002,57 @@ fn foo() {
     let s = module::Struct;
     s.func();
   //^^^^^^^^ type: ()
+}
+"#,
+    );
+}
+
+#[test]
+fn box_deref_is_builtin() {
+    check(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+#[lang = "owned_box"]
+struct Box<T>(*mut T);
+
+impl<T> Box<T> {
+    fn new(t: T) -> Self {
+        loop {}
+    }
+}
+
+impl<T> Deref for Box<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+fn test() {
+    Box::new(Foo).foo();
+  //^^^^^^^^^^^^^ adjustments: Deref(None), Borrow(Ref(Not))
+}
+"#,
+    );
+}
+
+#[test]
+fn manually_drop_deref_is_not_builtin() {
+    check(
+        r#"
+//- minicore: manually_drop, deref
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+use core::mem::ManuallyDrop;
+fn test() {
+    ManuallyDrop::new(Foo).foo();
+  //^^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref(Not))
 }
 "#,
     );

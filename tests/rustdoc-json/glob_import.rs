@@ -5,7 +5,7 @@
 #![no_core]
 
 // @has "$.index[*][?(@.name=='glob')]"
-// @has "$.index[*][?(@.kind=='import')].inner.name" \"*\"
+// @has "$.index[*][?(@.inner.import)].inner.import.name" \"*\"
 
 
 mod m1 {

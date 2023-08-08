@@ -2,7 +2,8 @@
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]
 #![feature(generic_const_exprs)]
-use std::marker::PhantomData;
+
+use std::marker::{ConstParamTy, PhantomData};
 
 struct Foo<const I: i32, const J: i32> {}
 
@@ -22,7 +23,7 @@ pub struct Foo2<const P: Protocol, T> {
     _marker: PhantomData<T>,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, ConstParamTy)]
 pub enum Protocol {
     Variant1,
     Variant2,

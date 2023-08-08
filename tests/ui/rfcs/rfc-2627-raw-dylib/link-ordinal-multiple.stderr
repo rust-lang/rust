@@ -1,0 +1,26 @@
+error: multiple `link_ordinal` attributes
+  --> $DIR/link-ordinal-multiple.rs:4:5
+   |
+LL |     #[link_ordinal(1)]
+   |     ^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/link-ordinal-multiple.rs:5:5
+   |
+LL |     #[link_ordinal(2)]
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: multiple `link_ordinal` attributes
+  --> $DIR/link-ordinal-multiple.rs:7:5
+   |
+LL |     #[link_ordinal(1)]
+   |     ^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/link-ordinal-multiple.rs:8:5
+   |
+LL |     #[link_ordinal(2)]
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

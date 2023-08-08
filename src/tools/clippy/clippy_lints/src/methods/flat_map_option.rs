@@ -4,7 +4,8 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{source_map::Span, sym};
+use rustc_span::source_map::Span;
+use rustc_span::sym;
 
 use super::FLAT_MAP_OPTION;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -15,7 +16,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, arg
     }
     let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
     let sig = match arg_ty.kind() {
-        ty::Closure(_, substs) => substs.as_closure().sig(),
+        ty::Closure(_, args) => args.as_closure().sig(),
         _ if arg_ty.is_fn() => arg_ty.fn_sig(cx.tcx),
         _ => return,
     };

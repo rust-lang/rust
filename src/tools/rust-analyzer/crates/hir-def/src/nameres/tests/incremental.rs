@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
 use base_db::SourceDatabaseExt;
+use triomphe::Arc;
 
-use crate::{AdtId, ModuleDefId};
+use crate::{db::DefDatabase, AdtId, ModuleDefId};
 
 use super::*;
 
@@ -15,7 +14,7 @@ fn check_def_map_is_not_recomputed(ra_fixture_initial: &str, ra_fixture_change: 
         });
         assert!(format!("{events:?}").contains("crate_def_map"), "{events:#?}")
     }
-    db.set_file_text(pos.file_id, Arc::new(ra_fixture_change.to_string()));
+    db.set_file_text(pos.file_id, Arc::from(ra_fixture_change));
 
     {
         let events = db.log_executed(|| {
@@ -96,7 +95,7 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
         });
         assert!(format!("{events:?}").contains("crate_def_map"), "{events:#?}")
     }
-    db.set_file_text(pos.file_id, Arc::new("m!(Y);".to_string()));
+    db.set_file_text(pos.file_id, Arc::from("m!(Y);"));
 
     {
         let events = db.log_executed(|| {
@@ -109,7 +108,7 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
 }
 
 #[test]
-fn typing_inside_a_function_should_not_invalidate_expansions() {
+fn typing_inside_a_function_should_not_invalidate_item_expansions() {
     let (mut db, pos) = TestDB::with_position(
         r#"
 //- /lib.rs
@@ -140,7 +139,7 @@ m!(Z);
         let n_recalculated_item_trees = events.iter().filter(|it| it.contains("item_tree")).count();
         assert_eq!(n_recalculated_item_trees, 6);
         let n_reparsed_macros =
-            events.iter().filter(|it| it.contains("parse_macro_expansion")).count();
+            events.iter().filter(|it| it.contains("parse_macro_expansion(")).count();
         assert_eq!(n_reparsed_macros, 3);
     }
 
@@ -150,7 +149,7 @@ fn quux() { 92 }
 m!(Y);
 m!(Z);
 "#;
-    db.set_file_text(pos.file_id, Arc::new(new_text.to_string()));
+    db.set_file_text(pos.file_id, Arc::from(new_text));
 
     {
         let events = db.log_executed(|| {
@@ -161,7 +160,7 @@ m!(Z);
         let n_recalculated_item_trees = events.iter().filter(|it| it.contains("item_tree")).count();
         assert_eq!(n_recalculated_item_trees, 1);
         let n_reparsed_macros =
-            events.iter().filter(|it| it.contains("parse_macro_expansion")).count();
+            events.iter().filter(|it| it.contains("parse_macro_expansion(")).count();
         assert_eq!(n_reparsed_macros, 0);
     }
 }
@@ -214,16 +213,17 @@ pub type Ty = ();
 
             for (_, res) in module_data.scope.resolutions() {
                 match res.values.or(res.types).unwrap().0 {
-                    ModuleDefId::FunctionId(f) => drop(db.function_data(f)),
+                    ModuleDefId::FunctionId(f) => _ = db.function_data(f),
                     ModuleDefId::AdtId(adt) => match adt {
-                        AdtId::StructId(it) => drop(db.struct_data(it)),
-                        AdtId::UnionId(it) => drop(db.union_data(it)),
-                        AdtId::EnumId(it) => drop(db.enum_data(it)),
+                        AdtId::StructId(it) => _ = db.struct_data(it),
+                        AdtId::UnionId(it) => _ = db.union_data(it),
+                        AdtId::EnumId(it) => _ = db.enum_data(it),
                     },
-                    ModuleDefId::ConstId(it) => drop(db.const_data(it)),
-                    ModuleDefId::StaticId(it) => drop(db.static_data(it)),
-                    ModuleDefId::TraitId(it) => drop(db.trait_data(it)),
-                    ModuleDefId::TypeAliasId(it) => drop(db.type_alias_data(it)),
+                    ModuleDefId::ConstId(it) => _ = db.const_data(it),
+                    ModuleDefId::StaticId(it) => _ = db.static_data(it),
+                    ModuleDefId::TraitId(it) => _ = db.trait_data(it),
+                    ModuleDefId::TraitAliasId(it) => _ = db.trait_alias_data(it),
+                    ModuleDefId::TypeAliasId(it) => _ = db.type_alias_data(it),
                     ModuleDefId::EnumVariantId(_)
                     | ModuleDefId::ModuleId(_)
                     | ModuleDefId::MacroId(_)

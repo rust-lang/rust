@@ -9,7 +9,6 @@
 src/etc/installer/gfx/* binary
 src/vendor/** -text
 Cargo.lock linguist-generated=false
-config.toml.example linguist-language=TOML
 
 # Older git versions try to fix line endings on images and fonts, this prevents it.
 *.png binary

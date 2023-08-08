@@ -55,10 +55,10 @@
 #[doc(alias = "]")]
 #[doc(alias = "[")]
 #[doc(alias = "[]")]
-#[const_trait]
 pub trait Index<Idx: ?Sized> {
     /// The returned type after indexing.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "IndexOutput"]
     type Output: ?Sized;
 
     /// Performs the indexing (`container[index]`) operation.
@@ -153,7 +153,7 @@ see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#ind
 see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>"
     ),
     on(
-        _Self = "std::string::String",
+        any(_Self = "alloc::string::String", _Self = "std::string::String"),
         note = "you can use `.chars().nth()` or `.bytes().nth()`
 see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>"
     ),
@@ -164,8 +164,7 @@ see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#ind
 #[doc(alias = "[")]
 #[doc(alias = "]")]
 #[doc(alias = "[]")]
-#[const_trait]
-pub trait IndexMut<Idx: ?Sized>: ~const Index<Idx> {
+pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     /// Performs the mutable indexing (`container[index]`) operation.
     ///
     /// # Panics

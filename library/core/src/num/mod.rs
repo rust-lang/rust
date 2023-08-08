@@ -3,7 +3,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ascii;
-use crate::convert::TryInto;
 use crate::intrinsics;
 use crate::mem;
 use crate::ops::{Add, Mul, Sub};
@@ -92,6 +91,57 @@ macro_rules! usize_isize_from_xe_bytes_doc {
 depending on the target pointer size.
 
 "
+    };
+}
+
+macro_rules! midpoint_impl {
+    ($SelfT:ty, unsigned) => {
+        /// Calculates the middle point of `self` and `rhs`.
+        ///
+        /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
+        /// sufficiently-large signed integral type. This implies that the result is
+        /// always rounded towards negative infinity and that no overflow will ever occur.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(num_midpoint)]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
+        /// ```
+        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
+            // Use the well known branchless algorthim from Hacker's Delight to compute
+            // `(a + b) / 2` without overflowing: `((a ^ b) >> 1) + (a & b)`.
+            ((self ^ rhs) >> 1) + (self & rhs)
+        }
+    };
+    ($SelfT:ty, $WideT:ty, unsigned) => {
+        /// Calculates the middle point of `self` and `rhs`.
+        ///
+        /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
+        /// sufficiently-large signed integral type. This implies that the result is
+        /// always rounded towards negative infinity and that no overflow will ever occur.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(num_midpoint)]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
+        /// ```
+        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
+            ((self as $WideT + rhs as $WideT) / 2) as $SelfT
+        }
     };
 }
 
@@ -223,6 +273,17 @@ macro_rules! widening_impl {
             (wide as $SelfT, (wide >> $BITS) as $SelfT)
         }
     };
+}
+
+macro_rules! conv_rhs_for_unchecked_shift {
+    ($SelfT:ty, $x:expr) => {{
+        // If the `as` cast will truncate, ensure we still tell the backend
+        // that the pre-truncation value was also small.
+        if <$SelfT>::BITS < 32 {
+            intrinsics::assume($x <= (<$SelfT>::MAX as u32));
+        }
+        $x as $SelfT
+    }};
 }
 
 impl i8 {
@@ -414,7 +475,7 @@ impl isize {
     }
 }
 
-/// If 6th bit set ascii is upper case.
+/// If 6th bit is set ascii is lower case.
 const ASCII_CASE_MASK: u8 = 0b0010_0000;
 
 impl u8 {
@@ -438,6 +499,7 @@ impl u8 {
         bound_condition = "",
     }
     widening_impl! { u8, u16, 8, unsigned }
+    midpoint_impl! { u8, u16, unsigned }
 
     /// Checks if the value is within the ASCII range.
     ///
@@ -455,7 +517,16 @@ impl u8 {
     #[rustc_const_stable(feature = "const_u8_is_ascii", since = "1.43.0")]
     #[inline]
     pub const fn is_ascii(&self) -> bool {
-        *self & 128 == 0
+        *self <= 127
+    }
+
+    /// If the value of this byte is within the ASCII range, returns it as an
+    /// [ASCII character](ascii::Char).  Otherwise, returns `None`.
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn as_ascii(&self) -> Option<ascii::Char> {
+        ascii::Char::from_u8(*self)
     }
 
     /// Makes a copy of the value in its ASCII upper case equivalent.
@@ -1040,6 +1111,7 @@ impl u16 {
         bound_condition = "",
     }
     widening_impl! { u16, u32, 16, unsigned }
+    midpoint_impl! { u16, u32, unsigned }
 
     /// Checks if the value is a Unicode surrogate code point, which are disallowed values for [`char`].
     ///
@@ -1088,6 +1160,7 @@ impl u32 {
         bound_condition = "",
     }
     widening_impl! { u32, u64, 32, unsigned }
+    midpoint_impl! { u32, u64, unsigned }
 }
 
 impl u64 {
@@ -1111,6 +1184,7 @@ impl u64 {
         bound_condition = "",
     }
     widening_impl! { u64, u128, 64, unsigned }
+    midpoint_impl! { u64, u128, unsigned }
 }
 
 impl u128 {
@@ -1135,6 +1209,7 @@ impl u128 {
         from_xe_bytes_doc = "",
         bound_condition = "",
     }
+    midpoint_impl! { u128, unsigned }
 }
 
 #[cfg(target_pointer_width = "16")]
@@ -1159,6 +1234,7 @@ impl usize {
         bound_condition = " on 16-bit targets",
     }
     widening_impl! { usize, u32, 16, unsigned }
+    midpoint_impl! { usize, u32, unsigned }
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -1183,6 +1259,7 @@ impl usize {
         bound_condition = " on 32-bit targets",
     }
     widening_impl! { usize, u64, 32, unsigned }
+    midpoint_impl! { usize, u64, unsigned }
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -1207,6 +1284,7 @@ impl usize {
         bound_condition = " on 64-bit targets",
     }
     widening_impl! { usize, u128, 64, unsigned }
+    midpoint_impl! { usize, u128, unsigned }
 }
 
 impl usize {

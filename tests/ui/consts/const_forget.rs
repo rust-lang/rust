@@ -1,5 +1,7 @@
 // check-pass
 
+#![allow(forgetting_copy_types)]
+
 use std::mem::forget;
 
 const _: () = forget(0i32);

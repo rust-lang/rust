@@ -1,10 +1,11 @@
 use rustc_index::bit_set::ChunkedBitSet;
-use rustc_middle::mir::{Body, Field, TerminatorKind};
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::mir::{Body, TerminatorKind};
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, VariantDef};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{self, move_path_children_matching, Analysis, MoveDataParamEnv};
+use rustc_target::abi::FieldIdx;
 
 use crate::MirPass;
 
@@ -21,7 +22,7 @@ pub struct RemoveUninitDrops;
 impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env(body.source.def_id());
-        let Ok((_,move_data)) = MoveData::gather_moves(body, tcx, param_env) else {
+        let Ok(move_data) = MoveData::gather_moves(body, tcx, param_env) else {
             // We could continue if there are move errors, but there's not much point since our
             // init data isn't complete.
             return;
@@ -37,8 +38,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
         let mut to_remove = vec![];
         for (bb, block) in body.basic_blocks.iter_enumerated() {
             let terminator = block.terminator();
-            let TerminatorKind::Drop { place, .. } = &terminator.kind
-            else { continue };
+            let TerminatorKind::Drop { place, .. } = &terminator.kind else { continue };
 
             maybe_inits.seek_before_primary_effect(body.terminator_loc(bb));
 
@@ -63,9 +63,9 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
         for bb in to_remove {
             let block = &mut body.basic_blocks_mut()[bb];
 
-            let TerminatorKind::Drop { target, .. }
-                = &block.terminator().kind
-            else { unreachable!() };
+            let TerminatorKind::Drop { target, .. } = &block.terminator().kind else {
+                unreachable!()
+            };
 
             // Replace block terminator with `Goto`.
             block.terminator_mut().kind = TerminatorKind::Goto { target: *target };
@@ -98,7 +98,7 @@ fn is_needs_drop_and_init<'tcx>(
     // This pass is only needed for const-checking, so it doesn't handle as many cases as
     // `DropCtxt::open_drop`, since they aren't relevant in a const-context.
     match ty.kind() {
-        ty::Adt(adt, substs) => {
+        ty::Adt(adt, args) => {
             let dont_elaborate = adt.is_union() || adt.is_manually_drop() || adt.has_dtor(tcx);
             if dont_elaborate {
                 return true;
@@ -118,7 +118,7 @@ fn is_needs_drop_and_init<'tcx>(
                     let downcast =
                         move_path_children_matching(move_data, mpi, |x| x.is_downcast_to(vid));
                     let Some(dc_mpi) = downcast else {
-                        return variant_needs_drop(tcx, param_env, substs, variant);
+                        return variant_needs_drop(tcx, param_env, args, variant);
                     };
 
                     dc_mpi
@@ -130,7 +130,7 @@ fn is_needs_drop_and_init<'tcx>(
                     .fields
                     .iter()
                     .enumerate()
-                    .map(|(f, field)| (Field::from_usize(f), field.ty(tcx, substs), mpi))
+                    .map(|(f, field)| (FieldIdx::from_usize(f), field.ty(tcx, args), mpi))
                     .any(field_needs_drop_and_init)
             })
         }
@@ -138,7 +138,7 @@ fn is_needs_drop_and_init<'tcx>(
         ty::Tuple(fields) => fields
             .iter()
             .enumerate()
-            .map(|(f, f_ty)| (Field::from_usize(f), f_ty, mpi))
+            .map(|(f, f_ty)| (FieldIdx::from_usize(f), f_ty, mpi))
             .any(field_needs_drop_and_init),
 
         _ => true,
@@ -148,11 +148,11 @@ fn is_needs_drop_and_init<'tcx>(
 fn variant_needs_drop<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    substs: SubstsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
     variant: &VariantDef,
 ) -> bool {
     variant.fields.iter().any(|field| {
-        let f_ty = field.ty(tcx, substs);
+        let f_ty = field.ty(tcx, args);
         f_ty.needs_drop(tcx, param_env)
     })
 }

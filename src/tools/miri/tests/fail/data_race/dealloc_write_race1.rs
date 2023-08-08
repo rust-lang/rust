@@ -19,10 +19,12 @@ pub fn main() {
 
     unsafe {
         let j1 = spawn(move || {
+            let ptr = ptr; // avoid field capturing
             *ptr.0 = 2;
         });
 
         let j2 = spawn(move || {
+            let ptr = ptr; // avoid field capturing
             __rust_dealloc(
                 //~^ ERROR: Data race detected between (1) Write on thread `<unnamed>` and (2) Deallocate on thread `<unnamed>`
                 ptr.0 as *mut _,

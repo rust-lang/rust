@@ -1,9 +1,9 @@
 // ignore-order
 
-const QUERY = '"error"';
 const FILTER_CRATE = 'std';
 
 const EXPECTED = {
+    'query': '"error"',
     'others': [
         { 'path': 'std', 'name': 'error' },
         { 'path': 'std::fmt', 'name': 'Error' },

@@ -9,7 +9,7 @@ mount -t sysfs none /sys
 /addentropy < /addentropy
 cat /dev/urandom | head -n 2048 | /addentropy
 
-# Set up IP that qemu expects. This confgures eth0 with the public IP that QEMU
+# Set up IP that qemu expects. This configures eth0 with the public IP that QEMU
 # will communicate to as well as the loopback 127.0.0.1 address.
 ifconfig eth0 10.0.2.15
 ifconfig lo up

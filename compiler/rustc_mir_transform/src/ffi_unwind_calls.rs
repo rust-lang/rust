@@ -1,11 +1,14 @@
-use rustc_hir::def_id::{CrateNum, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_middle::mir::*;
+use rustc_middle::query::LocalCrate;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::layout;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::FFI_UNWIND_CALLS;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
+
+use crate::errors;
 
 fn abi_can_unwind(abi: Abi) -> bool {
     use Abi::*;
@@ -47,7 +50,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
         return false;
     }
 
-    let body = &*tcx.mir_built(ty::WithOptConstParam::unknown(local_def_id)).borrow();
+    let body = &*tcx.mir_built(local_def_id).borrow();
 
     let body_ty = tcx.type_of(def_id).skip_binder();
     let body_abi = match body_ty.kind() {
@@ -106,13 +109,13 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
                 .lint_root;
             let span = terminator.source_info.span;
 
-            let msg = match fn_def_id {
-                Some(_) => "call to foreign function with FFI-unwind ABI",
-                None => "call to function pointer with FFI-unwind ABI",
-            };
-            tcx.struct_span_lint_hir(FFI_UNWIND_CALLS, lint_root, span, msg, |lint| {
-                lint.span_label(span, msg)
-            });
+            let foreign = fn_def_id.is_some();
+            tcx.emit_spanned_lint(
+                FFI_UNWIND_CALLS,
+                lint_root,
+                span,
+                errors::FfiUnwindCall { span, foreign },
+            );
 
             tainted = true;
         }
@@ -121,9 +124,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
     tainted
 }
 
-fn required_panic_strategy(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<PanicStrategy> {
-    assert_eq!(cnum, LOCAL_CRATE);
-
+fn required_panic_strategy(tcx: TyCtxt<'_>, _: LocalCrate) -> Option<PanicStrategy> {
     if tcx.is_panic_runtime(LOCAL_CRATE) {
         return Some(tcx.sess.panic_strategy());
     }

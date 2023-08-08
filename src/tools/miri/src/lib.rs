@@ -5,10 +5,11 @@
 #![feature(io_error_more)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
-#![feature(is_some_and)]
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
-#![feature(is_terminal)]
+#![feature(round_ties_even)]
+#![feature(os_str_bytes)]
+#![feature(lint_reasons)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -42,15 +43,17 @@
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 
+extern crate either; // the one from rustc
+
 extern crate rustc_apfloat;
 extern crate rustc_ast;
-#[macro_use]
-extern crate rustc_middle;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_index;
+#[macro_use]
+extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
@@ -94,6 +97,7 @@ pub use crate::shims::EvalContextExt as _;
 pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,
 };
+pub use crate::borrow_tracker::tree_borrows::{EvalContextExt as _, Tree};
 pub use crate::borrow_tracker::{
     BorTag, BorrowTrackerMethod, CallId, EvalContextExt as _, RetagFields,
 };
@@ -123,11 +127,14 @@ pub use crate::tag_gc::{EvalContextExt as _, VisitTags};
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
+/// Also disable the MIR pass that inserts an alignment check on every pointer dereference. Miri
+/// does that too, and with a better error message.
 pub const MIRI_DEFAULT_ARGS: &[&str] = &[
-    "-Zalways-encode-mir",
-    "-Zmir-emit-retag",
-    "-Zmir-opt-level=0",
     "--cfg=miri",
-    "-Cdebug-assertions=on",
+    "-Zalways-encode-mir",
     "-Zextra-const-ub-checks",
+    "-Zmir-emit-retag",
+    "-Zmir-keep-place-mention",
+    "-Zmir-opt-level=0",
+    "-Zmir-enable-passes=-CheckAlignment",
 ];

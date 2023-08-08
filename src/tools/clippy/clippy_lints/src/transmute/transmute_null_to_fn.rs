@@ -31,9 +31,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
     match arg.kind {
         // Catching:
         // transmute over constants that resolve to `null`.
-        ExprKind::Path(ref _qpath)
-            if matches!(constant(cx, cx.typeck_results(), arg), Some((Constant::RawPtr(0), _))) =>
-        {
+        ExprKind::Path(ref _qpath) if matches!(constant(cx, cx.typeck_results(), arg), Some(Constant::RawPtr(0))) => {
             lint_expr(cx, expr);
             true
         },

@@ -2,6 +2,7 @@ use core::borrow::Borrow;
 use core::iter::*;
 use core::mem;
 use core::num::Wrapping;
+use core::ops::Range;
 use test::{black_box, Bencher};
 
 #[bench]
@@ -66,6 +67,57 @@ fn bench_max(b: &mut Bencher) {
     b.iter(|| {
         let it = 0..100;
         it.map(black_box).map(scatter).max()
+    })
+}
+
+#[bench]
+fn bench_range_step_by_sum_reducible(b: &mut Bencher) {
+    let r = 0u32..1024;
+    b.iter(|| {
+        let r = black_box(r.clone()).step_by(8);
+
+        let mut sum: u32 = 0;
+        for i in r {
+            sum += i;
+        }
+
+        sum
+    })
+}
+
+#[bench]
+fn bench_range_step_by_loop_u32(b: &mut Bencher) {
+    let r = 0..(u16::MAX as u32);
+    b.iter(|| {
+        let r = black_box(r.clone()).step_by(64);
+
+        let mut sum: u32 = 0;
+        for i in r {
+            let i = i ^ i.wrapping_sub(1);
+            sum = sum.wrapping_add(i);
+        }
+
+        sum
+    })
+}
+
+#[bench]
+fn bench_range_step_by_fold_usize(b: &mut Bencher) {
+    let r: Range<usize> = 0..(u16::MAX as usize);
+    b.iter(|| {
+        let r = black_box(r.clone());
+        r.step_by(64)
+            .map(|x: usize| x ^ (x.wrapping_sub(1)))
+            .fold(0usize, |acc, i| acc.wrapping_add(i))
+    })
+}
+
+#[bench]
+fn bench_range_step_by_fold_u16(b: &mut Bencher) {
+    let r: Range<u16> = 0..u16::MAX;
+    b.iter(|| {
+        let r = black_box(r.clone());
+        r.step_by(64).map(|x: u16| x ^ (x.wrapping_sub(1))).fold(0u16, |acc, i| acc.wrapping_add(i))
     })
 }
 
@@ -404,7 +456,7 @@ fn bench_trusted_random_access_adapters(b: &mut Bencher) {
 
 /// Exercises the iter::Copied specialization for slice::Iter
 #[bench]
-fn bench_copied_chunks(b: &mut Bencher) {
+fn bench_next_chunk_copied(b: &mut Bencher) {
     let v = vec![1u8; 1024];
 
     b.iter(|| {
@@ -421,7 +473,8 @@ fn bench_copied_chunks(b: &mut Bencher) {
 
 /// Exercises the TrustedRandomAccess specialization in ArrayChunks
 #[bench]
-fn bench_trusted_random_access_chunks(b: &mut Bencher) {
+#[allow(noop_method_call)]
+fn bench_next_chunk_trusted_random_access(b: &mut Bencher) {
     let v = vec![1u8; 1024];
 
     b.iter(|| {
@@ -436,4 +489,46 @@ fn bench_trusted_random_access_chunks(b: &mut Bencher) {
             })
             .sum::<Wrapping<u64>>()
     })
+}
+
+#[bench]
+fn bench_next_chunk_filter_even(b: &mut Bencher) {
+    let a = (0..1024).next_chunk::<1024>().unwrap();
+
+    b.iter(|| black_box(&a).iter().filter(|&&i| i % 2 == 0).next_chunk::<32>())
+}
+
+#[bench]
+fn bench_next_chunk_filter_predictably_true(b: &mut Bencher) {
+    let a = (0..1024).next_chunk::<1024>().unwrap();
+
+    b.iter(|| black_box(&a).iter().filter(|&&i| i < 100).next_chunk::<32>())
+}
+
+#[bench]
+fn bench_next_chunk_filter_mostly_false(b: &mut Bencher) {
+    let a = (0..1024).next_chunk::<1024>().unwrap();
+
+    b.iter(|| black_box(&a).iter().filter(|&&i| i > 900).next_chunk::<32>())
+}
+
+#[bench]
+fn bench_next_chunk_filter_map_even(b: &mut Bencher) {
+    let a = (0..1024).next_chunk::<1024>().unwrap();
+
+    b.iter(|| black_box(&a).iter().filter_map(|&i| (i % 2 == 0).then(|| i)).next_chunk::<32>())
+}
+
+#[bench]
+fn bench_next_chunk_filter_map_predictably_true(b: &mut Bencher) {
+    let a = (0..1024).next_chunk::<1024>().unwrap();
+
+    b.iter(|| black_box(&a).iter().filter_map(|&i| (i < 100).then(|| i)).next_chunk::<32>())
+}
+
+#[bench]
+fn bench_next_chunk_filter_map_mostly_false(b: &mut Bencher) {
+    let a = (0..1024).next_chunk::<1024>().unwrap();
+
+    b.iter(|| black_box(&a).iter().filter_map(|&i| (i > 900).then(|| i)).next_chunk::<32>())
 }

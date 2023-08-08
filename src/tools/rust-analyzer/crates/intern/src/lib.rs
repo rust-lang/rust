@@ -6,13 +6,13 @@ use std::{
     fmt::{self, Debug, Display},
     hash::{BuildHasherDefault, Hash, Hasher},
     ops::Deref,
-    sync::Arc,
 };
 
 use dashmap::{DashMap, SharedValue};
-use hashbrown::HashMap;
+use hashbrown::{hash_map::RawEntryMut, HashMap};
 use once_cell::sync::OnceCell;
 use rustc_hash::FxHasher;
+use triomphe::Arc;
 
 type InternMap<T> = DashMap<Arc<T>, (), BuildHasherDefault<FxHasher>>;
 type Guard<T> = dashmap::RwLockWriteGuard<
@@ -26,56 +26,58 @@ pub struct Interned<T: Internable + ?Sized> {
 
 impl<T: Internable> Interned<T> {
     pub fn new(obj: T) -> Self {
-        match Interned::lookup(&obj) {
-            Ok(this) => this,
-            Err(shard) => {
-                let arc = Arc::new(obj);
-                Self::alloc(arc, shard)
-            }
-        }
-    }
-}
-
-impl<T: Internable + ?Sized> Interned<T> {
-    fn lookup(obj: &T) -> Result<Self, Guard<T>> {
-        let storage = T::storage().get();
-        let shard_idx = storage.determine_map(obj);
-        let shard = &storage.shards()[shard_idx];
-        let shard = shard.write();
-
+        let (mut shard, hash) = Self::select(&obj);
         // Atomically,
         // - check if `obj` is already in the map
         //   - if so, clone its `Arc` and return it
         //   - if not, box it up, insert it, and return a clone
         // This needs to be atomic (locking the shard) to avoid races with other thread, which could
         // insert the same object between us looking it up and inserting it.
-
-        // FIXME: avoid double lookup/hashing by using raw entry API (once stable, or when
-        // hashbrown can be plugged into dashmap)
-        match shard.get_key_value(obj) {
-            Some((arc, _)) => Ok(Self { arc: arc.clone() }),
-            None => Err(shard),
+        match shard.raw_entry_mut().from_key_hashed_nocheck(hash as u64, &obj) {
+            RawEntryMut::Occupied(occ) => Self { arc: occ.key().clone() },
+            RawEntryMut::Vacant(vac) => Self {
+                arc: vac
+                    .insert_hashed_nocheck(hash as u64, Arc::new(obj), SharedValue::new(()))
+                    .0
+                    .clone(),
+            },
         }
-    }
-
-    fn alloc(arc: Arc<T>, mut shard: Guard<T>) -> Self {
-        let arc2 = arc.clone();
-
-        shard.insert(arc2, SharedValue::new(()));
-
-        Self { arc }
     }
 }
 
 impl Interned<str> {
     pub fn new_str(s: &str) -> Self {
-        match Interned::lookup(s) {
-            Ok(this) => this,
-            Err(shard) => {
-                let arc = Arc::<str>::from(s);
-                Self::alloc(arc, shard)
-            }
+        let (mut shard, hash) = Self::select(s);
+        // Atomically,
+        // - check if `obj` is already in the map
+        //   - if so, clone its `Arc` and return it
+        //   - if not, box it up, insert it, and return a clone
+        // This needs to be atomic (locking the shard) to avoid races with other thread, which could
+        // insert the same object between us looking it up and inserting it.
+        match shard.raw_entry_mut().from_key_hashed_nocheck(hash as u64, s) {
+            RawEntryMut::Occupied(occ) => Self { arc: occ.key().clone() },
+            RawEntryMut::Vacant(vac) => Self {
+                arc: vac
+                    .insert_hashed_nocheck(hash as u64, Arc::from(s), SharedValue::new(()))
+                    .0
+                    .clone(),
+            },
         }
+    }
+}
+
+impl<T: Internable + ?Sized> Interned<T> {
+    #[inline]
+    fn select(obj: &T) -> (Guard<T>, u64) {
+        let storage = T::storage().get();
+        let hash = {
+            let mut hasher = std::hash::BuildHasher::build_hasher(storage.hasher());
+            obj.hash(&mut hasher);
+            hasher.finish()
+        };
+        let shard_idx = storage.determine_shard(hash as usize);
+        let shard = &storage.shards()[shard_idx];
+        (shard.write(), hash)
     }
 }
 
@@ -83,7 +85,7 @@ impl<T: Internable + ?Sized> Drop for Interned<T> {
     #[inline]
     fn drop(&mut self) {
         // When the last `Ref` is dropped, remove the object from the global map.
-        if Arc::strong_count(&self.arc) == 2 {
+        if Arc::count(&self.arc) == 2 {
             // Only `self` and the global map point to the object.
 
             self.drop_slow();
@@ -94,20 +96,17 @@ impl<T: Internable + ?Sized> Drop for Interned<T> {
 impl<T: Internable + ?Sized> Interned<T> {
     #[cold]
     fn drop_slow(&mut self) {
-        let storage = T::storage().get();
-        let shard_idx = storage.determine_map(&self.arc);
-        let shard = &storage.shards()[shard_idx];
-        let mut shard = shard.write();
+        let (mut shard, hash) = Self::select(&self.arc);
 
-        // FIXME: avoid double lookup
-        let (arc, _) = shard.get_key_value(&self.arc).expect("interned value removed prematurely");
-
-        if Arc::strong_count(arc) != 2 {
+        if Arc::count(&self.arc) != 2 {
             // Another thread has interned another copy
             return;
         }
 
-        shard.remove(&self.arc);
+        match shard.raw_entry_mut().from_key_hashed_nocheck(hash, &self.arc) {
+            RawEntryMut::Occupied(occ) => occ.remove(),
+            RawEntryMut::Vacant(_) => unreachable!(),
+        };
 
         // Shrink the backing storage if the shard is less than 50% occupied.
         if shard.len() * 2 < shard.capacity() {

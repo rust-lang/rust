@@ -8,8 +8,10 @@ trait Foo {
 }
 
 impl Foo for () {
-    fn bar() -> i32 { 0 }
-    //~^ ERROR method `bar` has an incompatible return type for trait
+    fn bar() -> i32 {
+        //~^ ERROR method `bar` has an incompatible return type for trait
+        0
+    }
 }
 
 fn main() {}

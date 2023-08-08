@@ -104,7 +104,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let (mention_influencer, influencer_point) =
             if sup_origin.span().overlaps(param.param_ty_span) {
                 // Account for `async fn` like in `async-await/issues/issue-62097.rs`.
-                // The desugaring of `async `fn`s causes `sup_origin` and `param` to point at the same
+                // The desugaring of `async fn`s causes `sup_origin` and `param` to point at the same
                 // place (but with different `ctxt`, hence `overlaps` instead of `==` above).
                 //
                 // This avoids the following:
@@ -235,10 +235,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         let arg = match param.param.pat.simple_ident() {
-            Some(simple_ident) => format!("argument `{}`", simple_ident),
+            Some(simple_ident) => format!("argument `{simple_ident}`"),
             None => "the argument".to_string(),
         };
-        let captures = format!("captures data from {}", arg);
+        let captures = format!("captures data from {arg}");
         suggest_new_region_bound(
             tcx,
             &mut err,
@@ -269,11 +269,11 @@ pub fn suggest_new_region_bound(
     // FIXME: account for the need of parens in `&(dyn Trait + '_)`
     let consider = "consider changing";
     let declare = "to declare that";
-    let explicit = format!("you can add an explicit `{}` lifetime bound", lifetime_name);
+    let explicit = format!("you can add an explicit `{lifetime_name}` lifetime bound");
     let explicit_static =
-        arg.map(|arg| format!("explicit `'static` bound to the lifetime of {}", arg));
+        arg.map(|arg| format!("explicit `'static` bound to the lifetime of {arg}"));
     let add_static_bound = "alternatively, add an explicit `'static` bound to this reference";
-    let plus_lt = format!(" + {}", lifetime_name);
+    let plus_lt = format!(" + {lifetime_name}");
     for fn_return in fn_returns {
         if fn_return.span.desugaring_kind().is_some() {
             // Skip `async` desugaring `impl Future`.
@@ -288,7 +288,7 @@ pub fn suggest_new_region_bound(
 
                 // Get the identity type for this RPIT
                 let did = item_id.owner_id.to_def_id();
-                let ty = tcx.mk_opaque(did, ty::InternalSubsts::identity_for_item(tcx, did));
+                let ty = Ty::new_opaque(tcx, did, ty::GenericArgs::identity_for_item(tcx, did));
 
                 if let Some(span) = opaque.bounds.iter().find_map(|arg| match arg {
                     GenericBound::Outlives(Lifetime {
@@ -299,7 +299,7 @@ pub fn suggest_new_region_bound(
                     if let Some(explicit_static) = &explicit_static {
                         err.span_suggestion_verbose(
                             span,
-                            &format!("{consider} `{ty}`'s {explicit_static}"),
+                            format!("{consider} `{ty}`'s {explicit_static}"),
                             &lifetime_name,
                             Applicability::MaybeIncorrect,
                         );
@@ -312,13 +312,10 @@ pub fn suggest_new_region_bound(
                             Applicability::MaybeIncorrect,
                         );
                     }
-                } else if opaque.bounds.iter().any(|arg| match arg {
-                    GenericBound::Outlives(Lifetime { ident, .. })
-                        if ident.name.to_string() == lifetime_name =>
-                    {
-                        true
-                    }
-                    _ => false,
+                } else if opaque.bounds.iter().any(|arg| {
+                    matches!(arg,
+                        GenericBound::Outlives(Lifetime { ident, .. })
+                        if ident.name.to_string() == lifetime_name )
                 }) {
                 } else {
                     // get a lifetime name of existing named lifetimes if any
@@ -336,11 +333,7 @@ pub fn suggest_new_region_bound(
                     } else {
                         None
                     };
-                    let name = if let Some(name) = &existing_lt_name {
-                        format!("{}", name)
-                    } else {
-                        format!("'a")
-                    };
+                    let name = if let Some(name) = &existing_lt_name { name } else { "'a" };
                     // if there are more than one elided lifetimes in inputs, the explicit `'_` lifetime cannot be used.
                     // introducing a new lifetime `'a` or making use of one from existing named lifetimes if any
                     if let Some(id) = scope_def_id
@@ -353,7 +346,7 @@ pub fn suggest_new_region_bound(
                                   if p.span.hi() - p.span.lo() == rustc_span::BytePos(1) { // Ampersand (elided without '_)
                                       (p.span.shrink_to_hi(),format!("{name} "))
                                   } else { // Underscore (elided with '_)
-                                      (p.span, format!("{name}"))
+                                      (p.span, name.to_string())
                                   }
                             )
                             .collect::<Vec<_>>()
@@ -370,7 +363,7 @@ pub fn suggest_new_region_bound(
                         spans_suggs
                             .push((fn_return.span.shrink_to_hi(), format!(" + {name} ")));
                         err.multipart_suggestion_verbose(
-                            &format!(
+                            format!(
                                 "{declare} `{ty}` {captures}, {use_lt}",
                             ),
                             spans_suggs,
@@ -379,7 +372,7 @@ pub fn suggest_new_region_bound(
                     } else {
                         err.span_suggestion_verbose(
                             fn_return.span.shrink_to_hi(),
-                            &format!("{declare} `{ty}` {captures}, {explicit}",),
+                            format!("{declare} `{ty}` {captures}, {explicit}",),
                             &plus_lt,
                             Applicability::MaybeIncorrect,
                         );
@@ -390,12 +383,7 @@ pub fn suggest_new_region_bound(
                 if let LifetimeName::ImplicitObjectLifetimeDefault = lt.res {
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
-                        &format!(
-                            "{declare} the trait object {captures}, {explicit}",
-                            declare = declare,
-                            captures = captures,
-                            explicit = explicit,
-                        ),
+                        format!("{declare} the trait object {captures}, {explicit}",),
                         &plus_lt,
                         Applicability::MaybeIncorrect,
                     );
@@ -407,7 +395,7 @@ pub fn suggest_new_region_bound(
                     if let Some(explicit_static) = &explicit_static {
                         err.span_suggestion_verbose(
                             lt.ident.span,
-                            &format!("{} the trait object's {}", consider, explicit_static),
+                            format!("{consider} the trait object's {explicit_static}"),
                             &lifetime_name,
                             Applicability::MaybeIncorrect,
                         );
@@ -496,7 +484,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             tcx,
             ctxt.param_env,
             ctxt.assoc_item.def_id,
-            self.cx.resolve_vars_if_possible(ctxt.substs),
+            self.cx.resolve_vars_if_possible(ctxt.args),
         ) else {
             return false;
         };
@@ -506,7 +494,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         // Get the `Ident` of the method being called and the corresponding `impl` (to point at
         // `Bar` in `impl Foo for dyn Bar {}` and the definition of the method being called).
-        let Some((ident, self_ty)) = NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, instance.def_id(), &v.0) else {
+        let Some((ident, self_ty)) =
+            NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, instance.def_id(), &v.0)
+        else {
             return false;
         };
 

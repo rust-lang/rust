@@ -1,8 +1,4 @@
-// FIXME https://github.com/rust-lang/rust/issues/59774
-
 // build-fail
-// normalize-stderr-test "thread.*panicked.*Metadata module not compiled.*\n" -> ""
-// normalize-stderr-test "note:.*RUST_BACKTRACE=1.*\n" -> ""
 
 fn generic<T: Copy>(t: T) {
     let s: [T; 1518600000] = [t; 1518600000];

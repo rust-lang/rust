@@ -1,22 +1,22 @@
+use crate::question_mark::{QuestionMark, QUESTION_MARK};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
-use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::peel_blocks;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::{Descend, Visitable};
-use if_chain::if_chain;
-use rustc_data_structures::fx::FxHashSet;
+use clippy_utils::{is_lint_allowed, msrvs, pat_and_expr_can_be_question_mark, peel_blocks};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Expr, ExprKind, HirId, ItemId, Local, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind, Ty};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::symbol::sym;
+use rustc_session::declare_tool_lint;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use serde::Deserialize;
 use std::ops::ControlFlow;
+use std::slice;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -38,7 +38,6 @@ declare_clippy_lint! {
     /// Could be written:
     ///
     /// ```rust
-    /// # #![feature(let_else)]
     /// # fn main () {
     /// # let w = Some(0);
     /// let Some(v) = w else { return };
@@ -50,93 +49,80 @@ declare_clippy_lint! {
     "manual implementation of a let...else statement"
 }
 
-pub struct ManualLetElse {
-    msrv: Msrv,
-    matches_behaviour: MatchLintBehaviour,
-}
-
-impl ManualLetElse {
-    #[must_use]
-    pub fn new(msrv: Msrv, matches_behaviour: MatchLintBehaviour) -> Self {
-        Self {
-            msrv,
-            matches_behaviour,
+impl<'tcx> QuestionMark {
+    pub(crate) fn check_manual_let_else(&mut self, cx: &LateContext<'_>, stmt: &'tcx Stmt<'tcx>) {
+        if !self.msrv.meets(msrvs::LET_ELSE) || in_external_macro(cx.sess(), stmt.span) {
+            return;
         }
-    }
-}
 
-impl_lint_pass!(ManualLetElse => [MANUAL_LET_ELSE]);
+        if let StmtKind::Local(local) = stmt.kind &&
+            let Some(init) = local.init &&
+            local.els.is_none() &&
+            local.ty.is_none() &&
+            init.span.ctxt() == stmt.span.ctxt() &&
+            let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init)
+        {
+            match if_let_or_match {
+                IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => {
+                    if
+                        let Some(ident_map) = expr_simple_identity_map(local.pat, let_pat, if_then) &&
+                        let Some(if_else) = if_else &&
+                        expr_diverges(cx, if_else) &&
+                        let qm_allowed = is_lint_allowed(cx, QUESTION_MARK, stmt.hir_id) &&
+                        (qm_allowed || pat_and_expr_can_be_question_mark(cx, let_pat, if_else).is_none())
+                    {
+                        emit_manual_let_else(cx, stmt.span, if_let_expr, &ident_map, let_pat, if_else);
+                    }
+                },
+                IfLetOrMatch::Match(match_expr, arms, source) => {
+                    if self.matches_behaviour == MatchLintBehaviour::Never {
+                        return;
+                    }
+                    if source != MatchSource::Normal {
+                        return;
+                    }
+                    // Any other number than two arms doesn't (necessarily)
+                    // have a trivial mapping to let else.
+                    if arms.len() != 2 {
+                        return;
+                    }
+                    // Guards don't give us an easy mapping either
+                    if arms.iter().any(|arm| arm.guard.is_some()) {
+                        return;
+                    }
+                    let check_types = self.matches_behaviour == MatchLintBehaviour::WellKnownTypes;
+                    let diverging_arm_opt = arms
+                        .iter()
+                        .enumerate()
+                        .find(|(_, arm)| expr_diverges(cx, arm.body) && pat_allowed_for_else(cx, arm.pat, check_types));
+                    let Some((idx, diverging_arm)) = diverging_arm_opt else { return; };
+                    // If the non-diverging arm is the first one, its pattern can be reused in a let/else statement.
+                    // However, if it arrives in second position, its pattern may cover some cases already covered
+                    // by the diverging one.
+                    // TODO: accept the non-diverging arm as a second position if patterns are disjointed.
+                    if idx == 0 {
+                        return;
+                    }
+                    let pat_arm = &arms[1 - idx];
+                    let Some(ident_map) = expr_simple_identity_map(local.pat, pat_arm.pat, pat_arm.body) else {
+                        return
+                    };
 
-impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
-    fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &'tcx Stmt<'tcx>) {
-        let if_let_or_match = if_chain! {
-            if self.msrv.meets(msrvs::LET_ELSE);
-            if !in_external_macro(cx.sess(), stmt.span);
-            if let StmtKind::Local(local) = stmt.kind;
-            if let Some(init) = local.init;
-            if local.els.is_none();
-            if local.ty.is_none();
-            if init.span.ctxt() == stmt.span.ctxt();
-            if let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init);
-            then {
-                if_let_or_match
-            } else {
-                return;
+                    emit_manual_let_else(cx, stmt.span, match_expr, &ident_map, pat_arm.pat, diverging_arm.body);
+                },
             }
         };
-
-        match if_let_or_match {
-            IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => if_chain! {
-                if expr_is_simple_identity(let_pat, if_then);
-                if let Some(if_else) = if_else;
-                if expr_diverges(cx, if_else);
-                then {
-                    emit_manual_let_else(cx, stmt.span, if_let_expr, let_pat, if_else);
-                }
-            },
-            IfLetOrMatch::Match(match_expr, arms, source) => {
-                if self.matches_behaviour == MatchLintBehaviour::Never {
-                    return;
-                }
-                if source != MatchSource::Normal {
-                    return;
-                }
-                // Any other number than two arms doesn't (neccessarily)
-                // have a trivial mapping to let else.
-                if arms.len() != 2 {
-                    return;
-                }
-                // Guards don't give us an easy mapping either
-                if arms.iter().any(|arm| arm.guard.is_some()) {
-                    return;
-                }
-                let check_types = self.matches_behaviour == MatchLintBehaviour::WellKnownTypes;
-                let diverging_arm_opt = arms
-                    .iter()
-                    .enumerate()
-                    .find(|(_, arm)| expr_diverges(cx, arm.body) && pat_allowed_for_else(cx, arm.pat, check_types));
-                let Some((idx, diverging_arm)) = diverging_arm_opt else { return; };
-                // If the non-diverging arm is the first one, its pattern can be reused in a let/else statement.
-                // However, if it arrives in second position, its pattern may cover some cases already covered
-                // by the diverging one.
-                // TODO: accept the non-diverging arm as a second position if patterns are disjointed.
-                if idx == 0 {
-                    return;
-                }
-                let pat_arm = &arms[1 - idx];
-                if !expr_is_simple_identity(pat_arm.pat, pat_arm.body) {
-                    return;
-                }
-
-                emit_manual_let_else(cx, stmt.span, match_expr, pat_arm.pat, diverging_arm.body);
-            },
-        }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
-fn emit_manual_let_else(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, pat: &Pat<'_>, else_body: &Expr<'_>) {
+fn emit_manual_let_else(
+    cx: &LateContext<'_>,
+    span: Span,
+    expr: &Expr<'_>,
+    ident_map: &FxHashMap<Symbol, &Pat<'_>>,
+    pat: &Pat<'_>,
+    else_body: &Expr<'_>,
+) {
     span_lint_and_then(
         cx,
         MANUAL_LET_ELSE,
@@ -144,13 +130,11 @@ fn emit_manual_let_else(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, pat: 
         "this could be rewritten as `let...else`",
         |diag| {
             // This is far from perfect, for example there needs to be:
-            // * mut additions for the bindings
-            // * renamings of the bindings
+            // * renamings of the bindings for many `PatKind`s like slices, etc.
+            // * limitations in the existing replacement algorithms
             // * unused binding collision detection with existing ones
-            // * putting patterns with at the top level | inside ()
             // for this to be machine applicable.
             let mut app = Applicability::HasPlaceholders;
-            let (sn_pat, _) = snippet_with_context(cx, pat.span, span.ctxt(), "", &mut app);
             let (sn_expr, _) = snippet_with_context(cx, expr.span, span.ctxt(), "", &mut app);
             let (sn_else, _) = snippet_with_context(cx, else_body.span, span.ctxt(), "", &mut app);
 
@@ -159,15 +143,131 @@ fn emit_manual_let_else(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, pat: 
             } else {
                 format!("{{ {sn_else} }}")
             };
-            let sn_bl = if matches!(pat.kind, PatKind::Or(..)) {
-                format!("({sn_pat})")
-            } else {
-                sn_pat.into_owned()
-            };
+            let sn_bl = replace_in_pattern(cx, span, ident_map, pat, &mut app, true);
             let sugg = format!("let {sn_bl} = {sn_expr} else {else_bl};");
             diag.span_suggestion(span, "consider writing", sugg, app);
         },
     );
+}
+
+/// Replaces the locals in the pattern
+///
+/// For this example:
+///
+/// ```ignore
+/// let (a, FooBar { b, c }) = if let Bar { Some(a_i), b_i } = ex { (a_i, b_i) } else { return };
+/// ```
+///
+/// We have:
+///
+/// ```ignore
+/// pat: Bar { Some(a_i), b_i }
+/// ident_map: (a_i) -> (a), (b_i) -> (FooBar { b, c })
+/// ```
+///
+/// We return:
+///
+/// ```ignore
+/// Bar { Some(a), b_i: FooBar { b, c } }
+/// ```
+fn replace_in_pattern(
+    cx: &LateContext<'_>,
+    span: Span,
+    ident_map: &FxHashMap<Symbol, &Pat<'_>>,
+    pat: &Pat<'_>,
+    app: &mut Applicability,
+    top_level: bool,
+) -> String {
+    // We put a labeled block here so that we can implement the fallback in this function.
+    // As the function has multiple call sites, implementing the fallback via an Option<T>
+    // return type and unwrap_or_else would cause repetition. Similarly, the function also
+    // invokes the fall back multiple times.
+    'a: {
+        // If the ident map is empty, there is no replacement to do.
+        // The code following this if assumes a non-empty ident_map.
+        if ident_map.is_empty() {
+            break 'a;
+        }
+
+        match pat.kind {
+            PatKind::Binding(_ann, _id, binding_name, opt_subpt) => {
+                let Some(pat_to_put) = ident_map.get(&binding_name.name) else {
+                    break 'a;
+                };
+                let (sn_ptp, _) = snippet_with_context(cx, pat_to_put.span, span.ctxt(), "", app);
+                if let Some(subpt) = opt_subpt {
+                    let subpt = replace_in_pattern(cx, span, ident_map, subpt, app, false);
+                    return format!("{sn_ptp} @ {subpt}");
+                }
+                return sn_ptp.to_string();
+            },
+            PatKind::Or(pats) => {
+                let patterns = pats
+                    .iter()
+                    .map(|pat| replace_in_pattern(cx, span, ident_map, pat, app, false))
+                    .collect::<Vec<_>>();
+                let or_pat = patterns.join(" | ");
+                if top_level {
+                    return format!("({or_pat})");
+                }
+                return or_pat;
+            },
+            PatKind::Struct(path, fields, has_dot_dot) => {
+                let fields = fields
+                    .iter()
+                    .map(|fld| {
+                        if let PatKind::Binding(_, _, name, None) = fld.pat.kind &&
+                            let Some(pat_to_put) = ident_map.get(&name.name)
+                        {
+                            let (sn_fld_name, _) = snippet_with_context(cx, fld.ident.span, span.ctxt(), "", app);
+                            let (sn_ptp, _) = snippet_with_context(cx, pat_to_put.span, span.ctxt(), "", app);
+                            // TODO: this is a bit of a hack, but it does its job. Ideally, we'd check if pat_to_put is
+                            // a PatKind::Binding but that is also hard to get right.
+                            if sn_fld_name == sn_ptp {
+                                // Field init shorthand
+                                return format!("{sn_fld_name}");
+                            }
+                            return format!("{sn_fld_name}: {sn_ptp}");
+                        }
+                        let (sn_fld, _) = snippet_with_context(cx, fld.span, span.ctxt(), "", app);
+                        sn_fld.into_owned()
+                    })
+                    .collect::<Vec<_>>();
+                let fields_string = fields.join(", ");
+
+                let dot_dot_str = if has_dot_dot { " .." } else { "" };
+                let (sn_pth, _) = snippet_with_context(cx, path.span(), span.ctxt(), "", app);
+                return format!("{sn_pth} {{ {fields_string}{dot_dot_str} }}");
+            },
+            // Replace the variable name iff `TupleStruct` has one argument like `Variant(v)`.
+            PatKind::TupleStruct(ref w, args, dot_dot_pos) => {
+                let mut args = args
+                    .iter()
+                    .map(|pat| replace_in_pattern(cx, span, ident_map, pat, app, false))
+                    .collect::<Vec<_>>();
+                if let Some(pos) = dot_dot_pos.as_opt_usize() {
+                    args.insert(pos, "..".to_owned());
+                }
+                let args = args.join(", ");
+                let sn_wrapper = cx.sess().source_map().span_to_snippet(w.span()).unwrap_or_default();
+                return format!("{sn_wrapper}({args})");
+            },
+            PatKind::Tuple(args, dot_dot_pos) => {
+                let mut args = args
+                    .iter()
+                    .map(|pat| replace_in_pattern(cx, span, ident_map, pat, app, false))
+                    .collect::<Vec<_>>();
+                if let Some(pos) = dot_dot_pos.as_opt_usize() {
+                    args.insert(pos, "..".to_owned());
+                }
+                let args = args.join(", ");
+                return format!("({args})");
+            },
+            _ => {},
+        }
+    }
+    let (sn_pat, _) = snippet_with_context(cx, pat.span, span.ctxt(), "", app);
+    sn_pat.into_owned()
 }
 
 /// Check whether an expression is divergent. May give false negatives.
@@ -308,37 +408,74 @@ fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>, check_types: boo
     !has_disallowed
 }
 
-/// Checks if the passed block is a simple identity referring to bindings created by the pattern
-fn expr_is_simple_identity(pat: &'_ Pat<'_>, expr: &'_ Expr<'_>) -> bool {
-    // We support patterns with multiple bindings and tuples, like:
-    //   let ... = if let (Some(foo), bar) = g() { (foo, bar) } else { ... }
+/// Checks if the passed block is a simple identity referring to bindings created by the pattern,
+/// and if yes, returns a mapping between the relevant sub-pattern and the identifier it corresponds
+/// to.
+///
+/// We support patterns with multiple bindings and tuples, e.g.:
+///
+/// ```ignore
+/// let (foo_o, bar_o) = if let (Some(foo), bar) = g() { (foo, bar) } else { ... }
+/// ```
+///
+/// The expected params would be:
+///
+/// ```ignore
+/// local_pat: (foo_o, bar_o)
+/// let_pat: (Some(foo), bar)
+/// expr: (foo, bar)
+/// ```
+///
+/// We build internal `sub_pats` so that it looks like `[foo_o, bar_o]` and `paths` so that it looks
+/// like `[foo, bar]`. Then we turn that into `FxHashMap [(foo) -> (foo_o), (bar) -> (bar_o)]` which
+/// we return.
+fn expr_simple_identity_map<'a, 'hir>(
+    local_pat: &'a Pat<'hir>,
+    let_pat: &'_ Pat<'hir>,
+    expr: &'_ Expr<'hir>,
+) -> Option<FxHashMap<Symbol, &'a Pat<'hir>>> {
     let peeled = peel_blocks(expr);
-    let paths = match peeled.kind {
-        ExprKind::Tup(exprs) | ExprKind::Array(exprs) => exprs,
-        ExprKind::Path(_) => std::slice::from_ref(peeled),
-        _ => return false,
+    let (sub_pats, paths) = match (local_pat.kind, peeled.kind) {
+        (PatKind::Tuple(pats, _), ExprKind::Tup(exprs)) | (PatKind::Slice(pats, ..), ExprKind::Array(exprs)) => {
+            (pats, exprs)
+        },
+        (_, ExprKind::Path(_)) => (slice::from_ref(local_pat), slice::from_ref(peeled)),
+        _ => return None,
     };
+
+    // There is some length mismatch, which indicates usage of .. in the patterns above e.g.:
+    // let (a, ..) = if let [a, b, _c] = ex { (a, b) } else { ... };
+    // We bail in these cases as they should be rare.
+    if paths.len() != sub_pats.len() {
+        return None;
+    }
+
     let mut pat_bindings = FxHashSet::default();
-    pat.each_binding_or_first(&mut |_ann, _hir_id, _sp, ident| {
+    let_pat.each_binding_or_first(&mut |_ann, _hir_id, _sp, ident| {
         pat_bindings.insert(ident);
     });
     if pat_bindings.len() < paths.len() {
-        return false;
+        // This rebinds some bindings from the outer scope, or it repeats some copy-able bindings multiple
+        // times. We don't support these cases so we bail here. E.g.:
+        // let foo = 0;
+        // let (new_foo, bar, bar_copied) = if let Some(bar) = Some(0) { (foo, bar, bar) } else { .. };
+        return None;
     }
-    for path in paths {
-        if_chain! {
-            if let ExprKind::Path(QPath::Resolved(_ty, path)) = path.kind;
-            if let [path_seg] = path.segments;
-            then {
-                if !pat_bindings.remove(&path_seg.ident) {
-                    return false;
-                }
-            } else {
-                return false;
+    let mut ident_map = FxHashMap::default();
+    for (sub_pat, path) in sub_pats.iter().zip(paths.iter()) {
+        if let ExprKind::Path(QPath::Resolved(_ty, path)) = path.kind &&
+            let [path_seg] = path.segments
+        {
+            let ident = path_seg.ident;
+            if !pat_bindings.remove(&ident) {
+                return None;
             }
+            ident_map.insert(ident.name, sub_pat);
+        } else {
+            return None;
         }
     }
-    true
+    Some(ident_map)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]

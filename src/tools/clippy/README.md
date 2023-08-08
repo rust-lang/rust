@@ -5,13 +5,13 @@
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
-[There are over 600 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
+[There are over 650 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 
 Lints are divided into categories, each with a default [lint level](https://doc.rust-lang.org/rustc/lints/levels.html).
 You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the lint level by category.
 
 | Category              | Description                                                                         | Default level |
-| --------------------- | ----------------------------------------------------------------------------------- | ------------- |
+|-----------------------|-------------------------------------------------------------------------------------|---------------|
 | `clippy::all`         | all lints that are on by default (correctness, suspicious, style, complexity, perf) | **warn/deny** |
 | `clippy::correctness` | code that is outright wrong or useless                                              | **deny**      |
 | `clippy::suspicious`  | code that is most likely wrong or useless                                           | **warn**      |
@@ -91,7 +91,8 @@ cargo clippy
 
 #### Automatically applying Clippy suggestions
 
-Clippy can automatically apply some lint suggestions, just like the compiler.
+Clippy can automatically apply some lint suggestions, just like the compiler. Note that `--fix` implies
+`--all-targets`, so it can fix as much code as it can.
 
 ```terminal
 cargo clippy --fix
@@ -130,7 +131,7 @@ for example.
 
 You can add Clippy to Travis CI in the same way you use it locally:
 
-```yml
+```yaml
 language: rust
 rust:
   - stable
@@ -253,7 +254,7 @@ rust-version = "1.30"
 
 The MSRV can also be specified as an attribute, like below.
 
-```rust
+```rust,ignore
 #![feature(custom_inner_attributes)]
 #![clippy::msrv = "1.30.0"]
 
@@ -275,10 +276,14 @@ If you want to contribute to Clippy, you can find more information in [CONTRIBUT
 
 ## License
 
-Copyright 2014-2022 The Rust Project Developers
+<!-- REUSE-IgnoreStart -->
+
+Copyright 2014-2023 The Rust Project Developers
 
 Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)> or the MIT license
 <LICENSE-MIT or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)>, at your
 option. Files in the project may not be
 copied, modified, or distributed except according to those terms.
+
+<!-- REUSE-IgnoreEnd -->

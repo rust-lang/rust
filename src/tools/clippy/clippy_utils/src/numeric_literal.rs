@@ -161,7 +161,7 @@ impl<'a> NumericLiteral<'a> {
         }
 
         if let Some((separator, exponent)) = self.exponent {
-            if exponent != "0" {
+            if !exponent.is_empty() && exponent != "0" {
                 output.push_str(separator);
                 Self::group_digits(&mut output, exponent, group_size, true, false);
             }

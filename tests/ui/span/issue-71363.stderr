@@ -21,7 +21,8 @@ note: required by a bound in `std::error::Error`
  --> $SRC_DIR/core/src/error.rs:LL:COL
 help: consider annotating `MyError` with `#[derive(Debug)]`
   |
-3 | #[derive(Debug)]
+3 + #[derive(Debug)]
+4 | struct MyError;
   |
 
 error: aborting due to 2 previous errors

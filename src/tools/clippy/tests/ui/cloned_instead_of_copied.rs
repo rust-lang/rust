@@ -1,7 +1,8 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::cloned_instead_of_copied)]
 #![allow(unused)]
+#![allow(clippy::useless_vec)]
 
 fn main() {
     // yay

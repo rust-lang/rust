@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{AssocItem, HasVisibility, Module, ModuleDef, Name, PathResolution, ScopeDef};
+use hir::{AssocItem, Enum, HasVisibility, Module, ModuleDef, Name, PathResolution, ScopeDef};
 use ide_db::{
     defs::{Definition, NameRefClass},
     search::SearchScope,
@@ -45,7 +45,8 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let use_tree = star.parent().and_then(ast::UseTree::cast)?;
     let (parent, mod_path) = find_parent_and_path(&star)?;
     let target_module = match ctx.sema.resolve_path(&mod_path)? {
-        PathResolution::Def(ModuleDef::Module(it)) => it,
+        PathResolution::Def(ModuleDef::Module(it)) => Expandable::Module(it),
+        PathResolution::Def(ModuleDef::Adt(hir::Adt::Enum(e))) => Expandable::Enum(e),
         _ => return None,
     };
 
@@ -65,7 +66,7 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 
             let names_to_import = find_names_to_import(ctx, refs_in_target, imported_defs);
             let expanded = make::use_tree_list(names_to_import.iter().map(|n| {
-                let path = make::ext::ident_path(&n.to_string());
+                let path = make::ext::ident_path(&n.display(ctx.db()).to_string());
                 make::use_tree(path, None, None, false)
             }))
             .clone_for_update();
@@ -88,6 +89,11 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             }
         },
     )
+}
+
+enum Expandable {
+    Module(Module),
+    Enum(Enum),
 }
 
 fn find_parent_and_path(
@@ -114,7 +120,7 @@ fn find_parent_and_path(
 
 fn def_is_referenced_in(def: Definition, ctx: &AssistContext<'_>) -> bool {
     let search_scope = SearchScope::single_file(ctx.file_id());
-    def.usages(&ctx.sema).in_scope(search_scope).at_least_one()
+    def.usages(&ctx.sema).in_scope(&search_scope).at_least_one()
 }
 
 #[derive(Debug, Clone)]
@@ -168,23 +174,59 @@ impl Refs {
     }
 }
 
-fn find_refs_in_mod(ctx: &AssistContext<'_>, module: Module, visible_from: Module) -> Option<Refs> {
-    if !is_mod_visible_from(ctx, module, visible_from) {
+fn find_refs_in_mod(
+    ctx: &AssistContext<'_>,
+    expandable: Expandable,
+    visible_from: Module,
+) -> Option<Refs> {
+    if !is_expandable_visible_from(ctx, &expandable, visible_from) {
         return None;
     }
 
-    let module_scope = module.scope(ctx.db(), Some(visible_from));
-    let refs = module_scope.into_iter().filter_map(|(n, d)| Ref::from_scope_def(n, d)).collect();
-    Some(Refs(refs))
+    match expandable {
+        Expandable::Module(module) => {
+            let module_scope = module.scope(ctx.db(), Some(visible_from));
+            let refs =
+                module_scope.into_iter().filter_map(|(n, d)| Ref::from_scope_def(n, d)).collect();
+            Some(Refs(refs))
+        }
+        Expandable::Enum(enm) => Some(Refs(
+            enm.variants(ctx.db())
+                .into_iter()
+                .map(|v| Ref { visible_name: v.name(ctx.db()), def: Definition::Variant(v) })
+                .collect(),
+        )),
+    }
 }
 
-fn is_mod_visible_from(ctx: &AssistContext<'_>, module: Module, from: Module) -> bool {
-    match module.parent(ctx.db()) {
-        Some(parent) => {
-            module.visibility(ctx.db()).is_visible_from(ctx.db(), from.into())
-                && is_mod_visible_from(ctx, parent, from)
+fn is_expandable_visible_from(
+    ctx: &AssistContext<'_>,
+    expandable: &Expandable,
+    from: Module,
+) -> bool {
+    fn is_mod_visible_from(ctx: &AssistContext<'_>, module: Module, from: Module) -> bool {
+        match module.parent(ctx.db()) {
+            Some(parent) => {
+                module.visibility(ctx.db()).is_visible_from(ctx.db(), from.into())
+                    && is_mod_visible_from(ctx, parent, from)
+            }
+            None => true,
         }
-        None => true,
+    }
+
+    match expandable {
+        Expandable::Module(module) => match module.parent(ctx.db()) {
+            Some(parent) => {
+                module.visibility(ctx.db()).is_visible_from(ctx.db(), from.into())
+                    && is_mod_visible_from(ctx, parent, from)
+            }
+            None => true,
+        },
+        Expandable::Enum(enm) => {
+            let module = enm.module(ctx.db());
+            enm.visibility(ctx.db()).is_visible_from(ctx.db(), from.into())
+                && is_mod_visible_from(ctx, module, from)
+        }
     }
 }
 
@@ -896,5 +938,99 @@ struct Baz {
 }
 ",
         );
+    }
+
+    #[test]
+    fn test_support_for_enums() {
+        check_assist(
+            expand_glob_import,
+            r#"
+mod foo {
+    pub enum Foo {
+        Bar,
+        Baz,
+    }
+}
+
+use foo::Foo;
+use foo::Foo::*$0;
+
+struct Strukt {
+    bar: Foo,
+}
+
+fn main() {
+    let s: Strukt = Strukt { bar: Bar };
+}"#,
+            r#"
+mod foo {
+    pub enum Foo {
+        Bar,
+        Baz,
+    }
+}
+
+use foo::Foo;
+use foo::Foo::Bar;
+
+struct Strukt {
+    bar: Foo,
+}
+
+fn main() {
+    let s: Strukt = Strukt { bar: Bar };
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_expanding_multiple_variants_at_once() {
+        check_assist(
+            expand_glob_import,
+            r#"
+mod foo {
+    pub enum Foo {
+        Bar,
+        Baz,
+    }
+}
+
+mod abc {
+    use super::foo;
+    use super::foo::Foo::*$0;
+
+    struct Strukt {
+        baz: foo::Foo,
+        bar: foo::Foo,
+    }
+
+    fn trying_calling() {
+        let s: Strukt = Strukt { bar: Bar , baz : Baz };
+    }
+
+}"#,
+            r#"
+mod foo {
+    pub enum Foo {
+        Bar,
+        Baz,
+    }
+}
+
+mod abc {
+    use super::foo;
+    use super::foo::Foo::{Bar, Baz};
+
+    struct Strukt {
+        baz: foo::Foo,
+        bar: foo::Foo,
+    }
+
+    fn trying_calling() {
+        let s: Strukt = Strukt { bar: Bar , baz : Baz };
+    }
+
+}"#,
+        )
     }
 }

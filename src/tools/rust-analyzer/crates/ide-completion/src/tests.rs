@@ -23,7 +23,8 @@ mod type_pos;
 mod use_tree;
 mod visibility;
 
-use hir::{db::DefDatabase, PrefixKind};
+use expect_test::Expect;
+use hir::PrefixKind;
 use ide_db::{
     base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
@@ -104,7 +105,7 @@ fn completion_list_with_config(
     include_keywords: bool,
     trigger_character: Option<char>,
 ) -> String {
-    // filter out all but one builtintype completion for smaller test outputs
+    // filter out all but one built-in type completion for smaller test outputs
     let items = get_all_items(config, ra_fixture, trigger_character);
     let items = items
         .into_iter()
@@ -120,7 +121,7 @@ fn completion_list_with_config(
 pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
     let change_fixture = ChangeFixture::parse(ra_fixture);
     let mut database = RootDatabase::default();
-    database.set_enable_proc_attr_macros(true);
+    database.enable_proc_attr_macros();
     database.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = range_or_offset.expect_offset();
@@ -197,11 +198,11 @@ pub(crate) fn check_edit_with_config(
         &db,
         &config,
         position,
-        completion.import_to_add.iter().filter_map(|import_edit| {
-            let import_path = &import_edit.import_path;
-            let import_name = import_path.segments().last()?;
-            Some((import_path.to_string(), import_name.to_string()))
-        }),
+        completion
+            .import_to_add
+            .iter()
+            .cloned()
+            .filter_map(|(import_path, import_name)| Some((import_path, import_name))),
     )
     .into_iter()
     .flatten()
@@ -213,6 +214,11 @@ pub(crate) fn check_edit_with_config(
 
     combined_edit.apply(&mut actual);
     assert_eq_text!(&ra_fixture_after, &actual)
+}
+
+fn check_empty(ra_fixture: &str, expect: Expect) {
+    let actual = completion_list(ra_fixture);
+    expect.assert_eq(&actual);
 }
 
 pub(crate) fn get_all_items(

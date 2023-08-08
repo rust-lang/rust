@@ -1,5 +1,5 @@
 // FIXME: Ideally these suggestions would be fixed via rustfix. Blocked by rust-lang/rust#53934
-// // run-rustfix
+//
 #![warn(clippy::significant_drop_in_scrutinee)]
 #![allow(dead_code, unused_assignments)]
 #![allow(clippy::match_single_binding, clippy::single_match, clippy::uninlined_format_args)]
@@ -7,8 +7,7 @@
 use std::num::ParseIntError;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::RwLock;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Mutex, MutexGuard, RwLock};
 
 struct State {}
 

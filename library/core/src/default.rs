@@ -99,7 +99,6 @@
 /// ```
 #[cfg_attr(not(test), rustc_diagnostic_item = "Default")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[const_trait]
 pub trait Default: Sized {
     /// Returns the "default value" for a type.
     ///
@@ -134,51 +133,6 @@ pub trait Default: Sized {
     fn default() -> Self;
 }
 
-/// Return the default value of a type according to the `Default` trait.
-///
-/// The type to return is inferred from context; this is equivalent to
-/// `Default::default()` but shorter to type.
-///
-/// For example:
-/// ```
-/// #![feature(default_free_fn)]
-///
-/// use std::default::default;
-///
-/// #[derive(Default)]
-/// struct AppConfig {
-///     foo: FooConfig,
-///     bar: BarConfig,
-/// }
-///
-/// #[derive(Default)]
-/// struct FooConfig {
-///     foo: i32,
-/// }
-///
-/// #[derive(Default)]
-/// struct BarConfig {
-///     bar: f32,
-///     baz: u8,
-/// }
-///
-/// fn main() {
-///     let options = AppConfig {
-///         foo: default(),
-///         bar: BarConfig {
-///             bar: 10.1,
-///             ..default()
-///         },
-///     };
-/// }
-/// ```
-#[unstable(feature = "default_free_fn", issue = "73014")]
-#[must_use]
-#[inline]
-pub fn default<T: Default>() -> T {
-    Default::default()
-}
-
 /// Derive macro generating an impl of the trait `Default`.
 #[rustc_builtin_macro(Default, attributes(default))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
@@ -190,9 +144,8 @@ pub macro Default($item:item) {
 macro_rules! default_impl {
     ($t:ty, $v:expr, $doc:tt) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-        impl const Default for $t {
-            #[inline]
+        impl Default for $t {
+            #[inline(always)]
             #[doc = $doc]
             fn default() -> $t {
                 $v

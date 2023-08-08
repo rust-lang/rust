@@ -86,5 +86,5 @@ fn main() {
     let mut b = 4;
     swap(&mut a, &mut b);
     test::C.b();
-    let _a = foo();
+    foo();
 }

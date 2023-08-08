@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::while_let_on_iterator)]
 #![allow(dead_code, unreachable_code, unused_mut)]
 #![allow(
@@ -6,7 +6,9 @@
     clippy::manual_find,
     clippy::never_loop,
     clippy::redundant_closure_call,
-    clippy::uninlined_format_args
+    clippy::single_range_in_vec_init,
+    clippy::uninlined_format_args,
+    clippy::useless_vec
 )]
 
 fn base() {

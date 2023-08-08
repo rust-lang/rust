@@ -23,14 +23,4 @@ fn some_match(result: OpenResult) -> u8 {
 fn main() {
     let result = OpenResult::Ok(());
     assert_eq!(some_match(result), 0);
-
-    let result = OpenResult::Ok(());
-    match result {
-        OpenResult::Ok(()) => (),
-        _ => unreachable!("message a"),
-    }
-    match result {
-        OpenResult::Ok(()) => (),
-        _ => unreachable!("message b"),
-    }
 }

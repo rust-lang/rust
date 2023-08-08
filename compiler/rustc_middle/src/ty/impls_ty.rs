@@ -67,37 +67,9 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for SimplifiedType {
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArg<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::GenericArg<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.unpack().hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArgKind<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        match self {
-            // WARNING: We dedup cache the `HashStable` results for `List`
-            // while ignoring types and freely transmute
-            // between `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>`.
-            // See `fn mk_type_list` for more details.
-            //
-            // We therefore hash types without adding a hash for their discriminant.
-            //
-            // In order to make it very unlikely for the sequence of bytes being hashed for
-            // a `GenericArgKind::Type` to be the same as the sequence of bytes being
-            // hashed for one of the other variants, we hash some very high number instead
-            // of their actual discriminant since `TyKind` should never start with anything
-            // that high.
-            ty::subst::GenericArgKind::Type(ty) => ty.hash_stable(hcx, hasher),
-            ty::subst::GenericArgKind::Const(ct) => {
-                0xF3u8.hash_stable(hcx, hasher);
-                ct.hash_stable(hcx, hasher);
-            }
-            ty::subst::GenericArgKind::Lifetime(lt) => {
-                0xF5u8.hash_stable(hcx, hasher);
-                lt.hash_stable(hcx, hasher);
-            }
-        }
     }
 }
 

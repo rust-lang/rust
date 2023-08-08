@@ -1,0 +1,50 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: i32;
+      let mut _3: i32;
+      scope 1 {
+          debug a => _1;
+          let mut _2: (i32, i32);
+          scope 2 {
+              debug x => _2;
+              let _4: i32;
+              scope 3 {
+                  debug y => _4;
+                  let _5: i32;
+                  scope 4 {
+                      debug z => _5;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = foo() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageLive(_2);
+-         _2 = (const 1_i32, const 2_i32);
++         _2 = const (1_i32, 2_i32);
+          StorageLive(_3);
+          _3 = _1;
+          (_2.1: i32) = move _3;
+          StorageDead(_3);
+          StorageLive(_4);
+          _4 = (_2.1: i32);
+          StorageLive(_5);
+-         _5 = (_2.0: i32);
++         _5 = const 1_i32;
+          _0 = const ();
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

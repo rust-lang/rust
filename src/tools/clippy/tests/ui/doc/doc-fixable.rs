@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 //! This file tests for the `DOC_MARKDOWN` lint.
 
 #![allow(dead_code, incomplete_features)]
@@ -60,6 +60,7 @@ fn test_units() {
 /// GitHub GitLab
 /// IPv4 IPv6
 /// ClojureScript CoffeeScript JavaScript PureScript TypeScript
+/// WebAssembly
 /// NaN NaNs
 /// OAuth GraphQL
 /// OCaml

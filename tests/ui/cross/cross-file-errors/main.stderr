@@ -1,5 +1,5 @@
 error: in expressions, `_` can only be used on the left-hand side of an assignment
-  --> $DIR/underscore.rs:8:9
+  --> $DIR/underscore.rs:6:9
    |
 LL |         _
    |         ^ `_` not allowed here

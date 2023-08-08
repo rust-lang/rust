@@ -3,18 +3,20 @@ use rustc_codegen_ssa::debuginfo::{
     wants_c_like_enum_debuginfo,
 };
 use rustc_hir::def::CtorKind;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexSlice;
 use rustc_middle::{
     bug,
-    mir::{Field, GeneratorLayout, GeneratorSavedLocal},
+    mir::GeneratorLayout,
     ty::{
         self,
         layout::{IntegerExt, LayoutOf, PrimitiveExt, TyAndLayout},
-        AdtDef, GeneratorSubsts, Ty, VariantDef,
+        AdtDef, GeneratorArgs, Ty, VariantDef,
     },
 };
 use rustc_span::Symbol;
-use rustc_target::abi::{HasDataLayout, Integer, Primitive, TagEncoding, VariantIdx, Variants};
+use rustc_target::abi::{
+    FieldIdx, HasDataLayout, Integer, Primitive, TagEncoding, VariantIdx, Variants,
+};
 use std::borrow::Cow;
 
 use crate::{
@@ -49,7 +51,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     let enum_type = unique_type_id.expect_ty();
     let &ty::Adt(enum_adt_def, _) = enum_type.kind() else {
         bug!("build_enum_type_di_node() called with non-enum type: `{:?}`", enum_type)
-        };
+    };
 
     let enum_type_and_layout = cx.layout_of(enum_type);
 
@@ -272,7 +274,8 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                 .map(|field_index| {
                     let field_name = if variant_def.ctor_kind() != Some(CtorKind::Fn) {
                         // Fields have names
-                        Cow::from(variant_def.fields[field_index].name.as_str())
+                        let field = &variant_def.fields[FieldIdx::from_usize(field_index)];
+                        Cow::from(field.name.as_str())
                     } else {
                         // Tuple-like
                         super::tuple_field_name(field_index)
@@ -320,10 +323,9 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
     generator_type_and_layout: TyAndLayout<'tcx>,
     generator_type_di_node: &'ll DIType,
     generator_layout: &GeneratorLayout<'tcx>,
-    state_specific_upvar_names: &IndexVec<GeneratorSavedLocal, Option<Symbol>>,
-    common_upvar_names: &[String],
+    common_upvar_names: &IndexSlice<FieldIdx, Symbol>,
 ) -> &'ll DIType {
-    let variant_name = GeneratorSubsts::variant_name(variant_index);
+    let variant_name = GeneratorArgs::variant_name(variant_index);
     let unique_type_id = UniqueTypeId::for_enum_variant_struct_type(
         cx.tcx,
         generator_type_and_layout.ty,
@@ -332,8 +334,8 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
 
     let variant_layout = generator_type_and_layout.for_variant(cx, variant_index);
 
-    let generator_substs = match generator_type_and_layout.ty.kind() {
-        ty::Generator(_, substs, _) => substs.as_generator(),
+    let generator_args = match generator_type_and_layout.ty.kind() {
+        ty::Generator(_, args, _) => args.as_generator(),
         _ => unreachable!(),
     };
 
@@ -353,8 +355,8 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
             let state_specific_fields: SmallVec<_> = (0..variant_layout.fields.count())
                 .map(|field_index| {
                     let generator_saved_local = generator_layout.variant_fields[variant_index]
-                        [Field::from_usize(field_index)];
-                    let field_name_maybe = state_specific_upvar_names[generator_saved_local];
+                        [FieldIdx::from_usize(field_index)];
+                    let field_name_maybe = generator_layout.field_names[generator_saved_local];
                     let field_name = field_name_maybe
                         .as_ref()
                         .map(|s| Cow::from(s.as_str()))
@@ -375,14 +377,16 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
                 .collect();
 
             // Fields that are common to all states
-            let common_fields: SmallVec<_> = generator_substs
+            let common_fields: SmallVec<_> = generator_args
                 .prefix_tys()
+                .iter()
+                .zip(common_upvar_names)
                 .enumerate()
-                .map(|(index, upvar_ty)| {
+                .map(|(index, (upvar_ty, upvar_name))| {
                     build_field_di_node(
                         cx,
                         variant_struct_type_di_node,
-                        &common_upvar_names[index],
+                        upvar_name.as_str(),
                         cx.size_and_align_of(upvar_ty),
                         generator_type_and_layout.fields.offset(index),
                         DIFlags::FlagZero,

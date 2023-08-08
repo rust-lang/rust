@@ -40,7 +40,7 @@ LL |         let _ = &mut other.x;
 help: consider changing this to be a mutable reference
    |
 LL |     fn foo1(&self, other: &mut Z) {
-   |                           ~~~~~~
+   |                            +++
 
 error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:25:17
@@ -62,7 +62,7 @@ LL |         let _ = &mut other.x;
 help: consider changing this to be a mutable reference
    |
 LL |     fn foo2<'a>(&'a self, other: &mut Z) {
-   |                                  ~~~~~~
+   |                                   +++
 
 error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:30:17
@@ -73,7 +73,7 @@ LL |         let _ = &mut self.x;
 help: consider changing this to be a mutable reference
    |
 LL |     fn foo3<'a>(self: &'a mut Self, other: &Z) {
-   |                       ~~~~~~~~~~~~
+   |                           +++
 
 error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:31:17
@@ -84,7 +84,7 @@ LL |         let _ = &mut other.x;
 help: consider changing this to be a mutable reference
    |
 LL |     fn foo3<'a>(self: &'a Self, other: &mut Z) {
-   |                                        ~~~~~~
+   |                                         +++
 
 error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:35:17
@@ -95,7 +95,7 @@ LL |         let _ = &mut other.x;
 help: consider changing this to be a mutable reference
    |
 LL |     fn foo4(other: &mut Z) {
-   |                    ~~~~~~
+   |                     +++
 
 error[E0596]: cannot borrow `z.x` as mutable, as `z` is not declared as mutable
   --> $DIR/issue-39544.rs:41:13
@@ -117,7 +117,7 @@ LL |     let _ = &mut w.x;
 help: consider changing this to be a mutable reference
    |
 LL | pub fn with_arg(z: Z, w: &mut Z) {
-   |                          ~~~~~~
+   |                           +++
 
 error[E0594]: cannot assign to `*x.0`, which is behind a `&` reference
   --> $DIR/issue-39544.rs:48:5

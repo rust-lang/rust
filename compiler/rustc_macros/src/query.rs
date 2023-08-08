@@ -15,7 +15,7 @@ mod kw {
 /// Ensures only doc comment attributes are used
 fn check_attributes(attrs: Vec<Attribute>) -> Result<Vec<Attribute>> {
     let inner = |attr: Attribute| {
-        if !attr.path.is_ident("doc") {
+        if !attr.path().is_ident("doc") {
             Err(Error::new(attr.span(), "attributes not supported on queries"))
         } else if attr.style != AttrStyle::Outer {
             Err(Error::new(
@@ -48,7 +48,7 @@ impl Parse for Query {
         let name: Ident = input.parse()?;
         let arg_content;
         parenthesized!(arg_content in input);
-        let key = arg_content.parse()?;
+        let key = Pat::parse_single(&arg_content)?;
         arg_content.parse::<Token![:]>()?;
         let arg = arg_content.parse()?;
         let result = input.parse()?;
@@ -112,9 +112,6 @@ struct QueryModifiers {
     /// Use a separate query provider for local and extern crates
     separate_provide_extern: Option<Ident>,
 
-    /// Always remap the ParamEnv's constness before hashing.
-    remap_env_constness: Option<Ident>,
-
     /// Generate a `feed` method to set the query's value from another query.
     feedable: Option<Ident>,
 }
@@ -130,7 +127,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut eval_always = None;
     let mut depth_limit = None;
     let mut separate_provide_extern = None;
-    let mut remap_env_constness = None;
     let mut feedable = None;
 
     while !input.is_empty() {
@@ -158,7 +154,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             } else {
                 None
             };
-            let list = attr_content.parse_terminated(Expr::parse)?;
+            let list = attr_content.parse_terminated(Expr::parse, Token![,])?;
             try_insert!(desc = (tcx, list));
         } else if modifier == "cache_on_disk_if" {
             // Parse a cache modifier like:
@@ -166,7 +162,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             let args = if input.peek(token::Paren) {
                 let args;
                 parenthesized!(args in input);
-                let tcx = args.parse()?;
+                let tcx = Pat::parse_single(&args)?;
                 Some(tcx)
             } else {
                 None
@@ -189,8 +185,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(depth_limit = modifier);
         } else if modifier == "separate_provide_extern" {
             try_insert!(separate_provide_extern = modifier);
-        } else if modifier == "remap_env_constness" {
-            try_insert!(remap_env_constness = modifier);
         } else if modifier == "feedable" {
             try_insert!(feedable = modifier);
         } else {
@@ -211,7 +205,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         eval_always,
         depth_limit,
         separate_provide_extern,
-        remap_env_constness,
         feedable,
     })
 }
@@ -260,7 +253,7 @@ fn add_query_desc_cached_impl(
         quote! {
             #[allow(unused_variables, unused_braces, rustc::pass_by_value)]
             #[inline]
-            pub fn #name<'tcx>(#tcx: TyCtxt<'tcx>, #key: &crate::ty::query::query_keys::#name<'tcx>) -> bool {
+            pub fn #name<'tcx>(#tcx: TyCtxt<'tcx>, #key: &crate::query::queries::#name::Key<'tcx>) -> bool {
                 #expr
             }
         }
@@ -269,7 +262,7 @@ fn add_query_desc_cached_impl(
             // we're taking `key` by reference, but some rustc types usually prefer being passed by value
             #[allow(rustc::pass_by_value)]
             #[inline]
-            pub fn #name<'tcx>(_: TyCtxt<'tcx>, _: &crate::ty::query::query_keys::#name<'tcx>) -> bool {
+            pub fn #name<'tcx>(_: TyCtxt<'tcx>, _: &crate::query::queries::#name::Key<'tcx>) -> bool {
                 false
             }
         }
@@ -280,7 +273,7 @@ fn add_query_desc_cached_impl(
 
     let desc = quote! {
         #[allow(unused_variables)]
-        pub fn #name<'tcx>(tcx: TyCtxt<'tcx>, key: crate::ty::query::query_keys::#name<'tcx>) -> String {
+        pub fn #name<'tcx>(tcx: TyCtxt<'tcx>, key: crate::query::queries::#name::Key<'tcx>) -> String {
             let (#tcx, #key) = (tcx, key);
             ::rustc_middle::ty::print::with_no_trimmed_paths!(
                 format!(#desc)
@@ -332,7 +325,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             eval_always,
             depth_limit,
             separate_provide_extern,
-            remap_env_constness,
         );
 
         if modifiers.cache.is_some() {

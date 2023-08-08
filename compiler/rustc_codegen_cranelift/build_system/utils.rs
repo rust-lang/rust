@@ -3,9 +3,9 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_cargo_path, get_rustc_path, get_rustdoc_path};
 
 #[derive(Clone, Debug)]
 pub(crate) struct Compiler {
@@ -19,18 +19,6 @@ pub(crate) struct Compiler {
 }
 
 impl Compiler {
-    pub(crate) fn bootstrap_with_triple(triple: String) -> Compiler {
-        Compiler {
-            cargo: get_cargo_path(),
-            rustc: get_rustc_path(),
-            rustdoc: get_rustdoc_path(),
-            rustflags: String::new(),
-            rustdocflags: String::new(),
-            triple,
-            runner: vec![],
-        }
-    }
-
     pub(crate) fn set_cross_linker_and_runner(&mut self) {
         match self.triple.as_str() {
             "aarch64-unknown-linux-gnu" => {
@@ -95,7 +83,11 @@ impl CargoProject {
             .arg(self.manifest_path(dirs))
             .arg("--target-dir")
             .arg(self.target_dir(dirs))
-            .arg("--frozen");
+            .arg("--locked");
+
+        if dirs.frozen {
+            cmd.arg("--frozen");
+        }
 
         cmd
     }
@@ -116,23 +108,6 @@ impl CargoProject {
                 compiler.runner.join(" "),
             );
         }
-
-        cmd
-    }
-
-    #[must_use]
-    pub(crate) fn fetch(
-        &self,
-        cargo: impl AsRef<Path>,
-        rustc: impl AsRef<Path>,
-        dirs: &Dirs,
-    ) -> Command {
-        let mut cmd = Command::new(cargo.as_ref());
-
-        cmd.env("RUSTC", rustc.as_ref())
-            .arg("fetch")
-            .arg("--manifest-path")
-            .arg(self.manifest_path(dirs));
 
         cmd
     }
@@ -162,10 +137,12 @@ pub(crate) fn hyperfine_command(
     warmup: u64,
     runs: u64,
     prepare: Option<&str>,
-    a: &str,
-    b: &str,
+    cmds: &[(&str, &str)],
+    markdown_export: &Path,
 ) -> Command {
     let mut bench = Command::new("hyperfine");
+
+    bench.arg("--export-markdown").arg(markdown_export);
 
     if warmup != 0 {
         bench.arg("--warmup").arg(warmup.to_string());
@@ -179,7 +156,12 @@ pub(crate) fn hyperfine_command(
         bench.arg("--prepare").arg(prepare);
     }
 
-    bench.arg(a).arg(b);
+    for &(name, cmd) in cmds {
+        if name != "" {
+            bench.arg("-n").arg(name);
+        }
+        bench.arg(cmd);
+    }
 
     bench
 }
@@ -194,6 +176,8 @@ pub(crate) fn git_command<'a>(repo_dir: impl Into<Option<&'a Path>>, cmd: &str) 
         .arg("user.email=dummy@example.com")
         .arg("-c")
         .arg("core.autocrlf=false")
+        .arg("-c")
+        .arg("commit.gpgSign=false")
         .arg(cmd);
     if let Some(repo_dir) = repo_dir.into() {
         git_cmd.current_dir(repo_dir);
@@ -284,4 +268,41 @@ pub(crate) fn is_ci() -> bool {
 
 pub(crate) fn is_ci_opt() -> bool {
     env::var("CI_OPT").is_ok()
+}
+
+static IN_GROUP: AtomicBool = AtomicBool::new(false);
+pub(crate) struct LogGroup {
+    is_gha: bool,
+}
+
+impl LogGroup {
+    pub(crate) fn guard(name: &str) -> LogGroup {
+        let is_gha = env::var("GITHUB_ACTIONS").is_ok();
+
+        assert!(!IN_GROUP.swap(true, Ordering::SeqCst));
+        if is_gha {
+            eprintln!("::group::{name}");
+        }
+
+        LogGroup { is_gha }
+    }
+}
+
+impl Drop for LogGroup {
+    fn drop(&mut self) {
+        if self.is_gha {
+            eprintln!("::endgroup::");
+        }
+        IN_GROUP.store(false, Ordering::SeqCst);
+    }
+}
+
+pub(crate) fn maybe_incremental(cmd: &mut Command) {
+    if is_ci() || std::env::var("CARGO_BUILD_INCREMENTAL").map_or(false, |val| val == "false") {
+        // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
+        cmd.env("CARGO_BUILD_INCREMENTAL", "false");
+    } else {
+        // Force incr comp even in release mode unless in CI or incremental builds are explicitly disabled
+        cmd.env("CARGO_BUILD_INCREMENTAL", "true");
+    }
 }

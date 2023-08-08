@@ -6,7 +6,7 @@ LL |     pub struct A<H: A::Trait>(pub H);
    |
 help: consider importing this trait
    |
-LL |     use A::Trait;
+LL +     use A::Trait;
    |
 help: if you import `Trait`, refer to it directly
    |

@@ -139,18 +139,18 @@ enum FileEntry {
 type Cache = HashMap<String, FileEntry>;
 
 fn small_url_encode(s: &str) -> String {
-    s.replace("<", "%3C")
-        .replace(">", "%3E")
-        .replace(" ", "%20")
-        .replace("?", "%3F")
-        .replace("'", "%27")
-        .replace("&", "%26")
-        .replace(",", "%2C")
-        .replace(":", "%3A")
-        .replace(";", "%3B")
-        .replace("[", "%5B")
-        .replace("]", "%5D")
-        .replace("\"", "%22")
+    s.replace('<', "%3C")
+        .replace('>', "%3E")
+        .replace(' ', "%20")
+        .replace('?', "%3F")
+        .replace('\'', "%27")
+        .replace('&', "%26")
+        .replace(',', "%2C")
+        .replace(':', "%3A")
+        .replace(';', "%3B")
+        .replace('[', "%5B")
+        .replace(']', "%5D")
+        .replace('\"', "%22")
 }
 
 impl Checker {
@@ -267,7 +267,6 @@ impl Checker {
                 FileEntry::OtherFile => return,
                 FileEntry::Redirect { target } => {
                     let t = target.clone();
-                    drop(target);
                     let (target, redir_entry) = self.load_file(&t, report);
                     match redir_entry {
                         FileEntry::Missing => {
@@ -369,7 +368,6 @@ impl Checker {
             return;
         }
         // Search for intra-doc links that rustdoc didn't warn about
-        // FIXME(#77199, 77200) Rustdoc should just warn about these directly.
         // NOTE: only looks at one line at a time; in practice this should find most links
         for (i, line) in source.lines().enumerate() {
             for broken_link in BROKEN_INTRA_DOC_LINK.captures_iter(line) {
@@ -391,7 +389,7 @@ impl Checker {
         const ERROR_INVALID_NAME: i32 = 123;
 
         let pretty_path =
-            file.strip_prefix(&self.root).unwrap_or(&file).to_str().unwrap().to_string();
+            file.strip_prefix(&self.root).unwrap_or(file).to_str().unwrap().to_string();
 
         let entry =
             self.cache.entry(pretty_path.clone()).or_insert_with(|| match fs::metadata(file) {
@@ -470,10 +468,8 @@ fn is_exception(file: &Path, link: &str) -> bool {
         // NOTE: This cannot be added to `LINKCHECK_EXCEPTIONS` because the resolved path
         // calculated in `check` function is outside `build/<triple>/doc` dir.
         // So the `strip_prefix` method just returns the old absolute broken path.
-        if file.ends_with("std/primitive.slice.html") {
-            if link.ends_with("primitive.slice.html") {
-                return true;
-            }
+        if file.ends_with("std/primitive.slice.html") && link.ends_with("primitive.slice.html") {
+            return true;
         }
         false
     }
@@ -545,7 +541,7 @@ fn with_attrs_in_source<F: FnMut(&str, usize, &str)>(source: &str, attr: &str, m
 fn parse_ids(ids: &mut HashSet<String>, file: &str, source: &str, report: &mut Report) {
     if ids.is_empty() {
         with_attrs_in_source(source, " id", |fragment, i, _| {
-            let frag = fragment.trim_start_matches("#").to_owned();
+            let frag = fragment.trim_start_matches('#').to_owned();
             let encoded = small_url_encode(&frag);
             if !ids.insert(frag) {
                 report.errors += 1;

@@ -27,14 +27,14 @@ pub(crate) fn render_record_lit(
     }
     let completions = fields.iter().enumerate().format_with(", ", |(idx, field), f| {
         if snippet_cap.is_some() {
-            f(&format_args!("{}: ${{{}:()}}", field.name(db), idx + 1))
+            f(&format_args!("{}: ${{{}:()}}", field.name(db).display(db.upcast()), idx + 1))
         } else {
-            f(&format_args!("{}: ()", field.name(db)))
+            f(&format_args!("{}: ()", field.name(db).display(db.upcast())))
         }
     });
 
     let types = fields.iter().format_with(", ", |field, f| {
-        f(&format_args!("{}: {}", field.name(db), field.ty(db).display(db)))
+        f(&format_args!("{}: {}", field.name(db).display(db.upcast()), field.ty(db).display(db)))
     });
 
     RenderedLiteral {

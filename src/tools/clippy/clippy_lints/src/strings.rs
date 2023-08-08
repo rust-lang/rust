@@ -1,8 +1,10 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_lang_item;
-use clippy_utils::{get_expr_use_or_unification_node, peel_blocks, SpanlessEq};
-use clippy_utils::{get_parent_expr, is_lint_allowed, match_function_call, method_calls, paths};
+use clippy_utils::{
+    get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, is_path_diagnostic_item, method_calls,
+    peel_blocks, SpanlessEq,
+};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -132,7 +134,7 @@ declare_clippy_lint! {
     /// Probably lots of false positives. If an index comes from a known valid position (e.g.
     /// obtained via `char_indices` over the same string), it is totally OK.
     ///
-    /// # Example
+    /// ### Example
     /// ```rust,should_panic
     /// &"Ölkanne"[1..];
     /// ```
@@ -188,7 +190,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                     );
                 }
             },
-            ExprKind::Index(target, _idx) => {
+            ExprKind::Index(target, _idx, _) => {
                 let e_ty = cx.typeck_results().expr_ty(target).peel_refs();
                 if e_ty.is_str() || is_type_lang_item(cx, e_ty, LangItem::String) {
                     span_lint(
@@ -255,11 +257,12 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
 
         if_chain! {
             // Find std::str::converts::from_utf8
-            if let Some(args) = match_function_call(cx, e, &paths::STR_FROM_UTF8);
+            if let ExprKind::Call(fun, args) = e.kind;
+            if is_path_diagnostic_item(cx, fun, sym::str_from_utf8);
 
             // Find string::as_bytes
             if let ExprKind::AddrOf(BorrowKind::Ref, _, args) = args[0].kind;
-            if let ExprKind::Index(left, right) = args.kind;
+            if let ExprKind::Index(left, right, _) = args.kind;
             let (method_names, expressions, _) = method_calls(left, 1);
             if method_names.len() == 1;
             if expressions.len() == 1;
@@ -292,6 +295,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         }
 
         if_chain! {
+            if !in_external_macro(cx.sess(), e.span);
             if let ExprKind::MethodCall(path, receiver, ..) = &e.kind;
             if path.ident.name == sym!(as_bytes);
             if let ExprKind::Lit(lit) = &receiver.kind;
@@ -324,7 +328,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                     {
                         // Don't lint. Byte strings produce `&[u8; N]` whereas `as_bytes()` produces
                         // `&[u8]`. This change would prevent matching with different sized slices.
-                    } else {
+                    } else if !callsite.starts_with("env!") {
                         span_lint_and_sugg(
                             cx,
                             STRING_LIT_AS_BYTES,

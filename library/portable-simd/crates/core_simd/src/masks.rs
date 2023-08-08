@@ -55,6 +55,7 @@ pub unsafe trait MaskElement: SimdElement + Sealed {}
 macro_rules! impl_element {
     { $ty:ty } => {
         impl Sealed for $ty {
+            #[inline]
             fn valid<const LANES: usize>(value: Simd<Self, LANES>) -> bool
             where
                 LaneCount<LANES>: SupportedLaneCount,
@@ -62,6 +63,7 @@ macro_rules! impl_element {
                 (value.simd_eq(Simd::splat(0 as _)) | value.simd_eq(Simd::splat(-1 as _))).all()
             }
 
+            #[inline]
             fn eq(self, other: Self) -> bool { self == other }
 
             const TRUE: Self = -1;
@@ -83,8 +85,10 @@ impl_element! { isize }
 ///
 /// Masks represent boolean inclusion/exclusion on a per-lane basis.
 ///
-/// The layout of this type is unspecified.
-#[repr(transparent)]
+/// The layout of this type is unspecified, and may change between platforms
+/// and/or Rust versions, and code should not assume that it is equivalent to
+/// `[T; LANES]`.
+#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/90435
 pub struct Mask<T, const LANES: usize>(mask_impl::Mask<T, LANES>)
 where
     T: MaskElement,
@@ -102,6 +106,7 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
     fn clone(&self) -> Self {
         *self
     }
@@ -113,11 +118,13 @@ where
     LaneCount<LANES>: SupportedLaneCount,
 {
     /// Construct a mask by setting all lanes to the given value.
+    #[inline]
     pub fn splat(value: bool) -> Self {
         Self(mask_impl::Mask::splat(value))
     }
 
     /// Converts an array of bools to a SIMD mask.
+    #[inline]
     pub fn from_array(array: [bool; LANES]) -> Self {
         // SAFETY: Rust's bool has a layout of 1 byte (u8) with a value of
         //     true:    0b_0000_0001
@@ -134,6 +141,7 @@ where
     }
 
     /// Converts a SIMD mask to an array of bools.
+    #[inline]
     pub fn to_array(self) -> [bool; LANES] {
         // This follows mostly the same logic as from_array.
         // SAFETY: Rust's bool has a layout of 1 byte (u8) with a value of
@@ -171,6 +179,7 @@ where
     /// Panics if any lane is not 0 or -1.
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
+    #[track_caller]
     pub fn from_int(value: Simd<T, LANES>) -> Self {
         assert!(T::valid(value), "all values must be either 0 or -1",);
         // Safety: the validity has been checked
@@ -209,6 +218,7 @@ where
     /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
+    #[track_caller]
     pub fn test(&self, lane: usize) -> bool {
         assert!(lane < LANES, "lane index out of range");
         // Safety: the lane index has been checked
@@ -232,6 +242,7 @@ where
     /// # Panics
     /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
     #[inline]
+    #[track_caller]
     pub fn set(&mut self, lane: usize, value: bool) {
         assert!(lane < LANES, "lane index out of range");
         // Safety: the lane index has been checked
@@ -261,6 +272,7 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
     fn from(array: [bool; LANES]) -> Self {
         Self::from_array(array)
     }
@@ -271,6 +283,7 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
     fn from(vector: Mask<T, LANES>) -> Self {
         vector.to_array()
     }
@@ -317,6 +330,7 @@ where
     T: MaskElement + fmt::Debug,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries((0..LANES).map(|lane| self.test(lane)))
@@ -520,60 +534,6 @@ where
     }
 }
 
-/// A mask for SIMD vectors with eight elements of 8 bits.
-pub type mask8x8 = Mask<i8, 8>;
-
-/// A mask for SIMD vectors with 16 elements of 8 bits.
-pub type mask8x16 = Mask<i8, 16>;
-
-/// A mask for SIMD vectors with 32 elements of 8 bits.
-pub type mask8x32 = Mask<i8, 32>;
-
-/// A mask for SIMD vectors with 64 elements of 8 bits.
-pub type mask8x64 = Mask<i8, 64>;
-
-/// A mask for SIMD vectors with four elements of 16 bits.
-pub type mask16x4 = Mask<i16, 4>;
-
-/// A mask for SIMD vectors with eight elements of 16 bits.
-pub type mask16x8 = Mask<i16, 8>;
-
-/// A mask for SIMD vectors with 16 elements of 16 bits.
-pub type mask16x16 = Mask<i16, 16>;
-
-/// A mask for SIMD vectors with 32 elements of 16 bits.
-pub type mask16x32 = Mask<i16, 32>;
-
-/// A mask for SIMD vectors with two elements of 32 bits.
-pub type mask32x2 = Mask<i32, 2>;
-
-/// A mask for SIMD vectors with four elements of 32 bits.
-pub type mask32x4 = Mask<i32, 4>;
-
-/// A mask for SIMD vectors with eight elements of 32 bits.
-pub type mask32x8 = Mask<i32, 8>;
-
-/// A mask for SIMD vectors with 16 elements of 32 bits.
-pub type mask32x16 = Mask<i32, 16>;
-
-/// A mask for SIMD vectors with two elements of 64 bits.
-pub type mask64x2 = Mask<i64, 2>;
-
-/// A mask for SIMD vectors with four elements of 64 bits.
-pub type mask64x4 = Mask<i64, 4>;
-
-/// A mask for SIMD vectors with eight elements of 64 bits.
-pub type mask64x8 = Mask<i64, 8>;
-
-/// A mask for SIMD vectors with two elements of pointer width.
-pub type masksizex2 = Mask<isize, 2>;
-
-/// A mask for SIMD vectors with four elements of pointer width.
-pub type masksizex4 = Mask<isize, 4>;
-
-/// A mask for SIMD vectors with eight elements of pointer width.
-pub type masksizex8 = Mask<isize, 8>;
-
 macro_rules! impl_from {
     { $from:ty  => $($to:ty),* } => {
         $(
@@ -581,6 +541,7 @@ macro_rules! impl_from {
         where
             LaneCount<LANES>: SupportedLaneCount,
         {
+            #[inline]
             fn from(value: Mask<$from, LANES>) -> Self {
                 value.cast()
             }

@@ -1,14 +1,14 @@
 // MIR for `arrays` after built
 
 fn arrays() -> usize {
-    let mut _0: usize;                   // return place in scope 0 at $DIR/arrays.rs:+0:32: +0:37
-    let mut _1: [i32; C];                // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-    let mut _2: usize;                   // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _0: usize;
+    let mut _1: [i32; C];
+    let mut _2: usize;
 
     bb0: {
-        _1 = [const 5_i32; C];           // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-        _2 = Len(_1);                    // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-        _0 = _2;                         // scope 0 at $DIR/arrays.rs:+4:9: +4:16
-        return;                          // scope 0 at $DIR/arrays.rs:+5:9: +5:17
+        _1 = [const 5_i32; C];
+        _2 = Len(_1);
+        _0 = _2;
+        return;
     }
 }

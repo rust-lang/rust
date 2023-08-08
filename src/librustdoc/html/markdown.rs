@@ -36,7 +36,6 @@ use rustc_span::{Span, Symbol};
 use once_cell::sync::Lazy;
 use std::borrow::Cow;
 use std::collections::VecDeque;
-use std::default::Default;
 use std::fmt::Write;
 use std::ops::{ControlFlow, Range};
 use std::str;
@@ -382,7 +381,6 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             Some(Event::Code(text)) => {
                 trace!("saw code {}", text);
                 if let Some(link) = self.shortcut_link {
-                    trace!("original text was {}", link.original_text);
                     // NOTE: this only replaces if the code block is the *entire* text.
                     // If only part of the link has code highlighting, the disambiguator will not be removed.
                     // e.g. [fn@`f`]
@@ -391,8 +389,11 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                     // So we could never be sure we weren't replacing too much:
                     // [fn@my_`f`unc] is treated the same as [my_func()] in that pass.
                     //
-                    // NOTE: &[1..len() - 1] is to strip the backticks
-                    if **text == link.original_text[1..link.original_text.len() - 1] {
+                    // NOTE: .get(1..len() - 1) is to strip the backticks
+                    if let Some(link) = self.links.iter().find(|l| {
+                        l.href == link.href
+                            && Some(&**text) == l.original_text.get(1..l.original_text.len() - 1)
+                    }) {
                         debug!("replacing {} with {}", text, link.new_text);
                         *text = CowStr::Borrowed(&link.new_text);
                     }
@@ -403,9 +404,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             Some(Event::Text(text)) => {
                 trace!("saw text {}", text);
                 if let Some(link) = self.shortcut_link {
-                    trace!("original text was {}", link.original_text);
                     // NOTE: same limitations as `Event::Code`
-                    if **text == *link.original_text {
+                    if let Some(link) = self
+                        .links
+                        .iter()
+                        .find(|l| l.href == link.href && **text == *l.original_text)
+                    {
                         debug!("replacing {} with {}", text, link.new_text);
                         *text = CowStr::Borrowed(&link.new_text);
                     }
@@ -528,8 +532,6 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
             let start_tags = format!(
                 "<h{level} id=\"{id}\">\
                     <a href=\"#{id}\">",
-                id = id,
-                level = level
             );
             return Some((Event::Html(start_tags.into()), 0..0));
         }
@@ -552,11 +554,27 @@ impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
 }
 
 fn check_if_allowed_tag(t: &Tag<'_>) -> bool {
-    matches!(t, Tag::Paragraph | Tag::Emphasis | Tag::Strong | Tag::Link(..) | Tag::BlockQuote)
+    matches!(
+        t,
+        Tag::Paragraph
+            | Tag::Emphasis
+            | Tag::Strong
+            | Tag::Strikethrough
+            | Tag::Link(..)
+            | Tag::BlockQuote
+    )
 }
 
 fn is_forbidden_tag(t: &Tag<'_>) -> bool {
-    matches!(t, Tag::CodeBlock(_) | Tag::Table(_) | Tag::TableHead | Tag::TableRow | Tag::TableCell)
+    matches!(
+        t,
+        Tag::CodeBlock(_)
+            | Tag::Table(_)
+            | Tag::TableHead
+            | Tag::TableRow
+            | Tag::TableCell
+            | Tag::FootnoteDefinition(_)
+    )
 }
 
 impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
@@ -588,6 +606,10 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
                     self.depth -= 1;
                     is_start = false;
                     check_if_allowed_tag(c)
+                }
+                Event::FootnoteReference(_) => {
+                    self.skipped_tags += 1;
+                    false
                 }
                 _ => true,
             };
@@ -762,7 +784,7 @@ impl<'tcx> ExtraInfo<'tcx> {
         ExtraInfo { def_id, sp, tcx }
     }
 
-    fn error_invalid_codeblock_attr(&self, msg: &str, help: &str) {
+    fn error_invalid_codeblock_attr(&self, msg: String, help: &'static str) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
@@ -937,7 +959,7 @@ impl LangString {
                     } {
                         if let Some(extra) = extra {
                             extra.error_invalid_codeblock_attr(
-                                &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
+                                format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
                                 help,
                             );
                         }
@@ -1218,7 +1240,27 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
 pub(crate) struct MarkdownLink {
     pub kind: LinkType,
     pub link: String,
-    pub range: Range<usize>,
+    pub range: MarkdownLinkRange,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum MarkdownLinkRange {
+    /// Normally, markdown link warnings point only at the destination.
+    Destination(Range<usize>),
+    /// In some cases, it's not possible to point at the destination.
+    /// Usually, this happens because backslashes `\\` are used.
+    /// When that happens, point at the whole link, and don't provide structured suggestions.
+    WholeLink(Range<usize>),
+}
+
+impl MarkdownLinkRange {
+    /// Extracts the inner range.
+    pub fn inner_range(&self) -> &Range<usize> {
+        match self {
+            MarkdownLinkRange::Destination(range) => range,
+            MarkdownLinkRange::WholeLink(range) => range,
+        }
+    }
 }
 
 pub(crate) fn markdown_links<R>(
@@ -1238,9 +1280,9 @@ pub(crate) fn markdown_links<R>(
         if md_start <= s_start && s_end <= md_end {
             let start = s_start.offset_from(md_start) as usize;
             let end = s_end.offset_from(md_start) as usize;
-            start..end
+            MarkdownLinkRange::Destination(start..end)
         } else {
-            fallback
+            MarkdownLinkRange::WholeLink(fallback)
         }
     };
 
@@ -1248,6 +1290,7 @@ pub(crate) fn markdown_links<R>(
         // For diagnostics, we want to underline the link's definition but `span` will point at
         // where the link is used. This is a problem for reference-style links, where the definition
         // is separate from the usage.
+
         match link {
             // `Borrowed` variant means the string (the link's destination) may come directly from
             // the markdown text and we can locate the original link destination.
@@ -1256,8 +1299,80 @@ pub(crate) fn markdown_links<R>(
             CowStr::Borrowed(s) => locate(s, span),
 
             // For anything else, we can only use the provided range.
-            CowStr::Boxed(_) | CowStr::Inlined(_) => span,
+            CowStr::Boxed(_) | CowStr::Inlined(_) => MarkdownLinkRange::WholeLink(span),
         }
+    };
+
+    let span_for_offset_backward = |span: Range<usize>, open: u8, close: u8| {
+        let mut open_brace = !0;
+        let mut close_brace = !0;
+        for (i, b) in md.as_bytes()[span.clone()].iter().copied().enumerate().rev() {
+            let i = i + span.start;
+            if b == close {
+                close_brace = i;
+                break;
+            }
+        }
+        if close_brace < span.start || close_brace >= span.end {
+            return MarkdownLinkRange::WholeLink(span);
+        }
+        let mut nesting = 1;
+        for (i, b) in md.as_bytes()[span.start..close_brace].iter().copied().enumerate().rev() {
+            let i = i + span.start;
+            if b == close {
+                nesting += 1;
+            }
+            if b == open {
+                nesting -= 1;
+            }
+            if nesting == 0 {
+                open_brace = i;
+                break;
+            }
+        }
+        assert!(open_brace != close_brace);
+        if open_brace < span.start || open_brace >= span.end {
+            return MarkdownLinkRange::WholeLink(span);
+        }
+        // do not actually include braces in the span
+        let range = (open_brace + 1)..close_brace;
+        MarkdownLinkRange::Destination(range.clone())
+    };
+
+    let span_for_offset_forward = |span: Range<usize>, open: u8, close: u8| {
+        let mut open_brace = !0;
+        let mut close_brace = !0;
+        for (i, b) in md.as_bytes()[span.clone()].iter().copied().enumerate() {
+            let i = i + span.start;
+            if b == open {
+                open_brace = i;
+                break;
+            }
+        }
+        if open_brace < span.start || open_brace >= span.end {
+            return MarkdownLinkRange::WholeLink(span);
+        }
+        let mut nesting = 0;
+        for (i, b) in md.as_bytes()[open_brace..span.end].iter().copied().enumerate() {
+            let i = i + open_brace;
+            if b == close {
+                nesting -= 1;
+            }
+            if b == open {
+                nesting += 1;
+            }
+            if nesting == 0 {
+                close_brace = i;
+                break;
+            }
+        }
+        assert!(open_brace != close_brace);
+        if open_brace < span.start || open_brace >= span.end {
+            return MarkdownLinkRange::WholeLink(span);
+        }
+        // do not actually include braces in the span
+        let range = (open_brace + 1)..close_brace;
+        MarkdownLinkRange::Destination(range.clone())
     };
 
     Parser::new_with_broken_link_callback(
@@ -1268,11 +1383,20 @@ pub(crate) fn markdown_links<R>(
     .into_offset_iter()
     .filter_map(|(event, span)| match event {
         Event::Start(Tag::Link(link_type, dest, _)) if may_be_doc_link(link_type) => {
-            preprocess_link(MarkdownLink {
-                kind: link_type,
-                range: span_for_link(&dest, span),
-                link: dest.into_string(),
-            })
+            let range = match link_type {
+                // Link is pulled from the link itself.
+                LinkType::ReferenceUnknown | LinkType::ShortcutUnknown => {
+                    span_for_offset_backward(span, b'[', b']')
+                }
+                LinkType::CollapsedUnknown => span_for_offset_forward(span, b'[', b']'),
+                LinkType::Inline => span_for_offset_backward(span, b'(', b')'),
+                // Link is pulled from elsewhere in the document.
+                LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut => {
+                    span_for_link(&dest, span)
+                }
+                LinkType::Autolink | LinkType::Email => unreachable!(),
+            };
+            preprocess_link(MarkdownLink { kind: link_type, range, link: dest.into_string() })
         }
         _ => None,
     })
@@ -1381,7 +1505,7 @@ static DEFAULT_ID_MAP: Lazy<FxHashMap<Cow<'static, str>, usize>> = Lazy::new(|| 
 
 fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     let mut map = FxHashMap::default();
-    // This is the list of IDs used in Javascript.
+    // This is the list of IDs used in JavaScript.
     map.insert("help".into(), 1);
     map.insert("settings".into(), 1);
     map.insert("not-displayed".into(), 1);
@@ -1399,7 +1523,6 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("toggle-all-docs".into(), 1);
     map.insert("all-types".into(), 1);
     map.insert("default-settings".into(), 1);
-    map.insert("rustdoc-vars".into(), 1);
     map.insert("sidebar-vars".into(), 1);
     map.insert("copy-path".into(), 1);
     map.insert("TOC".into(), 1);

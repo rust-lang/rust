@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::match_function_call_with_def_id;
 use clippy_utils::source::{position_before_rarrow, snippet_block, snippet_opt};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     AsyncGeneratorKind, Block, Body, Closure, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericArg, GenericBound,
-    ItemKind, LifetimeName, Term, TraitRef, Ty, TyKind, TypeBindingKind,
+    ImplItem, Item, ItemKind, LifetimeName, Node, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -46,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
-        _: LocalDefId,
+        def_id: LocalDefId,
     ) {
         if_chain! {
             if let Some(header) = kind.header();
@@ -60,6 +59,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
             if let ExprKind::Block(block, _) = body.value.kind;
             if block.stmts.is_empty();
             if let Some(closure_body) = desugared_async_block(cx, block);
+            if let Node::Item(Item {vis_span, ..}) | Node::ImplItem(ImplItem {vis_span, ..}) =
+                cx.tcx.hir().get_by_def_id(def_id);
             then {
                 let header_span = span.with_hi(ret_ty.span.hi());
 
@@ -70,15 +71,22 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                     "this function can be simplified using the `async fn` syntax",
                     |diag| {
                         if_chain! {
+                            if let Some(vis_snip) = snippet_opt(cx, *vis_span);
                             if let Some(header_snip) = snippet_opt(cx, header_span);
                             if let Some(ret_pos) = position_before_rarrow(&header_snip);
                             if let Some((ret_sugg, ret_snip)) = suggested_ret(cx, output);
                             then {
+                                let header_snip = if vis_snip.is_empty() {
+                                    format!("async {}", &header_snip[..ret_pos])
+                                } else {
+                                    format!("{} async {}", vis_snip, &header_snip[vis_snip.len() + 1..ret_pos])
+                                };
+
                                 let help = format!("make the function `async` and {ret_sugg}");
                                 diag.span_suggestion(
                                     header_span,
                                     help,
-                                    format!("async {}{ret_snip}", &header_snip[..ret_pos]),
+                                    format!("{header_snip}{ret_snip}"),
                                     Applicability::MachineApplicable
                                 );
 
@@ -175,16 +183,10 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
 fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> Option<&'tcx Body<'tcx>> {
     if_chain! {
         if let Some(block_expr) = block.expr;
-        if let Some(args) = cx
-            .tcx
-            .lang_items()
-            .identity_future_fn()
-            .and_then(|def_id| match_function_call_with_def_id(cx, block_expr, def_id));
-        if args.len() == 1;
         if let Expr {
             kind: ExprKind::Closure(&Closure { body, .. }),
             ..
-        } = args[0];
+        } = block_expr;
         let closure_body = cx.tcx.hir().body(body);
         if closure_body.generator_kind == Some(GeneratorKind::Async(AsyncGeneratorKind::Block));
         then {

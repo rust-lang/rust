@@ -443,3 +443,15 @@ pub struct ReadmeDoctests;
 
 This will include your README as documentation on the hidden struct `ReadmeDoctests`, which will
 then be tested alongside the rest of your doctests.
+
+## Controlling the compilation and run directories
+
+By default, `rustdoc --test` will compile and run documentation test examples
+from the same working directory.
+The compilation directory is being used for compiler diagnostics, the `file!()` macro and
+the output of `rustdoc` test runner itself, whereas the run directory has an influence on file-system
+operations within documentation test examples, such as `std::fs::read_to_string`.
+
+The `--test-run-directory` flag allows controlling the run directory separately from the compilation directory.
+This is particularly useful in workspaces, where compiler invocations and thus diagnostics should be
+relative to the workspace directory, but documentation test examples should run relative to the crate directory.

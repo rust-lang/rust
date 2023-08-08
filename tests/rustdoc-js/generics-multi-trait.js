@@ -1,14 +1,9 @@
 // exact-check
 
-const QUERY = [
-    'Result<SomeTrait>',
-    'Zzzzzzzzzzzzzzzzzz',
-    'Nonononononononono',
-];
-
 const EXPECTED = [
     // check one of the generic items
     {
+        'query': 'Result<SomeTrait>',
         'in_args': [
             { 'path': 'generics_multi_trait', 'name': 'beta' },
         ],
@@ -17,6 +12,7 @@ const EXPECTED = [
         ],
     },
     {
+        'query': 'Zzzzzzzzzzzzzzzzzz',
         'in_args': [
             { 'path': 'generics_multi_trait', 'name': 'beta' },
         ],
@@ -26,6 +22,7 @@ const EXPECTED = [
     },
     // ignore the name of the generic itself
     {
+        'query': 'Nonononononononono',
         'in_args': [],
         'returned': [],
     },

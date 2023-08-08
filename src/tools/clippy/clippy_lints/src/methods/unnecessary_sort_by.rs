@@ -6,7 +6,7 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, subst::GenericArgKind};
+use rustc_middle::ty::{self, GenericArgKind};
 use rustc_span::sym;
 use rustc_span::symbol::Ident;
 use std::iter;
@@ -33,10 +33,6 @@ struct SortByKeyDetection {
 /// contains a and the other replaces it with b)
 fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: &Ident, b_expr: &Expr<'_>, b_ident: &Ident) -> bool {
     match (&a_expr.kind, &b_expr.kind) {
-        // Two boxes with mirrored contents
-        (ExprKind::Box(left_expr), ExprKind::Box(right_expr)) => {
-            mirrored_exprs(left_expr, a_ident, right_expr, b_ident)
-        },
         // Two arrays with mirrored contents
         (ExprKind::Array(left_exprs), ExprKind::Array(right_exprs)) => {
             iter::zip(*left_exprs, *right_exprs).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
@@ -122,7 +118,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
     if_chain! {
         if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let Some(impl_id) = cx.tcx.impl_of_method(method_id);
-        if cx.tcx.type_of(impl_id).subst_identity().is_slice();
+        if cx.tcx.type_of(impl_id).instantiate_identity().is_slice();
         if let ExprKind::Closure(&Closure { body, .. }) = arg.kind;
         if let closure_body = cx.tcx.hir().body(body);
         if let &[

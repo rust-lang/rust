@@ -9,7 +9,7 @@ use rustc_attr::{rust_version_symbol, VERSION_PLACEHOLDER};
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::LibFeatures;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};

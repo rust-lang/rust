@@ -1,3 +1,4 @@
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // unit-test: DestinationPropagation
 
 fn id<T>(x: T) -> T {

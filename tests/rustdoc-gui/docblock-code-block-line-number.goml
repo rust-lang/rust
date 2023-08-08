@@ -1,5 +1,5 @@
 // Checks that the setting "line numbers" is working as expected.
-goto: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 
 // Otherwise, we can't check text color
 show-text: true
@@ -13,7 +13,7 @@ define-function: (
     (theme, color),
     block {
         // We now set the setting to show the line numbers on code examples.
-        local-storage: {
+        set-local-storage: {
             "rustdoc-theme": |theme|,
             "rustdoc-use-system-theme": "false",
             "rustdoc-line-numbers": "true"
@@ -37,15 +37,15 @@ define-function: (
 )
 call-function: ("check-colors", {
     "theme": "ayu",
-    "color": "rgb(92, 103, 115)",
+    "color": "#5c6773",
 })
 call-function: ("check-colors", {
     "theme": "dark",
-    "color": "rgb(59, 145, 226)",
+    "color": "#3b91e2",
 })
 call-function: ("check-colors", {
     "theme": "light",
-    "color": "rgb(198, 126, 45)",
+    "color": "#c67e2d",
 })
 
 // The first code block has two lines so let's check its `<pre>` elements lists both of them.

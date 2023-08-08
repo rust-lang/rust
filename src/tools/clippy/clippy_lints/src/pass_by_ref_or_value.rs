@@ -1,5 +1,4 @@
-use std::cmp;
-use std::iter;
+use std::{cmp, iter};
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
@@ -14,7 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingAnnotation, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::adjustment::{Adjust, PointerCast};
+use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, RegionKind};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -143,7 +142,7 @@ impl<'tcx> PassByRefOrValue {
             return;
         }
 
-        let fn_sig = cx.tcx.fn_sig(def_id).subst_identity();
+        let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity();
         let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir().body(id));
 
         // Gather all the lifetimes found in the output type which may affect whether
@@ -195,7 +194,7 @@ impl<'tcx> PassByRefOrValue {
                                     .adjustments()
                                     .items()
                                     .flat_map(|(_, a)| a)
-                                    .any(|a| matches!(a.kind, Adjust::Pointer(PointerCast::UnsafeFnPointer)))
+                                    .any(|a| matches!(a.kind, Adjust::Pointer(PointerCoercion::UnsafeFnPointer)))
                             {
                                 continue;
                             }

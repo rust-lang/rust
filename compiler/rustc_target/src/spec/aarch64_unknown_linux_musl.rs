@@ -1,10 +1,15 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::linux_musl_base::opts();
     base.max_atomic_width = Some(128);
     base.supports_xray = true;
     base.features = "+v8a".into();
+    base.supported_sanitizers = SanitizerSet::ADDRESS
+        | SanitizerSet::CFI
+        | SanitizerSet::LEAK
+        | SanitizerSet::MEMORY
+        | SanitizerSet::THREAD;
 
     Target {
         llvm_target: "aarch64-unknown-linux-musl".into(),

@@ -4,7 +4,6 @@ pub fn opts() -> TargetOptions {
     TargetOptions {
         crt_static_respected: true,
         dynamic_linking: true,
-        env: "nto71".into(),
         executables: true,
         families: cvs!["unix"],
         has_rpath: true,

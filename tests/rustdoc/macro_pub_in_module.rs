@@ -7,8 +7,8 @@
 #![crate_name = "krate"]
 #![no_core]
 
- // @has external_crate/some_module/macro.external_macro.html
-  // @!has external_crate/macro.external_macro.html
+// @has external_crate/some_module/macro.external_macro.html
+// @!has external_crate/macro.external_macro.html
 extern crate external_crate;
 
 pub mod inner {
@@ -16,13 +16,17 @@ pub mod inner {
     // @!has krate/macro.raw_const.html
     pub macro raw_const() {}
 
-    // @has krate/inner/macro.test.html
+    // @has krate/inner/attr.test.html
     // @!has krate/macro.test.html
+    // @!has krate/inner/macro.test.html
+    // @!has krate/attr.test.html
     #[rustc_builtin_macro]
     pub macro test($item:item) {}
 
-    // @has krate/inner/macro.Clone.html
+    // @has krate/inner/derive.Clone.html
+    // @!has krate/inner/macro.Clone.html
     // @!has krate/macro.Clone.html
+    // @!has krate/derive.Clone.html
     #[rustc_builtin_macro]
     pub macro Clone($item:item) {}
 

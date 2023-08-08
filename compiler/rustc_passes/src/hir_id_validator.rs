@@ -8,8 +8,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
-    tcx.dep_graph.assert_ignored();
-
     if tcx.sess.opts.unstable_opts.hir_stats {
         crate::hir_stats::print_hir_stats(tcx);
     }
@@ -33,7 +31,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 
         if !errors.is_empty() {
             let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
-            tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
+            tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, message);
         }
     }
 }
@@ -91,9 +89,8 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
 
             self.error(|| {
                 format!(
-                    "ItemLocalIds not assigned densely in {}. \
-                Max ItemLocalId = {}, missing IDs = {:#?}; seen IDs = {:#?}",
-                    pretty_owner, max, missing_items, seen_items
+                    "ItemLocalIds not assigned densely in {pretty_owner}. \
+                Max ItemLocalId = {max}, missing IDs = {missing_items:#?}; seen IDs = {seen_items:#?}"
                 )
             });
         }

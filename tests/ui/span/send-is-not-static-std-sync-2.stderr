@@ -25,8 +25,6 @@ LL |     };
 error[E0597]: `x` does not live long enough
   --> $DIR/send-is-not-static-std-sync-2.rs:31:25
    |
-LL |     let (_tx, rx) = {
-   |          --- borrow later used here
 LL |         let x = 1;
    |             - binding `x` declared here
 LL |         let (tx, rx) = mpsc::channel();

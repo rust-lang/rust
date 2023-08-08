@@ -16,6 +16,9 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ascii::{escape_default, EscapeDefault};
 
+#[unstable(feature = "ascii_char", issue = "110998")]
+pub use core::ascii::Char;
+
 /// Extension methods for ASCII-subset only operations.
 ///
 /// Be aware that operations on seemingly non-ASCII characters can sometimes

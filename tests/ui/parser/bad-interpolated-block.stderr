@@ -10,6 +10,10 @@ LL |     m!({});
    |     ------ in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: wrap this in another block
+   |
+LL |         'lab: { $b };
+   |               +    +
 
 error: cannot use a `block` macro fragment here
   --> $DIR/bad-interpolated-block.rs:6:16
@@ -23,6 +27,10 @@ LL |     m!({});
    |     ------ in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: wrap this in another block
+   |
+LL |         unsafe { $b };
+   |                +    +
 
 error: cannot use a `block` macro fragment here
   --> $DIR/bad-interpolated-block.rs:7:23
@@ -34,6 +42,10 @@ LL |     m!({});
    |     ------ in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: wrap this in another block
+   |
+LL |         |x: u8| -> () { $b };
+   |                       +    +
 
 error: aborting due to 3 previous errors
 

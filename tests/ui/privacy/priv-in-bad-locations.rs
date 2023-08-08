@@ -1,4 +1,4 @@
-pub extern "C" { //~ ERROR unnecessary visibility qualifier
+pub extern "C" { //~ ERROR visibility qualifiers are not permitted here
     pub fn bar();
 }
 
@@ -8,10 +8,10 @@ trait A {
 
 struct B;
 
-pub impl B {} //~ ERROR unnecessary visibility qualifier
+pub impl B {} //~ ERROR visibility qualifiers are not permitted here
 
-pub impl A for B { //~ ERROR unnecessary visibility qualifier
-    pub fn foo(&self) {} //~ ERROR unnecessary visibility qualifier
+pub impl A for B { //~ ERROR visibility qualifiers are not permitted here
+    pub fn foo(&self) {} //~ ERROR visibility qualifiers are not permitted here
 }
 
 pub fn main() {}

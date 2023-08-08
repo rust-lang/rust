@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-permissive-provenance
 
 fn ensure_allocs_can_be_adjacent() {

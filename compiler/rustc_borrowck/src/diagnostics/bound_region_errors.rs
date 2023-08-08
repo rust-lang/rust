@@ -128,7 +128,7 @@ impl<'tcx> ToUniverseInfo<'tcx>
     }
 }
 
-impl<'tcx, F, G> ToUniverseInfo<'tcx> for Canonical<'tcx, type_op::custom::CustomTypeOp<F, G>> {
+impl<'tcx, F> ToUniverseInfo<'tcx> for Canonical<'tcx, type_op::custom::CustomTypeOp<F>> {
     fn to_universe_info(self, _base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
         // We can't rerun custom type ops.
         UniverseInfo::other()
@@ -180,24 +180,25 @@ trait TypeOpInfo<'tcx> {
             return;
         };
 
-        let placeholder_region = tcx.mk_re_placeholder(ty::Placeholder {
-            name: placeholder.name,
-            universe: adjusted_universe.into(),
-        });
+        let placeholder_region = ty::Region::new_placeholder(
+            tcx,
+            ty::Placeholder { universe: adjusted_universe.into(), bound: placeholder.bound },
+        );
 
-        let error_region =
-            if let RegionElement::PlaceholderRegion(error_placeholder) = error_element {
-                let adjusted_universe =
-                    error_placeholder.universe.as_u32().checked_sub(base_universe.as_u32());
-                adjusted_universe.map(|adjusted| {
-                    tcx.mk_re_placeholder(ty::Placeholder {
-                        name: error_placeholder.name,
-                        universe: adjusted.into(),
-                    })
-                })
-            } else {
-                None
-            };
+        let error_region = if let RegionElement::PlaceholderRegion(error_placeholder) =
+            error_element
+        {
+            let adjusted_universe =
+                error_placeholder.universe.as_u32().checked_sub(base_universe.as_u32());
+            adjusted_universe.map(|adjusted| {
+                ty::Region::new_placeholder(
+                    tcx,
+                    ty::Placeholder { universe: adjusted.into(), bound: error_placeholder.bound },
+                )
+            })
+        } else {
+            None
+        };
 
         debug!(?placeholder_region);
 
@@ -390,7 +391,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
         error_region,
         &region_constraints,
         |vid| ocx.infcx.region_var_origin(vid),
-        |vid| ocx.infcx.universe_of_region(ocx.infcx.tcx.mk_re_var(vid)),
+        |vid| ocx.infcx.universe_of_region(ty::Region::new_var(ocx.infcx.tcx, vid)),
     )
 }
 
@@ -411,7 +412,7 @@ fn try_extract_error_from_region_constraints<'tcx>(
                 }
                 // FIXME: Should this check the universe of the var?
                 Constraint::VarSubReg(vid, sup) if sup == placeholder_region => {
-                    Some((infcx.tcx.mk_re_var(vid), cause.clone()))
+                    Some((ty::Region::new_var(infcx.tcx, vid), cause.clone()))
                 }
                 _ => None,
             }

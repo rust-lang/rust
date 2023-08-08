@@ -16,7 +16,7 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for Ty<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo<DepKind>]) -> Self {
         // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
-        unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(tcx.ty_error_misc()) }
+        unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(Ty::new_misc_error(tcx)) }
     }
 }
 
@@ -34,7 +34,7 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::SymbolName<'_> {
 
 impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::Binder<'_, ty::FnSig<'_>> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, stack: &[QueryInfo<DepKind>]) -> Self {
-        let err = tcx.ty_error_misc();
+        let err = Ty::new_misc_error(tcx);
 
         let arity = if let Some(frame) = stack.get(0)
             && frame.query.dep_kind == DepKind::fn_sig
@@ -96,13 +96,22 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for Representability {
 
 impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::EarlyBinder<Ty<'_>> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo<DepKind>]) -> Self {
-        ty::EarlyBinder(Ty::from_cycle_error(tcx, cycle))
+        ty::EarlyBinder::bind(Ty::from_cycle_error(tcx, cycle))
     }
 }
 
 impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::EarlyBinder<ty::Binder<'_, ty::FnSig<'_>>> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo<DepKind>]) -> Self {
-        ty::EarlyBinder(ty::Binder::from_cycle_error(tcx, cycle))
+        ty::EarlyBinder::bind(ty::Binder::from_cycle_error(tcx, cycle))
+    }
+}
+
+impl<'tcx, T> Value<TyCtxt<'tcx>, DepKind> for Result<T, &'_ ty::layout::LayoutError<'_>> {
+    fn from_cycle_error(_tcx: TyCtxt<'tcx>, _cycle: &[QueryInfo<DepKind>]) -> Self {
+        // tcx.arena.alloc cannot be used because we are not allowed to use &'tcx LayoutError under
+        // min_specialization. Since this is an error path anyways, leaking doesn't matter (and really,
+        // tcx.arena.alloc is pretty much equal to leaking).
+        Err(Box::leak(Box::new(ty::layout::LayoutError::Cycle)))
     }
 }
 
@@ -158,8 +167,8 @@ pub fn recursive_type_error(
     }
     let items_list = {
         let mut s = String::new();
-        for (i, (item_id, _)) in item_and_field_ids.iter().enumerate() {
-            let path = tcx.def_path_str(item_id.to_def_id());
+        for (i, &(item_id, _)) in item_and_field_ids.iter().enumerate() {
+            let path = tcx.def_path_str(item_id);
             write!(&mut s, "`{path}`").unwrap();
             if i == (ITEM_LIMIT - 1) && cycle_len > ITEM_LIMIT {
                 write!(&mut s, " and {} more", cycle_len - 5).unwrap();
@@ -200,7 +209,7 @@ fn find_item_ty_spans(
     match ty.kind {
         hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
             if let Res::Def(kind, def_id) = path.res
-                && kind != DefKind::TyAlias {
+                && !matches!(kind, DefKind::TyAlias { .. }) {
                 let check_params = def_id.as_local().map_or(true, |def_id| {
                     if def_id == needle {
                         spans.push(ty.span);

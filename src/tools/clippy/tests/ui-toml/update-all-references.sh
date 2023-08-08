@@ -1,3 +1,3 @@
 #!/bin/bash
 
-echo "Please use 'cargo dev bless' instead."
+echo "Please use 'cargo bless' instead."

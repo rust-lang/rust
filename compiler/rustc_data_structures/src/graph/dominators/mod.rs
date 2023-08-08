@@ -10,7 +10,8 @@
 //! <https://www.cs.princeton.edu/courses/archive/spr03/cs423/download/dominators.pdf>
 
 use super::ControlFlowGraph;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
+
 use std::cmp::Ordering;
 
 #[cfg(test)]
@@ -25,7 +26,7 @@ rustc_index::newtype_index! {
     struct PreorderIndex {}
 }
 
-pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
+pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
     // compute the post order index (rank) for each node
     let mut post_order_rank = IndexVec::from_elem_n(0, graph.num_nodes());
 
@@ -108,28 +109,27 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         // they have been placed in the bucket.
         //
         // We compute a partial set of immediate dominators here.
-        let z = parent[w];
-        for &v in bucket[z].iter() {
+        for &v in bucket[w].iter() {
             // This uses the result of Lemma 5 from section 2 from the original
             // 1979 paper, to compute either the immediate or relative dominator
             // for a given vertex v.
             //
             // eval returns a vertex y, for which semi[y] is minimum among
-            // vertices semi[v] +> y *> v. Note that semi[v] = z as we're in the
-            // z bucket.
+            // vertices semi[v] +> y *> v. Note that semi[v] = w as we're in the
+            // w bucket.
             //
             // Given such a vertex y, semi[y] <= semi[v] and idom[y] = idom[v].
             // If semi[y] = semi[v], though, idom[v] = semi[v].
             //
             // Using this, we can either set idom[v] to be:
-            //  * semi[v] (i.e. z), if semi[y] is z
+            //  * semi[v] (i.e. w), if semi[y] is w
             //  * idom[y], otherwise
             //
             // We don't directly set to idom[y] though as it's not necessarily
             // known yet. The second preorder traversal will cleanup by updating
             // the idom for any that were missed in this pass.
             let y = eval(&mut parent, lastlinked, &semi, &mut label, v);
-            idom[v] = if semi[y] < z { y } else { z };
+            idom[v] = if semi[y] < w { y } else { w };
         }
 
         // This loop computes the semi[w] for w.
@@ -176,9 +176,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
             //
             // ...this may be the case if a MirPass modifies the CFG to remove
             // or rearrange certain blocks/edges.
-            let Some(v) = real_to_pre_order[v] else {
-                continue
-            };
+            let Some(v) = real_to_pre_order[v] else { continue };
 
             // eval returns a vertex x from which semi[x] is minimum among
             // vertices semi[v] +> x *> v.
@@ -212,10 +210,11 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         // If we don't yet know the idom directly, then push this vertex into
         // our semidominator's bucket, where it will get processed at a later
         // stage to compute its immediate dominator.
-        if parent[w] != semi[w] {
+        let z = parent[w];
+        if z != semi[w] {
             bucket[semi[w]].push(w);
         } else {
-            idom[w] = parent[w];
+            idom[w] = z;
         }
 
         // Optimization: We share the parent array between processed and not
@@ -241,7 +240,12 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         immediate_dominators[*node] = Some(pre_order_to_real[idom[idx]]);
     }
 
-    Dominators { post_order_rank, immediate_dominators }
+    let start_node = graph.start_node();
+    immediate_dominators[start_node] = None;
+
+    let time = compute_access_time(start_node, &immediate_dominators);
+
+    Dominators { start_node, post_order_rank, immediate_dominators, time }
 }
 
 /// Evaluate the link-eval virtual forest, providing the currently minimum semi
@@ -256,10 +260,10 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
 /// where `+>` is a proper ancestor and `*>` is just an ancestor.
 #[inline]
 fn eval(
-    ancestor: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    ancestor: &mut IndexSlice<PreorderIndex, PreorderIndex>,
     lastlinked: Option<PreorderIndex>,
-    semi: &IndexVec<PreorderIndex, PreorderIndex>,
-    label: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    semi: &IndexSlice<PreorderIndex, PreorderIndex>,
+    label: &mut IndexSlice<PreorderIndex, PreorderIndex>,
     node: PreorderIndex,
 ) -> PreorderIndex {
     if is_processed(node, lastlinked) {
@@ -277,10 +281,10 @@ fn is_processed(v: PreorderIndex, lastlinked: Option<PreorderIndex>) -> bool {
 
 #[inline]
 fn compress(
-    ancestor: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    ancestor: &mut IndexSlice<PreorderIndex, PreorderIndex>,
     lastlinked: Option<PreorderIndex>,
-    semi: &IndexVec<PreorderIndex, PreorderIndex>,
-    label: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    semi: &IndexSlice<PreorderIndex, PreorderIndex>,
+    label: &mut IndexSlice<PreorderIndex, PreorderIndex>,
     v: PreorderIndex,
 ) {
     assert!(is_processed(v, lastlinked));
@@ -307,34 +311,31 @@ fn compress(
 /// Tracks the list of dominators for each node.
 #[derive(Clone, Debug)]
 pub struct Dominators<N: Idx> {
+    start_node: N,
     post_order_rank: IndexVec<N, usize>,
     // Even though we track only the immediate dominator of each node, it's
     // possible to get its full list of dominators by looking up the dominator
     // of each dominator. (See the `impl Iterator for Iter` definition).
     immediate_dominators: IndexVec<N, Option<N>>,
+    time: IndexVec<N, Time>,
 }
 
 impl<Node: Idx> Dominators<Node> {
-    /// Whether the given Node has an immediate dominator.
+    /// Returns true if node is reachable from the start node.
     pub fn is_reachable(&self, node: Node) -> bool {
-        self.immediate_dominators[node].is_some()
+        node == self.start_node || self.immediate_dominators[node].is_some()
     }
 
-    pub fn immediate_dominator(&self, node: Node) -> Node {
-        assert!(self.is_reachable(node), "node {node:?} is not reachable");
-        self.immediate_dominators[node].unwrap()
+    /// Returns the immediate dominator of node, if any.
+    pub fn immediate_dominator(&self, node: Node) -> Option<Node> {
+        self.immediate_dominators[node]
     }
 
     /// Provides an iterator over each dominator up the CFG, for the given Node.
     /// See the `impl Iterator for Iter` definition to understand how this works.
     pub fn dominators(&self, node: Node) -> Iter<'_, Node> {
         assert!(self.is_reachable(node), "node {node:?} is not reachable");
-        Iter { dominators: self, node: Some(node) }
-    }
-
-    pub fn dominates(&self, dom: Node, node: Node) -> bool {
-        // FIXME -- could be optimized by using post-order-rank
-        self.dominators(node).any(|n| n == dom)
+        Iter { dom_tree: self, node: Some(node) }
     }
 
     /// Provide deterministic ordering of nodes such that, if any two nodes have a dominator
@@ -344,10 +345,22 @@ impl<Node: Idx> Dominators<Node> {
     pub fn rank_partial_cmp(&self, lhs: Node, rhs: Node) -> Option<Ordering> {
         self.post_order_rank[rhs].partial_cmp(&self.post_order_rank[lhs])
     }
+
+    /// Returns true if `a` dominates `b`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `b` is unreachable.
+    pub fn dominates(&self, a: Node, b: Node) -> bool {
+        let a = self.time[a];
+        let b = self.time[b];
+        assert!(b.start != 0, "node {b:?} is not reachable");
+        a.start <= b.start && b.finish <= a.finish
+    }
 }
 
 pub struct Iter<'dom, Node: Idx> {
-    dominators: &'dom Dominators<Node>,
+    dom_tree: &'dom Dominators<Node>,
     node: Option<Node>,
 }
 
@@ -356,15 +369,74 @@ impl<'dom, Node: Idx> Iterator for Iter<'dom, Node> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(node) = self.node {
-            let dom = self.dominators.immediate_dominator(node);
-            if dom == node {
-                self.node = None; // reached the root
-            } else {
-                self.node = Some(dom);
-            }
+            self.node = self.dom_tree.immediate_dominator(node);
             Some(node)
         } else {
             None
         }
     }
+}
+
+/// Describes the number of vertices discovered at the time when processing of a particular vertex
+/// started and when it finished. Both values are zero for unreachable vertices.
+#[derive(Copy, Clone, Default, Debug)]
+struct Time {
+    start: u32,
+    finish: u32,
+}
+
+fn compute_access_time<N: Idx>(
+    start_node: N,
+    immediate_dominators: &IndexSlice<N, Option<N>>,
+) -> IndexVec<N, Time> {
+    // Transpose the dominator tree edges, so that child nodes of vertex v are stored in
+    // node[edges[v].start..edges[v].end].
+    let mut edges: IndexVec<N, std::ops::Range<u32>> =
+        IndexVec::from_elem(0..0, immediate_dominators);
+    for &idom in immediate_dominators.iter() {
+        if let Some(idom) = idom {
+            edges[idom].end += 1;
+        }
+    }
+    let mut m = 0;
+    for e in edges.iter_mut() {
+        m += e.end;
+        e.start = m;
+        e.end = m;
+    }
+    let mut node = IndexVec::from_elem_n(Idx::new(0), m.try_into().unwrap());
+    for (i, &idom) in immediate_dominators.iter_enumerated() {
+        if let Some(idom) = idom {
+            edges[idom].start -= 1;
+            node[edges[idom].start] = i;
+        }
+    }
+
+    // Perform a depth-first search of the dominator tree. Record the number of vertices discovered
+    // when vertex v is discovered first as time[v].start, and when its processing is finished as
+    // time[v].finish.
+    let mut time: IndexVec<N, Time> = IndexVec::from_elem(Time::default(), immediate_dominators);
+    let mut stack = Vec::new();
+
+    let mut discovered = 1;
+    stack.push(start_node);
+    time[start_node].start = discovered;
+
+    while let Some(&i) = stack.last() {
+        let e = &mut edges[i];
+        if e.start == e.end {
+            // Finish processing vertex i.
+            time[i].finish = discovered;
+            stack.pop();
+        } else {
+            let j = node[e.start];
+            e.start += 1;
+            // Start processing vertex j.
+            discovered += 1;
+            time[j].start = discovered;
+            stack.push(j);
+        }
+    }
+
+    time
 }

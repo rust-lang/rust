@@ -1,11 +1,11 @@
 // MIR for `set_discr` after built
 
 fn set_discr(_1: &mut Option<()>) -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/enums.rs:+0:39: +0:39
+    let mut _0: ();
 
     bb0: {
-        Deinit((*_1));                   // scope 0 at $DIR/enums.rs:+2:9: +2:24
-        discriminant((*_1)) = 0;         // scope 0 at $DIR/enums.rs:+3:9: +3:36
-        return;                          // scope 0 at $DIR/enums.rs:+4:9: +4:17
+        Deinit((*_1));
+        discriminant((*_1)) = 0;
+        return;
     }
 }

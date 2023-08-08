@@ -57,7 +57,7 @@ fn main() {
         let t2_started_pair = t2_started_pair.clone();
         let block_on_drop = BlockOnDrop::new(t1);
         spawn(move || {
-            let _ = block_on_drop;
+            let _capture = block_on_drop;
 
             let (mutex, condvar) = &*t2_started_pair;
             *mutex.lock().unwrap() = true;

@@ -2,7 +2,7 @@ use crate::reference::DEREF_ADDROF;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_parent_expr, is_lint_allowed};
+use clippy_utils::{get_parent_expr, is_from_proc_macro, is_lint_allowed};
 use rustc_errors::Applicability;
 use rustc_hir::{ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -47,8 +47,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(BorrowDerefRef => [BORROW_DEREF_REF]);
 
-impl LateLintPass<'_> for BorrowDerefRef {
-    fn check_expr(&mut self, cx: &LateContext<'_>, e: &rustc_hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &rustc_hir::Expr<'tcx>) {
         if_chain! {
             if !e.span.from_expansion();
             if let ExprKind::AddrOf(_, Mutability::Not, addrof_target) = e.kind;
@@ -58,6 +58,7 @@ impl LateLintPass<'_> for BorrowDerefRef {
             if !matches!(deref_target.kind, ExprKind::Unary(UnOp::Deref, ..) );
             let ref_ty = cx.typeck_results().expr_ty(deref_target);
             if let ty::Ref(_, inner_ty, Mutability::Not) = ref_ty.kind();
+            if !is_from_proc_macro(cx, e);
             then{
 
                 if let Some(parent_expr) = get_parent_expr(cx, e){

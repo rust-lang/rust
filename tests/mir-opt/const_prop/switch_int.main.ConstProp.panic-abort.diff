@@ -1,0 +1,28 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: i32;
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const 1_i32;
+-         switchInt(_1) -> [1: bb2, otherwise: bb1];
++         switchInt(const 1_i32) -> [1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = foo(const -1_i32) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb2: {
+          _0 = foo(const 0_i32) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_1);
+          return;
+      }
+  }
+  

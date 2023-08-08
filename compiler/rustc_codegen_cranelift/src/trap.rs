@@ -30,5 +30,9 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, '_>, msg: &str) {
 /// Trap code: user65535
 pub(crate) fn trap_unimplemented(fx: &mut FunctionCx<'_, '_, '_>, msg: impl AsRef<str>) {
     codegen_print(fx, msg.as_ref());
+
+    let one = fx.bcx.ins().iconst(types::I32, 1);
+    fx.lib_call("exit", vec![AbiParam::new(types::I32)], vec![], &[one]);
+
     fx.bcx.ins().trap(TrapCode::User(!0));
 }

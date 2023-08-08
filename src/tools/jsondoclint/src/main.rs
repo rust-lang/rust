@@ -1,4 +1,5 @@
 use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -25,7 +26,7 @@ enum ErrorKind {
 
 #[derive(Debug, Serialize)]
 struct JsonOutput {
-    path: String,
+    path: PathBuf,
     errors: Vec<Error>,
 }
 
@@ -44,6 +45,12 @@ struct Cli {
 
 fn main() -> Result<()> {
     let Cli { path, verbose, json_output } = Cli::parse();
+
+    // We convert `-` into `_` for the file name to be sure the JSON path will always be correct.
+    let path = Path::new(&path);
+    let filename = path.file_name().unwrap().to_str().unwrap().replace('-', "_");
+    let parent = path.parent().unwrap();
+    let path = parent.join(&filename);
 
     let contents = fs::read_to_string(&path)?;
     let krate: Crate = serde_json::from_str(&contents)?;
@@ -72,7 +79,7 @@ fn main() -> Result<()> {
                         )
                     }
                     [sel] => eprintln!(
-                        "{} not in index or paths, but refered to at '{}'",
+                        "{} not in index or paths, but referred to at '{}'",
                         err.id.0,
                         json_find::to_jsonpath(&sel)
                     ),
@@ -85,12 +92,12 @@ fn main() -> Result<()> {
                                 .collect::<Vec<_>>()
                                 .join(", ");
                             eprintln!(
-                                "{} not in index or paths, but refered to at {sels}",
+                                "{} not in index or paths, but referred to at {sels}",
                                 err.id.0
                             );
                         } else {
                             eprintln!(
-                                "{} not in index or paths, but refered to at '{}' and {} more",
+                                "{} not in index or paths, but referred to at '{}' and {} more",
                                 err.id.0,
                                 json_find::to_jsonpath(&sel),
                                 sels.len() - 1,
@@ -101,7 +108,7 @@ fn main() -> Result<()> {
                 ErrorKind::Custom(msg) => eprintln!("{}: {}", err.id.0, msg),
             }
         }
-        bail!("Errors validating json {path}");
+        bail!("Errors validating json {}", path.display());
     }
 
     Ok(())

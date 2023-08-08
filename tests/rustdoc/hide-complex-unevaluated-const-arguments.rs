@@ -29,7 +29,7 @@ pub trait Stage {
     //
     // @has - '//*[@id="associatedconstant.ARRAY1"]' \
     //        'const ARRAY1: [u8; { _ }]'
-    const ARRAY1: [u8; Struct::new(/* ... */) + Self::ABSTRACT * 1_000];
+    const ARRAY1: [u8; Struct::new(/* ... */).do_something(Self::ABSTRACT * 1_000)];
 
     // @has - '//*[@id="associatedconstant.VERBOSE"]' \
     //        'const VERBOSE: [u16; { _ }]'
@@ -73,10 +73,14 @@ pub struct Struct { private: () }
 
 impl Struct {
     const fn new() -> Self { Self { private: () } }
+    const fn do_something(self, x: usize) -> usize {
+        x
+    }
 }
-
+/* FIXME(const-trait): readd this
 impl const std::ops::Add<usize> for Struct {
     type Output = usize;
 
     fn add(self, _: usize) -> usize { 0 }
 }
+*/

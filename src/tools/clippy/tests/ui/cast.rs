@@ -29,12 +29,26 @@ fn main() {
     1f64 as isize;
     1f64 as usize;
     1f32 as u32 as u16;
+    {
+        let _x: i8 = 1i32 as _;
+        1f32 as i32;
+        1f64 as i32;
+        1f32 as u8;
+    }
     // Test clippy::cast_possible_wrap
     1u8 as i8;
     1u16 as i16;
     1u32 as i32;
     1u64 as i64;
     1usize as isize;
+    1usize as i8; // should not wrap, usize is never 8 bits
+    1usize as i16; // wraps on 16 bit ptr size
+    1usize as i32; // wraps on 32 bit ptr size
+    1usize as i64; // wraps on 64 bit ptr size
+    1u8 as isize; // should not wrap, isize is never 8 bits
+    1u16 as isize; // wraps on 16 bit ptr size
+    1u32 as isize; // wraps on 32 bit ptr size
+    1u64 as isize; // wraps on 64 bit ptr size
     // Test clippy::cast_sign_loss
     1i32 as u32;
     -1i32 as u32;

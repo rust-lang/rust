@@ -1,3 +1,4 @@
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // compile-flags: -Z span_free_formats -Z mir-opt-level=4
 
 // EMIT_MIR inline_trait_method_2.test2.Inline.after.mir

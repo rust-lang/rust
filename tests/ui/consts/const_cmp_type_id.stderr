@@ -1,0 +1,34 @@
+error[E0015]: cannot call non-const operator in constant functions
+  --> $DIR/const_cmp_type_id.rs:8:13
+   |
+LL |     assert!(TypeId::of::<u8>() == TypeId::of::<u8>());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: impl defined here, but it is not `const`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const operator in constant functions
+  --> $DIR/const_cmp_type_id.rs:9:13
+   |
+LL |     assert!(TypeId::of::<()>() != TypeId::of::<u8>());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: impl defined here, but it is not `const`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const operator in constants
+  --> $DIR/const_cmp_type_id.rs:10:22
+   |
+LL |     const _A: bool = TypeId::of::<u8>() < TypeId::of::<u16>();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: impl defined here, but it is not `const`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

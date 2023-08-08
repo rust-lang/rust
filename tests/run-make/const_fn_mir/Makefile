@@ -1,4 +1,5 @@
-include ../../run-make-fulldeps/tools.mk
+# needs-unwind -Cpanic=abort gives different MIR output
+include ../tools.mk
 
 all:
 	$(RUSTC) main.rs --emit=mir -o "$(TMPDIR)"/dump.mir

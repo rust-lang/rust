@@ -1,0 +1,4 @@
+error: can't use option `-o` or `--emit` to write multiple output types to stdout
+
+error: aborting due to previous error
+

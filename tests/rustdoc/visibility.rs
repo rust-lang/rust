@@ -1,6 +1,8 @@
 // compile-flags: --document-private-items
 
 #![crate_name = "foo"]
+#![feature(inherent_associated_types)]
+#![allow(incomplete_features)]
 
 // @!has 'foo/index.html' '//a[@href="struct.FooPublic.html"]/..' 'FooPublic 🔒'
 // @has 'foo/struct.FooPublic.html' '//pre' 'pub struct FooPublic'
@@ -102,4 +104,27 @@ impl PubTrait for FooPublic {
     type Type = usize;
     const CONST: usize = 0;
     fn function() {}
+}
+
+pub struct Assoc;
+
+// @has foo/struct.Assoc.html
+impl Assoc {
+    // @has - '//*[@id="associatedtype.TypePub"]' 'pub type TypePub'
+    pub type TypePub = usize;
+
+    // @has - '//*[@id="associatedtype.TypePriv"]' 'pub(crate) type TypePriv'
+    type TypePriv = usize;
+
+    // @has - '//*[@id="associatedconstant.CONST_PUB"]' 'pub const CONST_PUB'
+    pub const CONST_PUB: usize = 0;
+
+    // @has - '//*[@id="associatedconstant.CONST_PRIV"]' 'pub(crate) const CONST_PRIV'
+    const CONST_PRIV: usize = 0;
+
+    // @has - '//*[@id="method.function_pub"]' 'pub fn function_pub()'
+    pub fn function_pub() {}
+
+    // @has - '//*[@id="method.function_priv"]' 'pub(crate) fn function_priv()'
+    fn function_priv() {}
 }

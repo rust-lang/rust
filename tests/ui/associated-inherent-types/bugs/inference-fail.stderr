@@ -1,9 +1,0 @@
-error[E0282]: type annotations needed
-  --> $DIR/inference-fail.rs:14:14
-   |
-LL |     let _: S<_>::P;
-   |              ^ cannot infer type
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0282`.

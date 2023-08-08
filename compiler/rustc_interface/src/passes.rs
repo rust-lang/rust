@@ -3,7 +3,6 @@ use crate::interface::{Compiler, Result};
 use crate::proc_macro_decls;
 use crate::util;
 
-use ast::CRATE_NODE_ID;
 use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -11,22 +10,23 @@ use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::PResult;
-use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
-use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
+use rustc_expand::base::{ExtCtxt, LintStoreExpand};
+use rustc_fs_util::try_canonicalize;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::ty::query::{ExternProviders, Providers};
+use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
-use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::Resolver;
-use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, Untracked};
+use rustc_session::code_stats::VTableSizeInfo;
+use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
+use rustc_session::cstore::{MetadataLoader, Untracked};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -72,53 +72,20 @@ fn count_nodes(krate: &ast::Crate) -> usize {
     counter.count
 }
 
-pub fn register_plugins<'a>(
-    sess: &'a Session,
-    metadata_loader: &'a dyn MetadataLoader,
-    register_lints: impl Fn(&Session, &mut LintStore),
-    mut krate: ast::Crate,
-    crate_name: Symbol,
-) -> Result<(ast::Crate, LintStore)> {
-    krate = sess.time("attributes_injection", || {
-        rustc_builtin_macros::cmdline_attrs::inject(
-            krate,
-            &sess.parse_sess,
-            &sess.opts.unstable_opts.crate_attr,
-        )
-    });
-
-    let (krate, features) = rustc_expand::config::features(sess, krate, CRATE_NODE_ID);
-    // these need to be set "early" so that expansion sees `quote` if enabled.
-    sess.init_features(features);
-
-    let crate_types = util::collect_crate_types(sess, &krate.attrs);
-    sess.init_crate_types(crate_types);
-
-    let stable_crate_id = StableCrateId::new(
-        crate_name,
-        sess.crate_types().contains(&CrateType::Executable),
-        sess.opts.cg.metadata.clone(),
-    );
-    sess.stable_crate_id.set(stable_crate_id).expect("not yet initialized");
-    rustc_incremental::prepare_session_directory(sess, crate_name, stable_crate_id)?;
-
-    if sess.opts.incremental.is_some() {
-        sess.time("incr_comp_garbage_collect_session_directories", || {
-            if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
-                warn!(
-                    "Error while trying to garbage collect incremental \
-                     compilation cache directory: {}",
-                    e
-                );
-            }
-        });
+pub(crate) fn create_lint_store(
+    sess: &Session,
+    metadata_loader: &dyn MetadataLoader,
+    register_lints: Option<impl Fn(&Session, &mut LintStore)>,
+    pre_configured_attrs: &[ast::Attribute],
+) -> LintStore {
+    let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
+    if let Some(register_lints) = register_lints {
+        register_lints(sess, &mut lint_store);
     }
 
-    let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
-    register_lints(sess, &mut lint_store);
-
-    let registrars =
-        sess.time("plugin_loading", || plugin::load::load_plugins(sess, metadata_loader, &krate));
+    let registrars = sess.time("plugin_loading", || {
+        plugin::load::load_plugins(sess, metadata_loader, pre_configured_attrs)
+    });
     sess.time("plugin_registration", || {
         let mut registry = plugin::Registry { lint_store: &mut lint_store };
         for registrar in registrars {
@@ -126,7 +93,7 @@ pub fn register_plugins<'a>(
         }
     });
 
-    Ok((krate, lint_store))
+    lint_store
 }
 
 fn pre_expansion_lint<'a>(
@@ -173,19 +140,29 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
 #[instrument(level = "trace", skip(krate, resolver))]
-fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) -> ast::Crate {
+fn configure_and_expand(
+    mut krate: ast::Crate,
+    pre_configured_attrs: &[ast::Attribute],
+    resolver: &mut Resolver<'_, '_>,
+) -> ast::Crate {
     let tcx = resolver.tcx();
     let sess = tcx.sess;
     let lint_store = unerased_lint_store(tcx);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);
+    let lint_check_node = (&krate, pre_configured_attrs);
+    pre_expansion_lint(sess, lint_store, tcx.registered_tools(()), lint_check_node, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
-    krate = sess.time("crate_injection", || {
-        rustc_builtin_macros::standard_library_imports::inject(krate, resolver, sess)
+    let num_standard_library_imports = sess.time("crate_injection", || {
+        rustc_builtin_macros::standard_library_imports::inject(
+            &mut krate,
+            pre_configured_attrs,
+            resolver,
+            sess,
+        )
     });
 
-    util::check_attr_crate_type(sess, &krate.attrs, &mut resolver.lint_buffer());
+    util::check_attr_crate_type(sess, pre_configured_attrs, &mut resolver.lint_buffer());
 
     // Expand all macros
     krate = sess.time("macro_expand_crate", || {
@@ -222,12 +199,12 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
 
         // Create the config for macro expansion
         let features = sess.features_untracked();
-        let recursion_limit = get_recursion_limit(&krate.attrs, sess);
+        let recursion_limit = get_recursion_limit(pre_configured_attrs, sess);
         let cfg = rustc_expand::expand::ExpansionConfig {
             features: Some(features),
             recursion_limit,
             trace_mac: sess.opts.unstable_opts.trace_macros,
-            should_test: sess.opts.test,
+            should_test: sess.is_test_crate(),
             span_debug: sess.opts.unstable_opts.span_debug,
             proc_macro_backtrace: sess.opts.unstable_opts.proc_macro_backtrace,
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
@@ -235,6 +212,7 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
 
         let lint_store = LintStoreExpandImpl(lint_store);
         let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&lint_store));
+        ecx.num_standard_library_imports = num_standard_library_imports;
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
 
@@ -263,7 +241,7 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
     });
 
     sess.time("maybe_building_test_harness", || {
-        rustc_builtin_macros::test_harness::inject(sess, resolver, &mut krate)
+        rustc_builtin_macros::test_harness::inject(&mut krate, sess, resolver)
     });
 
     let has_proc_macro_decls = sess.time("AST_validation", || {
@@ -287,12 +265,12 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
         sess.emit_warning(errors::ProcMacroCratePanicAbort);
     }
 
-    krate = sess.time("maybe_create_a_macro_crate", || {
-        let is_test_crate = sess.opts.test;
+    sess.time("maybe_create_a_macro_crate", || {
+        let is_test_crate = sess.is_test_crate();
         rustc_builtin_macros::proc_macro_harness::inject(
+            &mut krate,
             sess,
             resolver,
-            krate,
             is_proc_macro_crate,
             has_proc_macro_decls,
             is_test_crate,
@@ -302,6 +280,16 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
 
     // Done with macro expansion!
 
+    resolver.resolve_crate(&krate);
+
+    krate
+}
+
+fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
+    let sess = tcx.sess;
+    let (resolver, krate) = &*tcx.resolver_for_lowering(()).borrow();
+    let mut lint_buffer = resolver.lint_buffer.steal();
+
     if sess.opts.unstable_opts.input_stats {
         eprintln!("Post-expansion node count: {}", count_nodes(&krate));
     }
@@ -309,8 +297,6 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
     if sess.opts.unstable_opts.hir_stats {
         hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS", "ast-stats-2");
     }
-
-    resolver.resolve_crate(&krate);
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     sess.time("complete_gated_feature_checking", || {
@@ -321,7 +307,7 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
     sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
         info!("{} parse sess buffered_lints", buffered_lints.len());
         for early_lint in buffered_lints.drain(..) {
-            resolver.lint_buffer().add_early_lint(early_lint);
+            lint_buffer.add_early_lint(early_lint);
         }
     });
 
@@ -340,20 +326,16 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
         }
     });
 
-    sess.time("early_lint_checks", || {
-        let lint_buffer = Some(std::mem::take(resolver.lint_buffer()));
-        rustc_lint::check_ast_node(
-            sess,
-            false,
-            lint_store,
-            resolver.registered_tools(),
-            lint_buffer,
-            rustc_lint::BuiltinCombinedEarlyLintPass::new(),
-            &krate,
-        )
-    });
-
-    krate
+    let lint_store = unerased_lint_store(tcx);
+    rustc_lint::check_ast_node(
+        sess,
+        false,
+        lint_store,
+        tcx.registered_tools(()),
+        Some(lint_buffer),
+        rustc_lint::BuiltinCombinedEarlyLintPass::new(),
+        (&**krate, &*krate.attrs),
+    )
 }
 
 // Returns all the paths that correspond to generated files.
@@ -365,18 +347,22 @@ fn generated_output_paths(
 ) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.keys() {
-        let file = outputs.path(*output_type);
+        let out_filename = outputs.path(*output_type);
+        let file = out_filename.as_path().to_path_buf();
         match *output_type {
             // If the filename has been overridden using `-o`, it will not be modified
             // by appending `.rlib`, `.exe`, etc., so we can skip this transformation.
             OutputType::Exe if !exact_name => {
                 for crate_type in sess.crate_types().iter() {
                     let p = filename_for_input(sess, *crate_type, crate_name, outputs);
-                    out_filenames.push(p);
+                    out_filenames.push(p.as_path().to_path_buf());
                 }
             }
             OutputType::DepInfo if sess.opts.unstable_opts.dep_info_omit_d_target => {
                 // Don't add the dep-info output when omitting it from dep-info targets
+            }
+            OutputType::DepInfo if out_filename.is_stdout() => {
+                // Don't add the dep-info output when it goes to stdout
             }
             _ => {
                 out_filenames.push(file);
@@ -401,12 +387,12 @@ where
 }
 
 fn output_contains_path(output_paths: &[PathBuf], input_path: &Path) -> bool {
-    let input_path = input_path.canonicalize().ok();
+    let input_path = try_canonicalize(input_path).ok();
     if input_path.is_none() {
         return false;
     }
     let check = |output_path: &PathBuf| {
-        if output_path.canonicalize().ok() == input_path { Some(()) } else { None }
+        if try_canonicalize(output_path).ok() == input_path { Some(()) } else { None }
     };
     check_output(output_paths, check).is_some()
 }
@@ -438,17 +424,14 @@ fn escape_dep_env(symbol: Symbol) -> String {
     escaped
 }
 
-fn write_out_deps(
-    sess: &Session,
-    cstore: &CrateStoreDyn,
-    outputs: &OutputFilenames,
-    out_filenames: &[PathBuf],
-) {
+fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[PathBuf]) {
     // Write out dependency rules to the dep-info file if requested
+    let sess = tcx.sess;
     if !sess.opts.output_types.contains_key(&OutputType::DepInfo) {
         return;
     }
-    let deps_filename = outputs.path(OutputType::DepInfo);
+    let deps_output = outputs.path(OutputType::DepInfo);
+    let deps_filename = deps_output.as_path();
 
     let result: io::Result<()> = try {
         // Build a list of files used to compile the output and
@@ -483,6 +466,11 @@ fn write_out_deps(
             files.push(normalize_path(profile_sample.as_path().to_path_buf()));
         }
 
+        // Debugger visualizer files
+        for debugger_visualizer in tcx.debugger_visualizers(LOCAL_CRATE) {
+            files.push(normalize_path(debugger_visualizer.path.clone().unwrap()));
+        }
+
         if sess.binary_dep_depinfo() {
             if let Some(ref backend) = sess.opts.unstable_opts.codegen_backend {
                 if backend.contains('.') {
@@ -492,9 +480,8 @@ fn write_out_deps(
                 }
             }
 
-            let cstore = cstore.as_any().downcast_ref::<CStore>().unwrap();
-            for cnum in cstore.crates_untracked() {
-                let source = cstore.crate_source_untracked(cnum);
+            for &cnum in tcx.crates(()) {
+                let source = tcx.used_crate_source(cnum);
                 if let Some((path, _)) = &source.dylib {
                     files.push(escape_dep_filename(&path.display().to_string()));
                 }
@@ -507,33 +494,47 @@ fn write_out_deps(
             }
         }
 
-        let mut file = BufWriter::new(fs::File::create(&deps_filename)?);
-        for path in out_filenames {
-            writeln!(file, "{}: {}\n", path.display(), files.join(" "))?;
-        }
+        let write_deps_to_file = |file: &mut dyn Write| -> io::Result<()> {
+            for path in out_filenames {
+                writeln!(file, "{}: {}\n", path.display(), files.join(" "))?;
+            }
 
-        // Emit a fake target for each input file to the compilation. This
-        // prevents `make` from spitting out an error if a file is later
-        // deleted. For more info see #28735
-        for path in files {
-            writeln!(file, "{path}:")?;
-        }
+            // Emit a fake target for each input file to the compilation. This
+            // prevents `make` from spitting out an error if a file is later
+            // deleted. For more info see #28735
+            for path in files {
+                writeln!(file, "{path}:")?;
+            }
 
-        // Emit special comments with information about accessed environment variables.
-        let env_depinfo = sess.parse_sess.env_depinfo.borrow();
-        if !env_depinfo.is_empty() {
-            let mut envs: Vec<_> = env_depinfo
-                .iter()
-                .map(|(k, v)| (escape_dep_env(*k), v.map(escape_dep_env)))
-                .collect();
-            envs.sort_unstable();
-            writeln!(file)?;
-            for (k, v) in envs {
-                write!(file, "# env-dep:{k}")?;
-                if let Some(v) = v {
-                    write!(file, "={v}")?;
-                }
+            // Emit special comments with information about accessed environment variables.
+            let env_depinfo = sess.parse_sess.env_depinfo.borrow();
+            if !env_depinfo.is_empty() {
+                let mut envs: Vec<_> = env_depinfo
+                    .iter()
+                    .map(|(k, v)| (escape_dep_env(*k), v.map(escape_dep_env)))
+                    .collect();
+                envs.sort_unstable();
                 writeln!(file)?;
+                for (k, v) in envs {
+                    write!(file, "# env-dep:{k}")?;
+                    if let Some(v) = v {
+                        write!(file, "={v}")?;
+                    }
+                    writeln!(file)?;
+                }
+            }
+
+            Ok(())
+        };
+
+        match deps_output {
+            OutFileName::Stdout => {
+                let mut file = BufWriter::new(io::stdout());
+                write_deps_to_file(&mut file)?;
+            }
+            OutFileName::Real(ref path) => {
+                let mut file = BufWriter::new(fs::File::create(path)?);
+                write_deps_to_file(&mut file)?;
             }
         }
     };
@@ -557,9 +558,10 @@ fn resolver_for_lowering<'tcx>(
     (): (),
 ) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
     let arenas = Resolver::arenas();
-    let krate = tcx.crate_for_resolver(()).steal();
-    let mut resolver = Resolver::new(tcx, &krate, &arenas);
-    let krate = configure_and_expand(krate, &mut resolver);
+    let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
+    let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
+    let mut resolver = Resolver::new(tcx, &pre_configured_attrs, krate.spans.inner_span, &arenas);
+    let krate = configure_and_expand(krate, &pre_configured_attrs, &mut resolver);
 
     // Make sure we don't mutate the cstore from here on.
     tcx.untracked().cstore.leak();
@@ -607,7 +609,7 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
         }
     }
 
-    write_out_deps(sess, &*tcx.cstore_untracked(), &outputs, &output_paths);
+    write_out_deps(tcx, &outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
@@ -629,6 +631,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
     providers.output_filenames = output_filenames;
     providers.resolver_for_lowering = resolver_for_lowering;
+    providers.early_lint_checks = early_lint_checks;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
@@ -637,6 +640,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_mir_transform::provide(providers);
     rustc_monomorphize::provide(providers);
     rustc_privacy::provide(providers);
+    rustc_resolve::provide(providers);
     rustc_hir_analysis::provide(providers);
     rustc_hir_typeck::provide(providers);
     ty::provide(providers);
@@ -663,7 +667,6 @@ pub fn create_global_ctxt<'tcx>(
     lint_store: Lrc<LintStore>,
     dep_graph: DepGraph,
     untracked: Untracked,
-    queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     gcx_cell: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
     hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
@@ -687,9 +690,7 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
-    let queries = queries.get_or_init(|| {
-        TcxQueries::new(local_providers, extern_providers, query_result_on_disk_cache)
-    });
+    let incremental = dep_graph.is_fully_enabled();
 
     sess.time("setup_global_ctxt", || {
         gcx_cell.get_or_init(move || {
@@ -700,16 +701,20 @@ pub fn create_global_ctxt<'tcx>(
                 hir_arena,
                 untracked,
                 dep_graph,
-                queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
-                queries.as_dyn(),
                 rustc_query_impl::query_callbacks(arena),
+                rustc_query_impl::query_system(
+                    local_providers,
+                    extern_providers,
+                    query_result_on_disk_cache,
+                    incremental,
+                ),
             )
         })
     })
 }
 
-/// Runs the resolution, type-checking, region checking and other
-/// miscellaneous analysis passes on the crate.
+/// Runs the type-checking, region checking and other miscellaneous analysis
+/// passes on the crate.
 fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     rustc_passes::hir_id_validator::check_crate(tcx);
 
@@ -755,27 +760,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     // passes are timed inside typeck
     rustc_hir_analysis::check_crate(tcx)?;
 
-    sess.time("misc_checking_2", || {
-        parallel!(
-            {
-                sess.time("match_checking", || {
-                    tcx.hir().par_body_owners(|def_id| tcx.ensure().check_match(def_id.to_def_id()))
-                });
-            },
-            {
-                sess.time("liveness_checking", || {
-                    tcx.hir().par_body_owners(|def_id| {
-                        // this must run before MIR dump, because
-                        // "not all control paths return a value" is reported here.
-                        //
-                        // maybe move the check to a MIR pass?
-                        tcx.ensure().check_liveness(def_id.to_def_id());
-                    });
-                });
-            }
-        );
-    });
-
     sess.time("MIR_borrow_checking", || {
         tcx.hir().par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
     });
@@ -788,9 +772,14 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             }
             tcx.ensure().has_ffi_unwind_calls(def_id);
 
-            if tcx.hir().body_const_context(def_id).is_some() {
-                tcx.ensure()
-                    .mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(def_id));
+            // If we need to codegen, ensure that we emit all errors from
+            // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
+            // them later during codegen.
+            if tcx.sess.opts.output_types.should_codegen()
+                || tcx.hir().body_const_context(def_id).is_some()
+            {
+                tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
+                tcx.ensure().unused_generic_params(ty::InstanceDef::Item(def_id.to_def_id()));
             }
         }
     });
@@ -830,10 +819,11 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                     },
                     {
                         sess.time("lint_checking", || {
-                            rustc_lint::check_crate(tcx, || {
-                                rustc_lint::BuiltinCombinedLateLintPass::new()
-                            });
+                            rustc_lint::check_crate(tcx);
                         });
+                    },
+                    {
+                        tcx.ensure().clashing_extern_declarations(());
                     }
                 );
             },
@@ -850,6 +840,92 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         // define a lint filter, as all lint checks should have finished at this point.
         sess.time("check_lint_expectations", || tcx.check_expectations(None));
     });
+
+    if sess.opts.unstable_opts.print_vtable_sizes {
+        let traits = tcx.traits(LOCAL_CRATE);
+
+        for &tr in traits {
+            if !tcx.check_is_object_safe(tr) {
+                continue;
+            }
+
+            let name = ty::print::with_no_trimmed_paths!(tcx.def_path_str(tr));
+
+            let mut first_dsa = true;
+
+            // Number of vtable entries, if we didn't have upcasting
+            let mut entries_ignoring_upcasting = 0;
+            // Number of vtable entries needed solely for upcasting
+            let mut entries_for_upcasting = 0;
+
+            let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, tr));
+
+            // A slightly edited version of the code in `rustc_trait_selection::traits::vtable::vtable_entries`,
+            // that works without self type and just counts number of entries.
+            //
+            // Note that this is technically wrong, for traits which have associated types in supertraits:
+            //
+            //   trait A: AsRef<Self::T> + AsRef<()> { type T; }
+            //
+            // Without self type we can't normalize `Self::T`, so we can't know if `AsRef<Self::T>` and
+            // `AsRef<()>` are the same trait, thus we assume that those are different, and potentially
+            // over-estimate how many vtable entries there are.
+            //
+            // Similarly this is wrong for traits that have methods with possibly-impossible bounds.
+            // For example:
+            //
+            //   trait B<T> { fn f(&self) where T: Copy; }
+            //
+            // Here `dyn B<u8>` will have 4 entries, while `dyn B<String>` will only have 3.
+            // However, since we don't know `T`, we can't know if `T: Copy` holds or not,
+            // thus we lean on the bigger side and say it has 4 entries.
+            traits::vtable::prepare_vtable_segments(tcx, trait_ref, |segment| {
+                match segment {
+                    traits::vtable::VtblSegment::MetadataDSA => {
+                        // If this is the first dsa, it would be included either way,
+                        // otherwise it's needed for upcasting
+                        if std::mem::take(&mut first_dsa) {
+                            entries_ignoring_upcasting += 3;
+                        } else {
+                            entries_for_upcasting += 3;
+                        }
+                    }
+
+                    traits::vtable::VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
+                        // Lookup the shape of vtable for the trait.
+                        let own_existential_entries =
+                            tcx.own_existential_vtable_entries(trait_ref.def_id());
+
+                        // The original code here ignores the method if its predicates are impossible.
+                        // We can't really do that as, for example, all not trivial bounds on generic
+                        // parameters are impossible (since we don't know the parameters...),
+                        // see the comment above.
+                        entries_ignoring_upcasting += own_existential_entries.len();
+
+                        if emit_vptr {
+                            entries_for_upcasting += 1;
+                        }
+                    }
+                }
+
+                std::ops::ControlFlow::Continue::<std::convert::Infallible>(())
+            });
+
+            sess.code_stats.record_vtable_size(
+                tr,
+                &name,
+                VTableSizeInfo {
+                    trait_name: name.clone(),
+                    entries: entries_ignoring_upcasting + entries_for_upcasting,
+                    entries_ignoring_upcasting,
+                    entries_for_upcasting,
+                    upcasting_cost_percent: entries_for_upcasting as f64
+                        / entries_ignoring_upcasting as f64
+                        * 100.,
+                },
+            )
+        }
+    }
 
     Ok(())
 }

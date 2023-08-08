@@ -1,7 +1,7 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
-use hir::{Semantics, Type, TypeInfo};
+use hir::{Semantics, Type, TypeInfo, Variant};
 use ide_db::{active_parameter::ActiveParameter, RootDatabase};
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
@@ -243,10 +243,7 @@ fn analyze(
 
     let Some(name_like) = find_node_at_offset(&speculative_file, offset) else {
         let analysis = if let Some(original) = ast::String::cast(original_token.clone()) {
-            CompletionAnalysis::String {
-                original,
-                expanded: ast::String::cast(self_token.clone()),
-            }
+            CompletionAnalysis::String { original, expanded: ast::String::cast(self_token.clone()) }
         } else {
             // Fix up trailing whitespace problem
             // #[attr(foo = $0
@@ -353,7 +350,7 @@ fn expected_type_and_name(
         _ => ty,
     };
 
-    loop {
+    let (ty, name) = loop {
         break match_ast! {
             match node {
                 ast::LetStmt(it) => {
@@ -385,9 +382,7 @@ fn expected_type_and_name(
                        token.clone(),
                     ).map(|ap| {
                         let name = ap.ident().map(NameOrNameRef::Name);
-
-                        let ty = strip_refs(ap.ty);
-                        (Some(ty), name)
+                        (Some(ap.ty), name)
                     })
                     .unwrap_or((None, None))
                 },
@@ -489,7 +484,8 @@ fn expected_type_and_name(
                 },
             }
         };
-    }
+    };
+    (ty.map(strip_refs), name)
 }
 
 fn classify_lifetime(
@@ -610,14 +606,14 @@ fn classify_name_ref(
                     _ => false,
                 };
 
-                let reciever_is_part_of_indivisible_expression = match &receiver {
+                let receiver_is_part_of_indivisible_expression = match &receiver {
                     Some(ast::Expr::IfExpr(_)) => {
                         let next_token_kind = next_non_trivia_token(name_ref.syntax().clone()).map(|t| t.kind());
                         next_token_kind == Some(SyntaxKind::ELSE_KW)
                     },
                     _ => false
                 };
-                if reciever_is_part_of_indivisible_expression {
+                if receiver_is_part_of_indivisible_expression {
                     return None;
                 }
 
@@ -737,7 +733,7 @@ fn classify_name_ref(
                         return None;
                     }
                     let parent = match ast::Fn::cast(parent.parent()?) {
-                        Some(x) => x.param_list(),
+                        Some(it) => it.param_list(),
                         None => ast::ClosureExpr::cast(parent.parent()?)?.param_list(),
                     };
 
@@ -1133,6 +1129,9 @@ fn pattern_context_for(
     pat: ast::Pat,
 ) -> PatternContext {
     let mut param_ctx = None;
+
+    let mut missing_variants = vec![];
+
     let (refutability, has_type_ascription) =
     pat
         .syntax()
@@ -1162,7 +1161,52 @@ fn pattern_context_for(
                         })();
                         return (PatternRefutability::Irrefutable, has_type_ascription)
                     },
-                    ast::MatchArm(_) => PatternRefutability::Refutable,
+                    ast::MatchArm(match_arm) => {
+                       let missing_variants_opt = match_arm
+                            .syntax()
+                            .parent()
+                            .and_then(ast::MatchArmList::cast)
+                            .and_then(|match_arm_list| {
+                                match_arm_list
+                                .syntax()
+                                .parent()
+                                .and_then(ast::MatchExpr::cast)
+                                .and_then(|match_expr| {
+                                    let expr_opt = find_opt_node_in_file(&original_file, match_expr.expr());
+
+                                    expr_opt.and_then(|expr| {
+                                        sema.type_of_expr(&expr)?
+                                        .adjusted()
+                                        .autoderef(sema.db)
+                                        .find_map(|ty| match ty.as_adt() {
+                                            Some(hir::Adt::Enum(e)) => Some(e),
+                                            _ => None,
+                                        }).and_then(|enum_| {
+                                            Some(enum_.variants(sema.db))
+                                        })
+                                    })
+                                }).and_then(|variants| {
+                                   Some(variants.iter().filter_map(|variant| {
+                                        let variant_name = variant.name(sema.db).display(sema.db).to_string();
+
+                                        let variant_already_present = match_arm_list.arms().any(|arm| {
+                                            arm.pat().and_then(|pat| {
+                                                let pat_already_present = pat.syntax().to_string().contains(&variant_name);
+                                                pat_already_present.then(|| pat_already_present)
+                                            }).is_some()
+                                        });
+
+                                        (!variant_already_present).then_some(variant.clone())
+                                    }).collect::<Vec<Variant>>())
+                                })
+                        });
+
+                        if let Some(missing_variants_) = missing_variants_opt {
+                            missing_variants = missing_variants_;
+                        };
+
+                        PatternRefutability::Refutable
+                    },
                     ast::LetExpr(_) => PatternRefutability::Refutable,
                     ast::ForExpr(_) => PatternRefutability::Irrefutable,
                     _ => PatternRefutability::Irrefutable,
@@ -1184,6 +1228,7 @@ fn pattern_context_for(
         ref_token,
         record_pat: None,
         impl_: fetch_immediate_impl(sema, original_file, pat.syntax()),
+        missing_variants,
     }
 }
 

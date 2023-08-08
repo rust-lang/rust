@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(unused)]
 #![warn(clippy::match_as_ref)]
@@ -18,7 +18,9 @@ fn match_as_ref() {
 }
 
 mod issue4437 {
-    use std::{error::Error, fmt, num::ParseIntError};
+    use std::error::Error;
+    use std::fmt;
+    use std::num::ParseIntError;
 
     #[derive(Debug)]
     struct E {

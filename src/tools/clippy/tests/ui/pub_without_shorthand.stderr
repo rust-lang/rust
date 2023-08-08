@@ -1,0 +1,22 @@
+error: usage of `pub` with `in`
+  --> $DIR/pub_without_shorthand.rs:14:1
+   |
+LL | pub(in self) fn b() {}
+   | ^^^^^^^^^^^^ help: remove it: `pub(self)`
+   |
+   = note: `-D clippy::pub-without-shorthand` implied by `-D warnings`
+
+error: usage of `pub` with `in`
+  --> $DIR/pub_without_shorthand.rs:18:5
+   |
+LL |     pub(in super) fn d() {}
+   |     ^^^^^^^^^^^^^ help: remove it: `pub(super)`
+
+error: usage of `pub` with `in`
+  --> $DIR/pub_without_shorthand.rs:22:5
+   |
+LL |     pub(in crate) fn m() {}
+   |     ^^^^^^^^^^^^^ help: remove it: `pub(crate)`
+
+error: aborting due to 3 previous errors
+

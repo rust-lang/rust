@@ -168,42 +168,46 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           BIN_EXPR
-            BIN_EXPR
-              CALL_EXPR
-                PATH_EXPR
-                  PATH
-                    PATH_SEGMENT
-                      NAME_REF
-                        IDENT "Some"
-                ARG_LIST
-                  L_PAREN "("
-                  RANGE_EXPR
-                    DOT2 ".."
-                  R_PAREN ")"
-              WHITESPACE " "
-              EQ "="
-              WHITESPACE " "
-              METHOD_CALL_EXPR
-                CALL_EXPR
-                  PATH_EXPR
-                    PATH
-                      PATH_SEGMENT
-                        NAME_REF
-                          IDENT "Some"
-                  ARG_LIST
-                    L_PAREN "("
-                    LITERAL
-                      INT_NUMBER "0"
-                    R_PAREN ")"
-                DOT "."
-                WHITESPACE "\n    "
-                NAME_REF
-                  IDENT "Ok"
-                ARG_LIST
-                  L_PAREN "("
-                  UNDERSCORE_EXPR
-                    UNDERSCORE "_"
-                  R_PAREN ")"
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Some"
+              ARG_LIST
+                L_PAREN "("
+                RANGE_EXPR
+                  DOT2 ".."
+                R_PAREN ")"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Some"
+              ARG_LIST
+                L_PAREN "("
+                LITERAL
+                  INT_NUMBER "0"
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Ok"
+              ARG_LIST
+                L_PAREN "("
+                UNDERSCORE_EXPR
+                  UNDERSCORE "_"
+                R_PAREN ")"
             WHITESPACE " "
             EQ "="
             WHITESPACE " "

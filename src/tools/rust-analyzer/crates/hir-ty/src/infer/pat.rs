@@ -4,24 +4,59 @@ use std::iter::repeat_with;
 
 use chalk_ir::Mutability;
 use hir_def::{
-    expr::{BindingAnnotation, Expr, Literal, Pat, PatId},
+    body::Body,
+    hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, Literal, Pat, PatId},
     path::Path,
-    type_ref::ConstScalar,
 };
 use hir_expand::name::Name;
 
 use crate::{
-    consteval::intern_const_scalar,
+    consteval::{try_const_usize, usize_const},
     infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
-    static_lifetime, ConcreteConst, ConstValue, Interner, Scalar, Substitution, Ty, TyBuilder,
-    TyExt, TyKind,
+    static_lifetime, Interner, Scalar, Substitution, Ty, TyBuilder, TyExt, TyKind,
 };
 
-use super::PatLike;
+/// Used to generalize patterns and assignee expressions.
+pub(super) trait PatLike: Into<ExprOrPatId> + Copy {
+    type BindingMode: Copy;
 
-impl<'a> InferenceContext<'a> {
+    fn infer(
+        this: &mut InferenceContext<'_>,
+        id: Self,
+        expected_ty: &Ty,
+        default_bm: Self::BindingMode,
+    ) -> Ty;
+}
+
+impl PatLike for ExprId {
+    type BindingMode = ();
+
+    fn infer(
+        this: &mut InferenceContext<'_>,
+        id: Self,
+        expected_ty: &Ty,
+        (): Self::BindingMode,
+    ) -> Ty {
+        this.infer_assignee_expr(id, expected_ty)
+    }
+}
+
+impl PatLike for PatId {
+    type BindingMode = BindingMode;
+
+    fn infer(
+        this: &mut InferenceContext<'_>,
+        id: Self,
+        expected_ty: &Ty,
+        default_bm: Self::BindingMode,
+    ) -> Ty {
+        this.infer_pat(id, expected_ty, default_bm)
+    }
+}
+
+impl InferenceContext<'_> {
     /// Infers type for tuple struct pattern or its corresponding assignee expression.
     ///
     /// Ellipses found in the original pattern or expression must be filtered out.
@@ -112,6 +147,7 @@ impl<'a> InferenceContext<'a> {
         ellipsis: Option<usize>,
         subs: &[T],
     ) -> Ty {
+        let expected = self.resolve_ty_shallow(expected);
         let expectations = match expected.as_tuple() {
             Some(parameters) => &*parameters.as_slice(Interner),
             _ => &[],
@@ -145,12 +181,11 @@ impl<'a> InferenceContext<'a> {
             .intern(Interner)
     }
 
-    pub(super) fn infer_pat(
-        &mut self,
-        pat: PatId,
-        expected: &Ty,
-        mut default_bm: BindingMode,
-    ) -> Ty {
+    pub(super) fn infer_top_pat(&mut self, pat: PatId, expected: &Ty) {
+        self.infer_pat(pat, expected, BindingMode::default());
+    }
+
+    fn infer_pat(&mut self, pat: PatId, expected: &Ty, mut default_bm: BindingMode) -> Ty {
         let mut expected = self.resolve_ty_shallow(expected);
 
         if is_non_ref_pat(self.body, pat) {
@@ -185,30 +220,17 @@ impl<'a> InferenceContext<'a> {
                 self.infer_tuple_pat_like(&expected, default_bm, *ellipsis, args)
             }
             Pat::Or(pats) => {
-                if let Some((first_pat, rest)) = pats.split_first() {
-                    let ty = self.infer_pat(*first_pat, &expected, default_bm);
-                    for pat in rest {
-                        self.infer_pat(*pat, &expected, default_bm);
-                    }
-                    ty
-                } else {
-                    self.err_ty()
+                for pat in pats.iter() {
+                    self.infer_pat(*pat, &expected, default_bm);
                 }
+                expected.clone()
             }
-            Pat::Ref { pat, mutability } => {
-                let mutability = lower_to_chalk_mutability(*mutability);
-                let expectation = match expected.as_reference() {
-                    Some((inner_ty, _lifetime, exp_mut)) => {
-                        if mutability != exp_mut {
-                            // FIXME: emit type error?
-                        }
-                        inner_ty.clone()
-                    }
-                    _ => self.result.standard_types.unknown.clone(),
-                };
-                let subty = self.infer_pat(*pat, &expectation, default_bm);
-                TyKind::Ref(mutability, static_lifetime(), subty).intern(Interner)
-            }
+            &Pat::Ref { pat, mutability } => self.infer_ref_pat(
+                pat,
+                lower_to_chalk_mutability(mutability),
+                &expected,
+                default_bm,
+            ),
             Pat::TupleStruct { path: p, args: subpats, ellipsis } => self
                 .infer_tuple_struct_pat_like(
                     p.as_deref(),
@@ -223,100 +245,25 @@ impl<'a> InferenceContext<'a> {
                 self.infer_record_pat_like(p.as_deref(), &expected, default_bm, pat, subs)
             }
             Pat::Path(path) => {
-                // FIXME use correct resolver for the surrounding expression
-                let resolver = self.resolver.clone();
-                self.infer_path(&resolver, path, pat.into()).unwrap_or_else(|| self.err_ty())
+                // FIXME update resolver for the surrounding expression
+                self.infer_path(path, pat.into()).unwrap_or_else(|| self.err_ty())
             }
-            Pat::Bind { mode, name: _, subpat } => {
-                let mode = if mode == &BindingAnnotation::Unannotated {
-                    default_bm
-                } else {
-                    BindingMode::convert(*mode)
-                };
-                self.result.pat_binding_modes.insert(pat, mode);
-
-                let inner_ty = match subpat {
-                    Some(subpat) => self.infer_pat(*subpat, &expected, default_bm),
-                    None => expected,
-                };
-                let inner_ty = self.insert_type_vars_shallow(inner_ty);
-
-                let bound_ty = match mode {
-                    BindingMode::Ref(mutability) => {
-                        TyKind::Ref(mutability, static_lifetime(), inner_ty.clone())
-                            .intern(Interner)
-                    }
-                    BindingMode::Move => inner_ty.clone(),
-                };
-                self.write_pat_ty(pat, bound_ty);
-                return inner_ty;
+            Pat::Bind { id, subpat } => {
+                return self.infer_bind_pat(pat, *id, default_bm, *subpat, &expected);
             }
             Pat::Slice { prefix, slice, suffix } => {
-                let elem_ty = match expected.kind(Interner) {
-                    TyKind::Array(st, _) | TyKind::Slice(st) => st.clone(),
-                    _ => self.err_ty(),
-                };
-
-                for &pat_id in prefix.iter().chain(suffix.iter()) {
-                    self.infer_pat(pat_id, &elem_ty, default_bm);
-                }
-
-                if let &Some(slice_pat_id) = slice {
-                    let rest_pat_ty = match expected.kind(Interner) {
-                        TyKind::Array(_, length) => {
-                            let len = match length.data(Interner).value {
-                                ConstValue::Concrete(ConcreteConst {
-                                    interned: ConstScalar::UInt(len),
-                                }) => len.checked_sub((prefix.len() + suffix.len()) as u128),
-                                _ => None,
-                            };
-                            TyKind::Array(
-                                elem_ty.clone(),
-                                intern_const_scalar(
-                                    len.map_or(ConstScalar::Unknown, |len| ConstScalar::UInt(len)),
-                                    TyBuilder::usize(),
-                                ),
-                            )
-                        }
-                        _ => TyKind::Slice(elem_ty.clone()),
-                    }
-                    .intern(Interner);
-                    self.infer_pat(slice_pat_id, &rest_pat_ty, default_bm);
-                }
-
-                match expected.kind(Interner) {
-                    TyKind::Array(_, const_) => TyKind::Array(elem_ty, const_.clone()),
-                    _ => TyKind::Slice(elem_ty),
-                }
-                .intern(Interner)
+                self.infer_slice_pat(&expected, prefix, slice, suffix, default_bm)
             }
             Pat::Wild => expected.clone(),
-            Pat::Range { start, end } => {
-                let start_ty = self.infer_expr(*start, &Expectation::has_type(expected.clone()));
-                self.infer_expr(*end, &Expectation::has_type(start_ty))
+            Pat::Range { .. } => {
+                // FIXME: do some checks here.
+                expected.clone()
             }
             &Pat::Lit(expr) => {
-                // FIXME: using `Option` here is a workaround until we can use if-let chains in stable.
-                let mut pat_ty = None;
-
-                // Like slice patterns, byte string patterns can denote both `&[u8; N]` and `&[u8]`.
-                if let Expr::Literal(Literal::ByteString(_)) = self.body[expr] {
-                    if let Some((inner, ..)) = expected.as_reference() {
-                        let inner = self.resolve_ty_shallow(inner);
-                        if matches!(inner.kind(Interner), TyKind::Slice(_)) {
-                            let elem_ty = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner);
-                            let slice_ty = TyKind::Slice(elem_ty).intern(Interner);
-                            let ty = TyKind::Ref(Mutability::Not, static_lifetime(), slice_ty)
-                                .intern(Interner);
-                            self.write_expr_ty(expr, ty.clone());
-                            pat_ty = Some(ty);
-                        }
-                    }
-                }
-
-                pat_ty.unwrap_or_else(|| {
-                    self.infer_expr(expr, &Expectation::has_type(expected.clone()))
-                })
+                // Don't emit type mismatches again, the expression lowering already did that.
+                let ty = self.infer_lit_pat(expr, &expected);
+                self.write_pat_ty(pat, ty.clone());
+                return self.pat_ty_after_adjustment(pat);
             }
             Pat::Box { inner } => match self.resolve_boxed_box() {
                 Some(box_adt) => {
@@ -345,13 +292,135 @@ impl<'a> InferenceContext<'a> {
         };
         // use a new type variable if we got error type here
         let ty = self.insert_type_vars_shallow(ty);
-        if !self.unify(&ty, &expected) {
+        // FIXME: This never check is odd, but required with out we do inference right now
+        if !expected.is_never() && !self.unify(&ty, &expected) {
             self.result
                 .type_mismatches
                 .insert(pat.into(), TypeMismatch { expected, actual: ty.clone() });
         }
-        self.write_pat_ty(pat, ty.clone());
-        ty
+        self.write_pat_ty(pat, ty);
+        self.pat_ty_after_adjustment(pat)
+    }
+
+    fn pat_ty_after_adjustment(&self, pat: PatId) -> Ty {
+        self.result
+            .pat_adjustments
+            .get(&pat)
+            .and_then(|it| it.first())
+            .unwrap_or(&self.result.type_of_pat[pat])
+            .clone()
+    }
+
+    fn infer_ref_pat(
+        &mut self,
+        inner_pat: PatId,
+        mutability: Mutability,
+        expected: &Ty,
+        default_bm: BindingMode,
+    ) -> Ty {
+        let expectation = match expected.as_reference() {
+            Some((inner_ty, _lifetime, _exp_mut)) => inner_ty.clone(),
+            None => {
+                let inner_ty = self.table.new_type_var();
+                let ref_ty =
+                    TyKind::Ref(mutability, static_lifetime(), inner_ty.clone()).intern(Interner);
+                // Unification failure will be reported by the caller.
+                self.unify(&ref_ty, expected);
+                inner_ty
+            }
+        };
+        let subty = self.infer_pat(inner_pat, &expectation, default_bm);
+        TyKind::Ref(mutability, static_lifetime(), subty).intern(Interner)
+    }
+
+    fn infer_bind_pat(
+        &mut self,
+        pat: PatId,
+        binding: BindingId,
+        default_bm: BindingMode,
+        subpat: Option<PatId>,
+        expected: &Ty,
+    ) -> Ty {
+        let Binding { mode, .. } = self.body.bindings[binding];
+        let mode = if mode == BindingAnnotation::Unannotated {
+            default_bm
+        } else {
+            BindingMode::convert(mode)
+        };
+        self.result.binding_modes.insert(binding, mode);
+
+        let inner_ty = match subpat {
+            Some(subpat) => self.infer_pat(subpat, &expected, default_bm),
+            None => expected.clone(),
+        };
+        let inner_ty = self.insert_type_vars_shallow(inner_ty);
+
+        let bound_ty = match mode {
+            BindingMode::Ref(mutability) => {
+                TyKind::Ref(mutability, static_lifetime(), inner_ty.clone()).intern(Interner)
+            }
+            BindingMode::Move => inner_ty.clone(),
+        };
+        self.write_pat_ty(pat, inner_ty.clone());
+        self.write_binding_ty(binding, bound_ty);
+        return inner_ty;
+    }
+
+    fn infer_slice_pat(
+        &mut self,
+        expected: &Ty,
+        prefix: &[PatId],
+        slice: &Option<PatId>,
+        suffix: &[PatId],
+        default_bm: BindingMode,
+    ) -> Ty {
+        let elem_ty = match expected.kind(Interner) {
+            TyKind::Array(st, _) | TyKind::Slice(st) => st.clone(),
+            _ => self.err_ty(),
+        };
+
+        for &pat_id in prefix.iter().chain(suffix.iter()) {
+            self.infer_pat(pat_id, &elem_ty, default_bm);
+        }
+
+        if let &Some(slice_pat_id) = slice {
+            let rest_pat_ty = match expected.kind(Interner) {
+                TyKind::Array(_, length) => {
+                    let len = try_const_usize(self.db, length);
+                    let len =
+                        len.and_then(|len| len.checked_sub((prefix.len() + suffix.len()) as u128));
+                    TyKind::Array(elem_ty.clone(), usize_const(self.db, len, self.resolver.krate()))
+                }
+                _ => TyKind::Slice(elem_ty.clone()),
+            }
+            .intern(Interner);
+            self.infer_pat(slice_pat_id, &rest_pat_ty, default_bm);
+        }
+
+        match expected.kind(Interner) {
+            TyKind::Array(_, const_) => TyKind::Array(elem_ty, const_.clone()),
+            _ => TyKind::Slice(elem_ty),
+        }
+        .intern(Interner)
+    }
+
+    fn infer_lit_pat(&mut self, expr: ExprId, expected: &Ty) -> Ty {
+        // Like slice patterns, byte string patterns can denote both `&[u8; N]` and `&[u8]`.
+        if let Expr::Literal(Literal::ByteString(_)) = self.body[expr] {
+            if let Some((inner, ..)) = expected.as_reference() {
+                let inner = self.resolve_ty_shallow(inner);
+                if matches!(inner.kind(Interner), TyKind::Slice(_)) {
+                    let elem_ty = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner);
+                    let slice_ty = TyKind::Slice(elem_ty).intern(Interner);
+                    let ty =
+                        TyKind::Ref(Mutability::Not, static_lifetime(), slice_ty).intern(Interner);
+                    self.write_expr_ty(expr, ty.clone());
+                    return ty;
+                }
+            }
+        }
+
+        self.infer_expr(expr, &Expectation::has_type(expected.clone()))
     }
 }
 
@@ -366,14 +435,18 @@ fn is_non_ref_pat(body: &hir_def::body::Body, pat: PatId) -> bool {
         // FIXME: ConstBlock/Path/Lit might actually evaluate to ref, but inference is unimplemented.
         Pat::Path(..) => true,
         Pat::ConstBlock(..) => true,
-        Pat::Lit(expr) => {
-            !matches!(body[*expr], Expr::Literal(Literal::String(..) | Literal::ByteString(..)))
-        }
-        Pat::Bind {
-            mode: BindingAnnotation::Mutable | BindingAnnotation::Unannotated,
-            subpat: Some(subpat),
-            ..
-        } => is_non_ref_pat(body, *subpat),
+        Pat::Lit(expr) => !matches!(
+            body[*expr],
+            Expr::Literal(Literal::String(..) | Literal::CString(..) | Literal::ByteString(..))
+        ),
         Pat::Wild | Pat::Bind { .. } | Pat::Ref { .. } | Pat::Box { .. } | Pat::Missing => false,
     }
+}
+
+pub(super) fn contains_explicit_ref_binding(body: &Body, pat_id: PatId) -> bool {
+    let mut res = false;
+    body.walk_pats(pat_id, &mut |pat| {
+        res |= matches!(body[pat], Pat::Bind { id, .. } if body.bindings[id].mode == BindingAnnotation::Ref);
+    });
+    res
 }

@@ -13,12 +13,13 @@ use crate::mir::{
     interpret::{AllocId, ConstAllocation},
 };
 use crate::traits;
-use crate::ty::subst::SubstsRef;
+use crate::ty::GenericArgsRef;
 use crate::ty::{self, AdtDef, Ty};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Span;
+use rustc_target::abi::FieldIdx;
 pub use rustc_type_ir::{TyDecoder, TyEncoder};
 use std::hash::Hash;
 use std::intrinsics;
@@ -127,6 +128,12 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Predicate<'tcx> 
     }
 }
 
+impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Clause<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.as_predicate().encode(e);
+    }
+}
+
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Region<'tcx> {
     fn encode(&self, e: &mut E) {
         self.kind().encode(e);
@@ -161,7 +168,6 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::ParamEnv<'tcx> {
     fn encode(&self, e: &mut E) {
         self.caller_bounds().encode(e);
         self.reveal().encode(e);
-        self.constness().encode(e);
     }
 }
 
@@ -240,12 +246,19 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Predicate<'tcx> 
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for SubstsRef<'tcx> {
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Clause<'tcx> {
+    fn decode(decoder: &mut D) -> ty::Clause<'tcx> {
+        let pred: ty::Predicate<'tcx> = Decodable::decode(decoder);
+        pred.expect_clause()
+    }
+}
+
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for GenericArgsRef<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         let len = decoder.read_usize();
         let tcx = decoder.interner();
-        tcx.mk_substs_from_iter(
-            (0..len).map::<ty::subst::GenericArg<'tcx>, _>(|_| Decodable::decode(decoder)),
+        tcx.mk_args_from_iter(
+            (0..len).map::<ty::GenericArg<'tcx>, _>(|_| Decodable::decode(decoder)),
         )
     }
 }
@@ -263,7 +276,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for mir::Place<'tcx> {
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Region<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        decoder.interner().mk_region_from_kind(Decodable::decode(decoder))
+        ty::Region::new_from_kind(decoder.interner(), Decodable::decode(decoder))
     }
 }
 
@@ -292,8 +305,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::ParamEnv<'tcx> {
     fn decode(d: &mut D) -> Self {
         let caller_bounds = Decodable::decode(d);
         let reveal = Decodable::decode(d);
-        let constness = Decodable::decode(d);
-        ty::ParamEnv::new(caller_bounds, reveal, constness)
+        ty::ParamEnv::new(caller_bounds, reveal)
     }
 }
 
@@ -330,7 +342,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Const<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         let consts: ty::ConstData<'tcx> = Decodable::decode(decoder);
-        decoder.interner().mk_const(consts.kind, consts.ty)
+        decoder.interner().mk_ct_from_kind(consts.kind, consts.ty)
     }
 }
 
@@ -351,16 +363,6 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ConstAllocation<'tcx
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for AdtDef<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         decoder.interner().mk_adt_def_from_data(Decodable::decode(decoder))
-    }
-}
-
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
-    for [(ty::Predicate<'tcx>, Span)]
-{
-    fn decode(decoder: &mut D) -> &'tcx Self {
-        decoder.interner().arena.alloc_from_iter(
-            (0..decoder.read_usize()).map(|_| Decodable::decode(decoder)).collect::<Vec<_>>(),
-        )
     }
 }
 
@@ -392,12 +394,21 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<ty
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<ty::Predicate<'tcx>> {
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<ty::Clause<'tcx>> {
     fn decode(decoder: &mut D) -> &'tcx Self {
         let len = decoder.read_usize();
-        decoder.interner().mk_predicates_from_iter(
-            (0..len).map::<ty::Predicate<'tcx>, _>(|_| Decodable::decode(decoder)),
+        decoder.interner().mk_clauses_from_iter(
+            (0..len).map::<ty::Clause<'tcx>, _>(|_| Decodable::decode(decoder)),
         )
+    }
+}
+
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<FieldIdx> {
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        let len = decoder.read_usize();
+        decoder
+            .interner()
+            .mk_fields_from_iter((0..len).map::<FieldIdx, _>(|_| Decodable::decode(decoder)))
     }
 }
 
@@ -411,7 +422,8 @@ impl_decodable_via_ref! {
     &'tcx mir::BorrowCheckResult<'tcx>,
     &'tcx mir::coverage::CodeRegion,
     &'tcx ty::List<ty::BoundVariableKind>,
-    &'tcx ty::List<ty::Predicate<'tcx>>,
+    &'tcx ty::List<ty::Clause<'tcx>>,
+    &'tcx ty::List<FieldIdx>,
 }
 
 #[macro_export]
@@ -489,37 +501,39 @@ impl_arena_copy_decoder! {<'tcx>
 macro_rules! implement_ty_decoder {
     ($DecoderName:ident <$($typaram:tt),*>) => {
         mod __ty_decoder_impl {
-            use std::borrow::Cow;
             use rustc_serialize::Decoder;
 
             use super::$DecoderName;
 
             impl<$($typaram ),*> Decoder for $DecoderName<$($typaram),*> {
                 $crate::__impl_decoder_methods! {
+                    read_usize -> usize;
                     read_u128 -> u128;
                     read_u64 -> u64;
                     read_u32 -> u32;
                     read_u16 -> u16;
                     read_u8 -> u8;
-                    read_usize -> usize;
 
+                    read_isize -> isize;
                     read_i128 -> i128;
                     read_i64 -> i64;
                     read_i32 -> i32;
                     read_i16 -> i16;
-                    read_i8 -> i8;
-                    read_isize -> isize;
-
-                    read_bool -> bool;
-                    read_f64 -> f64;
-                    read_f32 -> f32;
-                    read_char -> char;
-                    read_str -> &str;
                 }
 
                 #[inline]
                 fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
                     self.opaque.read_raw_bytes(len)
+                }
+
+                #[inline]
+                fn peek_byte(&self) -> u8 {
+                    self.opaque.peek_byte()
+                }
+
+                #[inline]
+                fn position(&self) -> usize {
+                    self.opaque.position()
                 }
             }
         }

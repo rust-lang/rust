@@ -1,4 +1,3 @@
-// ignore-stage1
 // edition:2018
 // compile-flags:--extern rustc_middle
 

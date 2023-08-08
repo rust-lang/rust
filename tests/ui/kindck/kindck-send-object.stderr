@@ -20,7 +20,8 @@ LL |     assert_send::<Box<dyn Dummy>>();
    |
    = help: the trait `Send` is not implemented for `dyn Dummy`
    = note: required for `Unique<dyn Dummy>` to implement `Send`
-   = note: required because it appears within the type `Box<dyn Dummy>`
+note: required because it appears within the type `Box<dyn Dummy>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 note: required by a bound in `assert_send`
   --> $DIR/kindck-send-object.rs:5:18
    |

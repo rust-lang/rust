@@ -4,7 +4,6 @@ use crate::location::{LocationIndex, LocationTable};
 use crate::BorrowIndex;
 use polonius_engine::AllFacts as PoloniusFacts;
 use polonius_engine::Atom;
-use rustc_index::vec::Idx;
 use rustc_middle::mir::Local;
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::move_paths::MovePathIndex;
@@ -93,13 +92,13 @@ impl AllFactsExt for AllFacts {
 
 impl Atom for BorrowIndex {
     fn index(self) -> usize {
-        Idx::index(self)
+        self.as_usize()
     }
 }
 
 impl Atom for LocationIndex {
     fn index(self) -> usize {
-        Idx::index(self)
+        self.as_usize()
     }
 }
 
@@ -203,7 +202,7 @@ trait FactCell {
 
 impl<A: Debug> FactCell for A {
     default fn to_string(&self, _location_table: &LocationTable) -> String {
-        format!("{:?}", self)
+        format!("{self:?}")
     }
 }
 

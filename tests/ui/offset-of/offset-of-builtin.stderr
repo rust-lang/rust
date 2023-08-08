@@ -1,0 +1,65 @@
+error: expected one of `!`, `(`, `+`, `,`, `::`, or `<`, found `)`
+  --> $DIR/offset-of-builtin.rs:8:43
+   |
+LL |     builtin # offset_of(NotEnoughArguments);
+   |                                           ^ expected one of `!`, `(`, `+`, `,`, `::`, or `<`
+
+error: expected identifier, found `,`
+  --> $DIR/offset-of-builtin.rs:16:41
+   |
+LL |     builtin # offset_of(Container, field, too many arguments);
+   |                                         ^
+   |                                         |
+   |                                         expected identifier
+   |                                         help: remove this comma
+
+error: expected one of `)` or `.`, found `,`
+  --> $DIR/offset-of-builtin.rs:16:41
+   |
+LL |     builtin # offset_of(Container, field, too many arguments);
+   |                                         ^
+   |                                         |
+   |                                         expected one of `)` or `.`
+   |                                         help: missing `.`
+
+error: expected one of `)` or `.`, found `many`
+  --> $DIR/offset-of-builtin.rs:16:47
+   |
+LL |     builtin # offset_of(Container, field, too many arguments);
+   |                                              -^^^^ expected one of `)` or `.`
+   |                                              |
+   |                                              help: missing `.`
+
+error: expected one of `)` or `.`, found `arguments`
+  --> $DIR/offset-of-builtin.rs:16:52
+   |
+LL |     builtin # offset_of(Container, field, too many arguments);
+   |                                                   -^^^^^^^^^ expected one of `)` or `.`
+   |                                                   |
+   |                                                   help: missing `.`
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-builtin.rs:30:30
+   |
+LL |     builtin # offset_of(S, f.);
+   |                              ^ expected identifier
+
+error: expected identifier, found `,`
+  --> $DIR/offset-of-builtin.rs:33:30
+   |
+LL |     builtin # offset_of(S, f.,);
+   |                              ^ expected identifier
+
+error: expected one of `)` or `.`, found `..`
+  --> $DIR/offset-of-builtin.rs:36:29
+   |
+LL |     builtin # offset_of(S, f..);
+   |                             ^^ expected one of `)` or `.`
+   |
+help: if you meant to bind the contents of the rest of the array pattern into `f`, use `@`
+   |
+LL |     builtin # offset_of(S, f @ ..);
+   |                              +
+
+error: aborting due to 8 previous errors
+

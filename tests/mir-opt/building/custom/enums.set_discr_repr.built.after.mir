@@ -1,10 +1,10 @@
 // MIR for `set_discr_repr` after built
 
 fn set_discr_repr(_1: &mut Bool) -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/enums.rs:+0:33: +0:33
+    let mut _0: ();
 
     bb0: {
-        discriminant((*_1)) = 0;         // scope 0 at $DIR/enums.rs:+2:9: +2:31
-        return;                          // scope 0 at $DIR/enums.rs:+3:9: +3:17
+        discriminant((*_1)) = 0;
+        return;
     }
 }

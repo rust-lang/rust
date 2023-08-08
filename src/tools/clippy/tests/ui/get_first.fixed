@@ -1,8 +1,7 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::get_first)]
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::collections::VecDeque;
+#![allow(clippy::useless_vec)]
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 struct Bar {
     arr: [u32; 3],

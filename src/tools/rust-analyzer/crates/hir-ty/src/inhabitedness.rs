@@ -6,17 +6,19 @@ use chalk_ir::{
     DebruijnIndex,
 };
 use hir_def::{
-    adt::VariantData, attr::Attrs, type_ref::ConstScalar, visibility::Visibility, AdtId,
-    EnumVariantId, HasModule, Lookup, ModuleId, VariantId,
+    attr::Attrs, data::adt::VariantData, visibility::Visibility, AdtId, EnumVariantId, HasModule,
+    Lookup, ModuleId, VariantId,
 };
+use rustc_hash::FxHashSet;
 
 use crate::{
-    db::HirDatabase, Binders, ConcreteConst, Const, ConstValue, Interner, Substitution, Ty, TyKind,
+    consteval::try_const_usize, db::HirDatabase, Binders, Interner, Substitution, Ty, TyKind,
 };
 
 /// Checks whether a type is visibly uninhabited from a particular module.
 pub(crate) fn is_ty_uninhabited_from(ty: &Ty, target_mod: ModuleId, db: &dyn HirDatabase) -> bool {
-    let mut uninhabited_from = UninhabitedFrom { target_mod, db };
+    let mut uninhabited_from =
+        UninhabitedFrom { target_mod, db, max_depth: 500, recursive_ty: FxHashSet::default() };
     let inhabitedness = ty.visit_with(&mut uninhabited_from, DebruijnIndex::INNERMOST);
     inhabitedness == BREAK_VISIBLY_UNINHABITED
 }
@@ -32,7 +34,8 @@ pub(crate) fn is_enum_variant_uninhabited_from(
     let vars_attrs = db.variants_attrs(variant.parent);
     let is_local = variant.parent.lookup(db.upcast()).container.krate() == target_mod.krate();
 
-    let mut uninhabited_from = UninhabitedFrom { target_mod, db };
+    let mut uninhabited_from =
+        UninhabitedFrom { target_mod, db, max_depth: 500, recursive_ty: FxHashSet::default() };
     let inhabitedness = uninhabited_from.visit_variant(
         variant.into(),
         &enum_data.variants[variant.local_id].variant_data,
@@ -45,6 +48,9 @@ pub(crate) fn is_enum_variant_uninhabited_from(
 
 struct UninhabitedFrom<'a> {
     target_mod: ModuleId,
+    recursive_ty: FxHashSet<Ty>,
+    // guard for preventing stack overflow in non trivial non terminating types
+    max_depth: usize,
     db: &'a dyn HirDatabase,
 }
 
@@ -65,17 +71,27 @@ impl TypeVisitor<Interner> for UninhabitedFrom<'_> {
         ty: &Ty,
         outer_binder: DebruijnIndex,
     ) -> ControlFlow<VisiblyUninhabited> {
-        match ty.kind(Interner) {
+        if self.recursive_ty.contains(ty) || self.max_depth == 0 {
+            // rustc considers recursive types always inhabited. I think it is valid to consider
+            // recursive types as always uninhabited, but we should do what rustc is doing.
+            return CONTINUE_OPAQUELY_INHABITED;
+        }
+        self.recursive_ty.insert(ty.clone());
+        self.max_depth -= 1;
+        let r = match ty.kind(Interner) {
             TyKind::Adt(adt, subst) => self.visit_adt(adt.0, subst),
             TyKind::Never => BREAK_VISIBLY_UNINHABITED,
             TyKind::Tuple(..) => ty.super_visit_with(self, outer_binder),
-            TyKind::Array(item_ty, len) => match try_usize_const(len) {
+            TyKind::Array(item_ty, len) => match try_const_usize(self.db, len) {
                 Some(0) | None => CONTINUE_OPAQUELY_INHABITED,
                 Some(1..) => item_ty.super_visit_with(self, outer_binder),
             },
 
             TyKind::Ref(..) | _ => CONTINUE_OPAQUELY_INHABITED,
-        }
+        };
+        self.recursive_ty.remove(ty);
+        self.max_depth += 1;
+        r
     }
 
     fn interner(&self) -> Interner {
@@ -158,16 +174,5 @@ impl UninhabitedFrom<'_> {
         } else {
             CONTINUE_OPAQUELY_INHABITED
         }
-    }
-}
-
-fn try_usize_const(c: &Const) -> Option<u128> {
-    let data = &c.data(Interner);
-    if data.ty.kind(Interner) != &TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize)) {
-        return None;
-    }
-    match data.value {
-        ConstValue::Concrete(ConcreteConst { interned: ConstScalar::UInt(value) }) => Some(value),
-        _ => None,
     }
 }

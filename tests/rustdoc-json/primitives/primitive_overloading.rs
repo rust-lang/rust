@@ -2,7 +2,7 @@
 
 // Regression test for <https://github.com/rust-lang/rust/issues/98006>.
 
-#![feature(rustdoc_internals)]
+#![feature(rustc_attrs)]
 #![feature(no_core)]
 
 #![no_core]
@@ -10,7 +10,7 @@
 // @has "$.index[*][?(@.name=='usize')]"
 // @has "$.index[*][?(@.name=='prim')]"
 
-#[doc(primitive = "usize")]
+#[rustc_doc_primitive = "usize"]
 /// This is the built-in type `usize`.
 mod prim {
 }

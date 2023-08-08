@@ -1,9 +1,7 @@
 // run-rustfix
-#![feature(type_ascription)]
-
 fn main() {
-    f()  ;
-    f(); //~ ERROR expected type, found function
+    f()  ; //~ ERROR statements are terminated with a semicolon
+    f();
 }
 
 fn f() {}

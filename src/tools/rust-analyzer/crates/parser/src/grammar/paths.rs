@@ -77,6 +77,9 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) {
     // type X = <A as B>::Output;
     // fn foo() { <usize as Default>::default(); }
     if first && p.eat(T![<]) {
+        // test_err angled_path_without_qual
+        // type X = <()>;
+        // type Y = <A as B>;
         types::type_(p);
         if p.eat(T![as]) {
             if is_use_path_start(p) {
@@ -86,6 +89,9 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) {
             }
         }
         p.expect(T![>]);
+        if !p.at(T![::]) {
+            p.error("expected `::`");
+        }
     } else {
         let empty = if first {
             p.eat(T![::]);
@@ -130,6 +136,7 @@ fn opt_path_type_args(p: &mut Parser<'_>, mode: Mode) {
         Mode::Type => {
             // test typepathfn_with_coloncolon
             // type F = Start::(Middle) -> (Middle)::End;
+            // type GenericArg = S<Start(Middle)::End>;
             if p.at(T![::]) && p.nth_at(2, T!['(']) {
                 p.bump(T![::]);
             }

@@ -51,7 +51,7 @@ impl Stack {
         // Note that the algorithm below is based on considering the tag at read_idx - 1,
         // so precisely considering the tag at index 0 for removal when we have an unknown
         // bottom would complicate the implementation. The simplification of not considering
-        // it does not have a significant impact on the degree to which the GC mititages
+        // it does not have a significant impact on the degree to which the GC mitigates
         // memory growth.
         let mut read_idx = 1;
         let mut write_idx = read_idx;
@@ -83,7 +83,7 @@ impl Stack {
         self.borrows.truncate(write_idx);
 
         #[cfg(not(feature = "stack-cache"))]
-        drop(first_removed); // This is only needed for the stack-cache
+        let _unused = first_removed; // This is only needed for the stack-cache
 
         #[cfg(feature = "stack-cache")]
         if let Some(first_removed) = first_removed {
@@ -196,19 +196,19 @@ impl<'tcx> Stack {
         let ProvenanceExtra::Concrete(tag) = tag else {
             // Handle the wildcard case.
             // Go search the stack for an exposed tag.
-            if let Some(idx) =
-                self.borrows
-                    .iter()
-                    .enumerate() // we also need to know *where* in the stack
-                    .rev() // search top-to-bottom
-                    .find_map(|(idx, item)| {
-                        // If the item fits and *might* be this wildcard, use it.
-                        if item.perm().grants(access) && exposed_tags.contains(&item.tag()) {
-                            Some(idx)
-                        } else {
-                            None
-                        }
-                    })
+            if let Some(idx) = self
+                .borrows
+                .iter()
+                .enumerate() // we also need to know *where* in the stack
+                .rev() // search top-to-bottom
+                .find_map(|(idx, item)| {
+                    // If the item fits and *might* be this wildcard, use it.
+                    if item.perm().grants(access) && exposed_tags.contains(&item.tag()) {
+                        Some(idx)
+                    } else {
+                        None
+                    }
+                })
             {
                 return Ok(Some(idx));
             }

@@ -113,11 +113,7 @@ impl Timespec {
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
-        let mut secs = other
-            .as_secs()
-            .try_into() // <- target type would be `i64`
-            .ok()
-            .and_then(|secs| self.tv_sec.checked_add(secs))?;
+        let mut secs = self.tv_sec.checked_add_unsigned(other.as_secs())?;
 
         // Nano calculations can't overflow because nanos are <1B which fit
         // in a u32.
@@ -126,15 +122,11 @@ impl Timespec {
             nsec -= NSEC_PER_SEC as u32;
             secs = secs.checked_add(1)?;
         }
-        Some(Timespec::new(secs, nsec as i64))
+        Some(Timespec::new(secs, nsec.into()))
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
-        let mut secs = other
-            .as_secs()
-            .try_into() // <- target type would be `i64`
-            .ok()
-            .and_then(|secs| self.tv_sec.checked_sub(secs))?;
+        let mut secs = self.tv_sec.checked_sub_unsigned(other.as_secs())?;
 
         // Similar to above, nanos can't overflow.
         let mut nsec = self.tv_nsec.0 as i32 - other.subsec_nanos() as i32;
@@ -142,7 +134,7 @@ impl Timespec {
             nsec += NSEC_PER_SEC as i32;
             secs = secs.checked_sub(1)?;
         }
-        Some(Timespec::new(secs, nsec as i64))
+        Some(Timespec::new(secs, nsec.into()))
     }
 
     #[allow(dead_code)]
@@ -166,6 +158,16 @@ impl Timespec {
         }
         self.to_timespec()
     }
+
+    #[cfg(all(
+        target_os = "linux",
+        target_env = "gnu",
+        target_pointer_width = "32",
+        not(target_arch = "riscv32")
+    ))]
+    pub fn to_timespec64(&self) -> __timespec64 {
+        __timespec64::new(self.tv_sec, self.tv_nsec.0 as _)
+    }
 }
 
 impl From<libc::timespec> for Timespec {
@@ -174,10 +176,51 @@ impl From<libc::timespec> for Timespec {
     }
 }
 
+#[cfg(all(
+    target_os = "linux",
+    target_env = "gnu",
+    target_pointer_width = "32",
+    not(target_arch = "riscv32")
+))]
+#[repr(C)]
+pub(in crate::sys::unix) struct __timespec64 {
+    pub(in crate::sys::unix) tv_sec: i64,
+    #[cfg(target_endian = "big")]
+    _padding: i32,
+    pub(in crate::sys::unix) tv_nsec: i32,
+    #[cfg(target_endian = "little")]
+    _padding: i32,
+}
+
+#[cfg(all(
+    target_os = "linux",
+    target_env = "gnu",
+    target_pointer_width = "32",
+    not(target_arch = "riscv32")
+))]
+impl __timespec64 {
+    pub(in crate::sys::unix) fn new(tv_sec: i64, tv_nsec: i32) -> Self {
+        Self { tv_sec, tv_nsec, _padding: 0 }
+    }
+}
+
+#[cfg(all(
+    target_os = "linux",
+    target_env = "gnu",
+    target_pointer_width = "32",
+    not(target_arch = "riscv32")
+))]
+impl From<__timespec64> for Timespec {
+    fn from(t: __timespec64) -> Timespec {
+        Timespec::new(t.tv_sec, t.tv_nsec.into())
+    }
+}
+
 #[cfg(any(
     all(target_os = "macos", any(not(target_arch = "aarch64"))),
     target_os = "ios",
-    target_os = "watchos"
+    target_os = "watchos",
+    target_os = "tvos"
 ))]
 mod inner {
     use crate::sync::atomic::{AtomicU64, Ordering};
@@ -297,7 +340,8 @@ mod inner {
 #[cfg(not(any(
     all(target_os = "macos", any(not(target_arch = "aarch64"))),
     target_os = "ios",
-    target_os = "watchos"
+    target_os = "watchos",
+    target_os = "tvos"
 )))]
 mod inner {
     use crate::fmt;
@@ -352,29 +396,23 @@ mod inner {
     impl Timespec {
         pub fn now(clock: libc::clockid_t) -> Timespec {
             // Try to use 64-bit time in preparation for Y2038.
-            #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32"))]
+            #[cfg(all(
+                target_os = "linux",
+                target_env = "gnu",
+                target_pointer_width = "32",
+                not(target_arch = "riscv32")
+            ))]
             {
                 use crate::sys::weak::weak;
 
                 // __clock_gettime64 was added to 32-bit arches in glibc 2.34,
                 // and it handles both vDSO calls and ENOSYS fallbacks itself.
-                weak!(fn __clock_gettime64(libc::clockid_t, *mut __timespec64) -> libc::c_int);
-
-                #[repr(C)]
-                struct __timespec64 {
-                    tv_sec: i64,
-                    #[cfg(target_endian = "big")]
-                    _padding: i32,
-                    tv_nsec: i32,
-                    #[cfg(target_endian = "little")]
-                    _padding: i32,
-                }
+                weak!(fn __clock_gettime64(libc::clockid_t, *mut super::__timespec64) -> libc::c_int);
 
                 if let Some(clock_gettime64) = __clock_gettime64.get() {
                     let mut t = MaybeUninit::uninit();
                     cvt(unsafe { clock_gettime64(clock, t.as_mut_ptr()) }).unwrap();
-                    let t = unsafe { t.assume_init() };
-                    return Timespec::new(t.tv_sec, t.tv_nsec as i64);
+                    return Timespec::from(unsafe { t.assume_init() });
                 }
             }
 

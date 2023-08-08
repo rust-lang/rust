@@ -77,7 +77,7 @@ LL |     <str as Foo<u8>>::bar;
    |     ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-note: required for `str` to implement `Foo<'_#0r, '_#1r, u8>`
+note: required for `str` to implement `Foo<'?0, '?1, u8>`
   --> $DIR/substs-ppaux.rs:11:17
    |
 LL | impl<'a,'b,T,S> Foo<'a, 'b, S> for T {}

@@ -1,10 +1,15 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::or_fun_call)]
 #![allow(dead_code)]
-#![allow(clippy::borrow_as_ptr, clippy::uninlined_format_args, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::borrow_as_ptr,
+    clippy::uninlined_format_args,
+    clippy::unnecessary_wraps,
+    clippy::unnecessary_literal_unwrap,
+    clippy::useless_vec
+)]
 
-use std::collections::BTreeMap;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 
 /// Checks implementation of the `OR_FUN_CALL` lint.
@@ -249,6 +254,61 @@ mod issue8993 {
         let _ = Some(4).map_or(g(), |v| v);
         let _ = Some(4).map_or(g(), f);
         let _ = Some(4).map_or(0, f);
+    }
+}
+
+mod lazy {
+    use super::*;
+
+    fn foo() {
+        struct Foo;
+
+        impl Foo {
+            fn new() -> Foo {
+                Foo
+            }
+        }
+
+        struct FakeDefault;
+        impl FakeDefault {
+            fn default() -> Self {
+                FakeDefault
+            }
+        }
+
+        impl Default for FakeDefault {
+            fn default() -> Self {
+                FakeDefault
+            }
+        }
+
+        let with_new = Some(vec![1]);
+        with_new.unwrap_or_else(Vec::new);
+
+        let with_default_trait = Some(1);
+        with_default_trait.unwrap_or_else(Default::default);
+
+        let with_default_type = Some(1);
+        with_default_type.unwrap_or_else(u64::default);
+
+        let real_default = None::<FakeDefault>;
+        real_default.unwrap_or_else(<FakeDefault as Default>::default);
+
+        let mut map = HashMap::<u64, String>::new();
+        map.entry(42).or_insert_with(String::new);
+
+        let mut btree = BTreeMap::<u64, String>::new();
+        btree.entry(42).or_insert_with(String::new);
+
+        let stringy = Some(String::new());
+        let _ = stringy.unwrap_or_else(String::new);
+
+        // negative tests
+        let self_default = None::<FakeDefault>;
+        self_default.unwrap_or_else(<FakeDefault>::default);
+
+        let without_default = Some(Foo);
+        without_default.unwrap_or_else(Foo::new);
     }
 }
 

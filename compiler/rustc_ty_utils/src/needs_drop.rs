@@ -2,8 +2,9 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::{sym, DUMMY_SP};
@@ -79,7 +80,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
 
 impl<'tcx, F, I> Iterator for NeedsDropTypes<'tcx, F>
 where
-    F: Fn(ty::AdtDef<'tcx>, SubstsRef<'tcx>) -> NeedsDropResult<I>,
+    F: Fn(ty::AdtDef<'tcx>, GenericArgsRef<'tcx>) -> NeedsDropResult<I>,
     I: Iterator<Item = Ty<'tcx>>,
 {
     type Item = NeedsDropResult<Ty<'tcx>>;
@@ -95,7 +96,7 @@ where
                 return Some(Err(AlwaysRequiresDrop));
             }
 
-            let components = match needs_drop_components(ty, &tcx.data_layout) {
+            let components = match needs_drop_components(tcx, ty) {
                 Err(e) => return Some(Err(e)),
                 Ok(components) => components,
             };
@@ -118,21 +119,25 @@ where
 
                     _ if component.is_copy_modulo_regions(tcx, self.param_env) => (),
 
-                    ty::Closure(_, substs) => {
-                        queue_type(self, substs.as_closure().tupled_upvars_ty());
+                    ty::Closure(_, args) => {
+                        for upvar in args.as_closure().upvar_tys() {
+                            queue_type(self, upvar);
+                        }
                     }
 
-                    ty::Generator(def_id, substs, _) => {
-                        let substs = substs.as_generator();
-                        queue_type(self, substs.tupled_upvars_ty());
+                    ty::Generator(def_id, args, _) => {
+                        let args = args.as_generator();
+                        for upvar in args.upvar_tys() {
+                            queue_type(self, upvar);
+                        }
 
-                        let witness = substs.witness();
+                        let witness = args.witness();
                         let interior_tys = match witness.kind() {
                             &ty::GeneratorWitness(tys) => tcx.erase_late_bound_regions(tys),
                             _ => {
                                 tcx.sess.delay_span_bug(
                                     tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP),
-                                    &format!("unexpected generator witness type {:?}", witness),
+                                    format!("unexpected generator witness type {witness:?}"),
                                 );
                                 return Some(Err(AlwaysRequiresDrop));
                             }
@@ -146,8 +151,8 @@ where
                     // Check for a `Drop` impl and whether this is a union or
                     // `ManuallyDrop`. If it's a struct or enum without a `Drop`
                     // impl then check whether the field types need `Drop`.
-                    ty::Adt(adt_def, substs) => {
-                        let tys = match (self.adt_components)(adt_def, substs) {
+                    ty::Adt(adt_def, args) => {
+                        let tys = match (self.adt_components)(adt_def, args) {
                             Err(e) => return Some(Err(e)),
                             Ok(tys) => tys,
                         };
@@ -159,7 +164,7 @@ where
                             queue_type(self, required);
                         }
                     }
-                    ty::Array(..) | ty::Alias(..) | ty::Param(_) => {
+                    ty::Alias(..) | ty::Array(..) | ty::Placeholder(_) | ty::Param(_) => {
                         if ty == component {
                             // Return the type to the caller: they may be able
                             // to normalize further than we can.
@@ -171,7 +176,31 @@ where
                             queue_type(self, component);
                         }
                     }
-                    _ => return Some(Err(AlwaysRequiresDrop)),
+
+                    ty::Foreign(_) | ty::Dynamic(..) => {
+                        return Some(Err(AlwaysRequiresDrop));
+                    }
+
+                    ty::Bool
+                    | ty::Char
+                    | ty::Int(_)
+                    | ty::Uint(_)
+                    | ty::Float(_)
+                    | ty::Str
+                    | ty::Slice(_)
+                    | ty::Ref(..)
+                    | ty::RawPtr(..)
+                    | ty::FnDef(..)
+                    | ty::FnPtr(..)
+                    | ty::Tuple(_)
+                    | ty::Bound(..)
+                    | ty::GeneratorWitness(..)
+                    | ty::GeneratorWitnessMIR(..)
+                    | ty::Never
+                    | ty::Infer(_)
+                    | ty::Error(_) => {
+                        bug!("unexpected type returned by `needs_drop_components`: {component}")
+                    }
                 }
             }
         }
@@ -209,7 +238,7 @@ fn drop_tys_helper<'tcx>(
             match subty.kind() {
                 ty::Adt(adt_id, subst) => {
                     for subty in tcx.adt_drop_tys(adt_id.did())? {
-                        vec.push(EarlyBinder(subty).subst(tcx, subst));
+                        vec.push(EarlyBinder::bind(subty).instantiate(tcx, subst));
                     }
                 }
                 _ => vec.push(subty),
@@ -218,7 +247,7 @@ fn drop_tys_helper<'tcx>(
         })
     }
 
-    let adt_components = move |adt_def: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>| {
+    let adt_components = move |adt_def: ty::AdtDef<'tcx>, args: GenericArgsRef<'tcx>| {
         if adt_def.is_manually_drop() {
             debug!("drop_tys_helper: `{:?}` is manually drop", adt_def);
             Ok(Vec::new())
@@ -234,7 +263,7 @@ fn drop_tys_helper<'tcx>(
                     // Since the destructor is insignificant, we just want to make sure all of
                     // the passed in type parameters are also insignificant.
                     // Eg: Vec<T> dtor is insignificant when T=i32 but significant when T=Mutex.
-                    Ok(substs.types().collect())
+                    Ok(args.types().collect())
                 }
             }
         } else if adt_def.is_union() {
@@ -242,8 +271,8 @@ fn drop_tys_helper<'tcx>(
             Ok(Vec::new())
         } else {
             let field_tys = adt_def.all_fields().map(|field| {
-                let r = tcx.type_of(field.did).subst(tcx, substs);
-                debug!("drop_tys_helper: Subst into {:?} with {:?} gettng {:?}", field, substs, r);
+                let r = tcx.type_of(field.did).instantiate(tcx, args);
+                debug!("drop_tys_helper: Subst into {:?} with {:?} getting {:?}", field, args, r);
                 r
             });
             if only_significant {
@@ -294,10 +323,10 @@ fn adt_drop_tys<'tcx>(
     // significant.
     let adt_has_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.destructor(tcx).map(|_| DtorType::Significant);
-    // `tcx.type_of(def_id)` identical to `tcx.make_adt(def, identity_substs)`
+    // `tcx.type_of(def_id)` identical to `tcx.make_adt(def, identity_args)`
     drop_tys_helper(
         tcx,
-        tcx.type_of(def_id).subst_identity(),
+        tcx.type_of(def_id).instantiate_identity(),
         tcx.param_env(def_id),
         adt_has_dtor,
         false,
@@ -306,7 +335,7 @@ fn adt_drop_tys<'tcx>(
     .map(|components| tcx.mk_type_list(&components))
 }
 // If `def_id` refers to a generic ADT, the queries above and below act as if they had been handed
-// a `tcx.make_ty(def, identity_substs)` and as such it is legal to substitute the generic parameters
+// a `tcx.make_ty(def, identity_args)` and as such it is legal to substitute the generic parameters
 // of the ADT into the outputted `ty`s.
 fn adt_significant_drop_tys(
     tcx: TyCtxt<'_>,
@@ -314,7 +343,7 @@ fn adt_significant_drop_tys(
 ) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
     drop_tys_helper(
         tcx,
-        tcx.type_of(def_id).subst_identity(), // identical to `tcx.make_adt(def, identity_substs)`
+        tcx.type_of(def_id).instantiate_identity(), // identical to `tcx.make_adt(def, identity_args)`
         tcx.param_env(def_id),
         adt_consider_insignificant_dtor(tcx),
         true,
@@ -323,8 +352,8 @@ fn adt_significant_drop_tys(
     .map(|components| tcx.mk_type_list(&components))
 }
 
-pub(crate) fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers {
+pub(crate) fn provide(providers: &mut Providers) {
+    *providers = Providers {
         needs_drop_raw,
         has_significant_drop_raw,
         adt_drop_tys,

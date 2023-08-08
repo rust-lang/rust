@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::map_identity)]
 #![allow(clippy::needless_return)]
 

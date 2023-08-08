@@ -1,3 +1,4 @@
+/* FIXME(#110395)
 #[test]
 fn from() {
     use core::convert::TryFrom;
@@ -23,3 +24,4 @@ fn from() {
     const I16_FROM_U16: Result<i16, TryFromIntError> = i16::try_from(1u16);
     assert_eq!(I16_FROM_U16, Ok(1i16));
 }
+*/

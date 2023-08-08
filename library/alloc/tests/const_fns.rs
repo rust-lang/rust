@@ -1,13 +1,16 @@
 // Test const functions in the library
 
 pub const MY_VEC: Vec<usize> = Vec::new();
-pub const MY_VEC2: Vec<usize> = Default::default();
+
+// FIXME(#110395)
+// pub const MY_VEC2: Vec<usize> = Default::default();
 
 pub const MY_STRING: String = String::new();
-pub const MY_STRING2: String = Default::default();
 
-pub const MY_BOXED_SLICE: Box<[usize]> = Default::default();
-pub const MY_BOXED_STR: Box<str> = Default::default();
+// pub const MY_STRING2: String = Default::default();
+
+// pub const MY_BOXED_SLICE: Box<[usize]> = Default::default();
+// pub const MY_BOXED_STR: Box<str> = Default::default();
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -23,11 +26,11 @@ pub const SET_IS_EMPTY: bool = SET.is_empty();
 
 #[test]
 fn test_const() {
-    assert_eq!(MY_VEC, MY_VEC2);
-    assert_eq!(MY_STRING, MY_STRING2);
+    assert_eq!(MY_VEC, /* MY_VEC */ vec![]);
+    assert_eq!(MY_STRING, /* MY_STRING2 */ String::default());
 
-    assert_eq!(MY_VEC, *MY_BOXED_SLICE);
-    assert_eq!(MY_STRING, *MY_BOXED_STR);
+    // assert_eq!(MY_VEC, *MY_BOXED_SLICE);
+    // assert_eq!(MY_STRING, *MY_BOXED_STR);
 
     assert_eq!(MAP_LEN, 0);
     assert_eq!(SET_LEN, 0);

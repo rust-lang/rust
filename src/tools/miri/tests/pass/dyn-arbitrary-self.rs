@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(arbitrary_self_types, unsize, coerce_unsized, dispatch_from_dyn)]
 #![feature(rustc_attrs)]
 
@@ -91,7 +93,7 @@ fn pointers_and_wrappers() {
 
     trait Trait {
         // This method isn't object-safe yet. Unsized by-value `self` is object-safe (but not callable
-        // without unsized_locals), but wrappers arond `Self` currently are not.
+        // without unsized_locals), but wrappers around `Self` currently are not.
         // FIXME (mikeyhew) uncomment this when unsized rvalues object-safety is implemented
         // fn wrapper(self: Wrapper<Self>) -> i32;
         fn ptr_wrapper(self: Ptr<Wrapper<Self>>) -> i32;
@@ -121,8 +123,35 @@ fn pointers_and_wrappers() {
     assert_eq!(wpw.wrapper_ptr_wrapper(), 7);
 }
 
+fn raw_ptr_receiver() {
+    use std::ptr;
+
+    trait Foo {
+        fn foo(self: *const Self) -> &'static str;
+    }
+
+    impl Foo for i32 {
+        fn foo(self: *const Self) -> &'static str {
+            "I'm an i32!"
+        }
+    }
+
+    impl Foo for u32 {
+        fn foo(self: *const Self) -> &'static str {
+            "I'm a u32!"
+        }
+    }
+
+    let null_i32 = ptr::null::<i32>() as *const dyn Foo;
+    let null_u32 = ptr::null::<u32>() as *const dyn Foo;
+
+    assert_eq!("I'm an i32!", null_i32.foo());
+    assert_eq!("I'm a u32!", null_u32.foo());
+}
+
 fn main() {
     pin_box_dyn();
     stdlib_pointers();
     pointers_and_wrappers();
+    raw_ptr_receiver();
 }

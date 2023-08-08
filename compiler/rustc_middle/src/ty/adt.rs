@@ -10,11 +10,11 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
-use rustc_target::abi::{ReprOptions, VariantIdx};
+use rustc_target::abi::{ReprOptions, VariantIdx, FIRST_VARIANT};
 
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -26,7 +26,7 @@ use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, Var
 
 bitflags! {
     #[derive(HashStable, TyEncodable, TyDecodable)]
-    pub struct AdtFlags: u32 {
+    pub struct AdtFlags: u16 {
         const NO_ADT_FLAGS        = 0;
         /// Indicates whether the ADT is an enum.
         const IS_ENUM             = 1 << 0;
@@ -111,12 +111,30 @@ impl Ord for AdtDefData {
     }
 }
 
-/// There should be only one AdtDef for each `did`, therefore
-/// it is fine to implement `PartialEq` only based on `did`.
 impl PartialEq for AdtDefData {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.did == other.did
+        // There should be only one `AdtDefData` for each `def_id`, therefore
+        // it is fine to implement `PartialEq` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` and `other` so that if the
+        // definition of `AdtDefData` changes, a compile-error will be produced,
+        // reminding us to revisit this assumption.
+
+        let Self { did: self_def_id, variants: _, flags: _, repr: _ } = self;
+        let Self { did: other_def_id, variants: _, flags: _, repr: _ } = other;
+
+        let res = self_def_id == other_def_id;
+
+        // Double check that implicit assumption detailed above.
+        if cfg!(debug_assertions) && res {
+            let deep = self.flags == other.flags
+                && self.repr == other.repr
+                && self.variants == other.variants;
+            assert!(deep, "AdtDefData for the same def-id has differing data");
+        }
+
+        res
     }
 }
 
@@ -168,7 +186,7 @@ impl<'tcx> AdtDef<'tcx> {
     }
 
     #[inline]
-    pub fn variants(self) -> &'tcx IndexVec<VariantIdx, VariantDef> {
+    pub fn variants(self) -> &'tcx IndexSlice<VariantIdx, VariantDef> {
         &self.0.0.variants
     }
 
@@ -188,7 +206,7 @@ impl<'tcx> AdtDef<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]
 pub enum AdtKind {
     Struct,
     Union,
@@ -228,7 +246,7 @@ impl AdtDefData {
             AdtKind::Struct => AdtFlags::IS_STRUCT,
         };
 
-        if kind == AdtKind::Struct && variants[VariantIdx::new(0)].ctor.is_some() {
+        if kind == AdtKind::Struct && variants[FIRST_VARIANT].ctor.is_some() {
             flags |= AdtFlags::HAS_CTOR;
         }
 
@@ -357,7 +375,7 @@ impl<'tcx> AdtDef<'tcx> {
     /// Asserts this is a struct or union and returns its unique variant.
     pub fn non_enum_variant(self) -> &'tcx VariantDef {
         assert!(self.is_struct() || self.is_union());
-        &self.variant(VariantIdx::new(0))
+        &self.variant(FIRST_VARIANT)
     }
 
     #[inline]
@@ -430,7 +448,7 @@ impl<'tcx> AdtDef<'tcx> {
             Res::Def(DefKind::Ctor(..), cid) => self.variant_with_ctor_id(cid),
             Res::Def(DefKind::Struct, _)
             | Res::Def(DefKind::Union, _)
-            | Res::Def(DefKind::TyAlias, _)
+            | Res::Def(DefKind::TyAlias { .. }, _)
             | Res::Def(DefKind::AssocTy, _)
             | Res::SelfTyParam { .. }
             | Res::SelfTyAlias { .. }
@@ -493,7 +511,7 @@ impl<'tcx> AdtDef<'tcx> {
 
     #[inline]
     pub fn variant_range(self) -> Range<VariantIdx> {
-        VariantIdx::new(0)..VariantIdx::new(self.variants().len())
+        FIRST_VARIANT..self.variants().next_index()
     }
 
     /// Computes the discriminant value used by a specific variant.
@@ -544,18 +562,10 @@ impl<'tcx> AdtDef<'tcx> {
         tcx.adt_destructor(self.did())
     }
 
-    /// Returns a list of types such that `Self: Sized` if and only
-    /// if that type is `Sized`, or `TyErr` if this type is recursive.
-    ///
-    /// Oddly enough, checking that the sized-constraint is `Sized` is
-    /// actually more expressive than checking all members:
-    /// the `Sized` trait is inductive, so an associated type that references
-    /// `Self` would prevent its containing ADT from being `Sized`.
-    ///
-    /// Due to normalization being eager, this applies even if
-    /// the associated type is behind a pointer (e.g., issue #31299).
-    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx [Ty<'tcx>]> {
-        ty::EarlyBinder(tcx.adt_sized_constraint(self.did()))
+    /// Returns a list of types such that `Self: Sized` if and only if that
+    /// type is `Sized`, or `ty::Error` if this type has a recursive layout.
+    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx ty::List<Ty<'tcx>>> {
+        tcx.adt_sized_constraint(self.did())
     }
 }
 

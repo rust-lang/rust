@@ -1,8 +1,10 @@
 use colored::*;
 use regex::bytes::Regex;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
-use ui_test::{color_eyre::Result, Config, Mode, OutputConflictHandling};
+use ui_test::{color_eyre::Result, Config, Match, Mode, OutputConflictHandling};
+use ui_test::{status_emitter, CommandBuilder};
 
 fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
@@ -43,42 +45,23 @@ fn build_so_for_c_ffi_tests() -> PathBuf {
     so_file_path
 }
 
-fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
-    let mut config = Config {
-        target: Some(target.to_owned()),
-        stderr_filters: STDERR.clone(),
-        stdout_filters: STDOUT.clone(),
-        root_dir: PathBuf::from(path),
-        mode,
-        program: miri_path(),
-        quiet: false,
-        ..Config::default()
-    };
-
-    let in_rustc_test_suite = option_env!("RUSTC_STAGE").is_some();
+fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) -> Config {
+    // Miri is rustc-like, so we create a default builder for rustc and modify it
+    let mut program = CommandBuilder::rustc();
+    program.program = miri_path();
 
     // Add some flags we always want.
-    config.args.push("--edition".into());
-    config.args.push("2018".into());
-    if in_rustc_test_suite {
-        // Less aggressive warnings to make the rustc toolstate management less painful.
-        // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
-        config.args.push("-Astable-features".into());
-        config.args.push("-Aunused".into());
-    } else {
-        config.args.push("-Dwarnings".into());
-        config.args.push("-Dunused".into());
-    }
+    program.args.push("-Dwarnings".into());
+    program.args.push("-Dunused".into());
+    program.args.push("-Ainternal_features".into());
     if let Ok(extra_flags) = env::var("MIRIFLAGS") {
         for flag in extra_flags.split_whitespace() {
-            config.args.push(flag.into());
+            program.args.push(flag.into());
         }
     }
-    config.args.push("-Zui-testing".into());
-    if let Some(target) = &config.target {
-        config.args.push("--target".into());
-        config.args.push(target.into());
-    }
+    program.args.push("-Zui-testing".into());
+    program.args.push("--target".into());
+    program.args.push(target.into());
 
     // If we're on linux, and we're testing the extern-so functionality,
     // then build the shared object file for testing external C function calls
@@ -87,28 +70,30 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
         let so_file_path = build_so_for_c_ffi_tests();
         let mut flag = std::ffi::OsString::from("-Zmiri-extern-so-file=");
         flag.push(so_file_path.into_os_string());
-        config.args.push(flag);
+        program.args.push(flag);
     }
 
+    let bless = env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
     let skip_ui_checks = env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
 
-    config.output_conflict_handling = match (env::var_os("MIRI_BLESS").is_some(), skip_ui_checks) {
-        (false, false) => OutputConflictHandling::Error,
+    let output_conflict_handling = match (bless, skip_ui_checks) {
+        (false, false) => OutputConflictHandling::Error("./miri test --bless".into()),
         (true, false) => OutputConflictHandling::Bless,
         (false, true) => OutputConflictHandling::Ignore,
-        (true, true) => panic!("cannot use MIRI_BLESS and MIRI_SKIP_UI_CHECKS at the same time"),
+        (true, true) => panic!("cannot use RUSTC_BLESS and MIRI_SKIP_UI_CHECKS at the same time"),
     };
 
-    // Handle command-line arguments.
-    config.path_filter.extend(std::env::args().skip(1).filter(|arg| {
-        match &**arg {
-            "--quiet" => {
-                config.quiet = true;
-                false
-            }
-            _ => true,
-        }
-    }));
+    let mut config = Config {
+        target: Some(target.to_owned()),
+        stderr_filters: STDERR.clone(),
+        stdout_filters: STDOUT.clone(),
+        mode,
+        program,
+        output_conflict_handling,
+        out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("ui"),
+        edition: Some("2021".into()),
+        ..Config::rustc(path.into())
+    };
 
     let use_std = env::var_os("MIRI_NO_STD").is_none();
 
@@ -124,13 +109,67 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
             "run".into(), // There is no `cargo miri build` so we just use `cargo miri run`.
         ];
     }
-    ui_test::run_tests(config)
+    config
+}
+
+fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
+    let config = test_config(target, path, mode, with_dependencies);
+
+    // Handle command-line arguments.
+    let mut after_dashdash = false;
+    let mut quiet = false;
+    let filters = std::env::args()
+        .skip(1)
+        .filter(|arg| {
+            if after_dashdash {
+                // Just propagate everything.
+                return true;
+            }
+            match &**arg {
+                "--quiet" => {
+                    quiet = true;
+                    false
+                }
+                "--" => {
+                    after_dashdash = true;
+                    false
+                }
+                s if s.starts_with('-') => {
+                    panic!("unknown compiletest flag `{s}`");
+                }
+                _ => true,
+            }
+        })
+        .collect::<Vec<_>>();
+    eprintln!("   Compiler: {}", config.program.display());
+    ui_test::run_tests_generic(
+        config,
+        // The files we're actually interested in (all `.rs` files).
+        |path| {
+            path.extension().is_some_and(|ext| ext == "rs")
+                && (filters.is_empty()
+                    || filters.iter().any(|f| path.display().to_string().contains(f)))
+        },
+        // This could be used to overwrite the `Config` on a per-test basis.
+        |_, _| None,
+        (
+            if quiet {
+                Box::<status_emitter::Quiet>::default()
+                    as Box<dyn status_emitter::StatusEmitter + Send>
+            } else {
+                Box::new(status_emitter::Text)
+            },
+            status_emitter::Gha::</* GHA Actions groups*/ false> {
+                name: format!("{mode:?} {path} ({target})"),
+            },
+        ),
+    )
 }
 
 macro_rules! regexes {
     ($name:ident: $($regex:expr => $replacement:expr,)*) => {lazy_static::lazy_static! {
-        static ref $name: Vec<(Regex, &'static [u8])> = vec![
-            $((Regex::new($regex).unwrap(), $replacement.as_bytes()),)*
+        static ref $name: Vec<(Match, &'static [u8])> = vec![
+            $((Regex::new($regex).unwrap().into(), $replacement.as_bytes()),)*
         ];
     }};
 }
@@ -139,8 +178,9 @@ regexes! {
     STDOUT:
     // Windows file paths
     r"\\"                           => "/",
-    // erase Stacked Borrows tags
+    // erase borrow tags
     "<[0-9]+>"                      => "<TAG>",
+    "<[0-9]+="                      => "<TAG=",
 }
 
 regexes! {
@@ -149,8 +189,11 @@ regexes! {
     r"\.rs:[0-9]+:[0-9]+(: [0-9]+:[0-9]+)?" => ".rs:LL:CC",
     // erase alloc ids
     "alloc[0-9]+"                    => "ALLOC",
-    // erase Stacked Borrows tags
+    // erase borrow tags
     "<[0-9]+>"                       => "<TAG>",
+    "<[0-9]+="                       => "<TAG=",
+    // normalize width of Tree Borrows diagnostic borders (which otherwise leak borrow tag info)
+    "(─{50})─+"                      => "$1",
     // erase whitespace that differs between platforms
     r" +at (.*\.rs)"                 => " at $1",
     // erase generics in backtraces
@@ -199,7 +242,17 @@ fn get_target() -> String {
 
 fn main() -> Result<()> {
     ui_test::color_eyre::install()?;
+
     let target = get_target();
+
+    let mut args = std::env::args_os();
+
+    // Skip the program name and check whether this is a `./miri run-dep` invocation
+    if let Some(first) = args.nth(1) {
+        if first == "--miri-run-dep-mode" {
+            return run_dep_mode(target, args);
+        }
+    }
 
     // Add a test env var to do environment communication tests.
     env::set_var("MIRI_ENV_VAR_TEST", "0");
@@ -221,4 +274,18 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Result<()> {
+    let path = args.next().expect("./miri run-dep must be followed by a file name");
+    let mut config = test_config(&target, "", Mode::Yolo, /* with dependencies */ true);
+    config.program.args.clear(); // We want to give the user full control over flags
+    config.build_dependencies_and_link_them()?;
+
+    let mut cmd = config.program.build(&config.out_dir);
+
+    cmd.arg(path);
+
+    cmd.args(args);
+    if cmd.spawn()?.wait()?.success() { Ok(()) } else { std::process::exit(1) }
 }

@@ -5,7 +5,7 @@ use rustc_data_structures::sharded;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::Lock;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -18,12 +18,9 @@ pub trait CacheSelector<'tcx, V> {
 
 pub trait QueryCache: Sized {
     type Key: Hash + Eq + Copy + Debug;
-    type Value: Copy + Debug;
+    type Value: Copy;
 
     /// Checks if the query is already computed and in the cache.
-    /// It returns the shard index and a lock guard to the shard,
-    /// which will be used if the query is not in the cache and we need
-    /// to compute it.
     fn lookup(&self, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)>;
 
     fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex);
@@ -55,7 +52,7 @@ impl<K, V> Default for DefaultCache<K, V> {
 impl<K, V> QueryCache for DefaultCache<K, V>
 where
     K: Eq + Hash + Copy + Debug,
-    V: Copy + Debug,
+    V: Copy,
 {
     type Key = K;
     type Value = V;
@@ -123,7 +120,7 @@ impl<V> Default for SingleCache<V> {
 
 impl<V> QueryCache for SingleCache<V>
 where
-    V: Copy + Debug,
+    V: Copy,
 {
     type Key = ();
     type Value = V;
@@ -139,7 +136,9 @@ where
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        self.cache.lock().as_ref().map(|value| f(&(), &value.0, value.1));
+        if let Some(value) = self.cache.lock().as_ref() {
+            f(&(), &value.0, value.1)
+        }
     }
 }
 
@@ -167,7 +166,7 @@ impl<K: Idx, V> Default for VecCache<K, V> {
 impl<K, V> QueryCache for VecCache<K, V>
 where
     K: Eq + Idx + Copy + Debug,
-    V: Copy + Debug,
+    V: Copy,
 {
     type Key = K;
     type Value = V;

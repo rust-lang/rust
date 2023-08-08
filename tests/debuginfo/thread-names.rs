@@ -1,15 +1,8 @@
 // compile-flags:-g
+// revisions: macos windows
 // We can't set the main thread name on Linux because it renames the process (#97191)
-// ignore-linux
-// ignore-android
-// ignore-dragonfly
-// ignore-emscripten
-// ignore-freebsd
-// ignore-haiku
-// ignore-ios
-// ignore-netbsd
-// ignore-openbsd
-// ignore-solaris
+//[macos] only-macos
+//[windows] only-windows
 // ignore-sgx
 // ignore-windows-gnu
 

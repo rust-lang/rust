@@ -1,7 +1,3 @@
-// compile-flags: --emit=link
-// no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
 #![feature(repr128, proc_macro_hygiene, proc_macro_quote, box_patterns)]
 #![allow(incomplete_features)]
 #![allow(clippy::useless_conversion, clippy::uninlined_format_args)]
@@ -12,11 +8,11 @@ extern crate syn;
 
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
-use syn::parse_macro_input;
 use syn::spanned::Spanned;
 use syn::token::Star;
 use syn::{
-    parse_quote, FnArg, ImplItem, ItemImpl, ItemTrait, Lifetime, Pat, PatIdent, PatType, Signature, TraitItem, Type,
+    parse_macro_input, parse_quote, FnArg, ImplItem, ItemImpl, ItemTrait, Lifetime, Pat, PatIdent, PatType, Signature,
+    TraitItem, Type,
 };
 
 #[proc_macro_attribute]
@@ -28,7 +24,7 @@ pub fn dummy(_args: TokenStream, input: TokenStream) -> TokenStream {
 pub fn fake_async_trait(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut item = parse_macro_input!(input as ItemTrait);
     for inner in &mut item.items {
-        if let TraitItem::Method(method) = inner {
+        if let TraitItem::Fn(method) = inner {
             let sig = &method.sig;
             let block = &mut method.default;
             if let Some(block) = block {
@@ -70,7 +66,7 @@ pub fn rename_my_lifetimes(_args: TokenStream, input: TokenStream) -> TokenStrea
 
     // Look for methods having arbitrary self type taken by &mut ref
     for inner in &mut item.items {
-        if let ImplItem::Method(method) = inner {
+        if let ImplItem::Fn(method) = inner {
             if let Some(FnArg::Typed(pat_type)) = mut_receiver_of(&mut method.sig) {
                 if let box Type::Reference(reference) = &mut pat_type.ty {
                     // Target only unnamed lifetimes
@@ -82,7 +78,7 @@ pub fn rename_my_lifetimes(_args: TokenStream, input: TokenStream) -> TokenStrea
                     elided += 1;
 
                     // HACK: Syn uses `Span` from the proc_macro2 crate, and does not seem to reexport it.
-                    // In order to avoid adding the dependency, get a default span from a non-existent token.
+                    // In order to avoid adding the dependency, get a default span from a nonexistent token.
                     // A default span is needed to mark the code as coming from expansion.
                     let span = Star::default().span();
 

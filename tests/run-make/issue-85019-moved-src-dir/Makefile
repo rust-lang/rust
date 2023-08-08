@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 INCR=$(TMPDIR)/incr
 FIRST_SRC=$(TMPDIR)/first_src

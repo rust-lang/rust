@@ -13,19 +13,19 @@ use rustc_session::Session;
 use rustc_span::Span;
 
 use std::hash::Hash;
+use std::io::Write;
 use std::num::NonZeroU64;
 
 #[cfg(parallel_compiler)]
 use {
     parking_lot::{Condvar, Mutex},
+    rayon_core,
     rustc_data_structures::fx::FxHashSet,
-    rustc_data_structures::sync::Lock,
-    rustc_data_structures::sync::Lrc,
-    rustc_data_structures::{jobserver, OnDrop},
-    rustc_rayon_core as rayon_core,
+    rustc_data_structures::{defer, jobserver},
     rustc_span::DUMMY_SP,
     std::iter,
     std::process,
+    std::sync::Arc,
 };
 
 /// Represents a span and a query key.
@@ -124,8 +124,6 @@ impl<D: DepKind> QueryJob<D> {
 }
 
 impl QueryJobId {
-    #[cold]
-    #[inline(never)]
     #[cfg(not(parallel_compiler))]
     pub(super) fn find_cycle_in_stack<D: DepKind>(
         &self,
@@ -192,7 +190,7 @@ struct QueryWaiter<D: DepKind> {
     query: Option<QueryJobId>,
     condvar: Condvar,
     span: Span,
-    cycle: Lock<Option<CycleError<D>>>,
+    cycle: Mutex<Option<CycleError<D>>>,
 }
 
 #[cfg(parallel_compiler)]
@@ -206,20 +204,20 @@ impl<D: DepKind> QueryWaiter<D> {
 #[cfg(parallel_compiler)]
 struct QueryLatchInfo<D: DepKind> {
     complete: bool,
-    waiters: Vec<Lrc<QueryWaiter<D>>>,
+    waiters: Vec<Arc<QueryWaiter<D>>>,
 }
 
 #[cfg(parallel_compiler)]
 #[derive(Clone)]
 pub(super) struct QueryLatch<D: DepKind> {
-    info: Lrc<Mutex<QueryLatchInfo<D>>>,
+    info: Arc<Mutex<QueryLatchInfo<D>>>,
 }
 
 #[cfg(parallel_compiler)]
 impl<D: DepKind> QueryLatch<D> {
     fn new() -> Self {
         QueryLatch {
-            info: Lrc::new(Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() })),
+            info: Arc::new(Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() })),
         }
     }
 
@@ -230,11 +228,11 @@ impl<D: DepKind> QueryLatch<D> {
         span: Span,
     ) -> Result<(), CycleError<D>> {
         let waiter =
-            Lrc::new(QueryWaiter { query, span, cycle: Lock::new(None), condvar: Condvar::new() });
+            Arc::new(QueryWaiter { query, span, cycle: Mutex::new(None), condvar: Condvar::new() });
         self.wait_on_inner(&waiter);
         // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
-        // although another thread may still have a Lrc reference so we cannot
-        // use Lrc::get_mut
+        // although another thread may still have a Arc reference so we cannot
+        // use Arc::get_mut
         let mut cycle = waiter.cycle.lock();
         match cycle.take() {
             None => Ok(()),
@@ -243,7 +241,7 @@ impl<D: DepKind> QueryLatch<D> {
     }
 
     /// Awaits the caller on this latch by blocking the current thread.
-    fn wait_on_inner(&self, waiter: &Lrc<QueryWaiter<D>>) {
+    fn wait_on_inner(&self, waiter: &Arc<QueryWaiter<D>>) {
         let mut info = self.info.lock();
         if !info.complete {
             // We push the waiter on to the `waiters` list. It can be accessed inside
@@ -277,7 +275,7 @@ impl<D: DepKind> QueryLatch<D> {
 
     /// Removes a single waiter from the list of waiters.
     /// This is used to break query cycles.
-    fn extract_waiter(&self, waiter: usize) -> Lrc<QueryWaiter<D>> {
+    fn extract_waiter(&self, waiter: usize) -> Arc<QueryWaiter<D>> {
         let mut info = self.info.lock();
         debug_assert!(!info.complete);
         // Remove the waiter from the list of waiters
@@ -429,7 +427,7 @@ where
 fn remove_cycle<D: DepKind>(
     query_map: &QueryMap<D>,
     jobs: &mut Vec<QueryJobId>,
-    wakelist: &mut Vec<Lrc<QueryWaiter<D>>>,
+    wakelist: &mut Vec<Arc<QueryWaiter<D>>>,
 ) -> bool {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
@@ -532,7 +530,7 @@ fn remove_cycle<D: DepKind>(
 /// all active queries for cycles before finally resuming all the waiters at once.
 #[cfg(parallel_compiler)]
 pub fn deadlock<D: DepKind>(query_map: QueryMap<D>, registry: &rayon_core::Registry) {
-    let on_panic = OnDrop(|| {
+    let on_panic = defer(|| {
         eprintln!("deadlock handler panicked, aborting process");
         process::abort();
     });
@@ -594,7 +592,10 @@ pub(crate) fn report_cycle<'a, D: DepKind>(
         });
     }
 
-    let alias = if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TyAlias)) {
+    let alias = if stack
+        .iter()
+        .all(|entry| matches!(entry.query.def_kind, Some(DefKind::TyAlias { .. })))
+    {
         Some(crate::error::Alias::Ty)
     } else if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TraitAlias)) {
         Some(crate::error::Alias::Trait)
@@ -609,6 +610,7 @@ pub(crate) fn report_cycle<'a, D: DepKind>(
         alias,
         cycle_usage: cycle_usage,
         stack_count,
+        note_span: (),
     };
 
     cycle_diag.into_diagnostic(&sess.parse_sess.span_diagnostic)
@@ -619,30 +621,50 @@ pub fn print_query_stack<Qcx: QueryContext>(
     mut current_query: Option<QueryJobId>,
     handler: &Handler,
     num_frames: Option<usize>,
+    mut file: Option<std::fs::File>,
 ) -> usize {
     // Be careful relying on global state here: this code is called from
     // a panic hook, which means that the global `Handler` may be in a weird
     // state if it was responsible for triggering the panic.
-    let mut i = 0;
+    let mut count_printed = 0;
+    let mut count_total = 0;
     let query_map = qcx.try_collect_active_jobs();
 
+    if let Some(ref mut file) = file {
+        let _ = writeln!(file, "\n\nquery stack during panic:");
+    }
     while let Some(query) = current_query {
-        if Some(i) == num_frames {
-            break;
-        }
         let Some(query_info) = query_map.as_ref().and_then(|map| map.get(&query)) else {
             break;
         };
-        let mut diag = Diagnostic::new(
-            Level::FailureNote,
-            &format!("#{} [{:?}] {}", i, query_info.query.dep_kind, query_info.query.description),
-        );
-        diag.span = query_info.job.span.into();
-        handler.force_print_diagnostic(diag);
+        if Some(count_printed) < num_frames || num_frames.is_none() {
+            // Only print to stderr as many stack frames as `num_frames` when present.
+            let mut diag = Diagnostic::new(
+                Level::FailureNote,
+                format!(
+                    "#{} [{:?}] {}",
+                    count_printed, query_info.query.dep_kind, query_info.query.description
+                ),
+            );
+            diag.span = query_info.job.span.into();
+            handler.force_print_diagnostic(diag);
+            count_printed += 1;
+        }
+
+        if let Some(ref mut file) = file {
+            let _ = writeln!(
+                file,
+                "#{} [{:?}] {}",
+                count_total, query_info.query.dep_kind, query_info.query.description
+            );
+        }
 
         current_query = query_info.job.parent;
-        i += 1;
+        count_total += 1;
     }
 
-    i
+    if let Some(ref mut file) = file {
+        let _ = writeln!(file, "end of query stack");
+    }
+    count_printed
 }

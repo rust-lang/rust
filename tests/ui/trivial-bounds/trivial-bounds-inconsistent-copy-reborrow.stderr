@@ -7,7 +7,7 @@ LL |     *t
 help: consider changing this to be a mutable reference
    |
 LL | fn reborrow_mut<'a>(t: &'a mut &'a mut i32) -> &'a mut i32 where &'a mut i32: Copy {
-   |                        ~~~~~~~~~~~~~~~~~~~
+   |                            +++
 
 error[E0596]: cannot borrow `**t` as mutable, as it is behind a `&` reference
   --> $DIR/trivial-bounds-inconsistent-copy-reborrow.rs:10:6
@@ -18,7 +18,7 @@ LL |     {*t}
 help: consider changing this to be a mutable reference
    |
 LL | fn copy_reborrow_mut<'a>(t: &'a mut &'a mut i32) -> &'a mut i32 where &'a mut i32: Copy {
-   |                             ~~~~~~~~~~~~~~~~~~~
+   |                                 +++
 
 error: aborting due to 2 previous errors
 

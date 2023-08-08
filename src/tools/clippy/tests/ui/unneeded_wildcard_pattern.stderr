@@ -1,89 +1,89 @@
 error: this pattern is unneeded as the `..` pattern can match that element
-  --> $DIR/unneeded_wildcard_pattern.rs:8:18
+  --> $DIR/unneeded_wildcard_pattern.rs:13:18
    |
 LL |     if let (0, .., _) = t {};
    |                  ^^^ help: remove it
    |
 note: the lint level is defined here
-  --> $DIR/unneeded_wildcard_pattern.rs:3:9
+  --> $DIR/unneeded_wildcard_pattern.rs:4:9
    |
 LL | #![deny(clippy::unneeded_wildcard_pattern)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this pattern is unneeded as the `..` pattern can match that element
-  --> $DIR/unneeded_wildcard_pattern.rs:9:16
+  --> $DIR/unneeded_wildcard_pattern.rs:14:16
    |
 LL |     if let (0, _, ..) = t {};
    |                ^^^ help: remove it
 
 error: this pattern is unneeded as the `..` pattern can match that element
-  --> $DIR/unneeded_wildcard_pattern.rs:10:13
+  --> $DIR/unneeded_wildcard_pattern.rs:15:13
    |
 LL |     if let (_, .., 0) = t {};
    |             ^^^ help: remove it
 
 error: this pattern is unneeded as the `..` pattern can match that element
-  --> $DIR/unneeded_wildcard_pattern.rs:11:15
+  --> $DIR/unneeded_wildcard_pattern.rs:16:15
    |
 LL |     if let (.., _, 0) = t {};
    |               ^^^ help: remove it
 
 error: these patterns are unneeded as the `..` pattern can match those elements
-  --> $DIR/unneeded_wildcard_pattern.rs:12:16
+  --> $DIR/unneeded_wildcard_pattern.rs:17:16
    |
 LL |     if let (0, _, _, ..) = t {};
    |                ^^^^^^ help: remove them
 
 error: these patterns are unneeded as the `..` pattern can match those elements
-  --> $DIR/unneeded_wildcard_pattern.rs:13:18
+  --> $DIR/unneeded_wildcard_pattern.rs:18:18
    |
 LL |     if let (0, .., _, _) = t {};
    |                  ^^^^^^ help: remove them
 
 error: these patterns are unneeded as the `..` pattern can match those elements
-  --> $DIR/unneeded_wildcard_pattern.rs:22:22
+  --> $DIR/unneeded_wildcard_pattern.rs:27:22
    |
 LL |         if let (0, .., _, _,) = t {};
    |                      ^^^^^^ help: remove them
 
 error: this pattern is unneeded as the `..` pattern can match that element
-  --> $DIR/unneeded_wildcard_pattern.rs:29:19
+  --> $DIR/unneeded_wildcard_pattern.rs:34:19
    |
 LL |     if let S(0, .., _) = s {};
    |                   ^^^ help: remove it
 
 error: this pattern is unneeded as the `..` pattern can match that element
-  --> $DIR/unneeded_wildcard_pattern.rs:30:17
+  --> $DIR/unneeded_wildcard_pattern.rs:35:17
    |
 LL |     if let S(0, _, ..) = s {};
    |                 ^^^ help: remove it
 
 error: this pattern is unneeded as the `..` pattern can match that element
-  --> $DIR/unneeded_wildcard_pattern.rs:31:14
+  --> $DIR/unneeded_wildcard_pattern.rs:36:14
    |
 LL |     if let S(_, .., 0) = s {};
    |              ^^^ help: remove it
 
 error: this pattern is unneeded as the `..` pattern can match that element
-  --> $DIR/unneeded_wildcard_pattern.rs:32:16
+  --> $DIR/unneeded_wildcard_pattern.rs:37:16
    |
 LL |     if let S(.., _, 0) = s {};
    |                ^^^ help: remove it
 
 error: these patterns are unneeded as the `..` pattern can match those elements
-  --> $DIR/unneeded_wildcard_pattern.rs:33:17
+  --> $DIR/unneeded_wildcard_pattern.rs:38:17
    |
 LL |     if let S(0, _, _, ..) = s {};
    |                 ^^^^^^ help: remove them
 
 error: these patterns are unneeded as the `..` pattern can match those elements
-  --> $DIR/unneeded_wildcard_pattern.rs:34:19
+  --> $DIR/unneeded_wildcard_pattern.rs:39:19
    |
 LL |     if let S(0, .., _, _) = s {};
    |                   ^^^^^^ help: remove them
 
 error: these patterns are unneeded as the `..` pattern can match those elements
-  --> $DIR/unneeded_wildcard_pattern.rs:43:23
+  --> $DIR/unneeded_wildcard_pattern.rs:48:23
    |
 LL |         if let S(0, .., _, _,) = s {};
    |                       ^^^^^^ help: remove them

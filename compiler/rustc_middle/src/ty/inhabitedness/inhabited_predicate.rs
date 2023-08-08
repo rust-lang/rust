@@ -19,7 +19,7 @@ pub enum InhabitedPredicate<'tcx> {
     /// type has restricted visibility.
     NotInModule(DefId),
     /// Inhabited if some generic type is inhabited.
-    /// These are replaced by calling [`Self::subst`].
+    /// These are replaced by calling [`Self::instantiate`].
     GenericType(Ty<'tcx>),
     /// A AND B
     And(&'tcx [InhabitedPredicate<'tcx>; 2]),
@@ -62,7 +62,18 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                 Some(1..) => Ok(false),
             },
             Self::NotInModule(id) => in_module(id).map(|in_mod| !in_mod),
-            Self::GenericType(_) => Ok(true),
+            // `t` may be a projection, for which `inhabited_predicate` returns a `GenericType`. As
+            // we have a param_env available, we can do better.
+            Self::GenericType(t) => {
+                let normalized_pred = tcx
+                    .try_normalize_erasing_regions(param_env, t)
+                    .map_or(self, |t| t.inhabited_predicate(tcx));
+                match normalized_pred {
+                    // We don't have more information than we started with, so consider inhabited.
+                    Self::GenericType(_) => Ok(true),
+                    pred => pred.apply_inner(tcx, param_env, in_module),
+                }
+            }
             Self::And([a, b]) => try_and(a, b, |x| x.apply_inner(tcx, param_env, in_module)),
             Self::Or([a, b]) => try_or(a, b, |x| x.apply_inner(tcx, param_env, in_module)),
         }
@@ -151,15 +162,15 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     }
 
     /// Replaces generic types with its corresponding predicate
-    pub fn subst(self, tcx: TyCtxt<'tcx>, substs: ty::SubstsRef<'tcx>) -> Self {
-        self.subst_opt(tcx, substs).unwrap_or(self)
+    pub fn instantiate(self, tcx: TyCtxt<'tcx>, args: ty::GenericArgsRef<'tcx>) -> Self {
+        self.instantiate_opt(tcx, args).unwrap_or(self)
     }
 
-    fn subst_opt(self, tcx: TyCtxt<'tcx>, substs: ty::SubstsRef<'tcx>) -> Option<Self> {
+    fn instantiate_opt(self, tcx: TyCtxt<'tcx>, args: ty::GenericArgsRef<'tcx>) -> Option<Self> {
         match self {
             Self::ConstIsZero(c) => {
-                let c = ty::EarlyBinder(c).subst(tcx, substs);
-                let pred = match c.kind().try_to_target_usize(tcx) {
+                let c = ty::EarlyBinder::bind(c).instantiate(tcx, args);
+                let pred = match c.try_to_target_usize(tcx) {
                     Some(0) => Self::True,
                     Some(1..) => Self::False,
                     None => Self::ConstIsZero(c),
@@ -167,17 +178,17 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                 Some(pred)
             }
             Self::GenericType(t) => {
-                Some(ty::EarlyBinder(t).subst(tcx, substs).inhabited_predicate(tcx))
+                Some(ty::EarlyBinder::bind(t).instantiate(tcx, args).inhabited_predicate(tcx))
             }
-            Self::And(&[a, b]) => match a.subst_opt(tcx, substs) {
-                None => b.subst_opt(tcx, substs).map(|b| a.and(tcx, b)),
+            Self::And(&[a, b]) => match a.instantiate_opt(tcx, args) {
+                None => b.instantiate_opt(tcx, args).map(|b| a.and(tcx, b)),
                 Some(InhabitedPredicate::False) => Some(InhabitedPredicate::False),
-                Some(a) => Some(a.and(tcx, b.subst_opt(tcx, substs).unwrap_or(b))),
+                Some(a) => Some(a.and(tcx, b.instantiate_opt(tcx, args).unwrap_or(b))),
             },
-            Self::Or(&[a, b]) => match a.subst_opt(tcx, substs) {
-                None => b.subst_opt(tcx, substs).map(|b| a.or(tcx, b)),
+            Self::Or(&[a, b]) => match a.instantiate_opt(tcx, args) {
+                None => b.instantiate_opt(tcx, args).map(|b| a.or(tcx, b)),
                 Some(InhabitedPredicate::True) => Some(InhabitedPredicate::True),
-                Some(a) => Some(a.or(tcx, b.subst_opt(tcx, substs).unwrap_or(b))),
+                Some(a) => Some(a.or(tcx, b.instantiate_opt(tcx, args).unwrap_or(b))),
             },
             _ => None,
         }

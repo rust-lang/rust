@@ -38,6 +38,15 @@ future.
 Attempting to use these error numbers on stable will result in the code sample being interpreted as
 plain text.
 
+### `missing_doc_code_examples` lint
+
+This lint will emit a warning if an item doesn't have a code example in its documentation.
+It can be enabled using:
+
+```rust,ignore (nightly)
+#![deny(rustdoc::missing_doc_code_examples)]
+```
+
 ## Extensions to the `#[doc]` attribute
 
 These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler
@@ -177,9 +186,9 @@ Book][unstable-masked] and [its tracking issue][issue-masked].
 This is for Rust compiler internal use only.
 
 Since primitive types are defined in the compiler, there's no place to attach documentation
-attributes. The `#[doc(primitive)]` attribute is used by the standard library to provide a way
-to generate documentation for primitive types, and requires `#![feature(rustdoc_internals)]` to
-enable.
+attributes. The `#[rustc_doc_primitive = "..."]` attribute is used by the standard library to
+provide a way to generate documentation for primitive types, and requires `#![feature(rustc_attrs)]`
+to enable.
 
 ### Document keywords
 
@@ -191,6 +200,7 @@ To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
 
 ```rust
 #![feature(rustdoc_internals)]
+#![allow(internal_features)]
 
 /// Some documentation about the keyword.
 #[doc(keyword = "keyword")]
@@ -300,6 +310,8 @@ some consideration for their stability, and names that end in a number). Giving 
 the source.
 
 ### `--show-type-layout`: add a section to each type's docs describing its memory layout
+
+* Tracking issue: [#113248](https://github.com/rust-lang/rust/issues/113248)
 
 Using this flag looks like this:
 

@@ -25,8 +25,7 @@ LL | trait Trait: Sized {}
    |       -----  ^^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
-   = note: required for `&S` to implement `CoerceUnsized<&dyn Trait>`
-   = note: required by cast to type `&dyn Trait`
+   = note: required for the cast from `&S` to `&dyn Trait`
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-unsafe-trait-obj-match.rs:25:25
@@ -45,8 +44,7 @@ LL | trait Trait: Sized {}
    |       -----  ^^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
-   = note: required for `&R` to implement `CoerceUnsized<&dyn Trait>`
-   = note: required by cast to type `&dyn Trait`
+   = note: required for the cast from `&R` to `&dyn Trait`
 
 error: aborting due to 3 previous errors
 

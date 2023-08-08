@@ -30,6 +30,11 @@ pub struct AssocItem {
     /// Whether this is a method with an explicit self
     /// as its first parameter, allowing method calls.
     pub fn_has_self_parameter: bool,
+
+    /// `Some` if the associated item (an associated type) comes from the
+    /// return-position `impl Trait` in trait desugaring. The `ImplTraitInTraitData`
+    /// provides additional information about its source.
+    pub opt_rpitit_info: Option<ty::ImplTraitInTraitData>,
 }
 
 impl AssocItem {
@@ -43,7 +48,7 @@ impl AssocItem {
     ///
     /// [`type_of`]: crate::ty::TyCtxt::type_of
     pub fn defaultness(&self, tcx: TyCtxt<'_>) -> hir::Defaultness {
-        tcx.impl_defaultness(self.def_id)
+        tcx.defaultness(self.def_id)
     }
 
     #[inline]
@@ -79,13 +84,21 @@ impl AssocItem {
                 // late-bound regions, and we don't want method signatures to show up
                 // `as for<'r> fn(&'r MyType)`. Pretty-printing handles late-bound
                 // regions just fine, showing `fn(&MyType)`.
-                tcx.fn_sig(self.def_id).subst_identity().skip_binder().to_string()
+                tcx.fn_sig(self.def_id).instantiate_identity().skip_binder().to_string()
             }
             ty::AssocKind::Type => format!("type {};", self.name),
             ty::AssocKind::Const => {
-                format!("const {}: {:?};", self.name, tcx.type_of(self.def_id).subst_identity())
+                format!(
+                    "const {}: {:?};",
+                    self.name,
+                    tcx.type_of(self.def_id).instantiate_identity()
+                )
             }
         }
+    }
+
+    pub fn is_impl_trait_in_trait(&self) -> bool {
+        self.opt_rpitit_info.is_some()
     }
 }
 

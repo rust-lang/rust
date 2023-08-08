@@ -20,11 +20,12 @@ const BAR: Bar = Bar;
 #[derive(PartialEq)]
 enum Baz {
     Baz1,
-    Baz2
+    Baz2,
 }
 impl Eq for Baz {}
 const BAZ: Baz = Baz::Baz1;
 
+#[rustfmt::skip]
 fn main() {
     match FOO {
         FOO => {}
@@ -124,8 +125,16 @@ fn main() {
 
     match WRAPQUUX {
         Wrap(_) => {}
-        WRAPQUUX => {} // detected unreachable because we do inspect the `Wrap` layer
-        //~^ ERROR unreachable pattern
+        WRAPQUUX => {}
+    }
+
+    match WRAPQUUX {
+        Wrap(_) => {}
+    }
+
+    match WRAPQUUX {
+        //~^ ERROR: non-exhaustive patterns: `Wrap(_)` not covered
+        WRAPQUUX => {}
     }
 
     #[derive(PartialEq, Eq)]
@@ -138,8 +147,7 @@ fn main() {
     match WHOKNOWSQUUX {
         WHOKNOWSQUUX => {}
         WhoKnows::Yay(_) => {}
-        WHOKNOWSQUUX => {} // detected unreachable because we do inspect the `WhoKnows` layer
-        //~^ ERROR unreachable pattern
+        WHOKNOWSQUUX => {}
         WhoKnows::Nope => {}
     }
 }

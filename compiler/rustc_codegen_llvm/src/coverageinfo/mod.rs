@@ -3,33 +3,35 @@ use crate::llvm;
 use crate::abi::Abi;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
+use crate::coverageinfo::ffi::{CounterExpression, CounterMappingRegion};
+use crate::coverageinfo::map_data::FunctionCoverage;
 
 use libc::c_uint;
-use llvm::coverageinfo::CounterMappingRegion;
-use rustc_codegen_ssa::coverageinfo::map::{CounterExpression, FunctionCoverage};
 use rustc_codegen_ssa::traits::{
-    BaseTypeMethods, BuilderMethods, ConstMethods, CoverageInfoBuilderMethods, CoverageInfoMethods,
-    MiscMethods, StaticMethods,
+    BaseTypeMethods, BuilderMethods, ConstMethods, CoverageInfoBuilderMethods, MiscMethods,
+    StaticMethods,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
-use rustc_middle::mir::coverage::{
-    CodeRegion, CounterValueReference, ExpressionOperandId, InjectedExpressionId, Op,
-};
+use rustc_middle::mir::coverage::{CodeRegion, CounterId, CoverageKind, ExpressionId, Op, Operand};
+use rustc_middle::mir::Coverage;
 use rustc_middle::ty;
-use rustc_middle::ty::layout::FnAbiOf;
-use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::Instance;
+use rustc_middle::ty::Ty;
 
 use std::cell::RefCell;
 use std::ffi::CString;
 
+pub(crate) mod ffi;
+pub(crate) mod map_data;
 pub mod mapgen;
 
-const UNUSED_FUNCTION_COUNTER_ID: CounterValueReference = CounterValueReference::START;
+const UNUSED_FUNCTION_COUNTER_ID: CounterId = CounterId::START;
 
 const VAR_ALIGN_BYTES: usize = 8;
 
@@ -53,11 +55,17 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
     }
 }
 
-impl<'ll, 'tcx> CoverageInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn coverageinfo_finalize(&self) {
+// These methods used to be part of trait `CoverageInfoMethods`, which no longer
+// exists after most coverage code was moved out of SSA.
+impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
+    pub(crate) fn coverageinfo_finalize(&self) {
         mapgen::finalize(self)
     }
 
+    /// For LLVM codegen, returns a function-specific `Value` for a global
+    /// string, to hold the function name passed to LLVM intrinsic
+    /// `instrprof.increment()`. The `Value` is only created once per instance.
+    /// Multiple invocations with the same instance return the same `Value`.
     fn get_pgo_func_name_var(&self, instance: Instance<'tcx>) -> &'ll llvm::Value {
         if let Some(coverage_context) = self.coverage_context() {
             debug!("getting pgo_func_name_var for instance={:?}", instance);
@@ -94,6 +102,54 @@ impl<'ll, 'tcx> CoverageInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
+    fn add_coverage(&mut self, instance: Instance<'tcx>, coverage: &Coverage) {
+        let bx = self;
+
+        let Coverage { kind, code_region } = coverage.clone();
+        match kind {
+            CoverageKind::Counter { function_source_hash, id } => {
+                if bx.set_function_source_hash(instance, function_source_hash) {
+                    // If `set_function_source_hash()` returned true, the coverage map is enabled,
+                    // so continue adding the counter.
+                    if let Some(code_region) = code_region {
+                        // Note: Some counters do not have code regions, but may still be referenced
+                        // from expressions. In that case, don't add the counter to the coverage map,
+                        // but do inject the counter intrinsic.
+                        bx.add_coverage_counter(instance, id, code_region);
+                    }
+
+                    let coverageinfo = bx.tcx().coverageinfo(instance.def);
+
+                    let fn_name = bx.get_pgo_func_name_var(instance);
+                    let hash = bx.const_u64(function_source_hash);
+                    let num_counters = bx.const_u32(coverageinfo.num_counters);
+                    let index = bx.const_u32(id.as_u32());
+                    debug!(
+                        "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
+                        fn_name, hash, num_counters, index,
+                    );
+                    bx.instrprof_increment(fn_name, hash, num_counters, index);
+                }
+            }
+            CoverageKind::Expression { id, lhs, op, rhs } => {
+                bx.add_coverage_counter_expression(instance, id, lhs, op, rhs, code_region);
+            }
+            CoverageKind::Unreachable => {
+                bx.add_coverage_unreachable(
+                    instance,
+                    code_region.expect("unreachable regions always have code regions"),
+                );
+            }
+        }
+    }
+}
+
+// These methods used to be part of trait `CoverageInfoBuilderMethods`, but
+// after moving most coverage code out of SSA they are now just ordinary methods.
+impl<'tcx> Builder<'_, '_, 'tcx> {
+    /// Returns true if the function source hash was added to the coverage map (even if it had
+    /// already been added, for this instance). Returns false *only* if `-C instrument-coverage` is
+    /// not enabled (a coverage map is not being generated).
     fn set_function_source_hash(
         &mut self,
         instance: Instance<'tcx>,
@@ -115,10 +171,12 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         }
     }
 
+    /// Returns true if the counter was added to the coverage map; false if `-C instrument-coverage`
+    /// is not enabled (a coverage map is not being generated).
     fn add_coverage_counter(
         &mut self,
         instance: Instance<'tcx>,
-        id: CounterValueReference,
+        id: CounterId,
         region: CodeRegion,
     ) -> bool {
         if let Some(coverage_context) = self.coverage_context() {
@@ -137,13 +195,15 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         }
     }
 
+    /// Returns true if the expression was added to the coverage map; false if
+    /// `-C instrument-coverage` is not enabled (a coverage map is not being generated).
     fn add_coverage_counter_expression(
         &mut self,
         instance: Instance<'tcx>,
-        id: InjectedExpressionId,
-        lhs: ExpressionOperandId,
+        id: ExpressionId,
+        lhs: Operand,
         op: Op,
-        rhs: ExpressionOperandId,
+        rhs: Operand,
         region: Option<CodeRegion>,
     ) -> bool {
         if let Some(coverage_context) = self.coverage_context() {
@@ -163,6 +223,8 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         }
     }
 
+    /// Returns true if the region was added to the coverage map; false if `-C instrument-coverage`
+    /// is not enabled (a coverage map is not being generated).
     fn add_coverage_unreachable(&mut self, instance: Instance<'tcx>, region: CodeRegion) -> bool {
         if let Some(coverage_context) = self.coverage_context() {
             debug!(
@@ -186,7 +248,7 @@ fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<
 
     let instance = Instance::new(
         def_id,
-        InternalSubsts::for_item(tcx, def_id, |param, _| {
+        GenericArgs::for_item(tcx, def_id, |param, _| {
             if let ty::GenericParamDefKind::Lifetime = param.kind {
                 tcx.lifetimes.re_erased.into()
             } else {
@@ -199,14 +261,15 @@ fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<
         tcx.symbol_name(instance).name,
         cx.fn_abi_of_fn_ptr(
             ty::Binder::dummy(tcx.mk_fn_sig(
-                [tcx.mk_unit()],
-                tcx.mk_unit(),
+                [Ty::new_unit(tcx)],
+                Ty::new_unit(tcx),
                 false,
                 hir::Unsafety::Unsafe,
                 Abi::Rust,
             )),
             ty::List::empty(),
         ),
+        None,
     );
 
     llvm::set_linkage(llfn, llvm::Linkage::PrivateLinkage);
@@ -308,12 +371,7 @@ pub(crate) fn write_mapping_to_buffer(
     }
 }
 
-pub(crate) fn hash_str(strval: &str) -> u64 {
-    let strval = CString::new(strval).expect("null error converting hashable str to C string");
-    unsafe { llvm::LLVMRustCoverageHashCString(strval.as_ptr()) }
-}
-
-pub(crate) fn hash_bytes(bytes: Vec<u8>) -> u64 {
+pub(crate) fn hash_bytes(bytes: &[u8]) -> u64 {
     unsafe { llvm::LLVMRustCoverageHashByteArray(bytes.as_ptr().cast(), bytes.len()) }
 }
 
@@ -348,6 +406,7 @@ pub(crate) fn save_cov_data_to_mod<'ll, 'tcx>(
 
 pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
+    covfun_section_name: &str,
     func_name_hash: u64,
     func_record_val: &'ll llvm::Value,
     is_used: bool,
@@ -363,20 +422,33 @@ pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
     let func_record_var_name =
         format!("__covrec_{:X}{}", func_name_hash, if is_used { "u" } else { "" });
     debug!("function record var name: {:?}", func_record_var_name);
-
-    let func_record_section_name = llvm::build_string(|s| unsafe {
-        llvm::LLVMRustCoverageWriteFuncSectionNameToString(cx.llmod, s);
-    })
-    .expect("Rust Coverage function record section name failed UTF-8 conversion");
-    debug!("function record section name: {:?}", func_record_section_name);
+    debug!("function record section name: {:?}", covfun_section_name);
 
     let llglobal = llvm::add_global(cx.llmod, cx.val_ty(func_record_val), &func_record_var_name);
     llvm::set_initializer(llglobal, func_record_val);
     llvm::set_global_constant(llglobal, true);
     llvm::set_linkage(llglobal, llvm::Linkage::LinkOnceODRLinkage);
     llvm::set_visibility(llglobal, llvm::Visibility::Hidden);
-    llvm::set_section(llglobal, &func_record_section_name);
+    llvm::set_section(llglobal, covfun_section_name);
     llvm::set_alignment(llglobal, VAR_ALIGN_BYTES);
     llvm::set_comdat(cx.llmod, llglobal, &func_record_var_name);
     cx.add_used_global(llglobal);
+}
+
+/// Returns the section name string to pass through to the linker when embedding
+/// per-function coverage information in the object file, according to the target
+/// platform's object file format.
+///
+/// LLVM's coverage tools read coverage mapping details from this section when
+/// producing coverage reports.
+///
+/// Typical values are:
+/// - `__llvm_covfun` on Linux
+/// - `__LLVM_COV,__llvm_covfun` on macOS (includes `__LLVM_COV,` segment prefix)
+/// - `.lcovfun$M` on Windows (includes `$M` sorting suffix)
+pub(crate) fn covfun_section_name(cx: &CodegenCx<'_, '_>) -> String {
+    llvm::build_string(|s| unsafe {
+        llvm::LLVMRustCoverageWriteFuncSectionNameToString(cx.llmod, s);
+    })
+    .expect("Rust Coverage function record section name failed UTF-8 conversion")
 }

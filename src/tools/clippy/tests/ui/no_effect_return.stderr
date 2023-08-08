@@ -1,0 +1,70 @@
+error: statement with no effect
+  --> $DIR/no_effect_return.rs:8:9
+   |
+LL |         0u32;
+   |         -^^^^
+   |         |
+   |         help: did you mean to return it?: `return`
+   |
+   = note: `-D clippy::no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> $DIR/no_effect_return.rs:15:9
+   |
+LL |         0u32;
+   |         -^^^^
+   |         |
+   |         help: did you mean to return it?: `return`
+
+error: statement with no effect
+  --> $DIR/no_effect_return.rs:23:9
+   |
+LL |         0i32 as C;
+   |         -^^^^^^^^^
+   |         |
+   |         help: did you mean to return it?: `return`
+
+error: statement with no effect
+  --> $DIR/no_effect_return.rs:31:9
+   |
+LL |         0u128;
+   |         ^^^^^^
+
+error: statement with no effect
+  --> $DIR/no_effect_return.rs:40:9
+   |
+LL |         0u16;
+   |         ^^^^^
+
+error: statement with no effect
+  --> $DIR/no_effect_return.rs:47:9
+   |
+LL |         [1u16];
+   |         -^^^^^^
+   |         |
+   |         help: did you mean to return it?: `return`
+
+error: statement with no effect
+  --> $DIR/no_effect_return.rs:54:9
+   |
+LL |         ControlFlow::Break::<()>(());
+   |         -^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         help: did you mean to return it?: `return`
+
+error: statement with no effect
+  --> $DIR/no_effect_return.rs:70:9
+   |
+LL |         ();
+   |         -^^
+   |         |
+   |         help: did you mean to return it?: `return`
+
+error: statement with no effect
+  --> $DIR/no_effect_return.rs:78:9
+   |
+LL |         ();
+   |         ^^^
+
+error: aborting due to 9 previous errors
+

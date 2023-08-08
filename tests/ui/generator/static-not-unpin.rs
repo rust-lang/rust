@@ -1,3 +1,6 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
+
 #![feature(generators)]
 
 // normalize-stderr-test "std::pin::Unpin" -> "std::marker::Unpin"

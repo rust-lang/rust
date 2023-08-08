@@ -1,0 +1,24 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/erase-error-in-mir-drop-tracking.rs:11:46
+   |
+LL |     fn connect(&'_ self) -> Self::Connecting<'a>;
+   |                                              ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn connect<'a>(&'_ self) -> Self::Connecting<'a>;
+   |               ++++
+help: consider introducing lifetime `'a` here
+   |
+LL | trait Client<'a> {
+   |             ++++
+
+error: `C` does not live long enough
+  --> $DIR/erase-error-in-mir-drop-tracking.rs:19:5
+   |
+LL |     async move { c.connect().await }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

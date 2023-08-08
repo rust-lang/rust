@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #[warn(clippy::cmp_owned)]
 #[allow(clippy::unnecessary_operation, clippy::no_effect, unused_must_use, clippy::eq_op)]

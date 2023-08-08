@@ -50,12 +50,12 @@ impl<'tcx> LateLintPass<'tcx> for PtrOffsetWithCast {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Check if the expressions is a ptr.offset or ptr.wrapping_offset method call
         let Some((receiver_expr, arg_expr, method)) = expr_as_ptr_offset_call(cx, expr) else {
-            return
+            return;
         };
 
         // Check if the argument to the method call is a cast from usize
         let Some(cast_lhs_expr) = expr_as_cast_from_usize(cx, arg_expr) else {
-            return
+            return;
         };
 
         let msg = format!("use of `{method}` with a `usize` casted to an `isize`");

@@ -1,0 +1,15 @@
+error[E0599]: no function or associated item named `has` found for trait `HasNot`
+  --> $DIR/issue-111312.rs:10:13
+   |
+LL |     HasNot::has();
+   |             ^^^ function or associated item not found in `HasNot`
+   |
+note: `Has` defines an item `has`
+  --> $DIR/issue-111312.rs:3:1
+   |
+LL | trait Has {
+   | ^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

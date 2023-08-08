@@ -1,6 +1,8 @@
-use clippy_utils::{diagnostics::span_lint_and_then, is_in_test_function};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_in_test_function;
 
-use rustc_hir::{intravisit::FnKind, Body, HirId};
+use rustc_hir::intravisit::FnKind;
+use rustc_hir::{Body, HirId};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
@@ -22,7 +24,7 @@ pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body:
                             if let Some(gen_span) = generics.span_for_param_suggestion() {
                                 diag.span_suggestion_with_style(
                                     gen_span,
-                                    "add a type paremeter",
+                                    "add a type parameter",
                                     format!(", {{ /* Generic name */ }}: {}", &param.name.ident().as_str()[5..]),
                                     rustc_errors::Applicability::HasPlaceholders,
                                     rustc_errors::SuggestionStyle::ShowAlways,
@@ -35,7 +37,7 @@ pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body:
                                         ident.span.ctxt(),
                                         ident.span.parent(),
                                     ),
-                                    "add a type paremeter",
+                                    "add a type parameter",
                                     format!("<{{ /* Generic name */ }}: {}>", &param.name.ident().as_str()[5..]),
                                     rustc_errors::Applicability::HasPlaceholders,
                                     rustc_errors::SuggestionStyle::ShowAlways,

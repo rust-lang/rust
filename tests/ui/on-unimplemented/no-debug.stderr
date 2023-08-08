@@ -9,7 +9,8 @@ LL |     println!("{:?} {:?}", Foo, Bar);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Foo` with `#[derive(Debug)]`
    |
-LL | #[derive(Debug)]
+LL + #[derive(Debug)]
+LL | struct Foo;
    |
 
 error[E0277]: `Bar` doesn't implement `Debug`

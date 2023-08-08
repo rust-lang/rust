@@ -42,6 +42,7 @@ fn test_named_thread() {
     all(target_os = "linux", target_env = "gnu"),
     target_os = "macos",
     target_os = "ios",
+    target_os = "tvos",
     target_os = "watchos"
 ))]
 #[test]
@@ -375,7 +376,9 @@ fn test_scoped_threads_nll() {
     // this is mostly a *compilation test* for this exact function:
     fn foo(x: &u8) {
         thread::scope(|s| {
-            s.spawn(|| drop(x));
+            s.spawn(|| match x {
+                _ => (),
+            });
         });
     }
     // let's also run it for good measure

@@ -1,5 +1,5 @@
 error: sub-expression diverges
-  --> $DIR/issue-7447.rs:23:15
+  --> $DIR/issue-7447.rs:26:15
    |
 LL |     byte_view(panic!());
    |               ^^^^^^^^
@@ -8,7 +8,7 @@ LL |     byte_view(panic!());
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: sub-expression diverges
-  --> $DIR/issue-7447.rs:24:19
+  --> $DIR/issue-7447.rs:27:19
    |
 LL |     group_entries(panic!());
    |                   ^^^^^^^^

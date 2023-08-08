@@ -1,5 +1,4 @@
-// unit-test
-// compile-flags: -O
+// unit-test: ConstProp
 
 // EMIT_MIR mutable_variable.main.ConstProp.diff
 fn main() {

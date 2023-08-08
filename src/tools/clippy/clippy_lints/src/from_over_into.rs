@@ -10,7 +10,8 @@ use rustc_hir::{
     TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::{hir::nested_filter::OnlyBodies, ty};
+use rustc_middle::hir::nested_filter::OnlyBodies;
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, Symbol};
@@ -76,9 +77,10 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && let Some(into_trait_seg) = hir_trait_ref.path.segments.last()
             // `impl Into<target_ty> for self_ty`
             && let Some(GenericArgs { args: [GenericArg::Type(target_ty)], .. }) = into_trait_seg.args
-            && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id).map(ty::EarlyBinder::subst_identity)
+            && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
+                                                  .map(ty::EarlyBinder::instantiate_identity)
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
-            && !matches!(middle_trait_ref.substs.type_at(1).kind(), ty::Alias(ty::Opaque, _))
+            && !matches!(middle_trait_ref.args.type_at(1).kind(), ty::Alias(ty::Opaque, _))
         {
             span_lint_and_then(
                 cx,
@@ -94,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
                         );
                     }
 
-                    let message = format!("replace the `Into` implentation with `From<{}>`", middle_trait_ref.self_ty());
+                    let message = format!("replace the `Into` implementation with `From<{}>`", middle_trait_ref.self_ty());
                     if let Some(suggestions) = convert_to_from(cx, into_trait_seg, target_ty, self_ty, impl_item_ref) {
                         diag.multipart_suggestion(message, suggestions, Applicability::MachineApplicable);
                     } else {
@@ -134,9 +136,10 @@ impl<'a, 'tcx> Visitor<'tcx> for SelfFinder<'a, 'tcx> {
                 kw::SelfUpper => self.upper.push(segment.ident.span),
                 _ => continue,
             }
+
+            self.invalid |= segment.ident.span.from_expansion();
         }
 
-        self.invalid |= path.span.from_expansion();
         if !self.invalid {
             walk_path(self, path);
         }
@@ -156,11 +159,20 @@ fn convert_to_from(
     self_ty: &Ty<'_>,
     impl_item_ref: &ImplItemRef,
 ) -> Option<Vec<(Span, String)>> {
+    if !target_ty.find_self_aliases().is_empty() {
+        // It's tricky to expand self-aliases correctly, we'll ignore it to not cause a
+        // bad suggestion/fix.
+        return None;
+    }
     let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
-    let ImplItemKind::Fn(ref sig, body_id) = impl_item.kind else { return None };
+    let ImplItemKind::Fn(ref sig, body_id) = impl_item.kind else {
+        return None;
+    };
     let body = cx.tcx.hir().body(body_id);
     let [input] = body.params else { return None };
-    let PatKind::Binding(.., self_ident, None) = input.pat.kind else { return None };
+    let PatKind::Binding(.., self_ident, None) = input.pat.kind else {
+        return None;
+    };
 
     let from = snippet_opt(cx, self_ty.span)?;
     let into = snippet_opt(cx, target_ty.span)?;

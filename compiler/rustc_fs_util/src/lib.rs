@@ -1,10 +1,11 @@
+#![feature(absolute_path)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
 use std::ffi::CString;
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::{absolute, Path, PathBuf};
 
 // Unfortunately, on windows, it looks like msvcrt.dll is silently translating
 // verbatim paths under the hood to non-verbatim paths! This manifests itself as
@@ -90,4 +91,9 @@ pub fn path_to_c_string(p: &Path) -> CString {
 #[cfg(windows)]
 pub fn path_to_c_string(p: &Path) -> CString {
     CString::new(p.to_str().unwrap()).unwrap()
+}
+
+#[inline]
+pub fn try_canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
+    fs::canonicalize(&path).or_else(|_| absolute(&path))
 }

@@ -1,6 +1,6 @@
 // @has "$.index[*][?(@.name=='Union')].visibility" \"public\"
-// @has "$.index[*][?(@.name=='Union')].kind" \"union\"
-// @!has "$.index[*][?(@.name=='Union')].inner.struct_type"
+// @has "$.index[*][?(@.name=='Union')].inner.union"
+// @!has "$.index[*][?(@.name=='Union')].inner.union.struct_type"
 // @set Union = "$.index[*][?(@.name=='Union')].id"
 pub union Union {
     int: i32,
@@ -8,8 +8,8 @@ pub union Union {
 }
 
 
-// @is "$.index[*][?(@.name=='make_int_union')].inner.decl.output.kind" '"resolved_path"'
-// @is "$.index[*][?(@.name=='make_int_union')].inner.decl.output.inner.id" $Union
+// @has "$.index[*][?(@.name=='make_int_union')].inner.function.decl.output.resolved_path"
+// @is "$.index[*][?(@.name=='make_int_union')].inner.function.decl.output.resolved_path.id" $Union
 pub fn make_int_union(int: i32) -> Union {
     Union { int }
 }

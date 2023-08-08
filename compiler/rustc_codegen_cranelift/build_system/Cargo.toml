@@ -1,0 +1,13 @@
+[package]
+name = "y"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "y"
+path = "main.rs"
+
+[features]
+unstable-features = [] # for rust-analyzer
+
+# Do not add any dependencies

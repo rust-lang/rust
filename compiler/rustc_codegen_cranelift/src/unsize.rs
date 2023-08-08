@@ -1,6 +1,6 @@
-//! Codegen of the [`PointerCast::Unsize`] operation.
+//! Codegen of the [`PointerCoercion::Unsize`] operation.
 //!
-//! [`PointerCast::Unsize`]: `rustc_middle::ty::adjustment::PointerCast::Unsize`
+//! [`PointerCoercion::Unsize`]: `rustc_middle::ty::adjustment::PointerCoercion::Unsize`
 
 use crate::prelude::*;
 
@@ -28,9 +28,7 @@ pub(crate) fn unsized_info<'tcx>(
         (
             &ty::Dynamic(ref data_a, _, src_dyn_kind),
             &ty::Dynamic(ref data_b, _, target_dyn_kind),
-        ) => {
-            assert_eq!(src_dyn_kind, target_dyn_kind);
-
+        ) if src_dyn_kind == target_dyn_kind => {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
@@ -55,7 +53,7 @@ pub(crate) fn unsized_info<'tcx>(
                 old_info
             }
         }
-        (_, &ty::Dynamic(ref data, ..)) => crate::vtable::get_vtable(fx, source, data.principal()),
+        (_, ty::Dynamic(data, ..)) => crate::vtable::get_vtable(fx, source, data.principal()),
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
 }
@@ -148,9 +146,9 @@ pub(crate) fn coerce_unsized_into<'tcx>(
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            for i in 0..def_a.variant(VariantIdx::new(0)).fields.len() {
-                let src_f = src.value_field(fx, mir::Field::new(i));
-                let dst_f = dst.place_field(fx, mir::Field::new(i));
+            for i in 0..def_a.variant(FIRST_VARIANT).fields.len() {
+                let src_f = src.value_field(fx, FieldIdx::new(i));
+                let dst_f = dst.place_field(fx, FieldIdx::new(i));
 
                 if dst_f.layout().is_zst() {
                     continue;

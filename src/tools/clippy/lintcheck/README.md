@@ -16,7 +16,7 @@ or
 cargo lintcheck
 ```
 
-By default the logs will be saved into
+By default, the logs will be saved into
 `lintcheck-logs/lintcheck_crates_logs.txt`.
 
 You can set a custom sources.toml by adding `--crates-toml custom.toml` or using
@@ -24,6 +24,15 @@ You can set a custom sources.toml by adding `--crates-toml custom.toml` or using
 the repo root.
 
 The results will then be saved to `lintcheck-logs/custom_logs.toml`.
+
+The `custom.toml` file may be built using <https://crates.io> recently most
+downloaded crates by using the `popular-crates` binary from the `lintcheck`
+directory. For example, to retrieve the 100 recently most downloaded crates:
+
+```
+cargo run --release --bin popular-crates -- -n 100 custom.toml
+```
+
 
 ### Configuring the Crate Sources
 
@@ -70,8 +79,10 @@ is explicitly specified in the options.
 
 ### Fix mode
 You can run `cargo lintcheck --fix` which will run Clippy with `--fix` and
-print a warning if Clippy's suggestions fail to apply (if the resulting code does not build).  
+print a warning if Clippy's suggestions fail to apply (if the resulting code does not build). 
 This lets us spot bad suggestions or false positives automatically in some cases.  
+
+> Note: Fix mode implies `--all-targets`, so it can fix as much code as it can.
 
 Please note that the target dir should be cleaned afterwards since clippy will modify
 the downloaded sources which can lead to unexpected results when running lintcheck again afterwards.

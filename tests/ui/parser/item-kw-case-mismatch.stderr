@@ -1,82 +1,82 @@
-error: keyword `use` is written in a wrong case
+error: keyword `use` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:7:1
    |
 LL | Use std::ptr::read;
    | ^^^ help: write it in the correct case (notice the capitalization): `use`
 
-error: keyword `use` is written in a wrong case
+error: keyword `use` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:8:1
    |
 LL | USE std::ptr::write;
    | ^^^ help: write it in the correct case: `use`
 
-error: keyword `fn` is written in a wrong case
+error: keyword `fn` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:10:7
    |
 LL | async Fn _a() {}
    |       ^^ help: write it in the correct case (notice the capitalization): `fn`
 
-error: keyword `fn` is written in a wrong case
+error: keyword `fn` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:13:1
    |
 LL | Fn _b() {}
    | ^^ help: write it in the correct case (notice the capitalization): `fn`
 
-error: keyword `async` is written in a wrong case
+error: keyword `async` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:16:1
    |
 LL | aSYNC fN _c() {}
    | ^^^^^ help: write it in the correct case: `async`
 
-error: keyword `fn` is written in a wrong case
+error: keyword `fn` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:16:7
    |
 LL | aSYNC fN _c() {}
    |       ^^ help: write it in the correct case: `fn`
 
-error: keyword `async` is written in a wrong case
+error: keyword `async` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:20:1
    |
 LL | Async fn _d() {}
    | ^^^^^ help: write it in the correct case: `async`
 
-error: keyword `const` is written in a wrong case
+error: keyword `const` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:23:1
    |
 LL | CONST UNSAFE FN _e() {}
    | ^^^^^ help: write it in the correct case: `const`
 
-error: keyword `unsafe` is written in a wrong case
+error: keyword `unsafe` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:23:7
    |
 LL | CONST UNSAFE FN _e() {}
    |       ^^^^^^ help: write it in the correct case: `unsafe`
 
-error: keyword `fn` is written in a wrong case
+error: keyword `fn` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:23:14
    |
 LL | CONST UNSAFE FN _e() {}
    |              ^^ help: write it in the correct case: `fn`
 
-error: keyword `unsafe` is written in a wrong case
+error: keyword `unsafe` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:28:1
    |
 LL | unSAFE EXTern fn _f() {}
    | ^^^^^^ help: write it in the correct case: `unsafe`
 
-error: keyword `extern` is written in a wrong case
+error: keyword `extern` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:28:8
    |
 LL | unSAFE EXTern fn _f() {}
    |        ^^^^^^ help: write it in the correct case: `extern`
 
-error: keyword `extern` is written in a wrong case
+error: keyword `extern` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:32:1
    |
 LL | EXTERN "C" FN _g() {}
    | ^^^^^^ help: write it in the correct case: `extern`
 
-error: keyword `fn` is written in a wrong case
+error: keyword `fn` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:32:12
    |
 LL | EXTERN "C" FN _g() {}

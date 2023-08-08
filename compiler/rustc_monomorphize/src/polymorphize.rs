@@ -11,12 +11,11 @@ use rustc_middle::mir::{
     visit::{TyContext, Visitor},
     Constant, ConstantKind, Local, LocalDecl, Location,
 };
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self,
-    query::Providers,
-    subst::SubstsRef,
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor},
-    Const, Ty, TyCtxt, UnusedGenericParams,
+    Const, GenericArgsRef, Ty, TyCtxt, UnusedGenericParams,
 };
 use rustc_span::symbol::sym;
 use std::ops::ControlFlow;
@@ -36,6 +35,8 @@ fn unused_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
 ) -> UnusedGenericParams {
+    assert!(instance.def_id().is_local());
+
     if !tcx.sess.opts.unstable_opts.polymorphize {
         // If polymorphization disabled, then all parameters are used.
         return UnusedGenericParams::new_all_used();
@@ -100,13 +101,6 @@ fn should_polymorphize<'tcx>(
         return false;
     }
 
-    // Polymorphization results are stored in cross-crate metadata only when there are unused
-    // parameters, so assume that non-local items must have only used parameters (else this query
-    // would not be invoked, and the cross-crate metadata used instead).
-    if !def_id.is_local() {
-        return false;
-    }
-
     // Foreign items have no bodies to analyze.
     if tcx.is_foreign_item(def_id) {
         return false;
@@ -149,7 +143,7 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias
+        | DefKind::TyAlias { .. }
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy
@@ -168,7 +162,6 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
@@ -235,12 +228,12 @@ struct MarkUsedGenericParams<'a, 'tcx> {
 impl<'a, 'tcx> MarkUsedGenericParams<'a, 'tcx> {
     /// Invoke `unused_generic_params` on a body contained within the current item (e.g.
     /// a closure, generator or constant).
-    #[instrument(level = "debug", skip(self, def_id, substs))]
-    fn visit_child_body(&mut self, def_id: DefId, substs: SubstsRef<'tcx>) {
-        let instance = ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id));
+    #[instrument(level = "debug", skip(self, def_id, args))]
+    fn visit_child_body(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) {
+        let instance = ty::InstanceDef::Item(def_id);
         let unused = self.tcx.unused_generic_params(instance);
         debug!(?self.unused_parameters, ?unused);
-        for (i, arg) in substs.iter().enumerate() {
+        for (i, arg) in args.iter().enumerate() {
             let i = i.try_into().unwrap();
             if unused.is_used(i) {
                 arg.visit_with(self);
@@ -258,9 +251,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
             if matches!(def_kind, DefKind::Closure | DefKind::Generator) {
                 // Skip visiting the closure/generator that is currently being processed. This only
                 // happens because the first argument to the closure is a reference to itself and
-                // that will call `visit_substs`, resulting in each generic parameter captured being
+                // that will call `visit_args`, resulting in each generic parameter captured being
                 // considered used by default.
-                debug!("skipping closure substs");
+                debug!("skipping closure args");
                 return;
             }
         }
@@ -273,14 +266,14 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
             ConstantKind::Ty(c) => {
                 c.visit_with(self);
             }
-            ConstantKind::Unevaluated(mir::UnevaluatedConst { def, substs: _, promoted }, ty) => {
+            ConstantKind::Unevaluated(mir::UnevaluatedConst { def, args: _, promoted }, ty) => {
                 // Avoid considering `T` unused when constants are of the form:
                 //   `<Self as Foo<T>>::foo::promoted[p]`
                 if let Some(p) = promoted {
-                    if self.def_id == def.did && !self.tcx.generics_of(def.did).has_self {
-                        // If there is a promoted, don't look at the substs - since it will always contain
+                    if self.def_id == def && !self.tcx.generics_of(def).has_self {
+                        // If there is a promoted, don't look at the args - since it will always contain
                         // the generic parameters, instead, traverse the promoted MIR.
-                        let promoted = self.tcx.promoted_mir(def.did);
+                        let promoted = self.tcx.promoted_mir(def);
                         self.visit_body(&promoted[p]);
                     }
                 }
@@ -309,10 +302,10 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkUsedGenericParams<'a, 'tcx> {
                 self.unused_parameters.mark_used(param.index);
                 ControlFlow::Continue(())
             }
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs })
-                if matches!(self.tcx.def_kind(def.did), DefKind::AnonConst) =>
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args })
+                if matches!(self.tcx.def_kind(def), DefKind::AnonConst) =>
             {
-                self.visit_child_body(def.did, substs);
+                self.visit_child_body(def, args);
                 ControlFlow::Continue(())
             }
             _ => c.super_visit_with(self),
@@ -326,7 +319,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkUsedGenericParams<'a, 'tcx> {
         }
 
         match *ty.kind() {
-            ty::Closure(def_id, substs) | ty::Generator(def_id, substs, ..) => {
+            ty::Closure(def_id, args) | ty::Generator(def_id, args, ..) => {
                 debug!(?def_id);
                 // Avoid cycle errors with generators.
                 if def_id == self.def_id {
@@ -335,7 +328,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkUsedGenericParams<'a, 'tcx> {
 
                 // Consider any generic parameters used by any closures/generators as used in the
                 // parent.
-                self.visit_child_body(def_id, substs);
+                self.visit_child_body(def_id, args);
                 ControlFlow::Continue(())
             }
             ty::Param(param) => {

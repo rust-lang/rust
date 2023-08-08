@@ -1,7 +1,7 @@
 //! Completion tests for item list position.
 use expect_test::{expect, Expect};
 
-use crate::tests::{check_edit, completion_list, BASE_ITEMS_FIXTURE};
+use crate::tests::{check_edit, check_empty, completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"));
@@ -291,6 +291,58 @@ impl Test for () {
             ma makro!(…)          macro_rules! makro
             md module
             ta type Type1 =
+            kw crate::
+            kw self::
+        "#]],
+    );
+}
+
+#[test]
+fn in_trait_impl_no_unstable_item_on_stable() {
+    check_empty(
+        r#"
+trait Test {
+    #[unstable]
+    type Type;
+    #[unstable]
+    const CONST: ();
+    #[unstable]
+    fn function();
+}
+
+impl Test for () {
+    $0
+}
+"#,
+        expect![[r#"
+            kw crate::
+            kw self::
+        "#]],
+    );
+}
+
+#[test]
+fn in_trait_impl_unstable_item_on_nightly() {
+    check_empty(
+        r#"
+//- toolchain:nightly
+trait Test {
+    #[unstable]
+    type Type;
+    #[unstable]
+    const CONST: ();
+    #[unstable]
+    fn function();
+}
+
+impl Test for () {
+    $0
+}
+"#,
+        expect![[r#"
+            ct const CONST: () =
+            fn fn function()
+            ta type Type =
             kw crate::
             kw self::
         "#]],

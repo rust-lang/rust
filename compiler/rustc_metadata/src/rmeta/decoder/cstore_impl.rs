@@ -13,14 +13,15 @@ use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
+use rustc_middle::query::LocalCrate;
+use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::query::{ExternProviders, Providers};
-use rustc_middle::ty::{self, TyCtxt, Visibility};
-use rustc_session::cstore::{CrateSource, CrateStore};
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_session::cstore::CrateStore;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
-use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::{kw, Symbol};
+use rustc_span::Span;
 
 use rustc_data_structures::sync::Lrc;
 use std::any::Any;
@@ -113,8 +114,8 @@ macro_rules! provide_one {
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => $compute:block) => {
         fn $name<'tcx>(
             $tcx: TyCtxt<'tcx>,
-            def_id_arg: ty::query::query_keys::$name<'tcx>,
-        ) -> ty::query::query_provided::$name<'tcx> {
+            def_id_arg: rustc_middle::query::queries::$name::Key<'tcx>,
+        ) -> rustc_middle::query::queries::$name::ProvidedValue<'tcx> {
             let _prof_timer =
                 $tcx.prof.generic_activity(concat!("metadata_decode_entry_", stringify!($name)));
 
@@ -202,7 +203,7 @@ impl IntoArgs for (CrateNum, SimplifiedType) {
 }
 
 provide! { tcx, def_id, other, cdata,
-    explicit_item_bounds => { table_defaulted_array }
+    explicit_item_bounds => { cdata.get_explicit_item_bounds(def_id.index, tcx) }
     explicit_predicates_of => { table }
     generics_of => { table }
     inferred_outlives_of => { table_defaulted_array }
@@ -217,6 +218,7 @@ provide! { tcx, def_id, other, cdata,
     thir_abstract_const => { table }
     optimized_mir => { table }
     mir_for_ctfe => { table }
+    closure_saved_names_of_captured_variables => { table }
     mir_generator_witnesses => { table }
     promoted_mir => { table }
     def_span => { table }
@@ -226,11 +228,11 @@ provide! { tcx, def_id, other, cdata,
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
-    unused_generic_params => { table }
+    unused_generic_params => { cdata.root.tables.unused_generic_params.get(cdata, def_id.index) }
     opt_def_kind => { table_direct }
     impl_parent => { table }
     impl_polarity => { table_direct }
-    impl_defaultness => { table_direct }
+    defaultness => { table_direct }
     constness => { table_direct }
     coerce_unsized_info => { table }
     mir_const_qualif => { table }
@@ -244,6 +246,7 @@ provide! { tcx, def_id, other, cdata,
         debug_assert_eq!(tcx.def_kind(def_id), DefKind::OpaqueTy);
         cdata.root.tables.is_type_alias_impl_trait.get(cdata, def_id.index)
     }
+    assumed_wf_types_for_rpitit => { table }
     collect_return_position_impl_trait_in_trait_tys => {
         Ok(cdata
             .root
@@ -252,9 +255,21 @@ provide! { tcx, def_id, other, cdata,
             .get(cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
-     }
+    }
+    implied_predicates_of => {
+        cdata
+            .root
+            .tables
+            .implied_predicates_of
+            .get(cdata, def_id.index)
+            .map(|lazy| lazy.decode((cdata, tcx)))
+            .unwrap_or_else(|| {
+                debug_assert_eq!(tcx.def_kind(def_id), DefKind::Trait);
+                tcx.super_predicates_of(def_id)
+            })
+    }
 
-    associated_items_for_impl_trait_in_trait => { table_defaulted_array }
+    associated_types_for_impl_traits_in_associated_fn => { table_defaulted_array }
 
     visibility => { cdata.get_visibility(def_id.index) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
@@ -263,17 +278,22 @@ provide! { tcx, def_id, other, cdata,
         tcx.calculate_dtor(def_id, |_,_| Ok(()))
     }
     associated_item_def_ids => {
-        tcx.arena.alloc_from_iter(cdata.get_associated_item_def_ids(def_id.index, tcx.sess))
+        tcx.arena.alloc_from_iter(cdata.get_associated_item_or_field_def_ids(def_id.index))
     }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
-    is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
-    is_private_dep => { cdata.private_dep }
+    is_private_dep => {
+        // Parallel compiler needs to synchronize type checking and linting (which use this flag)
+        // so that they happen strictly crate loading. Otherwise, the full list of available
+        // impls aren't loaded yet.
+        use std::sync::atomic::Ordering;
+        cdata.private_dep.load(Ordering::Acquire)
+    }
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
@@ -305,13 +325,13 @@ provide! { tcx, def_id, other, cdata,
     }
     native_libraries => { cdata.get_native_libraries(tcx.sess).collect() }
     foreign_modules => { cdata.get_foreign_modules(tcx.sess).map(|m| (m.def_id, m)).collect() }
-    crate_hash => { cdata.root.hash }
+    crate_hash => { cdata.root.header.hash }
     crate_host_hash => { cdata.host_hash }
-    crate_name => { cdata.root.name }
+    crate_name => { cdata.root.header.name }
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
-    traits_in_crate => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
+    traits => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
     trait_impls_in_crate => { tcx.arena.alloc_from_iter(cdata.get_trait_impls()) }
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
     crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
@@ -327,6 +347,7 @@ provide! { tcx, def_id, other, cdata,
     stability_implications => {
         cdata.get_stability_implications(tcx).iter().copied().collect()
     }
+    stripped_cfg_items => { cdata.get_stripped_cfg_items(cdata.cnum, tcx) }
     is_intrinsic => { cdata.get_is_intrinsic(def_id.index) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
     diagnostic_items => { cdata.get_diagnostic_items() }
@@ -367,10 +388,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     *providers = Providers {
         allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
         alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
-        is_private_dep: |_tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            false
-        },
+        is_private_dep: |_tcx, LocalCrate| false,
         native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
@@ -386,14 +404,8 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         .contains(&id)
                 })
         },
-        native_libraries: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            native_libs::collect(tcx)
-        },
-        foreign_modules: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            foreign_modules::collect(tcx).into_iter().map(|m| (m.def_id, m)).collect()
-        },
+        native_libraries: native_libs::collect,
+        foreign_modules: foreign_modules::collect,
 
         // Returns a map from a sufficiently visible external item (i.e., an
         // external item that is visible from at least one local module) to a
@@ -489,53 +501,25 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         },
 
         dependency_formats: |tcx, ()| Lrc::new(crate::dependency_format::calculate(tcx)),
-        has_global_allocator: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            CStore::from_tcx(tcx).has_global_allocator()
-        },
-        has_alloc_error_handler: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            CStore::from_tcx(tcx).has_alloc_error_handler()
-        },
+        has_global_allocator: |tcx, LocalCrate| CStore::from_tcx(tcx).has_global_allocator(),
+        has_alloc_error_handler: |tcx, LocalCrate| CStore::from_tcx(tcx).has_alloc_error_handler(),
         postorder_cnums: |tcx, ()| {
             tcx.arena
                 .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
         },
-        crates: |tcx, ()| tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).crates_untracked()),
+        crates: |tcx, ()| {
+            // The list of loaded crates is now frozen in query cache,
+            // so make sure cstore is not mutably accessed from here on.
+            tcx.untracked().cstore.leak();
+            tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
+        },
         ..*providers
     };
 }
 
 impl CStore {
-    pub fn struct_field_names_untracked<'a>(
-        &'a self,
-        def: DefId,
-        sess: &'a Session,
-    ) -> impl Iterator<Item = Spanned<Symbol>> + 'a {
-        self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
-    }
-
-    pub fn struct_field_visibilities_untracked(
-        &self,
-        def: DefId,
-    ) -> impl Iterator<Item = Visibility<DefId>> + '_ {
-        self.get_crate_data(def.krate).get_struct_field_visibilities(def.index)
-    }
-
     pub fn ctor_untracked(&self, def: DefId) -> Option<(CtorKind, DefId)> {
         self.get_crate_data(def.krate).get_ctor(def.index)
-    }
-
-    pub fn visibility_untracked(&self, def: DefId) -> Visibility<DefId> {
-        self.get_crate_data(def.krate).get_visibility(def.index)
-    }
-
-    pub fn module_children_untracked<'a>(
-        &'a self,
-        def_id: DefId,
-        sess: &'a Session,
-    ) -> impl Iterator<Item = ModChild> + 'a {
-        self.get_crate_data(def_id.krate).get_module_children(def_id.index, sess)
     }
 
     pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
@@ -566,32 +550,16 @@ impl CStore {
         )
     }
 
-    pub fn fn_has_self_parameter_untracked(&self, def: DefId, sess: &Session) -> bool {
-        self.get_crate_data(def.krate).get_fn_has_self_parameter(def.index, sess)
-    }
-
-    pub fn crate_source_untracked(&self, cnum: CrateNum) -> Lrc<CrateSource> {
-        self.get_crate_data(cnum).source.clone()
-    }
-
-    pub fn get_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {
+    pub fn def_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {
         self.get_crate_data(def_id.krate).get_span(def_id.index, sess)
     }
 
-    pub fn def_kind(&self, def: DefId) -> DefKind {
+    pub fn def_kind_untracked(&self, def: DefId) -> DefKind {
         self.get_crate_data(def.krate).def_kind(def.index)
     }
 
-    pub fn crates_untracked(&self) -> impl Iterator<Item = CrateNum> + '_ {
-        self.iter_crate_data().map(|(cnum, _)| cnum)
-    }
-
-    pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
-        self.get_crate_data(def_id.krate).get_generics(def_id.index, sess).own_counts().lifetimes
-    }
-
-    pub fn module_expansion_untracked(&self, def_id: DefId, sess: &Session) -> ExpnId {
-        self.get_crate_data(def_id.krate).module_expansion(def_id.index, sess)
+    pub fn expn_that_defined_untracked(&self, def_id: DefId, sess: &Session) -> ExpnId {
+        self.get_crate_data(def_id.krate).get_expn_that_defined(def_id.index, sess)
     }
 
     /// Only public-facing way to traverse all the definitions in a non-local crate.
@@ -599,14 +567,6 @@ impl CStore {
     /// See <https://github.com/rust-lang/rust/pull/85889> for context.
     pub fn num_def_ids_untracked(&self, cnum: CrateNum) -> usize {
         self.get_crate_data(cnum).num_def_ids()
-    }
-
-    pub fn item_attrs_untracked<'a>(
-        &'a self,
-        def_id: DefId,
-        sess: &'a Session,
-    ) -> impl Iterator<Item = ast::Attribute> + 'a {
-        self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess)
     }
 
     pub fn get_proc_macro_quoted_span_untracked(
@@ -628,7 +588,7 @@ impl CrateStore for CStore {
     }
 
     fn crate_name(&self, cnum: CrateNum) -> Symbol {
-        self.get_crate_data(cnum).root.name
+        self.get_crate_data(cnum).root.header.name
     }
 
     fn stable_crate_id(&self, cnum: CrateNum) -> StableCrateId {
@@ -636,7 +596,10 @@ impl CrateStore for CStore {
     }
 
     fn stable_crate_id_to_crate_num(&self, stable_crate_id: StableCrateId) -> CrateNum {
-        self.stable_crate_ids[&stable_crate_id]
+        *self
+            .stable_crate_ids
+            .get(&stable_crate_id)
+            .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"))
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the

@@ -1,26 +1,26 @@
 // MIR for `a` after Inline
 
 fn a(_1: &mut [T]) -> &mut [T] {
-    debug x => _1;                       // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+0:13: +0:14
-    let mut _0: &mut [T];                // return place in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+0:29: +0:37
-    let mut _2: &mut [T];                // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-    let mut _3: &mut [T];                // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-    let mut _4: &mut [T];                // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-    scope 1 (inlined <[T] as AsMut<[T]>>::as_mut) { // at $DIR/issue_58867_inline_as_ref_as_mut.rs:3:7: 3:15
-        debug self => _4;                // in scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+    debug x => _1;
+    let mut _0: &mut [T];
+    let mut _2: &mut [T];
+    let mut _3: &mut [T];
+    let mut _4: &mut [T];
+    scope 1 (inlined <[T] as AsMut<[T]>>::as_mut) {
+        debug self => _4;
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        StorageLive(_3);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        StorageLive(_4);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        _4 = &mut (*_1);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        _3 = _4;                         // scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
-        _2 = &mut (*_3);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        StorageDead(_4);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:14: +1:15
-        _0 = &mut (*_2);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        StorageDead(_3);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+2:1: +2:2
-        StorageDead(_2);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+2:1: +2:2
-        return;                          // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+2:2: +2:2
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = &mut (*_1);
+        _3 = _4;
+        _2 = &mut (*_3);
+        StorageDead(_4);
+        _0 = &mut (*_2);
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
     }
 }

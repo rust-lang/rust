@@ -6,12 +6,13 @@
 // @set inner_id = "$.index[*][?(@.name=='inner')].id"
 pub mod inner {
     // @set public_id = "$.index[*][?(@.name=='Public')].id"
-    // @ismany "$.index[*][?(@.name=='inner')].inner.items[*]" $public_id
+    // @ismany "$.index[*][?(@.name=='inner')].inner.module.items[*]" $public_id
     pub struct Public;
 }
-// @set import_id = "$.index[*][?(@.inner.name=='NewName')].id"
-// @!has "$.index[*][?(@.inner.name=='Public')]"
-// @is "$.index[*][?(@.inner.name=='NewName')].inner.source" \"inner::Public\"
+// @set import_id = "$.index[*][?(@.docs=='Re-export')].id"
+// @!has "$.index[*].inner[?(@.import.name=='Public')]"
+// @is "$.index[*].inner[?(@.import.name=='NewName')].import.source" \"inner::Public\"
+/// Re-export
 pub use inner::Public as NewName;
 
-// @ismany "$.index[*][?(@.name=='rename_public')].inner.items[*]" $inner_id $import_id
+// @ismany "$.index[*][?(@.name=='rename_public')].inner.module.items[*]" $inner_id $import_id

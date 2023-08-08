@@ -2,8 +2,8 @@ use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def::{CtorKind, CtorOf};
-use rustc_index::vec::Idx;
-use rustc_middle::ty::ParameterizedOverTcx;
+use rustc_index::Idx;
+use rustc_middle::ty::{ParameterizedOverTcx, UnusedGenericParams};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::Encoder as _;
 use rustc_span::hygiene::MacroKind;
@@ -47,6 +47,16 @@ impl<T> IsDefault for LazyArray<T> {
 impl IsDefault for DefPathHash {
     fn is_default(&self) -> bool {
         self.0 == Fingerprint::ZERO
+    }
+}
+
+impl IsDefault for UnusedGenericParams {
+    fn is_default(&self) -> bool {
+        // UnusedGenericParams encodes the *un*usedness as a bitset.
+        // This means that 0 corresponds to all bits used, which is indeed the default.
+        let is_default = self.bits() == 0;
+        debug_assert_eq!(is_default, self.all_used());
+        is_default
     }
 }
 
@@ -116,7 +126,8 @@ fixed_size_enum! {
         ( Enum                                     )
         ( Variant                                  )
         ( Trait                                    )
-        ( TyAlias                                  )
+        ( TyAlias { lazy: false }                  )
+        ( TyAlias { lazy: true }                   )
         ( ForeignTy                                )
         ( TraitAlias                               )
         ( AssocTy                                  )
@@ -132,7 +143,6 @@ fixed_size_enum! {
         ( AnonConst                                )
         ( InlineConst                              )
         ( OpaqueTy                                 )
-        ( ImplTraitPlaceholder                     )
         ( Field                                    )
         ( LifetimeParam                            )
         ( GlobalAsm                                )
@@ -271,6 +281,21 @@ impl FixedSizeEncoding for bool {
     }
 }
 
+impl FixedSizeEncoding for UnusedGenericParams {
+    type ByteArray = [u8; 4];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 4]) -> Self {
+        let x: u32 = u32::from_bytes(b);
+        UnusedGenericParams::from_bits(x)
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 4]) {
+        self.bits().write_to_bytes(b);
+    }
+}
+
 // NOTE(eddyb) there could be an impl for `usize`, which would enable a more
 // generic `LazyValue<T>` impl, but in the general case we might not need / want
 // to fit every `usize` in `u32`.
@@ -299,7 +324,7 @@ impl<T> FixedSizeEncoding for Option<LazyValue<T>> {
 impl<T> LazyArray<T> {
     #[inline]
     fn write_to_bytes_impl(self, b: &mut [u8; 8]) {
-        let ([position_bytes, meta_bytes],[])= b.as_chunks_mut::<4>() else { panic!() };
+        let ([position_bytes, meta_bytes], []) = b.as_chunks_mut::<4>() else { panic!() };
 
         let position = self.position.get();
         let position: u32 = position.try_into().unwrap();
@@ -322,7 +347,7 @@ impl<T> FixedSizeEncoding for LazyArray<T> {
 
     #[inline]
     fn from_bytes(b: &[u8; 8]) -> Self {
-        let ([position_bytes, meta_bytes],[])= b.as_chunks::<4>() else { panic!() };
+        let ([position_bytes, meta_bytes], []) = b.as_chunks::<4>() else { panic!() };
         if *meta_bytes == [0; 4] {
             return Default::default();
         }
@@ -341,7 +366,7 @@ impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
 
     #[inline]
     fn from_bytes(b: &[u8; 8]) -> Self {
-        let ([position_bytes, meta_bytes],[])= b.as_chunks::<4>() else { panic!() };
+        let ([position_bytes, meta_bytes], []) = b.as_chunks::<4>() else { panic!() };
         LazyArray::from_bytes_impl(position_bytes, meta_bytes)
     }
 
@@ -388,8 +413,8 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
             // > Space requirements could perhaps be optimized by using the HAMT `popcnt`
             // > trick (i.e. divide things into buckets of 32 or 64 items and then
             // > store bit-masks of which item in each bucket is actually serialized).
-            self.blocks.ensure_contains_elem(i, || [0; N]);
-            value.write_to_bytes(&mut self.blocks[i]);
+            let block = self.blocks.ensure_contains_elem(i, || [0; N]);
+            value.write_to_bytes(block);
         }
     }
 
@@ -414,7 +439,7 @@ where
     /// Given the metadata, extract out the value at a particular index (if any).
     #[inline(never)]
     pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
-        debug!("LazyTable::lookup: index={:?} len={:?}", i, self.encoded_size);
+        trace!("LazyTable::lookup: index={:?} len={:?}", i, self.encoded_size);
 
         let start = self.position.get();
         let bytes = &metadata.blob()[start..start + self.encoded_size];

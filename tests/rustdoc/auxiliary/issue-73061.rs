@@ -1,6 +1,6 @@
 //edition:2018
 
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 pub trait Foo {
     type X: std::future::Future<Output = ()>;

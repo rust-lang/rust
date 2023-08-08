@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![allow(unused)]
 #![warn(clippy::seek_to_start_instead_of_rewind)]
 

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::unit_arg)]
 #![allow(unused_must_use, unused_variables)]
 #![allow(clippy::no_effect, clippy::uninlined_format_args)]

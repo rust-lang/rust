@@ -1,0 +1,21 @@
+error[E0658]: `become` expression is experimental
+  --> $DIR/feature-gate-explicit_tail_calls.rs:2:5
+   |
+LL |     become bottom();
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #112788 <https://github.com/rust-lang/rust/issues/112788> for more information
+   = help: add `#![feature(explicit_tail_calls)]` to the crate attributes to enable
+
+error[E0658]: `become` expression is experimental
+  --> $DIR/feature-gate-explicit_tail_calls.rs:6:5
+   |
+LL |     become you();
+   |     ^^^^^^^^^^^^
+   |
+   = note: see issue #112788 <https://github.com/rust-lang/rust/issues/112788> for more information
+   = help: add `#![feature(explicit_tail_calls)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

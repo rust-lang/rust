@@ -1,4 +1,4 @@
--include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 # ignore-cross-compile
 # only-linux

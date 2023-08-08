@@ -3,8 +3,7 @@
 /// @set foo = "$.index[*][?(@.name=='Foo')].id"
 pub type Foo = i32;
 
-// @is "$.index[*][?(@.name=='demo')].inner.decl.output.kind" '"resolved_path"'
-// @is "$.index[*][?(@.name=='demo')].inner.decl.output.inner.id" $foo
+// @is "$.index[*][?(@.name=='demo')].inner.function.decl.output.resolved_path.id" $foo
 pub fn demo() -> Foo {
     42
 }

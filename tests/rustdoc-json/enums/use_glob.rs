@@ -10,9 +10,9 @@ pub enum Color {
     Blue,
 }
 
-// @set use_Color = "$.index[*][?(@.kind == 'import')].id"
-// @is "$.index[*][?(@.kind == 'import')].inner.id" $Color
-// @is "$.index[*][?(@.kind == 'import')].inner.glob" true
+// @set use_Color = "$.index[*][?(@.inner.import)].id"
+// @is "$.index[*][?(@.inner.import)].inner.import.id" $Color
+// @is "$.index[*][?(@.inner.import)].inner.import.glob" true
 pub use Color::*;
 
-// @ismany "$.index[*][?(@.name == 'use_glob')].inner.items[*]" $Color $use_Color
+// @ismany "$.index[*][?(@.name == 'use_glob')].inner.module.items[*]" $Color $use_Color

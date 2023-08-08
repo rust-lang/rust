@@ -4,8 +4,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::util::PredicateSet;
 use rustc_infer::traits::ImplSource;
+use rustc_middle::query::Providers;
+use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::InternalSubsts;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry};
 use rustc_span::{sym, Span};
 use smallvec::SmallVec;
@@ -14,17 +16,27 @@ use std::fmt::Debug;
 use std::ops::ControlFlow;
 
 #[derive(Clone, Debug)]
-pub(super) enum VtblSegment<'tcx> {
+pub enum VtblSegment<'tcx> {
     MetadataDSA,
     TraitOwnEntries { trait_ref: ty::PolyTraitRef<'tcx>, emit_vptr: bool },
 }
 
 /// Prepare the segments for a vtable
-pub(super) fn prepare_vtable_segments<'tcx, T>(
+pub fn prepare_vtable_segments<'tcx, T>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+    segment_visitor: impl FnMut(VtblSegment<'tcx>) -> ControlFlow<T>,
+) -> Option<T> {
+    prepare_vtable_segments_inner(tcx, trait_ref, segment_visitor).break_value()
+}
+
+/// Helper for [`prepare_vtable_segments`] that returns `ControlFlow`,
+/// such that we can use `?` in the body.
+fn prepare_vtable_segments_inner<'tcx, T>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
     mut segment_visitor: impl FnMut(VtblSegment<'tcx>) -> ControlFlow<T>,
-) -> Option<T> {
+) -> ControlFlow<T> {
     // The following constraints holds for the final arrangement.
     // 1. The whole virtual table of the first direct super trait is included as the
     //    the prefix. If this trait doesn't have any super traits, then this step
@@ -70,20 +82,18 @@ pub(super) fn prepare_vtable_segments<'tcx, T>(
     //  N, N-vptr, O
 
     // emit dsa segment first.
-    if let ControlFlow::Break(v) = (segment_visitor)(VtblSegment::MetadataDSA) {
-        return Some(v);
-    }
+    segment_visitor(VtblSegment::MetadataDSA)?;
 
     let mut emit_vptr_on_new_entry = false;
     let mut visited = PredicateSet::new(tcx);
-    let predicate = trait_ref.without_const().to_predicate(tcx);
+    let predicate = trait_ref.to_predicate(tcx);
     let mut stack: SmallVec<[(ty::PolyTraitRef<'tcx>, _, _); 5]> =
-        smallvec![(trait_ref, emit_vptr_on_new_entry, None)];
+        smallvec![(trait_ref, emit_vptr_on_new_entry, maybe_iter(None))];
     visited.insert(predicate);
 
     // the main traversal loop:
     // basically we want to cut the inheritance directed graph into a few non-overlapping slices of nodes
-    // that each node is emitted after all its descendents have been emitted.
+    // such that each node is emitted after all its descendants have been emitted.
     // so we convert the directed graph into a tree by skipping all previously visited nodes using a visited set.
     // this is done on the fly.
     // Each loop run emits a slice - it starts by find a "childless" unvisited node, backtracking upwards, and it
@@ -104,78 +114,79 @@ pub(super) fn prepare_vtable_segments<'tcx, T>(
     // Loop run #1: Emitting the slice [D C] (in reverse order). No one has a next-sibling node.
     // Loop run #1: Stack after exiting out is []. Now the function exits.
 
-    loop {
+    'outer: loop {
         // dive deeper into the stack, recording the path
         'diving_in: loop {
-            if let Some((inner_most_trait_ref, _, _)) = stack.last() {
-                let inner_most_trait_ref = *inner_most_trait_ref;
-                let mut direct_super_traits_iter = tcx
-                    .super_predicates_of(inner_most_trait_ref.def_id())
-                    .predicates
-                    .into_iter()
-                    .filter_map(move |(pred, _)| {
-                        pred.subst_supertrait(tcx, &inner_most_trait_ref).to_opt_poly_trait_pred()
-                    });
+            let &(inner_most_trait_ref, _, _) = stack.last().unwrap();
 
-                'diving_in_skip_visited_traits: loop {
-                    if let Some(next_super_trait) = direct_super_traits_iter.next() {
-                        if visited.insert(next_super_trait.to_predicate(tcx)) {
-                            // We're throwing away potential constness of super traits here.
-                            // FIXME: handle ~const super traits
-                            let next_super_trait = next_super_trait.map_bound(|t| t.trait_ref);
-                            stack.push((
-                                next_super_trait,
-                                emit_vptr_on_new_entry,
-                                Some(direct_super_traits_iter),
-                            ));
-                            break 'diving_in_skip_visited_traits;
-                        } else {
-                            continue 'diving_in_skip_visited_traits;
-                        }
-                    } else {
-                        break 'diving_in;
-                    }
+            let mut direct_super_traits_iter = tcx
+                .super_predicates_of(inner_most_trait_ref.def_id())
+                .predicates
+                .into_iter()
+                .filter_map(move |(pred, _)| {
+                    pred.subst_supertrait(tcx, &inner_most_trait_ref).as_trait_clause()
+                });
+
+            // Find an unvisited supertrait
+            match direct_super_traits_iter
+                .find(|&super_trait| visited.insert(super_trait.to_predicate(tcx)))
+            {
+                // Push it to the stack for the next iteration of 'diving_in to pick up
+                Some(unvisited_super_trait) => {
+                    // We're throwing away potential constness of super traits here.
+                    // FIXME: handle ~const super traits
+                    let next_super_trait = unvisited_super_trait.map_bound(|t| t.trait_ref);
+                    stack.push((
+                        next_super_trait,
+                        emit_vptr_on_new_entry,
+                        maybe_iter(Some(direct_super_traits_iter)),
+                    ))
                 }
+
+                // There are no more unvisited direct super traits, dive-in finished
+                None => break 'diving_in,
             }
         }
-
-        // Other than the left-most path, vptr should be emitted for each trait.
-        emit_vptr_on_new_entry = true;
 
         // emit innermost item, move to next sibling and stop there if possible, otherwise jump to outer level.
-        'exiting_out: loop {
-            if let Some((inner_most_trait_ref, emit_vptr, siblings_opt)) = stack.last_mut() {
-                if let ControlFlow::Break(v) = (segment_visitor)(VtblSegment::TraitOwnEntries {
-                    trait_ref: *inner_most_trait_ref,
-                    emit_vptr: *emit_vptr,
-                }) {
-                    return Some(v);
-                }
+        while let Some((inner_most_trait_ref, emit_vptr, mut siblings)) = stack.pop() {
+            segment_visitor(VtblSegment::TraitOwnEntries {
+                trait_ref: inner_most_trait_ref,
+                emit_vptr,
+            })?;
 
-                'exiting_out_skip_visited_traits: loop {
-                    if let Some(siblings) = siblings_opt {
-                        if let Some(next_inner_most_trait_ref) = siblings.next() {
-                            if visited.insert(next_inner_most_trait_ref.to_predicate(tcx)) {
-                                // We're throwing away potential constness of super traits here.
-                                // FIXME: handle ~const super traits
-                                let next_inner_most_trait_ref =
-                                    next_inner_most_trait_ref.map_bound(|t| t.trait_ref);
-                                *inner_most_trait_ref = next_inner_most_trait_ref;
-                                *emit_vptr = emit_vptr_on_new_entry;
-                                break 'exiting_out;
-                            } else {
-                                continue 'exiting_out_skip_visited_traits;
-                            }
-                        }
-                    }
-                    stack.pop();
-                    continue 'exiting_out;
-                }
+            // If we've emitted (fed to `segment_visitor`) a trait that has methods present in the vtable,
+            // we'll need to emit vptrs from now on.
+            if !emit_vptr_on_new_entry
+                && has_own_existential_vtable_entries(tcx, inner_most_trait_ref.def_id())
+            {
+                emit_vptr_on_new_entry = true;
             }
-            // all done
-            return None;
+
+            if let Some(next_inner_most_trait_ref) =
+                siblings.find(|&sibling| visited.insert(sibling.to_predicate(tcx)))
+            {
+                // We're throwing away potential constness of super traits here.
+                // FIXME: handle ~const super traits
+                let next_inner_most_trait_ref =
+                    next_inner_most_trait_ref.map_bound(|t| t.trait_ref);
+
+                stack.push((next_inner_most_trait_ref, emit_vptr_on_new_entry, siblings));
+
+                // just pushed a new trait onto the stack, so we need to go through its super traits
+                continue 'outer;
+            }
         }
+
+        // the stack is empty, all done
+        return ControlFlow::Continue(());
     }
+}
+
+/// Turns option of iterator into an iterator (this is just flatten)
+fn maybe_iter<I: Iterator>(i: Option<I>) -> impl Iterator<Item = I::Item> {
+    // Flatten is bad perf-vise, we could probably implement a special case here that is better
+    i.into_iter().flatten()
 }
 
 fn dump_vtable_entries<'tcx>(
@@ -184,18 +195,26 @@ fn dump_vtable_entries<'tcx>(
     trait_ref: ty::PolyTraitRef<'tcx>,
     entries: &[VtblEntry<'tcx>],
 ) {
-    tcx.sess.emit_err(DumpVTableEntries {
-        span: sp,
-        trait_ref,
-        entries: format!("{:#?}", entries),
-    });
+    tcx.sess.emit_err(DumpVTableEntries { span: sp, trait_ref, entries: format!("{entries:#?}") });
+}
+
+fn has_own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
+    own_existential_vtable_entries_iter(tcx, trait_def_id).next().is_some()
 }
 
 fn own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &[DefId] {
+    tcx.arena.alloc_from_iter(own_existential_vtable_entries_iter(tcx, trait_def_id))
+}
+
+fn own_existential_vtable_entries_iter(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+) -> impl Iterator<Item = DefId> + '_ {
     let trait_methods = tcx
         .associated_items(trait_def_id)
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Fn);
+
     // Now list each method's DefId (for within its trait).
     let own_entries = trait_methods.filter_map(move |&trait_method| {
         debug!("own_existential_vtable_entry: trait_method={:?}", trait_method);
@@ -210,7 +229,7 @@ fn own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &[Def
         Some(def_id)
     });
 
-    tcx.arena.alloc_from_iter(own_entries.into_iter())
+    own_entries
 }
 
 /// Given a trait `trait_ref`, iterates the vtable entries
@@ -240,12 +259,12 @@ fn vtable_entries<'tcx>(
                     debug!("vtable_entries: trait_method={:?}", def_id);
 
                     // The method may have some early-bound lifetimes; add regions for those.
-                    let substs = trait_ref.map_bound(|trait_ref| {
-                        InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
+                    let args = trait_ref.map_bound(|trait_ref| {
+                        GenericArgs::for_item(tcx, def_id, |param, _| match param.kind {
                             GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
                             GenericParamDefKind::Type { .. }
                             | GenericParamDefKind::Const { .. } => {
-                                trait_ref.substs[param.index as usize]
+                                trait_ref.args[param.index as usize]
                             }
                         })
                     });
@@ -253,14 +272,14 @@ fn vtable_entries<'tcx>(
                     // The trait type may have higher-ranked lifetimes in it;
                     // erase them if they appear, so that we get the type
                     // at some particular call site.
-                    let substs = tcx
-                        .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), substs);
+                    let args =
+                        tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), args);
 
                     // It's possible that the method relies on where-clauses that
                     // do not hold for this particular set of type parameters.
                     // Note that this method could then never be called, so we
                     // do not want to try and codegen it, in that case (see #23435).
-                    let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
+                    let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, args);
                     if impossible_predicates(
                         tcx,
                         predicates.map(|(predicate, _)| predicate).collect(),
@@ -273,7 +292,7 @@ fn vtable_entries<'tcx>(
                         tcx,
                         ty::ParamEnv::reveal_all(),
                         def_id,
-                        substs,
+                        args,
                     )
                     .expect("resolution failed during building vtable representation");
                     VtblEntry::Method(instance)
@@ -353,17 +372,17 @@ pub(crate) fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
     ),
 ) -> Option<usize> {
     let (source, target) = key;
-    assert!(matches!(&source.kind(), &ty::Dynamic(..)) && !source.needs_infer());
-    assert!(matches!(&target.kind(), &ty::Dynamic(..)) && !target.needs_infer());
+    assert!(matches!(&source.kind(), &ty::Dynamic(..)) && !source.has_infer());
+    assert!(matches!(&target.kind(), &ty::Dynamic(..)) && !target.has_infer());
 
     // this has been typecked-before, so diagnostics is not really needed.
     let unsize_trait_did = tcx.require_lang_item(LangItem::Unsize, None);
 
-    let trait_ref = tcx.mk_trait_ref(unsize_trait_did, [source, target]);
+    let trait_ref = ty::TraitRef::new(tcx, unsize_trait_did, [source, target]);
 
-    match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), ty::Binder::dummy(trait_ref))) {
-        Ok(ImplSource::TraitUpcasting(implsrc_traitcasting)) => {
-            implsrc_traitcasting.vtable_vptr_slot
+    match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), trait_ref)) {
+        Ok(ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { vtable_vptr_slot }, _)) => {
+            *vtable_vptr_slot
         }
         otherwise => bug!("expected TraitUpcasting candidate, got {otherwise:?}"),
     }
@@ -379,8 +398,8 @@ pub(crate) fn count_own_vtable_entries<'tcx>(
     tcx.own_existential_vtable_entries(trait_ref.def_id()).len()
 }
 
-pub(super) fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers {
+pub(super) fn provide(providers: &mut Providers) {
+    *providers = Providers {
         own_existential_vtable_entries,
         vtable_entries,
         vtable_trait_upcasting_coercion_new_vptr_slot,

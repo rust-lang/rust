@@ -1,10 +1,9 @@
-//! A subset of a mir body used for const evaluatability checking.
+//! A subset of a mir body used for const evaluability checking.
 use crate::ty::{
     self, Const, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
 };
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::DefId;
 
 #[derive(Hash, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
 #[derive(TyDecodable, TyEncodable, HashStable, TypeVisitable, TypeFoldable)]
@@ -28,26 +27,11 @@ impl From<ErrorGuaranteed> for NotConstEvaluatable {
     }
 }
 
-TrivialTypeTraversalAndLiftImpls! {
-    NotConstEvaluatable,
-}
+TrivialTypeTraversalAndLiftImpls! { NotConstEvaluatable }
 
 pub type BoundAbstractConst<'tcx> = Result<Option<EarlyBinder<ty::Const<'tcx>>>, ErrorGuaranteed>;
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Returns a const without substs applied
-    pub fn bound_abstract_const(
-        self,
-        uv: ty::WithOptConstParam<DefId>,
-    ) -> BoundAbstractConst<'tcx> {
-        let ac = if let Some((did, param_did)) = uv.as_const_arg() {
-            self.thir_abstract_const_of_const_arg((did, param_did))
-        } else {
-            self.thir_abstract_const(uv.did)
-        };
-        Ok(ac?.map(|ac| EarlyBinder(ac)))
-    }
-
     pub fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, ac: T) -> T {
         struct Expander<'tcx> {
             tcx: TyCtxt<'tcx>,
@@ -66,11 +50,12 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             fn fold_const(&mut self, c: Const<'tcx>) -> Const<'tcx> {
                 let ct = match c.kind() {
-                    ty::ConstKind::Unevaluated(uv) => match self.tcx.bound_abstract_const(uv.def) {
-                        Err(e) => self.tcx.const_error_with_guaranteed(c.ty(), e),
+                    ty::ConstKind::Unevaluated(uv) => match self.tcx.thir_abstract_const(uv.def) {
+                        Err(e) => ty::Const::new_error(self.tcx, e, c.ty()),
                         Ok(Some(bac)) => {
-                            let substs = self.tcx.erase_regions(uv.substs);
-                            bac.subst(self.tcx, substs)
+                            let args = self.tcx.erase_regions(uv.args);
+                            let bac = bac.instantiate(self.tcx, args);
+                            return bac.fold_with(self);
                         }
                         Ok(None) => c,
                     },

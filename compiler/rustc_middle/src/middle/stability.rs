@@ -104,19 +104,19 @@ pub fn report_unstable(
     suggestion: Option<(Span, String, String, Applicability)>,
     is_soft: bool,
     span: Span,
-    soft_handler: impl FnOnce(&'static Lint, Span, &str),
+    soft_handler: impl FnOnce(&'static Lint, Span, String),
 ) {
     let msg = match reason {
-        Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
+        Some(r) => format!("use of unstable library feature '{feature}': {r}"),
         None => format!("use of unstable library feature '{}'", &feature),
     };
 
     if is_soft {
-        soft_handler(SOFT_UNSTABLE, span, &msg)
+        soft_handler(SOFT_UNSTABLE, span, msg)
     } else {
         let mut err =
-            feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg);
-        if let Some((inner_types, ref msg, sugg, applicability)) = suggestion {
+            feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), msg);
+        if let Some((inner_types, msg, sugg, applicability)) = suggestion {
             err.span_suggestion(inner_types, msg, sugg, applicability);
         }
         err.emit();
@@ -170,7 +170,7 @@ pub fn deprecation_suggestion(
     if let Some(suggestion) = suggestion {
         diag.span_suggestion_verbose(
             span,
-            &format!("replace the use of the deprecated {}", kind),
+            format!("replace the use of the deprecated {kind}"),
             suggestion,
             Applicability::MachineApplicable,
         );
@@ -189,12 +189,12 @@ fn deprecation_message(
     path: &str,
 ) -> String {
     let message = if is_in_effect {
-        format!("use of deprecated {} `{}`", kind, path)
+        format!("use of deprecated {kind} `{path}`")
     } else {
         let since = since.as_ref().map(Symbol::as_str);
 
         if since == Some("TBD") {
-            format!("use of {} `{}` that will be deprecated in a future Rust version", kind, path)
+            format!("use of {kind} `{path}` that will be deprecated in a future Rust version")
         } else {
             format!(
                 "use of {} `{}` that will be deprecated in future version {}",
@@ -206,7 +206,7 @@ fn deprecation_message(
     };
 
     match note {
-        Some(reason) => format!("{}: {}", message, reason),
+        Some(reason) => format!("{message}: {reason}"),
         None => message,
     }
 }
@@ -225,7 +225,7 @@ pub fn deprecation_message_and_lint(
 
 pub fn early_report_deprecation(
     lint_buffer: &mut LintBuffer,
-    message: &str,
+    message: String,
     suggestion: Option<Symbol>,
     lint: &'static Lint,
     span: Span,
@@ -241,7 +241,7 @@ pub fn early_report_deprecation(
 
 fn late_report_deprecation(
     tcx: TyCtxt<'_>,
-    message: &str,
+    message: String,
     suggestion: Option<Symbol>,
     lint: &'static Lint,
     span: Span,
@@ -312,7 +312,7 @@ fn suggestion_for_allocator_api(
                     return Some((
                         inner_types,
                         "consider wrapping the inner types in tuple".to_string(),
-                        format!("({})", snippet),
+                        format!("({snippet})"),
                         Applicability::MaybeIncorrect,
                     ));
                 }
@@ -375,7 +375,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let parent_def_id = self.hir().get_parent_item(id);
                 let skip = self
                     .lookup_deprecation_entry(parent_def_id.to_def_id())
-                    .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
+                    .is_some_and(|parent_depr| parent_depr.same_origin(&depr_entry));
 
                 // #[deprecated] doesn't emit a notice if we're not on the
                 // topmost deprecation. For example, if a struct is deprecated,
@@ -396,7 +396,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
                         late_report_deprecation(
                             self,
-                            &deprecation_message(
+                            deprecation_message(
                                 is_in_effect,
                                 depr_attr.since,
                                 depr_attr.note,
@@ -599,7 +599,7 @@ impl<'tcx> TyCtxt<'tcx> {
             |span, def_id| {
                 // The API could be uncallable for other reasons, for example when a private module
                 // was referenced.
-                self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
+                self.sess.delay_span_bug(span, format!("encountered unmarked API: {def_id:?}"));
             },
         )
     }
@@ -619,7 +619,7 @@ impl<'tcx> TyCtxt<'tcx> {
         allow_unstable: AllowUnstable,
         unmarked: impl FnOnce(Span, DefId),
     ) -> bool {
-        let soft_handler = |lint, span, msg: &_| {
+        let soft_handler = |lint, span, msg: String| {
             self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg, |lint| lint)
         };
         let eval_result =

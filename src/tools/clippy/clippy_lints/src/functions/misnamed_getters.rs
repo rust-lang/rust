@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
-use rustc_hir::{intravisit::FnKind, Body, ExprKind, FnDecl, ImplicitSelfKind, Unsafety};
+use rustc_hir::intravisit::FnKind;
+use rustc_hir::{Body, ExprKind, FnDecl, ImplicitSelfKind, Unsafety};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Span;
@@ -12,8 +13,8 @@ use super::MISNAMED_GETTERS;
 
 pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body: &Body<'_>, span: Span) {
     let FnKind::Method(ref ident, sig) = kind else {
-            return;
-        };
+        return;
+    };
 
     // Takes only &(mut) self
     if decl.inputs.len() != 1 {
@@ -25,8 +26,8 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
     let name = match decl.implicit_self {
         ImplicitSelfKind::MutRef => {
             let Some(name) = name.strip_suffix("_mut") else {
-                    return;
-                };
+                return;
+            };
             name
         },
         ImplicitSelfKind::Imm | ImplicitSelfKind::Mut | ImplicitSelfKind::ImmRef => name,
@@ -40,7 +41,7 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
     };
 
     // Body must be &(mut) <self_data>.name
-    // self_data is not neccessarilly self, to also lint sub-getters, etc…
+    // self_data is not necessarily self, to also lint sub-getters, etc…
 
     let block_expr = if_chain! {
         if let ExprKind::Block(block,_) = body.value.kind;
@@ -76,7 +77,7 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
     for adjusted_type in iter::once(typeck_results.expr_ty(self_data))
         .chain(typeck_results.expr_adjustments(self_data).iter().map(|adj| adj.target))
     {
-        let ty::Adt(def,_) = adjusted_type.kind() else {
+        let ty::Adt(def, _) = adjusted_type.kind() else {
             continue;
         };
 
@@ -91,13 +92,15 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
     }
 
     let Some(used_field) = used_field else {
-        // Can happen if the field access is a tuple. We don't lint those because the getter name could not start with a number.
+        // Can happen if the field access is a tuple. We don't lint those because the getter name could not
+        // start with a number.
         return;
     };
 
     let Some(correct_field) = correct_field else {
         // There is no field corresponding to the getter name.
-        // FIXME: This can be a false positive if the correct field is reachable trought deeper autodereferences than used_field is
+        // FIXME: This can be a false positive if the correct field is reachable through deeper
+        // autodereferences than used_field is
         return;
     };
 

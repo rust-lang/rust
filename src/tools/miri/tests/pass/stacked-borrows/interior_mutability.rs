@@ -1,4 +1,3 @@
-//@compile-flags: -Zmiri-retag-fields
 use std::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
 use std::mem::{self, MaybeUninit};
 

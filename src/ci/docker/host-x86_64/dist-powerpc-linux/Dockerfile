@@ -1,20 +1,18 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY scripts/crosstool-ng-1.24.sh /scripts/
-RUN sh /scripts/crosstool-ng-1.24.sh
+COPY scripts/crosstool-ng.sh /scripts/
+RUN sh /scripts/crosstool-ng.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
-USER rustbuild
 WORKDIR /tmp
 
-COPY host-x86_64/dist-powerpc-linux/powerpc-linux-gnu.config host-x86_64/dist-powerpc-linux/build-powerpc-toolchain.sh /tmp/
-RUN ./build-powerpc-toolchain.sh
-
-USER root
+COPY scripts/crosstool-ng-build.sh /scripts/
+COPY host-x86_64/dist-powerpc-linux/powerpc-linux-gnu.defconfig /tmp/crosstool.defconfig
+RUN /scripts/crosstool-ng-build.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

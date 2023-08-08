@@ -12,7 +12,7 @@ LL |     pub trait Tr { fn method(&self); }
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL | use unnamed_pub_trait_source::prelude::*; // trait Tr
+LL + use unnamed_pub_trait_source::prelude::*; // trait Tr
    |
 
 error: aborting due to previous error

@@ -1,0 +1,30 @@
+error[E0658]: `impl Trait` in associated types is unstable
+  --> $DIR/feature-gate-impl_trait_in_assoc_type.rs:6:16
+   |
+LL |     type Bar = impl std::fmt::Debug;
+   |                ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(impl_trait_in_assoc_type)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in associated types is unstable
+  --> $DIR/feature-gate-impl_trait_in_assoc_type.rs:13:16
+   |
+LL |     type Bop = impl std::fmt::Debug;
+   |                ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(impl_trait_in_assoc_type)]` to the crate attributes to enable
+
+error[E0658]: inherent associated types are unstable
+  --> $DIR/feature-gate-impl_trait_in_assoc_type.rs:13:5
+   |
+LL |     type Bop = impl std::fmt::Debug;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

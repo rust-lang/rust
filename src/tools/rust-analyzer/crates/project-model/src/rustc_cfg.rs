@@ -2,7 +2,6 @@
 
 use std::process::Command;
 
-use anyhow::Result;
 use rustc_hash::FxHashMap;
 
 use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath};
@@ -22,6 +21,9 @@ pub(crate) fn get(
             res.push(CfgFlag::KeyValue { key: key.to_string(), value: ty.into() });
         }
     }
+
+    // Add miri cfg, which is useful for mir eval in stdlib
+    res.push(CfgFlag::Atom("miri".into()));
 
     match get_rust_cfgs(cargo_toml, target, extra_env) {
         Ok(rustc_cfgs) => {
@@ -44,7 +46,7 @@ fn get_rust_cfgs(
     cargo_toml: Option<&ManifestPath>,
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
-) -> Result<String> {
+) -> anyhow::Result<String> {
     if let Some(cargo_toml) = cargo_toml {
         let mut cargo_config = Command::new(toolchain::cargo());
         cargo_config.envs(extra_env);

@@ -2,12 +2,12 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
-use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::InternalSubsts;
-use rustc_middle::ty::{self, EarlyBinder, GeneratorSubsts, Ty, TyCtxt};
-use rustc_target::abi::VariantIdx;
+use rustc_middle::query::Providers;
+use rustc_middle::ty::GenericArgs;
+use rustc_middle::ty::{self, EarlyBinder, GeneratorArgs, Ty, TyCtxt};
+use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
@@ -32,13 +32,15 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
     let mut result = match instance {
         ty::InstanceDef::Item(..) => bug!("item {:?} passed to make_shim", instance),
         ty::InstanceDef::VTableShim(def_id) => {
-            build_call_shim(tcx, instance, Some(Adjustment::Deref), CallKind::Direct(def_id))
+            let adjustment = Adjustment::Deref { source: DerefSource::MutPtr };
+            build_call_shim(tcx, instance, Some(adjustment), CallKind::Direct(def_id))
         }
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
             let trait_ = tcx.trait_of_item(def_id).unwrap();
             let adjustment = match tcx.fn_trait_kind_from_def_id(trait_) {
                 Some(ty::ClosureKind::FnOnce) => Adjustment::Identity,
-                Some(ty::ClosureKind::FnMut | ty::ClosureKind::Fn) => Adjustment::Deref,
+                Some(ty::ClosureKind::Fn) => Adjustment::Deref { source: DerefSource::ImmRef },
+                Some(ty::ClosureKind::FnMut) => Adjustment::Deref { source: DerefSource::MutRef },
                 None => bug!("fn pointer {:?} is not an fn", ty),
             };
 
@@ -67,16 +69,18 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for generators aren't subject to the MIR passes at the end
             // of this function. Is this intentional?
-            if let Some(ty::Generator(gen_def_id, substs, _)) = ty.map(Ty::kind) {
+            if let Some(ty::Generator(gen_def_id, args, _)) = ty.map(Ty::kind) {
                 let body = tcx.optimized_mir(*gen_def_id).generator_drop().unwrap();
-                let body = EarlyBinder(body.clone()).subst(tcx, substs);
+                let body = EarlyBinder::bind(body.clone()).instantiate(tcx, args);
                 debug!("make_shim({:?}) = {:?}", instance, body);
                 return body;
             }
 
             build_drop_shim(tcx, def_id, ty)
         }
+        ty::InstanceDef::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceDef::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
+        ty::InstanceDef::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
         ty::InstanceDef::Virtual(..) => {
             bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
         }
@@ -93,7 +97,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             &add_moves_for_packed_drops::AddMovesForPackedDrops,
             &deref_separator::Derefer,
             &remove_noop_landing_pads::RemoveNoopLandingPads,
-            &simplify::SimplifyCfg::new("make_shim"),
+            &simplify::SimplifyCfg::MakeShim,
             &add_call_guards::CriticalCallEdges,
             &abort_unwinding_calls::AbortUnwindingCalls,
         ],
@@ -106,15 +110,25 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
+enum DerefSource {
+    /// `fn shim(&self) { inner(*self )}`.
+    ImmRef,
+    /// `fn shim(&mut self) { inner(*self )}`.
+    MutRef,
+    /// `fn shim(*mut self) { inner(*self )}`.
+    MutPtr,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum Adjustment {
     /// Pass the receiver as-is.
     Identity,
 
-    /// We get passed `&[mut] self` and call the target with `*self`.
+    /// We get passed a reference or a raw pointer to `self` and call the target with `*self`.
     ///
     /// This either copies `self` (if `Self: Copy`, eg. for function items), or moves out of it
     /// (for `VTableShim`, which effectively is passed `&own Self`).
-    Deref,
+    Deref { source: DerefSource },
 
     /// We get passed `self: Self` and call the target with `&mut self`.
     ///
@@ -146,12 +160,12 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 
     assert!(!matches!(ty, Some(ty) if ty.is_generator()));
 
-    let substs = if let Some(ty) = ty {
-        tcx.mk_substs(&[ty.into()])
+    let args = if let Some(ty) = ty {
+        tcx.mk_args(&[ty.into()])
     } else {
-        InternalSubsts::identity_for_item(tcx, def_id)
+        GenericArgs::identity_for_item(tcx, def_id)
     };
-    let sig = tcx.fn_sig(def_id).subst(tcx, substs);
+    let sig = tcx.fn_sig(def_id).instantiate(tcx, args);
     let sig = tcx.erase_late_bound_regions(sig);
     let span = tcx.def_span(def_id);
 
@@ -186,7 +200,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
         // has been put into the body.
         let reborrow = Rvalue::Ref(
             tcx.lifetimes.re_erased,
-            BorrowKind::Mut { allow_two_phase_borrow: false },
+            BorrowKind::Mut { kind: MutBorrowKind::Default },
             tcx.mk_place_deref(dropee_ptr),
         );
         let ref_ty = reborrow.ty(body.local_decls(), tcx);
@@ -307,7 +321,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 
     fn clear_drop_flag(&mut self, _location: Location, _path: Self::Path, _mode: DropFlagMode) {}
 
-    fn field_subpath(&self, _path: Self::Path, _field: Field) -> Option<Self::Path> {
+    fn field_subpath(&self, _path: Self::Path, _field: FieldIdx) -> Option<Self::Path> {
         None
     }
     fn deref_subpath(&self, _path: Self::Path) -> Option<Self::Path> {
@@ -321,11 +335,39 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     }
 }
 
+fn build_thread_local_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'tcx> {
+    let def_id = instance.def_id();
+
+    let span = tcx.def_span(def_id);
+    let source_info = SourceInfo::outermost(span);
+
+    let mut blocks = IndexVec::with_capacity(1);
+    blocks.push(BasicBlockData {
+        statements: vec![Statement {
+            source_info,
+            kind: StatementKind::Assign(Box::new((
+                Place::return_place(),
+                Rvalue::ThreadLocalRef(def_id),
+            ))),
+        }],
+        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        is_cleanup: false,
+    });
+
+    new_body(
+        MirSource::from_instance(instance),
+        blocks,
+        IndexVec::from_raw(vec![LocalDecl::new(tcx.thread_local_ptr_ty(def_id), span)]),
+        0,
+        span,
+    )
+}
+
 /// Builds a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
 fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
     debug!("build_clone_shim(def_id={:?})", def_id);
 
-    let param_env = tcx.param_env(def_id);
+    let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
     let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
     let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env);
@@ -335,12 +377,10 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
 
     match self_ty.kind() {
         _ if is_copy => builder.copy_shim(),
-        ty::Closure(_, substs) => {
-            builder.tuple_like_shim(dest, src, substs.as_closure().upvar_tys())
-        }
+        ty::Closure(_, args) => builder.tuple_like_shim(dest, src, args.as_closure().upvar_tys()),
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
-        ty::Generator(gen_def_id, substs, hir::Movability::Movable) => {
-            builder.generator_shim(dest, src, *gen_def_id, substs.as_generator())
+        ty::Generator(gen_def_id, args, hir::Movability::Movable) => {
+            builder.generator_shim(dest, src, *gen_def_id, args.as_generator())
         }
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),
     };
@@ -362,7 +402,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         // we must subst the self_ty because it's
         // otherwise going to be TySelf and we can't index
         // or access fields of a Place of type TySelf.
-        let sig = tcx.fn_sig(def_id).subst(tcx, &[self_ty.into()]);
+        let sig = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]);
         let sig = tcx.erase_late_bound_regions(sig);
         let span = tcx.def_span(def_id);
 
@@ -443,7 +483,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
 
         // `func == Clone::clone(&ty) -> ty`
-        let func_ty = tcx.mk_fn_def(self.def_id, [ty]);
+        let func_ty = Ty::new_fn_def(tcx, self.def_id, [ty]);
         let func = Operand::Constant(Box::new(Constant {
             span: self.span,
             user_ty: None,
@@ -452,7 +492,11 @@ impl<'tcx> CloneShimBuilder<'tcx> {
 
         let ref_loc = self.make_place(
             Mutability::Not,
-            tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Not }),
+            Ty::new_ref(
+                tcx,
+                tcx.lifetimes.re_erased,
+                ty::TypeAndMut { ty, mutbl: hir::Mutability::Not },
+            ),
         );
 
         // `let ref_loc: &ty = &src;`
@@ -469,8 +513,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 args: vec![Operand::Move(ref_loc)],
                 destination: dest,
                 target: Some(next),
-                cleanup: Some(cleanup),
-                from_hir_call: true,
+                unwind: UnwindAction::Cleanup(cleanup),
+                call_source: CallSource::Normal,
                 fn_span: self.span,
             },
             false,
@@ -500,7 +544,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             // created by block 2*i. We store this block in `unwind` so that the next clone block
             // will unwind to it if cloning fails.
 
-            let field = Field::new(i);
+            let field = FieldIdx::new(i);
             let src_field = self.tcx.mk_place_field(src, field, ity);
 
             let dest_field = self.tcx.mk_place_field(dest, field, ity);
@@ -510,7 +554,12 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             self.make_clone_call(dest_field, src_field, ity, next_block, unwind);
             self.block(
                 vec![],
-                TerminatorKind::Drop { place: dest_field, target: unwind, unwind: None },
+                TerminatorKind::Drop {
+                    place: dest_field,
+                    target: unwind,
+                    unwind: UnwindAction::Terminate,
+                    replace: false,
+                },
                 true,
             );
             unwind = next_unwind;
@@ -536,17 +585,17 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         dest: Place<'tcx>,
         src: Place<'tcx>,
         gen_def_id: DefId,
-        substs: GeneratorSubsts<'tcx>,
+        args: GeneratorArgs<'tcx>,
     ) {
         self.block(vec![], TerminatorKind::Goto { target: self.block_index_offset(3) }, false);
         let unwind = self.block(vec![], TerminatorKind::Resume, true);
         // This will get overwritten with a switch once we know the target blocks
         let switch = self.block(vec![], TerminatorKind::Unreachable, false);
-        let unwind = self.clone_fields(dest, src, switch, unwind, substs.upvar_tys());
+        let unwind = self.clone_fields(dest, src, switch, unwind, args.upvar_tys());
         let target = self.block(vec![], TerminatorKind::Return, false);
         let unreachable = self.block(vec![], TerminatorKind::Unreachable, false);
-        let mut cases = Vec::with_capacity(substs.state_tys(gen_def_id, self.tcx).count());
-        for (index, state_tys) in substs.state_tys(gen_def_id, self.tcx).enumerate() {
+        let mut cases = Vec::with_capacity(args.state_tys(gen_def_id, self.tcx).count());
+        for (index, state_tys) in args.state_tys(gen_def_id, self.tcx).enumerate() {
             let variant_index = VariantIdx::new(index);
             let dest = self.tcx.mk_place_downcast_unnamed(dest, variant_index);
             let src = self.tcx.mk_place_downcast_unnamed(src, variant_index);
@@ -562,7 +611,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             cases.push((index as u128, start_block));
             let _final_cleanup_block = self.clone_fields(dest, src, target, unwind, state_tys);
         }
-        let discr_ty = substs.discr_ty(self.tcx);
+        let discr_ty = args.discr_ty(self.tcx);
         let temp = self.make_place(Mutability::Mut, discr_ty);
         let rvalue = Rvalue::Discriminant(src);
         let statement = self.make_statement(StatementKind::Assign(Box::new((temp, rvalue))));
@@ -591,13 +640,13 @@ fn build_call_shim<'tcx>(
     // `FnPtrShim` contains the fn pointer type that a call shim is being built for - this is used
     // to substitute into the signature of the shim. It is not necessary for users of this
     // MIR body to perform further substitutions (see `InstanceDef::has_polymorphic_mir_body`).
-    let (sig_substs, untuple_args) = if let ty::InstanceDef::FnPtrShim(_, ty) = instance {
+    let (sig_args, untuple_args) = if let ty::InstanceDef::FnPtrShim(_, ty) = instance {
         let sig = tcx.erase_late_bound_regions(ty.fn_sig(tcx));
 
         let untuple_args = sig.inputs();
 
         // Create substitutions for the `Self` and `Args` generic parameters of the shim body.
-        let arg_tup = tcx.mk_tup(untuple_args);
+        let arg_tup = Ty::new_tup(tcx, untuple_args);
 
         (Some([ty.into(), arg_tup.into()]), Some(untuple_args))
     } else {
@@ -608,9 +657,12 @@ fn build_call_shim<'tcx>(
     let sig = tcx.fn_sig(def_id);
     let sig = sig.map_bound(|sig| tcx.erase_late_bound_regions(sig));
 
-    assert_eq!(sig_substs.is_some(), !instance.has_polymorphic_mir_body());
-    let mut sig =
-        if let Some(sig_substs) = sig_substs { sig.subst(tcx, &sig_substs) } else { sig.0 };
+    assert_eq!(sig_args.is_some(), !instance.has_polymorphic_mir_body());
+    let mut sig = if let Some(sig_args) = sig_args {
+        sig.instantiate(tcx, &sig_args)
+    } else {
+        sig.instantiate_identity()
+    };
 
     if let CallKind::Indirect(fnty) = call_kind {
         // `sig` determines our local decls, and thus the callee type in the `Call` terminator. This
@@ -629,8 +681,12 @@ fn build_call_shim<'tcx>(
         let self_arg = &mut inputs_and_output[0];
         *self_arg = match rcvr_adjustment.unwrap() {
             Adjustment::Identity => fnty,
-            Adjustment::Deref => tcx.mk_imm_ptr(fnty),
-            Adjustment::RefMut => tcx.mk_mut_ptr(fnty),
+            Adjustment::Deref { source } => match source {
+                DerefSource::ImmRef => Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, fnty),
+                DerefSource::MutRef => Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, fnty),
+                DerefSource::MutPtr => Ty::new_mut_ptr(tcx, fnty),
+            },
+            Adjustment::RefMut => bug!("`RefMut` is never used with indirect calls: {instance:?}"),
         };
         sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
     }
@@ -642,7 +698,7 @@ fn build_call_shim<'tcx>(
         let mut inputs_and_output = sig.inputs_and_output.to_vec();
         let self_arg = &mut inputs_and_output[0];
         debug_assert!(tcx.generics_of(def_id).has_self && *self_arg == tcx.types.self_param);
-        *self_arg = tcx.mk_mut_ptr(*self_arg);
+        *self_arg = Ty::new_mut_ptr(tcx, *self_arg);
         sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
     }
 
@@ -661,12 +717,13 @@ fn build_call_shim<'tcx>(
 
     let rcvr = rcvr_adjustment.map(|rcvr_adjustment| match rcvr_adjustment {
         Adjustment::Identity => Operand::Move(rcvr_place()),
-        Adjustment::Deref => Operand::Move(tcx.mk_place_deref(rcvr_place())),
+        Adjustment::Deref { source: _ } => Operand::Move(tcx.mk_place_deref(rcvr_place())),
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
             let ref_rcvr = local_decls.push(
                 LocalDecl::new(
-                    tcx.mk_ref(
+                    Ty::new_ref(
+                        tcx,
                         tcx.lifetimes.re_erased,
                         ty::TypeAndMut { ty: sig.inputs()[0], mutbl: hir::Mutability::Mut },
                     ),
@@ -674,7 +731,7 @@ fn build_call_shim<'tcx>(
                 )
                 .immutable(),
             );
-            let borrow_kind = BorrowKind::Mut { allow_two_phase_borrow: false };
+            let borrow_kind = BorrowKind::Mut { kind: MutBorrowKind::Default };
             statements.push(Statement {
                 source_info,
                 kind: StatementKind::Assign(Box::new((
@@ -692,7 +749,7 @@ fn build_call_shim<'tcx>(
 
         // `FnDef` call with optional receiver.
         CallKind::Direct(def_id) => {
-            let ty = tcx.type_of(def_id).subst_identity();
+            let ty = tcx.type_of(def_id).instantiate_identity();
             (
                 Operand::Constant(Box::new(Constant {
                     span,
@@ -723,7 +780,7 @@ fn build_call_shim<'tcx>(
     if let Some(untuple_args) = untuple_args {
         let tuple_arg = Local::new(1 + (sig.inputs().len() - 1));
         args.extend(untuple_args.iter().enumerate().map(|(i, ity)| {
-            Operand::Move(tcx.mk_place_field(Place::from(tuple_arg), Field::new(i), *ity))
+            Operand::Move(tcx.mk_place_field(Place::from(tuple_arg), FieldIdx::new(i), *ity))
         }));
     }
 
@@ -746,12 +803,12 @@ fn build_call_shim<'tcx>(
             args,
             destination: Place::return_place(),
             target: Some(BasicBlock::new(1)),
-            cleanup: if let Some(Adjustment::RefMut) = rcvr_adjustment {
-                Some(BasicBlock::new(3))
+            unwind: if let Some(Adjustment::RefMut) = rcvr_adjustment {
+                UnwindAction::Cleanup(BasicBlock::new(3))
             } else {
-                None
+                UnwindAction::Continue
             },
-            from_hir_call: true,
+            call_source: CallSource::Misc,
             fn_span: span,
         },
         false,
@@ -762,7 +819,12 @@ fn build_call_shim<'tcx>(
         block(
             &mut blocks,
             vec![],
-            TerminatorKind::Drop { place: rcvr_place(), target: BasicBlock::new(2), unwind: None },
+            TerminatorKind::Drop {
+                place: rcvr_place(),
+                target: BasicBlock::new(2),
+                unwind: UnwindAction::Continue,
+                replace: false,
+            },
             false,
         );
     }
@@ -773,7 +835,12 @@ fn build_call_shim<'tcx>(
         block(
             &mut blocks,
             vec![],
-            TerminatorKind::Drop { place: rcvr_place(), target: BasicBlock::new(4), unwind: None },
+            TerminatorKind::Drop {
+                place: rcvr_place(),
+                target: BasicBlock::new(4),
+                unwind: UnwindAction::Terminate,
+                replace: false,
+            },
             true,
         );
 
@@ -794,17 +861,17 @@ fn build_call_shim<'tcx>(
 pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
-    let param_env = tcx.param_env(ctor_id);
+    let param_env = tcx.param_env_reveal_all_normalized(ctor_id);
 
     // Normalize the sig.
     let sig = tcx
         .fn_sig(ctor_id)
-        .subst_identity()
+        .instantiate_identity()
         .no_bound_vars()
         .expect("LBR in ADT constructor signature");
     let sig = tcx.normalize_erasing_regions(param_env, sig);
 
-    let ty::Adt(adt_def, substs) = sig.output().kind() else {
+    let ty::Adt(adt_def, args) = sig.output().kind() else {
         bug!("unexpected type for ADT ctor {:?}", sig.output());
     };
 
@@ -816,11 +883,8 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 
     let source_info = SourceInfo::outermost(span);
 
-    let variant_index = if adt_def.is_enum() {
-        adt_def.variant_index_with_ctor_id(ctor_id)
-    } else {
-        VariantIdx::new(0)
-    };
+    let variant_index =
+        if adt_def.is_enum() { adt_def.variant_index_with_ctor_id(ctor_id) } else { FIRST_VARIANT };
 
     // Generate the following MIR:
     //
@@ -830,7 +894,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     // return;
     debug!("build_ctor: variant_index={:?}", variant_index);
 
-    let kind = AggregateKind::Adt(adt_def.did(), variant_index, substs, None, None);
+    let kind = AggregateKind::Adt(adt_def.did(), variant_index, args, None, None);
     let variant = adt_def.variant(variant_index);
     let statement = Statement {
         kind: StatementKind::Assign(Box::new((
@@ -863,4 +927,40 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     crate::pass_manager::dump_mir_for_phase_change(tcx, &body);
 
     body
+}
+
+/// ```ignore (pseudo-impl)
+/// impl FnPtr for fn(u32) {
+///     fn addr(self) -> usize {
+///         self as usize
+///     }
+/// }
+/// ```
+fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
+    assert!(matches!(self_ty.kind(), ty::FnPtr(..)), "expected fn ptr, found {self_ty}");
+    let span = tcx.def_span(def_id);
+    let Some(sig) = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).no_bound_vars() else {
+        span_bug!(span, "FnPtr::addr with bound vars for `{self_ty}`");
+    };
+    let locals = local_decls_for_sig(&sig, span);
+
+    let source_info = SourceInfo::outermost(span);
+    // FIXME: use `expose_addr` once we figure out whether function pointers have meaningful provenance.
+    let rvalue = Rvalue::Cast(
+        CastKind::FnPtrToPtr,
+        Operand::Move(Place::from(Local::new(1))),
+        Ty::new_imm_ptr(tcx, tcx.types.unit),
+    );
+    let stmt = Statement {
+        source_info,
+        kind: StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
+    };
+    let statements = vec![stmt];
+    let start_block = BasicBlockData {
+        statements,
+        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        is_cleanup: false,
+    };
+    let source = MirSource::from_instance(ty::InstanceDef::FnPtrAddrShim(def_id, self_ty));
+    new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
 }

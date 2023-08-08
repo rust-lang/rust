@@ -25,6 +25,7 @@ pub fn main() {
     //  3. load acquire : 2
     unsafe {
         let j1 = spawn(move || {
+            let c = c; // avoid field capturing
             *c.0 = 1;
             SYNC.store(1, Ordering::Release);
 
@@ -36,6 +37,7 @@ pub fn main() {
         });
 
         let j2 = spawn(move || {
+            let c = c; // avoid field capturing
             if SYNC.load(Ordering::Acquire) == 2 {
                 *c.0 //~ ERROR: Data race detected between (1) Write on thread `<unnamed>` and (2) Read on thread `<unnamed>`
             } else {

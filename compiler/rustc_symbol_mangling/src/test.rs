@@ -7,7 +7,7 @@
 use crate::errors::{Kind, TestOutput};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{subst::InternalSubsts, Instance, TyCtxt};
+use rustc_middle::ty::{GenericArgs, Instance, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 
 const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;
@@ -53,11 +53,11 @@ impl SymbolNamesTest<'_> {
         // The formatting of `tag({})` is chosen so that tests can elect
         // to test the entirety of the string, if they choose, or else just
         // some subset.
-        for attr in tcx.get_attrs(def_id.to_def_id(), SYMBOL_NAME) {
+        for attr in tcx.get_attrs(def_id, SYMBOL_NAME) {
             let def_id = def_id.to_def_id();
             let instance = Instance::new(
                 def_id,
-                tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def_id)),
+                tcx.erase_regions(GenericArgs::identity_for_item(tcx, def_id)),
             );
             let mangled = tcx.symbol_name(instance);
             tcx.sess.emit_err(TestOutput {
@@ -79,11 +79,11 @@ impl SymbolNamesTest<'_> {
             }
         }
 
-        for attr in tcx.get_attrs(def_id.to_def_id(), DEF_PATH) {
+        for attr in tcx.get_attrs(def_id, DEF_PATH) {
             tcx.sess.emit_err(TestOutput {
                 span: attr.span,
                 kind: Kind::DefPath,
-                content: with_no_trimmed_paths!(tcx.def_path_str(def_id.to_def_id())),
+                content: with_no_trimmed_paths!(tcx.def_path_str(def_id)),
             });
         }
     }

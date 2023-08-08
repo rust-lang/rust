@@ -11,6 +11,15 @@ LL | #![deny(explicit_outlives_requirements)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives.rs:805:56
+   |
+LL |   struct InferredWhereBoundWithInlineBound<'a, T: ?Sized>
+   |  ________________________________________________________^
+LL | |
+LL | |     where T: 'a,
+   | |________________^ help: remove this bound
+
+error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives.rs:26:31
    |
 LL |     struct TeeOutlivesAy<'a, T: 'a> {
@@ -922,5 +931,5 @@ error: outlives requirements can be inferred
 LL |     union BeeWhereOutlivesAyTeeWhereDebug<'a, 'b, T> where 'b: 'a, T: Debug {
    |                                                            ^^^^^^^^ help: remove this bound
 
-error: aborting due to 153 previous errors
+error: aborting due to 154 previous errors
 

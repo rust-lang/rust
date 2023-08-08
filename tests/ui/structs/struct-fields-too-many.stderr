@@ -4,7 +4,7 @@ error[E0560]: struct `BuildData` has no field named `bar`
 LL |         bar: 0
    |         ^^^ `BuildData` does not have this field
    |
-   = note: available fields are: `foo`
+   = note: all struct fields are already assigned
 
 error: aborting due to previous error
 

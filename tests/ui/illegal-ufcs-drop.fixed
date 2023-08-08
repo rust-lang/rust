@@ -1,4 +1,7 @@
 // run-rustfix
+
+#![allow(dropping_references)]
+
 struct Foo;
 
 impl Drop for Foo {

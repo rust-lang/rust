@@ -4,9 +4,9 @@ note: no external requirements
 LL |     foo(cell, |cell_a, cell_x| {
    |               ^^^^^^^^^^^^^^^^
    |
-   = note: defining type: case1::{closure#0} with closure substs [
+   = note: defining type: case1::{closure#0} with closure args [
                i32,
-               for<Region(BrAnon(0, None))> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) u32>)),
+               for<Region(BrAnon(None))> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>)),
                (),
            ]
 
@@ -34,13 +34,13 @@ note: external requirements
 LL |     foo(cell, |cell_a, cell_x| {
    |               ^^^^^^^^^^^^^^^^
    |
-   = note: defining type: case2::{closure#0} with closure substs [
+   = note: defining type: case2::{closure#0} with closure args [
                i32,
-               for<Region(BrAnon(0, None))> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) u32>)),
+               for<Region(BrAnon(None))> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>)),
                (),
            ]
    = note: number of external vids: 2
-   = note: where '_#1r: '_#0r
+   = note: where '?1: '?0
 
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:28:1

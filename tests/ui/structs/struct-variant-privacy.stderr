@@ -14,7 +14,9 @@ error[E0603]: enum `Bar` is private
   --> $DIR/struct-variant-privacy.rs:10:14
    |
 LL |         foo::Bar::Baz { a: _a } => {}
-   |              ^^^ private enum
+   |              ^^^  --- variant `Baz` is not publicly re-exported
+   |              |
+   |              private enum
    |
 note: the enum `Bar` is defined here
   --> $DIR/struct-variant-privacy.rs:2:5

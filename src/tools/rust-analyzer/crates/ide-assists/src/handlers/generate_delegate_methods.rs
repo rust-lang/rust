@@ -1,11 +1,17 @@
+use std::collections::HashSet;
+
 use hir::{self, HasCrate, HasSource, HasVisibility};
-use syntax::ast::{self, make, AstNode, HasGenericParams, HasName, HasVisibility as _};
+use syntax::{
+    ast::{
+        self, edit_in_place::Indent, make, AstNode, HasGenericParams, HasName, HasVisibility as _,
+    },
+    ted,
+};
 
 use crate::{
-    utils::{convert_param_list_to_arg_list, find_struct_impl, render_snippet, Cursor},
+    utils::{convert_param_list_to_arg_list, find_struct_impl},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
-use syntax::ast::edit::AstNodeEdit;
 
 // Assist: generate_delegate_methods
 //
@@ -63,35 +69,45 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
     };
 
     let sema_field_ty = ctx.sema.resolve_type(&field_ty)?;
-    let krate = sema_field_ty.krate(ctx.db());
     let mut methods = vec![];
-    sema_field_ty.iterate_assoc_items(ctx.db(), krate, |item| {
-        if let hir::AssocItem::Function(f) = item {
-            if f.self_param(ctx.db()).is_some() && f.is_visible_from(ctx.db(), current_module) {
-                methods.push(f)
-            }
-        }
-        Option::<()>::None
-    });
+    let mut seen_names = HashSet::new();
 
-    for method in methods {
+    for ty in sema_field_ty.autoderef(ctx.db()) {
+        let krate = ty.krate(ctx.db());
+        ty.iterate_assoc_items(ctx.db(), krate, |item| {
+            if let hir::AssocItem::Function(f) = item {
+                let name = f.name(ctx.db());
+                if f.self_param(ctx.db()).is_some()
+                    && f.is_visible_from(ctx.db(), current_module)
+                    && seen_names.insert(name.clone())
+                {
+                    methods.push((name, f))
+                }
+            }
+            Option::<()>::None
+        });
+    }
+    methods.sort_by(|(a, _), (b, _)| a.cmp(b));
+    for (name, method) in methods {
         let adt = ast::Adt::Struct(strukt.clone());
-        let name = method.name(ctx.db()).to_string();
-        let impl_def = find_struct_impl(ctx, &adt, &[name]).flatten();
+        let name = name.display(ctx.db()).to_string();
+        // if `find_struct_impl` returns None, that means that a function named `name` already exists.
+        let Some(impl_def) = find_struct_impl(ctx, &adt, std::slice::from_ref(&name)) else {
+            continue;
+        };
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
             AssistId("generate_delegate_methods", AssistKind::Generate),
-            format!("Generate delegate for `{field_name}.{}()`", method.name(ctx.db())),
+            format!("Generate delegate for `{field_name}.{name}()`",),
             target,
-            |builder| {
+            |edit| {
                 // Create the function
                 let method_source = match method.source(ctx.db()) {
                     Some(source) => source.value,
                     None => return,
                 };
-                let method_name = method.name(ctx.db());
                 let vis = method_source.visibility();
-                let name = make::name(&method.name(ctx.db()).to_string());
+                let fn_name = make::name(&name);
                 let params =
                     method_source.param_list().unwrap_or_else(|| make::param_list(None, []));
                 let type_params = method_source.generic_param_list();
@@ -101,68 +117,75 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 };
                 let tail_expr = make::expr_method_call(
                     make::ext::field_from_idents(["self", &field_name]).unwrap(), // This unwrap is ok because we have at least 1 arg in the list
-                    make::name_ref(&method_name.to_string()),
+                    make::name_ref(&name),
                     arg_list,
                 );
                 let ret_type = method_source.ret_type();
                 let is_async = method_source.async_token().is_some();
+                let is_const = method_source.const_token().is_some();
+                let is_unsafe = method_source.unsafe_token().is_some();
                 let tail_expr_finished =
                     if is_async { make::expr_await(tail_expr) } else { tail_expr };
                 let body = make::block_expr([], Some(tail_expr_finished));
-                let f = make::fn_(vis, name, type_params, None, params, body, ret_type, is_async)
-                    .indent(ast::edit::IndentLevel(1))
-                    .clone_for_update();
+                let f = make::fn_(
+                    vis,
+                    fn_name,
+                    type_params,
+                    None,
+                    params,
+                    body,
+                    ret_type,
+                    is_async,
+                    is_const,
+                    is_unsafe,
+                )
+                .clone_for_update();
 
-                let cursor = Cursor::Before(f.syntax());
-
-                // Create or update an impl block, attach the function to it,
-                // then insert into our code.
-                match impl_def {
-                    Some(impl_def) => {
-                        // Remember where in our source our `impl` block lives.
-                        let impl_def = impl_def.clone_for_update();
-                        let old_range = impl_def.syntax().text_range();
-
-                        // Attach the function to the impl block
-                        let assoc_items = impl_def.get_or_create_assoc_item_list();
-                        assoc_items.add_item(f.clone().into());
-
-                        // Update the impl block.
-                        match ctx.config.snippet_cap {
-                            Some(cap) => {
-                                let snippet = render_snippet(cap, impl_def.syntax(), cursor);
-                                builder.replace_snippet(cap, old_range, snippet);
-                            }
-                            None => {
-                                builder.replace(old_range, impl_def.syntax().to_string());
-                            }
-                        }
-                    }
+                // Get the impl to update, or create one if we need to.
+                let impl_def = match impl_def {
+                    Some(impl_def) => edit.make_mut(impl_def),
                     None => {
-                        // Attach the function to the impl block
                         let name = &strukt_name.to_string();
                         let params = strukt.generic_param_list();
                         let ty_params = params.clone();
-                        let impl_def = make::impl_(make::ext::ident_path(name), params, ty_params)
-                            .clone_for_update();
-                        let assoc_items = impl_def.get_or_create_assoc_item_list();
-                        assoc_items.add_item(f.clone().into());
+                        let where_clause = strukt.where_clause();
+
+                        let impl_def = make::impl_(
+                            ty_params,
+                            None,
+                            make::ty_path(make::ext::ident_path(name)),
+                            where_clause,
+                            None,
+                        )
+                        .clone_for_update();
+
+                        // Fixup impl_def indentation
+                        let indent = strukt.indent_level();
+                        impl_def.reindent_to(indent);
 
                         // Insert the impl block.
-                        match ctx.config.snippet_cap {
-                            Some(cap) => {
-                                let offset = strukt.syntax().text_range().end();
-                                let snippet = render_snippet(cap, impl_def.syntax(), cursor);
-                                let snippet = format!("\n\n{snippet}");
-                                builder.insert_snippet(cap, offset, snippet);
-                            }
-                            None => {
-                                let offset = strukt.syntax().text_range().end();
-                                let snippet = format!("\n\n{}", impl_def.syntax());
-                                builder.insert(offset, snippet);
-                            }
-                        }
+                        let strukt = edit.make_mut(strukt.clone());
+                        ted::insert_all(
+                            ted::Position::after(strukt.syntax()),
+                            vec![
+                                make::tokens::whitespace(&format!("\n\n{indent}")).into(),
+                                impl_def.syntax().clone().into(),
+                            ],
+                        );
+
+                        impl_def
                     }
+                };
+
+                // Fixup function indentation.
+                // FIXME: Should really be handled by `AssocItemList::add_item`
+                f.reindent_to(impl_def.indent_level() + 1);
+
+                let assoc_items = impl_def.get_or_create_assoc_item_list();
+                assoc_items.add_item(f.clone().into());
+
+                if let Some(cap) = ctx.config.snippet_cap {
+                    edit.add_tabstop_before(cap, f)
                 }
             },
         )?;
@@ -212,6 +235,45 @@ impl Person {
     }
 
     #[test]
+    fn test_generate_delegate_create_impl_block_match_indent() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+mod indent {
+    struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+
+    struct Person {
+        ag$0e: Age,
+    }
+}"#,
+            r#"
+mod indent {
+    struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+
+    struct Person {
+        age: Age,
+    }
+
+    impl Person {
+        $0fn age(&self) -> u8 {
+            self.age.age()
+        }
+    }
+}"#,
+        );
+    }
+
+    #[test]
     fn test_generate_delegate_update_impl_block() {
         check_assist(
             generate_delegate_methods,
@@ -243,6 +305,47 @@ struct Person {
 impl Person {
     $0fn age(&self) -> u8 {
         self.age.age()
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_delegate_update_impl_block_match_indent() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+mod indent {
+    struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+
+    struct Person {
+        ag$0e: Age,
+    }
+
+    impl Person {}
+}"#,
+            r#"
+mod indent {
+    struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+
+    struct Person {
+        age: Age,
+    }
+
+    impl Person {
+        $0fn age(&self) -> u8 {
+            self.age.age()
+        }
     }
 }"#,
         );
@@ -315,6 +418,44 @@ impl<T> Person<T> {
     }
 
     #[test]
+    fn test_generates_delegate_autoderef() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+//- minicore: deref
+struct Age(u8);
+impl Age {
+    fn age(&self) -> u8 {
+        self.0
+    }
+}
+struct AgeDeref(Age);
+impl core::ops::Deref for AgeDeref { type Target = Age; }
+struct Person {
+    ag$0e: AgeDeref,
+}
+impl Person {}"#,
+            r#"
+struct Age(u8);
+impl Age {
+    fn age(&self) -> u8 {
+        self.0
+    }
+}
+struct AgeDeref(Age);
+impl core::ops::Deref for AgeDeref { type Target = Age; }
+struct Person {
+    age: AgeDeref,
+}
+impl Person {
+    $0fn age(&self) -> u8 {
+        self.age.age()
+    }
+}"#,
+        );
+    }
+
+    #[test]
     fn test_generate_delegate_visibility() {
         check_assist_not_applicable(
             generate_delegate_methods,
@@ -332,5 +473,27 @@ struct Person {
     ag$0e: m::Age,
 }"#,
         )
+    }
+
+    #[test]
+    fn test_generate_not_eligible_if_fn_exists() {
+        check_assist_not_applicable(
+            generate_delegate_methods,
+            r#"
+struct Age(u8);
+impl Age {
+    fn age(&self) -> u8 {
+        self.0
+    }
+}
+
+struct Person {
+    ag$0e: Age,
+}
+impl Person {
+    fn age(&self) -> u8 { 0 }
+}
+"#,
+        );
     }
 }

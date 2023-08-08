@@ -1,8 +1,24 @@
-CHECK: libunwind::Registers_x86_64::jumpto
+CHECK: __libunwind_Registers_x86_64_jumpto
 CHECK:      lfence
 CHECK:      lfence
 CHECK:      lfence
 CHECK:      lfence
-CHECK:      shlq    $0, (%rsp)
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK-NEXT: popq [[REGISTER:%[a-z]+]]
 CHECK-NEXT: lfence
-CHECK-NEXT: retq
+CHECK-NEXT: popq [[REGISTER:%[a-z]+]]
+CHECK-NEXT: lfence
+CHECK-NEXT: jmpq *[[REGISTER]]

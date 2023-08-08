@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
         let ty = cx.typeck_results().expr_ty(expr);
         if_chain! {
             if let ty::Float(fty) = *ty.kind();
-            if let hir::ExprKind::Lit(ref lit) = expr.kind;
+            if let hir::ExprKind::Lit(lit) = expr.kind;
             if let LitKind::Float(sym, lit_float_ty) = lit.node;
             then {
                 let sym_str = sym.as_str();
@@ -82,18 +82,23 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                     LitFloatType::Suffixed(ast::FloatTy::F64) => Some("f64"),
                     LitFloatType::Unsuffixed => None
                 };
-                let (is_whole, mut float_str) = match fty {
+                let (is_whole, is_inf, mut float_str) = match fty {
                     FloatTy::F32 => {
                         let value = sym_str.parse::<f32>().unwrap();
 
-                        (value.fract() == 0.0, formatter.format(value))
+                        (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
                     },
                     FloatTy::F64 => {
                         let value = sym_str.parse::<f64>().unwrap();
 
-                        (value.fract() == 0.0, formatter.format(value))
+
+                        (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
                     },
                 };
+
+                if is_inf {
+                    return;
+                }
 
                 if is_whole && !sym_str.contains(|c| c == 'e' || c == 'E') {
                     // Normalize the literal by stripping the fractional portion

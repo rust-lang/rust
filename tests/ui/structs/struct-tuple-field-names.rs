@@ -12,4 +12,7 @@ fn main() {
     match y {
         S { } => {} //~ ERROR: tuple variant `S` written as struct variant [E0769]
     }
+
+    if let E::S { 0: a } = x { //~ ERROR: pattern does not mention field `1`
+    }
 }

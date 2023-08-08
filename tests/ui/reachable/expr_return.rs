@@ -7,7 +7,7 @@
 fn a() {
     // Here we issue that the "2nd-innermost" return is unreachable,
     // but we stop there.
-    let x = {return {return {return;}}}; //~ ERROR unreachable
+    let x: () = {return {return {return;}}}; //~ ERROR unreachable
 }
 
 fn main() { }

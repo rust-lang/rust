@@ -1,10 +1,11 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
-use crate::parse_in;
+use crate::{errors, parse_in};
 
+use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::MetaItemKind;
-use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MacDelimiter, MetaItem};
+use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
@@ -45,7 +46,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
         kind: match &item.args {
             AttrArgs::Empty => MetaItemKind::Word,
             AttrArgs::Delimited(DelimArgs { dspan, delim, tokens }) => {
-                check_meta_bad_delim(sess, *dspan, *delim, "wrong meta list delimiters");
+                check_meta_bad_delim(sess, *dspan, *delim);
                 let nmis = parse_in(sess, tokens.clone(), "meta list", |p| p.parse_meta_seq_top())?;
                 MetaItemKind::List(nmis)
             }
@@ -68,7 +69,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     }
                 } else {
                     // The non-error case can happen with e.g. `#[foo = 1+1]`. The error case can
-                    // happen with e.g. `#[foo = include_str!("non-existent-file.rs")]`; in that
+                    // happen with e.g. `#[foo = include_str!("nonexistent-file.rs")]`; in that
                     // case we delay the error because an earlier error will have already been
                     // reported.
                     let msg = format!("unexpected expression: `{}`", pprust::expr_to_string(expr));
@@ -84,19 +85,24 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
     })
 }
 
-pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter, msg: &str) {
-    if let ast::MacDelimiter::Parenthesis = delim {
+pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+    if let Delimiter::Parenthesis = delim {
         return;
     }
+    sess.emit_err(errors::MetaBadDelim {
+        span: span.entire(),
+        sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
+    });
+}
 
-    sess.span_diagnostic
-        .struct_span_err(span.entire(), msg)
-        .multipart_suggestion(
-            "the delimiters should be `(` and `)`",
-            vec![(span.open, "(".to_string()), (span.close, ")".to_string())],
-            Applicability::MachineApplicable,
-        )
-        .emit();
+pub fn check_cfg_attr_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+    if let Delimiter::Parenthesis = delim {
+        return;
+    }
+    sess.emit_err(errors::CfgAttrBadDelim {
+        span: span.entire(),
+        sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
+    });
 }
 
 /// Checks that the given meta-item is compatible with this `AttributeTemplate`.
@@ -152,15 +158,15 @@ fn emit_malformed_attribute(
         matches!(name, sym::doc | sym::ignore | sym::inline | sym::link | sym::test | sym::bench)
     };
 
-    let error_msg = format!("malformed `{}` attribute input", name);
+    let error_msg = format!("malformed `{name}` attribute input");
     let mut msg = "attribute must be of the form ".to_owned();
     let mut suggestions = vec![];
     let mut first = true;
     let inner = if style == ast::AttrStyle::Inner { "!" } else { "" };
     if template.word {
         first = false;
-        let code = format!("#{}[{}]", inner, name);
-        msg.push_str(&format!("`{}`", &code));
+        let code = format!("#{inner}[{name}]");
+        msg.push_str(&format!("`{code}`"));
         suggestions.push(code);
     }
     if let Some(descr) = template.list {
@@ -168,23 +174,23 @@ fn emit_malformed_attribute(
             msg.push_str(" or ");
         }
         first = false;
-        let code = format!("#{}[{}({})]", inner, name, descr);
-        msg.push_str(&format!("`{}`", &code));
+        let code = format!("#{inner}[{name}({descr})]");
+        msg.push_str(&format!("`{code}`"));
         suggestions.push(code);
     }
     if let Some(descr) = template.name_value_str {
         if !first {
             msg.push_str(" or ");
         }
-        let code = format!("#{}[{} = \"{}\"]", inner, name, descr);
-        msg.push_str(&format!("`{}`", &code));
+        let code = format!("#{inner}[{name} = \"{descr}\"]");
+        msg.push_str(&format!("`{code}`"));
         suggestions.push(code);
     }
     if should_warn(name) {
-        sess.buffer_lint(&ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, &msg);
+        sess.buffer_lint(&ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, msg);
     } else {
         sess.span_diagnostic
-            .struct_span_err(span, &error_msg)
+            .struct_span_err(span, error_msg)
             .span_suggestions(
                 span,
                 if suggestions.len() == 1 {

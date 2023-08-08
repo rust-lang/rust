@@ -1,0 +1,20 @@
+error[E0277]: `T` doesn't implement `std::fmt::Display`
+  --> $DIR/bounds-are-checked3.rs:9:35
+   |
+LL | type Foo<T: Debug> = (impl Debug, Struct<T>);
+   |                                   ^^^^^^^^^ `T` cannot be formatted with the default formatter
+   |
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+note: required by a bound in `Struct`
+  --> $DIR/bounds-are-checked3.rs:5:18
+   |
+LL | struct Struct<V: Display>(Option<V>);
+   |                  ^^^^^^^ required by this bound in `Struct`
+help: consider further restricting this bound
+   |
+LL | type Foo<T: Debug + std::fmt::Display> = (impl Debug, Struct<T>);
+   |                   +++++++++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

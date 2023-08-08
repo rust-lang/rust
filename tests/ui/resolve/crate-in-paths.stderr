@@ -6,7 +6,7 @@ LL |     Foo;
    |
 help: consider importing this unit struct
    |
-LL | use crate::bar::Foo;
+LL + use crate::bar::Foo;
    |
 
 error: aborting due to previous error

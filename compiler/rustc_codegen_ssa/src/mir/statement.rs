@@ -18,12 +18,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         LocalRef::UnsizedPlace(cg_indirect_dest) => {
                             self.codegen_rvalue_unsized(bx, cg_indirect_dest, rvalue)
                         }
-                        LocalRef::Operand(None) => {
+                        LocalRef::PendingOperand => {
                             let operand = self.codegen_rvalue_operand(bx, rvalue);
-                            self.locals[index] = LocalRef::Operand(Some(operand));
+                            self.overwrite_local(index, LocalRef::Operand(operand));
                             self.debug_introduce_local(bx, index);
                         }
-                        LocalRef::Operand(Some(op)) => {
+                        LocalRef::Operand(op) => {
                             if !op.layout.is_zst() {
                                 span_bug!(
                                     statement.source_info.span,
@@ -65,7 +65,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
             mir::StatementKind::Coverage(box ref coverage) => {
-                self.codegen_coverage(bx, coverage.clone(), statement.source_info.scope);
+                self.codegen_coverage(bx, coverage, statement.source_info.scope);
             }
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(ref op)) => {
                 let op_val = self.codegen_operand(bx, op);
@@ -92,6 +92,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             | mir::StatementKind::Retag { .. }
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::ConstEvalCounter
+            | mir::StatementKind::PlaceMention(..)
             | mir::StatementKind::Nop => {}
         }
     }

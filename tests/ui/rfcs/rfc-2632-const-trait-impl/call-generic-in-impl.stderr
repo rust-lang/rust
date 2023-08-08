@@ -1,0 +1,8 @@
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/call-generic-in-impl.rs:9:16
+   |
+LL | impl<T: ~const PartialEq> const MyPartialEq for T {
+   |                ^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,11 @@
+error[E0446]: private type alias `Foo` in public interface
+  --> $DIR/privacy.rs:4:1
+   |
+LL | type Foo = (impl Sized, u8);
+   | -------- `Foo` declared as private
+LL | pub fn foo() -> Foo {
+   | ^^^^^^^^^^^^^^^^^^^ can't leak private type alias
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0446`.

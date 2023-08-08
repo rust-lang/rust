@@ -123,10 +123,22 @@ LL |     if with_is_empty.len() == 0 {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `with_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:182:8
+  --> $DIR/len_zero.rs:181:6
+   |
+LL |     (has_is_empty.len() > 0).then(|| println!("This can happen."));
+   |      ^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> $DIR/len_zero.rs:182:6
+   |
+LL |     (has_is_empty.len() == 0).then(|| println!("Or this!"));
+   |      ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> $DIR/len_zero.rs:186:8
    |
 LL |     if b.len() != 0 {}
    |        ^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!b.is_empty()`
 
-error: aborting due to 21 previous errors
+error: aborting due to 23 previous errors
 

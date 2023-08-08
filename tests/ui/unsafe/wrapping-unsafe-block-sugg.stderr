@@ -1,0 +1,99 @@
+error: call to unsafe function is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:12:5
+   |
+LL |     unsf();
+   |     ^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> $DIR/wrapping-unsafe-block-sugg.rs:10:1
+   |
+LL | pub unsafe fn foo() {
+   | ^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/wrapping-unsafe-block-sugg.rs:4:9
+   |
+LL | #![deny(unsafe_op_in_unsafe_fn)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: call to unsafe function is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:15:5
+   |
+LL |     unsf();
+   |     ^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error: dereference of raw pointer is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:22:13
+   |
+LL |     let y = *x;
+   |             ^^ dereference of raw pointer
+   |
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> $DIR/wrapping-unsafe-block-sugg.rs:20:1
+   |
+LL | pub unsafe fn bar(x: *const i32) -> i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: dereference of raw pointer is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:25:9
+   |
+LL |     y + *x
+   |         ^^ dereference of raw pointer
+   |
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+error: use of mutable static is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:33:13
+   |
+LL |     let y = BAZ;
+   |             ^^^ use of mutable static
+   |
+   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> $DIR/wrapping-unsafe-block-sugg.rs:31:1
+   |
+LL | pub unsafe fn baz() -> i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of mutable static is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:36:9
+   |
+LL |     y + BAZ
+   |         ^^^ use of mutable static
+   |
+   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
+
+error: call to unsafe function is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:41:36
+   |
+LL | macro_rules! unsafe_macro { () => (unsf()) }
+   |                                    ^^^^^^ call to unsafe function
+...
+LL |     unsafe_macro!();
+   |     --------------- in this macro invocation
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> $DIR/wrapping-unsafe-block-sugg.rs:49:1
+   |
+LL | pub unsafe fn unsafe_in_macro() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `unsafe_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: call to unsafe function is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:41:36
+   |
+LL | macro_rules! unsafe_macro { () => (unsf()) }
+   |                                    ^^^^^^ call to unsafe function
+...
+LL |     unsafe_macro!();
+   |     --------------- in this macro invocation
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: this error originates in the macro `unsafe_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 8 previous errors
+

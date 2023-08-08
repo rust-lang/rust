@@ -1,4 +1,3 @@
-use super::debug::term_type;
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB};
 
 use itertools::Itertools;
@@ -12,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::original_sp;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol};
 
-use std::cell::RefCell;
+use std::cell::OnceCell;
 use std::cmp::Ordering;
 
 #[derive(Debug, Copy, Clone)]
@@ -40,7 +39,7 @@ impl CoverageStatement {
                     "{}: @{}.{}: {:?}",
                     source_range_no_file(tcx, span),
                     bb.index(),
-                    term_type(&term.kind),
+                    term.kind.name(),
                     term.kind
                 )
             }
@@ -68,7 +67,7 @@ impl CoverageStatement {
 pub(super) struct CoverageSpan {
     pub span: Span,
     pub expn_span: Span,
-    pub current_macro_or_none: RefCell<Option<Option<Symbol>>>,
+    pub current_macro_or_none: OnceCell<Option<Symbol>>,
     pub bcb: BasicCoverageBlock,
     pub coverage_statements: Vec<CoverageStatement>,
     pub is_closure: bool,
@@ -176,8 +175,7 @@ impl CoverageSpan {
     /// If the span is part of a macro, returns the macro name symbol.
     pub fn current_macro(&self) -> Option<Symbol> {
         self.current_macro_or_none
-            .borrow_mut()
-            .get_or_insert_with(|| {
+            .get_or_init(|| {
                 if let ExpnKind::Macro(MacroKind::Bang, current_macro) =
                     self.expn_span.ctxt().outer_expn_data().kind
                 {
@@ -345,7 +343,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                         // before the dominated equal spans). When later comparing two spans in
                         // order, the first will either dominate the second, or they will have no
                         // dominator relationship.
-                        self.basic_coverage_blocks.dominators().rank_partial_cmp(a.bcb, b.bcb)
+                        self.basic_coverage_blocks.rank_partial_cmp(a.bcb, b.bcb)
                     }
                 } else {
                     // Sort hi() in reverse order so shorter spans are attempted after longer spans.
@@ -481,9 +479,10 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
 
     fn check_invoked_macro_name_span(&mut self) {
         if let Some(visible_macro) = self.curr().visible_macro(self.body_span) {
-            if self.prev_expn_span.map_or(true, |prev_expn_span| {
-                self.curr().expn_span.ctxt() != prev_expn_span.ctxt()
-            }) {
+            if !self
+                .prev_expn_span
+                .is_some_and(|prev_expn_span| self.curr().expn_span.ctxt() == prev_expn_span.ctxt())
+            {
                 let merged_prefix_len = self.curr_original_span.lo() - self.curr().span.lo();
                 let after_macro_bang =
                     merged_prefix_len + BytePos(visible_macro.as_str().len() as u32 + 1);
@@ -832,6 +831,7 @@ pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span>
         | StatementKind::SetDiscriminant { .. }
         | StatementKind::Deinit(..)
         | StatementKind::Retag(_, _)
+        | StatementKind::PlaceMention(..)
         | StatementKind::AscribeUserType(_, _) => {
             Some(statement.source_info.span)
         }
@@ -868,7 +868,7 @@ pub(super) fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Sp
 
         // Retain spans from all other terminators
         TerminatorKind::Resume
-        | TerminatorKind::Abort
+        | TerminatorKind::Terminate
         | TerminatorKind::Return
         | TerminatorKind::Yield { .. }
         | TerminatorKind::GeneratorDrop

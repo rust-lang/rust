@@ -16,7 +16,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::GenericArg;
-use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
+use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -30,7 +30,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// It is a bug to call this with a not-fully-simplified pattern.
     pub(super) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match match_pair.pattern.kind {
-            PatKind::Variant { adt_def, substs: _, variant_index: _, subpatterns: _ } => Test {
+            PatKind::Variant { adt_def, args: _, variant_index: _, subpatterns: _ } => Test {
                 span: match_pair.pattern.span,
                 kind: TestKind::Switch {
                     adt_def,
@@ -77,7 +77,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Wild
             | PatKind::Binding { .. }
             | PatKind::Leaf { .. }
-            | PatKind::Deref { .. } => self.error_simplifyable(match_pair),
+            | PatKind::Deref { .. } => self.error_simplifiable(match_pair),
         }
     }
 
@@ -88,7 +88,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         switch_ty: Ty<'tcx>,
         options: &mut FxIndexMap<ConstantKind<'tcx>, u128>,
     ) -> bool {
-        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place) else {
+        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place)
+        else {
             return false;
         };
 
@@ -126,7 +127,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &Candidate<'pat, 'tcx>,
         variants: &mut BitSet<VariantIdx>,
     ) -> bool {
-        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place) else {
+        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place)
+        else {
             return false;
         };
 
@@ -173,16 +175,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             debug_assert_ne!(
                                 target_blocks[idx.index()],
                                 otherwise_block,
-                                "no canididates for tested discriminant: {:?}",
-                                discr,
+                                "no candidates for tested discriminant: {discr:?}",
                             );
                             Some((discr.val, target_blocks[idx.index()]))
                         } else {
                             debug_assert_eq!(
                                 target_blocks[idx.index()],
                                 otherwise_block,
-                                "found canididates for untested discriminant: {:?}",
-                                discr,
+                                "found candidates for untested discriminant: {discr:?}",
                             );
                             None
                         }
@@ -244,8 +244,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         bug!("matching on `String` went through without enabling string_deref_patterns");
                     }
                     let re_erased = tcx.lifetimes.re_erased;
-                    let ref_string = self.temp(tcx.mk_imm_ref(re_erased, ty), test.span);
-                    let ref_str_ty = tcx.mk_imm_ref(re_erased, tcx.types.str_);
+                    let ref_string = self.temp(Ty::new_imm_ref(tcx,re_erased, ty), test.span);
+                    let ref_str_ty = Ty::new_imm_ref(tcx,re_erased, tcx.types.str_);
                     let ref_str = self.temp(ref_str_ty, test.span);
                     let deref = tcx.require_lang_item(LangItem::Deref, None);
                     let method = trait_method(tcx, deref, sym::deref, [ty]);
@@ -263,8 +263,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             args: vec![Operand::Move(ref_string)],
                             destination: ref_str,
                             target: Some(eq_block),
-                            cleanup: None,
-                            from_hir_call: false,
+                            unwind: UnwindAction::Continue,
+                            call_source: CallSource::Misc,
                             fn_span: source_info.span
                         }
                     );
@@ -380,18 +380,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
     }
 
-    /// Compare two `&T` values using `<T as std::compare::PartialEq>::eq`
+    /// Compare two values using `<T as std::compare::PartialEq>::eq`.
+    /// If the values are already references, just call it directly, otherwise
+    /// take a reference to the values first and then call it.
     fn non_scalar_compare(
         &mut self,
         block: BasicBlock,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
         source_info: SourceInfo,
         value: ConstantKind<'tcx>,
-        place: Place<'tcx>,
+        mut val: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
         let mut expect = self.literal_operand(source_info.span, value);
-        let mut val = Operand::Copy(place);
 
         // If we're using `b"..."` as a pattern, we need to insert an
         // unsizing coercion, as the byte string has the type `&[u8; N]`.
@@ -414,16 +415,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (Some((region, elem_ty, _)), _) | (None, Some((region, elem_ty, _))) => {
                 let tcx = self.tcx;
                 // make both a slice
-                ty = tcx.mk_imm_ref(*region, tcx.mk_slice(*elem_ty));
+                ty = Ty::new_imm_ref(tcx, *region, Ty::new_slice(tcx, *elem_ty));
                 if opt_ref_ty.is_some() {
                     let temp = self.temp(ty, source_info.span);
                     self.cfg.push_assign(
                         block,
                         source_info,
                         temp,
-                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), val, ty),
+                        Rvalue::Cast(
+                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            Operand::Copy(val),
+                            ty,
+                        ),
                     );
-                    val = Operand::Move(temp);
+                    val = temp;
                 }
                 if opt_ref_test_ty.is_some() {
                     let slice = self.temp(ty, source_info.span);
@@ -431,19 +436,47 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         slice,
-                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), expect, ty),
+                        Rvalue::Cast(
+                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            expect,
+                            ty,
+                        ),
                     );
                     expect = Operand::Move(slice);
                 }
             }
         }
 
-        let ty::Ref(_, deref_ty, _) = *ty.kind() else {
-            bug!("non_scalar_compare called on non-reference type: {}", ty);
-        };
+        match *ty.kind() {
+            ty::Ref(_, deref_ty, _) => ty = deref_ty,
+            _ => {
+                // non_scalar_compare called on non-reference type
+                let temp = self.temp(ty, source_info.span);
+                self.cfg.push_assign(block, source_info, temp, Rvalue::Use(expect));
+                let ref_ty = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, ty);
+                let ref_temp = self.temp(ref_ty, source_info.span);
+
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    ref_temp,
+                    Rvalue::Ref(self.tcx.lifetimes.re_erased, BorrowKind::Shared, temp),
+                );
+                expect = Operand::Move(ref_temp);
+
+                let ref_temp = self.temp(ref_ty, source_info.span);
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    ref_temp,
+                    Rvalue::Ref(self.tcx.lifetimes.re_erased, BorrowKind::Shared, val),
+                );
+                val = ref_temp;
+            }
+        }
 
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
-        let method = trait_method(self.tcx, eq_def_id, sym::eq, [deref_ty, deref_ty]);
+        let method = trait_method(self.tcx, eq_def_id, sym::eq, [ty, ty]);
 
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
@@ -463,11 +496,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     literal: method,
                 })),
-                args: vec![val, expect],
+                args: vec![Operand::Copy(val), expect],
                 destination: eq_result,
                 target: Some(eq_block),
-                cleanup: None,
-                from_hir_call: false,
+                unwind: UnwindAction::Continue,
+                call_source: CallSource::MatchCmp,
                 fn_span: source_info.span,
             },
         );
@@ -499,7 +532,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// However, in some cases, the test may just not be relevant to candidate.
     /// For example, suppose we are testing whether `foo.x == 22`, but in one
     /// match arm we have `Foo { x: _, ... }`... in that case, the test for
-    /// what value `x` has has no particular relevance to this candidate. In
+    /// the value of `x` has no particular relevance to this candidate. In
     /// such cases, this function just returns None without doing anything.
     /// This is used by the overall `match_candidates` algorithm to structure
     /// the match as a whole. See `match_candidates` for more details.
@@ -763,8 +796,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate.match_pairs.extend(consequent_match_pairs);
     }
 
-    fn error_simplifyable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {
-        span_bug!(match_pair.pattern.span, "simplifyable pattern found: {:?}", match_pair.pattern)
+    fn error_simplifiable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {
+        span_bug!(match_pair.pattern.span, "simplifiable pattern found: {:?}", match_pair.pattern)
     }
 
     fn const_range_contains(
@@ -832,7 +865,7 @@ fn trait_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     method_name: Symbol,
-    substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+    args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
 ) -> ConstantKind<'tcx> {
     // The unhygienic comparison here is acceptable because this is only
     // used on known traits.
@@ -842,7 +875,7 @@ fn trait_method<'tcx>(
         .find(|item| item.kind == ty::AssocKind::Fn)
         .expect("trait method not found");
 
-    let method_ty = tcx.mk_fn_def(item.def_id, substs);
+    let method_ty = Ty::new_fn_def(tcx, item.def_id, args);
 
     ConstantKind::zero_sized(method_ty)
 }

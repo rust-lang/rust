@@ -1,4 +1,4 @@
-error[E0080]: evaluation of `Inline::<dyn std::fmt::Debug>::{constant#0}` failed
+error[E0080]: evaluation of `Inline::<dyn Debug>::{constant#0}` failed
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
    = note: size_of called on unsized type `dyn Debug`
@@ -35,7 +35,7 @@ help: consider relaxing the type parameter's implicit `Sized` bound
 LL | impl<T: ?Sized> Inline<T>
    |       ++++++++
 
-error[E0080]: evaluation of `Inline::<dyn std::fmt::Debug>::{constant#0}` failed
+error[E0080]: evaluation of `Inline::<dyn Debug>::{constant#0}` failed
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
    = note: size_of called on unsized type `dyn Debug`

@@ -1,4 +1,4 @@
-// ignore-test
+// ignore-test (This is currently broken)
 
 #![allow(incomplete_features)]
 #![feature(const_mut_refs)]

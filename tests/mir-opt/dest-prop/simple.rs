@@ -1,3 +1,4 @@
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //! Copy of `nrvo-simple.rs`, to ensure that full dest-prop handles it too.
 // unit-test: DestinationPropagation
 // EMIT_MIR simple.nrvo.DestinationPropagation.diff

@@ -1,5 +1,6 @@
 //! A module for searching for libraries
 
+use rustc_fs_util::try_canonicalize;
 use smallvec::{smallvec, SmallVec};
 use std::env;
 use std::fs;
@@ -67,6 +68,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
     use std::ffi::{CStr, OsStr};
     use std::os::unix::prelude::*;
 
+    #[cfg(not(target_os = "aix"))]
     unsafe {
         let addr = current_dll_path as usize as *mut _;
         let mut info = std::mem::zeroed();
@@ -80,6 +82,49 @@ fn current_dll_path() -> Result<PathBuf, String> {
         let os = OsStr::from_bytes(bytes);
         Ok(PathBuf::from(os))
     }
+
+    #[cfg(target_os = "aix")]
+    unsafe {
+        // On AIX, the symbol `current_dll_path` references a function descriptor.
+        // A function descriptor is consisted of (See https://reviews.llvm.org/D62532)
+        // * The address of the entry point of the function.
+        // * The TOC base address for the function.
+        // * The environment pointer.
+        // The function descriptor is in the data section.
+        let addr = current_dll_path as u64;
+        let mut buffer = vec![std::mem::zeroed::<libc::ld_info>(); 64];
+        loop {
+            if libc::loadquery(
+                libc::L_GETINFO,
+                buffer.as_mut_ptr() as *mut i8,
+                (std::mem::size_of::<libc::ld_info>() * buffer.len()) as u32,
+            ) >= 0
+            {
+                break;
+            } else {
+                if std::io::Error::last_os_error().raw_os_error().unwrap() != libc::ENOMEM {
+                    return Err("loadquery failed".into());
+                }
+                buffer.resize(buffer.len() * 2, std::mem::zeroed::<libc::ld_info>());
+            }
+        }
+        let mut current = buffer.as_mut_ptr() as *mut libc::ld_info;
+        loop {
+            let data_base = (*current).ldinfo_dataorg as u64;
+            let data_end = data_base + (*current).ldinfo_datasize;
+            if (data_base..data_end).contains(&addr) {
+                let bytes = CStr::from_ptr(&(*current).ldinfo_filename[0]).to_bytes();
+                let os = OsStr::from_bytes(bytes);
+                return Ok(PathBuf::from(os));
+            }
+            if (*current).ldinfo_next == 0 {
+                break;
+            }
+            current =
+                (current as *mut i8).offset((*current).ldinfo_next as isize) as *mut libc::ld_info;
+        }
+        return Err(format!("current dll's address {} is not in the load map", addr));
+    }
 }
 
 #[cfg(windows)]
@@ -87,42 +132,45 @@ fn current_dll_path() -> Result<PathBuf, String> {
     use std::ffi::OsString;
     use std::io;
     use std::os::windows::prelude::*;
-    use std::ptr;
 
-    use winapi::um::libloaderapi::{
-        GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+    use windows::{
+        core::PCWSTR,
+        Win32::Foundation::HMODULE,
+        Win32::System::LibraryLoader::{
+            GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+        },
     };
 
+    let mut module = HMODULE::default();
     unsafe {
-        let mut module = ptr::null_mut();
-        let r = GetModuleHandleExW(
+        GetModuleHandleExW(
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-            current_dll_path as usize as *mut _,
+            PCWSTR(current_dll_path as *mut u16),
             &mut module,
-        );
-        if r == 0 {
-            return Err(format!("GetModuleHandleExW failed: {}", io::Error::last_os_error()));
-        }
-        let mut space = Vec::with_capacity(1024);
-        let r = GetModuleFileNameW(module, space.as_mut_ptr(), space.capacity() as u32);
-        if r == 0 {
-            return Err(format!("GetModuleFileNameW failed: {}", io::Error::last_os_error()));
-        }
-        let r = r as usize;
-        if r >= space.capacity() {
-            return Err(format!("our buffer was too small? {}", io::Error::last_os_error()));
-        }
-        space.set_len(r);
-        let os = OsString::from_wide(&space);
-        Ok(PathBuf::from(os))
+        )
     }
+    .ok()
+    .map_err(|e| e.to_string())?;
+
+    let mut filename = vec![0; 1024];
+    let n = unsafe { GetModuleFileNameW(module, &mut filename) } as usize;
+    if n == 0 {
+        return Err(format!("GetModuleFileNameW failed: {}", io::Error::last_os_error()));
+    }
+    if n >= filename.capacity() {
+        return Err(format!("our buffer was too small? {}", io::Error::last_os_error()));
+    }
+
+    filename.truncate(n);
+
+    Ok(OsString::from_wide(&filename).into())
 }
 
 pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
     let target = crate::config::host_triple();
     let mut sysroot_candidates: SmallVec<[PathBuf; 2]> =
         smallvec![get_or_default_sysroot().expect("Failed finding sysroot")];
-    let path = current_dll_path().and_then(|s| s.canonicalize().map_err(|e| e.to_string()));
+    let path = current_dll_path().and_then(|s| try_canonicalize(s).map_err(|e| e.to_string()));
     if let Ok(dll) = path {
         // use `parent` twice to chop off the file name and then also the
         // directory containing the dll which should be either `lib` or `bin`.
@@ -157,7 +205,7 @@ pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
 pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
     // Follow symlinks. If the resolved path is relative, make it absolute.
     fn canonicalize(path: PathBuf) -> PathBuf {
-        let path = fs::canonicalize(&path).unwrap_or(path);
+        let path = try_canonicalize(&path).unwrap_or(path);
         // See comments on this target function, but the gist is that
         // gcc chokes on verbatim paths which fs::canonicalize generates
         // so we try to avoid those kinds of paths.
@@ -179,28 +227,29 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
         ))?;
 
         // if `dir` points target's dir, move up to the sysroot
-        if dir.ends_with(crate::config::host_triple()) {
+        let mut sysroot_dir = if dir.ends_with(crate::config::host_triple()) {
             dir.parent() // chop off `$target`
                 .and_then(|p| p.parent()) // chop off `rustlib`
-                .and_then(|p| {
-                    // chop off `lib` (this could be also $arch dir if the host sysroot uses a
-                    // multi-arch layout like Debian or Ubuntu)
-                    match p.parent() {
-                        Some(p) => match p.file_name() {
-                            Some(f) if f == "lib" => p.parent(), // first chop went for $arch, so chop again for `lib`
-                            _ => Some(p),
-                        },
-                        None => None,
-                    }
-                })
+                .and_then(|p| p.parent()) // chop off `lib`
                 .map(|s| s.to_owned())
-                .ok_or(format!(
-                    "Could not move 3 levels upper using `parent()` on {}",
-                    dir.display()
-                ))
+                .ok_or_else(|| {
+                    format!("Could not move 3 levels upper using `parent()` on {}", dir.display())
+                })?
         } else {
-            Ok(dir.to_owned())
+            dir.to_owned()
+        };
+
+        // On multiarch linux systems, there will be multiarch directory named
+        // with the architecture(e.g `x86_64-linux-gnu`) under the `lib` directory.
+        // Which cause us to mistakenly end up in the lib directory instead of the sysroot directory.
+        if sysroot_dir.ends_with("lib") {
+            sysroot_dir =
+                sysroot_dir.parent().map(|real_sysroot| real_sysroot.to_owned()).ok_or_else(
+                    || format!("Could not move to parent path of {}", sysroot_dir.display()),
+                )?
         }
+
+        Ok(sysroot_dir)
     }
 
     // Use env::args().next() to get the path of the executable without

@@ -145,7 +145,14 @@ fn find_definitions(
                     if name
                         .syntax()
                         .parent()
-                        .map_or(false, |it| ast::Rename::can_cast(it.kind())) =>
+                        .map_or(false, |it| ast::Rename::can_cast(it.kind()))
+                        // FIXME: uncomment this once we resolve to usages to extern crate declarations
+                        // && name
+                        //     .syntax()
+                        //     .ancestors()
+                        //     .nth(2)
+                        //     .map_or(true, |it| !ast::ExternCrate::can_cast(it.kind()))
+                        =>
                 {
                     bail!("Renaming aliases is currently unsupported")
                 }
@@ -165,7 +172,12 @@ fn find_definitions(
                             NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
                                 Definition::Local(local_ref)
                             }
+                            NameRefClass::ExternCrateShorthand { decl, .. } => {
+                                Definition::ExternCrateDecl(decl)
+                            }
                         })
+                        // FIXME: uncomment this once we resolve to usages to extern crate declarations
+                        .filter(|def| !matches!(def, Definition::ExternCrateDecl(..)))
                         .ok_or_else(|| format_err!("No references found at position"))
                         .and_then(|def| {
                             // if the name differs from the definitions name it has to be an alias
@@ -353,6 +365,11 @@ mod tests {
     fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
+        if !ra_fixture_after.starts_with("error: ") {
+            if let Err(err) = analysis.prepare_rename(position).unwrap() {
+                panic!("Prepare rename to '{new_name}' was failed: {err}")
+            }
+        }
         let rename_result = analysis
             .rename(position, new_name)
             .unwrap_or_else(|err| panic!("Rename to '{new_name}' was cancelled: {err}"));
@@ -362,7 +379,7 @@ mod tests {
                 let mut file_id: Option<FileId> = None;
                 for edit in source_change.source_file_edits {
                     file_id = Some(edit.0);
-                    for indel in edit.1.into_iter() {
+                    for indel in edit.1 .0.into_iter() {
                         text_edit_builder.replace(indel.delete, indel.insert);
                     }
                 }
@@ -890,14 +907,17 @@ mod foo$0;
                     source_file_edits: {
                         FileId(
                             1,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "foo2",
-                                    delete: 4..7,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 4..7,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -939,24 +959,30 @@ use crate::foo$0::FooContent;
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "quux",
-                                    delete: 8..11,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "quux",
+                                        delete: 8..11,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                         FileId(
                             2,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "quux",
-                                    delete: 11..14,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "quux",
+                                        delete: 11..14,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -992,14 +1018,17 @@ mod fo$0o;
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "foo2",
-                                    delete: 4..7,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 4..7,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveDir {
@@ -1042,14 +1071,17 @@ mod outer { mod fo$0o; }
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "bar",
-                                    delete: 16..19,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "bar",
+                                        delete: 16..19,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -1115,24 +1147,30 @@ pub mod foo$0;
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "foo2",
-                                    delete: 27..30,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 27..30,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                         FileId(
                             1,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "foo2",
-                                    delete: 8..11,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 8..11,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -1182,14 +1220,17 @@ mod quux;
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "foo2",
-                                    delete: 4..7,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 4..7,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -1320,18 +1361,21 @@ pub fn baz() {}
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "r#fn",
-                                    delete: 4..7,
-                                },
-                                Indel {
-                                    insert: "r#fn",
-                                    delete: 22..25,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "r#fn",
+                                        delete: 4..7,
+                                    },
+                                    Indel {
+                                        insert: "r#fn",
+                                        delete: 22..25,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -1390,18 +1434,21 @@ pub fn baz() {}
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "foo",
-                                    delete: 4..8,
-                                },
-                                Indel {
-                                    insert: "foo",
-                                    delete: 23..27,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo",
+                                        delete: 4..8,
+                                    },
+                                    Indel {
+                                        insert: "foo",
+                                        delete: 23..27,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -1704,6 +1751,23 @@ struct Foo { bar: i32 }
 
 fn foo(bar: i32) -> Foo {
     Foo { bar }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_local_simple() {
+        check(
+            "i",
+            r#"
+fn foo(bar$0: i32) -> i32 {
+    bar
+}
+"#,
+            r#"
+fn foo(i: i32) -> i32 {
+    i
 }
 "#,
         );
@@ -2464,5 +2528,110 @@ fn main() {
 }
 ",
         )
+    }
+
+    #[test]
+    fn extern_crate() {
+        check_prepare(
+            r"
+//- /lib.rs crate:main deps:foo
+extern crate foo$0;
+use foo as qux;
+//- /foo.rs crate:foo
+",
+            expect![[r#"No references found at position"#]],
+        );
+        // FIXME: replace above check_prepare with this once we resolve to usages to extern crate declarations
+        //         check(
+        //             "bar",
+        //             r"
+        // //- /lib.rs crate:main deps:foo
+        // extern crate foo$0;
+        // use foo as qux;
+        // //- /foo.rs crate:foo
+        // ",
+        //             r"
+        // extern crate foo as bar;
+        // use bar as qux;
+        // ",
+        //         );
+    }
+
+    #[test]
+    fn extern_crate_rename() {
+        check_prepare(
+            r"
+//- /lib.rs crate:main deps:foo
+extern crate foo as qux$0;
+use qux as frob;
+//- /foo.rs crate:foo
+",
+            expect!["Renaming aliases is currently unsupported"],
+        );
+        // FIXME: replace above check_prepare with this once we resolve to usages to extern crate
+        // declarations
+        //         check(
+        //             "bar",
+        //             r"
+        // //- /lib.rs crate:main deps:foo
+        // extern crate foo as qux$0;
+        // use qux as frob;
+        // //- /foo.rs crate:foo
+        // ",
+        //             r"
+        // extern crate foo as bar;
+        // use bar as frob;
+        // ",
+        //         );
+    }
+
+    #[test]
+    fn extern_crate_self() {
+        check_prepare(
+            r"
+extern crate self$0;
+use self as qux;
+",
+            expect!["No references found at position"],
+        );
+        // FIXME: replace above check_prepare with this once we resolve to usages to extern crate declarations
+        //         check(
+        //             "bar",
+        //             r"
+        // extern crate self$0;
+        // use self as qux;
+        // ",
+        //             r"
+        // extern crate self as bar;
+        // use self as qux;
+        // ",
+        //         );
+    }
+
+    #[test]
+    fn extern_crate_self_rename() {
+        check_prepare(
+            r"
+//- /lib.rs crate:main deps:foo
+extern crate self as qux$0;
+use qux as frob;
+//- /foo.rs crate:foo
+",
+            expect!["Renaming aliases is currently unsupported"],
+        );
+        // FIXME: replace above check_prepare with this once we resolve to usages to extern crate declarations
+        //         check(
+        //             "bar",
+        //             r"
+        // //- /lib.rs crate:main deps:foo
+        // extern crate self as qux$0;
+        // use qux as frob;
+        // //- /foo.rs crate:foo
+        // ",
+        //             r"
+        // extern crate self as bar;
+        // use bar as frob;
+        // ",
+        //         );
     }
 }

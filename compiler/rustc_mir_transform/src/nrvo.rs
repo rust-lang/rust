@@ -34,7 +34,8 @@ pub struct RenameReturnPlace;
 
 impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+        // #111005
+        sess.mir_opt_level() > 0 && sess.opts.unstable_opts.unsound_mir_opts
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
@@ -44,7 +45,7 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
             return;
         };
 
-        if !tcx.consider_optimizing(|| format!("RenameReturnPlace {:?}", def_id)) {
+        if !tcx.consider_optimizing(|| format!("RenameReturnPlace {def_id:?}")) {
             return;
         }
 
@@ -102,12 +103,12 @@ fn local_eligible_for_nrvo(body: &mut mir::Body<'_>) -> Option<Local> {
             mir::LocalKind::Arg => return None,
 
             mir::LocalKind::ReturnPointer => bug!("Return place was assigned to itself?"),
-            mir::LocalKind::Var | mir::LocalKind::Temp => {}
+            mir::LocalKind::Temp => {}
         }
 
         // If multiple different locals are copied to the return place. We can't pick a
         // single one to rename.
-        if copied_to_return_place.map_or(false, |old| old != returned_local) {
+        if copied_to_return_place.is_some_and(|old| old != returned_local) {
             return None;
         }
 

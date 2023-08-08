@@ -3,7 +3,8 @@
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::is_lint_allowed;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{def_id::LocalDefId, Item, ItemKind, Node};
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::{Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
@@ -66,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
             )
         }) {
             for impl_id in impl_ids.iter().map(|id| id.expect_local()) {
-                let impl_ty = cx.tcx.type_of(impl_id).subst_identity();
+                let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity();
                 match type_map.entry(impl_ty) {
                     Entry::Vacant(e) => {
                         // Store the id for the first impl block of this type. The span is retrieved lazily.

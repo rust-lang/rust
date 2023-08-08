@@ -24,7 +24,7 @@ pub fn foo() -> impl Future + Send {
     async move {
         match client.status() {
             200 => {
-                let _x = get().await;
+                get().await;
             }
             _ => (),
         }

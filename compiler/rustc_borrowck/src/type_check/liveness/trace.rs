@@ -3,8 +3,9 @@ use rustc_index::bit_set::HybridBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
+use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
-use rustc_trait_selection::traits::query::dropck_outlives::DropckOutlivesResult;
+use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use std::rc::Rc;
@@ -160,8 +161,12 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         }
     }
 
-    // Runs dropck for locals whose liveness isn't relevant. This is
-    // necessary to eagerly detect unbound recursion during drop glue computation.
+    /// Runs dropck for locals whose liveness isn't relevant. This is
+    /// necessary to eagerly detect unbound recursion during drop glue computation.
+    ///
+    /// These are all the locals which do not potentially reference a region local
+    /// to this body. Locals which only reference free regions are always drop-live
+    /// and can therefore safely be dropped.
     fn dropck_boring_locals(&mut self, boring_locals: Vec<Local>) {
         for local in boring_locals {
             let local_ty = self.cx.body.local_decls[local].ty;
@@ -568,10 +573,15 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     ) -> DropData<'tcx> {
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
-        let param_env = typeck.param_env;
-        let TypeOpOutput { output, constraints, .. } =
-            param_env.and(DropckOutlives::new(dropped_ty)).fully_perform(typeck.infcx).unwrap();
-
-        DropData { dropck_result: output, region_constraint_data: constraints }
+        match typeck
+            .param_env
+            .and(DropckOutlives::new(dropped_ty))
+            .fully_perform(typeck.infcx, DUMMY_SP)
+        {
+            Ok(TypeOpOutput { output, constraints, .. }) => {
+                DropData { dropck_result: output, region_constraint_data: constraints }
+            }
+            Err(_) => DropData { dropck_result: Default::default(), region_constraint_data: None },
+        }
     }
 }

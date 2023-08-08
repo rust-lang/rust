@@ -1,8 +1,13 @@
-// run-rustfix
+//@run-rustfix
 
 // Issue #5746
 #![warn(clippy::redundant_pattern_matching)]
-#![allow(clippy::if_same_then_else, clippy::equatable_if_let)]
+#![allow(
+    clippy::if_same_then_else,
+    clippy::equatable_if_let,
+    clippy::needless_if,
+    clippy::needless_else
+)]
 use std::task::Poll::{Pending, Ready};
 
 fn main() {

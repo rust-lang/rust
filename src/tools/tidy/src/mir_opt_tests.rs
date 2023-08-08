@@ -1,41 +1,47 @@
 //! Tidy check to ensure that mir opt directories do not have stale files or dashes in file names
 
+use miropt_test_tools::PanicStrategy;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+
+use crate::walk::walk_no_read;
 
 fn check_unused_files(path: &Path, bless: bool, bad: &mut bool) {
     let mut rs_files = Vec::<PathBuf>::new();
     let mut output_files = HashSet::<PathBuf>::new();
-    let files = walkdir::WalkDir::new(&path.join("mir-opt")).into_iter();
 
-    for file in files.filter_map(Result::ok).filter(|e| e.file_type().is_file()) {
-        let filepath = file.path();
-        if filepath.extension() == Some("rs".as_ref()) {
-            rs_files.push(filepath.to_owned());
-        } else {
-            output_files.insert(filepath.to_owned());
-        }
-    }
+    walk_no_read(
+        &[&path.join("mir-opt")],
+        |path, _is_dir| path.file_name() == Some("README.md".as_ref()),
+        &mut |file| {
+            let filepath = file.path();
+            if filepath.extension() == Some("rs".as_ref()) {
+                rs_files.push(filepath.to_owned());
+            } else {
+                output_files.insert(filepath.to_owned());
+            }
+        },
+    );
 
     for file in rs_files {
         for bw in [32, 64] {
-            for output_file in miropt_test_tools::files_for_miropt_test(&file, bw) {
-                output_files.remove(&output_file.expected_file);
+            for ps in [PanicStrategy::Unwind, PanicStrategy::Abort] {
+                for output_file in miropt_test_tools::files_for_miropt_test(&file, bw, ps) {
+                    output_files.remove(&output_file.expected_file);
+                }
             }
         }
     }
 
     for extra in output_files {
-        if extra.file_name() != Some("README.md".as_ref()) {
-            if !bless {
-                tidy_error!(
-                    bad,
-                    "the following output file is not associated with any mir-opt test, you can remove it: {}",
-                    extra.display()
-                );
-            } else {
-                let _ = std::fs::remove_file(extra);
-            }
+        if !bless {
+            tidy_error!(
+                bad,
+                "the following output file is not associated with any mir-opt test, you can remove it: {}",
+                extra.display()
+            );
+        } else {
+            let _ = std::fs::remove_file(extra);
         }
     }
 }

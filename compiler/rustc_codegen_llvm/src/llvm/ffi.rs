@@ -1,8 +1,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
-use rustc_codegen_ssa::coverageinfo::map as coverage_map;
-
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
     DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
@@ -196,6 +194,7 @@ pub enum AttributeKind {
     AllocSize = 37,
     AllocatedPointer = 38,
     AllocAlign = 39,
+    SanitizeSafeStack = 40,
 }
 
 /// LLVMIntPredicate
@@ -552,6 +551,7 @@ pub enum ArchiveKind {
     K_BSD,
     K_DARWIN,
     K_COFF,
+    K_AIXBIG,
 }
 
 // LLVMRustThinLTOData
@@ -581,6 +581,16 @@ pub enum ThreadLocalMode {
     LocalDynamic,
     InitialExec,
     LocalExec,
+}
+
+/// LLVMRustTailCallKind
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub enum TailCallKind {
+    None,
+    Tail,
+    MustTail,
+    NoTail,
 }
 
 /// LLVMRustChecksumKind
@@ -676,200 +686,6 @@ extern "C" {
 pub type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
 pub type InlineAsmDiagHandlerTy = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
 
-pub mod coverageinfo {
-    use super::coverage_map;
-
-    /// Aligns with [llvm::coverage::CounterMappingRegion::RegionKind](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L209-L230)
-    #[derive(Copy, Clone, Debug)]
-    #[repr(C)]
-    pub enum RegionKind {
-        /// A CodeRegion associates some code with a counter
-        CodeRegion = 0,
-
-        /// An ExpansionRegion represents a file expansion region that associates
-        /// a source range with the expansion of a virtual source file, such as
-        /// for a macro instantiation or #include file.
-        ExpansionRegion = 1,
-
-        /// A SkippedRegion represents a source range with code that was skipped
-        /// by a preprocessor or similar means.
-        SkippedRegion = 2,
-
-        /// A GapRegion is like a CodeRegion, but its count is only set as the
-        /// line execution count when its the only region in the line.
-        GapRegion = 3,
-
-        /// A BranchRegion represents leaf-level boolean expressions and is
-        /// associated with two counters, each representing the number of times the
-        /// expression evaluates to true or false.
-        BranchRegion = 4,
-    }
-
-    /// This struct provides LLVM's representation of a "CoverageMappingRegion", encoded into the
-    /// coverage map, in accordance with the
-    /// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
-    /// The struct composes fields representing the `Counter` type and value(s) (injected counter
-    /// ID, or expression type and operands), the source file (an indirect index into a "filenames
-    /// array", encoded separately), and source location (start and end positions of the represented
-    /// code region).
-    ///
-    /// Matches LLVMRustCounterMappingRegion.
-    #[derive(Copy, Clone, Debug)]
-    #[repr(C)]
-    pub struct CounterMappingRegion {
-        /// The counter type and type-dependent counter data, if any.
-        counter: coverage_map::Counter,
-
-        /// If the `RegionKind` is a `BranchRegion`, this represents the counter
-        /// for the false branch of the region.
-        false_counter: coverage_map::Counter,
-
-        /// An indirect reference to the source filename. In the LLVM Coverage Mapping Format, the
-        /// file_id is an index into a function-specific `virtual_file_mapping` array of indexes
-        /// that, in turn, are used to look up the filename for this region.
-        file_id: u32,
-
-        /// If the `RegionKind` is an `ExpansionRegion`, the `expanded_file_id` can be used to find
-        /// the mapping regions created as a result of macro expansion, by checking if their file id
-        /// matches the expanded file id.
-        expanded_file_id: u32,
-
-        /// 1-based starting line of the mapping region.
-        start_line: u32,
-
-        /// 1-based starting column of the mapping region.
-        start_col: u32,
-
-        /// 1-based ending line of the mapping region.
-        end_line: u32,
-
-        /// 1-based ending column of the mapping region. If the high bit is set, the current
-        /// mapping region is a gap area.
-        end_col: u32,
-
-        kind: RegionKind,
-    }
-
-    impl CounterMappingRegion {
-        pub(crate) fn code_region(
-            counter: coverage_map::Counter,
-            file_id: u32,
-            start_line: u32,
-            start_col: u32,
-            end_line: u32,
-            end_col: u32,
-        ) -> Self {
-            Self {
-                counter,
-                false_counter: coverage_map::Counter::zero(),
-                file_id,
-                expanded_file_id: 0,
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-                kind: RegionKind::CodeRegion,
-            }
-        }
-
-        // This function might be used in the future; the LLVM API is still evolving, as is coverage
-        // support.
-        #[allow(dead_code)]
-        pub(crate) fn branch_region(
-            counter: coverage_map::Counter,
-            false_counter: coverage_map::Counter,
-            file_id: u32,
-            start_line: u32,
-            start_col: u32,
-            end_line: u32,
-            end_col: u32,
-        ) -> Self {
-            Self {
-                counter,
-                false_counter,
-                file_id,
-                expanded_file_id: 0,
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-                kind: RegionKind::BranchRegion,
-            }
-        }
-
-        // This function might be used in the future; the LLVM API is still evolving, as is coverage
-        // support.
-        #[allow(dead_code)]
-        pub(crate) fn expansion_region(
-            file_id: u32,
-            expanded_file_id: u32,
-            start_line: u32,
-            start_col: u32,
-            end_line: u32,
-            end_col: u32,
-        ) -> Self {
-            Self {
-                counter: coverage_map::Counter::zero(),
-                false_counter: coverage_map::Counter::zero(),
-                file_id,
-                expanded_file_id,
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-                kind: RegionKind::ExpansionRegion,
-            }
-        }
-
-        // This function might be used in the future; the LLVM API is still evolving, as is coverage
-        // support.
-        #[allow(dead_code)]
-        pub(crate) fn skipped_region(
-            file_id: u32,
-            start_line: u32,
-            start_col: u32,
-            end_line: u32,
-            end_col: u32,
-        ) -> Self {
-            Self {
-                counter: coverage_map::Counter::zero(),
-                false_counter: coverage_map::Counter::zero(),
-                file_id,
-                expanded_file_id: 0,
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-                kind: RegionKind::SkippedRegion,
-            }
-        }
-
-        // This function might be used in the future; the LLVM API is still evolving, as is coverage
-        // support.
-        #[allow(dead_code)]
-        pub(crate) fn gap_region(
-            counter: coverage_map::Counter,
-            file_id: u32,
-            start_line: u32,
-            start_col: u32,
-            end_line: u32,
-            end_col: u32,
-        ) -> Self {
-            Self {
-                counter,
-                false_counter: coverage_map::Counter::zero(),
-                file_id,
-                expanded_file_id: 0,
-                start_line,
-                start_col,
-                end_line,
-                end_col: (1_u32 << 31) | end_col,
-                kind: RegionKind::GapRegion,
-            }
-        }
-    }
-}
-
 pub mod debuginfo {
     use super::{InvariantOpaque, Metadata};
     use bitflags::bitflags;
@@ -946,15 +762,27 @@ pub mod debuginfo {
         NoDebug,
         FullDebug,
         LineTablesOnly,
+        DebugDirectivesOnly,
     }
 
     impl DebugEmissionKind {
         pub fn from_generic(kind: rustc_session::config::DebugInfo) -> Self {
+            // We should be setting LLVM's emission kind to `LineTablesOnly` if
+            // we are compiling with "limited" debuginfo. However, some of the
+            // existing tools relied on slightly more debuginfo being generated than
+            // would be the case with `LineTablesOnly`, and we did not want to break
+            // these tools in a "drive-by fix", without a good idea or plan about
+            // what limited debuginfo should exactly look like. So for now we are
+            // instead adding a new debuginfo option "line-tables-only" so as to
+            // not break anything and to allow users to have 'limited' debug info.
+            //
+            // See https://github.com/rust-lang/rust/issues/60020 for details.
             use rustc_session::config::DebugInfo;
             match kind {
                 DebugInfo::None => DebugEmissionKind::NoDebug,
-                DebugInfo::Limited => DebugEmissionKind::LineTablesOnly,
-                DebugInfo::Full => DebugEmissionKind::FullDebug,
+                DebugInfo::LineDirectivesOnly => DebugEmissionKind::DebugDirectivesOnly,
+                DebugInfo::LineTablesOnly => DebugEmissionKind::LineTablesOnly,
+                DebugInfo::Limited | DebugInfo::Full => DebugEmissionKind::FullDebug,
             }
         }
     }
@@ -1006,7 +834,7 @@ extern "C" {
     pub fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
 
     /// See Module::setModuleInlineAsm.
-    pub fn LLVMRustAppendModuleInlineAsm(M: &Module, Asm: *const c_char, AsmLen: size_t);
+    pub fn LLVMAppendModuleInlineAsm(M: &Module, Asm: *const c_char, Len: size_t);
 
     /// See llvm::LLVMTypeKind::getTypeID.
     pub fn LLVMRustGetTypeKind(Ty: &Type) -> TypeKind;
@@ -1045,7 +873,7 @@ extern "C" {
 
     // Operations on array, pointer, and vector types (sequence types)
     pub fn LLVMRustArrayType(ElementType: &Type, ElementCount: u64) -> &Type;
-    pub fn LLVMPointerType(ElementType: &Type, AddressSpace: c_uint) -> &Type;
+    pub fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
     pub fn LLVMVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
 
     pub fn LLVMGetElementType(Ty: &Type) -> &Type;
@@ -1053,7 +881,8 @@ extern "C" {
 
     // Operations on other types
     pub fn LLVMVoidTypeInContext(C: &Context) -> &Type;
-    pub fn LLVMRustMetadataTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMTokenTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
     pub fn LLVMTypeOf(Val: &Value) -> &Type;
@@ -1069,9 +898,15 @@ extern "C" {
     // Operations on constants of any type
     pub fn LLVMConstNull(Ty: &Type) -> &Value;
     pub fn LLVMGetUndef(Ty: &Type) -> &Value;
+    pub fn LLVMGetPoison(Ty: &Type) -> &Value;
 
     // Operations on metadata
+    // FIXME: deprecated, replace with LLVMMDStringInContext2
     pub fn LLVMMDStringInContext(C: &Context, Str: *const c_char, SLen: c_uint) -> &Value;
+
+    pub fn LLVMMDStringInContext2(C: &Context, Str: *const c_char, SLen: size_t) -> &Metadata;
+
+    // FIXME: deprecated, replace with LLVMMDNodeInContext2
     pub fn LLVMMDNodeInContext<'a>(
         C: &'a Context,
         Vals: *const &'a Value,
@@ -1110,6 +945,8 @@ extern "C" {
         Packed: Bool,
     ) -> &'a Value;
 
+    // FIXME: replace with LLVMConstArray2 when bumped minimal version to llvm-17
+    // https://github.com/llvm/llvm-project/commit/35276f16e5a2cae0dfb49c0fbf874d4d2f177acc
     pub fn LLVMConstArray<'a>(
         ElementTy: &'a Type,
         ConstantVals: *const &'a Value,
@@ -1118,7 +955,7 @@ extern "C" {
     pub fn LLVMConstVector(ScalarConstantVals: *const &Value, Size: c_uint) -> &Value;
 
     // Constant expressions
-    pub fn LLVMRustConstInBoundsGEP2<'a>(
+    pub fn LLVMConstInBoundsGEP2<'a>(
         ty: &'a Type,
         ConstantVal: &'a Value,
         ConstantIndices: *const &'a Value,
@@ -1169,6 +1006,7 @@ extern "C" {
         NameLen: size_t,
     ) -> Option<&Value>;
     pub fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
+    pub fn LLVMRustSetTailCallKind(CallInst: &Value, TKC: TailCallKind);
 
     // Operations on attributes
     pub fn LLVMRustCreateAttrNoValue(C: &Context, attr: AttributeKind) -> &Attribute;
@@ -1249,7 +1087,7 @@ extern "C" {
     pub fn LLVMDisposeBuilder<'a>(Builder: &'a mut Builder<'a>);
 
     // Metadata
-    pub fn LLVMSetCurrentDebugLocation<'a>(Builder: &Builder<'a>, L: &'a Value);
+    pub fn LLVMSetCurrentDebugLocation2<'a>(Builder: &Builder<'a>, Loc: &'a Metadata);
 
     // Terminators
     pub fn LLVMBuildRetVoid<'a>(B: &Builder<'a>) -> &'a Value;
@@ -1275,7 +1113,7 @@ extern "C" {
         NumArgs: c_uint,
         Then: &'a BasicBlock,
         Catch: &'a BasicBlock,
-        OpBundles: *const Option<&OperandBundleDef<'a>>,
+        OpBundles: *const &OperandBundleDef<'a>,
         NumOpBundles: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
@@ -1289,38 +1127,38 @@ extern "C" {
     pub fn LLVMBuildResume<'a>(B: &Builder<'a>, Exn: &'a Value) -> &'a Value;
     pub fn LLVMBuildUnreachable<'a>(B: &Builder<'a>) -> &'a Value;
 
-    pub fn LLVMRustBuildCleanupPad<'a>(
+    pub fn LLVMBuildCleanupPad<'a>(
         B: &Builder<'a>,
         ParentPad: Option<&'a Value>,
-        ArgCnt: c_uint,
         Args: *const &'a Value,
+        NumArgs: c_uint,
         Name: *const c_char,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCleanupRet<'a>(
+    pub fn LLVMBuildCleanupRet<'a>(
         B: &Builder<'a>,
         CleanupPad: &'a Value,
-        UnwindBB: Option<&'a BasicBlock>,
+        BB: Option<&'a BasicBlock>,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchPad<'a>(
+    pub fn LLVMBuildCatchPad<'a>(
         B: &Builder<'a>,
         ParentPad: &'a Value,
-        ArgCnt: c_uint,
         Args: *const &'a Value,
+        NumArgs: c_uint,
         Name: *const c_char,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchRet<'a>(
+    pub fn LLVMBuildCatchRet<'a>(
         B: &Builder<'a>,
-        Pad: &'a Value,
+        CatchPad: &'a Value,
         BB: &'a BasicBlock,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchSwitch<'a>(
+    pub fn LLVMBuildCatchSwitch<'a>(
         Builder: &Builder<'a>,
         ParentPad: Option<&'a Value>,
-        BB: Option<&'a BasicBlock>,
+        UnwindBB: Option<&'a BasicBlock>,
         NumHandlers: c_uint,
         Name: *const c_char,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustAddHandler<'a>(CatchSwitch: &'a Value, Handler: &'a BasicBlock);
+    pub fn LLVMAddHandler<'a>(CatchSwitch: &'a Value, Dest: &'a BasicBlock);
     pub fn LLVMSetPersonalityFn<'a>(Func: &'a Value, Pers: &'a Value);
 
     // Add a case to the switch instruction
@@ -1614,11 +1452,12 @@ extern "C" {
         DestTy: &'a Type,
         Name: *const c_char,
     ) -> &'a Value;
-    pub fn LLVMRustBuildIntCast<'a>(
+    pub fn LLVMBuildIntCast2<'a>(
         B: &Builder<'a>,
         Val: &'a Value,
         DestTy: &'a Type,
-        IsSigned: bool,
+        IsSigned: Bool,
+        Name: *const c_char,
     ) -> &'a Value;
 
     // Comparisons
@@ -1646,7 +1485,7 @@ extern "C" {
         Fn: &'a Value,
         Args: *const &'a Value,
         NumArgs: c_uint,
-        OpBundles: *const Option<&OperandBundleDef<'a>>,
+        OpBundles: *const &OperandBundleDef<'a>,
         NumOpBundles: c_uint,
     ) -> &'a Value;
     pub fn LLVMRustBuildMemCpy<'a>(
@@ -1829,7 +1668,10 @@ extern "C" {
     pub fn LLVMRustGetLastError() -> *const c_char;
 
     /// Print the pass timings since static dtors aren't picking them up.
-    pub fn LLVMRustPrintPassTimings();
+    pub fn LLVMRustPrintPassTimings(size: *const size_t) -> *const c_char;
+
+    /// Print the statistics since static dtors aren't picking them up.
+    pub fn LLVMRustPrintStatistics(size: *const size_t) -> *const c_char;
 
     pub fn LLVMStructCreateNamed(C: &Context, Name: *const c_char) -> &Type;
 
@@ -1869,15 +1711,14 @@ extern "C" {
     pub fn LLVMRustCoverageWriteMappingToBuffer(
         VirtualFileMappingIDs: *const c_uint,
         NumVirtualFileMappingIDs: c_uint,
-        Expressions: *const coverage_map::CounterExpression,
+        Expressions: *const crate::coverageinfo::ffi::CounterExpression,
         NumExpressions: c_uint,
-        MappingRegions: *const coverageinfo::CounterMappingRegion,
+        MappingRegions: *const crate::coverageinfo::ffi::CounterMappingRegion,
         NumMappingRegions: c_uint,
         BufferOut: &RustString,
     );
 
     pub fn LLVMRustCoverageCreatePGOFuncNameVar(F: &Value, FuncName: *const c_char) -> &Value;
-    pub fn LLVMRustCoverageHashCString(StrVal: *const c_char) -> u64;
     pub fn LLVMRustCoverageHashByteArray(Bytes: *const c_char, NumBytes: size_t) -> u64;
 
     #[allow(improper_ctypes)]
@@ -1907,7 +1748,7 @@ extern "C" {
     );
     pub fn LLVMRustHasModuleFlag(M: &Module, name: *const c_char, len: size_t) -> bool;
 
-    pub fn LLVMRustMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
+    pub fn LLVMMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
 
     pub fn LLVMRustDIBuilderCreate(M: &Module) -> &mut DIBuilder<'_>;
 
@@ -1963,6 +1804,21 @@ extern "C" {
         MaybeFn: Option<&'a Value>,
         TParam: &'a DIArray,
         Decl: Option<&'a DIDescriptor>,
+    ) -> &'a DISubprogram;
+
+    pub fn LLVMRustDIBuilderCreateMethod<'a>(
+        Builder: &DIBuilder<'a>,
+        Scope: &'a DIDescriptor,
+        Name: *const c_char,
+        NameLen: size_t,
+        LinkageName: *const c_char,
+        LinkageNameLen: size_t,
+        File: &'a DIFile,
+        LineNo: c_uint,
+        Ty: &'a DIType,
+        Flags: DIFlags,
+        SPFlags: DISPFlags,
+        TParam: &'a DIArray,
     ) -> &'a DISubprogram;
 
     pub fn LLVMRustDIBuilderCreateBasicType<'a>(
@@ -2227,7 +2083,12 @@ extern "C" {
 
     pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 
-    pub fn LLVMRustPrintTargetCPUs(T: &TargetMachine);
+    pub fn LLVMRustPrintTargetCPUs(
+        T: &TargetMachine,
+        cpu: *const c_char,
+        print: unsafe extern "C" fn(out: *mut c_void, string: *const c_char, len: usize),
+        out: *mut c_void,
+    );
     pub fn LLVMRustGetTargetFeaturesCount(T: &TargetMachine) -> size_t;
     pub fn LLVMRustGetTargetFeature(
         T: &TargetMachine,
@@ -2256,6 +2117,7 @@ extern "C" {
         RelaxELFRelocations: bool,
         UseInitArray: bool,
         SplitDwarfFile: *const c_char,
+        ForceEmulatedTls: bool,
     ) -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
     pub fn LLVMRustAddLibraryInfo<'a>(
@@ -2442,12 +2304,6 @@ extern "C" {
         len: usize,
         out_len: &mut usize,
     ) -> *const u8;
-    pub fn LLVMRustThinLTOGetDICompileUnit(
-        M: &Module,
-        CU1: &mut *mut c_void,
-        CU2: &mut *mut c_void,
-    );
-    pub fn LLVMRustThinLTOPatchDICompileUnit(M: &Module, CU: *mut c_void);
 
     pub fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
     pub fn LLVMRustLinkerAdd(
@@ -2475,6 +2331,8 @@ extern "C" {
         remark_all_passes: bool,
         remark_passes: *const *const c_char,
         remark_passes_len: usize,
+        remark_file: *const c_char,
+        pgo_available: bool,
     );
 
     #[allow(improper_ctypes)]

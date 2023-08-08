@@ -1,11 +1,8 @@
 // exact-check
 
-const QUERY = [
-    'Demon Lord',
-];
-
 const EXPECTED = [
     {
+        'query': 'Demon Lord',
         'others': [
             {
                 'path': 'doc_alias_whitespace',

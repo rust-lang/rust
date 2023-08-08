@@ -38,7 +38,7 @@ fn test_unique_id() {
     ];
 
     let mut map = IdMap::new();
-    let actual: Vec<String> = input.iter().map(|s| map.derive(s.to_string())).collect();
+    let actual: Vec<String> = input.iter().map(|s| map.derive(s)).collect();
     assert_eq!(&actual[..], expected);
 }
 

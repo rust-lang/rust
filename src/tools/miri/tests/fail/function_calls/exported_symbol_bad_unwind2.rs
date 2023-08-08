@@ -4,8 +4,8 @@
 #[cfg_attr(any(definition, both), rustc_nounwind)]
 #[no_mangle]
 extern "C-unwind" fn nounwind() {
-    //~[definition]^ ERROR: abnormal termination: the program aborted execution
-    //~[both]^^ ERROR: abnormal termination: the program aborted execution
+    //~[definition]^ ERROR: abnormal termination: panic in a function that cannot unwind
+    //~[both]^^ ERROR: abnormal termination: panic in a function that cannot unwind
     panic!();
 }
 

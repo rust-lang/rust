@@ -6,7 +6,7 @@ mod assert {
     pub fn is_transmutable<Src, Context, const ASSUME_ALIGNMENT: bool>()
     where
         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME_ALIGNMENT>, //~ ERROR cannot find type `Dst` in this scope
-        //~^ ERROR mismatched types
+        //~^ the constant `ASSUME_ALIGNMENT` is not of type `Assume`
     {
     }
 }

@@ -41,3 +41,41 @@ SOURCE_FILE
             IDENT "End"
     SEMICOLON ";"
   WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "GenericArg"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "S"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Start"
+                      PARAM_LIST
+                        L_PAREN "("
+                        PARAM
+                          PATH_TYPE
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "Middle"
+                        R_PAREN ")"
+                  COLON2 "::"
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "End"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"

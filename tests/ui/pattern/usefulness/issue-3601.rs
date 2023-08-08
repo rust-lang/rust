@@ -1,19 +1,19 @@
 #![feature(box_patterns)]
 
 struct HTMLImageData {
-    image: Option<String>
+    image: Option<String>,
 }
 
 struct ElementData {
-    kind: Box<ElementKind>
+    kind: Box<ElementKind>,
 }
 
 enum ElementKind {
-    HTMLImageElement(HTMLImageData)
+    HTMLImageElement(HTMLImageData),
 }
 
 enum NodeKind {
-    Element(ElementData)
+    Element(ElementData),
 }
 
 struct NodeData {
@@ -27,8 +27,13 @@ fn main() {
 
     // n.b. span could be better
     match n.kind {
-        box NodeKind::Element(ed) => match ed.kind { //~ ERROR non-exhaustive patterns
-            box ElementKind::HTMLImageElement(ref d) if d.image.is_some() => { true }
+        box NodeKind::Element(ed) => match ed.kind {
+            //~^ ERROR non-exhaustive patterns
+            //~| NOTE the matched value is of type
+            //~| NOTE match arms with guards don't count towards exhaustivity
+            //~| NOTE pattern `box _` not covered
+            //~| NOTE `Box<ElementKind>` defined here
+            box ElementKind::HTMLImageElement(ref d) if d.image.is_some() => true,
         },
     };
 }

@@ -4,7 +4,6 @@ use crate::back::profiling::{
 };
 use crate::base;
 use crate::common;
-use crate::consts;
 use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, WithLlvmError, WriteBytecode,
 };
@@ -31,6 +30,7 @@ use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
 
+use crate::llvm::diagnostic::OptimizationDiagnosticKind;
 use libc::{c_char, c_int, c_uint, c_void, size_t};
 use std::ffi::CString;
 use std::fs;
@@ -214,6 +214,8 @@ pub fn target_machine_factory(
 
     let path_mapping = sess.source_map().path_mapping().clone();
 
+    let force_emulated_tls = sess.target.force_emulated_tls;
+
     Arc::new(move |config: TargetMachineFactoryConfig| {
         let split_dwarf_file =
             path_mapping.map_prefix(config.split_dwarf_file.unwrap_or_default()).0;
@@ -239,6 +241,7 @@ pub fn target_machine_factory(
                 relax_elf_relocations,
                 use_init_array,
                 split_dwarf_file.as_ptr(),
+                force_emulated_tls,
             )
         };
 
@@ -255,13 +258,23 @@ pub(crate) fn save_temp_bitcode(
         return;
     }
     unsafe {
-        let ext = format!("{}.bc", name);
+        let ext = format!("{name}.bc");
         let cgu = Some(&module.name[..]);
         let path = cgcx.output_filenames.temp_path_ext(&ext, cgu);
         let cstr = path_to_c_string(&path);
         let llmod = module.module_llvm.llmod();
         llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
     }
+}
+
+/// In what context is a dignostic handler being attached to a codegen unit?
+pub enum CodegenDiagnosticsStage {
+    /// Prelink optimization stage.
+    Opt,
+    /// LTO/ThinLTO postlink optimization stage.
+    LTO,
+    /// Code generation.
+    Codegen,
 }
 
 pub struct DiagnosticHandlers<'a> {
@@ -275,6 +288,8 @@ impl<'a> DiagnosticHandlers<'a> {
         cgcx: &'a CodegenContext<LlvmCodegenBackend>,
         handler: &'a Handler,
         llcx: &'a llvm::Context,
+        module: &ModuleCodegen<ModuleLlvm>,
+        stage: CodegenDiagnosticsStage,
     ) -> Self {
         let remark_passes_all: bool;
         let remark_passes: Vec<CString>;
@@ -291,6 +306,21 @@ impl<'a> DiagnosticHandlers<'a> {
         };
         let remark_passes: Vec<*const c_char> =
             remark_passes.iter().map(|name: &CString| name.as_ptr()).collect();
+        let remark_file = cgcx
+            .remark_dir
+            .as_ref()
+            // Use the .opt.yaml file suffix, which is supported by LLVM's opt-viewer.
+            .map(|dir| {
+                let stage_suffix = match stage {
+                    CodegenDiagnosticsStage::Codegen => "codegen",
+                    CodegenDiagnosticsStage::Opt => "opt",
+                    CodegenDiagnosticsStage::LTO => "lto",
+                };
+                dir.join(format!("{}.{stage_suffix}.opt.yaml", module.name))
+            })
+            .and_then(|dir| dir.to_str().and_then(|p| CString::new(p).ok()));
+
+        let pgo_available = cgcx.opts.cg.profile_use.is_some();
         let data = Box::into_raw(Box::new((cgcx, handler)));
         unsafe {
             let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
@@ -301,6 +331,10 @@ impl<'a> DiagnosticHandlers<'a> {
                 remark_passes_all,
                 remark_passes.as_ptr(),
                 remark_passes.len(),
+                // The `as_ref()` is important here, otherwise the `CString` will be dropped
+                // too soon!
+                remark_file.as_ref().map(|dir| dir.as_ptr()).unwrap_or(std::ptr::null()),
+                pgo_available,
             );
             DiagnosticHandlers { data, llcx, old_handler }
         }
@@ -349,20 +383,22 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
         }
 
         llvm::diagnostic::Optimization(opt) => {
-            let enabled = match cgcx.remark {
-                Passes::All => true,
-                Passes::Some(ref v) => v.iter().any(|s| *s == opt.pass_name),
-            };
-
-            if enabled {
-                diag_handler.emit_note(FromLlvmOptimizationDiag {
-                    filename: &opt.filename,
-                    line: opt.line,
-                    column: opt.column,
-                    pass_name: &opt.pass_name,
-                    message: &opt.message,
-                });
-            }
+            diag_handler.emit_note(FromLlvmOptimizationDiag {
+                filename: &opt.filename,
+                line: opt.line,
+                column: opt.column,
+                pass_name: &opt.pass_name,
+                kind: match opt.kind {
+                    OptimizationDiagnosticKind::OptimizationRemark => "success",
+                    OptimizationDiagnosticKind::OptimizationMissed
+                    | OptimizationDiagnosticKind::OptimizationFailure => "missed",
+                    OptimizationDiagnosticKind::OptimizationAnalysis
+                    | OptimizationDiagnosticKind::OptimizationAnalysisFPCommute
+                    | OptimizationDiagnosticKind::OptimizationAnalysisAliasing => "analysis",
+                    OptimizationDiagnosticKind::OptimizationRemarkOther => "other",
+                },
+                message: &opt.message,
+            });
         }
         llvm::diagnostic::PGO(diagnostic_ref) | llvm::diagnostic::Linker(diagnostic_ref) => {
             let message = llvm::build_string(|s| {
@@ -510,7 +546,8 @@ pub(crate) unsafe fn optimize(
 
     let llmod = module.module_llvm.llmod();
     let llcx = &*module.module_llvm.llcx;
-    let _handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
+    let _handlers =
+        DiagnosticHandlers::new(cgcx, diag_handler, llcx, module, CodegenDiagnosticsStage::Opt);
 
     let module_name = module.name.clone();
     let module_name = Some(&module_name[..]);
@@ -569,7 +606,13 @@ pub(crate) unsafe fn codegen(
         let tm = &*module.module_llvm.tm;
         let module_name = module.name.clone();
         let module_name = Some(&module_name[..]);
-        let handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
+        let _handlers = DiagnosticHandlers::new(
+            cgcx,
+            diag_handler,
+            llcx,
+            &module,
+            CodegenDiagnosticsStage::Codegen,
+        );
 
         if cgcx.msvc_imps_needed {
             create_msvc_imps(cgcx, llcx, llmod);
@@ -664,7 +707,7 @@ pub(crate) unsafe fn codegen(
 
                 let Ok(demangled) = rustc_demangle::try_demangle(input) else { return 0 };
 
-                if write!(cursor, "{:#}", demangled).is_err() {
+                if write!(cursor, "{demangled:#}").is_err() {
                     // Possible only if provided buffer is not big enough
                     return 0;
                 }
@@ -762,7 +805,6 @@ pub(crate) unsafe fn codegen(
         }
 
         record_llvm_cgu_instructions_stats(&cgcx.prof, llmod);
-        drop(handlers);
     }
 
     // `.dwo` files are only emitted if:
@@ -786,7 +828,7 @@ pub(crate) unsafe fn codegen(
 }
 
 fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: &[u8]) -> Vec<u8> {
-    let mut asm = format!(".section {},\"{}\"\n", section_name, section_flags).into_bytes();
+    let mut asm = format!(".section {section_name},\"{section_flags}\"\n").into_bytes();
     asm.extend_from_slice(b".ascii \"");
     asm.reserve(data.len());
     for &byte in data {
@@ -862,14 +904,19 @@ unsafe fn embed_bitcode(
     //   passed though then these sections will show up in the final output.
     //   Additionally the flag that we need to set here is `SHF_EXCLUDE`.
     //
+    // * XCOFF - AIX linker ignores content in .ipa and .info if no auxiliary
+    //   symbol associated with these sections.
+    //
     // Unfortunately, LLVM provides no way to set custom section flags. For ELF
     // and COFF we emit the sections using module level inline assembly for that
     // reason (see issue #90326 for historical background).
+    let is_aix = cgcx.opts.target_triple.triple().contains("-aix");
     let is_apple = cgcx.opts.target_triple.triple().contains("-ios")
         || cgcx.opts.target_triple.triple().contains("-darwin")
         || cgcx.opts.target_triple.triple().contains("-tvos")
         || cgcx.opts.target_triple.triple().contains("-watchos");
     if is_apple
+        || is_aix
         || cgcx.opts.target_triple.triple().starts_with("wasm")
         || cgcx.opts.target_triple.triple().starts_with("asmjs")
     {
@@ -882,7 +929,13 @@ unsafe fn embed_bitcode(
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
 
-        let section = if is_apple { "__LLVM,__bitcode\0" } else { ".llvmbc\0" };
+        let section = if is_apple {
+            "__LLVM,__bitcode\0"
+        } else if is_aix {
+            ".ipa\0"
+        } else {
+            ".llvmbc\0"
+        };
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
         llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
@@ -894,16 +947,22 @@ unsafe fn embed_bitcode(
             "rustc.embedded.cmdline\0".as_ptr().cast(),
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
-        let section = if is_apple { "__LLVM,__cmdline\0" } else { ".llvmcmd\0" };
+        let section = if is_apple {
+            "__LLVM,__cmdline\0"
+        } else if is_aix {
+            ".info\0"
+        } else {
+            ".llvmcmd\0"
+        };
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
     } else {
         // We need custom section flags, so emit module-level inline assembly.
         let section_flags = if cgcx.is_pe_coff { "n" } else { "e" };
         let asm = create_section_with_flags_asm(".llvmbc", section_flags, bitcode);
-        llvm::LLVMRustAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
+        llvm::LLVMAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
         let asm = create_section_with_flags_asm(".llvmcmd", section_flags, cmdline.as_bytes());
-        llvm::LLVMRustAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
+        llvm::LLVMAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
     }
 }
 
@@ -927,7 +986,7 @@ fn create_msvc_imps(
     let prefix = if cgcx.target_arch == "x86" { "\x01__imp__" } else { "\x01__imp_" };
 
     unsafe {
-        let i8p_ty = Type::i8p_llcx(llcx);
+        let ptr_ty = Type::ptr_llcx(llcx);
         let globals = base::iter_globals(llmod)
             .filter(|&val| {
                 llvm::LLVMRustGetLinkage(val) == llvm::Linkage::ExternalLinkage
@@ -947,8 +1006,8 @@ fn create_msvc_imps(
             .collect::<Vec<_>>();
 
         for (imp_name, val) in globals {
-            let imp = llvm::LLVMAddGlobal(llmod, i8p_ty, imp_name.as_ptr().cast());
-            llvm::LLVMSetInitializer(imp, consts::ptrcast(val, i8p_ty));
+            let imp = llvm::LLVMAddGlobal(llmod, ptr_ty, imp_name.as_ptr().cast());
+            llvm::LLVMSetInitializer(imp, val);
             llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
         }
     }

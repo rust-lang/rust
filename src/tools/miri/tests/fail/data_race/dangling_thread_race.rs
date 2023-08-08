@@ -18,6 +18,7 @@ fn main() {
 
     let join = unsafe {
         spawn(move || {
+            let c = c; // avoid field capturing
             *c.0 = 32;
         })
     };

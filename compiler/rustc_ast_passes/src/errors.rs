@@ -42,18 +42,20 @@ pub struct InvalidLabel {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_invalid_visibility, code = "E0449")]
-pub struct InvalidVisibility {
+#[diag(ast_passes_visibility_not_permitted, code = "E0449")]
+pub struct VisibilityNotPermitted {
     #[primary_span]
     pub span: Span,
-    #[label(ast_passes_implied)]
-    pub implied: Option<Span>,
     #[subdiagnostic]
-    pub note: Option<InvalidVisibilityNote>,
+    pub note: VisibilityNotPermittedNote,
 }
 
 #[derive(Subdiagnostic)]
-pub enum InvalidVisibilityNote {
+pub enum VisibilityNotPermittedNote {
+    #[note(ast_passes_enum_variant)]
+    EnumVariant,
+    #[note(ast_passes_trait_impl)]
+    TraitImpl,
     #[note(ast_passes_individual_impl_items)]
     IndividualImplItems,
     #[note(ast_passes_individual_foreign_items)]
@@ -71,13 +73,6 @@ pub struct TraitFnConst {
 #[derive(Diagnostic)]
 #[diag(ast_passes_forbidden_lifetime_bound)]
 pub struct ForbiddenLifetimeBound {
-    #[primary_span]
-    pub spans: Vec<Span>,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_forbidden_non_lifetime_param)]
-pub struct ForbiddenNonLifetimeParam {
     #[primary_span]
     pub spans: Vec<Span>,
 }
@@ -565,6 +560,7 @@ pub enum TildeConstReason {
 pub struct OptionalConstExclusive {
     #[primary_span]
     pub span: Span,
+    pub modifier: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -675,7 +671,7 @@ impl AddToDiagnostic for StableFeature {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_incompatbile_features)]
+#[diag(ast_passes_incompatible_features)]
 #[help]
 pub struct IncompatibleFeatures {
     #[primary_span]
@@ -690,4 +686,18 @@ pub struct ShowSpan {
     #[primary_span]
     pub span: Span,
     pub msg: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_negative_bound_not_supported)]
+pub struct NegativeBoundUnsupported {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_constraint_on_negative_bound)]
+pub struct ConstraintOnNegativeBound {
+    #[primary_span]
+    pub span: Span,
 }

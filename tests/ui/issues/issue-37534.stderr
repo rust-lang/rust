@@ -6,7 +6,7 @@ LL | struct Foo<T: ?Hash> { }
    |
 help: consider importing this trait instead
    |
-LL | use std::hash::Hash;
+LL + use std::hash::Hash;
    |
 
 warning: default bound relaxed for a type parameter, but this does nothing because the given bound is not a default; only `?Sized` is supported

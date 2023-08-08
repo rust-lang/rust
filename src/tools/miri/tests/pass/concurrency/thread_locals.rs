@@ -1,3 +1,5 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-strict-provenance
 
 //! The main purpose of this test is to check that if we take a pointer to
@@ -40,6 +42,7 @@ fn main() {
     };
 
     thread::spawn(move || unsafe {
+        let ptr = ptr; // avoid field capturing
         assert_eq!(*ptr.0, 5);
         assert_eq!(A, 0);
         assert_eq!(B, 0);

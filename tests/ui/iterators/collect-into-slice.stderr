@@ -28,6 +28,16 @@ LL |     let some_generated_vec = (0..10).collect();
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
-error: aborting due to 3 previous errors
+error[E0277]: a slice of type `&[i32]` cannot be built since we need to store the elements somewhere
+  --> $DIR/collect-into-slice.rs:18:38
+   |
+LL |     let some_generated_vec = (0..10).collect();
+   |                                      ^^^^^^^ try explicitly collecting into a `Vec<{integer}>`
+   |
+   = help: the trait `FromIterator<{integer}>` is not implemented for `&[i32]`
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

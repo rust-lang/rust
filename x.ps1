@@ -2,6 +2,11 @@
 
 # See ./x for why these scripts exist.
 
+$ErrorActionPreference = "Stop"
+
+# syntax check
+Get-Command -syntax ${PSCommandPath} >$null
+
 $xpy = Join-Path $PSScriptRoot x.py
 # Start-Process for some reason splits arguments on spaces. (Isn't powershell supposed to be simpler than bash?)
 # Double-quote all the arguments so it doesn't do that.
@@ -11,12 +16,25 @@ foreach ($arg in $args) {
 }
 
 function Get-Application($app) {
-    return Get-Command $app -ErrorAction SilentlyContinue -CommandType Application
+    $cmd = Get-Command $app -ErrorAction SilentlyContinue -CommandType Application | Select-Object -First 1
+    if ($cmd.source -match '.*AppData\\Local\\Microsoft\\WindowsApps\\.*exe') {
+        # Windows for some reason puts a `python3.exe` executable in PATH that just opens the windows store.
+        # Ignore it.
+        return $false
+    }
+    return $cmd
 }
 
 function Invoke-Application($application, $arguments) {
     $process = Start-Process -NoNewWindow -PassThru $application $arguments
+    # WORKAROUND: Caching the handle is necessary to make ExitCode work.
+    # See https://stackoverflow.com/a/23797762
+    $handle = $process.Handle
     $process.WaitForExit()
+    if ($null -eq $process.ExitCode) {
+        Write-Error "Unable to read the exit code"
+        Exit 1
+    }
     Exit $process.ExitCode
 }
 
@@ -39,5 +57,7 @@ if (($null -ne $found) -and ($found.Length -ge 1)) {
     Invoke-Application $python $xpy_args
 }
 
-Write-Error "${PSCommandPath}: error: did not find python installed"
+$msg = "${PSCommandPath}: error: did not find python installed`n"
+$msg += "help: consider installing it from https://www.python.org/downloads/"
+Write-Error $msg -Category NotInstalled
 Exit 1

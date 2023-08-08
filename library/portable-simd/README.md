@@ -24,19 +24,10 @@ or by setting up `rustup default nightly` or else with `cargo +nightly {build,te
 ```bash
 cargo new hellosimd
 ```
-to create a new crate. Edit `hellosimd/Cargo.toml` to be 
-```toml
-[package]
-name = "hellosimd"
-version = "0.1.0"
-edition = "2018"
-[dependencies]
-core_simd = { git = "https://github.com/rust-lang/portable-simd" }
-```
-
-and finally write this in `src/main.rs`:
+to create a new crate. Finally write this in `src/main.rs`:
 ```rust
-use core_simd::*;
+#![feature(portable_simd)]
+use std::simd::f32x4;
 fn main() {
     let a = f32x4::splat(10.0);
     let b = f32x4::from_array([1.0, 2.0, 3.0, 4.0]);
@@ -44,24 +35,23 @@ fn main() {
 }
 ```
 
-Explanation: We import all the bindings from the crate with the first line. Then, we construct our SIMD vectors with methods like `splat` or `from_array`. Finally, we can use operators on them like `+` and the appropriate SIMD instructions will be carried out. When we run `cargo run` you should get `[11.0, 12.0, 13.0, 14.0]`.
+Explanation: We construct our SIMD vectors with methods like `splat` or `from_array`. Next, we can use operators like `+` on them, and the appropriate SIMD instructions will be carried out. When we run `cargo run` you should get `[11.0, 12.0, 13.0, 14.0]`.
 
-## Code Organization
+## Supported vectors
 
-Currently the crate is organized so that each element type is a file, and then the 64-bit, 128-bit, 256-bit, and 512-bit vectors using those types are contained in said file.
-
-All types are then exported as a single, flat module.
+Currently, vectors may have up to 64 elements, but aliases are provided only up to 512-bit vectors.
 
 Depending on the size of the primitive type, the number of lanes the vector will have varies. For example, 128-bit vectors have four `f32` lanes and two `f64` lanes.
 
 The supported element types are as follows:
 * **Floating Point:** `f32`, `f64`
-* **Signed Integers:** `i8`, `i16`, `i32`, `i64`, `i128`, `isize`
-* **Unsigned Integers:** `u8`, `u16`, `u32`, `u64`, `u128`, `usize`
-* **Masks:** `mask8`, `mask16`, `mask32`, `mask64`, `mask128`, `masksize`
+* **Signed Integers:** `i8`, `i16`, `i32`, `i64`, `isize` (`i128` excluded)
+* **Unsigned Integers:** `u8`, `u16`, `u32`, `u64`, `usize` (`u128` excluded)
+* **Pointers:** `*const T` and `*mut T` (zero-sized metadata only)
+* **Masks:** 8-bit, 16-bit, 32-bit, 64-bit, and `usize`-sized masks
 
-Floating point, signed integers, and unsigned integers are the [primitive types](https://doc.rust-lang.org/core/primitive/index.html) you're already used to.
-The `mask` types are "truthy" values, but they use the number of bits in their name instead of just 1 bit like a normal `bool` uses.
+Floating point, signed integers, unsigned integers, and pointers are the [primitive types](https://doc.rust-lang.org/core/primitive/index.html) you're already used to.
+The mask types have elements that are "truthy" values, like `bool`, but have an unspecified layout because different architectures prefer different layouts for mask types.
 
 [simd-guide]: ./beginners-guide.md
 [zulip-project-portable-simd]: https://rust-lang.zulipchat.com/#narrow/stream/257879-project-portable-simd

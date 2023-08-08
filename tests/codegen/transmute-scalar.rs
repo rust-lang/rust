@@ -1,80 +1,56 @@
-// compile-flags: -O -C no-prepopulate-passes
+// compile-flags: -C opt-level=0 -C no-prepopulate-passes
 
 #![crate_type = "lib"]
 
-// FIXME(eddyb) all of these tests show memory stores and loads, even after a
-// scalar `bitcast`, more special-casing is required to remove `alloca` usage.
+// With opaque ptrs in LLVM, `transmute` can load/store any `alloca` as any type,
+// without needing to pointercast, and SRoA will turn that into a `bitcast`.
+// Thus memory-to-memory transmutes don't need to generate them ourselves.
 
-// CHECK-LABEL: define{{.*}}i32 @f32_to_bits(float noundef %x)
-// CHECK: store i32 %{{.*}}, {{.*}} %0
-// CHECK-NEXT: %[[RES:.*]] = load i32, {{.*}} %0
-// CHECK: ret i32 %[[RES]]
+// However, `bitcast`s and `ptrtoint`s and `inttoptr`s are still worth doing when
+// that allows us to avoid the `alloca`s entirely; see `rvalue_creates_operand`.
+
+// CHECK-LABEL: define{{.*}}i32 @f32_to_bits(float %x)
+// CHECK: %_0 = bitcast float %x to i32
+// CHECK-NEXT: ret i32 %_0
 #[no_mangle]
 pub fn f32_to_bits(x: f32) -> u32 {
     unsafe { std::mem::transmute(x) }
 }
 
-// CHECK-LABEL: define{{.*}}i8 @bool_to_byte(i1 noundef zeroext %b)
-// CHECK: %1 = zext i1 %b to i8
-// CHECK-NEXT: store i8 %1, {{.*}} %0
-// CHECK-NEXT: %2 = load i8, {{.*}} %0
-// CHECK: ret i8 %2
+// CHECK-LABEL: define{{.*}}i8 @bool_to_byte(i1 zeroext %b)
+// CHECK: %_0 = zext i1 %b to i8
+// CHECK-NEXT: ret i8 %_0
 #[no_mangle]
 pub fn bool_to_byte(b: bool) -> u8 {
     unsafe { std::mem::transmute(b) }
 }
 
-// CHECK-LABEL: define{{.*}}noundef zeroext i1 @byte_to_bool(i8 noundef %byte)
-// CHECK: %1 = trunc i8 %byte to i1
-// CHECK-NEXT: %2 = zext i1 %1 to i8
-// CHECK-NEXT: store i8 %2, {{.*}} %0
-// CHECK-NEXT: %3 = load i8, {{.*}} %0
-// CHECK-NEXT: %4 = trunc i8 %3 to i1
-// CHECK: ret i1 %4
+// CHECK-LABEL: define{{.*}}zeroext i1 @byte_to_bool(i8 %byte)
+// CHECK: %_0 = trunc i8 %byte to i1
+// CHECK-NEXT: ret i1 %_0
 #[no_mangle]
 pub unsafe fn byte_to_bool(byte: u8) -> bool {
     std::mem::transmute(byte)
 }
 
-// CHECK-LABEL: define{{.*}}{{i8\*|ptr}} @ptr_to_ptr({{i16\*|ptr}} noundef %p)
-// CHECK: store {{i8\*|ptr}} %{{.*}}, {{.*}} %0
-// CHECK-NEXT: %[[RES:.*]] = load {{i8\*|ptr}}, {{.*}} %0
-// CHECK: ret {{i8\*|ptr}} %[[RES]]
+// CHECK-LABEL: define{{.*}}ptr @ptr_to_ptr(ptr %p)
+// CHECK: ret ptr %p
 #[no_mangle]
 pub fn ptr_to_ptr(p: *mut u16) -> *mut u8 {
     unsafe { std::mem::transmute(p) }
 }
 
-// HACK(eddyb) scalar `transmute`s between pointers and non-pointers are
-// currently not special-cased like other scalar `transmute`s, because
-// LLVM requires specifically `ptrtoint`/`inttoptr` instead of `bitcast`.
-//
-// Tests below show the non-special-cased behavior (with the possible
-// future special-cased instructions in the "NOTE(eddyb)" comments).
-
-// CHECK: define{{.*}}[[USIZE:i[0-9]+]] @ptr_to_int({{i16\*|ptr}} noundef %p)
-
-// NOTE(eddyb) see above, the following two CHECK lines should ideally be this:
-//        %2 = ptrtoint i16* %p to [[USIZE]]
-//             store [[USIZE]] %2, [[USIZE]]* %0
-// CHECK: store {{i16\*|ptr}} %p, {{.*}}
-
-// CHECK-NEXT: %[[RES:.*]] = load [[USIZE]], {{.*}} %0
-// CHECK: ret [[USIZE]] %[[RES]]
+// CHECK: define{{.*}}[[USIZE:i[0-9]+]] @ptr_to_int(ptr %p)
+// CHECK: %_0 = ptrtoint ptr %p to [[USIZE]]
+// CHECK-NEXT: ret [[USIZE]] %_0
 #[no_mangle]
 pub fn ptr_to_int(p: *mut u16) -> usize {
     unsafe { std::mem::transmute(p) }
 }
 
-// CHECK: define{{.*}}{{i16\*|ptr}} @int_to_ptr([[USIZE]] noundef %i)
-
-// NOTE(eddyb) see above, the following two CHECK lines should ideally be this:
-//        %2 = inttoptr [[USIZE]] %i to i16*
-//             store i16* %2, i16** %0
-// CHECK: store [[USIZE]] %i, {{.*}}
-
-// CHECK-NEXT: %[[RES:.*]] = load {{i16\*|ptr}}, {{.*}} %0
-// CHECK: ret {{i16\*|ptr}} %[[RES]]
+// CHECK: define{{.*}}ptr @int_to_ptr([[USIZE]] %i)
+// CHECK: %_0 = inttoptr [[USIZE]] %i to ptr
+// CHECK-NEXT: ret ptr %_0
 #[no_mangle]
 pub fn int_to_ptr(i: usize) -> *mut u16 {
     unsafe { std::mem::transmute(i) }

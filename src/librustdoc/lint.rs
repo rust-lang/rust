@@ -174,6 +174,17 @@ declare_rustdoc_lint! {
    "codeblock could not be parsed as valid Rust or is empty"
 }
 
+declare_rustdoc_lint! {
+   /// The `unescaped_backticks` lint detects unescaped backticks (\`), which usually
+   /// mean broken inline code. This is a `rustdoc` only lint, see the documentation
+   /// in the [rustdoc book].
+   ///
+   /// [rustdoc book]: ../../../rustdoc/lints.html#unescaped_backticks
+   UNESCAPED_BACKTICKS,
+   Allow,
+   "detects unescaped backticks in doc comments"
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -185,6 +196,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         INVALID_HTML_TAGS,
         BARE_URLS,
         MISSING_CRATE_LEVEL_DOCS,
+        UNESCAPED_BACKTICKS,
     ]
 });
 

@@ -15,6 +15,8 @@ for example:
   or an invalid enum discriminant)
 * **Experimental**: Violations of the [Stacked Borrows] rules governing aliasing
   for reference types
+* **Experimental**: Violations of the [Tree Borrows] aliasing rules, as an optional
+  alternative to [Stacked Borrows]
 * **Experimental**: Data races
 
 On top of that, Miri will also tell you about memory leaks: when there is memory
@@ -72,11 +74,19 @@ behavior** in your program, and cannot run all programs:
   unobservable by compiled programs running on real hardware when `SeqCst` fences are used, and it
   cannot produce all behaviors possibly observable on real hardware.
 
+Moreover, Miri fundamentally cannot tell you whether your code is *sound*. [Soundness] is the property
+of never causing undefined behavior when invoked from arbitrary safe code, even in combination with
+other sound code. In contrast, Miri can just tell you if *a particular way of interacting with your
+code* (e.g., a test suite) causes any undefined behavior. It is up to you to ensure sufficient
+coverage.
+
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
 [`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
 [`copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/ptr/fn.copy_nonoverlapping.html
 [Stacked Borrows]: https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md
+[Tree Borrows]: https://perso.crans.org/vanille/treebor/
+[Soundness]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#soundness-of-code--of-a-library
 
 
 ## Using Miri
@@ -225,6 +235,26 @@ degree documented below):
   reduced feature set. We might ship Miri with a nightly even when some features
   on these targets regress.
 
+### Running tests in parallel
+
+Though it implements Rust threading, Miri itself is a single-threaded interpreter.
+This means that when running `cargo miri test`, you will probably see a dramatic
+increase in the amount of time it takes to run your whole test suite due to the
+inherent interpreter slowdown and a loss of parallelism.
+
+You can get your test suite's parallelism back by running `cargo miri nextest run -jN`
+(note that you will need [`cargo-nextest`](https://nexte.st) installed).
+This works because `cargo-nextest` collects a list of all tests then launches a
+separate `cargo miri run` for each test. You will need to specify a `-j` or `--test-threads`;
+by default `cargo miri nextest run` runs one test at a time. For more details, see the
+[`cargo-nextest` Miri documentation](https://nexte.st/book/miri.html).
+
+Note: This one-test-per-process model means that `cargo miri test` is able to detect data
+races where two tests race on a shared resource, but `cargo miri nextest run` will not detect
+such races.
+
+Note: `cargo-nextest` does not support doctests, see https://github.com/nextest-rs/nextest/issues/16
+
 ### Common Problems
 
 When using the above instructions, you may encounter a number of confusing compiler
@@ -278,6 +308,15 @@ environment variable. We first document the most relevant and most commonly used
 * `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
+* `-Zmiri-disable-leak-backtraces` disables backtraces reports for memory leaks. By default, a
+  backtrace is captured for every allocation when it is created, just in case it leaks. This incurs
+  some memory overhead to store data that is almost never used. This flag is implied by
+  `-Zmiri-ignore-leaks`.
+* `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
+  be used multiple times to forward several variables. Execution will still be deterministic if the
+  value of forwarded variables stays the same. Has no effect if `-Zmiri-disable-isolation` is set.
+* `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
+  remaining threads to exist when the main thread exits.
 * `-Zmiri-isolation-error=<action>` configures Miri's response to operations
   requiring host access while isolation is enabled. `abort`, `hide`, `warn`,
   and `warn-nobacktrace` are the supported actions. The default is to `abort`,
@@ -285,11 +324,6 @@ environment variable. We first document the most relevant and most commonly used
   execution with a "permission denied" error being returned to the program.
   `warn` prints a full backtrace when that happens; `warn-nobacktrace` is less
   verbose. `hide` hides the warning entirely.
-* `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
-  be used multiple times to forward several variables. Execution will still be deterministic if the
-  value of forwarded variables stays the same. Has no effect if `-Zmiri-disable-isolation` is set.
-* `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
-  remaining threads to exist when the main thread exits.
 * `-Zmiri-num-cpus` states the number of available CPUs to be reported by miri. By default, the
   number of available CPUs is `1`. Note that this flag does not affect how miri handles threads in
   any way.
@@ -337,9 +371,11 @@ to Miri failing to detect cases of undefined behavior in a program.
 * `-Zmiri-disable-data-race-detector` disables checking for data races.  Using
   this flag is **unsound**. This implies `-Zmiri-disable-weak-memory-emulation`.
 * `-Zmiri-disable-stacked-borrows` disables checking the experimental
-  [Stacked Borrows] aliasing rules.  This can make Miri run faster, but it also
-  means no aliasing violations will be detected.  Using this flag is **unsound**
-  (but the affected soundness rules are experimental).
+  aliasing rules to track borrows ([Stacked Borrows] and [Tree Borrows]).
+  This can make Miri run faster, but it also means no aliasing violations will
+  be detected. Using this flag is **unsound** (but the affected soundness rules
+  are experimental). Later flags take precedence: borrow tracking can be reactivated
+  by `-Zmiri-tree-borrows`.
 * `-Zmiri-disable-validation` disables enforcing validity invariants, which are
   enforced by default.  This is mostly useful to focus on other failures (such
   as out-of-bounds accesses) first.  Setting this flag means Miri can miss bugs
@@ -360,7 +396,7 @@ to Miri failing to detect cases of undefined behavior in a program.
   Follow [the discussion on supporting other types](https://github.com/rust-lang/miri/issues/2365).
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
    This can be used to find which parts of your program are executing slowly under Miri.
-   The profile is written out to a file with the prefix `<name>`, and can be processed
+   The profile is written out to a file inside a directory called `<name>`, and can be processed
    using the tools in the repository https://github.com/rust-lang/measureme.
 * `-Zmiri-mute-stdout-stderr` silently ignores all writes to stdout and stderr,
   but reports to the program that it did actually write. This is useful when you
@@ -371,15 +407,11 @@ to Miri failing to detect cases of undefined behavior in a program.
   application instead of raising an error within the context of Miri (and halting
   execution). Note that code might not expect these operations to ever panic, so
   this flag can lead to strange (mis)behavior.
-* `-Zmiri-retag-fields` changes Stacked Borrows retagging to recurse into *all* fields.
-  This means that references in fields of structs/enums/tuples/arrays/... are retagged,
-  and in particular, they are protected when passed as function arguments.
-  (The default is to recurse only in cases where rustc would actually emit a `noalias` attribute.)
-* `-Zmiri-retag-fields=<all|none|scalar>` controls when Stacked Borrows retagging recurses into
-  fields. `all` means it always recurses (like `-Zmiri-retag-fields`), `none` means it never
-  recurses, `scalar` (the default) means it only recurses for types where we would also emit
-  `noalias` annotations in the generated LLVM IR (types passed as indivudal scalars or pairs of
-  scalars). Setting this to `none` is **unsound**.
+* `-Zmiri-retag-fields[=<all|none|scalar>]` controls when Stacked Borrows retagging recurses into
+  fields. `all` means it always recurses (the default, and equivalent to `-Zmiri-retag-fields`
+  without an explicit value), `none` means it never recurses, `scalar` means it only recurses for
+  types where we would also emit `noalias` annotations in the generated LLVM IR (types passed as
+  individual scalars or pairs of scalars). Setting this to `none` is **unsound**.
 * `-Zmiri-tag-gc=<blocks>` configures how often the pointer tag garbage collector runs. The default
   is to search for and remove unreachable tags once every `10000` basic blocks. Setting this to
   `0` disables the garbage collector, which causes some programs to have explosive memory usage
@@ -401,8 +433,14 @@ to Miri failing to detect cases of undefined behavior in a program.
 * `-Zmiri-track-weak-memory-loads` shows a backtrace when weak memory emulation returns an outdated
   value from a load. This can help diagnose problems that disappear under
   `-Zmiri-disable-weak-memory-emulation`.
+* `-Zmiri-tree-borrows` replaces [Stacked Borrows] with the [Tree Borrows] rules.
+  The soundness rules are already experimental without this flag, but even more
+  so with this flag.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
+* `-Zmiri-unique-is-unique` performs additional aliasing checks for `core::ptr::Unique` to ensure
+  that it could theoretically be considered `noalias`. This flag is experimental and has
+  an effect only when used with `-Zmiri-tree-borrows`.
 
 [function ABI]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
 
@@ -415,7 +453,7 @@ Some native rustc `-Z` flags are also very relevant for Miri:
   functions.  This is needed so that Miri can execute such functions, so Miri
   sets this flag per default.
 * `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
-  enables this per default because it is needed for [Stacked Borrows].
+  enables this per default because it is needed for [Stacked Borrows] and [Tree Borrows].
 
 Moreover, Miri recognizes some environment variables:
 
@@ -444,7 +482,7 @@ Moreover, Miri recognizes some environment variables:
   purpose.
 * `MIRI_NO_STD` (recognized by `cargo miri` and the test suite) makes sure that the target's
   sysroot is built without libstd. This allows testing and running no_std programs.
-* `MIRI_BLESS` (recognized by the test suite and `cargo-miri-test/run-test.py`): overwrite all
+* `RUSTC_BLESS` (recognized by the test suite and `cargo-miri-test/run-test.py`): overwrite all
   `stderr` and `stdout` files instead of checking whether the output matches.
 * `MIRI_SKIP_UI_CHECKS` (recognized by the test suite): don't check whether the
   `stderr` or `stdout` files match the actual output.
@@ -481,120 +519,8 @@ binaries, and as such worth documenting:
 ## Miri `extern` functions
 
 Miri provides some `extern` functions that programs can import to access
-Miri-specific functionality:
-
-```rust
-#[cfg(miri)]
-extern "Rust" {
-    /// Miri-provided extern function to mark the block `ptr` points to as a "root"
-    /// for some static memory. This memory and everything reachable by it is not
-    /// considered leaking even if it still exists when the program terminates.
-    ///
-    /// `ptr` has to point to the beginning of an allocated block.
-    fn miri_static_root(ptr: *const u8);
-
-    // Miri-provided extern function to get the amount of frames in the current backtrace.
-    // The `flags` argument must be `0`.
-    fn miri_backtrace_size(flags: u64) -> usize;
-
-    /// Miri-provided extern function to obtain a backtrace of the current call stack.
-    /// This writes a slice of pointers into `buf` - each pointer is an opaque value
-    /// that is only useful when passed to `miri_resolve_frame`.
-    /// `buf` must have `miri_backtrace_size(0) * pointer_size` bytes of space.
-    /// The `flags` argument must be `1`.
-    fn miri_get_backtrace(flags: u64, buf: *mut *mut ());
-
-    /// Miri-provided extern function to resolve a frame pointer obtained
-    /// from `miri_get_backtrace`. The `flags` argument must be `1`,
-    /// and `MiriFrame` should be declared as follows:
-    ///
-    /// ```rust
-    /// #[repr(C)]
-    /// struct MiriFrame {
-    ///     // The size of the name of the function being executed, encoded in UTF-8
-    ///     name_len: usize,
-    ///     // The size of filename of the function being executed, encoded in UTF-8
-    ///     filename_len: usize,
-    ///     // The line number currently being executed in `filename`, starting from '1'.
-    ///     lineno: u32,
-    ///     // The column number currently being executed in `filename`, starting from '1'.
-    ///     colno: u32,
-    ///     // The function pointer to the function currently being executed.
-    ///     // This can be compared against function pointers obtained by
-    ///     // casting a function (e.g. `my_fn as *mut ()`)
-    ///     fn_ptr: *mut ()
-    /// }
-    /// ```
-    ///
-    /// The fields must be declared in exactly the same order as they appear in `MiriFrame` above.
-    /// This function can be called on any thread (not just the one which obtained `frame`).
-    fn miri_resolve_frame(frame: *mut (), flags: u64) -> MiriFrame;
-
-    /// Miri-provided extern function to get the name and filename of the frame provided by `miri_resolve_frame`.
-    /// `name_buf` and `filename_buf` should be allocated with the `name_len` and `filename_len` fields of `MiriFrame`.
-    /// The flags argument must be `0`.
-    fn miri_resolve_frame_names(ptr: *mut (), flags: u64, name_buf: *mut u8, filename_buf: *mut u8);
-
-    /// Miri-provided extern function to begin unwinding with the given payload.
-    ///
-    /// This is internal and unstable and should not be used; we give it here
-    /// just to be complete.
-    fn miri_start_panic(payload: *mut u8) -> !;
-
-    /// Miri-provided extern function to get the internal unique identifier for the allocation that a pointer
-    /// points to. If this pointer is invalid (not pointing to an allocation), interpretation will abort.
-    ///
-    /// This is only useful as an input to `miri_print_borrow_stacks`, and it is a separate call because
-    /// getting a pointer to an allocation at runtime can change the borrow stacks in the allocation.
-    /// This function should be considered unstable. It exists only to support `miri_print_borrow_stacks` and so
-    /// inherits all of its instability.
-    fn miri_get_alloc_id(ptr: *const ()) -> u64;
-
-    /// Miri-provided extern function to print (from the interpreter, not the program) the contents of all
-    /// borrow stacks in an allocation. The leftmost tag is the bottom of the stack.
-    /// The format of what this emits is unstable and may change at any time. In particular, users should be
-    /// aware that Miri will periodically attempt to garbage collect the contents of all stacks. Callers of
-    /// this function may wish to pass `-Zmiri-tag-gc=0` to disable the GC.
-    ///
-    /// This function is extremely unstable. At any time the format of its output may change, its signature may
-    /// change, or it may be removed entirely.
-    fn miri_print_borrow_stacks(alloc_id: u64);
-
-    /// Miri-provided extern function to print (from the interpreter, not the
-    /// program) the contents of a section of program memory, as bytes. Bytes
-    /// written using this function will emerge from the interpreter's stdout.
-    fn miri_write_to_stdout(bytes: &[u8]);
-
-    /// Miri-provided extern function to print (from the interpreter, not the
-    /// program) the contents of a section of program memory, as bytes. Bytes
-    /// written using this function will emerge from the interpreter's stderr.
-    fn miri_write_to_stderr(bytes: &[u8]);
-
-    /// Miri-provided extern function to allocate memory from the interpreter.
-    /// 
-    /// This is useful when no fundamental way of allocating memory is
-    /// available, e.g. when using `no_std` + `alloc`.
-    fn miri_alloc(size: usize, align: usize) -> *mut u8;
-
-    /// Miri-provided extern function to deallocate memory.
-    fn miri_dealloc(ptr: *mut u8, size: usize, align: usize);
-
-    /// Convert a path from the host Miri runs on to the target Miri interprets.
-    /// Performs conversion of path separators as needed.
-    ///
-    /// Usually Miri performs this kind of conversion automatically. However, manual conversion
-    /// might be necessary when reading an environment variable that was set on the host
-    /// (such as TMPDIR) and using it as a target path.
-    ///
-    /// Only works with isolation disabled.
-    ///
-    /// `in` must point to a null-terminated string, and will be read as the input host path.
-    /// `out` must point to at least `out_size` many bytes, and the result will be stored there
-    /// with a null terminator.
-    /// Returns 0 if the `out` buffer was large enough, and the required size otherwise.
-    fn miri_host_to_target_path(path: *const std::ffi::c_char, out: *mut std::ffi::c_char, out_size: usize) -> usize;
-}
-```
+Miri-specific functionality. They are declared in
+[/tests/utils/miri\_extern.rs](/tests/utils/miri_extern.rs).
 
 ## Contributing and getting help
 
@@ -655,6 +581,7 @@ Definite bugs found:
 * [`crossbeam-epoch` calling `assume_init` on a partly-initialized `MaybeUninit`](https://github.com/crossbeam-rs/crossbeam/pull/779)
 * [`integer-encoding` dereferencing a misaligned pointer](https://github.com/dermesser/integer-encoding-rs/pull/23)
 * [`rkyv` constructing a `Box<[u8]>` from an overaligned allocation](https://github.com/rkyv/rkyv/commit/a9417193a34757e12e24263178be8b2eebb72456)
+* [Data race in `arc-swap`](https://github.com/vorner/arc-swap/issues/76)
 * [Data race in `thread::scope`](https://github.com/rust-lang/rust/issues/98498)
 * [`regex` incorrectly handling unaligned `Vec<u8>` buffers](https://www.reddit.com/r/rust/comments/vq3mmu/comment/ienc7t0?context=3)
 * [Incorrect use of `compare_exchange_weak` in `once_cell`](https://github.com/matklad/once_cell/issues/186)

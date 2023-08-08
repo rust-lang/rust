@@ -86,10 +86,7 @@ pub(crate) mod printf {
                         '-' => c_left = true,
                         '+' => c_plus = true,
                         _ => {
-                            return Err(Some(format!(
-                                "the flag `{}` is unknown or unsupported",
-                                c
-                            )));
+                            return Err(Some(format!("the flag `{c}` is unknown or unsupported")));
                         }
                     }
                 }
@@ -268,21 +265,21 @@ pub(crate) mod printf {
     impl Num {
         fn from_str(s: &str, arg: Option<&str>) -> Self {
             if let Some(arg) = arg {
-                Num::Arg(arg.parse().unwrap_or_else(|_| panic!("invalid format arg `{:?}`", arg)))
+                Num::Arg(arg.parse().unwrap_or_else(|_| panic!("invalid format arg `{arg:?}`")))
             } else if s == "*" {
                 Num::Next
             } else {
-                Num::Num(s.parse().unwrap_or_else(|_| panic!("invalid format num `{:?}`", s)))
+                Num::Num(s.parse().unwrap_or_else(|_| panic!("invalid format num `{s:?}`")))
             }
         }
 
         fn translate(&self, s: &mut String) -> std::fmt::Result {
             use std::fmt::Write;
             match *self {
-                Num::Num(n) => write!(s, "{}", n),
+                Num::Num(n) => write!(s, "{n}"),
                 Num::Arg(n) => {
                     let n = n.checked_sub(1).ok_or(std::fmt::Error)?;
-                    write!(s, "{}$", n)
+                    write!(s, "{n}$")
                 }
                 Num::Next => write!(s, "*"),
             }
@@ -562,15 +559,13 @@ pub(crate) mod printf {
         }
 
         if let Type = state {
-            drop(c);
             type_ = at.slice_between(next).unwrap();
 
             // Don't use `move_to!` here, as we *can* be at the end of the input.
             at = next;
         }
 
-        drop(c);
-        drop(next);
+        let _ = c; // to avoid never used value
 
         end = at;
         let position = InnerSpan::new(start.at, end.at);
@@ -628,8 +623,8 @@ pub mod shell {
     impl Substitution<'_> {
         pub fn as_str(&self) -> String {
             match self {
-                Substitution::Ordinal(n, _) => format!("${}", n),
-                Substitution::Name(n, _) => format!("${}", n),
+                Substitution::Ordinal(n, _) => format!("${n}"),
+                Substitution::Name(n, _) => format!("${n}"),
                 Substitution::Escape(_) => "$$".into(),
             }
         }

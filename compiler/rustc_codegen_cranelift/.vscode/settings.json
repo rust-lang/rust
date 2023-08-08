@@ -6,9 +6,10 @@
     "rust-analyzer.imports.granularity.enforce": true,
     "rust-analyzer.imports.granularity.group": "module",
     "rust-analyzer.imports.prefix": "crate",
-    "rust-analyzer.cargo.features": ["unstable-features", "__check_build_system_using_ra"],
+    "rust-analyzer.cargo.features": ["unstable-features"],
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml",
+        "./build_system/Cargo.toml",
         {
             "crates": [
                 {

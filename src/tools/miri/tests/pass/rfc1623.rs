@@ -58,7 +58,7 @@ fn main() {
     STATIC_SIMPLE_FN(x);
     CONST_SIMPLE_FN(x);
 
-    STATIC_BAZ(BYTES); // neees static lifetime
+    STATIC_BAZ(BYTES); // needs static lifetime
     CONST_BAZ(BYTES);
 
     // make sure this works with different lifetimes

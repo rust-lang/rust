@@ -54,6 +54,23 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.u128_type
     }
 
+    pub fn type_ptr_to(&self, ty: Type<'gcc>) -> Type<'gcc> {
+        ty.make_pointer()
+    }
+
+    pub fn type_ptr_to_ext(&self, ty: Type<'gcc>, _address_space: AddressSpace) -> Type<'gcc> {
+        // TODO(antoyo): use address_space, perhaps with TYPE_ADDR_SPACE?
+        ty.make_pointer()
+    }
+
+    pub fn type_i8p(&self) -> Type<'gcc> {
+        self.type_ptr_to(self.type_i8())
+    }
+
+    pub fn type_i8p_ext(&self, address_space: AddressSpace) -> Type<'gcc> {
+        self.type_ptr_to_ext(self.type_i8(), address_space)
+    }
+
     pub fn type_pointee_for_align(&self, align: Align) -> Type<'gcc> {
         // FIXME(eddyb) We could find a better approximation if ity.align < align.
         let ity = Integer::approximate_align(self, align);
@@ -149,13 +166,12 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         }
     }
 
-    fn type_ptr_to(&self, ty: Type<'gcc>) -> Type<'gcc> {
-        ty.make_pointer()
+    fn type_ptr(&self) -> Type<'gcc> {
+        self.type_ptr_to(self.type_void())
     }
 
-    fn type_ptr_to_ext(&self, ty: Type<'gcc>, _address_space: AddressSpace) -> Type<'gcc> {
-        // TODO(antoyo): use address_space, perhaps with TYPE_ADDR_SPACE?
-        ty.make_pointer()
+    fn type_ptr_ext(&self, address_space: AddressSpace) -> Type<'gcc> {
+        self.type_ptr_to_ext(self.type_void(), address_space)
     }
 
     fn element_type(&self, ty: Type<'gcc>) -> Type<'gcc> {
@@ -280,16 +296,4 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
 }
 
 impl<'gcc, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
-    fn set_type_metadata(&self, _function: RValue<'gcc>, _typeid: String) {
-        // Unsupported.
-    }
-
-    fn typeid_metadata(&self, _typeid: String) -> RValue<'gcc> {
-        // Unsupported.
-        self.context.new_rvalue_from_int(self.int_type, 0)
-    }
-
-    fn set_kcfi_type_metadata(&self, _function: RValue<'gcc>, _kcfi_typeid: u32) {
-        // Unsupported.
-    }
 }

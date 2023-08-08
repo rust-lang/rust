@@ -12,8 +12,12 @@ use crate::ProcMacroKind;
 
 pub use crate::msg::flat::FlatTree;
 
+// The versions of the server protocol
 pub const NO_VERSION_CHECK_VERSION: u32 = 0;
-pub const CURRENT_API_VERSION: u32 = 1;
+pub const VERSION_CHECK_VERSION: u32 = 1;
+pub const ENCODE_CLOSE_SPAN_VERSION: u32 = 2;
+
+pub const CURRENT_API_VERSION: u32 = ENCODE_CLOSE_SPAN_VERSION;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
@@ -146,7 +150,7 @@ mod tests {
     fn test_proc_macro_rpc_works() {
         let tt = fixture_token_tree();
         let task = ExpandMacro {
-            macro_body: FlatTree::new(&tt),
+            macro_body: FlatTree::new(&tt, CURRENT_API_VERSION),
             macro_name: Default::default(),
             attributes: None,
             lib: std::env::current_dir().unwrap(),
@@ -158,6 +162,6 @@ mod tests {
         // println!("{}", json);
         let back: ExpandMacro = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(tt, back.macro_body.to_subtree());
+        assert_eq!(tt, back.macro_body.to_subtree(CURRENT_API_VERSION));
     }
 }

@@ -6,7 +6,8 @@ LL |     copy(r, w);
    |     |
    |     required by a bound introduced by this call
    |
-   = note: consider using `Box::pin`
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 note: required by a bound in `copy`
   --> $DIR/issue-90164.rs:1:12
    |

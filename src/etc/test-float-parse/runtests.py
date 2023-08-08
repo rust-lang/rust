@@ -127,7 +127,7 @@ def write_errors():
         if not have_seen_error:
             have_seen_error = True
             msg("Something is broken:", *args)
-            msg("Future errors logged to errors.txt")
+            msg("Future errors will be logged to errors.txt")
             exit_status = 101
 
 

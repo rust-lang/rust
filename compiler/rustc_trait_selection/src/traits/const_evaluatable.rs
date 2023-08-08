@@ -44,7 +44,7 @@ pub fn is_const_evaluatable<'tcx>(
         let ct = tcx.expand_abstract_consts(unexpanded_ct);
 
         let is_anon_ct = if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
-            tcx.def_kind(uv.def.did) == DefKind::AnonConst
+            tcx.def_kind(uv.def) == DefKind::AnonConst
         } else {
             false
         };
@@ -79,7 +79,7 @@ pub fn is_const_evaluatable<'tcx>(
                             "Missing value for constant, but no error reported?",
                         )))
                     }
-                    Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
+                    Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e.into())),
                     Ok(_) => Ok(()),
                 }
             }
@@ -119,7 +119,7 @@ pub fn is_const_evaluatable<'tcx>(
                 tcx.sess
                     .struct_span_fatal(
                         // Slightly better span than just using `span` alone
-                        if span == rustc_span::DUMMY_SP { tcx.def_span(uv.def.did) } else { span },
+                        if span == rustc_span::DUMMY_SP { tcx.def_span(uv.def) } else { span },
                         "failed to evaluate generic const expression",
                     )
                     .note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")
@@ -147,7 +147,7 @@ pub fn is_const_evaluatable<'tcx>(
 
                 Err(err)
             }
-            Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
+            Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e.into())),
             Ok(_) => Ok(()),
         }
     }
@@ -176,7 +176,7 @@ fn satisfied_from_param_env<'tcx>(
         fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             debug!("is_const_evaluatable: candidate={:?}", c);
             if self.infcx.probe(|_| {
-                let ocx = ObligationCtxt::new_in_snapshot(self.infcx);
+                let ocx = ObligationCtxt::new(self.infcx);
                 ocx.eq(&ObligationCause::dummy(), self.param_env, c.ty(), self.ct.ty()).is_ok()
                     && ocx.eq(&ObligationCause::dummy(), self.param_env, c, self.ct).is_ok()
                     && ocx.select_all_or_error().is_empty()
@@ -191,7 +191,7 @@ fn satisfied_from_param_env<'tcx>(
             if let ty::ConstKind::Expr(e) = c.kind() {
                 e.visit_with(self)
             } else {
-                // FIXME(generic_const_exprs): This doesn't recurse into `<T as Trait<U>>::ASSOC`'s substs.
+                // FIXME(generic_const_exprs): This doesn't recurse into `<T as Trait<U>>::ASSOC`'s args.
                 // This is currently unobservable as `<T as Trait<{ U + 1 }>>::ASSOC` creates an anon const
                 // with its own `ConstEvaluatable` bound in the param env which we will visit separately.
                 //
@@ -207,7 +207,7 @@ fn satisfied_from_param_env<'tcx>(
 
     for pred in param_env.caller_bounds() {
         match pred.kind().skip_binder() {
-            ty::PredicateKind::ConstEvaluatable(ce) => {
+            ty::ClauseKind::ConstEvaluatable(ce) => {
                 let b_ct = tcx.expand_abstract_consts(ce);
                 let mut v = Visitor { ct, infcx, param_env, single_match };
                 let _ = b_ct.visit_with(&mut v);
@@ -219,7 +219,7 @@ fn satisfied_from_param_env<'tcx>(
     }
 
     if let Some(Ok(c)) = single_match {
-        let ocx = ObligationCtxt::new_in_snapshot(infcx);
+        let ocx = ObligationCtxt::new(infcx);
         assert!(ocx.eq(&ObligationCause::dummy(), param_env, c.ty(), ct.ty()).is_ok());
         assert!(ocx.eq(&ObligationCause::dummy(), param_env, c, ct).is_ok());
         assert!(ocx.select_all_or_error().is_empty());

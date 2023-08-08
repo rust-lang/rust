@@ -14,6 +14,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_serialize::Encoder;
 use rustc_session::Session;
+use std::borrow::Cow;
 use std::env;
 use std::fs;
 use std::io::{self, Read};
@@ -25,17 +26,12 @@ const FILE_MAGIC: &[u8] = b"RSIC";
 /// Change this if the header format changes.
 const HEADER_FORMAT_VERSION: u16 = 0;
 
-/// A version string that hopefully is always different for compiler versions
-/// with different encodings of incremental compilation artifacts. Contains
-/// the Git commit hash.
-const RUSTC_VERSION: Option<&str> = option_env!("CFG_VERSION");
-
-pub(crate) fn write_file_header(stream: &mut FileEncoder, nightly_build: bool) {
+pub(crate) fn write_file_header(stream: &mut FileEncoder, sess: &Session) {
     stream.emit_raw_bytes(FILE_MAGIC);
     stream
         .emit_raw_bytes(&[(HEADER_FORMAT_VERSION >> 0) as u8, (HEADER_FORMAT_VERSION >> 8) as u8]);
 
-    let rustc_version = rustc_version(nightly_build);
+    let rustc_version = rustc_version(sess.is_nightly_build(), sess.cfg_version);
     assert_eq!(rustc_version.len(), (rustc_version.len() as u8) as usize);
     stream.emit_raw_bytes(&[rustc_version.len() as u8]);
     stream.emit_raw_bytes(rustc_version.as_bytes());
@@ -73,7 +69,7 @@ where
         }
     };
 
-    write_file_header(&mut encoder, sess.is_nightly_build());
+    write_file_header(&mut encoder, sess);
 
     match encode(encoder) {
         Ok(position) => {
@@ -100,9 +96,10 @@ where
 /// - Returns `Err(..)` if some kind of IO error occurred while reading the
 ///   file.
 pub fn read_file(
-    report_incremental_info: bool,
     path: &Path,
-    nightly_build: bool,
+    report_incremental_info: bool,
+    is_nightly_build: bool,
+    cfg_version: &'static str,
 ) -> io::Result<Option<(Mmap, usize)>> {
     let file = match fs::File::open(path) {
         Ok(file) => file,
@@ -152,7 +149,7 @@ pub fn read_file(
         let mut buffer = vec![0; rustc_version_str_len];
         file.read_exact(&mut buffer)?;
 
-        if buffer != rustc_version(nightly_build).as_bytes() {
+        if buffer != rustc_version(is_nightly_build, cfg_version).as_bytes() {
             report_format_mismatch(report_incremental_info, path, "Different compiler version");
             return Ok(None);
         }
@@ -174,17 +171,15 @@ fn report_format_mismatch(report_incremental_info: bool, file: &Path, message: &
     }
 }
 
-fn rustc_version(nightly_build: bool) -> String {
+/// A version string that hopefully is always different for compiler versions
+/// with different encodings of incremental compilation artifacts. Contains
+/// the Git commit hash.
+fn rustc_version(nightly_build: bool, cfg_version: &'static str) -> Cow<'static, str> {
     if nightly_build {
-        if let Some(val) = env::var_os("RUSTC_FORCE_RUSTC_VERSION") {
-            return val.to_string_lossy().into_owned();
+        if let Ok(val) = env::var("RUSTC_FORCE_RUSTC_VERSION") {
+            return val.into();
         }
     }
 
-    RUSTC_VERSION
-        .expect(
-            "Cannot use rustc without explicit version for \
-                          incremental compilation",
-        )
-        .to_string()
+    cfg_version.into()
 }

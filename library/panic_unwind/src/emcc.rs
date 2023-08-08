@@ -47,7 +47,7 @@ static EXCEPTION_TYPE_INFO: TypeInfo = TypeInfo {
     name: b"rust_panic\0".as_ptr(),
 };
 
-// NOTE(nbdd0121): The `canary` field will be part of stable ABI after `c_unwind` stabilization.
+// NOTE(nbdd0121): The `canary` field is part of stable ABI.
 #[repr(C)]
 struct Exception {
     // See `gcc.rs` on why this is present. We already have a static here so just use it.

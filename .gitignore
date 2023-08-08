@@ -21,6 +21,7 @@ Session.vim
 .project
 .favorites.json
 .settings/
+.vs/
 
 ## Tool
 .valgrindrc
@@ -42,6 +43,7 @@ no_llvm_build
 /llvm/
 /mingw-build/
 build/
+!/compiler/rustc_mir_build/src/build/
 /build-rust-analyzer/
 /dist/
 /unicode-downloads

@@ -65,7 +65,7 @@ pub fn find_param_with_region<'tcx>(
 
     let owner_id = hir.body_owner(body_id);
     let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
-    let poly_fn_sig = tcx.fn_sig(id).subst_identity();
+    let poly_fn_sig = tcx.fn_sig(id).instantiate_identity();
 
     let fn_sig = tcx.liberate_late_bound_regions(id, poly_fn_sig);
     let body = hir.body(body_id);
@@ -123,7 +123,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         br: ty::BoundRegionKind,
         hir_sig: &hir::FnSig<'_>,
     ) -> Option<Span> {
-        let fn_ty = self.tcx().type_of(scope_def_id).subst_identity();
+        let fn_ty = self.tcx().type_of(scope_def_id).instantiate_identity();
         if let ty::FnDef(_, _) = fn_ty.kind() {
             let ret_ty = fn_ty.fn_sig(self.tcx()).output();
             let span = hir_sig.decl.output.span();

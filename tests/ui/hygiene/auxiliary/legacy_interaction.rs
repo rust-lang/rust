@@ -1,5 +1,3 @@
-// ignore-pretty pretty-printing is unhygienic
-
 #[macro_export]
 macro_rules! m {
     () => {

@@ -13,7 +13,7 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 
 pub mod ast_validation;
 mod errors;
@@ -21,4 +21,4 @@ pub mod feature_gate;
 pub mod node_count;
 pub mod show_span;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }

@@ -2,7 +2,6 @@
 // edition:2021
 
 #![feature(async_fn_in_trait)]
-//~^ WARN the feature `async_fn_in_trait` is incomplete and may not be safe to use
 
 use std::future::Future;
 

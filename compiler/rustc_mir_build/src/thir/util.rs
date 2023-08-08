@@ -9,7 +9,7 @@ pub(crate) trait UserAnnotatedTyHelpers<'tcx> {
     /// Looks up the type associated with this hir-id and applies the
     /// user-given substitutions; the hir-id must map to a suitable
     /// type.
-    fn user_substs_applied_to_ty_of_hir_id(
+    fn user_args_applied_to_ty_of_hir_id(
         &self,
         hir_id: hir::HirId,
     ) -> Option<CanonicalUserType<'tcx>> {

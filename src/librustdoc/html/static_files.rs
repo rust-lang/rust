@@ -97,7 +97,7 @@ static_files! {
     main_js => "static/js/main.js",
     search_js => "static/js/search.js",
     settings_js => "static/js/settings.js",
-    source_script_js => "static/js/source-script.js",
+    src_script_js => "static/js/src-script.js",
     storage_js => "static/js/storage.js",
     scrape_examples_js => "static/js/scrape-examples.js",
     wheel_svg => "static/images/wheel.svg",

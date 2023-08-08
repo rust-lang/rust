@@ -46,11 +46,10 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bap() -> Trait { Struct }
    |             ^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: use `impl Trait` as the return type, as all return paths are of type `Struct`, which implements `Trait`
+help: box the return type, and wrap all of the returned values in `Box::new`
    |
-LL | fn bap() -> impl Trait { Struct }
-   |             ~~~~~~~~~~
+LL | fn bap() -> Box<Trait> { Box::new(Struct) }
+   |             ++++     +   +++++++++      +
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:15:13
@@ -58,11 +57,14 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn ban() -> dyn Trait { Struct }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: use `impl Trait` as the return type, as all return paths are of type `Struct`, which implements `Trait`
+help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
    |
 LL | fn ban() -> impl Trait { Struct }
-   |             ~~~~~~~~~~
+   |             ~~~~
+help: box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL | fn ban() -> Box<dyn Trait> { Box::new(Struct) }
+   |             ++++         +   +++++++++      +
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:17:13
@@ -70,14 +72,14 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bak() -> dyn Trait { unimplemented!() }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: use `impl Trait` as the return type if all return paths have the same type but you want to expose only the trait in the signature
+help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
    |
 LL | fn bak() -> impl Trait { unimplemented!() }
-   |             ~~~~~~~~~~
-help: use a boxed trait object if all return paths implement trait `Trait`
+   |             ~~~~
+help: box the return type, and wrap all of the returned values in `Box::new`
    |
-LL | fn bak() -> Box<dyn Trait> { unimplemented!() }
-   |             ++++         +
+LL | fn bak() -> Box<dyn Trait> { Box::new(unimplemented!()) }
+   |             ++++         +   +++++++++                +
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:19:13
@@ -85,34 +87,18 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bal() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = note: if all the returned values were of the same type you could use `impl Trait` as the return type
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = note: you can create a new `enum` with a variant for each returned type
-help: return a boxed trait object instead
+help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
    |
-LL | fn bal() -> Box<dyn Trait> {
-   |             ++++         +
-help: ... and box this value
+LL | fn bal() -> impl Trait {
+   |             ~~~~
+help: box the return type, and wrap all of the returned values in `Box::new`
    |
-LL |         return Box::new(Struct);
-   |                +++++++++      +
-help: ... and box this value
+LL ~ fn bal() -> Box<dyn Trait> {
+LL |     if true {
+LL ~         return Box::new(Struct);
+LL |     }
+LL ~     Box::new(42)
    |
-LL |     Box::new(42)
-   |     +++++++++  +
-
-error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:29:9
-   |
-LL | /     if true {
-LL | |         Struct
-   | |         ------ expected because of this
-LL | |     } else {
-LL | |         42
-   | |         ^^ expected `Struct`, found integer
-LL | |     }
-   | |_____- `if` and `else` have incompatible types
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:25:13
@@ -120,22 +106,18 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bax() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = note: if all the returned values were of the same type you could use `impl Trait` as the return type
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = note: you can create a new `enum` with a variant for each returned type
-help: return a boxed trait object instead
+help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
    |
-LL | fn bax() -> Box<dyn Trait> {
-   |             ++++         +
-help: ... and box this value
+LL | fn bax() -> impl Trait {
+   |             ~~~~
+help: box the return type, and wrap all of the returned values in `Box::new`
    |
-LL |         Box::new(Struct)
-   |         +++++++++      +
-help: ... and box this value
+LL ~ fn bax() -> Box<dyn Trait> {
+LL |     if true {
+LL ~         Box::new(Struct)
+LL |     } else {
+LL ~         Box::new(42)
    |
-LL |         Box::new(42)
-   |         +++++++++  +
 
 error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:34:16
@@ -279,11 +261,18 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bat() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: use `impl Trait` as the return type, as all return paths are of type `{integer}`, which implements `Trait`
+help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
    |
 LL | fn bat() -> impl Trait {
-   |             ~~~~~~~~~~
+   |             ~~~~
+help: box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn bat() -> Box<dyn Trait> {
+LL |     if true {
+LL ~         return Box::new(0);
+LL |     }
+LL ~     Box::new(42)
+   |
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:66:13
@@ -291,13 +280,20 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bay() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: use `impl Trait` as the return type, as all return paths are of type `{integer}`, which implements `Trait`
+help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
    |
 LL | fn bay() -> impl Trait {
-   |             ~~~~~~~~~~
+   |             ~~~~
+help: box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn bay() -> Box<dyn Trait> {
+LL |     if true {
+LL ~         Box::new(0)
+LL |     } else {
+LL ~         Box::new(42)
+   |
 
-error: aborting due to 20 previous errors
+error: aborting due to 19 previous errors
 
 Some errors have detailed explanations: E0277, E0308, E0746.
 For more information about an error, try `rustc --explain E0277`.

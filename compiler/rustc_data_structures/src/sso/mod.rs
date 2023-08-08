@@ -1,4 +1,3 @@
-mod either_iter;
 mod map;
 mod set;
 

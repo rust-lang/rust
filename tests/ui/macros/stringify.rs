@@ -4,7 +4,6 @@
 
 #![feature(async_closure)]
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(generators)]
@@ -91,9 +90,6 @@ fn test_block() {
 
 #[test]
 fn test_expr() {
-    // ExprKind::Box
-    assert_eq!(stringify_expr!(box expr), "box expr");
-
     // ExprKind::Array
     assert_eq!(stringify_expr!([]), "[]");
     assert_eq!(stringify_expr!([true]), "[true]");
@@ -138,8 +134,7 @@ fn test_expr() {
     assert_eq!(stringify_expr!(expr as T<u8>), "expr as T<u8>");
 
     // ExprKind::Type
-    assert_eq!(stringify_expr!(expr: T), "expr: T");
-    assert_eq!(stringify_expr!(expr: T<u8>), "expr: T<u8>");
+    // There is no syntax for type ascription.
 
     // ExprKind::If
     assert_eq!(stringify_expr!(if true {}), "if true {}");

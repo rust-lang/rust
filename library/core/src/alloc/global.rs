@@ -235,7 +235,8 @@ pub unsafe trait GlobalAlloc {
     /// * `new_size` must be greater than zero.
     ///
     /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`,
-    ///   must not overflow (i.e., the rounded value must be less than `usize::MAX`).
+    ///   must not overflow isize (i.e., the rounded value must be less than or
+    ///   equal to `isize::MAX`).
     ///
     /// (Extension subtraits might provide more specific bounds on
     /// behavior, e.g., guarantee a sentinel address or a null pointer

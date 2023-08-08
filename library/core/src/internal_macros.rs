@@ -1,22 +1,9 @@
 // implements the unary operator "op &T"
 // based on "op T" where T is expected to be `Copy`able
 macro_rules! forward_ref_unop {
-    (impl const $imp:ident, $method:ident for $t:ty) => {
-        forward_ref_unop!(impl const $imp, $method for $t,
+    (impl $imp:ident, $method:ident for $t:ty) => {
+        forward_ref_unop!(impl $imp, $method for $t,
                 #[stable(feature = "rust1", since = "1.0.0")]);
-    };
-    // Equivalent to the non-const version, with the addition of `rustc_const_unstable`
-    (impl const $imp:ident, $method:ident for $t:ty, #[$attr:meta]) => {
-        #[$attr]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const $imp for &$t {
-            type Output = <$t as $imp>::Output;
-
-            #[inline]
-            fn $method(self) -> <$t as $imp>::Output {
-                $imp::$method(*self)
-            }
-        }
     };
     (impl $imp:ident, $method:ident for $t:ty, #[$attr:meta]) => {
         #[$attr]
@@ -34,44 +21,9 @@ macro_rules! forward_ref_unop {
 // implements binary operators "&T op U", "T op &U", "&T op &U"
 // based on "T op U" where T and U are expected to be `Copy`able
 macro_rules! forward_ref_binop {
-    (impl const $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        forward_ref_binop!(impl const $imp, $method for $t, $u,
+    (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
+        forward_ref_binop!(impl $imp, $method for $t, $u,
                 #[stable(feature = "rust1", since = "1.0.0")]);
-    };
-    // Equivalent to the non-const version, with the addition of `rustc_const_unstable`
-    (impl const $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
-        #[$attr]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl<'a> const $imp<$u> for &'a $t {
-            type Output = <$t as $imp<$u>>::Output;
-
-            #[inline]
-            fn $method(self, other: $u) -> <$t as $imp<$u>>::Output {
-                $imp::$method(*self, other)
-            }
-        }
-
-        #[$attr]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const $imp<&$u> for $t {
-            type Output = <$t as $imp<$u>>::Output;
-
-            #[inline]
-            fn $method(self, other: &$u) -> <$t as $imp<$u>>::Output {
-                $imp::$method(self, *other)
-            }
-        }
-
-        #[$attr]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const $imp<&$u> for &$t {
-            type Output = <$t as $imp<$u>>::Output;
-
-            #[inline]
-            fn $method(self, other: &$u) -> <$t as $imp<$u>>::Output {
-                $imp::$method(*self, *other)
-            }
-        }
     };
     (impl $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
         #[$attr]
@@ -112,21 +64,6 @@ macro_rules! forward_ref_op_assign {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
         forward_ref_op_assign!(impl $imp, $method for $t, $u,
                 #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")]);
-    };
-    (impl const $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        forward_ref_op_assign!(impl const $imp, $method for $t, $u,
-                #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")]);
-    };
-    // Equivalent to the non-const version, with the addition of `rustc_const_unstable`
-    (impl const $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
-        #[$attr]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const $imp<&$u> for $t {
-            #[inline]
-            fn $method(&mut self, other: &$u) {
-                $imp::$method(self, *other);
-            }
-        }
     };
     (impl $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
         #[$attr]

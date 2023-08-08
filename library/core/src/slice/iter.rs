@@ -13,7 +13,7 @@ use crate::iter::{
 use crate::marker::{PhantomData, Send, Sized, Sync};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
-use crate::ptr::NonNull;
+use crate::ptr::{self, invalid, invalid_mut, NonNull};
 
 use super::{from_raw_parts, from_raw_parts_mut};
 
@@ -60,10 +60,15 @@ impl<'a, T> IntoIterator for &'a mut [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct Iter<'a, T: 'a> {
+    /// The pointer to the next element to return, or the past-the-end location
+    /// if the iterator is empty.
+    ///
+    /// This address will be used for all ZST elements, never changed.
     ptr: NonNull<T>,
-    end: *const T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
-    // ptr == end is a quick test for the Iterator being empty, that works
-    // for both ZST and non-ZST.
+    /// For non-ZSTs, the non-null pointer to the past-the-end element.
+    ///
+    /// For ZSTs, this is `ptr::invalid(len)`.
+    end_or_len: *const T,
     _marker: PhantomData<&'a T>,
 }
 
@@ -85,12 +90,9 @@ impl<'a, T> Iter<'a, T> {
         let ptr = slice.as_ptr();
         // SAFETY: Similar to `IterMut::new`.
         unsafe {
-            assume(!ptr.is_null());
+            let end_or_len = if T::IS_ZST { invalid(slice.len()) } else { ptr.add(slice.len()) };
 
-            let end =
-                if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
-
-            Self { ptr: NonNull::new_unchecked(ptr as *mut T), end, _marker: PhantomData }
+            Self { ptr: NonNull::new_unchecked(ptr as *mut T), end_or_len, _marker: PhantomData }
         }
     }
 
@@ -126,15 +128,13 @@ impl<'a, T> Iter<'a, T> {
     }
 }
 
-iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, {
+iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, as_ref, {
     fn is_sorted_by<F>(self, mut compare: F) -> bool
     where
         Self: Sized,
         F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
     {
-        self.as_slice().windows(2).all(|w| {
-            compare(&&w[0], &&w[1]).map(|o| o != Ordering::Greater).unwrap_or(false)
-        })
+        self.as_slice().is_sorted_by(|a, b| compare(&a, &b))
     }
 }}
 
@@ -142,7 +142,7 @@ iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, {
 impl<T> Clone for Iter<'_, T> {
     #[inline]
     fn clone(&self) -> Self {
-        Iter { ptr: self.ptr, end: self.end, _marker: self._marker }
+        Iter { ptr: self.ptr, end_or_len: self.end_or_len, _marker: self._marker }
     }
 }
 
@@ -181,10 +181,15 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct IterMut<'a, T: 'a> {
+    /// The pointer to the next element to return, or the past-the-end location
+    /// if the iterator is empty.
+    ///
+    /// This address will be used for all ZST elements, never changed.
     ptr: NonNull<T>,
-    end: *mut T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
-    // ptr == end is a quick test for the Iterator being empty, that works
-    // for both ZST and non-ZST.
+    /// For non-ZSTs, the non-null pointer to the past-the-end element.
+    ///
+    /// For ZSTs, this is `ptr::invalid_mut(len)`.
+    end_or_len: *mut T,
     _marker: PhantomData<&'a mut T>,
 }
 
@@ -215,18 +220,16 @@ impl<'a, T> IterMut<'a, T> {
         // for direct pointer equality with `ptr` to check if the iterator is
         // done.
         //
-        // In the case of a ZST, the end pointer is just the start pointer plus
-        // the length, to also allows for the fast `ptr == end` check.
+        // In the case of a ZST, the end pointer is just the length.  It's never
+        // used as a pointer at all, and thus it's fine to have no provenance.
         //
         // See the `next_unchecked!` and `is_empty!` macros as well as the
         // `post_inc_start` method for more information.
         unsafe {
-            assume(!ptr.is_null());
+            let end_or_len =
+                if T::IS_ZST { invalid_mut(slice.len()) } else { ptr.add(slice.len()) };
 
-            let end =
-                if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
-
-            Self { ptr: NonNull::new_unchecked(ptr), end, _marker: PhantomData }
+            Self { ptr: NonNull::new_unchecked(ptr), end_or_len, _marker: PhantomData }
         }
     }
 
@@ -358,7 +361,7 @@ impl<T> AsRef<[T]> for IterMut<'_, T> {
 //     }
 // }
 
-iterator! {struct IterMut -> *mut T, &'a mut T, mut, {mut}, {}}
+iterator! {struct IterMut -> *mut T, &'a mut T, mut, {mut}, as_mut, {}}
 
 /// An internal abstraction over the splitting iterators, so that
 /// splitn, splitn_mut etc can be implemented once.
@@ -687,7 +690,7 @@ where
             None
         } else {
             self.finished = true;
-            Some(mem::replace(&mut self.v, &mut []))
+            Some(mem::take(&mut self.v))
         }
     }
 }
@@ -751,7 +754,7 @@ where
         match idx_opt {
             None => self.finish(),
             Some(idx) => {
-                let tmp = mem::replace(&mut self.v, &mut []);
+                let tmp = mem::take(&mut self.v);
                 let (head, tail) = tmp.split_at_mut(idx);
                 self.v = head;
                 Some(&mut tail[1..])
@@ -832,7 +835,7 @@ where
         if idx == self.v.len() {
             self.finished = true;
         }
-        let tmp = mem::replace(&mut self.v, &mut []);
+        let tmp = mem::take(&mut self.v);
         let (head, tail) = tmp.split_at_mut(idx);
         self.v = tail;
         Some(head)
@@ -878,7 +881,7 @@ where
         if idx == 0 {
             self.finished = true;
         }
-        let tmp = mem::replace(&mut self.v, &mut []);
+        let tmp = mem::take(&mut self.v);
         let (head, tail) = tmp.split_at_mut(idx);
         self.v = head;
         Some(tail)

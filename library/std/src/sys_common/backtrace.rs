@@ -60,6 +60,8 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     bt_fmt.add_context()?;
     let mut idx = 0;
     let mut res = Ok(());
+    let mut omitted_count: usize = 0;
+    let mut first_omit = true;
     // Start immediately if we're not using a short backtrace.
     let mut start = print_fmt != PrintFmt::Short;
     backtrace_rs::trace_unsynchronized(|frame| {
@@ -68,29 +70,47 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
         }
 
         let mut hit = false;
-        let mut stop = false;
         backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
             hit = true;
+
+            // Any frames between `__rust_begin_short_backtrace` and `__rust_end_short_backtrace`
+            // are omitted from the backtrace in short mode, `__rust_end_short_backtrace` will be
+            // called before the panic hook, so we won't ignore any frames if there is no
+            // invoke of `__rust_begin_short_backtrace`.
             if print_fmt == PrintFmt::Short {
                 if let Some(sym) = symbol.name().and_then(|s| s.as_str()) {
                     if start && sym.contains("__rust_begin_short_backtrace") {
-                        stop = true;
+                        start = false;
                         return;
                     }
                     if sym.contains("__rust_end_short_backtrace") {
                         start = true;
                         return;
                     }
+                    if !start {
+                        omitted_count += 1;
+                    }
                 }
             }
 
             if start {
+                if omitted_count > 0 {
+                    debug_assert!(print_fmt == PrintFmt::Short);
+                    // only print the message between the middle of frames
+                    if !first_omit {
+                        let _ = writeln!(
+                            bt_fmt.formatter(),
+                            "      [... omitted {} frame{} ...]",
+                            omitted_count,
+                            if omitted_count > 1 { "s" } else { "" }
+                        );
+                    }
+                    first_omit = false;
+                    omitted_count = 0;
+                }
                 res = bt_fmt.frame().symbol(frame, symbol);
             }
         });
-        if stop {
-            return false;
-        }
         #[cfg(target_os = "nto")]
         if libc::__my_thread_exit as *mut libc::c_void == frame.ip() {
             if !hit && start {

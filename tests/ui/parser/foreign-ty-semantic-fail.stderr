@@ -61,5 +61,16 @@ LL |     type D = u8;
    |
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
 
-error: aborting due to 6 previous errors
+error: `type`s inside `extern` blocks cannot have `where` clauses
+  --> $DIR/foreign-ty-semantic-fail.rs:17:13
+   |
+LL | extern "C" {
+   | ---------- `extern` block begins here
+...
+LL |     type E: where;
+   |             ^^^^^ help: remove the `where` clause
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: aborting due to 7 previous errors
 

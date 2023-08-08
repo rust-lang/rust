@@ -8,7 +8,6 @@ fn print_on_or_the_other<'a>(a: i32, b: &'a String) -> dyn Fn() + 'a {
         move || println!("{a}")
     } else {
         Box::new(move || println!("{}", b))
-        //~^ ERROR `if` and `else` have incompatible types
     }
 }
 

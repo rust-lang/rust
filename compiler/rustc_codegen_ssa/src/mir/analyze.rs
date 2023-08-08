@@ -5,7 +5,7 @@ use super::FunctionCx;
 use crate::traits::*;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Location, TerminatorKind};
@@ -84,7 +84,7 @@ impl DefLocation {
 
 struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     fx: &'mir FunctionCx<'a, 'tcx, Bx>,
-    dominators: Dominators<mir::BasicBlock>,
+    dominators: &'mir Dominators<mir::BasicBlock>,
     locals: IndexVec<mir::Local, LocalKind>,
 }
 
@@ -203,7 +203,9 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 self.assign(local, DefLocation::Body(location));
             }
 
-            PlaceContext::NonUse(_) | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
+            PlaceContext::NonUse(_)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention)
+            | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
 
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
@@ -232,7 +234,6 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             | PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Inspect
                 | NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::UniqueBorrow
                 | NonMutatingUseContext::ShallowBorrow
                 | NonMutatingUseContext::AddressOf
                 | NonMutatingUseContext::Projection,
@@ -277,14 +278,14 @@ impl CleanupKind {
 /// Recover that structure in an analyze pass.
 pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(
-        result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
+        result: &mut IndexSlice<mir::BasicBlock, CleanupKind>,
         mir: &mir::Body<'tcx>,
     ) {
         for (bb, data) in mir.basic_blocks.iter_enumerated() {
             match data.terminator().kind {
                 TerminatorKind::Goto { .. }
                 | TerminatorKind::Resume
-                | TerminatorKind::Abort
+                | TerminatorKind::Terminate
                 | TerminatorKind::Return
                 | TerminatorKind::GeneratorDrop
                 | TerminatorKind::Unreachable
@@ -292,11 +293,11 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 | TerminatorKind::Yield { .. }
                 | TerminatorKind::FalseEdge { .. }
                 | TerminatorKind::FalseUnwind { .. } => { /* nothing to do */ }
-                TerminatorKind::Call { cleanup: unwind, .. }
-                | TerminatorKind::InlineAsm { cleanup: unwind, .. }
-                | TerminatorKind::Assert { cleanup: unwind, .. }
+                TerminatorKind::Call { unwind, .. }
+                | TerminatorKind::InlineAsm { unwind, .. }
+                | TerminatorKind::Assert { unwind, .. }
                 | TerminatorKind::Drop { unwind, .. } => {
-                    if let Some(unwind) = unwind {
+                    if let mir::UnwindAction::Cleanup(unwind) = unwind {
                         debug!(
                             "cleanup_kinds: {:?}/{:?} registering {:?} as funclet",
                             bb, data, unwind
@@ -308,7 +309,10 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
         }
     }
 
-    fn propagate<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>, mir: &mir::Body<'tcx>) {
+    fn propagate<'tcx>(
+        result: &mut IndexSlice<mir::BasicBlock, CleanupKind>,
+        mir: &mir::Body<'tcx>,
+    ) {
         let mut funclet_succs = IndexVec::from_elem(None, &mir.basic_blocks);
 
         let mut set_successor = |funclet: mir::BasicBlock, succ| match funclet_succs[funclet] {

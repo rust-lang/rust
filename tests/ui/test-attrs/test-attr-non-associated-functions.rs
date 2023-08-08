@@ -1,18 +1,16 @@
-// #[test] attribute is not allowed on associated functions or methods
-// reworded error message
 // compile-flags:--test
 
 struct A {}
 
 impl A {
     #[test]
+    //~^ ERROR the `#[test]` attribute may only be used on a non-associated function
     fn new() -> A {
-        //~^ ERROR `#[test]` attribute is only allowed on non associated functions
         A {}
     }
     #[test]
+    //~^ ERROR the `#[test]` attribute may only be used on a non-associated function
     fn recovery_witness() -> A {
-        //~^ ERROR `#[test]` attribute is only allowed on non associated functions
         A {}
     }
 }

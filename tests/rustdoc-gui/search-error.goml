@@ -1,5 +1,5 @@
 // Checks that the crate search filtering is handled correctly and changes the results.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html?search=sa'%3Bda'%3Bds"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=sa'%3Bda'%3Bds"
 show-text: true
 
 define-function: (
@@ -7,7 +7,7 @@ define-function: (
     (theme, error_background),
     block {
         // Setting the theme.
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         // We reload the page so the local storage settings are being used.
         reload:
 
@@ -20,20 +20,20 @@ call-function: (
     "check-colors",
     {
         "theme": "ayu",
-        "error_background": "rgb(79, 76, 76)",
+        "error_background": "#4f4c4c",
     },
 )
 call-function: (
     "check-colors",
     {
         "theme": "dark",
-        "error_background": "rgb(72, 72, 72)",
+        "error_background": "#484848",
     },
 )
 call-function: (
     "check-colors",
     {
         "theme": "light",
-        "error_background": "rgb(208, 204, 204)",
+        "error_background": "#d0cccc",
     },
 )

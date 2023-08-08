@@ -5,8 +5,7 @@ use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_lint::LateContext;
-use rustc_lint::Lint;
+use rustc_lint::{LateContext, Lint};
 
 /// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints with `unwrap()`.
 pub(super) fn check(
@@ -18,7 +17,7 @@ pub(super) fn check(
 ) -> bool {
     if_chain! {
         if let Some(args) = method_chain_args(info.chain, chain_methods);
-        if let hir::ExprKind::Lit(ref lit) = info.other.kind;
+        if let hir::ExprKind::Lit(lit) = info.other.kind;
         if let ast::LitKind::Char(c) = lit.node;
         then {
             let mut applicability = Applicability::MachineApplicable;

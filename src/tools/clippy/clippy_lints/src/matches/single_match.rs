@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{expr_block, snippet};
+use clippy_utils::source::{expr_block, get_source_text, snippet};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, peel_mid_ty_refs};
 use clippy_utils::{is_lint_allowed, is_unit_expr, is_wild, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs};
 use core::cmp::max;
@@ -7,9 +7,25 @@ use rustc_errors::Applicability;
 use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 
 use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
+
+/// Checks if there are comments contained within a span.
+/// This is a very "naive" check, as it just looks for the literal characters // and /* in the
+/// source text. This won't be accurate if there are potentially expressions contained within the
+/// span, e.g. a string literal `"//"`, but we know that this isn't the case for empty
+/// match arms.
+fn empty_arm_has_comment(cx: &LateContext<'_>, span: Span) -> bool {
+    if let Some(ff) = get_source_text(cx, span)
+        && let Some(text) = ff.as_str()
+    {
+        text.as_bytes().windows(2)
+            .any(|w| w == b"//" || w == b"/*")
+    } else {
+        false
+    }
+}
 
 #[rustfmt::skip]
 pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
@@ -25,7 +41,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
             return;
         }
         let els = arms[1].body;
-        let els = if is_unit_expr(peel_blocks(els)) {
+        let els = if is_unit_expr(peel_blocks(els)) && !empty_arm_has_comment(cx, els.span) {
             None
         } else if let ExprKind::Block(Block { stmts, expr: block_expr, .. }, _) = els.kind {
             if stmts.len() == 1 && block_expr.is_none() || stmts.is_empty() && block_expr.is_some() {
@@ -35,7 +51,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
             // block with 2+ statements or 1 expr and 1+ statement
             Some(els)
         } else {
-            // not a block, don't lint
+            // not a block or an emtpy block w/ comments, don't lint
             return;
         };
 
@@ -67,8 +83,10 @@ fn report_single_pattern(
     els: Option<&Expr<'_>>,
 ) {
     let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
+    let ctxt = expr.span.ctxt();
+    let mut app = Applicability::HasPlaceholders;
     let els_str = els.map_or(String::new(), |els| {
-        format!(" else {}", expr_block(cx, els, None, "..", Some(expr.span)))
+        format!(" else {}", expr_block(cx, els, ctxt, "..", Some(expr.span), &mut app))
     });
 
     let (pat, pat_ref_count) = peel_hir_pat_refs(arms[0].pat);
@@ -103,7 +121,7 @@ fn report_single_pattern(
                 // PartialEq for different reference counts may not exist.
                 "&".repeat(ref_count_diff),
                 snippet(cx, arms[0].pat.span, ".."),
-                expr_block(cx, arms[0].body, None, "..", Some(expr.span)),
+                expr_block(cx, arms[0].body, ctxt, "..", Some(expr.span), &mut app),
             );
             (msg, sugg)
         } else {
@@ -112,21 +130,13 @@ fn report_single_pattern(
                 "if let {} = {} {}{els_str}",
                 snippet(cx, arms[0].pat.span, ".."),
                 snippet(cx, ex.span, ".."),
-                expr_block(cx, arms[0].body, None, "..", Some(expr.span)),
+                expr_block(cx, arms[0].body, ctxt, "..", Some(expr.span), &mut app),
             );
             (msg, sugg)
         }
     };
 
-    span_lint_and_sugg(
-        cx,
-        lint,
-        expr.span,
-        msg,
-        "try this",
-        sugg,
-        Applicability::HasPlaceholders,
-    );
+    span_lint_and_sugg(cx, lint, expr.span, msg, "try", sugg, app);
 }
 
 fn check_opt_like<'a>(

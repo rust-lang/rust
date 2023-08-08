@@ -8,7 +8,7 @@
 
 struct SomeStruct<T> { t: T }
 
-#[rustc_dump_user_substs]
+#[rustc_dump_user_args]
 fn main() {
     SomeStruct { t: 22 }; // Nothing given, no annotation.
 

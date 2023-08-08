@@ -9,13 +9,14 @@ edition = "2021"
 arrayvec = { version = "0.7", default-features = false }
 bitflags = "1.2.1"
 cfg-if = "1.0"
-ena = "0.14.1"
-indexmap = { version = "1.9.1" }
+ena = "0.14.2"
+indexmap = { version = "2.0.0" }
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 libc = "0.2"
 measureme = "10.0.0"
-rayon-core = { version = "0.4.0", package = "rustc-rayon-core", optional = true }
-rayon = { version = "0.4.0", package = "rustc-rayon", optional = true }
+rustc-rayon-core = { version = "0.5.0", optional = true }
+rustc-rayon = { version = "0.5.0", optional = true }
+rustc_arena = { path = "../rustc_arena" }
 rustc_graphviz = { path = "../rustc_graphviz" }
 rustc-hash = "1.1.0"
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
@@ -26,21 +27,28 @@ smallvec = { version = "1.8.1", features = [
     "union",
     "may_dangle",
 ] }
-stable_deref_trait = "1.0.0"
 stacker = "0.1.15"
 tempfile = "3.2"
 thin-vec = "0.2.12"
 tracing = "0.1"
-elsa = "1.8"
+elsa = "=1.7.1"
+itertools = "0.10.1"
 
 [dependencies.parking_lot]
-version = "0.11"
+version = "0.12"
 
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["fileapi", "psapi", "winerror"] }
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.48.0"
+features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 memmap2 = "0.2.1"
 
 [features]
-rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rayon", "rayon-core"]
+rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rustc-rayon", "rustc-rayon-core"]

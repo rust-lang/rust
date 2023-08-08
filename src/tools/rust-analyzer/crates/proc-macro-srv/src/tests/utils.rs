@@ -5,14 +5,14 @@ use std::str::FromStr;
 
 use crate::{dylib, proc_macro_test_dylib_path, ProcMacroSrv};
 
-fn parse_string(code: &str) -> Option<crate::abis::TestTokenStream> {
+fn parse_string(code: &str) -> Option<crate::server::TokenStream> {
     // This is a bit strange. We need to parse a string into a token stream into
     // order to create a tt::SubTree from it in fixtures. `into_subtree` is
     // implemented by all the ABIs we have so we arbitrarily choose one ABI to
     // write a `parse_string` function for and use that. The tests don't really
     // care which ABI we're using as the `into_subtree` function isn't part of
     // the ABI and shouldn't change between ABI versions.
-    crate::abis::TestTokenStream::from_str(code).ok()
+    crate::server::TokenStream::from_str(code).ok()
 }
 
 pub fn assert_expand(macro_name: &str, ra_fixture: &str, expect: Expect) {

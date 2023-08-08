@@ -1,7 +1,8 @@
 // See src/libstd/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
-use crate::mem::transmute;
+use crate::marker::ConstParamTy;
+use crate::marker::{StructuralEq, StructuralPartialEq};
 
 // Recursive macro for implementing n-ary tuple functions and operations
 //
@@ -22,8 +23,7 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-            impl<$($T: ~const PartialEq),+> const PartialEq for ($($T,)+)
+            impl<$($T: PartialEq),+> PartialEq for ($($T,)+)
             where
                 last_type!($($T,)+): ?Sized
             {
@@ -49,9 +49,29 @@ macro_rules! tuple_impls {
 
         maybe_tuple_doc! {
             $($T)+ @
+            #[unstable(feature = "structural_match", issue = "31434")]
+            impl<$($T: ConstParamTy),+> ConstParamTy for ($($T,)+)
+            {}
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[unstable(feature = "structural_match", issue = "31434")]
+            impl<$($T),+> StructuralPartialEq for ($($T,)+)
+            {}
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[unstable(feature = "structural_match", issue = "31434")]
+            impl<$($T),+> StructuralEq for ($($T,)+)
+            {}
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-            impl<$($T: ~const PartialOrd + ~const PartialEq),+> const PartialOrd for ($($T,)+)
+            impl<$($T: PartialOrd),+> PartialOrd for ($($T,)+)
             where
                 last_type!($($T,)+): ?Sized
             {
@@ -81,8 +101,7 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-            impl<$($T: ~const Ord),+> const Ord for ($($T,)+)
+            impl<$($T: Ord),+> Ord for ($($T,)+)
             where
                 last_type!($($T,)+): ?Sized
             {
@@ -96,12 +115,31 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-            impl<$($T: ~const Default),+> const Default for ($($T,)+) {
+            impl<$($T: Default),+> Default for ($($T,)+) {
                 #[inline]
                 fn default() -> ($($T,)+) {
                     ($({ let x: $T = Default::default(); x},)+)
                 }
+            }
+        }
+
+        #[stable(feature = "array_tuple_conv", since = "1.71.0")]
+        impl<T> From<[T; ${count(T)}]> for ($(${ignore(T)} T,)+) {
+            #[inline]
+            #[allow(non_snake_case)]
+            fn from(array: [T; ${count(T)}]) -> Self {
+                let [$($T,)+] = array;
+                ($($T,)+)
+            }
+        }
+
+        #[stable(feature = "array_tuple_conv", since = "1.71.0")]
+        impl<T> From<($(${ignore(T)} T,)+)> for [T; ${count(T)}] {
+            #[inline]
+            #[allow(non_snake_case)]
+            fn from(tuple: ($(${ignore(T)} T,)+)) -> Self {
+                let ($($T,)+) = tuple;
+                [$($T,)+]
             }
         }
     }
@@ -126,16 +164,13 @@ macro_rules! maybe_tuple_doc {
 #[inline]
 const fn ordering_is_some(c: Option<Ordering>, x: Ordering) -> bool {
     // FIXME: Just use `==` once that's const-stable on `Option`s.
-    // This isn't using `match` because that optimizes worse due to
-    // making a two-step check (`Some` *then* the inner value).
-
-    // SAFETY: There's no public guarantee for `Option<Ordering>`,
-    // but we're core so we know that it's definitely a byte.
-    unsafe {
-        let c: i8 = transmute(c);
-        let x: i8 = transmute(Some(x));
-        c == x
-    }
+    // This is mapping `None` to 2 and then doing the comparison afterwards
+    // because it optimizes better (`None::<Ordering>` is represented as 2).
+    x as i8
+        == match c {
+            Some(c) => c as i8,
+            None => 2,
+        }
 }
 
 // Constructs an expression that performs a lexical ordering using method `$rel`.

@@ -14,8 +14,7 @@ LL | trait Foo {
    |       --- this trait cannot be made into an object...
 LL |     fn foo(self: &Rc<Self>) -> usize;
    |                  ^^^^^^^^^ ...because method `foo`'s `self` parameter cannot be dispatched on
-   = note: required for `Rc<usize>` to implement `CoerceUnsized<Rc<dyn Foo>>`
-   = note: required by cast to type `Rc<dyn Foo>`
+   = note: required for the cast from `Rc<usize>` to `Rc<dyn Foo>`
 
 error: aborting due to previous error
 

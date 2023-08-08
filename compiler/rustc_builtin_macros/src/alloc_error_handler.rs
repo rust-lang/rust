@@ -1,3 +1,4 @@
+use crate::errors;
 use crate::util::check_builtin_macro_attribute;
 
 use rustc_ast::ptr::P;
@@ -31,7 +32,7 @@ pub fn expand(
         {
             (item, true, ecx.with_def_site_ctxt(fn_kind.sig.span))
         } else {
-            ecx.sess.parse_sess.span_diagnostic.span_err(item.span(), "alloc_error_handler must be a function");
+            ecx.sess.parse_sess.span_diagnostic.emit_err(errors::AllocErrorMustBeFn {span: item.span() });
             return vec![orig_item];
         };
 

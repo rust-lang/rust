@@ -4,8 +4,8 @@ This document explains the basics for hacking on Clippy. Besides others, this
 includes how to build and test Clippy. For a more in depth description on the
 codebase take a look at [Adding Lints] or [Common Tools].
 
-[Adding Lints]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/adding_lints.md
-[Common Tools]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/common_tools_writing_lints.md
+[Adding Lints]: adding_lints.md
+[Common Tools]: common_tools_writing_lints.md
 
 - [Basics for hacking on Clippy](#basics-for-hacking-on-clippy)
   - [Get the Code](#get-the-code)
@@ -66,7 +66,7 @@ If the output of a [UI test] differs from the expected output, you can update
 the reference file with:
 
 ```bash
-cargo dev bless
+cargo bless
 ```
 
 For example, this is necessary if you fix a typo in an error message of a lint,
@@ -125,7 +125,7 @@ We follow a rustc no merge-commit policy. See
 ## Common Abbreviations
 
 | Abbreviation | Meaning                                |
-| ------------ | -------------------------------------- |
+|--------------|----------------------------------------|
 | UB           | Undefined Behavior                     |
 | FP           | False Positive                         |
 | FN           | False Negative                         |

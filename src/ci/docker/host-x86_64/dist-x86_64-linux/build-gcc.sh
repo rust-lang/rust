@@ -3,7 +3,7 @@ set -ex
 
 source shared.sh
 
-GCC=7.5.0
+GCC=8.5.0
 
 curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.xz | xzcat | tar xf -
 cd gcc-$GCC
@@ -22,8 +22,7 @@ cd gcc-$GCC
 # latter host is presented to `wget`! Therefore, we choose to download from the insecure HTTP server
 # instead here.
 #
-# FIXME: use HTTPS (see https://github.com/rust-lang/rust/pull/86586#issuecomment-868355356)
-sed -i'' 's|ftp://gcc\.gnu\.org/|http://gcc.gnu.org/|g' ./contrib/download_prerequisites
+sed -i'' 's|ftp://gcc\.gnu\.org/|https://gcc.gnu.org/|g' ./contrib/download_prerequisites
 
 ./contrib/download_prerequisites
 mkdir ../gcc-build

@@ -55,7 +55,7 @@ fn lint_needless(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, self_
         NEEDLESS_SPLITN,
         expr.span,
         &format!("unnecessary use of `{r}splitn`"),
-        "try this",
+        "try",
         format!(
             "{}.{r}split({})",
             snippet_with_context(cx, self_arg.span, expr.span.ctxt(), "..", &mut app).0,
@@ -110,7 +110,7 @@ fn check_manual_split_once(
         IterUsageKind::Nth(_) => return,
     };
 
-    span_lint_and_sugg(cx, MANUAL_SPLIT_ONCE, usage.span, msg, "try this", sugg, app);
+    span_lint_and_sugg(cx, MANUAL_SPLIT_ONCE, usage.span, msg, "try", sugg, app);
 }
 
 /// checks for
@@ -175,13 +175,13 @@ fn check_manual_split_once_indirect(
             let remove_msg = format!("remove the `{iter_ident}` usages");
             diag.span_suggestion(
                 first.span,
-                &remove_msg,
+                remove_msg.clone(),
                 "",
                 app,
             );
             diag.span_suggestion(
                 second.span,
-                &remove_msg,
+                remove_msg,
                 "",
                 app,
             );
@@ -289,7 +289,7 @@ fn parse_iter_usage<'tcx>(
 ) -> Option<IterUsage> {
     let (kind, span) = match iter.next() {
         Some((_, Node::Expr(e))) if e.span.ctxt() == ctxt => {
-            let ExprKind::MethodCall(name, _, [args @ ..], _) = e.kind else {
+            let ExprKind::MethodCall(name, _, args, _) = e.kind else {
                 return None;
             };
             let did = cx.typeck_results().type_dependent_def_id(e.hir_id)?;
@@ -316,7 +316,7 @@ fn parse_iter_usage<'tcx>(
                     };
                 },
                 ("nth" | "skip", [idx_expr]) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
-                    if let Some((Constant::Int(idx), _)) = constant(cx, cx.typeck_results(), idx_expr) {
+                    if let Some(Constant::Int(idx)) = constant(cx, cx.typeck_results(), idx_expr) {
                         let span = if name.ident.as_str() == "nth" {
                             e.span
                         } else {

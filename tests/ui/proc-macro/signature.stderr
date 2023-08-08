@@ -1,36 +1,11 @@
-error: proc macro functions may not be `extern "C"`
+error: derive proc macro has incorrect signature
   --> $DIR/signature.rs:10:1
    |
 LL | pub unsafe extern "C" fn foo(a: i32, b: u32) -> u32 {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected normal fn, found unsafe fn
+   |
+   = note: expected signature `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `unsafe extern "C" fn(i32, u32) -> u32`
 
-error: proc macro functions may not be `unsafe`
-  --> $DIR/signature.rs:10:1
-   |
-LL | pub unsafe extern "C" fn foo(a: i32, b: u32) -> u32 {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: mismatched derive proc macro signature
-  --> $DIR/signature.rs:10:49
-   |
-LL | pub unsafe extern "C" fn foo(a: i32, b: u32) -> u32 {
-   |                                                 ^^^ found u32, expected type `proc_macro::TokenStream`
-   |
-   = note: derive proc macros must have a signature of `fn(TokenStream) -> TokenStream`
-
-error: mismatched derive proc macro signature
-  --> $DIR/signature.rs:10:33
-   |
-LL | pub unsafe extern "C" fn foo(a: i32, b: u32) -> u32 {
-   |                                 ^^^ found i32, expected type `proc_macro::TokenStream`
-   |
-   = note: derive proc macros must have a signature of `fn(TokenStream) -> TokenStream`
-
-error: mismatched derive proc macro signature
-  --> $DIR/signature.rs:10:38
-   |
-LL | pub unsafe extern "C" fn foo(a: i32, b: u32) -> u32 {
-   |                                      ^^^^^^ found unexpected argument
-
-error: aborting due to 5 previous errors
+error: aborting due to previous error
 

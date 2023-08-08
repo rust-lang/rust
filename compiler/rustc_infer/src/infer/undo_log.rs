@@ -138,11 +138,9 @@ impl<'tcx> InferCtxtInner<'tcx> {
         }
 
         if self.undo_log.num_open_snapshots == 1 {
-            // The root snapshot. It's safe to clear the undo log because
-            // there's no snapshot further out that we might need to roll back
-            // to.
+            // After the root snapshot the undo log should be empty.
             assert!(snapshot.undo_len == 0);
-            self.undo_log.logs.clear();
+            assert!(self.undo_log.logs.is_empty());
         }
 
         self.undo_log.num_open_snapshots -= 1;
@@ -181,15 +179,6 @@ impl<'tcx> InferCtxtUndoLogs<'tcx> {
 
     pub(crate) fn opaque_types_in_snapshot(&self, s: &Snapshot<'tcx>) -> bool {
         self.logs[s.undo_len..].iter().any(|log| matches!(log, UndoLog::OpaqueTypes(..)))
-    }
-
-    pub(crate) fn region_constraints(
-        &self,
-    ) -> impl Iterator<Item = &'_ region_constraints::UndoLog<'tcx>> + Clone {
-        self.logs.iter().filter_map(|log| match log {
-            UndoLog::RegionConstraintCollector(log) => Some(log),
-            _ => None,
-        })
     }
 
     fn assert_open_snapshot(&self, snapshot: &Snapshot<'tcx>) {

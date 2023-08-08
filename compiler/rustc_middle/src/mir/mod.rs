@@ -3,31 +3,31 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use crate::mir::interpret::{
-    AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, LitToConstInput, Scalar,
+    AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
 };
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
+use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
-use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
+use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 
 use rustc_data_structures::captures::Captures;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::{self, GeneratorKind, ImplicitSelfKind};
 use rustc_hir::{self as hir, HirId};
 use rustc_session::Session;
-use rustc_target::abi::{Size, VariantIdx};
+use rustc_target::abi::{FieldIdx, Size, VariantIdx};
 
 use polonius_engine::Atom;
 pub use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
@@ -36,7 +36,7 @@ use either::Either;
 
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
-use std::ops::{ControlFlow, Index, IndexMut};
+use std::ops::{Index, IndexMut};
 use std::{iter, mem};
 
 pub use self::query::*;
@@ -70,10 +70,17 @@ pub use self::pretty::{
 };
 
 /// Types for locals
-pub type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;
+pub type LocalDecls<'tcx> = IndexSlice<Local, LocalDecl<'tcx>>;
 
 pub trait HasLocalDecls<'tcx> {
     fn local_decls(&self) -> &LocalDecls<'tcx>;
+}
+
+impl<'tcx> HasLocalDecls<'tcx> for IndexVec<Local, LocalDecl<'tcx>> {
+    #[inline]
+    fn local_decls(&self) -> &LocalDecls<'tcx> {
+        self
+    }
 }
 
 impl<'tcx> HasLocalDecls<'tcx> for LocalDecls<'tcx> {
@@ -94,7 +101,7 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
 pub trait MirPass<'tcx> {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         let name = std::any::type_name::<Self>();
         if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }
     }
@@ -138,7 +145,7 @@ impl MirPhase {
             }
             "analysis" => Self::Analysis(AnalysisPhase::parse(phase)),
             "runtime" => Self::Runtime(RuntimePhase::parse(phase)),
-            _ => panic!("Unknown MIR dialect {}", dialect),
+            _ => bug!("Unknown MIR dialect: '{}'", dialect),
         }
     }
 }
@@ -152,7 +159,7 @@ impl AnalysisPhase {
         match &*phase.to_ascii_lowercase() {
             "initial" => Self::Initial,
             "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
-            _ => panic!("Unknown analysis phase {}", phase),
+            _ => bug!("Unknown analysis phase: '{}'", phase),
         }
     }
 }
@@ -167,7 +174,7 @@ impl RuntimePhase {
             "initial" => Self::Initial,
             "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
             "optimized" => Self::Optimized,
-            _ => panic!("Unknown runtime phase {}", phase),
+            _ => bug!("Unknown runtime phase: '{}'", phase),
         }
     }
 }
@@ -184,18 +191,11 @@ pub struct MirSource<'tcx> {
 
 impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
-        MirSource {
-            instance: InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
-            promoted: None,
-        }
+        MirSource { instance: InstanceDef::Item(def_id), promoted: None }
     }
 
     pub fn from_instance(instance: InstanceDef<'tcx>) -> Self {
         MirSource { instance, promoted: None }
-    }
-
-    pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
-        self.instance.with_opt_param()
     }
 
     #[inline]
@@ -250,7 +250,7 @@ pub struct Body<'tcx> {
     /// The first local is the return value pointer, followed by `arg_count`
     /// locals for the function arguments, followed by any user-declared
     /// variables and temporaries.
-    pub local_decls: LocalDecls<'tcx>,
+    pub local_decls: IndexVec<Local, LocalDecl<'tcx>>,
 
     /// User type annotations.
     pub user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
@@ -311,7 +311,7 @@ impl<'tcx> Body<'tcx> {
         source: MirSource<'tcx>,
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
-        local_decls: LocalDecls<'tcx>,
+        local_decls: IndexVec<Local, LocalDecl<'tcx>>,
         user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
@@ -401,8 +401,6 @@ impl<'tcx> Body<'tcx> {
             LocalKind::ReturnPointer
         } else if index < self.arg_count + 1 {
             LocalKind::Arg
-        } else if self.local_decls[local].is_user_variable() {
-            LocalKind::Var
         } else {
             LocalKind::Temp
         }
@@ -478,7 +476,7 @@ impl<'tcx> Body<'tcx> {
     /// Returns the return type; it always return first element from `local_decls` array.
     #[inline]
     pub fn bound_return_ty(&self) -> ty::EarlyBinder<Ty<'tcx>> {
-        ty::EarlyBinder(self.local_decls[RETURN_PLACE].ty)
+        ty::EarlyBinder::bind(self.local_decls[RETURN_PLACE].ty)
     }
 
     /// Gets the location of the terminator for the given block.
@@ -572,6 +570,13 @@ impl<T> ClearCrossCrate<T> {
         }
     }
 
+    pub fn as_mut(&mut self) -> ClearCrossCrate<&mut T> {
+        match self {
+            ClearCrossCrate::Clear => ClearCrossCrate::Clear,
+            ClearCrossCrate::Set(v) => ClearCrossCrate::Set(v),
+        }
+    }
+
     pub fn assert_crate_local(self) -> T {
         match self {
             ClearCrossCrate::Clear => bug!("unwrapping cross-crate data"),
@@ -614,7 +619,7 @@ impl<D: TyDecoder, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
                 let val = T::decode(d);
                 ClearCrossCrate::Set(val)
             }
-            tag => panic!("Invalid tag for ClearCrossCrate: {:?}", tag),
+            tag => panic!("Invalid tag for ClearCrossCrate: {tag:?}"),
         }
     }
 }
@@ -661,9 +666,7 @@ impl Atom for Local {
 /// Classifies locals into categories. See `Body::local_kind`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]
 pub enum LocalKind {
-    /// User-declared variable binding.
-    Var,
-    /// Compiler-introduced temporary.
+    /// User-declared variable binding or compiler-introduced temporary.
     Temp,
     /// Function argument.
     Arg,
@@ -703,11 +706,7 @@ pub enum BindingForm<'tcx> {
     RefForGuard,
 }
 
-TrivialTypeTraversalAndLiftImpls! {
-    for<'tcx> {
-        BindingForm<'tcx>,
-    }
-}
+TrivialTypeTraversalAndLiftImpls! { BindingForm<'tcx> }
 
 mod binding_form_impl {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -760,7 +759,7 @@ pub struct LocalDecl<'tcx> {
     pub mutability: Mutability,
 
     // FIXME(matthewjasper) Don't store in this in `Body`
-    pub local_info: Option<Box<LocalInfo<'tcx>>>,
+    pub local_info: ClearCrossCrate<Box<LocalInfo<'tcx>>>,
 
     /// `true` if this is an internal local.
     ///
@@ -777,13 +776,6 @@ pub struct LocalDecl<'tcx> {
     /// therefore don't affect the auto-trait or outlives properties of the
     /// generator.
     pub internal: bool,
-
-    /// If this local is a temporary and `is_block_tail` is `Some`,
-    /// then it is a temporary created for evaluation of some
-    /// subexpression of some block's tail expression (with no
-    /// intervening statement context).
-    // FIXME(matthewjasper) Don't store in this in `Body`
-    pub is_block_tail: Option<BlockTailInfo>,
 
     /// The type of this local.
     pub ty: Ty<'tcx>,
@@ -890,7 +882,7 @@ pub enum LocalInfo<'tcx> {
     /// The `BindingForm` is solely used for local diagnostics when generating
     /// warnings/errors when compiling the current crate, and therefore it need
     /// not be visible across crates.
-    User(ClearCrossCrate<BindingForm<'tcx>>),
+    User(BindingForm<'tcx>),
     /// A temporary created that references the static with the given `DefId`.
     StaticRef { def_id: DefId, is_thread_local: bool },
     /// A temporary created that references the const with the given `DefId`
@@ -898,13 +890,23 @@ pub enum LocalInfo<'tcx> {
     /// A temporary created during the creation of an aggregate
     /// (e.g. a temporary for `foo` in `MyStruct { my_field: foo }`)
     AggregateTemp,
+    /// A temporary created for evaluation of some subexpression of some block's tail expression
+    /// (with no intervening statement context).
+    // FIXME(matthewjasper) Don't store in this in `Body`
+    BlockTailTemp(BlockTailInfo),
     /// A temporary created during the pass `Derefer` to avoid it's retagging
     DerefTemp,
     /// A temporary created for borrow checking.
     FakeBorrow,
+    /// A local without anything interesting about it.
+    Boring,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
+    pub fn local_info(&self) -> &LocalInfo<'tcx> {
+        &self.local_info.as_ref().assert_crate_local()
+    }
+
     /// Returns `true` only if local is a binding that can itself be
     /// made mutable via the addition of the `mut` keyword, namely
     /// something like the occurrences of `x` in:
@@ -913,15 +915,15 @@ impl<'tcx> LocalDecl<'tcx> {
     /// - or `match ... { C(x) => ... }`
     pub fn can_be_made_mutable(&self) -> bool {
         matches!(
-            self.local_info,
-            Some(box LocalInfo::User(ClearCrossCrate::Set(
+            self.local_info(),
+            LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
                     binding_mode: ty::BindingMode::BindByValue(_),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
                 }) | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
-            )))
+            )
         )
     }
 
@@ -930,15 +932,15 @@ impl<'tcx> LocalDecl<'tcx> {
     /// mutable bindings, but the inverse does not necessarily hold).
     pub fn is_nonref_binding(&self) -> bool {
         matches!(
-            self.local_info,
-            Some(box LocalInfo::User(ClearCrossCrate::Set(
+            self.local_info(),
+            LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
                     binding_mode: ty::BindingMode::BindByValue(_),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
                 }) | BindingForm::ImplicitSelf(_),
-            )))
+            )
         )
     }
 
@@ -946,38 +948,35 @@ impl<'tcx> LocalDecl<'tcx> {
     /// parameter declared by the user.
     #[inline]
     pub fn is_user_variable(&self) -> bool {
-        matches!(self.local_info, Some(box LocalInfo::User(_)))
+        matches!(self.local_info(), LocalInfo::User(_))
     }
 
     /// Returns `true` if this is a reference to a variable bound in a `match`
     /// expression that is used to access said variable for the guard of the
     /// match arm.
     pub fn is_ref_for_guard(&self) -> bool {
-        matches!(
-            self.local_info,
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)))
-        )
+        matches!(self.local_info(), LocalInfo::User(BindingForm::RefForGuard))
     }
 
     /// Returns `Some` if this is a reference to a static item that is used to
     /// access that static.
     pub fn is_ref_to_static(&self) -> bool {
-        matches!(self.local_info, Some(box LocalInfo::StaticRef { .. }))
+        matches!(self.local_info(), LocalInfo::StaticRef { .. })
     }
 
     /// Returns `Some` if this is a reference to a thread-local static item that is used to
     /// access that static.
     pub fn is_ref_to_thread_local(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::StaticRef { is_thread_local, .. }) => is_thread_local,
+        match self.local_info() {
+            LocalInfo::StaticRef { is_thread_local, .. } => *is_thread_local,
             _ => false,
         }
     }
 
     /// Returns `true` if this is a DerefTemp
     pub fn is_deref_temp(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::DerefTemp) => return true,
+        match self.local_info() {
+            LocalInfo::DerefTemp => return true,
             _ => (),
         }
         return false;
@@ -1001,9 +1000,8 @@ impl<'tcx> LocalDecl<'tcx> {
     pub fn with_source_info(ty: Ty<'tcx>, source_info: SourceInfo) -> Self {
         LocalDecl {
             mutability: Mutability::Mut,
-            local_info: None,
+            local_info: ClearCrossCrate::Set(Box::new(LocalInfo::Boring)),
             internal: false,
-            is_block_tail: None,
             ty,
             user_ty: None,
             source_info,
@@ -1023,20 +1021,11 @@ impl<'tcx> LocalDecl<'tcx> {
         self.mutability = Mutability::Not;
         self
     }
-
-    /// Converts `self` into same `LocalDecl` except tagged as internal temporary.
-    #[inline]
-    pub fn block_tail(mut self, info: BlockTailInfo) -> Self {
-        assert!(self.is_block_tail.is_none());
-        self.is_block_tail = Some(info);
-        self
-    }
 }
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum VarDebugInfoContents<'tcx> {
-    /// NOTE(eddyb) There's an unenforced invariant that this `Place` is
-    /// based on a `Local`, not a `Static`, and contains no indexing.
+    /// This `Place` only contains projection which satisfy `can_use_in_debuginfo`.
     Place(Place<'tcx>),
     Const(Constant<'tcx>),
     /// The user variable's data is split across several fragments,
@@ -1046,6 +1035,7 @@ pub enum VarDebugInfoContents<'tcx> {
     /// the underlying debuginfo feature this relies on.
     Composite {
         /// Type of the original user variable.
+        /// This cannot contain a union or an enum.
         ty: Ty<'tcx>,
         /// All the parts of the original user variable, which ended
         /// up in disjoint places, due to optimizations.
@@ -1056,12 +1046,12 @@ pub enum VarDebugInfoContents<'tcx> {
 impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            VarDebugInfoContents::Const(c) => write!(fmt, "{}", c),
-            VarDebugInfoContents::Place(p) => write!(fmt, "{:?}", p),
+            VarDebugInfoContents::Const(c) => write!(fmt, "{c}"),
+            VarDebugInfoContents::Place(p) => write!(fmt, "{p:?}"),
             VarDebugInfoContents::Composite { ty, fragments } => {
-                write!(fmt, "{:?}{{ ", ty)?;
+                write!(fmt, "{ty:?}{{ ")?;
                 for f in fragments.iter() {
-                    write!(fmt, "{:?}, ", f)?;
+                    write!(fmt, "{f:?}, ")?;
                 }
                 write!(fmt, "}}")
             }
@@ -1074,17 +1064,16 @@ pub struct VarDebugInfoFragment<'tcx> {
     /// Where in the composite user variable this fragment is,
     /// represented as a "projection" into the composite variable.
     /// At lower levels, this corresponds to a byte/bit range.
-    // NOTE(eddyb) there's an unenforced invariant that this contains
-    // only `Field`s, and not into `enum` variants or `union`s.
-    // FIXME(eddyb) support this for `enum`s by either using DWARF's
+    ///
+    /// This can only contain `PlaceElem::Field`.
+    // FIXME support this for `enum`s by either using DWARF's
     // more advanced control-flow features (unsupported by LLVM?)
     // to match on the discriminant, or by using custom type debuginfo
     // with non-overlapping variants for the composite variable.
     pub projection: Vec<PlaceElem<'tcx>>,
 
     /// Where the data for this fragment can be found.
-    // NOTE(eddyb) There's an unenforced invariant that this `Place` is
-    // contains no indexing (with a non-constant index).
+    /// This `Place` only contains projection which satisfy `can_use_in_debuginfo`.
     pub contents: Place<'tcx>,
 }
 
@@ -1115,6 +1104,15 @@ pub struct VarDebugInfo<'tcx> {
 
     /// Where the data for this user variable is to be found.
     pub value: VarDebugInfoContents<'tcx>,
+
+    /// When present, indicates what argument number this variable is in the function that it
+    /// originated from (starting from 1). Note, if MIR inlining is enabled, then this is the
+    /// argument number in the original function before it was inlined.
+    pub argument_index: Option<u16>,
+
+    /// The data represents `name` dereferenced `references` times,
+    /// and not the direct value.
+    pub references: u8,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1274,9 +1272,16 @@ impl<'tcx> BasicBlockData<'tcx> {
 }
 
 impl<O> AssertKind<O> {
+    /// Returns true if this an overflow checking assertion controlled by -C overflow-checks.
+    pub fn is_optional_overflow_check(&self) -> bool {
+        use AssertKind::*;
+        use BinOp::*;
+        matches!(self, OverflowNeg(..) | Overflow(Add | Sub | Mul | Shl | Shr, ..))
+    }
+
     /// Getting a description does not require `O` to be printable, and does not
     /// require allocation.
-    /// The caller is expected to handle `BoundsCheck` separately.
+    /// The caller is expected to handle `BoundsCheck` and `MisalignedPointerDereference` separately.
     pub fn description(&self) -> &'static str {
         use AssertKind::*;
         match self {
@@ -1295,7 +1300,9 @@ impl<O> AssertKind<O> {
             ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
             ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
             ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
-            BoundsCheck { .. } => bug!("Unexpected AssertKind"),
+            BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
+                bug!("Unexpected AssertKind")
+            }
         }
     }
 
@@ -1308,95 +1315,107 @@ impl<O> AssertKind<O> {
         match self {
             BoundsCheck { ref len, ref index } => write!(
                 f,
-                "\"index out of bounds: the length is {{}} but the index is {{}}\", {:?}, {:?}",
-                len, index
+                "\"index out of bounds: the length is {{}} but the index is {{}}\", {len:?}, {index:?}"
             ),
 
             OverflowNeg(op) => {
-                write!(f, "\"attempt to negate `{{}}`, which would overflow\", {:?}", op)
+                write!(f, "\"attempt to negate `{{}}`, which would overflow\", {op:?}")
             }
-            DivisionByZero(op) => write!(f, "\"attempt to divide `{{}}` by zero\", {:?}", op),
+            DivisionByZero(op) => write!(f, "\"attempt to divide `{{}}` by zero\", {op:?}"),
             RemainderByZero(op) => write!(
                 f,
-                "\"attempt to calculate the remainder of `{{}}` with a divisor of zero\", {:?}",
-                op
+                "\"attempt to calculate the remainder of `{{}}` with a divisor of zero\", {op:?}"
             ),
             Overflow(BinOp::Add, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} + {{}}`, which would overflow\", {:?}, {:?}",
-                l, r
+                "\"attempt to compute `{{}} + {{}}`, which would overflow\", {l:?}, {r:?}"
             ),
             Overflow(BinOp::Sub, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} - {{}}`, which would overflow\", {:?}, {:?}",
-                l, r
+                "\"attempt to compute `{{}} - {{}}`, which would overflow\", {l:?}, {r:?}"
             ),
             Overflow(BinOp::Mul, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} * {{}}`, which would overflow\", {:?}, {:?}",
-                l, r
+                "\"attempt to compute `{{}} * {{}}`, which would overflow\", {l:?}, {r:?}"
             ),
             Overflow(BinOp::Div, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} / {{}}`, which would overflow\", {:?}, {:?}",
-                l, r
+                "\"attempt to compute `{{}} / {{}}`, which would overflow\", {l:?}, {r:?}"
             ),
             Overflow(BinOp::Rem, l, r) => write!(
                 f,
-                "\"attempt to compute the remainder of `{{}} % {{}}`, which would overflow\", {:?}, {:?}",
-                l, r
+                "\"attempt to compute the remainder of `{{}} % {{}}`, which would overflow\", {l:?}, {r:?}"
             ),
             Overflow(BinOp::Shr, _, r) => {
-                write!(f, "\"attempt to shift right by `{{}}`, which would overflow\", {:?}", r)
+                write!(f, "\"attempt to shift right by `{{}}`, which would overflow\", {r:?}")
             }
             Overflow(BinOp::Shl, _, r) => {
-                write!(f, "\"attempt to shift left by `{{}}`, which would overflow\", {:?}", r)
+                write!(f, "\"attempt to shift left by `{{}}`, which would overflow\", {r:?}")
+            }
+            MisalignedPointerDereference { required, found } => {
+                write!(
+                    f,
+                    "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
+                )
             }
             _ => write!(f, "\"{}\"", self.description()),
         }
     }
-}
 
-impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    pub fn diagnostic_message(&self) -> DiagnosticMessage {
+        use crate::fluent_generated::*;
         use AssertKind::*;
+
         match self {
-            BoundsCheck { ref len, ref index } => write!(
-                f,
-                "index out of bounds: the length is {:?} but the index is {:?}",
-                len, index
-            ),
-            OverflowNeg(op) => write!(f, "attempt to negate `{:#?}`, which would overflow", op),
-            DivisionByZero(op) => write!(f, "attempt to divide `{:#?}` by zero", op),
-            RemainderByZero(op) => write!(
-                f,
-                "attempt to calculate the remainder of `{:#?}` with a divisor of zero",
-                op
-            ),
-            Overflow(BinOp::Add, l, r) => {
-                write!(f, "attempt to compute `{:#?} + {:#?}`, which would overflow", l, r)
+            BoundsCheck { .. } => middle_bounds_check,
+            Overflow(BinOp::Shl, _, _) => middle_assert_shl_overflow,
+            Overflow(BinOp::Shr, _, _) => middle_assert_shr_overflow,
+            Overflow(_, _, _) => middle_assert_op_overflow,
+            OverflowNeg(_) => middle_assert_overflow_neg,
+            DivisionByZero(_) => middle_assert_divide_by_zero,
+            RemainderByZero(_) => middle_assert_remainder_by_zero,
+            ResumedAfterReturn(GeneratorKind::Async(_)) => middle_assert_async_resume_after_return,
+            ResumedAfterReturn(GeneratorKind::Gen) => middle_assert_generator_resume_after_return,
+            ResumedAfterPanic(GeneratorKind::Async(_)) => middle_assert_async_resume_after_panic,
+            ResumedAfterPanic(GeneratorKind::Gen) => middle_assert_generator_resume_after_panic,
+
+            MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
+        }
+    }
+
+    pub fn add_args(self, adder: &mut dyn FnMut(Cow<'static, str>, DiagnosticArgValue<'static>))
+    where
+        O: fmt::Debug,
+    {
+        use AssertKind::*;
+
+        macro_rules! add {
+            ($name: expr, $value: expr) => {
+                adder($name.into(), $value.into_diagnostic_arg());
+            };
+        }
+
+        match self {
+            BoundsCheck { len, index } => {
+                add!("len", format!("{len:?}"));
+                add!("index", format!("{index:?}"));
             }
-            Overflow(BinOp::Sub, l, r) => {
-                write!(f, "attempt to compute `{:#?} - {:#?}`, which would overflow", l, r)
+            Overflow(BinOp::Shl | BinOp::Shr, _, val)
+            | DivisionByZero(val)
+            | RemainderByZero(val)
+            | OverflowNeg(val) => {
+                add!("val", format!("{val:#?}"));
             }
-            Overflow(BinOp::Mul, l, r) => {
-                write!(f, "attempt to compute `{:#?} * {:#?}`, which would overflow", l, r)
+            Overflow(binop, left, right) => {
+                add!("op", binop.to_hir_binop().as_str());
+                add!("left", format!("{left:#?}"));
+                add!("right", format!("{right:#?}"));
             }
-            Overflow(BinOp::Div, l, r) => {
-                write!(f, "attempt to compute `{:#?} / {:#?}`, which would overflow", l, r)
+            ResumedAfterReturn(_) | ResumedAfterPanic(_) => {}
+            MisalignedPointerDereference { required, found } => {
+                add!("required", format!("{required:#?}"));
+                add!("found", format!("{found:#?}"));
             }
-            Overflow(BinOp::Rem, l, r) => write!(
-                f,
-                "attempt to compute the remainder of `{:#?} % {:#?}`, which would overflow",
-                l, r
-            ),
-            Overflow(BinOp::Shr, _, r) => {
-                write!(f, "attempt to shift right by `{:#?}`, which would overflow", r)
-            }
-            Overflow(BinOp::Shl, _, r) => {
-                write!(f, "attempt to shift left by `{:#?}`, which would overflow", r)
-            }
-            _ => write!(f, "{}", self.description()),
         }
     }
 }
@@ -1432,9 +1451,9 @@ impl Debug for Statement<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
         match self.kind {
-            Assign(box (ref place, ref rv)) => write!(fmt, "{:?} = {:?}", place, rv),
+            Assign(box (ref place, ref rv)) => write!(fmt, "{place:?} = {rv:?}"),
             FakeRead(box (ref cause, ref place)) => {
-                write!(fmt, "FakeRead({:?}, {:?})", cause, place)
+                write!(fmt, "FakeRead({cause:?}, {place:?})")
             }
             Retag(ref kind, ref place) => write!(
                 fmt,
@@ -1447,17 +1466,20 @@ impl Debug for Statement<'_> {
                 },
                 place,
             ),
-            StorageLive(ref place) => write!(fmt, "StorageLive({:?})", place),
-            StorageDead(ref place) => write!(fmt, "StorageDead({:?})", place),
+            StorageLive(ref place) => write!(fmt, "StorageLive({place:?})"),
+            StorageDead(ref place) => write!(fmt, "StorageDead({place:?})"),
             SetDiscriminant { ref place, variant_index } => {
-                write!(fmt, "discriminant({:?}) = {:?}", place, variant_index)
+                write!(fmt, "discriminant({place:?}) = {variant_index:?}")
             }
-            Deinit(ref place) => write!(fmt, "Deinit({:?})", place),
+            Deinit(ref place) => write!(fmt, "Deinit({place:?})"),
+            PlaceMention(ref place) => {
+                write!(fmt, "PlaceMention({place:?})")
+            }
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
-                write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
+                write!(fmt, "AscribeUserType({place:?}, {variance:?}, {c_ty:?})")
             }
             Coverage(box self::Coverage { ref kind, code_region: Some(ref rgn) }) => {
-                write!(fmt, "Coverage::{:?} for {:?}", kind, rgn)
+                write!(fmt, "Coverage::{kind:?} for {rgn:?}")
             }
             Coverage(box ref coverage) => write!(fmt, "Coverage::{:?}", coverage.kind),
             Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
@@ -1502,36 +1524,47 @@ impl<V, T> ProjectionElem<V, T> {
         }
     }
 
+    /// Returns `true` if the target of this projection always refers to the same memory region
+    /// whatever the state of the program.
+    pub fn is_stable_offset(&self) -> bool {
+        match self {
+            Self::Deref | Self::Index(_) => false,
+            Self::Field(_, _)
+            | Self::OpaqueCast(_)
+            | Self::ConstantIndex { .. }
+            | Self::Subslice { .. }
+            | Self::Downcast(_, _) => true,
+        }
+    }
+
     /// Returns `true` if this is a `Downcast` projection with the given `VariantIdx`.
     pub fn is_downcast_to(&self, v: VariantIdx) -> bool {
         matches!(*self, Self::Downcast(_, x) if x == v)
     }
 
     /// Returns `true` if this is a `Field` projection with the given index.
-    pub fn is_field_to(&self, f: Field) -> bool {
+    pub fn is_field_to(&self, f: FieldIdx) -> bool {
         matches!(*self, Self::Field(x, _) if x == f)
+    }
+
+    /// Returns `true` if this is accepted inside `VarDebugInfoContents::Place`.
+    pub fn can_use_in_debuginfo(&self) -> bool {
+        match self {
+            Self::ConstantIndex { from_end: false, .. }
+            | Self::Deref
+            | Self::Downcast(_, _)
+            | Self::Field(_, _) => true,
+            Self::ConstantIndex { from_end: true, .. }
+            | Self::Index(_)
+            | Self::OpaqueCast(_)
+            | Self::Subslice { .. } => false,
+        }
     }
 }
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
 pub type ProjectionKind = ProjectionElem<(), ()>;
-
-rustc_index::newtype_index! {
-    /// A [newtype'd][wrapper] index type in the MIR [control-flow graph][CFG]
-    ///
-    /// A field (e.g., `f` in `_1.f`) is one variant of [`ProjectionElem`]. Conceptually,
-    /// rustc can identify that a field projection refers to either two different regions of memory
-    /// or the same one between the base and the 'projection element'.
-    /// Read more about projections in the [rustc-dev-guide][mir-datatypes]
-    ///
-    /// [wrapper]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html#newtype
-    /// [CFG]: https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg
-    /// [mir-datatypes]: https://rustc-dev-guide.rust-lang.org/mir/index.html#mir-data-types
-    #[derive(HashStable)]
-    #[debug_format = "field[{}]"]
-    pub struct Field {}
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PlaceRef<'tcx> {
@@ -1559,14 +1592,13 @@ impl<'tcx> Place<'tcx> {
         self.projection.iter().any(|elem| elem.is_indirect())
     }
 
-    /// If MirPhase >= Derefered and if projection contains Deref,
-    /// It's guaranteed to be in the first place
-    pub fn has_deref(&self) -> bool {
-        // To make sure this is not accidentally used in wrong mir phase
-        debug_assert!(
-            self.projection.is_empty() || !self.projection[1..].contains(&PlaceElem::Deref)
-        );
-        self.projection.first() == Some(&PlaceElem::Deref)
+    /// Returns `true` if this `Place`'s first projection is `Deref`.
+    ///
+    /// This is useful because for MIR phases `AnalysisPhase::PostCleanup` and later,
+    /// `Deref` projections can only occur as the first projection. In that case this method
+    /// is equivalent to `is_indirect`, but faster.
+    pub fn is_indirect_first_projection(&self) -> bool {
+        self.as_ref().is_indirect_first_projection()
     }
 
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
@@ -1609,18 +1641,7 @@ impl<'tcx> Place<'tcx> {
             return self;
         }
 
-        let mut v: Vec<PlaceElem<'tcx>>;
-
-        let new_projections = if self.projection.is_empty() {
-            more_projections
-        } else {
-            v = Vec::with_capacity(self.projection.len() + more_projections.len());
-            v.extend(self.projection);
-            v.extend(more_projections);
-            &v
-        };
-
-        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
+        self.as_ref().project_deeper(more_projections, tcx)
     }
 }
 
@@ -1650,9 +1671,16 @@ impl<'tcx> PlaceRef<'tcx> {
         self.projection.iter().any(|elem| elem.is_indirect())
     }
 
-    /// If MirPhase >= Derefered and if projection contains Deref,
-    /// It's guaranteed to be in the first place
-    pub fn has_deref(&self) -> bool {
+    /// Returns `true` if this `Place`'s first projection is `Deref`.
+    ///
+    /// This is useful because for MIR phases `AnalysisPhase::PostCleanup` and later,
+    /// `Deref` projections can only occur as the first projection. In that case this method
+    /// is equivalent to `is_indirect`, but faster.
+    pub fn is_indirect_first_projection(&self) -> bool {
+        // To make sure this is not accidentally used in wrong mir phase
+        debug_assert!(
+            self.projection.is_empty() || !self.projection[1..].contains(&PlaceElem::Deref)
+        );
         self.projection.first() == Some(&PlaceElem::Deref)
     }
 
@@ -1691,6 +1719,27 @@ impl<'tcx> PlaceRef<'tcx> {
             (base, *proj)
         })
     }
+
+    /// Generates a new place by appending `more_projections` to the existing ones
+    /// and interning the result.
+    pub fn project_deeper(
+        self,
+        more_projections: &[PlaceElem<'tcx>],
+        tcx: TyCtxt<'tcx>,
+    ) -> Place<'tcx> {
+        let mut v: Vec<PlaceElem<'tcx>>;
+
+        let new_projections = if self.projection.is_empty() {
+            more_projections
+        } else {
+            v = Vec::with_capacity(self.projection.len() + more_projections.len());
+            v.extend(self.projection);
+            v.extend(more_projections);
+            &v
+        };
+
+        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
+    }
 }
 
 impl Debug for Place<'_> {
@@ -1716,13 +1765,13 @@ impl Debug for Place<'_> {
         for elem in self.projection.iter() {
             match elem {
                 ProjectionElem::OpaqueCast(ty) => {
-                    write!(fmt, " as {})", ty)?;
+                    write!(fmt, " as {ty})")?;
                 }
                 ProjectionElem::Downcast(Some(name), _index) => {
-                    write!(fmt, " as {})", name)?;
+                    write!(fmt, " as {name})")?;
                 }
                 ProjectionElem::Downcast(None, index) => {
-                    write!(fmt, " as variant#{:?})", index)?;
+                    write!(fmt, " as variant#{index:?})")?;
                 }
                 ProjectionElem::Deref => {
                     write!(fmt, ")")?;
@@ -1731,25 +1780,25 @@ impl Debug for Place<'_> {
                     write!(fmt, ".{:?}: {:?})", field.index(), ty)?;
                 }
                 ProjectionElem::Index(ref index) => {
-                    write!(fmt, "[{:?}]", index)?;
+                    write!(fmt, "[{index:?}]")?;
                 }
                 ProjectionElem::ConstantIndex { offset, min_length, from_end: false } => {
-                    write!(fmt, "[{:?} of {:?}]", offset, min_length)?;
+                    write!(fmt, "[{offset:?} of {min_length:?}]")?;
                 }
                 ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
-                    write!(fmt, "[-{:?} of {:?}]", offset, min_length)?;
+                    write!(fmt, "[-{offset:?} of {min_length:?}]")?;
                 }
                 ProjectionElem::Subslice { from, to, from_end: true } if to == 0 => {
-                    write!(fmt, "[{:?}:]", from)?;
+                    write!(fmt, "[{from:?}:]")?;
                 }
                 ProjectionElem::Subslice { from, to, from_end: true } if from == 0 => {
-                    write!(fmt, "[:-{:?}]", to)?;
+                    write!(fmt, "[:-{to:?}]")?;
                 }
                 ProjectionElem::Subslice { from, to, from_end: true } => {
-                    write!(fmt, "[{:?}:-{:?}]", from, to)?;
+                    write!(fmt, "[{from:?}:-{to:?}]")?;
                 }
                 ProjectionElem::Subslice { from, to, from_end: false } => {
-                    write!(fmt, "[{:?}..{:?}]", from, to)?;
+                    write!(fmt, "[{from:?}..{to:?}]")?;
                 }
             }
         }
@@ -1775,7 +1824,7 @@ impl SourceScope {
     /// from the function that was inlined instead of the function call site.
     pub fn lint_root(
         self,
-        source_scopes: &IndexVec<SourceScope, SourceScopeData<'_>>,
+        source_scopes: &IndexSlice<SourceScope, SourceScopeData<'_>>,
     ) -> Option<HirId> {
         let mut data = &source_scopes[self];
         // FIXME(oli-obk): we should be able to just walk the `inlined_parent_scope`, but it
@@ -1795,7 +1844,7 @@ impl SourceScope {
     #[inline]
     pub fn inlined_instance<'tcx>(
         self,
-        source_scopes: &IndexVec<SourceScope, SourceScopeData<'tcx>>,
+        source_scopes: &IndexSlice<SourceScope, SourceScopeData<'tcx>>,
     ) -> Option<ty::Instance<'tcx>> {
         let scope_data = &source_scopes[self];
         if let Some((inlined_instance, _)) = scope_data.inlined {
@@ -1843,24 +1892,24 @@ impl<'tcx> Debug for Operand<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::Operand::*;
         match *self {
-            Constant(ref a) => write!(fmt, "{:?}", a),
-            Copy(ref place) => write!(fmt, "{:?}", place),
-            Move(ref place) => write!(fmt, "move {:?}", place),
+            Constant(ref a) => write!(fmt, "{a:?}"),
+            Copy(ref place) => write!(fmt, "{place:?}"),
+            Move(ref place) => write!(fmt, "move {place:?}"),
         }
     }
 }
 
 impl<'tcx> Operand<'tcx> {
     /// Convenience helper to make a constant that refers to the fn
-    /// with given `DefId` and substs. Since this is used to synthesize
+    /// with given `DefId` and args. Since this is used to synthesize
     /// MIR, assumes `user_ty` is None.
     pub fn function_handle(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        substs: impl IntoIterator<Item = GenericArg<'tcx>>,
+        args: impl IntoIterator<Item = GenericArg<'tcx>>,
         span: Span,
     ) -> Self {
-        let ty = tcx.mk_fn_def(def_id, substs);
+        let ty = Ty::new_fn_def(tcx, def_id, args);
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
@@ -1884,11 +1933,11 @@ impl<'tcx> Operand<'tcx> {
             let param_env_and_ty = ty::ParamEnv::empty().and(ty);
             let type_size = tcx
                 .layout_of(param_env_and_ty)
-                .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
+                .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
                 .size;
             let scalar_size = match val {
                 Scalar::Int(int) => int.size(),
-                _ => panic!("Invalid scalar type {:?}", val),
+                _ => panic!("Invalid scalar type {val:?}"),
             };
             scalar_size == type_size
         });
@@ -1928,9 +1977,9 @@ impl<'tcx> Operand<'tcx> {
     ///
     /// While this is unlikely in general, it's the normal case of what you'll
     /// find as the `func` in a [`TerminatorKind::Call`].
-    pub fn const_fn_def(&self) -> Option<(DefId, SubstsRef<'tcx>)> {
+    pub fn const_fn_def(&self) -> Option<(DefId, GenericArgsRef<'tcx>)> {
         let const_ty = self.constant()?.literal.ty();
-        if let ty::FnDef(def_id, substs) = *const_ty.kind() { Some((def_id, substs)) } else { None }
+        if let ty::FnDef(def_id, args) = *const_ty.kind() { Some((def_id, args)) } else { None }
     }
 }
 
@@ -1961,9 +2010,10 @@ impl<'tcx> Rvalue<'tcx> {
                 | CastKind::IntToFloat
                 | CastKind::FnPtrToPtr
                 | CastKind::PtrToPtr
-                | CastKind::Pointer(_)
+                | CastKind::PointerCoercion(_)
                 | CastKind::PointerFromExposedAddress
-                | CastKind::DynStar,
+                | CastKind::DynStar
+                | CastKind::Transmute,
                 _,
                 _,
             )
@@ -1979,26 +2029,22 @@ impl<'tcx> Rvalue<'tcx> {
 }
 
 impl BorrowKind {
+    pub fn mutability(&self) -> Mutability {
+        match *self {
+            BorrowKind::Shared | BorrowKind::Shallow => Mutability::Not,
+            BorrowKind::Mut { .. } => Mutability::Mut,
+        }
+    }
+
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
-            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => false,
-            BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
+            BorrowKind::Shared
+            | BorrowKind::Shallow
+            | BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::ClosureCapture } => {
+                false
+            }
+            BorrowKind::Mut { kind: MutBorrowKind::TwoPhaseBorrow } => true,
         }
-    }
-
-    // FIXME: won't be used after diagnostic migration
-    pub fn describe_mutability(&self) -> &str {
-        match *self {
-            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => "immutable",
-            BorrowKind::Mut { .. } => "mutable",
-        }
-    }
-}
-
-impl BinOp {
-    pub fn is_checkable(self) -> bool {
-        use self::BinOp::*;
-        matches!(self, Add | Sub | Mul | Shl | Shr)
     }
 }
 
@@ -2007,23 +2053,27 @@ impl<'tcx> Debug for Rvalue<'tcx> {
         use self::Rvalue::*;
 
         match *self {
-            Use(ref place) => write!(fmt, "{:?}", place),
+            Use(ref place) => write!(fmt, "{place:?}"),
             Repeat(ref a, b) => {
-                write!(fmt, "[{:?}; ", a)?;
+                write!(fmt, "[{a:?}; ")?;
                 pretty_print_const(b, fmt, false)?;
                 write!(fmt, "]")
             }
-            Len(ref a) => write!(fmt, "Len({:?})", a),
+            Len(ref a) => write!(fmt, "Len({a:?})"),
             Cast(ref kind, ref place, ref ty) => {
-                write!(fmt, "{:?} as {:?} ({:?})", place, ty, kind)
+                write!(fmt, "{place:?} as {ty:?} ({kind:?})")
             }
-            BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
+            BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             CheckedBinaryOp(ref op, box (ref a, ref b)) => {
-                write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
+                write!(fmt, "Checked{op:?}({a:?}, {b:?})")
             }
-            UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
-            Discriminant(ref place) => write!(fmt, "discriminant({:?})", place),
-            NullaryOp(ref op, ref t) => write!(fmt, "{:?}({:?})", op, t),
+            UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
+            Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
+            NullaryOp(ref op, ref t) => match op {
+                NullOp::SizeOf => write!(fmt, "SizeOf({t:?})"),
+                NullOp::AlignOf => write!(fmt, "AlignOf({t:?})"),
+                NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t:?}, {fields:?})"),
+            },
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
@@ -2032,7 +2082,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
                     BorrowKind::Shallow => "shallow ",
-                    BorrowKind::Mut { .. } | BorrowKind::Unique => "mut ",
+                    BorrowKind::Mut { .. } => "mut ",
                 };
 
                 // When printing regions, add trailing space if necessary.
@@ -2049,10 +2099,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     // Do not even print 'static
                     String::new()
                 };
-                write!(fmt, "&{}{}{:?}", region, kind_str, place)
+                write!(fmt, "&{region}{kind_str}{place:?}")
             }
 
-            CopyForDeref(ref place) => write!(fmt, "deref_copy {:#?}", place),
+            CopyForDeref(ref place) => write!(fmt, "deref_copy {place:#?}"),
 
             AddressOf(mutability, ref place) => {
                 let kind_str = match mutability {
@@ -2060,7 +2110,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     Mutability::Not => "const",
                 };
 
-                write!(fmt, "&raw {} {:?}", kind_str, place)
+                write!(fmt, "&raw {kind_str} {place:?}")
             }
 
             Aggregate(ref kind, ref places) => {
@@ -2073,7 +2123,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 };
 
                 match **kind {
-                    AggregateKind::Array(_) => write!(fmt, "{:?}", places),
+                    AggregateKind::Array(_) => write!(fmt, "{places:?}"),
 
                     AggregateKind::Tuple => {
                         if places.is_empty() {
@@ -2083,12 +2133,12 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         }
                     }
 
-                    AggregateKind::Adt(adt_did, variant, substs, _user_ty, _) => {
+                    AggregateKind::Adt(adt_did, variant, args, _user_ty, _) => {
                         ty::tls::with(|tcx| {
                             let variant_def = &tcx.adt_def(adt_did).variant(variant);
-                            let substs = tcx.lift(substs).expect("could not lift for printing");
+                            let args = tcx.lift(args).expect("could not lift for printing");
                             let name = FmtPrinter::new(tcx, Namespace::ValueNS)
-                                .print_def_path(variant_def.def_id, substs)?
+                                .print_def_path(variant_def.def_id, args)?
                                 .into_buffer();
 
                             match variant_def.ctor_kind() {
@@ -2105,10 +2155,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         })
                     }
 
-                    AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {
+                    AggregateKind::Closure(def_id, args) => ty::tls::with(|tcx| {
                         let name = if tcx.sess.opts.unstable_opts.span_free_formats {
-                            let substs = tcx.lift(substs).unwrap();
-                            format!("[closure@{}]", tcx.def_path_str_with_substs(def_id, substs),)
+                            let args = tcx.lift(args).unwrap();
+                            format!("[closure@{}]", tcx.def_path_str_with_args(def_id, args),)
                         } else {
                             let span = tcx.def_span(def_id);
                             format!(
@@ -2159,7 +2209,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
 
             ShallowInitBox(ref place, ref ty) => {
-                write!(fmt, "ShallowInitBox({:?}, {:?})", place, ty)
+                write!(fmt, "ShallowInitBox({place:?}, {ty:?})")
             }
         }
     }
@@ -2275,10 +2325,10 @@ impl<'tcx> ConstantKind<'tcx> {
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
         match self {
             Self::Ty(c) => {
-                if let Some(val) = c.kind().try_eval_for_mir(tcx, param_env) {
+                if let Some(val) = c.try_eval_for_mir(tcx, param_env) {
                     match val {
                         Ok(val) => Self::Val(val, c.ty()),
-                        Err(_) => Self::Ty(tcx.const_error(self.ty())),
+                        Err(guar) => Self::Ty(ty::Const::new_error(tcx, guar, self.ty())),
                     }
                 } else {
                     self
@@ -2291,7 +2341,7 @@ impl<'tcx> ConstantKind<'tcx> {
                     Ok(val) => Self::Val(val, ty),
                     Err(ErrorHandled::TooGeneric) => self,
                     Err(ErrorHandled::Reported(guar)) => {
-                        Self::Ty(tcx.const_error_with_guaranteed(ty, guar))
+                        Self::Ty(ty::Const::new_error(tcx, guar.into(), ty))
                     }
                 }
             }
@@ -2413,75 +2463,17 @@ impl<'tcx> ConstantKind<'tcx> {
 
     /// Literals are converted to `ConstantKindVal`, const generic parameters are eagerly
     /// converted to a constant, everything else becomes `Unevaluated`.
+    #[instrument(skip(tcx), level = "debug", ret)]
     pub fn from_anon_const(
         tcx: TyCtxt<'tcx>,
-        def_id: LocalDefId,
+        def: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
-        Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id), param_env)
-    }
-
-    #[instrument(skip(tcx), level = "debug", ret)]
-    pub fn from_inline_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        let body_id = match tcx.hir().get(hir_id) {
+        let body_id = match tcx.hir().get_by_def_id(def) {
             hir::Node::AnonConst(ac) => ac.body,
-            _ => span_bug!(
-                tcx.def_span(def_id.to_def_id()),
-                "from_inline_const can only process anonymous constants"
-            ),
-        };
-        let expr = &tcx.hir().body(body_id).value;
-        let ty = tcx.typeck(def_id).node_type(hir_id);
-
-        let lit_input = match expr.kind {
-            hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => match expr.kind {
-                hir::ExprKind::Lit(ref lit) => {
-                    Some(LitToConstInput { lit: &lit.node, ty, neg: true })
-                }
-                _ => None,
-            },
-            _ => None,
-        };
-        if let Some(lit_input) = lit_input {
-            // If an error occurred, ignore that it's a literal and leave reporting the error up to
-            // mir.
-            match tcx.at(expr.span).lit_to_mir_constant(lit_input) {
-                Ok(c) => return c,
-                Err(_) => {}
+            _ => {
+                span_bug!(tcx.def_span(def), "from_anon_const can only process anonymous constants")
             }
-        }
-
-        let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id());
-        let parent_substs =
-            tcx.erase_regions(InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
-        let substs =
-            ty::InlineConstSubsts::new(tcx, ty::InlineConstSubstsParts { parent_substs, ty })
-                .substs;
-
-        let uneval = UnevaluatedConst {
-            def: ty::WithOptConstParam::unknown(def_id).to_global(),
-            substs,
-            promoted: None,
-        };
-        debug_assert!(!uneval.has_free_regions());
-
-        Self::Unevaluated(uneval, ty)
-    }
-
-    #[instrument(skip(tcx), level = "debug", ret)]
-    fn from_opt_const_arg_anon_const(
-        tcx: TyCtxt<'tcx>,
-        def: ty::WithOptConstParam<LocalDefId>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Self {
-        let body_id = match tcx.hir().get_by_def_id(def.did) {
-            hir::Node::AnonConst(ac) => ac.body,
-            _ => span_bug!(
-                tcx.def_span(def.did.to_def_id()),
-                "from_anon_const can only process anonymous constants"
-            ),
         };
 
         let expr = &tcx.hir().body(body_id).value;
@@ -2497,7 +2489,7 @@ impl<'tcx> ConstantKind<'tcx> {
         };
         debug!("expr.kind: {:?}", expr.kind);
 
-        let ty = tcx.type_of(def.def_id_for_type_of()).subst_identity();
+        let ty = tcx.type_of(def).instantiate_identity();
         debug!(?ty);
 
         // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
@@ -2516,7 +2508,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.item_name(def_id);
-                let ty_const = tcx.mk_const(ty::ParamConst::new(index, name), ty);
+                let ty_const = ty::Const::new_param(tcx, ty::ParamConst::new(index, name), ty);
                 debug!(?ty_const);
 
                 return Self::Ty(ty_const);
@@ -2524,25 +2516,23 @@ impl<'tcx> ConstantKind<'tcx> {
             _ => {}
         }
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-        let parent_substs = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id)
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def);
+        let parent_args = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id)
             && let Some(parent_did) = parent_hir_id.as_owner()
         {
-            InternalSubsts::identity_for_item(tcx, parent_did.to_def_id())
+            GenericArgs::identity_for_item(tcx, parent_did)
         } else {
             List::empty()
         };
-        debug!(?parent_substs);
+        debug!(?parent_args);
 
-        let did = def.did.to_def_id();
-        let child_substs = InternalSubsts::identity_for_item(tcx, did);
-        let substs =
-            tcx.mk_substs_from_iter(parent_substs.into_iter().chain(child_substs.into_iter()));
-        debug!(?substs);
+        let did = def.to_def_id();
+        let child_args = GenericArgs::identity_for_item(tcx, did);
+        let args = tcx.mk_args_from_iter(parent_args.into_iter().chain(child_args.into_iter()));
+        debug!(?args);
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-        let span = tcx.hir().span(hir_id);
-        let uneval = UnevaluatedConst::new(def.to_global(), substs);
+        let span = tcx.def_span(def);
+        let uneval = UnevaluatedConst::new(did, args);
         debug!(?span, ?param_env);
 
         match tcx.const_eval_resolve(param_env, uneval, Some(span)) {
@@ -2556,8 +2546,8 @@ impl<'tcx> ConstantKind<'tcx> {
                 // new unevaluated const and error hard later in codegen
                 Self::Unevaluated(
                     UnevaluatedConst {
-                        def: def.to_global(),
-                        substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
+                        def: did,
+                        args: GenericArgs::identity_for_item(tcx, did),
                         promoted: None,
                     },
                     ty,
@@ -2582,27 +2572,23 @@ impl<'tcx> ConstantKind<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UnevaluatedConst<'tcx> {
-    pub def: ty::WithOptConstParam<DefId>,
-    pub substs: SubstsRef<'tcx>,
+    pub def: DefId,
+    pub args: GenericArgsRef<'tcx>,
     pub promoted: Option<Promoted>,
 }
 
 impl<'tcx> UnevaluatedConst<'tcx> {
-    // FIXME: probably should get rid of this method. It's also wrong to
-    // shrink and then later expand a promoted.
     #[inline]
     pub fn shrink(self) -> ty::UnevaluatedConst<'tcx> {
-        ty::UnevaluatedConst { def: self.def, substs: self.substs }
+        assert_eq!(self.promoted, None);
+        ty::UnevaluatedConst { def: self.def, args: self.args }
     }
 }
 
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn new(
-        def: ty::WithOptConstParam<DefId>,
-        substs: SubstsRef<'tcx>,
-    ) -> UnevaluatedConst<'tcx> {
-        UnevaluatedConst { def, substs, promoted: Default::default() }
+    pub fn new(def: DefId, args: GenericArgsRef<'tcx>) -> UnevaluatedConst<'tcx> {
+        UnevaluatedConst { def, args, promoted: Default::default() }
     }
 }
 
@@ -2687,12 +2673,17 @@ impl<'tcx> UserTypeProjections {
         self.map_projections(|pat_ty_proj| pat_ty_proj.deref())
     }
 
-    pub fn leaf(self, field: Field) -> Self {
+    pub fn leaf(self, field: FieldIdx) -> Self {
         self.map_projections(|pat_ty_proj| pat_ty_proj.leaf(field))
     }
 
-    pub fn variant(self, adt_def: AdtDef<'tcx>, variant_index: VariantIdx, field: Field) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field))
+    pub fn variant(
+        self,
+        adt_def: AdtDef<'tcx>,
+        variant_index: VariantIdx,
+        field_index: FieldIdx,
+    ) -> Self {
+        self.map_projections(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field_index))
     }
 }
 
@@ -2712,12 +2703,11 @@ impl<'tcx> UserTypeProjections {
 ///   `field[0]` (aka `.0`), indicating that the type of `s` is
 ///   determined by finding the type of the `.0` field from `T`.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
     pub projs: Vec<ProjectionKind>,
 }
-
-impl Copy for ProjectionKind {}
 
 impl UserTypeProjection {
     pub(crate) fn index(mut self) -> Self {
@@ -2735,7 +2725,7 @@ impl UserTypeProjection {
         self
     }
 
-    pub(crate) fn leaf(mut self, field: Field) -> Self {
+    pub(crate) fn leaf(mut self, field: FieldIdx) -> Self {
         self.projs.push(ProjectionElem::Field(field, ()));
         self
     }
@@ -2744,36 +2734,14 @@ impl UserTypeProjection {
         mut self,
         adt_def: AdtDef<'_>,
         variant_index: VariantIdx,
-        field: Field,
+        field_index: FieldIdx,
     ) -> Self {
         self.projs.push(ProjectionElem::Downcast(
             Some(adt_def.variant(variant_index).name),
             variant_index,
         ));
-        self.projs.push(ProjectionElem::Field(field, ()));
+        self.projs.push(ProjectionElem::Field(field_index, ()));
         self
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for UserTypeProjection {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(UserTypeProjection {
-            base: self.base.try_fold_with(folder)?,
-            projs: self.projs.try_fold_with(folder)?,
-        })
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for UserTypeProjection {
-    fn visit_with<Vs: TypeVisitor<TyCtxt<'tcx>>>(
-        &self,
-        visitor: &mut Vs,
-    ) -> ControlFlow<Vs::BreakTy> {
-        self.base.visit_with(visitor)
-        // Note: there's nothing in `self.proj` to visit.
     }
 }
 
@@ -2785,7 +2753,7 @@ rustc_index::newtype_index! {
 
 impl<'tcx> Debug for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(fmt, "{}", self)
+        write!(fmt, "{self}")
     }
 }
 
@@ -2803,7 +2771,7 @@ impl<'tcx> Display for ConstantKind<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match *self {
             ConstantKind::Ty(c) => pretty_print_const(c, fmt, true),
-            ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt, true),
+            ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt),
             // FIXME(valtrees): Correctly print mir constants.
             ConstantKind::Unevaluated(..) => {
                 fmt.write_str("_")?;
@@ -2833,13 +2801,16 @@ fn pretty_print_byte_str(fmt: &mut Formatter<'_>, byte_str: &[u8]) -> fmt::Resul
     write!(fmt, "b\"{}\"", byte_str.escape_ascii())
 }
 
-fn comma_sep<'tcx>(fmt: &mut Formatter<'_>, elems: Vec<ConstantKind<'tcx>>) -> fmt::Result {
+fn comma_sep<'tcx>(
+    fmt: &mut Formatter<'_>,
+    elems: Vec<(ConstValue<'tcx>, Ty<'tcx>)>,
+) -> fmt::Result {
     let mut first = true;
-    for elem in elems {
+    for (ct, ty) in elems {
         if !first {
             fmt.write_str(", ")?;
         }
-        fmt.write_str(&format!("{}", elem))?;
+        pretty_print_const_value(ct, ty, fmt)?;
         first = false;
     }
     Ok(())
@@ -2850,7 +2821,6 @@ fn pretty_print_const_value<'tcx>(
     ct: ConstValue<'tcx>,
     ty: Ty<'tcx>,
     fmt: &mut Formatter<'_>,
-    print_ty: bool,
 ) -> fmt::Result {
     use crate::ty::print::PrettyPrinter;
 
@@ -2859,7 +2829,7 @@ fn pretty_print_const_value<'tcx>(
         let ty = tcx.lift(ty).unwrap();
 
         if tcx.sess.verbose() {
-            fmt.write_str(&format!("ConstValue({:?}: {})", ct, ty))?;
+            fmt.write_str(&format!("ConstValue({ct:?}: {ty})"))?;
             return Ok(());
         }
 
@@ -2894,7 +2864,7 @@ fn pretty_print_const_value<'tcx>(
                 }
             }
             (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
-                let n = n.kind().try_to_bits(tcx.data_layout.pointer_size).unwrap();
+                let n = n.try_to_bits(tcx.data_layout.pointer_size).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
                 let range = AllocRange { start: offset, size: Size::from_bytes(n) };
                 let byte_str = alloc.inner().get_bytes_strip_provenance(&tcx, range).unwrap();
@@ -2909,16 +2879,11 @@ fn pretty_print_const_value<'tcx>(
             // introducing ICEs (e.g. via `layout_of`) from missing bounds.
             // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
             // to be able to destructure the tuple into `(0u8, *mut T)`
-            //
-            // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
-            // correct `ty::ParamEnv` to allow printing *all* constant values.
             (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_non_region_param() => {
                 let ct = tcx.lift(ct).unwrap();
                 let ty = tcx.lift(ty).unwrap();
-                if let Some(contents) = tcx.try_destructure_mir_constant(
-                    ty::ParamEnv::reveal_all().and(ConstantKind::Val(ct, ty)),
-                ) {
-                    let fields = contents.fields.to_vec();
+                if let Some(contents) = tcx.try_destructure_mir_constant_for_diagnostics((ct, ty)) {
+                    let fields: Vec<(ConstValue<'_>, Ty<'_>)> = contents.fields.to_vec();
                     match *ty.kind() {
                         ty::Array(..) => {
                             fmt.write_str("[")?;
@@ -2934,17 +2899,17 @@ fn pretty_print_const_value<'tcx>(
                             fmt.write_str(")")?;
                         }
                         ty::Adt(def, _) if def.variants().is_empty() => {
-                            fmt.write_str(&format!("{{unreachable(): {}}}", ty))?;
+                            fmt.write_str(&format!("{{unreachable(): {ty}}}"))?;
                         }
-                        ty::Adt(def, substs) => {
+                        ty::Adt(def, args) => {
                             let variant_idx = contents
                                 .variant
                                 .expect("destructed mir constant of adt without variant idx");
                             let variant_def = &def.variant(variant_idx);
-                            let substs = tcx.lift(substs).unwrap();
+                            let args = tcx.lift(args).unwrap();
                             let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
                             cx.print_alloc_ids = true;
-                            let cx = cx.print_value_path(variant_def.def_id, substs)?;
+                            let cx = cx.print_value_path(variant_def.def_id, args)?;
                             fmt.write_str(&cx.into_buffer())?;
 
                             match variant_def.ctor_kind() {
@@ -2957,12 +2922,14 @@ fn pretty_print_const_value<'tcx>(
                                 None => {
                                     fmt.write_str(" {{ ")?;
                                     let mut first = true;
-                                    for (field_def, field) in iter::zip(&variant_def.fields, fields)
+                                    for (field_def, (ct, ty)) in
+                                        iter::zip(&variant_def.fields, fields)
                                     {
                                         if !first {
                                             fmt.write_str(", ")?;
                                         }
-                                        fmt.write_str(&format!("{}: {}", field_def.name, field))?;
+                                        write!(fmt, "{}: ", field_def.name)?;
+                                        pretty_print_const_value(ct, ty, fmt)?;
                                         first = false;
                                     }
                                     fmt.write_str(" }}")?;
@@ -2972,20 +2939,13 @@ fn pretty_print_const_value<'tcx>(
                         _ => unreachable!(),
                     }
                     return Ok(());
-                } else {
-                    // Fall back to debug pretty printing for invalid constants.
-                    fmt.write_str(&format!("{:?}", ct))?;
-                    if print_ty {
-                        fmt.write_str(&format!(": {}", ty))?;
-                    }
-                    return Ok(());
-                };
+                }
             }
             (ConstValue::Scalar(scalar), _) => {
                 let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
                 cx.print_alloc_ids = true;
                 let ty = tcx.lift(ty).unwrap();
-                cx = cx.pretty_print_const_scalar(scalar, ty, print_ty)?;
+                cx = cx.pretty_print_const_scalar(scalar, ty)?;
                 fmt.write_str(&cx.into_buffer())?;
                 return Ok(());
             }
@@ -3000,12 +2960,8 @@ fn pretty_print_const_value<'tcx>(
             // their fields instead of just dumping the memory.
             _ => {}
         }
-        // fallback
-        fmt.write_str(&format!("{:?}", ct))?;
-        if print_ty {
-            fmt.write_str(&format!(": {}", ty))?;
-        }
-        Ok(())
+        // Fall back to debug pretty printing for invalid constants.
+        write!(fmt, "{ct:?}: {ty}")
     })
 }
 
@@ -3084,11 +3040,13 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 144);
-    static_assert_size!(LocalDecl<'_>, 56);
+    static_assert_size!(BasicBlockData<'_>, 136);
+    static_assert_size!(LocalDecl<'_>, 40);
+    static_assert_size!(SourceScopeData<'_>, 72);
     static_assert_size!(Statement<'_>, 32);
     static_assert_size!(StatementKind<'_>, 16);
-    static_assert_size!(Terminator<'_>, 112);
-    static_assert_size!(TerminatorKind<'_>, 96);
+    static_assert_size!(Terminator<'_>, 104);
+    static_assert_size!(TerminatorKind<'_>, 88);
+    static_assert_size!(VarDebugInfo<'_>, 80);
     // tidy-alphabetical-end
 }

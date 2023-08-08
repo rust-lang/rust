@@ -83,8 +83,8 @@ fn main() {
     //~^ ERROR no method named `distance` found for struct `Point<i32>
     let d = point_i32.other();
     //~^ ERROR no method named `other` found for struct `Point
-    let v = vec![1_i32, 2, 3];
-    v.iter().map(|x| x * x).extend(std::iter::once(100));
+    let v = vec![1, 2, 3];
+    v.iter().map(Box::new(|x| x * x) as Box<dyn Fn(&i32) -> i32>).extend(std::iter::once(100));
     //~^ ERROR no method named `extend` found for struct `Map
     let wrapper = Wrapper(true);
     wrapper.method();

@@ -24,28 +24,7 @@ enum Repr {
     TupleField(usize),
 }
 
-impl fmt::Display for Name {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.0 {
-            Repr::Text(text) => fmt::Display::fmt(&text, f),
-            Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
-        }
-    }
-}
-
-impl<'a> fmt::Display for UnescapedName<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.0 .0 {
-            Repr::Text(text) => {
-                let text = text.strip_prefix("r#").unwrap_or(text);
-                fmt::Display::fmt(&text, f)
-            }
-            Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
-        }
-    }
-}
-
-impl<'a> UnescapedName<'a> {
+impl UnescapedName<'_> {
     /// Returns the textual representation of this name as a [`SmolStr`]. Prefer using this over
     /// [`ToString::to_string`] if possible as this conversion is cheaper in the general case.
     pub fn to_smol_str(&self) -> SmolStr {
@@ -59,6 +38,11 @@ impl<'a> UnescapedName<'a> {
             }
             Repr::TupleField(it) => SmolStr::new(it.to_string()),
         }
+    }
+
+    pub fn display(&self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + '_ {
+        _ = db;
+        UnescapedDisplay { name: self }
     }
 }
 
@@ -78,7 +62,7 @@ impl Name {
         Self::new_text(lt.text().into())
     }
 
-    /// Shortcut to create inline plain text name
+    /// Shortcut to create inline plain text name. Panics if `text.len() > 22`
     const fn new_inline(text: &str) -> Name {
         Name::new_text(SmolStr::new_inline(text))
     }
@@ -110,6 +94,26 @@ impl Name {
     /// salsa though, so we punt on that bit for a moment.
     pub const fn missing() -> Name {
         Name::new_inline("[missing name]")
+    }
+
+    /// Returns true if this is a fake name for things missing in the source code. See
+    /// [`missing()`][Self::missing] for details.
+    ///
+    /// Use this method instead of comparing with `Self::missing()` as missing names
+    /// (ideally should) have a `gensym` semantics.
+    pub fn is_missing(&self) -> bool {
+        self == &Name::missing()
+    }
+
+    /// Generates a new name which is only equal to itself, by incrementing a counter. Due
+    /// its implementation, it should not be used in things that salsa considers, like
+    /// type names or field names, and it should be only used in names of local variables
+    /// and labels and similar things.
+    pub fn generate_new_name() -> Name {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static CNT: AtomicUsize = AtomicUsize::new(0);
+        let c = CNT.fetch_add(1, Ordering::Relaxed);
+        Name::new_text(format!("<ra@gennew>{c}").into())
     }
 
     /// Returns the tuple index this name represents if it is a tuple field.
@@ -154,6 +158,40 @@ impl Name {
         match &self.0 {
             Repr::Text(it) => it.starts_with("r#"),
             Repr::TupleField(_) => false,
+        }
+    }
+
+    pub fn display<'a>(&'a self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
+        _ = db;
+        Display { name: self }
+    }
+}
+
+struct Display<'a> {
+    name: &'a Name,
+}
+
+impl fmt::Display for Display<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.name.0 {
+            Repr::Text(text) => fmt::Display::fmt(&text, f),
+            Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
+        }
+    }
+}
+
+struct UnescapedDisplay<'a> {
+    name: &'a UnescapedName<'a>,
+}
+
+impl fmt::Display for UnescapedDisplay<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.name.0 .0 {
+            Repr::Text(text) => {
+                let text = text.strip_prefix("r#").unwrap_or(text);
+                fmt::Display::fmt(&text, f)
+            }
+            Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
         }
     }
 }
@@ -253,8 +291,10 @@ pub mod known {
         alloc,
         iter,
         ops,
+        fmt,
         future,
         result,
+        string,
         boxed,
         option,
         prelude,
@@ -282,6 +322,7 @@ pub mod known {
         RangeToInclusive,
         RangeTo,
         Range,
+        String,
         Neg,
         Not,
         None,
@@ -292,6 +333,7 @@ pub mod known {
         iter_mut,
         len,
         is_empty,
+        as_str,
         new,
         // Builtin macros
         asm,
@@ -305,6 +347,7 @@ pub mod known {
         core_panic,
         env,
         file,
+        format,
         format_args_nl,
         format_args,
         global_asm,
@@ -336,19 +379,26 @@ pub mod known {
         cfg_eval,
         crate_type,
         derive,
+        derive_const,
         global_allocator,
+        no_core,
+        no_std,
         test,
         test_case,
         recursion_limit,
         feature,
         // known methods of lang items
         call_once,
+        call_mut,
+        call,
         eq,
         ne,
         ge,
         gt,
         le,
         lt,
+        // known fields of lang items
+        pieces,
         // lang items
         add_assign,
         add,
@@ -363,6 +413,7 @@ pub mod known {
         deref,
         div_assign,
         div,
+        drop,
         fn_mut,
         fn_once,
         future_trait,

@@ -15,7 +15,7 @@ use rustc_span::symbol::sym;
 use std::fmt::Display;
 use std::iter::Iterator;
 
-/// Checks for for loops that sequentially copy items from one slice-like
+/// Checks for `for` loops that sequentially copy items from one slice-like
 /// object to another.
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
@@ -51,7 +51,7 @@ pub(super) fn check<'tcx>(
                 iter_b = Some(get_assignment(body));
             }
 
-            let assignments = iter_a.into_iter().flatten().chain(iter_b.into_iter());
+            let assignments = iter_a.into_iter().flatten().chain(iter_b);
 
             let big_sugg = assignments
                 // The only statements in the for loops can be indexed assignments from
@@ -60,8 +60,8 @@ pub(super) fn check<'tcx>(
                     o.and_then(|(lhs, rhs)| {
                         let rhs = fetch_cloned_expr(rhs);
                         if_chain! {
-                            if let ExprKind::Index(base_left, idx_left) = lhs.kind;
-                            if let ExprKind::Index(base_right, idx_right) = rhs.kind;
+                            if let ExprKind::Index(base_left, idx_left, _) = lhs.kind;
+                            if let ExprKind::Index(base_right, idx_right, _) = rhs.kind;
                             if let Some(ty) = get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_left));
                             if get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_right)).is_some();
                             if let Some((start_left, offset_left)) = get_details_from_idx(cx, idx_left, &starts);
@@ -402,7 +402,7 @@ fn get_assignments<'a, 'tcx>(
             StmtKind::Local(..) | StmtKind::Item(..) => None,
             StmtKind::Expr(e) | StmtKind::Semi(e) => Some(e),
         })
-        .chain((*expr).into_iter())
+        .chain(*expr)
         .filter(move |e| {
             if let ExprKind::AssignOp(_, place, _) = e.kind {
                 path_to_local(place).map_or(false, |id| {

@@ -6,7 +6,7 @@
 use std::{
     borrow::Borrow,
     ffi::OsStr,
-    ops,
+    fmt, ops,
     path::{Component, Path, PathBuf},
 };
 
@@ -95,6 +95,12 @@ impl AbsPathBuf {
     }
 }
 
+impl fmt::Display for AbsPathBuf {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0.display(), f)
+    }
+}
+
 /// Wrapper around an absolute [`Path`].
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[repr(transparent)]
@@ -140,6 +146,11 @@ impl AbsPath {
         self.0.parent().map(AbsPath::assert)
     }
 
+    /// Equivalent of [`Path::join`] for `AbsPath` with an additional normalize step afterwards.
+    pub fn absolutize(&self, path: impl AsRef<Path>) -> AbsPathBuf {
+        self.join(path).normalize()
+    }
+
     /// Equivalent of [`Path::join`] for `AbsPath`.
     pub fn join(&self, path: impl AsRef<Path>) -> AbsPathBuf {
         self.as_ref().join(path).try_into().unwrap()
@@ -166,6 +177,10 @@ impl AbsPath {
         AbsPathBuf::try_from(self.0.to_path_buf()).unwrap()
     }
 
+    pub fn canonicalize(&self) -> ! {
+        panic!("We explicitly do not provide canonicalization API, as that is almost always a wrong solution, see #14430")
+    }
+
     /// Equivalent of [`Path::strip_prefix`] for `AbsPath`.
     ///
     /// Returns a relative path.
@@ -177,6 +192,13 @@ impl AbsPath {
     }
     pub fn ends_with(&self, suffix: &RelPath) -> bool {
         self.0.ends_with(&suffix.0)
+    }
+
+    pub fn name_and_extension(&self) -> Option<(&str, Option<&str>)> {
+        Some((
+            self.file_stem()?.to_str()?,
+            self.extension().and_then(|extension| extension.to_str()),
+        ))
     }
 
     // region:delegate-methods
@@ -201,6 +223,7 @@ impl AbsPath {
     pub fn as_os_str(&self) -> &OsStr {
         self.0.as_os_str()
     }
+    #[deprecated(note = "use Display instead")]
     pub fn display(&self) -> std::path::Display<'_> {
         self.0.display()
     }
@@ -209,6 +232,12 @@ impl AbsPath {
         self.0.exists()
     }
     // endregion:delegate-methods
+}
+
+impl fmt::Display for AbsPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0.display(), f)
+    }
 }
 
 /// Wrapper around a relative [`PathBuf`].

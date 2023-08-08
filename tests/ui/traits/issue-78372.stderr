@@ -6,7 +6,7 @@ LL | struct Smaht<T, MISC>(PhantomData);
    |
 help: consider importing this struct
    |
-LL | use std::marker::PhantomData;
+LL + use std::marker::PhantomData;
    |
 
 error[E0412]: cannot find type `U` in this scope

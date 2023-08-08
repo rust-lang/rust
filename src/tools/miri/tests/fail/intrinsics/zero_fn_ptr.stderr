@@ -1,8 +1,8 @@
 error: abnormal termination: aborted execution: attempted to zero-initialize type `fn()`, which is invalid
   --> $DIR/zero_fn_ptr.rs:LL:CC
    |
-LL |     unsafe { std::mem::zeroed::<fn()>() };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to zero-initialize type `fn()`, which is invalid
+LL |     let _ = unsafe { std::mem::zeroed::<fn()>() };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to zero-initialize type `fn()`, which is invalid
    |
    = note: inside `main` at $DIR/zero_fn_ptr.rs:LL:CC
 

@@ -1,4 +1,4 @@
-#![allow(clippy::let_unit_value)]
+#![allow(clippy::let_unit_value, clippy::unnecessary_cast)]
 
 fn main() {
     let x: [i32; 3] = [1_i32, 2, 3];
@@ -23,7 +23,7 @@ fn main() {
         r_x as *const [i32]
     } as *const [u8];
 
-    // Check that resores of the same size are detected through blocks
+    // Check that resources of the same size are detected through blocks
     let restore_block_1 = { r_x as *const [i32] } as *const [u8] as *const [u32];
     let restore_block_2 = { ({ r_x as *const [i32] }) as *const [u8] } as *const [u32];
     let restore_block_3 = {

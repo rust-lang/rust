@@ -1,8 +1,8 @@
 // run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
-// Test that when we match a trait reference like `Foo<A>: Foo<_#0t>`,
-// we unify with `_#0t` with `A`. In this code, if we failed to do
+// Test that when we match a trait reference like `Foo<A>: Foo<?0t>`,
+// we unify with `?0t` with `A`. In this code, if we failed to do
 // that, then you get an unconstrained type-variable in `call`.
 //
 // Also serves as a regression test for issue #26952, though the test

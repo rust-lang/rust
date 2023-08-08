@@ -27,27 +27,27 @@ impl<'a> Display for MutexGuard<'a> {
 }
 
 fn main() {
-    let _print = {
+    let _print: () = {
         let mutex = Mutex;
         print!("{}", mutex.lock()) /* no semicolon */
     };
 
-    let _println = {
+    let _println: () = {
         let mutex = Mutex;
         println!("{}", mutex.lock()) /* no semicolon */
     };
 
-    let _eprint = {
+    let _eprint: () = {
         let mutex = Mutex;
         eprint!("{}", mutex.lock()) /* no semicolon */
     };
 
-    let _eprintln = {
+    let _eprintln: () = {
         let mutex = Mutex;
         eprintln!("{}", mutex.lock()) /* no semicolon */
     };
 
-    let _panic = {
+    let _panic: () = {
         let mutex = Mutex;
         panic!("{}", mutex.lock()) /* no semicolon */
     };

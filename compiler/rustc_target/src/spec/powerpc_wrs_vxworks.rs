@@ -10,7 +10,7 @@ pub fn target() -> Target {
     Target {
         llvm_target: "powerpc-unknown-linux-gnu".into(),
         pointer_width: 32,
-        data_layout: "E-m:e-p:32:32-i64:64-n32".into(),
+        data_layout: "E-m:e-p:32:32-Fn32-i64:64-n32".into(),
         arch: "powerpc".into(),
         options: TargetOptions { endian: Endian::Big, features: "+secure-plt".into(), ..base },
     }

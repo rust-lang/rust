@@ -2,7 +2,6 @@ use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
 use rustc_span::Symbol;
-use std::fmt;
 use std::str::FromStr;
 
 mod aarch64;
@@ -28,7 +27,7 @@ mod x86;
 mod x86_64;
 mod x86_win64;
 
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum PassMode {
     /// Ignore the argument.
     ///
@@ -65,7 +64,7 @@ mod attr_impl {
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
     bitflags::bitflags! {
         #[derive(Default, HashStable_Generic)]
-        pub struct ArgAttribute: u16 {
+        pub struct ArgAttribute: u8 {
             const NoAlias   = 1 << 1;
             const NoCapture = 1 << 2;
             const NonNull   = 1 << 3;
@@ -211,7 +210,7 @@ impl Uniform {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct CastTarget {
     pub prefix: [Option<Reg>; 8],
     pub rest: Uniform,
@@ -458,7 +457,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
 /// Information about how to pass an argument to,
 /// or return a value from, a function, under some ABI.
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct ArgAbi<'a, Ty> {
     pub layout: TyAndLayout<'a, Ty>,
     pub mode: PassMode,
@@ -495,9 +494,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             .set(ArgAttribute::NonNull)
             .set(ArgAttribute::NoUndef);
         attrs.pointee_size = layout.size;
-        // FIXME(eddyb) We should be doing this, but at least on
-        // i686-pc-windows-msvc, it results in wrong stack offsets.
-        // attrs.pointee_align = Some(layout.align.abi);
+        attrs.pointee_align = Some(layout.align.abi);
 
         let extra_attrs = layout.is_unsized().then_some(ArgAttributes::new());
 
@@ -514,11 +511,19 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         self.mode = Self::indirect_pass_mode(&self.layout);
     }
 
-    pub fn make_indirect_byval(&mut self) {
+    pub fn make_indirect_byval(&mut self, byval_align: Option<Align>) {
         self.make_indirect();
         match self.mode {
-            PassMode::Indirect { attrs: _, extra_attrs: _, ref mut on_stack } => {
+            PassMode::Indirect { ref mut attrs, extra_attrs: _, ref mut on_stack } => {
                 *on_stack = true;
+
+                // Some platforms, like 32-bit x86, change the alignment of the type when passing
+                // `byval`. Account for that.
+                if let Some(byval_align) = byval_align {
+                    // On all targets with byval align this is currently true, so let's assert it.
+                    debug_assert!(byval_align >= Align::from_bytes(4).unwrap());
+                    attrs.pointee_align = Some(byval_align);
+                }
             }
             _ => unreachable!(),
         }
@@ -605,7 +610,7 @@ pub enum Conv {
 ///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct FnAbi<'a, Ty> {
     /// The LLVM types of each argument.
     pub args: Box<[ArgAbi<'a, Ty>]>,
@@ -633,16 +638,6 @@ pub enum AdjustForForeignAbiError {
     Unsupported { arch: Symbol, abi: spec::abi::Abi },
 }
 
-impl fmt::Display for AdjustForForeignAbiError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Unsupported { arch, abi } => {
-                write!(f, "target architecture {arch:?} does not support `extern {abi}` ABI")
-            }
-        }
-    }
-}
-
 impl<'a, Ty> FnAbi<'a, Ty> {
     pub fn adjust_for_foreign_abi<C>(
         &mut self,
@@ -655,7 +650,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
     {
         if abi == spec::abi::Abi::X86Interrupt {
             if let Some(arg) = self.args.first_mut() {
-                arg.make_indirect_byval();
+                // FIXME(pcwalton): This probably should use the x86 `byval` ABI...
+                arg.make_indirect_byval(None);
             }
             return Ok(());
         }
@@ -683,20 +679,22 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 }
             },
             "aarch64" => {
-                let param_policy = if cx.target_spec().is_like_osx {
-                    aarch64::ParamExtension::ExtendTo32Bits
+                let kind = if cx.target_spec().is_like_osx {
+                    aarch64::AbiKind::DarwinPCS
+                } else if cx.target_spec().is_like_windows {
+                    aarch64::AbiKind::Win64
                 } else {
-                    aarch64::ParamExtension::NoExtension
+                    aarch64::AbiKind::AAPCS
                 };
-                aarch64::compute_abi_info(cx, self, param_policy)
+                aarch64::compute_abi_info(cx, self, kind)
             }
             "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
             "avr" => avr::compute_abi_info(self),
             "loongarch64" => loongarch::compute_abi_info(cx, self),
             "m68k" => m68k::compute_abi_info(self),
-            "mips" => mips::compute_abi_info(cx, self),
-            "mips64" => mips64::compute_abi_info(cx, self),
+            "mips" | "mips32r6" => mips::compute_abi_info(cx, self),
+            "mips64" | "mips64r6" => mips64::compute_abi_info(cx, self),
             "powerpc" => powerpc::compute_abi_info(self),
             "powerpc64" => powerpc64::compute_abi_info(cx, self),
             "s390x" => s390x::compute_abi_info(cx, self),
@@ -755,7 +753,7 @@ impl FromStr for Conv {
             "AmdGpuKernel" => Ok(Conv::AmdGpuKernel),
             "AvrInterrupt" => Ok(Conv::AvrInterrupt),
             "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
-            _ => Err(format!("'{s}' is not a valid value for entry function call convetion.")),
+            _ => Err(format!("'{s}' is not a valid value for entry function call convention.")),
         }
     }
 }

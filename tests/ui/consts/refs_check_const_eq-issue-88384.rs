@@ -8,10 +8,10 @@ struct CompileTimeSettings{
 }
 
 struct Foo<const T: CompileTimeSettings>;
-//~^ ERROR using function pointers as const generic parameters is forbidden
+//~^ ERROR `CompileTimeSettings` must implement `ConstParamTy` to be used as the type of a const generic parameter
 
 impl<const T: CompileTimeSettings> Foo<T> {
-    //~^ ERROR using function pointers as const generic parameters is forbidden
+    //~^ ERROR `CompileTimeSettings` must implement `ConstParamTy` to be used as the type of a const generic parameter
     fn call_hooks(){
     }
 }

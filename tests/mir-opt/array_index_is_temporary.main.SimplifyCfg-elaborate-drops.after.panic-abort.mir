@@ -1,0 +1,61 @@
+// MIR for `main` after SimplifyCfg-elaborate-drops
+
+fn main() -> () {
+    let mut _0: ();
+    let mut _1: [u32; 3];
+    let mut _4: &mut usize;
+    let mut _5: u32;
+    let mut _6: *mut usize;
+    let _7: usize;
+    let mut _8: usize;
+    let mut _9: bool;
+    scope 1 {
+        debug x => _1;
+        let mut _2: usize;
+        scope 2 {
+            debug y => _2;
+            let _3: *mut usize;
+            scope 3 {
+                debug z => _3;
+                scope 4 {
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = [const 42_u32, const 43_u32, const 44_u32];
+        StorageLive(_2);
+        _2 = const 1_usize;
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = &mut _2;
+        _3 = &raw mut (*_4);
+        StorageDead(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = _3;
+        _5 = foo(move _6) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        StorageDead(_6);
+        StorageLive(_7);
+        _7 = _2;
+        _8 = Len(_1);
+        _9 = Lt(_7, _8);
+        assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> [success: bb2, unwind unreachable];
+    }
+
+    bb2: {
+        _1[_7] = move _5;
+        StorageDead(_5);
+        StorageDead(_7);
+        _0 = const ();
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+}

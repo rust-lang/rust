@@ -7,7 +7,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, Level};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
@@ -88,7 +88,6 @@ impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
         NonminimalBoolVisitor { cx }.visit_body(body);
     }
 }
-
 struct NonminimalBoolVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
 }
@@ -430,23 +429,25 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 }
             }
             let nonminimal_bool_lint = |suggestions: Vec<_>| {
-                span_lint_hir_and_then(
-                    self.cx,
-                    NONMINIMAL_BOOL,
-                    e.hir_id,
-                    e.span,
-                    "this boolean expression can be simplified",
-                    |diag| {
-                        diag.span_suggestions(
-                            e.span,
-                            "try",
-                            suggestions.into_iter(),
-                            // nonminimal_bool can produce minimal but
-                            // not human readable expressions (#3141)
-                            Applicability::Unspecified,
-                        );
-                    },
-                );
+                if self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, e.hir_id).0 != Level::Allow {
+                    span_lint_hir_and_then(
+                        self.cx,
+                        NONMINIMAL_BOOL,
+                        e.hir_id,
+                        e.span,
+                        "this boolean expression can be simplified",
+                        |diag| {
+                            diag.span_suggestions(
+                                e.span,
+                                "try",
+                                suggestions,
+                                // nonminimal_bool can produce minimal but
+                                // not human readable expressions (#3141)
+                                Applicability::Unspecified,
+                            );
+                        },
+                    );
+                }
             };
             if improvements.is_empty() {
                 let mut visitor = NotSimplificationVisitor { cx: self.cx };
@@ -471,6 +472,10 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
                     self.bool_expr(e);
                 },
                 ExprKind::Unary(UnOp::Not, inner) => {
+                    if let ExprKind::Unary(UnOp::Not, ex) = inner.kind &&
+                    !self.cx.typeck_results().node_types()[ex.hir_id].is_bool() {
+                        return;
+                    }
                     if self.cx.typeck_results().node_types()[inner.hir_id].is_bool() {
                         self.bool_expr(e);
                     }
@@ -495,18 +500,20 @@ struct NotSimplificationVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind {
-            if let Some(suggestion) = simplify_not(self.cx, inner) {
-                span_lint_and_sugg(
-                    self.cx,
-                    NONMINIMAL_BOOL,
-                    expr.span,
-                    "this boolean expression can be simplified",
-                    "try",
-                    suggestion,
-                    Applicability::MachineApplicable,
-                );
-            }
+        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind &&
+            !inner.span.from_expansion() &&
+            let Some(suggestion) = simplify_not(self.cx, inner)
+			&& self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
+        {
+            span_lint_and_sugg(
+                self.cx,
+                NONMINIMAL_BOOL,
+                expr.span,
+                "this boolean expression can be simplified",
+                "try",
+                suggestion,
+                Applicability::MachineApplicable,
+            );
         }
 
         walk_expr(self, expr);

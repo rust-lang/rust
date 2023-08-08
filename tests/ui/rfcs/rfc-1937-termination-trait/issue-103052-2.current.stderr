@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `Something: Termination` is not satisfied
+  --> $DIR/issue-103052-2.rs:15:22
+   |
+LL |         fn main() -> Something {
+   |                      ^^^^^^^^^ the trait `Termination` is not implemented for `Something`
+   |
+note: required by a bound in `Main::main::{opaque#0}`
+  --> $DIR/issue-103052-2.rs:9:27
+   |
+LL |         fn main() -> impl std::process::Termination;
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Main::main::{opaque#0}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

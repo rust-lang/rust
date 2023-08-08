@@ -2,7 +2,7 @@
 
 // revisions: rev1 rev2
 #![cfg_attr(any(), rev1, rev2)]
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 #[cfg(any(rev1))]
 trait T {

@@ -304,6 +304,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("ByteStr(ref {vec})");
                 chain!(self, "let [{:?}] = **{vec}", vec.value);
             },
+            LitKind::CStr(ref vec, _) => {
+                bind!(self, vec);
+                kind!("CStr(ref {vec})");
+                chain!(self, "let [{:?}] = **{vec}", vec.value);
+            },
             LitKind::Str(s, _) => {
                 bind!(self, s);
                 kind!("Str({s}, _)");
@@ -333,7 +338,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
     #[allow(clippy::too_many_lines)]
     fn expr(&self, expr: &Binding<&hir::Expr<'_>>) {
-        if let Some(higher::While { condition, body }) = higher::While::hir(expr.value) {
+        if let Some(higher::While { condition, body, .. }) = higher::While::hir(expr.value) {
             bind!(self, condition, body);
             chain!(
                 self,
@@ -395,11 +400,6 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 }
                 self.expr(field!(let_expr.init));
             },
-            ExprKind::Box(inner) => {
-                bind!(self, inner);
-                kind!("Box({inner})");
-                self.expr(inner);
-            },
             ExprKind::Array(elements) => {
                 bind!(self, elements);
                 kind!("Array({elements})");
@@ -435,7 +435,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Unary(UnOp::{op:?}, {inner})");
                 self.expr(inner);
             },
-            ExprKind::Lit(ref lit) => {
+            ExprKind::Lit(lit) => {
                 bind!(self, lit);
                 kind!("Lit(ref {lit})");
                 self.lit(lit);
@@ -526,7 +526,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.ident(field_name);
                 self.expr(object);
             },
-            ExprKind::Index(object, index) => {
+            ExprKind::Index(object, index, _) => {
                 bind!(self, object, index);
                 kind!("Index({object}, {index})");
                 self.expr(object);
@@ -559,9 +559,18 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Ret({value})");
                 value.if_some(|e| self.expr(e));
             },
+            ExprKind::Become(value) => {
+                bind!(self, value);
+                kind!("Become({value})");
+                self.expr(value);
+            },
             ExprKind::InlineAsm(_) => {
                 kind!("InlineAsm(_)");
                 out!("// unimplemented: `ExprKind::InlineAsm` is not further destructured at the moment");
+            },
+            ExprKind::OffsetOf(container, ref fields) => {
+                bind!(self, container, fields);
+                kind!("OffsetOf({container}, {fields})");
             },
             ExprKind::Struct(qpath, fields, base) => {
                 bind!(self, qpath, fields);
@@ -588,7 +597,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                     },
                 }
             },
-            ExprKind::Err(_) => kind!("Err"),
+            ExprKind::Err(_) => kind!("Err(_)"),
             ExprKind::DropTemps(expr) => {
                 bind!(self, expr);
                 kind!("DropTemps({expr})");

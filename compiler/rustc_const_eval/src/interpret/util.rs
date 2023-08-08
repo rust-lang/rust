@@ -14,7 +14,7 @@ where
     T: TypeVisitable<TyCtxt<'tcx>>,
 {
     debug!("ensure_monomorphic_enough: ty={:?}", ty);
-    if !ty.needs_subst() {
+    if !ty.has_param() {
         return Ok(());
     }
 
@@ -27,18 +27,18 @@ where
         type BreakTy = FoundParam;
 
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if !ty.needs_subst() {
+            if !ty.has_param() {
                 return ControlFlow::Continue(());
             }
 
             match *ty.kind() {
                 ty::Param(_) => ControlFlow::Break(FoundParam),
-                ty::Closure(def_id, substs)
-                | ty::Generator(def_id, substs, ..)
-                | ty::FnDef(def_id, substs) => {
-                    let instance = ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id));
+                ty::Closure(def_id, args)
+                | ty::Generator(def_id, args, ..)
+                | ty::FnDef(def_id, args) => {
+                    let instance = ty::InstanceDef::Item(def_id);
                     let unused_params = self.tcx.unused_generic_params(instance);
-                    for (index, subst) in substs.into_iter().enumerate() {
+                    for (index, subst) in args.into_iter().enumerate() {
                         let index = index
                             .try_into()
                             .expect("more generic parameters than can fit into a `u32`");
@@ -46,7 +46,7 @@ where
                         // are used and require substitution.
                         // Just in case there are closures or generators within this subst,
                         // recurse.
-                        if unused_params.is_used(index) && subst.needs_subst() {
+                        if unused_params.is_used(index) && subst.has_param() {
                             return subst.visit_with(self);
                         }
                     }

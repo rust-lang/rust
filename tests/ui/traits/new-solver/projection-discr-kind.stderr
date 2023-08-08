@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `Discriminant<<T as Foo>::Assoc>: Bar` is not satisfied
+  --> $DIR/projection-discr-kind.rs:14:15
+   |
+LL |     needs_bar(std::mem::discriminant(&x));
+   |     --------- ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `Discriminant<<T as Foo>::Assoc>`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `needs_bar`
+  --> $DIR/projection-discr-kind.rs:11:22
+   |
+LL | fn needs_bar(_: impl Bar) {}
+   |                      ^^^ required by this bound in `needs_bar`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

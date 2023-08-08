@@ -791,8 +791,8 @@ pub struct CharArrayRefSearcher<'a, 'b, const N: usize>(
 /// # Examples
 ///
 /// ```
-/// assert_eq!("Hello world".find(['l', 'l']), Some(2));
-/// assert_eq!("Hello world".find(['l', 'l']), Some(2));
+/// assert_eq!("Hello world".find(['o', 'l']), Some(2));
+/// assert_eq!("Hello world".find(['h', 'w']), Some(6));
 /// ```
 impl<'a, const N: usize> Pattern<'a> for [char; N] {
     pattern_methods!(CharArraySearcher<'a, N>, MultiCharEqPattern, CharArraySearcher);
@@ -811,8 +811,8 @@ unsafe impl<'a, const N: usize> ReverseSearcher<'a> for CharArraySearcher<'a, N>
 /// # Examples
 ///
 /// ```
-/// assert_eq!("Hello world".find(&['l', 'l']), Some(2));
-/// assert_eq!("Hello world".find(&['l', 'l']), Some(2));
+/// assert_eq!("Hello world".find(&['o', 'l']), Some(2));
+/// assert_eq!("Hello world".find(&['h', 'w']), Some(6));
 /// ```
 impl<'a, 'b, const N: usize> Pattern<'a> for &'b [char; N] {
     pattern_methods!(CharArrayRefSearcher<'a, 'b, N>, MultiCharEqPattern, CharArrayRefSearcher);
@@ -1750,7 +1750,9 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
         1
     } else {
         // try a few bytes in case first and last byte of the needle are the same
-        let Some(second_probe_offset) = (needle.len().saturating_sub(4)..needle.len()).rfind(|&idx| needle[idx] != first_probe) else {
+        let Some(second_probe_offset) =
+            (needle.len().saturating_sub(4)..needle.len()).rfind(|&idx| needle[idx] != first_probe)
+        else {
             // fall back to other search methods if we can't find any different bytes
             // since we could otherwise hit some degenerate cases
             return None;
@@ -1891,7 +1893,7 @@ unsafe fn small_slice_eq(x: &[u8], y: &[u8]) -> bool {
 
     // SAFETY: Via the conditional above, we know that both `px` and `py`
     // have the same length, so `px < pxend` implies that `py < pyend`.
-    // Thus, derefencing both `px` and `py` in the loop below is safe.
+    // Thus, dereferencing both `px` and `py` in the loop below is safe.
     //
     // Moreover, we set `pxend` and `pyend` to be 4 bytes before the actual
     // end of `px` and `py`. Thus, the final dereference outside of the

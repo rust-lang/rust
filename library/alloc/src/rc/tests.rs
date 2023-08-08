@@ -152,6 +152,21 @@ fn try_unwrap() {
 }
 
 #[test]
+fn into_inner() {
+    let x = Rc::new(3);
+    assert_eq!(Rc::into_inner(x), Some(3));
+
+    let x = Rc::new(4);
+    let y = Rc::clone(&x);
+    assert_eq!(Rc::into_inner(x), None);
+    assert_eq!(Rc::into_inner(y), Some(4));
+
+    let x = Rc::new(5);
+    let _w = Rc::downgrade(&x);
+    assert_eq!(Rc::into_inner(x), Some(5));
+}
+
+#[test]
 fn into_from_raw() {
     let x = Rc::new(Box::new("hello"));
     let y = x.clone();
@@ -558,4 +573,49 @@ fn test_rc_cyclic_with_two_ref() {
 
     assert_eq!(Rc::strong_count(&two_refs), 3);
     assert_eq!(Rc::weak_count(&two_refs), 2);
+}
+
+#[test]
+fn test_unique_rc_weak() {
+    let rc = UniqueRc::new(42);
+    let weak = UniqueRc::downgrade(&rc);
+    assert!(weak.upgrade().is_none());
+
+    let _rc = UniqueRc::into_rc(rc);
+    assert_eq!(*weak.upgrade().unwrap(), 42);
+}
+
+#[test]
+fn test_unique_rc_drop_weak() {
+    let rc = UniqueRc::new(42);
+    let weak = UniqueRc::downgrade(&rc);
+    mem::drop(weak);
+
+    let rc = UniqueRc::into_rc(rc);
+    assert_eq!(*rc, 42);
+}
+
+#[test]
+fn test_unique_rc_drops_contents() {
+    let mut dropped = false;
+    struct DropMe<'a>(&'a mut bool);
+    impl Drop for DropMe<'_> {
+        fn drop(&mut self) {
+            *self.0 = true;
+        }
+    }
+    {
+        let rc = UniqueRc::new(DropMe(&mut dropped));
+        drop(rc);
+    }
+    assert!(dropped);
+}
+
+#[test]
+fn test_unique_rc_weak_clone_holding_ref() {
+    let mut v = UniqueRc::new(0u8);
+    let w = UniqueRc::downgrade(&v);
+    let r = &mut *v;
+    let _ = w.clone(); // touch weak count
+    *r = 123;
 }

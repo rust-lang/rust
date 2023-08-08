@@ -13,7 +13,12 @@ pub fn expand_compile_error<'cx>(
         return DummyResult::any(sp);
     };
 
-    cx.span_err(sp, var.as_str());
+    #[expect(
+        rustc::diagnostic_outside_of_impl,
+        reason = "diagnostic message is specified by user"
+    )]
+    #[expect(rustc::untranslatable_diagnostic, reason = "diagnostic message is specified by user")]
+    cx.span_err(sp, var.to_string());
 
     DummyResult::any(sp)
 }

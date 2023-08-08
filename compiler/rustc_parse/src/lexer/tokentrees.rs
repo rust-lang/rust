@@ -1,5 +1,5 @@
 use super::diagnostics::report_suspicious_mismatch_block;
-use super::diagnostics::same_identation_level;
+use super::diagnostics::same_indentation_level;
 use super::diagnostics::TokenTreeDiagInfo;
 use super::{StringReader, UnmatchedDelim};
 use rustc_ast::token::{self, Delimiter, Token};
@@ -153,7 +153,7 @@ impl<'a> TokenTreesReader<'a> {
                         unclosed_delimiter = Some(sp);
                     };
                     for (brace, brace_span) in &self.diag_info.open_braces {
-                        if same_identation_level(&sm, self.token.span, *brace_span)
+                        if same_indentation_level(&sm, self.token.span, *brace_span)
                             && brace == &close_delim
                         {
                             // high likelihood of these two corresponding
@@ -198,9 +198,8 @@ impl<'a> TokenTreesReader<'a> {
         // An unexpected closing delimiter (i.e., there is no
         // matching opening delimiter).
         let token_str = token_to_string(&self.token);
-        let msg = format!("unexpected closing delimiter: `{}`", token_str);
-        let mut err =
-            self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, &msg);
+        let msg = format!("unexpected closing delimiter: `{token_str}`");
+        let mut err = self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, msg);
 
         report_suspicious_mismatch_block(
             &mut err,

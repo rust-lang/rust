@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/inference-fail.rs:10:12
+   |
+LL |     let _: S<_>::P = ();
+   |            ^^^^^^^ cannot infer type for type parameter `T`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

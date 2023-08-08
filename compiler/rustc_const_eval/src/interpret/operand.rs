@@ -1,6 +1,8 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
+use std::assert_matches::assert_matches;
+
 use either::{Either, Left, Right};
 
 use rustc_hir::def::Namespace;
@@ -13,8 +15,8 @@ use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size};
 
 use super::{
     alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, GlobalId,
-    InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Place, PlaceTy, Pointer,
-    Provenance, Scalar,
+    InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, PlaceTy, Pointer,
+    Projectable, Provenance, Scalar,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -31,7 +33,7 @@ pub enum Immediate<Prov: Provenance = AllocId> {
     /// A pair of two scalar value (must have `ScalarPair` ABI where both fields are
     /// `Scalar::Initialized`).
     ScalarPair(Scalar<Prov>, Scalar<Prov>),
-    /// A value of fully uninitialized memory. Can have and size and layout.
+    /// A value of fully uninitialized memory. Can have arbitrary size and layout.
     Uninit,
 }
 
@@ -106,7 +108,7 @@ impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
                     // Just print the ptr value. `pretty_print_const_scalar_ptr` would also try to
                     // print what is points to, which would fail since it has no access to the local
                     // memory.
-                    cx.pretty_print_const_pointer(ptr, ty, true)
+                    cx.pretty_print_const_pointer(ptr, ty)
                 }
             }
         }
@@ -178,20 +180,6 @@ impl<'tcx, Prov: Provenance> From<MPlaceTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
     }
 }
 
-impl<'tcx, Prov: Provenance> From<&'_ MPlaceTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
-    #[inline(always)]
-    fn from(mplace: &MPlaceTy<'tcx, Prov>) -> Self {
-        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout, align: Some(mplace.align) }
-    }
-}
-
-impl<'tcx, Prov: Provenance> From<&'_ mut MPlaceTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
-    #[inline(always)]
-    fn from(mplace: &mut MPlaceTy<'tcx, Prov>) -> Self {
-        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout, align: Some(mplace.align) }
-    }
-}
-
 impl<'tcx, Prov: Provenance> From<ImmTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
     #[inline(always)]
     fn from(val: ImmTy<'tcx, Prov>) -> Self {
@@ -240,37 +228,126 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
         let int = self.to_scalar().assert_int();
         ConstInt::new(int, self.layout.ty.is_signed(), self.layout.ty.is_ptr_sized_integral())
     }
+
+    /// Compute the "sub-immediate" that is located within the `base` at the given offset with the
+    /// given layout.
+    // Not called `offset` to avoid confusion with the trait method.
+    fn offset_(&self, offset: Size, layout: TyAndLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
+        // This makes several assumptions about what layouts we will encounter; we match what
+        // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
+        let inner_val: Immediate<_> = match (**self, self.layout.abi) {
+            // if the entire value is uninit, then so is the field (can happen in ConstProp)
+            (Immediate::Uninit, _) => Immediate::Uninit,
+            // the field contains no information, can be left uninit
+            _ if layout.is_zst() => Immediate::Uninit,
+            // some fieldless enum variants can have non-zero size but still `Aggregate` ABI... try
+            // to detect those here and also give them no data
+            _ if matches!(layout.abi, Abi::Aggregate { .. })
+                && matches!(&layout.fields, abi::FieldsShape::Arbitrary { offsets, .. } if offsets.len() == 0) =>
+            {
+                Immediate::Uninit
+            }
+            // the field covers the entire type
+            _ if layout.size == self.layout.size => {
+                assert_eq!(offset.bytes(), 0);
+                assert!(
+                    match (self.layout.abi, layout.abi) {
+                        (Abi::Scalar(..), Abi::Scalar(..)) => true,
+                        (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                        _ => false,
+                    },
+                    "cannot project into {} immediate with equally-sized field {}\nouter ABI: {:#?}\nfield ABI: {:#?}",
+                    self.layout.ty,
+                    layout.ty,
+                    self.layout.abi,
+                    layout.abi,
+                );
+                **self
+            }
+            // extract fields from types with `ScalarPair` ABI
+            (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
+                assert!(matches!(layout.abi, Abi::Scalar(..)));
+                Immediate::from(if offset.bytes() == 0 {
+                    debug_assert_eq!(layout.size, a.size(cx));
+                    a_val
+                } else {
+                    debug_assert_eq!(offset, a.size(cx).align_to(b.align(cx).abi));
+                    debug_assert_eq!(layout.size, b.size(cx));
+                    b_val
+                })
+            }
+            // everything else is a bug
+            _ => bug!("invalid field access on immediate {}, layout {:#?}", self, self.layout),
+        };
+
+        ImmTy::from_immediate(inner_val, layout)
+    }
+}
+
+impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
+    #[inline(always)]
+    fn layout(&self) -> TyAndLayout<'tcx> {
+        self.layout
+    }
+
+    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &self,
+        _ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
+        assert!(self.layout.is_sized()); // unsized ImmTy can only exist temporarily and should never reach this here
+        Ok(MemPlaceMeta::None)
+    }
+
+    fn offset_with_meta(
+        &self,
+        offset: Size,
+        meta: MemPlaceMeta<Prov>,
+        layout: TyAndLayout<'tcx>,
+        cx: &impl HasDataLayout,
+    ) -> InterpResult<'tcx, Self> {
+        assert_matches!(meta, MemPlaceMeta::None); // we can't store this anywhere anyway
+        Ok(self.offset_(offset, layout, cx))
+    }
+
+    fn to_op<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &self,
+        _ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        Ok(self.clone().into())
+    }
 }
 
 impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
-    pub fn len(&self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
-        if self.layout.is_unsized() {
-            // There are no unsized immediates.
-            self.assert_mem_place().len(cx)
-        } else {
-            match self.layout.fields {
-                abi::FieldsShape::Array { count, .. } => Ok(count),
-                _ => bug!("len not supported on sized type {:?}", self.layout.ty),
+    // Provided as inherent method since it doesn't need the `ecx` of `Projectable::meta`.
+    pub fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
+        Ok(if self.layout.is_unsized() {
+            if matches!(self.op, Operand::Immediate(_)) {
+                // Unsized immediate OpTy cannot occur. We create a MemPlace for all unsized locals during argument passing.
+                // However, ConstProp doesn't do that, so we can run into this nonsense situation.
+                throw_inval!(ConstPropNonsense);
             }
-        }
+            // There are no unsized immediates.
+            self.assert_mem_place().meta
+        } else {
+            MemPlaceMeta::None
+        })
+    }
+}
+
+impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
+    #[inline(always)]
+    fn layout(&self) -> TyAndLayout<'tcx> {
+        self.layout
     }
 
-    /// Replace the layout of this operand. There's basically no sanity check that this makes sense,
-    /// you better know what you are doing! If this is an immediate, applying the wrong layout can
-    /// not just lead to invalid data, it can actually *shift the data around* since the offsets of
-    /// a ScalarPair are entirely determined by the layout, not the data.
-    pub fn transmute(&self, layout: TyAndLayout<'tcx>) -> Self {
-        assert_eq!(
-            self.layout.size, layout.size,
-            "transmuting with a size change, that doesn't seem right"
-        );
-        OpTy { layout, ..*self }
+    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &self,
+        _ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
+        self.meta()
     }
 
-    /// Offset the operand in memory (if possible) and change its metadata.
-    ///
-    /// This can go wrong very easily if you give the wrong layout for the new place!
-    pub(super) fn offset_with_meta(
+    fn offset_with_meta(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
@@ -280,28 +357,43 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
         match self.as_mplace_or_imm() {
             Left(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, cx)?.into()),
             Right(imm) => {
-                assert!(
-                    matches!(*imm, Immediate::Uninit),
-                    "Scalar/ScalarPair cannot be offset into"
-                );
                 assert!(!meta.has_meta()); // no place to store metadata here
                 // Every part of an uninit is uninit.
-                Ok(ImmTy::uninit(layout).into())
+                Ok(imm.offset(offset, layout, cx)?.into())
             }
         }
     }
 
-    /// Offset the operand in memory (if possible).
-    ///
-    /// This can go wrong very easily if you give the wrong layout for the new place!
-    pub fn offset(
+    fn to_op<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
-        offset: Size,
-        layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, Self> {
-        assert!(layout.is_sized());
-        self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
+        _ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        Ok(self.clone())
+    }
+}
+
+pub trait Readable<'tcx, Prov: Provenance>: Projectable<'tcx, Prov> {
+    fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>>;
+}
+
+impl<'tcx, Prov: Provenance + 'static> Readable<'tcx, Prov> for OpTy<'tcx, Prov> {
+    #[inline(always)]
+    fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
+        self.as_mplace_or_imm()
+    }
+}
+
+impl<'tcx, Prov: Provenance + 'static> Readable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
+    #[inline(always)]
+    fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
+        Left(self.clone())
+    }
+}
+
+impl<'tcx, Prov: Provenance> Readable<'tcx, Prov> for ImmTy<'tcx, Prov> {
+    #[inline(always)]
+    fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
+        Right(self.clone())
     }
 }
 
@@ -377,14 +469,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// ConstProp needs it, though.
     pub fn read_immediate_raw(
         &self,
-        src: &OpTy<'tcx, M::Provenance>,
+        src: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Either<MPlaceTy<'tcx, M::Provenance>, ImmTy<'tcx, M::Provenance>>> {
         Ok(match src.as_mplace_or_imm() {
             Left(ref mplace) => {
                 if let Some(val) = self.read_immediate_from_mplace_raw(mplace)? {
                     Right(val)
                 } else {
-                    Left(*mplace)
+                    Left(mplace.clone())
                 }
             }
             Right(val) => Right(val),
@@ -397,14 +489,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn read_immediate(
         &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        op: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         if !matches!(
-            op.layout.abi,
+            op.layout().abi,
             Abi::Scalar(abi::Scalar::Initialized { .. })
                 | Abi::ScalarPair(abi::Scalar::Initialized { .. }, abi::Scalar::Initialized { .. })
         ) {
-            span_bug!(self.cur_span(), "primitive read not possible for type: {:?}", op.layout.ty);
+            span_bug!(
+                self.cur_span(),
+                "primitive read not possible for type: {:?}",
+                op.layout().ty
+            );
         }
         let imm = self.read_immediate_raw(op)?.right().unwrap();
         if matches!(*imm, Immediate::Uninit) {
@@ -416,7 +512,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Read a scalar from a place
     pub fn read_scalar(
         &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        op: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         Ok(self.read_immediate(op)?.to_scalar())
     }
@@ -427,16 +523,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Read a pointer from a place.
     pub fn read_pointer(
         &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        op: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
         self.read_scalar(op)?.to_pointer(self)
     }
     /// Read a pointer-sized unsigned integer from a place.
-    pub fn read_target_usize(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx, u64> {
+    pub fn read_target_usize(
+        &self,
+        op: &impl Readable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, u64> {
         self.read_scalar(op)?.to_target_usize(self)
     }
     /// Read a pointer-sized signed integer from a place.
-    pub fn read_target_isize(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx, i64> {
+    pub fn read_target_isize(
+        &self,
+        op: &impl Readable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, i64> {
         self.read_scalar(op)?.to_target_isize(self)
     }
 
@@ -491,18 +593,28 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Every place can be read from, so we can turn them into an operand.
     /// This will definitely return `Indirect` if the place is a `Ptr`, i.e., this
     /// will never actually read from memory.
-    #[inline(always)]
     pub fn place_to_op(
         &self,
         place: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let op = match **place {
-            Place::Ptr(mplace) => Operand::Indirect(mplace),
-            Place::Local { frame, local } => {
-                *self.local_to_op(&self.stack()[frame], local, None)?
+        match place.as_mplace_or_local() {
+            Left(mplace) => Ok(mplace.into()),
+            Right((frame, local, offset)) => {
+                let base = self.local_to_op(&self.stack()[frame], local, None)?;
+                let mut field = if let Some(offset) = offset {
+                    // This got offset. We can be sure that the field is sized.
+                    base.offset(offset, place.layout, self)?
+                } else {
+                    assert_eq!(place.layout, base.layout);
+                    // Unsized cases are possible here since an unsized local will be a
+                    // `Place::Local` until the first projection calls `place_to_op` to extract the
+                    // underlying mplace.
+                    base
+                };
+                field.align = Some(place.align);
+                Ok(field)
             }
-        };
-        Ok(OpTy { op, layout: place.layout, align: Some(place.align) })
+        }
     }
 
     /// Evaluate a place with the goal of reading from it. This lets us sometimes
@@ -519,7 +631,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let mut op = self.local_to_op(self.frame(), mir_place.local, layout)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
-            op = self.operand_projection(&op, elem)?
+            op = self.project(&op, elem)?
         }
 
         trace!("eval_place_to_op: got {:?}", *op);
@@ -569,14 +681,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(op)
     }
 
-    /// Evaluate a bunch of operands at once
-    pub(super) fn eval_operands(
-        &self,
-        ops: &[mir::Operand<'tcx>],
-    ) -> InterpResult<'tcx, Vec<OpTy<'tcx, M::Provenance>>> {
-        ops.iter().map(|op| self.eval_operand(op, None)).collect()
-    }
-
     fn eval_ty_constant(
         &self,
         val: ty::Const<'tcx>,
@@ -589,15 +693,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // FIXME(generic_const_exprs): `ConstKind::Expr` should be able to be evaluated
             ty::ConstKind::Expr(_) => throw_inval!(TooGeneric),
             ty::ConstKind::Error(reported) => {
-                throw_inval!(AlreadyReported(reported))
+                throw_inval!(AlreadyReported(reported.into()))
             }
             ty::ConstKind::Unevaluated(uv) => {
-                let instance = self.resolve(uv.def, uv.substs)?;
+                let instance = self.resolve(uv.def, uv.args)?;
                 let cid = GlobalId { instance, promoted: None };
-                self.ctfe_query(span, |tcx| {
-                    tcx.eval_to_valtree(self.param_env.with_const().and(cid))
-                })?
-                .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"))
+                self.ctfe_query(span, |tcx| tcx.eval_to_valtree(self.param_env.and(cid)))?
+                    .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"))
             }
             ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
                 span_bug!(self.cur_span(), "unexpected ConstKind in ctfe: {val:?}")
@@ -612,14 +714,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         span: Option<Span>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        // FIXME(const_prop): normalization needed b/c const prop lint in
-        // `mir_drops_elaborated_and_const_checked`, which happens before
-        // optimized MIR. Only after optimizing the MIR can we guarantee
-        // that the `RevealAll` pass has happened and that the body's consts
-        // are normalized, so any call to resolve before that needs to be
-        // manually normalized.
-        let val = self.tcx.normalize_erasing_regions(self.param_env, *val);
-        match val {
+        match *val {
             mir::ConstantKind::Ty(ct) => {
                 let ty = ct.ty();
                 let valtree = self.eval_ty_constant(ct, span)?;
@@ -628,13 +723,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             mir::ConstantKind::Val(val, ty) => self.const_val_to_op(val, ty, layout),
             mir::ConstantKind::Unevaluated(uv, _) => {
-                let instance = self.resolve(uv.def, uv.substs)?;
+                let instance = self.resolve(uv.def, uv.args)?;
                 Ok(self.eval_global(GlobalId { instance, promoted: uv.promoted }, span)?.into())
             }
         }
     }
 
-    pub(super) fn const_val_to_op(
+    pub(crate) fn const_val_to_op(
         &self,
         val_val: ConstValue<'tcx>,
         ty: Ty<'tcx>,

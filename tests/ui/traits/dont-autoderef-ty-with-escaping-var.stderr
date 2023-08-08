@@ -1,0 +1,27 @@
+error[E0425]: cannot find value `unknown` in this scope
+  --> $DIR/dont-autoderef-ty-with-escaping-var.rs:17:35
+   |
+LL |     <i32 as RefFoo<i32>>::ref_foo(unknown);
+   |                                   ^^^^^^^ not found in this scope
+
+error[E0277]: the trait bound `for<'a> &'a mut Vec<&'a u32>: Foo<'static, i32>` is not satisfied
+  --> $DIR/dont-autoderef-ty-with-escaping-var.rs:17:35
+   |
+LL |     <i32 as RefFoo<i32>>::ref_foo(unknown);
+   |     ----------------------------- ^^^^^^^ the trait `for<'a> Foo<'static, i32>` is not implemented for `&'a mut Vec<&'a u32>`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `i32` to implement `RefFoo<i32>`
+  --> $DIR/dont-autoderef-ty-with-escaping-var.rs:9:9
+   |
+LL | impl<T> RefFoo<T> for T
+   |         ^^^^^^^^^     ^
+LL | where
+LL |     for<'a> &'a mut Vec<&'a u32>: Foo<'static, T>,
+   |                                   --------------- unsatisfied trait bound introduced here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0425.
+For more information about an error, try `rustc --explain E0277`.

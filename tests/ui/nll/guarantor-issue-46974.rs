@@ -9,7 +9,6 @@ fn foo(s: &mut (i32,)) -> i32 {
 }
 
 fn bar(s: &Box<(i32,)>) -> &'static i32 {
-    // FIXME(#46983): error message should be better
     &s.0 //~ ERROR lifetime may not live long enough
 }
 

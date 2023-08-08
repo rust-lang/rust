@@ -1,5 +1,3 @@
-use crate::vec::{Idx, IndexVec};
-use arrayvec::ArrayVec;
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
@@ -8,7 +6,12 @@ use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Bound, Not, Range, RangeBounds
 use std::rc::Rc;
 use std::slice;
 
+use arrayvec::ArrayVec;
+use smallvec::{smallvec, SmallVec};
+
 use rustc_macros::{Decodable, Encodable};
+
+use crate::{Idx, IndexVec};
 
 use Chunk::*;
 
@@ -111,7 +114,7 @@ macro_rules! bit_relations_inherent_impls {
 #[derive(Eq, PartialEq, Hash, Decodable, Encodable)]
 pub struct BitSet<T> {
     domain_size: usize,
-    words: Vec<Word>,
+    words: SmallVec<[Word; 2]>,
     marker: PhantomData<T>,
 }
 
@@ -127,14 +130,15 @@ impl<T: Idx> BitSet<T> {
     #[inline]
     pub fn new_empty(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
-        BitSet { domain_size, words: vec![0; num_words], marker: PhantomData }
+        BitSet { domain_size, words: smallvec![0; num_words], marker: PhantomData }
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
-        let mut result = BitSet { domain_size, words: vec![!0; num_words], marker: PhantomData };
+        let mut result =
+            BitSet { domain_size, words: smallvec![!0; num_words], marker: PhantomData };
         result.clear_excess_bits();
         result
     }
@@ -800,9 +804,7 @@ impl<'a, T: Idx> Iterator for ChunkedBitIter<'a, T> {
         // advance the iterator to the start of the next chunk, before proceeding in chunk sized
         // steps.
         while self.index % CHUNK_BITS != 0 {
-            let Some(item) = self.next() else {
-                return init
-            };
+            let Some(item) = self.next() else { return init };
             init = f(init, item);
         }
         let start_chunk = self.index / CHUNK_BITS;
@@ -1540,7 +1542,7 @@ impl<T: Idx> GrowableBitSet<T> {
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
-        self.bit_set.words.get(word_index).map_or(false, |word| (word & mask) != 0)
+        self.bit_set.words.get(word_index).is_some_and(|word| (word & mask) != 0)
     }
 
     #[inline]
@@ -1571,7 +1573,7 @@ impl<T: Idx> From<BitSet<T>> for GrowableBitSet<T> {
 pub struct BitMatrix<R: Idx, C: Idx> {
     num_rows: usize,
     num_columns: usize,
-    words: Vec<Word>,
+    words: SmallVec<[Word; 2]>,
     marker: PhantomData<(R, C)>,
 }
 
@@ -1584,7 +1586,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         BitMatrix {
             num_rows,
             num_columns,
-            words: vec![0; num_rows * words_per_row],
+            words: smallvec![0; num_rows * words_per_row],
             marker: PhantomData,
         }
     }
@@ -1814,7 +1816,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// if the matrix represents (transitive) reachability, can
     /// `row` reach `column`?
     pub fn contains(&self, row: R, column: C) -> bool {
-        self.row(row).map_or(false, |r| r.contains(column))
+        self.row(row).is_some_and(|r| r.contains(column))
     }
 
     /// Adds the bits from row `read` to the bits from row `write`, and
@@ -1848,7 +1850,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
 
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
-    pub fn iter<'a>(&'a self, row: R) -> impl Iterator<Item = C> + 'a {
+    pub fn iter(&self, row: R) -> impl Iterator<Item = C> + '_ {
         self.row(row).into_iter().flat_map(|r| r.iter())
     }
 

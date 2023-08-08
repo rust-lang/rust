@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_hir;
-use rustc_hir::intravisit;
-use rustc_hir::{self, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind};
+use rustc_hir::{self, intravisit, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
@@ -92,11 +91,8 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
                     if trait_item.id.owner_id.def_id == fn_def_id {
                         // be sure we have `self` parameter in this function
                         if trait_item.kind == (AssocItemKind::Fn { has_self: true }) {
-                            trait_self_ty = Some(
-                                TraitRef::identity(cx.tcx, trait_item.id.owner_id.to_def_id())
-                                    .self_ty()
-                                    .skip_binder(),
-                            );
+                            trait_self_ty =
+                                Some(TraitRef::identity(cx.tcx, trait_item.id.owner_id.to_def_id()).self_ty());
                         }
                     }
                 }

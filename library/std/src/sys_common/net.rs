@@ -2,9 +2,8 @@
 mod tests;
 
 use crate::cmp;
-use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
-use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::ptr;
@@ -19,7 +18,7 @@ use crate::ffi::{c_int, c_void};
 cfg_if::cfg_if! {
     if #[cfg(any(
         target_os = "dragonfly", target_os = "freebsd",
-        target_os = "ios", target_os = "macos", target_os = "watchos",
+        target_os = "ios", target_os = "tvos", target_os = "macos", target_os = "watchos",
         target_os = "openbsd", target_os = "netbsd", target_os = "illumos",
         target_os = "solaris", target_os = "haiku", target_os = "l4re", target_os = "nto"))] {
         use crate::sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
@@ -240,6 +239,7 @@ impl TcpStream {
         Ok(TcpStream { inner: sock })
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }
@@ -270,6 +270,10 @@ impl TcpStream {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
+    }
+
+    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf(buf)
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -349,6 +353,7 @@ impl TcpStream {
 }
 
 impl AsInner<Socket> for TcpStream {
+    #[inline]
     fn as_inner(&self) -> &Socket {
         &self.inner
     }
@@ -424,6 +429,7 @@ impl TcpListener {
         Ok(TcpListener { inner: sock })
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }
@@ -514,6 +520,7 @@ impl UdpSocket {
         Ok(UdpSocket { inner: sock })
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }

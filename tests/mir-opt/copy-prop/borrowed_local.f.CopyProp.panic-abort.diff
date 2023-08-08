@@ -1,0 +1,27 @@
+- // MIR for `f` before CopyProp
++ // MIR for `f` after CopyProp
+  
+  fn f() -> bool {
+      let mut _0: bool;
+      let mut _1: u8;
+      let mut _2: &u8;
+      let mut _3: u8;
+      let mut _4: &u8;
+  
+      bb0: {
+          _1 = const 5_u8;
+          _2 = &_1;
+          _3 = _1;
+          _4 = &_3;
+          _0 = cmp_ref(_2, _4) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _0 = opaque::<u8>(_3) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          return;
+      }
+  }
+  

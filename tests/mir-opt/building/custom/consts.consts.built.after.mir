@@ -1,22 +1,19 @@
 // MIR for `consts` after built
 
 fn consts() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/consts.rs:+0:27: +0:27
-    let mut _1: u8;                      // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-    let mut _2: i8;                      // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-    let mut _3: u32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-    let mut _4: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-    let mut _5: fn() {consts::<10>};     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _0: ();
+    let mut _1: u8;
+    let mut _2: i8;
+    let mut _3: u32;
+    let mut _4: i32;
+    let mut _5: fn() {consts::<10>};
 
     bb0: {
-        _1 = const 5_u8;                 // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-        _2 = const _;                    // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-        _3 = const C;                    // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-        _4 = const _;                    // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-        _5 = consts::<10>;               // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-                                         // mir::Constant
-                                         // + span: $DIR/consts.rs:16:18: 16:30
-                                         // + literal: Const { ty: fn() {consts::<10>}, val: Value(<ZST>) }
-        return;                          // scope 0 at $DIR/consts.rs:+7:9: +7:17
+        _1 = const 5_u8;
+        _2 = const _;
+        _3 = const C;
+        _4 = const _;
+        _5 = consts::<10>;
+        return;
     }
 }

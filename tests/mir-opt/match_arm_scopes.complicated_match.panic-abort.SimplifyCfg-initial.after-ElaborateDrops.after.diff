@@ -1,0 +1,272 @@
+- // MIR for `complicated_match` after SimplifyCfg-initial
++ // MIR for `complicated_match` after ElaborateDrops
+  
+  fn complicated_match(_1: bool, _2: (bool, bool, String)) -> i32 {
+      debug cond => _1;
+      debug items => _2;
+      let mut _0: i32;
+      let mut _3: &bool;
+      let mut _4: &bool;
+      let _5: bool;
+      let _6: &bool;
+      let _7: std::string::String;
+      let _8: &std::string::String;
+      let mut _9: bool;
+      let mut _10: bool;
+      let mut _11: !;
+      let mut _12: bool;
+      let mut _13: bool;
+      let mut _14: !;
+      let _15: bool;
+      let _16: std::string::String;
+      scope 1 {
+          debug a => _5;
+          debug a => _6;
+          debug s => _7;
+          debug s => _8;
+      }
+      scope 2 {
+          debug b => _15;
+          debug t => _16;
+      }
+  
+      bb0: {
+-         FakeRead(ForMatchedPlace(None), _2);
+-         switchInt((_2.0: bool)) -> [0: bb1, otherwise: bb2];
++         switchInt((_2.0: bool)) -> [0: bb5, otherwise: bb1];
+      }
+  
+      bb1: {
+-         falseEdge -> [real: bb8, imaginary: bb3];
++         switchInt((_2.1: bool)) -> [0: bb10, otherwise: bb2];
+      }
+  
+      bb2: {
+-         switchInt((_2.1: bool)) -> [0: bb3, otherwise: bb4];
++         switchInt((_2.0: bool)) -> [0: bb3, otherwise: bb17];
+      }
+  
+      bb3: {
+-         falseEdge -> [real: bb13, imaginary: bb5];
+-     }
+- 
+-     bb4: {
+-         switchInt((_2.0: bool)) -> [0: bb6, otherwise: bb5];
+-     }
+- 
+-     bb5: {
+-         falseEdge -> [real: bb20, imaginary: bb6];
+-     }
+- 
+-     bb6: {
+          StorageLive(_15);
+          _15 = (_2.1: bool);
+          StorageLive(_16);
+          _16 = move (_2.2: std::string::String);
+-         goto -> bb19;
++         goto -> bb16;
+      }
+  
+-     bb7: {
++     bb4: {
+          _0 = const 1_i32;
+-         drop(_7) -> [return: bb18, unwind: bb25];
++         drop(_7) -> [return: bb15, unwind: bb22];
+      }
+  
+-     bb8: {
++     bb5: {
+          StorageLive(_6);
+          _6 = &(_2.1: bool);
+          StorageLive(_8);
+          _8 = &(_2.2: std::string::String);
+-         _3 = &shallow (_2.0: bool);
+-         _4 = &shallow (_2.1: bool);
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = _1;
+-         switchInt(move _10) -> [0: bb10, otherwise: bb9];
++         switchInt(move _10) -> [0: bb7, otherwise: bb6];
+      }
+  
+-     bb9: {
++     bb6: {
+          _0 = const 3_i32;
+          StorageDead(_10);
+          StorageDead(_9);
+-         goto -> bb23;
++         goto -> bb20;
+      }
+  
+-     bb10: {
++     bb7: {
+          _9 = (*_6);
+-         switchInt(move _9) -> [0: bb12, otherwise: bb11];
++         switchInt(move _9) -> [0: bb9, otherwise: bb8];
+      }
+  
+-     bb11: {
++     bb8: {
+          StorageDead(_10);
+          StorageDead(_9);
+-         FakeRead(ForMatchGuard, _3);
+-         FakeRead(ForMatchGuard, _4);
+-         FakeRead(ForGuardBinding, _6);
+-         FakeRead(ForGuardBinding, _8);
+          StorageLive(_5);
+          _5 = (_2.1: bool);
+          StorageLive(_7);
+          _7 = move (_2.2: std::string::String);
+-         goto -> bb7;
++         goto -> bb4;
+      }
+  
+-     bb12: {
++     bb9: {
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageDead(_8);
+          StorageDead(_6);
+-         falseEdge -> [real: bb2, imaginary: bb3];
++         goto -> bb1;
+      }
+  
+-     bb13: {
++     bb10: {
+          StorageLive(_6);
+          _6 = &(_2.0: bool);
+          StorageLive(_8);
+          _8 = &(_2.2: std::string::String);
+-         _3 = &shallow (_2.0: bool);
+-         _4 = &shallow (_2.1: bool);
+          StorageLive(_12);
+          StorageLive(_13);
+          _13 = _1;
+-         switchInt(move _13) -> [0: bb15, otherwise: bb14];
++         switchInt(move _13) -> [0: bb12, otherwise: bb11];
+      }
+  
+-     bb14: {
++     bb11: {
+          _0 = const 3_i32;
+          StorageDead(_13);
+          StorageDead(_12);
+-         goto -> bb23;
++         goto -> bb20;
+      }
+  
+-     bb15: {
++     bb12: {
+          _12 = (*_6);
+-         switchInt(move _12) -> [0: bb17, otherwise: bb16];
++         switchInt(move _12) -> [0: bb14, otherwise: bb13];
+      }
+  
+-     bb16: {
++     bb13: {
+          StorageDead(_13);
+          StorageDead(_12);
+-         FakeRead(ForMatchGuard, _3);
+-         FakeRead(ForMatchGuard, _4);
+-         FakeRead(ForGuardBinding, _6);
+-         FakeRead(ForGuardBinding, _8);
+          StorageLive(_5);
+          _5 = (_2.0: bool);
+          StorageLive(_7);
+          _7 = move (_2.2: std::string::String);
+-         goto -> bb7;
++         goto -> bb4;
+      }
+  
+-     bb17: {
++     bb14: {
+          StorageDead(_13);
+          StorageDead(_12);
+          StorageDead(_8);
+          StorageDead(_6);
+-         falseEdge -> [real: bb4, imaginary: bb5];
++         goto -> bb2;
+      }
+  
+-     bb18: {
++     bb15: {
+          StorageDead(_7);
+          StorageDead(_5);
+          StorageDead(_8);
+          StorageDead(_6);
+-         goto -> bb22;
++         goto -> bb19;
+      }
+  
+-     bb19: {
++     bb16: {
+          _0 = const 2_i32;
+-         drop(_16) -> [return: bb21, unwind: bb25];
++         drop(_16) -> [return: bb18, unwind: bb22];
+      }
+  
+-     bb20: {
++     bb17: {
+          StorageLive(_15);
+          _15 = (_2.1: bool);
+          StorageLive(_16);
+          _16 = move (_2.2: std::string::String);
+-         goto -> bb19;
++         goto -> bb16;
+      }
+  
+-     bb21: {
++     bb18: {
+          StorageDead(_16);
+          StorageDead(_15);
+-         goto -> bb22;
++         goto -> bb19;
+      }
+  
+-     bb22: {
+-         drop(_2) -> [return: bb24, unwind: bb26];
++     bb19: {
++         goto -> bb26;
+      }
+  
+-     bb23: {
++     bb20: {
+          StorageDead(_8);
+          StorageDead(_6);
+-         drop(_2) -> [return: bb24, unwind: bb26];
++         drop(_2) -> [return: bb21, unwind: bb23];
+      }
+  
+-     bb24: {
++     bb21: {
+          return;
+      }
+  
+-     bb25 (cleanup): {
+-         drop(_2) -> [return: bb26, unwind terminate];
++     bb22 (cleanup): {
++         goto -> bb27;
+      }
+  
+-     bb26 (cleanup): {
++     bb23 (cleanup): {
+          resume;
++     }
++ 
++     bb24: {
++         goto -> bb21;
++     }
++ 
++     bb25 (cleanup): {
++         goto -> bb23;
++     }
++ 
++     bb26: {
++         goto -> bb24;
++     }
++ 
++     bb27 (cleanup): {
++         goto -> bb23;
+      }
+  }
+  

@@ -17,6 +17,7 @@ use crate::ops::{
 };
 use crate::slice::{Iter, IterMut};
 
+mod ascii;
 mod drain;
 mod equality;
 mod iter;
@@ -148,8 +149,7 @@ impl Error for TryFromSliceError {
 }
 
 #[stable(feature = "try_from_slice_error", since = "1.36.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl const From<Infallible> for TryFromSliceError {
+impl From<Infallible> for TryFromSliceError {
     fn from(x: Infallible) -> TryFromSliceError {
         match x {}
     }
@@ -172,16 +172,14 @@ impl<T, const N: usize> AsMut<[T]> for [T; N] {
 }
 
 #[stable(feature = "array_borrow", since = "1.4.0")]
-#[rustc_const_unstable(feature = "const_borrow", issue = "91522")]
-impl<T, const N: usize> const Borrow<[T]> for [T; N] {
+impl<T, const N: usize> Borrow<[T]> for [T; N] {
     fn borrow(&self) -> &[T] {
         self
     }
 }
 
 #[stable(feature = "array_borrow", since = "1.4.0")]
-#[rustc_const_unstable(feature = "const_borrow", issue = "91522")]
-impl<T, const N: usize> const BorrowMut<[T]> for [T; N] {
+impl<T, const N: usize> BorrowMut<[T]> for [T; N] {
     fn borrow_mut(&mut self) -> &mut [T] {
         self
     }
@@ -206,6 +204,7 @@ where
 {
     type Error = TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &[T]) -> Result<[T; N], TryFromSliceError> {
         <&Self>::try_from(slice).map(|r| *r)
     }
@@ -230,6 +229,7 @@ where
 {
     type Error = TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &mut [T]) -> Result<[T; N], TryFromSliceError> {
         <Self>::try_from(&*slice)
     }
@@ -251,7 +251,8 @@ where
 impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     type Error = TryFromSliceError;
 
-    fn try_from(slice: &[T]) -> Result<&[T; N], TryFromSliceError> {
+    #[inline]
+    fn try_from(slice: &'a [T]) -> Result<&'a [T; N], TryFromSliceError> {
         if slice.len() == N {
             let ptr = slice.as_ptr() as *const [T; N];
             // SAFETY: ok because we just checked that the length fits
@@ -278,7 +279,8 @@ impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
 impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
     type Error = TryFromSliceError;
 
-    fn try_from(slice: &mut [T]) -> Result<&mut [T; N], TryFromSliceError> {
+    #[inline]
+    fn try_from(slice: &'a mut [T]) -> Result<&'a mut [T; N], TryFromSliceError> {
         if slice.len() == N {
             let ptr = slice.as_mut_ptr() as *mut [T; N];
             // SAFETY: ok because we just checked that the length fits
@@ -293,7 +295,6 @@ impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
 /// as required by the `Borrow` implementation.
 ///
 /// ```
-/// #![feature(build_hasher_simple_hash_one)]
 /// use std::hash::BuildHasher;
 ///
 /// let b = std::collections::hash_map::RandomState::new();
@@ -336,10 +337,9 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut [T; N] {
 }
 
 #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-impl<T, I, const N: usize> const Index<I> for [T; N]
+impl<T, I, const N: usize> Index<I> for [T; N]
 where
-    [T]: ~const Index<I>,
+    [T]: Index<I>,
 {
     type Output = <[T] as Index<I>>::Output;
 
@@ -350,10 +350,9 @@ where
 }
 
 #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-impl<T, I, const N: usize> const IndexMut<I> for [T; N]
+impl<T, I, const N: usize> IndexMut<I> for [T; N]
 where
-    [T]: ~const IndexMut<I>,
+    [T]: IndexMut<I>,
 {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
@@ -435,8 +434,7 @@ impl<T: Copy> SpecArrayClone for T {
 macro_rules! array_impl_default {
     {$n:expr, $t:ident $($ts:ident)*} => {
         #[stable(since = "1.4.0", feature = "array_default")]
-        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-        impl<T> const Default for [T; $n] where T: ~const Default {
+        impl<T> Default for [T; $n] where T: Default {
             fn default() -> [T; $n] {
                 [$t::default(), $($ts::default()),*]
             }
@@ -445,8 +443,7 @@ macro_rules! array_impl_default {
     };
     {$n:expr,} => {
         #[stable(since = "1.4.0", feature = "array_default")]
-        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-        impl<T> const Default for [T; $n] {
+        impl<T> Default for [T; $n] {
             fn default() -> [T; $n] { [] }
         }
     };
@@ -539,29 +536,6 @@ impl<T, const N: usize> [T; N] {
         R::Residual: Residual<[R::Output; N]>,
     {
         drain_array_with(self, |iter| try_from_trusted_iterator(iter.map(f)))
-    }
-
-    /// 'Zips up' two arrays into a single array of pairs.
-    ///
-    /// `zip()` returns a new array where every element is a tuple where the
-    /// first element comes from the first array, and the second element comes
-    /// from the second array. In other words, it zips two arrays together,
-    /// into a single one.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(array_zip)]
-    /// let x = [1, 2, 3];
-    /// let y = [4, 5, 6];
-    /// let z = x.zip(y);
-    /// assert_eq!(z, [(1, 4), (2, 5), (3, 6)]);
-    /// ```
-    #[unstable(feature = "array_zip", issue = "80094")]
-    pub fn zip<U>(self, rhs: [U; N]) -> [(T, U); N] {
-        drain_array_with(self, |lhs| {
-            drain_array_with(rhs, |rhs| from_trusted_iterator(crate::iter::zip(lhs, rhs)))
-        })
     }
 
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
@@ -951,7 +925,7 @@ fn iter_next_chunk_erased<T>(
             // so we need to defuse the guard instead of using `?`.
             let initialized = guard.initialized;
             mem::forget(guard);
-            return Err(initialized)
+            return Err(initialized);
         };
 
         // SAFETY: The loop condition ensures we have space to push the item

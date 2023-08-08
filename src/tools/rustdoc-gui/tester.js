@@ -6,8 +6,8 @@
 
 const fs = require("fs");
 const path = require("path");
-const os = require('os');
-const {Options, runTest} = require('browser-ui-test');
+const os = require("os");
+const {Options, runTest} = require("browser-ui-test");
 
 // If a test fails or errors, we will retry it two more times in case it was a flaky failure.
 const NB_RETRY = 3;
@@ -42,7 +42,7 @@ function parseOptions(args) {
         "executable_path": null,
         "no_sandbox": false,
     };
-    const correspondances = {
+    const correspondences = {
         "--doc-folder": "doc_folder",
         "--tests-folder": "tests_folder",
         "--debug": "debug",
@@ -73,7 +73,7 @@ function parseOptions(args) {
                 }
                 opts["jobs"] = parseInt(arg_value);
             } else if (arg !== "--file") {
-                opts[correspondances[arg]] = arg_value;
+                opts[correspondences[arg]] = arg_value;
             } else {
                 opts["files"].push(arg_value);
             }
@@ -82,9 +82,9 @@ function parseOptions(args) {
             process.exit(0);
         } else if (arg === "--no-sandbox") {
             console.log("`--no-sandbox` is being used. Be very careful!");
-            opts[correspondances[arg]] = true;
-        } else if (correspondances[arg]) {
-            opts[correspondances[arg]] = true;
+            opts[correspondences[arg]] = true;
+        } else if (correspondences[arg]) {
+            opts[correspondences[arg]] = true;
         } else {
             console.log("Unknown option `" + arg + "`.");
             console.log("Use `--help` to see the list of options");
@@ -143,7 +143,7 @@ async function runTests(opts, framework_options, files, results, status_bar, sho
     const tests_queue = [];
 
     for (const testPath of files) {
-        const callback = runTest(testPath, framework_options)
+        const callback = runTest(testPath, {"options": framework_options})
             .then(out => {
                 const [output, nb_failures] = out;
                 results[nb_failures === 0 ? "successful" : "failed"].push({
@@ -200,9 +200,9 @@ async function main(argv) {
     const framework_options = new Options();
     try {
         // This is more convenient that setting fields one by one.
-        let args = [
-            "--variable", "DOC_PATH", opts["doc_folder"], "--enable-fail-on-js-error",
-            "--allow-file-access-from-files",
+        const args = [
+            "--variable", "DOC_PATH", opts["doc_folder"].split("\\").join("/"),
+            "--enable-fail-on-js-error", "--allow-file-access-from-files",
         ];
         if (opts["debug"]) {
             debug = true;
@@ -234,7 +234,7 @@ async function main(argv) {
     } else {
         files = opts["files"];
     }
-    files = files.filter(file => path.extname(file) == ".goml");
+    files = files.filter(file => path.extname(file) === ".goml");
     if (files.length === 0) {
         console.error("rustdoc-gui: No test selected");
         process.exit(2);
@@ -259,7 +259,7 @@ async function main(argv) {
 
     // We catch this "event" to display a nicer message in case of unexpected exit (because of a
     // missing `--no-sandbox`).
-    const exitHandling = (code) => {
+    const exitHandling = () => {
         if (!opts["no_sandbox"]) {
             console.log("");
             console.log(
@@ -268,10 +268,10 @@ async function main(argv) {
             console.log("");
         }
     };
-    process.on('exit', exitHandling);
+    process.on("exit", exitHandling);
 
     const originalFilesLen = files.length;
-    let results = createEmptyResults();
+    const results = createEmptyResults();
     const status_bar = char_printer(files.length);
 
     let new_results;
@@ -281,7 +281,7 @@ async function main(argv) {
         Array.prototype.push.apply(results.successful, new_results.successful);
         // We generate the new list of files with the previously failing tests.
         files = Array.prototype.concat(new_results.failed, new_results.errored).map(
-            f => f['file_name']);
+            f => f["file_name"]);
         if (files.length > originalFilesLen / 2) {
             // If we have too many failing tests, it's very likely not flaky failures anymore so
             // no need to retry.
@@ -323,6 +323,7 @@ async function main(argv) {
     if (results.failed.length > 0 || results.errored.length > 0) {
         process.exit(1);
     }
+    process.exit(0);
 }
 
 main(process.argv);

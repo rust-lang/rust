@@ -4,11 +4,10 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn or<'a>(first: &'static Validator<'a>, second: &'static Validator<'a>) -> Validator<'a> {
    |                                                                             ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: use `impl Fn(&'a Something) -> Result<(), ()> + Send + Sync + 'a` as the return type, as all return paths are of type `Box<[closure@$DIR/issue-91801.rs:10:21: 10:70]>`, which implements `Fn(&'a Something) -> Result<(), ()> + Send + Sync + 'a`
+help: box the return type, and wrap all of the returned values in `Box::new`
    |
-LL | fn or<'a>(first: &'static Validator<'a>, second: &'static Validator<'a>) -> impl Fn(&'a Something) -> Result<(), ()> + Send + Sync + 'a {
-   |                                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL | fn or<'a>(first: &'static Validator<'a>, second: &'static Validator<'a>) -> Box<Validator<'a>> {
+   |                                                                             ++++             +
 
 error: aborting due to previous error
 

@@ -1,24 +1,17 @@
-// aux-build:macro_rules.rs
+//@aux-build:proc_macros.rs:proc-macro
 #![warn(clippy::option_env_unwrap)]
 #![allow(clippy::map_flatten)]
 
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::{external, inline_macros};
 
-macro_rules! option_env_unwrap {
-    ($env: expr) => {
-        option_env!($env).unwrap()
-    };
-    ($env: expr, $message: expr) => {
-        option_env!($env).expect($message)
-    };
-}
-
+#[inline_macros]
 fn main() {
     let _ = option_env!("PATH").unwrap();
     let _ = option_env!("PATH").expect("environment variable PATH isn't set");
-    let _ = option_env_unwrap!("PATH");
-    let _ = option_env_unwrap!("PATH", "environment variable PATH isn't set");
-    let _ = option_env_unwrap_external!("PATH");
-    let _ = option_env_unwrap_external!("PATH", "environment variable PATH isn't set");
+    let _ = option_env!("__Y__do_not_use").unwrap(); // This test only works if you don't have a __Y__do_not_use env variable in your environment.
+    let _ = inline!(option_env!($"PATH").unwrap());
+    let _ = inline!(option_env!($"PATH").expect($"environment variable PATH isn't set"));
+    let _ = external!(option_env!($"PATH").unwrap());
+    let _ = external!(option_env!($"PATH").expect($"environment variable PATH isn't set"));
 }

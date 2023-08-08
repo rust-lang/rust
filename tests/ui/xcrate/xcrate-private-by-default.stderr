@@ -62,7 +62,9 @@ error[E0603]: module `foo` is private
   --> $DIR/xcrate-private-by-default.rs:35:29
    |
 LL |     static_priv_by_default::foo::a;
-   |                             ^^^ private module
+   |                             ^^^  - static `a` is not publicly re-exported
+   |                             |
+   |                             private module
    |
 note: the module `foo` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:12:1
@@ -74,7 +76,9 @@ error[E0603]: module `foo` is private
   --> $DIR/xcrate-private-by-default.rs:37:29
    |
 LL |     static_priv_by_default::foo::b;
-   |                             ^^^ private module
+   |                             ^^^  - function `b` is not publicly re-exported
+   |                             |
+   |                             private module
    |
 note: the module `foo` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:12:1
@@ -86,7 +90,9 @@ error[E0603]: module `foo` is private
   --> $DIR/xcrate-private-by-default.rs:39:29
    |
 LL |     static_priv_by_default::foo::c;
-   |                             ^^^ private module
+   |                             ^^^  - unit struct `c` is not publicly re-exported
+   |                             |
+   |                             private module
    |
 note: the module `foo` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:12:1
@@ -98,7 +104,9 @@ error[E0603]: module `foo` is private
   --> $DIR/xcrate-private-by-default.rs:41:35
    |
 LL |     foo::<static_priv_by_default::foo::d>();
-   |                                   ^^^ private module
+   |                                   ^^^  - enum `d` is not publicly re-exported
+   |                                   |
+   |                                   private module
    |
 note: the module `foo` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:12:1
@@ -110,7 +118,9 @@ error[E0603]: module `foo` is private
   --> $DIR/xcrate-private-by-default.rs:43:35
    |
 LL |     foo::<static_priv_by_default::foo::e>();
-   |                                   ^^^ private module
+   |                                   ^^^  - type alias `e` is not publicly re-exported
+   |                                   |
+   |                                   private module
    |
 note: the module `foo` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:12:1

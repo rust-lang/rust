@@ -6,7 +6,7 @@ LL |     let x1 = HashMap::new();
    |
 help: consider importing this struct
    |
-LL | use std::collections::HashMap;
+LL + use std::collections::HashMap;
    |
 
 error[E0412]: cannot find type `HashMap` in this scope
@@ -17,7 +17,7 @@ LL |     let y1: HashMap;
    |
 help: consider importing this struct
    |
-LL | use std::collections::HashMap;
+LL + use std::collections::HashMap;
    |
 
 error[E0412]: cannot find type `GooMap` in this scope

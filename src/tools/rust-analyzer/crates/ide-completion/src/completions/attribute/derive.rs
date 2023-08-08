@@ -34,7 +34,7 @@ pub(crate) fn complete_derive_path(
                         acc.add_macro(ctx, path_ctx, mac, name)
                     }
                     ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
-                        acc.add_module(ctx, path_ctx, m, name)
+                        acc.add_module(ctx, path_ctx, m, name, vec![])
                     }
                     _ => (),
                 }
@@ -43,7 +43,7 @@ pub(crate) fn complete_derive_path(
         Qualified::Absolute => acc.add_crate_roots(ctx, path_ctx),
         // only show modules in a fresh UseTree
         Qualified::No => {
-            ctx.process_all_names(&mut |name, def| {
+            ctx.process_all_names(&mut |name, def, doc_aliases| {
                 let mac = match def {
                     ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac))
                         if !existing_derives.contains(&mac) && mac.is_derive(ctx.db) =>
@@ -51,7 +51,7 @@ pub(crate) fn complete_derive_path(
                         mac
                     }
                     ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
-                        return acc.add_module(ctx, path_ctx, m, name);
+                        return acc.add_module(ctx, path_ctx, m, name, doc_aliases);
                     }
                     _ => return,
                 };
@@ -90,7 +90,7 @@ pub(crate) fn complete_derive_path(
                             item.documentation(docs);
                         }
                         item.lookup_by(lookup);
-                        item.add_to(acc);
+                        item.add_to(acc, ctx.db);
                     }
                     None => acc.add_macro(ctx, path_ctx, mac, name),
                 }

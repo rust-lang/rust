@@ -36,60 +36,6 @@ pub enum UpdateMode {
 pub fn update(update_mode: UpdateMode) {
     let (lints, deprecated_lints, renamed_lints) = gather_all();
     generate_lint_files(update_mode, &lints, &deprecated_lints, &renamed_lints);
-    remove_old_files(update_mode);
-}
-
-/// Remove files no longer needed after <https://github.com/rust-lang/rust-clippy/pull/9541>
-/// that may be reintroduced unintentionally
-///
-/// FIXME: This is a temporary measure that should be removed when there are no more PRs that
-/// include the stray files
-fn remove_old_files(update_mode: UpdateMode) {
-    let mut failed = false;
-    let mut remove_file = |path: &Path| match update_mode {
-        UpdateMode::Check => {
-            if path.exists() {
-                failed = true;
-                println!("unexpected file: {}", path.display());
-            }
-        },
-        UpdateMode::Change => {
-            if fs::remove_file(path).is_ok() {
-                println!("removed file: {}", path.display());
-            }
-        },
-    };
-
-    let files = [
-        "clippy_lints/src/lib.register_all.rs",
-        "clippy_lints/src/lib.register_cargo.rs",
-        "clippy_lints/src/lib.register_complexity.rs",
-        "clippy_lints/src/lib.register_correctness.rs",
-        "clippy_lints/src/lib.register_internal.rs",
-        "clippy_lints/src/lib.register_lints.rs",
-        "clippy_lints/src/lib.register_nursery.rs",
-        "clippy_lints/src/lib.register_pedantic.rs",
-        "clippy_lints/src/lib.register_perf.rs",
-        "clippy_lints/src/lib.register_restriction.rs",
-        "clippy_lints/src/lib.register_style.rs",
-        "clippy_lints/src/lib.register_suspicious.rs",
-        "src/docs.rs",
-    ];
-
-    for file in files {
-        remove_file(Path::new(file));
-    }
-
-    if let Ok(docs_dir) = fs::read_dir("src/docs") {
-        for doc_file in docs_dir {
-            let path = doc_file.unwrap().path();
-            remove_file(&path);
-        }
-    }
-
-    if failed {
-        exit_with_failure();
-    }
 }
 
 fn generate_lint_files(
@@ -394,7 +340,10 @@ pub fn deprecate(name: &str, reason: Option<&String>) {
     let name_upper = name.to_uppercase();
 
     let (mut lints, deprecated_lints, renamed_lints) = gather_all();
-    let Some(lint) = lints.iter().find(|l| l.name == name_lower) else { eprintln!("error: failed to find lint `{name}`"); return; };
+    let Some(lint) = lints.iter().find(|l| l.name == name_lower) else {
+        eprintln!("error: failed to find lint `{name}`");
+        return;
+    };
 
     let mod_path = {
         let mut mod_path = PathBuf::from(format!("clippy_lints/src/{}", lint.module));
@@ -537,17 +486,13 @@ fn declare_deprecated(name: &str, path: &Path, reason: &str) -> io::Result<()> {
             /// Nothing. This lint has been deprecated.
             ///
             /// ### Deprecation reason
-            /// {}
-            #[clippy::version = \"{}\"]
-            pub {},
-            \"{}\"
+            /// {deprecation_reason}
+            #[clippy::version = \"{version}\"]
+            pub {name},
+            \"{reason}\"
         }}
 
-        ",
-        deprecation_reason,
-        version,
-        name,
-        reason,
+        "
     )
 }
 
@@ -745,7 +690,7 @@ fn gen_deprecated_lints_test(lints: &[DeprecatedLint]) -> String {
 fn gen_renamed_lints_test(lints: &[RenamedLint]) -> String {
     let mut seen_lints = HashSet::new();
     let mut res: String = GENERATED_FILE_COMMENT.into();
-    res.push_str("// run-rustfix\n\n");
+    res.push_str("//@run-rustfix\n\n");
     for lint in lints {
         if seen_lints.insert(&lint.new_name) {
             writeln!(res, "#![allow({})]", lint.new_name).unwrap();

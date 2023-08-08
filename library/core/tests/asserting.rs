@@ -24,7 +24,7 @@ struct NoCopyNoDebug;
 struct NoDebug;
 
 test!(
-    capture_with_non_copyable_and_non_debugabble_elem_has_correct_params,
+    capture_with_non_copyable_and_non_debuggable_elem_has_correct_params,
     NoCopyNoDebug,
     None,
     "N/A"
@@ -32,6 +32,6 @@ test!(
 
 test!(capture_with_non_copyable_elem_has_correct_params, NoCopy, None, "N/A");
 
-test!(capture_with_non_debugabble_elem_has_correct_params, NoDebug, None, "N/A");
+test!(capture_with_non_debuggable_elem_has_correct_params, NoDebug, None, "N/A");
 
-test!(capture_with_copyable_and_debugabble_elem_has_correct_params, 1i32, Some(1i32), "1");
+test!(capture_with_copyable_and_debuggable_elem_has_correct_params, 1i32, Some(1i32), "1");

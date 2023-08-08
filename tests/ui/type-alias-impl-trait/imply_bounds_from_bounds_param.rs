@@ -1,4 +1,4 @@
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 trait Callable {
     type Output;
@@ -17,7 +17,9 @@ impl<'a> PlusOne for &'a mut i32 {
 
 impl<T: PlusOne> Callable for T {
     type Output = impl PlusOne;
-    fn call(t: T) -> Self::Output { t }
+    fn call(t: T) -> Self::Output {
+        t
+    }
 }
 
 fn test<'a>(y: &'a mut i32) -> impl PlusOne {

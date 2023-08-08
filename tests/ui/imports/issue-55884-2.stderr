@@ -1,16 +1,16 @@
 error[E0603]: struct import `ParseOptions` is private
-  --> $DIR/issue-55884-2.rs:12:17
+  --> $DIR/issue-55884-2.rs:13:17
    |
 LL | pub use parser::ParseOptions;
    |                 ^^^^^^^^^^^^ private struct import
    |
 note: the struct import `ParseOptions` is defined here...
-  --> $DIR/issue-55884-2.rs:9:9
+  --> $DIR/issue-55884-2.rs:10:9
    |
 LL |     use ParseOptions;
    |         ^^^^^^^^^^^^
 note: ...and refers to the struct import `ParseOptions` which is defined here...
-  --> $DIR/issue-55884-2.rs:12:9
+  --> $DIR/issue-55884-2.rs:13:9
    |
 LL | pub use parser::ParseOptions;
    |         ^^^^^^^^^^^^^^^^^^^^ consider importing it directly

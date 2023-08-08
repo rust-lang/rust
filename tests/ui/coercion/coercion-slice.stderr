@@ -2,11 +2,14 @@ error[E0308]: mismatched types
   --> $DIR/coercion-slice.rs:4:21
    |
 LL |     let _: &[i32] = [0];
-   |            ------   ^^^
-   |            |        |
-   |            |        expected `&[i32]`, found `[{integer}; 1]`
-   |            |        help: consider borrowing here: `&[0]`
+   |            ------   ^^^ expected `&[i32]`, found `[{integer}; 1]`
+   |            |
    |            expected due to this
+   |
+help: consider borrowing here
+   |
+LL |     let _: &[i32] = &[0];
+   |                     +
 
 error: aborting due to previous error
 

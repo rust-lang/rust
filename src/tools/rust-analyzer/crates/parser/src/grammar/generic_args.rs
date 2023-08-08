@@ -28,14 +28,18 @@ const GENERIC_ARG_FIRST: TokenSet = TokenSet::new(&[
     BYTE,
     STRING,
     BYTE_STRING,
+    C_STRING,
 ])
 .union(types::TYPE_FIRST);
+
+// Despite its name, it can also be used for generic param list.
+const GENERIC_ARG_RECOVERY_SET: TokenSet = TokenSet::new(&[T![>], T![,]]);
 
 // test generic_arg
 // type T = S<i32>;
 fn generic_arg(p: &mut Parser<'_>) -> bool {
     match p.current() {
-        LIFETIME_IDENT => lifetime_arg(p),
+        LIFETIME_IDENT if !p.nth_at(1, T![+]) => lifetime_arg(p),
         T!['{'] | T![true] | T![false] | T![-] => const_arg(p),
         k if k.is_literal() => const_arg(p),
         // test associated_type_bounds
@@ -54,6 +58,15 @@ fn generic_arg(p: &mut Parser<'_>) -> bool {
                         // test assoc_type_eq
                         // type T = StreamingIterator<Item<'a> = &'a T>;
                         types::type_(p);
+                    } else if p.at_ts(GENERIC_ARG_RECOVERY_SET) {
+                        // Although `const_arg()` recovers as expected, we want to
+                        // handle those here to give the following message because
+                        // we don't know whether this associated item is a type or
+                        // const at this point.
+
+                        // test_err recover_from_missing_assoc_item_binding
+                        // fn f() -> impl Iterator<Item = , Item = > {}
+                        p.error("missing associated item binding");
                     } else {
                         // test assoc_const_eq
                         // fn foo<F: Foo<N=3>>() {}
@@ -74,6 +87,29 @@ fn generic_arg(p: &mut Parser<'_>) -> bool {
                     let m = paths::type_path_for_qualifier(p, m);
                     m.precede(p).complete(p, PATH_TYPE).precede(p).complete(p, TYPE_ARG);
                 }
+            }
+        }
+        IDENT if p.nth_at(1, T!['(']) => {
+            let m = p.start();
+            name_ref(p);
+            params::param_list_fn_trait(p);
+            if p.at(T![:]) && !p.at(T![::]) {
+                // test associated_return_type_bounds
+                // fn foo<T: Foo<foo(): Send, bar(i32): Send, baz(i32, i32): Send>>() {}
+                generic_params::bounds(p);
+                m.complete(p, ASSOC_TYPE_ARG);
+            } else {
+                // test bare_dyn_types_with_paren_as_generic_args
+                // type A = S<Fn(i32)>;
+                // type A = S<Fn(i32) + Send>;
+                // type B = S<Fn(i32) -> i32>;
+                // type C = S<Fn(i32) -> i32 + Send>;
+                opt_ret_type(p);
+                let m = m.complete(p, PATH_SEGMENT).precede(p).complete(p, PATH);
+                let m = paths::type_path_for_qualifier(p, m);
+                let m = m.precede(p).complete(p, PATH_TYPE);
+                let m = types::opt_type_bounds_as_dyn_trait_type(p, m);
+                m.precede(p).complete(p, TYPE_ARG);
             }
         }
         _ if p.at_ts(types::TYPE_FIRST) => type_arg(p),
@@ -117,11 +153,16 @@ pub(super) fn const_arg_expr(p: &mut Parser<'_>) {
             expressions::literal(p);
             lm.complete(p, PREFIX_EXPR);
         }
-        _ => {
+        _ if paths::is_use_path_start(p) => {
             // This shouldn't be hit by `const_arg`
             let lm = p.start();
             paths::use_path(p);
             lm.complete(p, PATH_EXPR);
+        }
+        _ => {
+            // test_err recover_from_missing_const_default
+            // struct A<const N: i32 = , const M: i32 =>;
+            p.err_recover("expected a generic const argument", GENERIC_ARG_RECOVERY_SET);
         }
     }
 }

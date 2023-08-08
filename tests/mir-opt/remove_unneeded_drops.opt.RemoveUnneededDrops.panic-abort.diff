@@ -1,0 +1,27 @@
+- // MIR for `opt` before RemoveUnneededDrops
++ // MIR for `opt` after RemoveUnneededDrops
+  
+  fn opt(_1: bool) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: ();
+      let mut _3: bool;
+      scope 1 (inlined std::mem::drop::<bool>) {
+          debug _x => _3;
+      }
+  
+      bb0: {
+-         nop;
+          StorageLive(_3);
+          _3 = _1;
+-         drop(_3) -> [return: bb1, unwind unreachable];
+-     }
+- 
+-     bb1: {
+          StorageDead(_3);
+-         nop;
+-         nop;
+          return;
+      }
+  }
+  

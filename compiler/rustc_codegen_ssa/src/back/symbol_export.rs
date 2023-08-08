@@ -1,6 +1,8 @@
+use crate::base::allocator_kind_for_codegen;
+
 use std::collections::hash_map::Entry::*;
 
-use rustc_ast::expand::allocator::ALLOCATOR_METHODS;
+use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
@@ -8,10 +10,11 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
-use rustc_middle::ty::query::{ExternProviders, Providers};
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::query::LocalCrate;
+use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, SymbolName, TyCtxt};
+use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 use rustc_session::config::{CrateType, OomStrategy};
 use rustc_target::spec::SanitizerSet;
 
@@ -39,9 +42,7 @@ pub fn crates_export_threshold(crate_types: &[CrateType]) -> SymbolExportLevel {
     }
 }
 
-fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<SymbolExportInfo> {
-    assert_eq!(cnum, LOCAL_CRATE);
-
+fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<SymbolExportInfo> {
     if !tcx.sess.opts.output_types.should_codegen() {
         return Default::default();
     }
@@ -152,10 +153,10 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
     reachable_non_generics
 }
 
-fn is_reachable_non_generic_provider_local(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+fn is_reachable_non_generic_provider_local(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let export_threshold = threshold(tcx);
 
-    if let Some(&info) = tcx.reachable_non_generics(def_id.krate).get(&def_id) {
+    if let Some(&info) = tcx.reachable_non_generics(LOCAL_CRATE).get(&def_id.to_def_id()) {
         info.level.is_below_threshold(export_threshold)
     } else {
         false
@@ -168,23 +169,36 @@ fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> b
 
 fn exported_symbols_provider_local(
     tcx: TyCtxt<'_>,
-    cnum: CrateNum,
+    _: LocalCrate,
 ) -> &[(ExportedSymbol<'_>, SymbolExportInfo)] {
-    assert_eq!(cnum, LOCAL_CRATE);
-
     if !tcx.sess.opts.output_types.should_codegen() {
         return &[];
     }
 
     // FIXME: Sorting this is unnecessary since we are sorting later anyway.
     //        Can we skip the later sorting?
-    let mut symbols: Vec<_> = tcx.with_stable_hashing_context(|hcx| {
-        tcx.reachable_non_generics(LOCAL_CRATE)
-            .to_sorted(&hcx, true)
-            .into_iter()
-            .map(|(&def_id, &info)| (ExportedSymbol::NonGeneric(def_id), info))
-            .collect()
+    let sorted = tcx.with_stable_hashing_context(|hcx| {
+        tcx.reachable_non_generics(LOCAL_CRATE).to_sorted(&hcx, true)
     });
+
+    let mut symbols: Vec<_> =
+        sorted.iter().map(|(&def_id, &info)| (ExportedSymbol::NonGeneric(def_id), info)).collect();
+
+    // Export TLS shims
+    if !tcx.sess.target.dll_tls_export {
+        symbols.extend(sorted.iter().filter_map(|(&def_id, &info)| {
+            tcx.needs_thread_local_shim(def_id).then(|| {
+                (
+                    ExportedSymbol::ThreadLocalShim(def_id),
+                    SymbolExportInfo {
+                        level: info.level,
+                        kind: SymbolExportKind::Text,
+                        used: info.used,
+                    },
+                )
+            })
+        }))
+    }
 
     if tcx.entry_fn(()).is_some() {
         let exported_symbol =
@@ -200,7 +214,8 @@ fn exported_symbols_provider_local(
         ));
     }
 
-    if tcx.allocator_kind(()).is_some() {
+    // Mark allocator shim symbols as exported only if they were generated.
+    if allocator_kind_for_codegen(tcx).is_some() {
         for symbol_name in ALLOCATOR_METHODS
             .iter()
             .map(|method| format!("__rust_{}", method.name))
@@ -218,14 +233,16 @@ fn exported_symbols_provider_local(
             ));
         }
 
+        let exported_symbol =
+            ExportedSymbol::NoDefId(SymbolName::new(tcx, NO_ALLOC_SHIM_IS_UNSTABLE));
         symbols.push((
-            ExportedSymbol::NoDefId(SymbolName::new(tcx, OomStrategy::SYMBOL)),
+            exported_symbol,
             SymbolExportInfo {
                 level: SymbolExportLevel::Rust,
-                kind: SymbolExportKind::Text,
+                kind: SymbolExportKind::Data,
                 used: false,
             },
-        ));
+        ))
     }
 
     if tcx.sess.instrument_coverage() || tcx.sess.opts.cg.profile_generate.enabled() {
@@ -302,23 +319,23 @@ fn exported_symbols_provider_local(
 
         let (_, cgus) = tcx.collect_and_partition_mono_items(());
 
-        for (mono_item, &(linkage, visibility)) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
-            if linkage != Linkage::External {
+        for (mono_item, data) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
+            if data.linkage != Linkage::External {
                 // We can only re-use things with external linkage, otherwise
                 // we'll get a linker error
                 continue;
             }
 
-            if need_visibility && visibility == Visibility::Hidden {
+            if need_visibility && data.visibility == Visibility::Hidden {
                 // If we potentially share things from Rust dylibs, they must
                 // not be hidden
                 continue;
             }
 
             match *mono_item {
-                MonoItem::Fn(Instance { def: InstanceDef::Item(def), substs }) => {
-                    if substs.non_erasable_generics().next().is_some() {
-                        let symbol = ExportedSymbol::Generic(def.did, substs);
+                MonoItem::Fn(Instance { def: InstanceDef::Item(def), args }) => {
+                    if args.non_erasable_generics().next().is_some() {
+                        let symbol = ExportedSymbol::Generic(def, args);
                         symbols.push((
                             symbol,
                             SymbolExportInfo {
@@ -329,10 +346,10 @@ fn exported_symbols_provider_local(
                         ));
                     }
                 }
-                MonoItem::Fn(Instance { def: InstanceDef::DropGlue(_, Some(ty)), substs }) => {
+                MonoItem::Fn(Instance { def: InstanceDef::DropGlue(_, Some(ty)), args }) => {
                     // A little sanity-check
                     debug_assert_eq!(
-                        substs.non_erasable_generics().next(),
+                        args.non_erasable_generics().next(),
                         Some(GenericArgKind::Type(ty))
                     );
                     symbols.push((
@@ -360,7 +377,7 @@ fn exported_symbols_provider_local(
 fn upstream_monomorphizations_provider(
     tcx: TyCtxt<'_>,
     (): (),
-) -> DefIdMap<FxHashMap<SubstsRef<'_>, CrateNum>> {
+) -> DefIdMap<FxHashMap<GenericArgsRef<'_>, CrateNum>> {
     let cnums = tcx.crates(());
 
     let mut instances: DefIdMap<FxHashMap<_, _>> = Default::default();
@@ -369,26 +386,28 @@ fn upstream_monomorphizations_provider(
 
     for &cnum in cnums.iter() {
         for (exported_symbol, _) in tcx.exported_symbols(cnum).iter() {
-            let (def_id, substs) = match *exported_symbol {
-                ExportedSymbol::Generic(def_id, substs) => (def_id, substs),
+            let (def_id, args) = match *exported_symbol {
+                ExportedSymbol::Generic(def_id, args) => (def_id, args),
                 ExportedSymbol::DropGlue(ty) => {
                     if let Some(drop_in_place_fn_def_id) = drop_in_place_fn_def_id {
-                        (drop_in_place_fn_def_id, tcx.mk_substs(&[ty.into()]))
+                        (drop_in_place_fn_def_id, tcx.mk_args(&[ty.into()]))
                     } else {
                         // `drop_in_place` in place does not exist, don't try
                         // to use it.
                         continue;
                     }
                 }
-                ExportedSymbol::NonGeneric(..) | ExportedSymbol::NoDefId(..) => {
+                ExportedSymbol::NonGeneric(..)
+                | ExportedSymbol::ThreadLocalShim(..)
+                | ExportedSymbol::NoDefId(..) => {
                     // These are no monomorphizations
                     continue;
                 }
             };
 
-            let substs_map = instances.entry(def_id).or_default();
+            let args_map = instances.entry(def_id).or_default();
 
-            match substs_map.entry(substs) {
+            match args_map.entry(args) {
                 Occupied(mut e) => {
                     // If there are multiple monomorphizations available,
                     // we select one deterministically.
@@ -410,17 +429,17 @@ fn upstream_monomorphizations_provider(
 fn upstream_monomorphizations_for_provider(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Option<&FxHashMap<SubstsRef<'_>, CrateNum>> {
+) -> Option<&FxHashMap<GenericArgsRef<'_>, CrateNum>> {
     debug_assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(()).get(&def_id)
 }
 
 fn upstream_drop_glue_for_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    substs: SubstsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
 ) -> Option<CrateNum> {
     if let Some(def_id) = tcx.lang_items().drop_in_place_fn() {
-        tcx.upstream_monomorphizations_for(def_id).and_then(|monos| monos.get(&substs).cloned())
+        tcx.upstream_monomorphizations_for(def_id).and_then(|monos| monos.get(&args).cloned())
     } else {
         None
     }
@@ -493,10 +512,20 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
                 instantiating_crate,
             )
         }
-        ExportedSymbol::Generic(def_id, substs) => {
+        ExportedSymbol::Generic(def_id, args) => {
             rustc_symbol_mangling::symbol_name_for_instance_in_crate(
                 tcx,
-                Instance::new(def_id, substs),
+                Instance::new(def_id, args),
+                instantiating_crate,
+            )
+        }
+        ExportedSymbol::ThreadLocalShim(def_id) => {
+            rustc_symbol_mangling::symbol_name_for_instance_in_crate(
+                tcx,
+                ty::Instance {
+                    def: ty::InstanceDef::ThreadLocalShim(def_id),
+                    args: ty::GenericArgs::empty(),
+                },
                 instantiating_crate,
             )
         }
@@ -542,12 +571,14 @@ pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
             None
         }
         ExportedSymbol::NonGeneric(def_id) => Some(Instance::mono(tcx, def_id)),
-        ExportedSymbol::Generic(def_id, substs) => Some(Instance::new(def_id, substs)),
+        ExportedSymbol::Generic(def_id, args) => Some(Instance::new(def_id, args)),
         // DropGlue always use the Rust calling convention and thus follow the target's default
         // symbol decoration scheme.
         ExportedSymbol::DropGlue(..) => None,
         // NoDefId always follow the target's default symbol decoration scheme.
         ExportedSymbol::NoDefId(..) => None,
+        // ThreadLocalShim always follow the target's default symbol decoration scheme.
+        ExportedSymbol::ThreadLocalShim(..) => None,
     };
 
     let (conv, args) = instance
@@ -592,7 +623,7 @@ fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> FxHashMap<DefId, S
 
     let mut ret = FxHashMap::default();
     for (def_id, lib) in tcx.foreign_modules(cnum).iter() {
-        let module = def_id_to_native_lib.get(&def_id).and_then(|s| s.wasm_import_module);
+        let module = def_id_to_native_lib.get(&def_id).and_then(|s| s.wasm_import_module());
         let Some(module) = module else { continue };
         ret.extend(lib.foreign_items.iter().map(|id| {
             assert_eq!(id.krate, cnum);

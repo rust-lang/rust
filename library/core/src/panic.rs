@@ -28,16 +28,18 @@ pub macro panic_2015 {
         $crate::panicking::panic($msg)
     ),
     // Use `panic_str` instead of `panic_display::<&str>` for non_fmt_panic lint.
-    ($msg:expr $(,)?) => (
-        $crate::panicking::panic_str($msg)
-    ),
+    ($msg:expr $(,)?) => ({
+        $crate::panicking::panic_str($msg);
+    }),
     // Special-case the single-argument case for const_panic.
-    ("{}", $arg:expr $(,)?) => (
-        $crate::panicking::panic_display(&$arg)
-    ),
-    ($fmt:expr, $($arg:tt)+) => (
-        $crate::panicking::panic_fmt($crate::const_format_args!($fmt, $($arg)+))
-    ),
+    ("{}", $arg:expr $(,)?) => ({
+        $crate::panicking::panic_display(&$arg);
+    }),
+    ($fmt:expr, $($arg:tt)+) => ({
+        // Semicolon to prevent temporaries inside the formatting machinery from
+        // being considered alive in the caller after the panic_fmt call.
+        $crate::panicking::panic_fmt($crate::const_format_args!($fmt, $($arg)+));
+    }),
 }
 
 #[doc(hidden)]
@@ -50,12 +52,14 @@ pub macro panic_2021 {
         $crate::panicking::panic("explicit panic")
     ),
     // Special-case the single-argument case for const_panic.
-    ("{}", $arg:expr $(,)?) => (
-        $crate::panicking::panic_display(&$arg)
-    ),
-    ($($t:tt)+) => (
-        $crate::panicking::panic_fmt($crate::const_format_args!($($t)+))
-    ),
+    ("{}", $arg:expr $(,)?) => ({
+        $crate::panicking::panic_display(&$arg);
+    }),
+    ($($t:tt)+) => ({
+        // Semicolon to prevent temporaries inside the formatting machinery from
+        // being considered alive in the caller after the panic_fmt call.
+        $crate::panicking::panic_fmt($crate::const_format_args!($($t)+));
+    }),
 }
 
 #[doc(hidden)]
@@ -69,9 +73,9 @@ pub macro unreachable_2015 {
     ),
     // Use of `unreachable_display` for non_fmt_panic lint.
     // NOTE: the message ("internal error ...") is embedded directly in unreachable_display
-    ($msg:expr $(,)?) => (
-        $crate::panicking::unreachable_display(&$msg)
-    ),
+    ($msg:expr $(,)?) => ({
+        $crate::panicking::unreachable_display(&$msg);
+    }),
     ($fmt:expr, $($arg:tt)*) => (
         $crate::panic!($crate::concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
     ),

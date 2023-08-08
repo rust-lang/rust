@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) main.rs -o main.rs 2> $(TMPDIR)/file.stderr || echo "failed successfully"

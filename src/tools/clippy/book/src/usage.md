@@ -19,7 +19,7 @@ cargo clippy
 ### Lint configuration
 
 The above command will run the default set of lints, which are included in the
-lint group `clippy::all`. You might want to use even more lints or you might not
+lint group `clippy::all`. You might want to use even more lints, or you may not
 agree with every Clippy lint, and for that there are ways to configure lint
 levels.
 
@@ -98,7 +98,7 @@ other of Clippy's lint groups.
 You can configure lint levels in source code the same way you can configure
 `rustc` lints:
 
-```rust
+```rust,ignore
 #![allow(clippy::style)]
 
 #[warn(clippy::double_neg)]
@@ -111,7 +111,8 @@ fn main() {
 
 ### Automatically applying Clippy suggestions
 
-Clippy can automatically apply some lint suggestions, just like the compiler.
+Clippy can automatically apply some lint suggestions, just like the compiler. Note that `--fix` implies
+`--all-targets`, so it can fix as much code as it can.
 
 ```terminal
 cargo clippy --fix

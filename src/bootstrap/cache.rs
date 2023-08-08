@@ -1,9 +1,8 @@
 use std::any::{Any, TypeId};
 use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::cmp::{Ord, Ordering, PartialOrd};
+use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::convert::AsRef;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -76,7 +75,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s: &U = &*self;
-        f.write_fmt(format_args!("{:?}", s))
+        f.write_fmt(format_args!("{s:?}"))
     }
 }
 
@@ -237,7 +236,7 @@ impl Cache {
             .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
             .downcast_mut::<HashMap<S, S::Output>>()
             .expect("invalid type mapped");
-        assert!(!stepcache.contains_key(&step), "processing {:?} a second time", step);
+        assert!(!stepcache.contains_key(&step), "processing {step:?} a second time");
         stepcache.insert(step, value);
     }
 

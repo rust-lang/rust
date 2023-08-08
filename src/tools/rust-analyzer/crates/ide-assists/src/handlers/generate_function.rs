@@ -5,6 +5,7 @@ use ide_db::{
     base_db::FileId,
     defs::{Definition, NameRefClass},
     famous_defs::FamousDefs,
+    helpers::is_editable_crate,
     path_transform::PathTransform,
     FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
@@ -65,6 +66,13 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let fn_name = &*name_ref.text();
     let TargetInfo { target_module, adt_name, target, file, insert_offset } =
         fn_target_info(ctx, path, &call, fn_name)?;
+
+    if let Some(m) = target_module {
+        if !is_editable_crate(m.krate(), ctx.db()) {
+            return None;
+        }
+    }
+
     let function_builder = FunctionBuilder::from_call(ctx, &call, fn_name, target_module, target)?;
     let text_range = call.syntax().text_range();
     let label = format!("Generate {} function", function_builder.fn_name);
@@ -141,12 +149,11 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let receiver_ty = ctx.sema.type_of_expr(&call.receiver()?)?.original().strip_references();
     let adt = receiver_ty.as_adt()?;
 
-    let current_module = ctx.sema.scope(call.syntax())?.module();
     let target_module = adt.module(ctx.sema.db);
-
-    if current_module.krate() != target_module.krate() {
+    if !is_editable_crate(target_module.krate(), ctx.db()) {
         return None;
     }
+
     let (impl_, file) = get_adt_source(ctx, &adt, fn_name.text().as_str())?;
     let (target, insert_offset) = get_method_target(ctx, &impl_, &adt)?;
 
@@ -189,7 +196,7 @@ fn add_func_to_accumulator(
         let mut func = function_template.to_string(ctx.config.snippet_cap);
         if let Some(name) = adt_name {
             // FIXME: adt may have generic params.
-            func = format!("\n{indent}impl {name} {{\n{func}\n{indent}}}");
+            func = format!("\n{indent}impl {} {{\n{func}\n{indent}}}", name.display(ctx.db()));
         }
         builder.edit_file(file);
         match ctx.config.snippet_cap {
@@ -253,7 +260,7 @@ struct FunctionBuilder {
     params: ast::ParamList,
     ret_type: Option<ast::RetType>,
     should_focus_return_type: bool,
-    needs_pub: bool,
+    visibility: Visibility,
     is_async: bool,
 }
 
@@ -264,12 +271,14 @@ impl FunctionBuilder {
         ctx: &AssistContext<'_>,
         call: &ast::CallExpr,
         fn_name: &str,
-        target_module: Option<hir::Module>,
+        target_module: Option<Module>,
         target: GeneratedFunctionTarget,
     ) -> Option<Self> {
-        let needs_pub = target_module.is_some();
         let target_module =
             target_module.or_else(|| ctx.sema.scope(target.syntax()).map(|it| it.module()))?;
+
+        let current_module = ctx.sema.scope(call.syntax())?.module();
+        let visibility = calculate_necessary_visibility(current_module, target_module, ctx);
         let fn_name = make::name(fn_name);
         let mut necessary_generic_params = FxHashSet::default();
         let params = fn_args(
@@ -282,12 +291,9 @@ impl FunctionBuilder {
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
 
-        let (ret_type, should_focus_return_type) = make_return_type(
-            ctx,
-            &ast::Expr::CallExpr(call.clone()),
-            target_module,
-            &mut necessary_generic_params,
-        );
+        let expr_for_ret_ty = await_expr.map_or_else(|| call.clone().into(), |it| it.into());
+        let (ret_type, should_focus_return_type) =
+            make_return_type(ctx, &expr_for_ret_ty, target_module, &mut necessary_generic_params);
 
         let (generic_param_list, where_clause) =
             fn_generic_params(ctx, necessary_generic_params, &target)?;
@@ -300,7 +306,7 @@ impl FunctionBuilder {
             params,
             ret_type,
             should_focus_return_type,
-            needs_pub,
+            visibility,
             is_async,
         })
     }
@@ -313,8 +319,9 @@ impl FunctionBuilder {
         target_module: Module,
         target: GeneratedFunctionTarget,
     ) -> Option<Self> {
-        let needs_pub =
-            !module_is_descendant(&ctx.sema.scope(call.syntax())?.module(), &target_module, ctx);
+        let current_module = ctx.sema.scope(call.syntax())?.module();
+        let visibility = calculate_necessary_visibility(current_module, target_module, ctx);
+
         let fn_name = make::name(&name.text());
         let mut necessary_generic_params = FxHashSet::default();
         necessary_generic_params.extend(receiver_ty.generic_params(ctx.db()));
@@ -328,12 +335,9 @@ impl FunctionBuilder {
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
 
-        let (ret_type, should_focus_return_type) = make_return_type(
-            ctx,
-            &ast::Expr::MethodCallExpr(call.clone()),
-            target_module,
-            &mut necessary_generic_params,
-        );
+        let expr_for_ret_ty = await_expr.map_or_else(|| call.clone().into(), |it| it.into());
+        let (ret_type, should_focus_return_type) =
+            make_return_type(ctx, &expr_for_ret_ty, target_module, &mut necessary_generic_params);
 
         let (generic_param_list, where_clause) =
             fn_generic_params(ctx, necessary_generic_params, &target)?;
@@ -346,7 +350,7 @@ impl FunctionBuilder {
             params,
             ret_type,
             should_focus_return_type,
-            needs_pub,
+            visibility,
             is_async,
         })
     }
@@ -354,7 +358,11 @@ impl FunctionBuilder {
     fn render(self, is_method: bool) -> FunctionTemplate {
         let placeholder_expr = make::ext::expr_todo();
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
-        let visibility = if self.needs_pub { Some(make::visibility_pub_crate()) } else { None };
+        let visibility = match self.visibility {
+            Visibility::None => None,
+            Visibility::Crate => Some(make::visibility_pub_crate()),
+            Visibility::Pub => Some(make::visibility_pub()),
+        };
         let mut fn_def = make::fn_(
             visibility,
             self.fn_name,
@@ -364,6 +372,8 @@ impl FunctionBuilder {
             fn_body,
             self.ret_type,
             self.is_async,
+            false, // FIXME : const and unsafe are not handled yet.
+            false,
         );
         let leading_ws;
         let trailing_ws;
@@ -413,18 +423,18 @@ impl FunctionBuilder {
 /// user can change the `todo!` function body.
 fn make_return_type(
     ctx: &AssistContext<'_>,
-    call: &ast::Expr,
+    expr: &ast::Expr,
     target_module: Module,
     necessary_generic_params: &mut FxHashSet<hir::GenericParam>,
 ) -> (Option<ast::RetType>, bool) {
     let (ret_ty, should_focus_return_type) = {
-        match ctx.sema.type_of_expr(call).map(TypeInfo::original) {
+        match ctx.sema.type_of_expr(expr).map(TypeInfo::original) {
             Some(ty) if ty.is_unknown() => (Some(make::ty_placeholder()), true),
             None => (Some(make::ty_placeholder()), true),
             Some(ty) if ty.is_unit() => (None, false),
             Some(ty) => {
                 necessary_generic_params.extend(ty.generic_params(ctx.db()));
-                let rendered = ty.display_source_code(ctx.db(), target_module.into());
+                let rendered = ty.display_source_code(ctx.db(), target_module.into(), true);
                 match rendered {
                     Ok(rendered) => (Some(make::ty(&rendered)), false),
                     Err(_) => (Some(make::ty_placeholder()), true),
@@ -527,7 +537,7 @@ impl GeneratedFunctionTarget {
 /// Computes parameter list for the generated function.
 fn fn_args(
     ctx: &AssistContext<'_>,
-    target_module: hir::Module,
+    target_module: Module,
     call: ast::CallableExpr,
     necessary_generic_params: &mut FxHashSet<hir::GenericParam>,
 ) -> Option<ast::ParamList> {
@@ -613,7 +623,9 @@ fn fn_generic_params(
 fn params_and_where_preds_in_scope(
     ctx: &AssistContext<'_>,
 ) -> (Vec<ast::GenericParam>, Vec<ast::WherePred>) {
-    let Some(body) = containing_body(ctx) else { return Default::default(); };
+    let Some(body) = containing_body(ctx) else {
+        return Default::default();
+    };
 
     let mut generic_params = Vec::new();
     let mut where_clauses = Vec::new();
@@ -879,14 +891,14 @@ fn filter_bounds_in_scope(
     let target_impl = target.parent().ancestors().find_map(ast::Impl::cast)?;
     let target_impl = ctx.sema.to_def(&target_impl)?;
     // It's sufficient to test only the first element of `generic_params` because of the order of
-    // insertion (see `relevant_parmas_and_where_clauses()`).
+    // insertion (see `params_and_where_preds_in_scope()`).
     let def = generic_params.first()?.self_ty_param.parent();
     if def != hir::GenericDef::Impl(target_impl) {
         return None;
     }
 
     // Now we know every element that belongs to an impl would be in scope at `target`, we can
-    // filter them out just by lookint at their parent.
+    // filter them out just by looking at their parent.
     generic_params.retain(|it| !matches!(it.self_ty_param.parent(), hir::GenericDef::Impl(_)));
     where_preds.retain(|it| {
         it.node.syntax().parent().and_then(|it| it.parent()).and_then(ast::Impl::cast).is_none()
@@ -957,13 +969,13 @@ fn fn_arg_name(sema: &Semantics<'_, RootDatabase>, arg_expr: &ast::Expr) -> Stri
 
 fn fn_arg_type(
     ctx: &AssistContext<'_>,
-    target_module: hir::Module,
+    target_module: Module,
     fn_arg: &ast::Expr,
     generic_params: &mut FxHashSet<hir::GenericParam>,
 ) -> String {
     fn maybe_displayed_type(
         ctx: &AssistContext<'_>,
-        target_module: hir::Module,
+        target_module: Module,
         fn_arg: &ast::Expr,
         generic_params: &mut FxHashSet<hir::GenericParam>,
     ) -> Option<String> {
@@ -978,9 +990,9 @@ fn fn_arg_type(
             let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(fn_arg.syntax())?.krate());
             convert_reference_type(ty.strip_references(), ctx.db(), famous_defs)
                 .map(|conversion| conversion.convert_type(ctx.db()))
-                .or_else(|| ty.display_source_code(ctx.db(), target_module.into()).ok())
+                .or_else(|| ty.display_source_code(ctx.db(), target_module.into(), true).ok())
         } else {
-            ty.display_source_code(ctx.db(), target_module.into()).ok()
+            ty.display_source_code(ctx.db(), target_module.into(), true).ok()
         }
     }
 
@@ -1013,7 +1025,7 @@ fn next_space_for_fn_after_call_site(expr: ast::CallableExpr) -> Option<Generate
 }
 
 fn next_space_for_fn_in_module(
-    db: &dyn hir::db::AstDatabase,
+    db: &dyn hir::db::ExpandDatabase,
     module_source: &hir::InFile<hir::ModuleSource>,
 ) -> Option<(FileId, GeneratedFunctionTarget)> {
     let file = module_source.file_id.original_file(db);
@@ -1048,19 +1060,32 @@ fn next_space_for_fn_in_impl(impl_: &ast::Impl) -> Option<GeneratedFunctionTarge
     }
 }
 
-fn module_is_descendant(module: &hir::Module, ans: &hir::Module, ctx: &AssistContext<'_>) -> bool {
-    if module == ans {
-        return true;
-    }
-    for c in ans.children(ctx.sema.db) {
-        if module_is_descendant(module, &c, ctx) {
-            return true;
-        }
-    }
-    false
+#[derive(Clone, Copy)]
+enum Visibility {
+    None,
+    Crate,
+    Pub,
 }
 
-// This is never intended to be used as a generic graph strucuture. If there's ever another need of
+fn calculate_necessary_visibility(
+    current_module: Module,
+    target_module: Module,
+    ctx: &AssistContext<'_>,
+) -> Visibility {
+    let db = ctx.db();
+    let current_module = current_module.nearest_non_block_module(db);
+    let target_module = target_module.nearest_non_block_module(db);
+
+    if target_module.krate() != current_module.krate() {
+        Visibility::Pub
+    } else if current_module.path_to_root(db).contains(&target_module) {
+        Visibility::None
+    } else {
+        Visibility::Crate
+    }
+}
+
+// This is never intended to be used as a generic graph structure. If there's ever another need of
 // graph algorithm, consider adding a library for that (and replace the following).
 /// Minimally implemented directed graph structure represented by adjacency list.
 struct Graph {
@@ -1853,7 +1878,6 @@ where
 
     #[test]
     fn add_function_with_fn_arg() {
-        // FIXME: The argument in `bar` is wrong.
         check_assist(
             generate_function,
             r"
@@ -1874,7 +1898,7 @@ fn foo() {
     bar(Baz::new);
 }
 
-fn bar(new: fn) ${0:-> _} {
+fn bar(new: fn() -> Baz) ${0:-> _} {
     todo!()
 }
 ",
@@ -1883,7 +1907,6 @@ fn bar(new: fn) ${0:-> _} {
 
     #[test]
     fn add_function_with_closure_arg() {
-        // FIXME: The argument in `bar` is wrong.
         check_assist(
             generate_function,
             r"
@@ -1898,7 +1921,7 @@ fn foo() {
     bar(closure)
 }
 
-fn bar(closure: _) {
+fn bar(closure: impl Fn(i64) -> i64) {
     ${0:todo!()}
 }
 ",
@@ -2240,13 +2263,13 @@ impl Foo {
         check_assist(
             generate_function,
             r"
-fn foo() {
-    $0bar(42).await();
+async fn foo() {
+    $0bar(42).await;
 }
 ",
             r"
-fn foo() {
-    bar(42).await();
+async fn foo() {
+    bar(42).await;
 }
 
 async fn bar(arg: i32) ${0:-> _} {
@@ -2254,6 +2277,28 @@ async fn bar(arg: i32) ${0:-> _} {
 }
 ",
         )
+    }
+
+    #[test]
+    fn return_type_for_async_fn() {
+        check_assist(
+            generate_function,
+            r"
+//- minicore: result
+async fn foo() {
+    if Err(()) = $0bar(42).await {}
+}
+",
+            r"
+async fn foo() {
+    if Err(()) = bar(42).await {}
+}
+
+async fn bar(arg: i32) -> Result<_, ()> {
+    ${0:todo!()}
+}
+",
+        );
     }
 
     #[test]
@@ -2354,7 +2399,7 @@ mod s {
     }
 
     #[test]
-    fn create_method_with_cursor_anywhere_on_call_expresion() {
+    fn create_method_with_cursor_anywhere_on_call_expression() {
         check_assist(
             generate_function,
             r"
@@ -2369,6 +2414,31 @@ impl S {
     }
 }
 fn foo() {S.bar();}
+",
+        )
+    }
+
+    #[test]
+    fn create_async_method() {
+        check_assist(
+            generate_function,
+            r"
+//- minicore: result
+struct S;
+async fn foo() {
+    if let Err(()) = S.$0bar(42).await {}
+}
+",
+            r"
+struct S;
+impl S {
+    async fn bar(&self, arg: i32) -> Result<_, ()> {
+        ${0:todo!()}
+    }
+}
+async fn foo() {
+    if let Err(()) = S.bar(42).await {}
+}
 ",
         )
     }
@@ -2389,6 +2459,31 @@ impl S {
     }
 }
 fn foo() {S::bar();}
+",
+        )
+    }
+
+    #[test]
+    fn create_async_static_method() {
+        check_assist(
+            generate_function,
+            r"
+//- minicore: result
+struct S;
+async fn foo() {
+    if let Err(()) = S::$0bar(42).await {}
+}
+",
+            r"
+struct S;
+impl S {
+    async fn bar(arg: i32) -> Result<_, ()> {
+        ${0:todo!()}
+    }
+}
+async fn foo() {
+    if let Err(()) = S::bar(42).await {}
+}
 ",
         )
     }
@@ -2461,7 +2556,7 @@ fn foo() {s::S::bar();}
     }
 
     #[test]
-    fn create_static_method_with_cursor_anywhere_on_call_expresion() {
+    fn create_static_method_with_cursor_anywhere_on_call_expression() {
         check_assist(
             generate_function,
             r"
@@ -2655,5 +2750,80 @@ fn main() {
 }
 ",
         )
+    }
+
+    #[test]
+    fn applicable_in_different_local_crate() {
+        check_assist(
+            generate_function,
+            r"
+//- /lib.rs crate:lib new_source_root:local
+fn dummy() {}
+//- /main.rs crate:main deps:lib new_source_root:local
+fn main() {
+    lib::foo$0();
+}
+",
+            r"
+fn dummy() {}
+
+pub fn foo() ${0:-> _} {
+    todo!()
+}
+",
+        );
+    }
+
+    #[test]
+    fn applicable_in_different_local_crate_method() {
+        check_assist(
+            generate_function,
+            r"
+//- /lib.rs crate:lib new_source_root:local
+pub struct S;
+//- /main.rs crate:main deps:lib new_source_root:local
+fn main() {
+    lib::S.foo$0();
+}
+",
+            r"
+pub struct S;
+impl S {
+    pub fn foo(&self) ${0:-> _} {
+        todo!()
+    }
+}
+",
+        );
+    }
+
+    #[test]
+    fn not_applicable_in_different_library_crate() {
+        check_assist_not_applicable(
+            generate_function,
+            r"
+//- /lib.rs crate:lib new_source_root:library
+fn dummy() {}
+//- /main.rs crate:main deps:lib new_source_root:local
+fn main() {
+    lib::foo$0();
+}
+",
+        );
+    }
+
+    #[test]
+    fn not_applicable_in_different_library_crate_method() {
+        check_assist_not_applicable(
+            generate_function,
+            r"
+//- /lib.rs crate:lib new_source_root:library
+pub struct S;
+//- /main.rs crate:main deps:lib new_source_root:local
+fn main() {
+    lib::S.foo$0();
+}
+",
+        );
     }
 }

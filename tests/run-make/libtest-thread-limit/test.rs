@@ -1,5 +1,3 @@
-#![feature(once_cell)]
-
 use std::{
     io::ErrorKind,
     sync::OnceLock,

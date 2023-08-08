@@ -24,7 +24,7 @@
 //! However, this model lacks SC accesses and is therefore unusable by Miri (SC accesses are everywhere in library code).
 //!
 //! If you find anything that proposes a relaxed memory model that is C++20-consistent, supports all orderings Rust's atomic accesses
-//! and fences accept, and is implementable (with operational semanitcs), please open a GitHub issue!
+//! and fences accept, and is implementable (with operational semantics), please open a GitHub issue!
 //!
 //! One characteristic of this implementation, in contrast to some other notable operational models such as ones proposed in
 //! Taming Release-Acquire Consistency by Ori Lahav et al. (<https://plv.mpi-sws.org/sra/paper.pdf>) or Promising Semantics noted above,
@@ -32,8 +32,8 @@
 //! and shared across all threads. This is more memory efficient but does require store elements (representing writes to a location) to record
 //! information about reads, whereas in the other two models it is the other way round: reads points to the write it got its value from.
 //! Additionally, writes in our implementation do not have globally unique timestamps attached. In the other two models this timestamp is
-//! used to make sure a value in a thread's view is not overwritten by a write that occured earlier than the one in the existing view.
-//! In our implementation, this is detected using read information attached to store elements, as there is no data strucutre representing reads.
+//! used to make sure a value in a thread's view is not overwritten by a write that occurred earlier than the one in the existing view.
+//! In our implementation, this is detected using read information attached to store elements, as there is no data structure representing reads.
 //!
 //! The C++ memory model is built around the notion of an 'atomic object', so it would be natural
 //! to attach store buffers to atomic objects. However, Rust follows LLVM in that it only has
@@ -48,7 +48,7 @@
 //! One consequence of this difference is that safe/sound Rust allows for more operations on atomic locations
 //! than the C++20 atomic API was intended to allow, such as non-atomically accessing
 //! a previously atomically accessed location, or accessing previously atomically accessed locations with a differently sized operation
-//! (such as accessing the top 16 bits of an AtomicU32). These senarios are generally undiscussed in formalisations of C++ memory model.
+//! (such as accessing the top 16 bits of an AtomicU32). These scenarios are generally undiscussed in formalisations of C++ memory model.
 //! In Rust, these operations can only be done through a `&mut AtomicFoo` reference or one derived from it, therefore these operations
 //! can only happen after all previous accesses on the same locations. This implementation is adapted to allow these operations.
 //! A mixed atomicity read that races with writes, or a write that races with reads or writes will still cause UBs to be thrown.
@@ -61,7 +61,7 @@
 //
 // 2. In the operational semantics, each store element keeps the timestamp of a thread when it loads from the store.
 // If the same thread loads from the same store element multiple times, then the timestamps at all loads are saved in a list of load elements.
-// This is not necessary as later loads by the same thread will always have greater timetstamp values, so we only need to record the timestamp of the first
+// This is not necessary as later loads by the same thread will always have greater timestamp values, so we only need to record the timestamp of the first
 // load by each thread. This optimisation is done in tsan11
 // (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.h#L35-L37)
 // and here.
@@ -193,7 +193,7 @@ impl StoreBufferAlloc {
                     buffers.remove_pos_range(pos_range);
                 }
                 AccessType::Empty(_) => {
-                    // The range had no weak behaivours attached, do nothing
+                    // The range had no weak behaviours attached, do nothing
                 }
             }
         }
@@ -336,7 +336,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         let mut found_sc = false;
         // FIXME: we want an inclusive take_while (stops after a false predicate, but
         // includes the element that gave the false), but such function doesn't yet
-        // exist in the standard libary https://github.com/rust-lang/rust/issues/62208
+        // exist in the standard library https://github.com/rust-lang/rust/issues/62208
         // so we have to hack around it with keep_searching
         let mut keep_searching = true;
         let candidates = self

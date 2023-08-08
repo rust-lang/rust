@@ -25,14 +25,6 @@ LL |     println!("Size: {}", std::mem::size_of::<[u8; u64::MAX as usize]>());
    |
    = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-note: erroneous constant used
-  --> $DIR/issue-55878.rs:7:26
-   |
-LL |     println!("Size: {}", std::mem::size_of::<[u8; u64::MAX as usize]>());
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

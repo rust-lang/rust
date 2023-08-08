@@ -5,12 +5,12 @@ use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, RegionVid, Ty};
+use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
-use crate::{nll::ToRegionVid, universal_regions::DefiningTy, MirBorrowckCtxt};
+use crate::{universal_regions::DefiningTy, MirBorrowckCtxt};
 
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
 /// name like `'1`, a name used by the user like `'a`, or a name like `'static`.
@@ -321,18 +321,18 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 ty::BoundRegionKind::BrEnv => {
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
-                    let DefiningTy::Closure(_, substs) = def_ty else {
+                    let DefiningTy::Closure(_, args) = def_ty else {
                         // Can't have BrEnv in functions, constants or generators.
                         bug!("BrEnv outside of closure.");
                     };
-                    let hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. })
-                        = tcx.hir().expect_expr(self.mir_hir_id()).kind
+                    let hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }) =
+                        tcx.hir().expect_expr(self.mir_hir_id()).kind
                     else {
                         bug!("Closure is not defined by a closure expr");
                     };
                     let region_name = self.synthesize_region_name();
 
-                    let closure_kind_ty = substs.as_closure().kind_ty();
+                    let closure_kind_ty = args.as_closure().kind_ty();
                     let note = match closure_kind_ty.to_opt_closure_kind() {
                         Some(ty::ClosureKind::Fn) => {
                             "closure implements `Fn`, so references to captured variables \
@@ -497,7 +497,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 //     &
                 //     - let's call the lifetime of this reference `'1`
                 (ty::Ref(region, referent_ty, _), hir::TyKind::Ref(_lifetime, referent_hir_ty)) => {
-                    if region.to_region_vid() == needle_fr {
+                    if region.as_var() == needle_fr {
                         // Just grab the first character, the `&`.
                         let source_map = self.infcx.tcx.sess.source_map();
                         let ampersand_span = source_map.start_point(hir_ty.span);
@@ -510,20 +510,17 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 }
 
                 // Match up something like `Foo<'1>`
-                (
-                    ty::Adt(_adt_def, substs),
-                    hir::TyKind::Path(hir::QPath::Resolved(None, path)),
-                ) => {
+                (ty::Adt(_adt_def, args), hir::TyKind::Path(hir::QPath::Resolved(None, path))) => {
                     match path.res {
                         // Type parameters of the type alias have no reason to
                         // be the same as those of the ADT.
                         // FIXME: We should be able to do something similar to
                         // match_adt_and_segment in this case.
-                        Res::Def(DefKind::TyAlias, _) => (),
+                        Res::Def(DefKind::TyAlias { .. }, _) => (),
                         _ => {
                             if let Some(last_segment) = path.segments.last() {
                                 if let Some(highlight) = self.match_adt_and_segment(
-                                    substs,
+                                    args,
                                     needle_fr,
                                     last_segment,
                                     search_stack,
@@ -560,22 +557,22 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         None
     }
 
-    /// We've found an enum/struct/union type with the substitutions
-    /// `substs` and -- in the HIR -- a path type with the final
+    /// We've found an enum/struct/union type with the generic args
+    /// `args` and -- in the HIR -- a path type with the final
     /// segment `last_segment`. Try to find a `'_` to highlight in
     /// the generic args (or, if not, to produce new zipped pairs of
     /// types+hir to search through).
     fn match_adt_and_segment<'hir>(
         &self,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
         needle_fr: RegionVid,
         last_segment: &'hir hir::PathSegment<'hir>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
     ) -> Option<RegionNameHighlight> {
         // Did the user give explicit arguments? (e.g., `Foo<..>`)
-        let args = last_segment.args.as_ref()?;
+        let explicit_args = last_segment.args.as_ref()?;
         let lifetime =
-            self.try_match_adt_and_generic_args(substs, needle_fr, args, search_stack)?;
+            self.try_match_adt_and_generic_args(args, needle_fr, explicit_args, search_stack)?;
         if lifetime.is_anonymous() {
             None
         } else {
@@ -583,22 +580,22 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         }
     }
 
-    /// We've found an enum/struct/union type with the substitutions
-    /// `substs` and -- in the HIR -- a path with the generic
-    /// arguments `args`. If `needle_fr` appears in the args, return
+    /// We've found an enum/struct/union type with the generic args
+    /// `args` and -- in the HIR -- a path with the generic
+    /// arguments `hir_args`. If `needle_fr` appears in the args, return
     /// the `hir::Lifetime` that corresponds to it. If not, push onto
     /// `search_stack` the types+hir to search through.
     fn try_match_adt_and_generic_args<'hir>(
         &self,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
         needle_fr: RegionVid,
-        args: &'hir hir::GenericArgs<'hir>,
+        hir_args: &'hir hir::GenericArgs<'hir>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
     ) -> Option<&'hir hir::Lifetime> {
-        for (kind, hir_arg) in iter::zip(substs, args.args) {
+        for (kind, hir_arg) in iter::zip(args, hir_args.args) {
             match (kind.unpack(), hir_arg) {
                 (GenericArgKind::Lifetime(r), hir::GenericArg::Lifetime(lt)) => {
-                    if r.to_region_vid() == needle_fr {
+                    if r.as_var() == needle_fr {
                         return Some(lt);
                     }
                 }
@@ -622,7 +619,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     // programs, so we need to use delay_span_bug here. See #82126.
                     self.infcx.tcx.sess.delay_span_bug(
                         hir_arg.span(),
-                        &format!("unmatched subst and hir arg: found {kind:?} vs {hir_arg:?}"),
+                        format!("unmatched subst and hir arg: found {kind:?} vs {hir_arg:?}"),
                     );
                 }
             }
@@ -666,7 +663,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let return_ty = self.regioncx.universal_regions().unnormalized_output_ty;
         debug!("give_name_if_anonymous_region_appears_in_output: return_ty = {:?}", return_ty);
-        if !tcx.any_free_region_meets(&return_ty, |r| r.to_region_vid() == fr) {
+        if !tcx.any_free_region_meets(&return_ty, |r| r.as_var() == fr) {
             return None;
         }
 
@@ -803,7 +800,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let tcx = self.infcx.tcx;
 
-        if !tcx.any_free_region_meets(&yield_ty, |r| r.to_region_vid() == fr) {
+        if !tcx.any_free_region_meets(&yield_ty, |r| r.as_var() == fr) {
             return None;
         }
 
@@ -849,9 +846,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             return None;
         };
 
-        let found = tcx.any_free_region_meets(&tcx.type_of(region_parent).subst_identity(), |r| {
-            *r == ty::ReEarlyBound(region)
-        });
+        let found = tcx
+            .any_free_region_meets(&tcx.type_of(region_parent).instantiate_identity(), |r| {
+                *r == ty::ReEarlyBound(region)
+            });
 
         Some(RegionName {
             name: self.synthesize_region_name(),
@@ -888,6 +886,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             .universal_regions()
             .defining_ty
             .upvar_tys()
+            .iter()
             .position(|ty| self.any_param_predicate_mentions(&predicates, ty, region))
         {
             let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
@@ -928,7 +927,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
     fn any_param_predicate_mentions(
         &self,
-        predicates: &[ty::Predicate<'tcx>],
+        clauses: &[ty::Clause<'tcx>],
         ty: Ty<'tcx>,
         region: ty::EarlyBoundRegion,
     ) -> bool {
@@ -937,10 +936,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             if let ty::GenericArgKind::Type(ty) = arg.unpack()
                 && let ty::Param(_) = ty.kind()
             {
-                predicates.iter().any(|pred| {
+                clauses.iter().any(|pred| {
                     match pred.kind().skip_binder() {
-                        ty::PredicateKind::Clause(ty::Clause::Trait(data)) if data.self_ty() == ty => {}
-                        ty::PredicateKind::Clause(ty::Clause::Projection(data)) if data.projection_ty.self_ty() == ty => {}
+                        ty::ClauseKind::Trait(data) if data.self_ty() == ty => {}
+                        ty::ClauseKind::Projection(data) if data.projection_ty.self_ty() == ty => {}
                         _ => return false,
                     }
                     tcx.any_free_region_meets(pred, |r| {

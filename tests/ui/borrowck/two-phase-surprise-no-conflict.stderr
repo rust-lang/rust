@@ -13,7 +13,7 @@ error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as im
   --> $DIR/two-phase-surprise-no-conflict.rs:57:17
    |
 LL |                 self.hash_expr(&self.cx_mut.body(eid).value);
-   |                 ^^^^^---------^^---------------------^^^^^^^
+   |                 ^^^^^---------^^-----------^^^^^^^^^^^^^^^^^
    |                 |    |          |
    |                 |    |          immutable borrow occurs here
    |                 |    immutable borrow later used by call
@@ -23,9 +23,8 @@ error[E0499]: cannot borrow `reg.sess_mut` as mutable more than once at a time
   --> $DIR/two-phase-surprise-no-conflict.rs:119:51
    |
 LL |     reg.register_static(Box::new(TrivialPass::new(&mut reg.sess_mut)));
-   |     ----------------------------------------------^^^^^^^^^^^^^^^^^---
-   |     |   |                                         |
-   |     |   |                                         second mutable borrow occurs here
+   |     --- ---------------                           ^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |     |   |
    |     |   first borrow later used by call
    |     first mutable borrow occurs here
 
@@ -33,9 +32,8 @@ error[E0499]: cannot borrow `reg.sess_mut` as mutable more than once at a time
   --> $DIR/two-phase-surprise-no-conflict.rs:122:54
    |
 LL |     reg.register_bound(Box::new(TrivialPass::new_mut(&mut reg.sess_mut)));
-   |     -------------------------------------------------^^^^^^^^^^^^^^^^^---
-   |     |   |                                            |
-   |     |   |                                            second mutable borrow occurs here
+   |     --- --------------                               ^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |     |   |
    |     |   first borrow later used by call
    |     first mutable borrow occurs here
 
@@ -43,9 +41,8 @@ error[E0499]: cannot borrow `reg.sess_mut` as mutable more than once at a time
   --> $DIR/two-phase-surprise-no-conflict.rs:125:53
    |
 LL |     reg.register_univ(Box::new(TrivialPass::new_mut(&mut reg.sess_mut)));
-   |     ------------------------------------------------^^^^^^^^^^^^^^^^^---
-   |     |   |                                           |
-   |     |   |                                           second mutable borrow occurs here
+   |     --- -------------                               ^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |     |   |
    |     |   first borrow later used by call
    |     first mutable borrow occurs here
 
@@ -53,9 +50,8 @@ error[E0499]: cannot borrow `reg.sess_mut` as mutable more than once at a time
   --> $DIR/two-phase-surprise-no-conflict.rs:128:44
    |
 LL |     reg.register_ref(&TrivialPass::new_mut(&mut reg.sess_mut));
-   |     ---------------------------------------^^^^^^^^^^^^^^^^^--
-   |     |   |                                  |
-   |     |   |                                  second mutable borrow occurs here
+   |     --- ------------                       ^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |     |   |
    |     |   first borrow later used by call
    |     first mutable borrow occurs here
 
@@ -106,9 +102,8 @@ error[E0499]: cannot borrow `reg.sess_mut` as mutable more than once at a time
   --> $DIR/two-phase-surprise-no-conflict.rs:154:54
    |
 LL |     reg.register_bound(Box::new(CapturePass::new_mut(&mut reg.sess_mut)));
-   |     -------------------------------------------------^^^^^^^^^^^^^^^^^---
-   |     |   |                                            |
-   |     |   |                                            second mutable borrow occurs here
+   |     --- --------------                               ^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |     |   |
    |     |   first borrow later used by call
    |     first mutable borrow occurs here
 
@@ -129,9 +124,8 @@ error[E0499]: cannot borrow `reg.sess_mut` as mutable more than once at a time
   --> $DIR/two-phase-surprise-no-conflict.rs:158:53
    |
 LL |     reg.register_univ(Box::new(CapturePass::new_mut(&mut reg.sess_mut)));
-   |     ------------------------------------------------^^^^^^^^^^^^^^^^^---
-   |     |   |                                           |
-   |     |   |                                           second mutable borrow occurs here
+   |     --- -------------                               ^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |     |   |
    |     |   first borrow later used by call
    |     first mutable borrow occurs here
 
@@ -149,9 +143,8 @@ error[E0499]: cannot borrow `reg.sess_mut` as mutable more than once at a time
   --> $DIR/two-phase-surprise-no-conflict.rs:162:44
    |
 LL |     reg.register_ref(&CapturePass::new_mut(&mut reg.sess_mut));
-   |     ---------------------------------------^^^^^^^^^^^^^^^^^--
-   |     |   |                                  |
-   |     |   |                                  second mutable borrow occurs here
+   |     --- ------------                       ^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |     |   |
    |     |   first borrow later used by call
    |     first mutable borrow occurs here
 

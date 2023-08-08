@@ -37,6 +37,10 @@
 //!   if they do not consistently refer to the same place in memory. This is satisfied if they do
 //!   not contain any indirection through a pointer or any indexing projections.
 //!
+//! * `p` and `q` must have the **same type**. If we replace a local with a subtype or supertype,
+//!   we may end up with a differnet vtable for that local. See the `subtyping-impacts-selection`
+//!   tests for an example where that causes issues.
+//!
 //! * We need to make sure that the goal of "merging the memory" is actually structurally possible
 //!   in MIR. For example, even if all the other conditions are satisfied, there is no way to
 //!   "merge" `_5.foo` and `_6.bar`. For now, we ensure this by requiring that both `p` and `q` are
@@ -69,7 +73,7 @@
 //!   of this is that such liveness analysis can report more accurate results about whole locals at
 //!   a time. For example, consider:
 //!
-//!   ```ignore (syntax-highliting-only)
+//!   ```ignore (syntax-highlighting-only)
 //!   _1 = u;
 //!   // unrelated code
 //!   _1.f1 = v;
@@ -83,7 +87,7 @@
 //!   that ever have their address taken. Of course that requires actually having alias analysis
 //!   (and a model to build it on), so this might be a bit of a ways off.
 //!
-//! * Various perf improvents. There are a bunch of comments in here marked `PERF` with ideas for
+//! * Various perf improvements. There are a bunch of comments in here marked `PERF` with ideas for
 //!   how to do things more efficiently. However, the complexity of the pass as a whole should be
 //!   kept in mind.
 //!
@@ -134,6 +138,7 @@ use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::HasLocalDecls;
 use rustc_middle::mir::{dump_mir, PassWhere};
 use rustc_middle::mir::{
     traversal, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place, Rvalue,
@@ -213,9 +218,9 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
                 if merged_locals.contains(*src) {
                     continue;
                 }
-                let Some(dest) =
-                    candidates.iter().find(|dest| !merged_locals.contains(**dest)) else {
-                        continue;
+                let Some(dest) = candidates.iter().find(|dest| !merged_locals.contains(**dest))
+                else {
+                    continue;
                 };
                 if !tcx.consider_optimizing(|| {
                     format!("{} round {}", tcx.def_path_str(def_id), round_count)
@@ -360,7 +365,7 @@ struct FilterInformation<'a, 'body, 'alloc, 'tcx> {
 }
 
 // We first implement some utility functions which we will expose removing candidates according to
-// different needs. Throughout the livenss filtering, the `candidates` are only ever accessed
+// different needs. Throughout the liveness filtering, the `candidates` are only ever accessed
 // through these methods, and not directly.
 impl<'alloc> Candidates<'alloc> {
     /// Just `Vec::retain`, but the condition is inverted and we add debugging output
@@ -582,7 +587,8 @@ impl WriteInfo {
             | StatementKind::Nop
             | StatementKind::Coverage(_)
             | StatementKind::StorageLive(_)
-            | StatementKind::StorageDead(_) => (),
+            | StatementKind::StorageDead(_)
+            | StatementKind::PlaceMention(_) => (),
             StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
                 bug!("{:?} not found in this MIR phase", statement)
             }
@@ -595,9 +601,7 @@ impl WriteInfo {
         rhs: &Operand<'tcx>,
         body: &Body<'tcx>,
     ) {
-        let Some(rhs) = rhs.place() else {
-            return
-        };
+        let Some(rhs) = rhs.place() else { return };
         if let Some(pair) = places_to_candidate_pair(lhs, rhs, body) {
             self.skip_pair = Some(pair);
         }
@@ -643,8 +647,8 @@ impl WriteInfo {
                 }
             }
             TerminatorKind::Goto { .. }
-            | TerminatorKind::Resume { .. }
-            | TerminatorKind::Abort { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable { .. } => (),
             TerminatorKind::Drop { .. } => {
@@ -762,9 +766,19 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, '_, 'tcx> {
                 return;
             };
 
-            // As described at the top of the file, we do not go near things that have their address
-            // taken.
+            // As described at the top of the file, we do not go near things that have
+            // their address taken.
             if self.borrowed.contains(src) || self.borrowed.contains(dest) {
+                return;
+            }
+
+            // As described at the top of this file, we do not touch locals which have
+            // different types.
+            let src_ty = self.body.local_decls()[src].ty;
+            let dest_ty = self.body.local_decls()[dest].ty;
+            if src_ty != dest_ty {
+                // FIXME(#112651): This can be removed afterwards. Also update the module description.
+                trace!("skipped `{src:?} = {dest:?}` due to subtyping: {src_ty} != {dest_ty}");
                 return;
             }
 
@@ -786,7 +800,7 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, '_, 'tcx> {
 fn is_local_required(local: Local, body: &Body<'_>) -> bool {
     match body.local_kind(local) {
         LocalKind::Arg | LocalKind::ReturnPointer => true,
-        LocalKind::Var | LocalKind::Temp => false,
+        LocalKind::Temp => false,
     }
 }
 

@@ -3,7 +3,6 @@
 // Test expressions
 
 fn foo() -> bool {
-    let boxed: Box<i32> = box   5;
     let referenced = &5 ;
 
     let very_long_variable_name = ( a +  first +   simple + test   );
@@ -129,12 +128,6 @@ fn qux() {
     }
     {
         // A block with a comment.
-    }
-}
-
-fn issue227() {
-    {
-        let handler = box DocumentProgressHandler::new(addr, DocumentProgressTask::DOMContentLoaded);
     }
 }
 
@@ -410,10 +403,6 @@ fn foo() {
 fn issue2704() {
     // We should not combine the callee with a multi-lined method call.
     let requires = requires.set(&requires0
-                                .concat(&requires1)
-                                .concat(&requires2)
-                                .distinct_total());
-    let requires = requires.set(box requires0
                                 .concat(&requires1)
                                 .concat(&requires2)
                                 .distinct_total());

@@ -11,12 +11,6 @@ help: use a trailing comma to create a tuple with one element
 LL | const TUP: (usize,) = (5usize << 64,);
    |                       +            ++
 
-note: erroneous constant used
-  --> $DIR/const-tup-index-span.rs:6:18
-   |
-LL | const ARR: [i32; TUP.0] = [];
-   |                  ^^^
-
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0308`.

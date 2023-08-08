@@ -56,6 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
                         return;
                     }
                     let arg_ty = cx.typeck_results().expr_ty(&args[0]);
+                    let default_span = args[0].span;
                     if let ty::FnDef(id, _) = arg_ty.kind() {
                         let fn_ty = cx.tcx.fn_sig(id).skip_binder();
                         let ret_ty = fn_ty.output().skip_binder();
@@ -64,7 +65,10 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
                                 MAP_UNIT_FN,
                                 span,
                                 MappingToUnit {
-                                    function_label: cx.tcx.span_of_impl(*id).unwrap(),
+                                    function_label: cx
+                                        .tcx
+                                        .span_of_impl(*id)
+                                        .unwrap_or(default_span),
                                     argument_label: args[0].span,
                                     map_label: arg_ty.default_span(cx.tcx),
                                     suggestion: path.ident.span,
@@ -80,7 +84,10 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
                                 MAP_UNIT_FN,
                                 span,
                                 MappingToUnit {
-                                    function_label: cx.tcx.span_of_impl(*id).unwrap(),
+                                    function_label: cx
+                                        .tcx
+                                        .span_of_impl(*id)
+                                        .unwrap_or(default_span),
                                     argument_label: args[0].span,
                                     map_label: arg_ty.default_span(cx.tcx),
                                     suggestion: path.ident.span,

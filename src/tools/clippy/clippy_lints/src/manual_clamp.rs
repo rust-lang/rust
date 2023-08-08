@@ -4,20 +4,19 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
-use clippy_utils::MaybePath;
 use clippy_utils::{
-    eq_expr_value, is_diag_trait_item, is_trait_method, path_res, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
+    eq_expr_value, in_constant, is_diag_trait_item, is_trait_method, path_res, path_to_local_id, peel_blocks,
+    peel_blocks_with_stmt, MaybePath,
 };
 use itertools::Itertools;
-use rustc_errors::Applicability;
-use rustc_errors::Diagnostic;
-use rustc_hir::{
-    def::Res, Arm, BinOpKind, Block, Expr, ExprKind, Guard, HirId, PatKind, PathSegment, PrimTy, QPath, StmtKind,
-};
+use rustc_errors::{Applicability, Diagnostic};
+use rustc_hir::def::Res;
+use rustc_hir::{Arm, BinOpKind, Block, Expr, ExprKind, Guard, HirId, PatKind, PathSegment, PrimTy, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 use std::ops::Deref;
 
 declare_clippy_lint! {
@@ -117,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
         if !self.msrv.meets(msrvs::CLAMP) {
             return;
         }
-        if !expr.span.from_expansion() {
+        if !expr.span.from_expansion() && !in_constant(cx, expr.hir_id) {
             let suggestion = is_if_elseif_else_pattern(cx, expr)
                 .or_else(|| is_max_min_pattern(cx, expr))
                 .or_else(|| is_call_max_min_pattern(cx, expr))
@@ -130,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     }
 
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if !self.msrv.meets(msrvs::CLAMP) {
+        if !self.msrv.meets(msrvs::CLAMP) || in_constant(cx, block.hir_id) {
             return;
         }
         for suggestion in is_two_if_pattern(cx, block) {

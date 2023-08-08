@@ -69,7 +69,7 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         return None;
     }
 
-    let inferred_type = ty.display_source_code(ctx.db(), module.into()).ok()?;
+    let inferred_type = ty.display_source_code(ctx.db(), module.into(), false).ok()?;
     acc.add(
         AssistId("add_explicit_type", AssistKind::RefactorRewrite),
         format!("Insert explicit type `{inferred_type}`"),
@@ -211,10 +211,8 @@ fn main() {
         check_assist_not_applicable(
             add_explicit_type,
             r#"
-//- minicore: option
-
 fn main() {
-    let $0l = [0.0; Some(2).unwrap()];
+    let $0l = [0.0; unresolved_function(5)];
 }
 "#,
         );

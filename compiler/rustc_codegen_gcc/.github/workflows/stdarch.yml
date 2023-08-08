@@ -20,9 +20,9 @@ jobs:
       matrix:
         libgccjit_version:
           - { gcc: "libgccjit.so", artifacts_branch: "master" }
-        commands: [
-          "--test-successful-rustc --nb-parts 2 --current-part 0",
-          "--test-successful-rustc --nb-parts 2 --current-part 1",
+        cargo_runner: [
+          "sde -future -rtm_mode full --",
+          "",
         ]
 
     steps:
@@ -35,6 +35,20 @@ jobs:
 
     - name: Install packages
       run: sudo apt-get install ninja-build ripgrep
+
+    - name: Install Intel Software Development Emulator
+      if: ${{ matrix.cargo_runner }}
+      run: |
+          mkdir intel-sde
+          cd intel-sde
+          dir=sde-external-9.14.0-2022-10-25-lin
+          file=$dir.tar.xz
+          wget https://downloadmirror.intel.com/751535/$file
+          tar xvf $file
+          sudo mkdir /usr/share/intel-sde
+          sudo cp -r $dir/* /usr/share/intel-sde
+          sudo ln -s /usr/share/intel-sde/sde /usr/bin/sde
+          sudo ln -s /usr/share/intel-sde/sde64 /usr/bin/sde64
 
     - name: Download artifact
       uses: dawidd6/action-download-artifact@v2
@@ -91,6 +105,10 @@ jobs:
         ./prepare_build.sh
         ./build.sh --release --release-sysroot
         cargo test
+
+    - name: Clean
+      if: ${{ !matrix.cargo_runner }}
+      run: |
         ./clean_all.sh
 
     - name: Prepare dependencies
@@ -107,10 +125,18 @@ jobs:
         args: --release
 
     - name: Run tests
+      if: ${{ !matrix.cargo_runner }}
       run: |
         ./test.sh --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests --test-libcore
 
     - name: Run stdarch tests
+      if: ${{ !matrix.cargo_runner }}
       run: |
         cd build_sysroot/sysroot_src/library/stdarch/
         CHANNEL=release TARGET=x86_64-unknown-linux-gnu ../../../../cargo.sh test
+
+    - name: Run stdarch tests
+      if: ${{ matrix.cargo_runner }}
+      run: |
+        cd build_sysroot/sysroot_src/library/stdarch/
+        STDARCH_TEST_EVERYTHING=1 CHANNEL=release CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="${{ matrix.cargo_runner }}" TARGET=x86_64-unknown-linux-gnu ../../../../cargo.sh test -- --skip rtm --skip tbm --skip sse4a

@@ -1,4 +1,6 @@
-use clippy_utils::{diagnostics::span_lint_and_help, path_def_id, ty::peel_mid_ty_refs};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::path_def_id;
+use clippy_utils::ty::peel_mid_ty_refs;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -45,7 +47,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.67.0"]
+    #[clippy::version = "1.68.0"]
     pub SIZE_OF_REF,
     suspicious,
     "Argument to `std::mem::size_of_val()` is a double-reference, which is almost certainly unintended"

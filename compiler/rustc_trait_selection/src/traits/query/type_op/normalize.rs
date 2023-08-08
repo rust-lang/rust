@@ -1,5 +1,7 @@
 use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
-use crate::traits::query::Fallible;
+use crate::traits::ObligationCtxt;
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
 use std::fmt;
@@ -19,8 +21,16 @@ where
     fn perform_query(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, Self::QueryResponse>> {
+    ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution> {
         T::type_op_method(tcx, canonicalized)
+    }
+
+    fn perform_locally_in_new_solver(
+        ocx: &ObligationCtxt<'_, 'tcx>,
+        key: ParamEnvAnd<'tcx, Self>,
+    ) -> Result<Self::QueryResponse, NoSolution> {
+        // FIXME(-Ztrait-solver=next): shouldn't be using old normalizer
+        Ok(ocx.normalize(&ObligationCause::dummy(), key.param_env, key.value.value))
     }
 }
 
@@ -28,24 +38,24 @@ pub trait Normalizable<'tcx>: fmt::Debug + TypeFoldable<TyCtxt<'tcx>> + Lift<'tc
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, Self>>;
+    ) -> Result<CanonicalQueryResponse<'tcx, Self>, NoSolution>;
 }
 
 impl<'tcx> Normalizable<'tcx> for Ty<'tcx> {
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, Self>> {
+    ) -> Result<CanonicalQueryResponse<'tcx, Self>, NoSolution> {
         tcx.type_op_normalize_ty(canonicalized)
     }
 }
 
-impl<'tcx> Normalizable<'tcx> for ty::Predicate<'tcx> {
+impl<'tcx> Normalizable<'tcx> for ty::Clause<'tcx> {
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, Self>> {
-        tcx.type_op_normalize_predicate(canonicalized)
+    ) -> Result<CanonicalQueryResponse<'tcx, Self>, NoSolution> {
+        tcx.type_op_normalize_clause(canonicalized)
     }
 }
 
@@ -53,7 +63,7 @@ impl<'tcx> Normalizable<'tcx> for ty::PolyFnSig<'tcx> {
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, Self>> {
+    ) -> Result<CanonicalQueryResponse<'tcx, Self>, NoSolution> {
         tcx.type_op_normalize_poly_fn_sig(canonicalized)
     }
 }
@@ -62,7 +72,7 @@ impl<'tcx> Normalizable<'tcx> for ty::FnSig<'tcx> {
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, Self>> {
+    ) -> Result<CanonicalQueryResponse<'tcx, Self>, NoSolution> {
         tcx.type_op_normalize_fn_sig(canonicalized)
     }
 }

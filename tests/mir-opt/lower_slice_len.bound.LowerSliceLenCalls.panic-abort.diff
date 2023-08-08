@@ -1,0 +1,60 @@
+- // MIR for `bound` before LowerSliceLenCalls
++ // MIR for `bound` after LowerSliceLenCalls
+  
+  fn bound(_1: usize, _2: &[u8]) -> u8 {
+      debug index => _1;
+      debug slice => _2;
+      let mut _0: u8;
+      let mut _3: bool;
+      let mut _4: usize;
+      let mut _5: usize;
+      let mut _6: &[u8];
+      let _7: usize;
+      let mut _8: usize;
+      let mut _9: bool;
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = _1;
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = &(*_2);
+-         _5 = core::slice::<impl [u8]>::len(move _6) -> [return: bb1, unwind unreachable];
++         _5 = Len((*_6));
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          _3 = Lt(move _4, move _5);
+          StorageDead(_5);
+          StorageDead(_4);
+          switchInt(move _3) -> [0: bb4, otherwise: bb2];
+      }
+  
+      bb2: {
+          StorageLive(_7);
+          _7 = _1;
+          _8 = Len((*_2));
+          _9 = Lt(_7, _8);
+          assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> [success: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          _0 = (*_2)[_7];
+          StorageDead(_7);
+          goto -> bb5;
+      }
+  
+      bb4: {
+          _0 = const 42_u8;
+          goto -> bb5;
+      }
+  
+      bb5: {
+          StorageDead(_3);
+          return;
+      }
+  }
+  

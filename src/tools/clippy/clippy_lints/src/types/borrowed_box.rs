@@ -2,8 +2,9 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, GenericArg, GenericBounds, GenericParamKind};
-use rustc_hir::{HirId, Lifetime, MutTy, Mutability, Node, QPath, TyKind};
+use rustc_hir::{
+    self as hir, GenericArg, GenericBounds, GenericParamKind, HirId, Lifetime, MutTy, Mutability, Node, QPath, TyKind,
+};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
@@ -20,7 +21,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                 if let QPath::Resolved(None, path) = *qpath;
                 if let [ref bx] = *path.segments;
                 if let Some(params) = bx.args;
-                if !params.parenthesized;
+                if params.parenthesized == hir::GenericArgsParentheses::No;
                 if let Some(inner) = params.args.iter().find_map(|arg| match arg {
                     GenericArg::Type(ty) => Some(ty),
                     _ => None,

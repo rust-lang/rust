@@ -1,7 +1,8 @@
-// run-rustfix
+//@run-rustfix
 #![feature(lint_reasons)]
 #![feature(async_closure)]
 #![warn(clippy::async_yields_async)]
+#![allow(clippy::redundant_async_block)]
 
 use core::future::Future;
 use core::pin::Pin;

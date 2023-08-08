@@ -2,75 +2,75 @@
 + // MIR for `opt3` after EarlyOtherwiseBranch
   
   fn opt3(_1: Option<u32>, _2: Option<bool>) -> u32 {
-      debug x => _1;                       // in scope 0 at $DIR/early_otherwise_branch.rs:+0:9: +0:10
-      debug y => _2;                       // in scope 0 at $DIR/early_otherwise_branch.rs:+0:25: +0:26
-      let mut _0: u32;                     // return place in scope 0 at $DIR/early_otherwise_branch.rs:+0:45: +0:48
-      let mut _3: (std::option::Option<u32>, std::option::Option<bool>); // in scope 0 at $DIR/early_otherwise_branch.rs:+1:11: +1:17
-      let mut _4: std::option::Option<u32>; // in scope 0 at $DIR/early_otherwise_branch.rs:+1:12: +1:13
-      let mut _5: std::option::Option<bool>; // in scope 0 at $DIR/early_otherwise_branch.rs:+1:15: +1:16
-      let mut _6: isize;                   // in scope 0 at $DIR/early_otherwise_branch.rs:+2:19: +2:26
-      let mut _7: isize;                   // in scope 0 at $DIR/early_otherwise_branch.rs:+2:10: +2:17
-      let _8: u32;                         // in scope 0 at $DIR/early_otherwise_branch.rs:+2:15: +2:16
-      let _9: bool;                        // in scope 0 at $DIR/early_otherwise_branch.rs:+2:24: +2:25
-+     let mut _10: isize;                  // in scope 0 at $DIR/early_otherwise_branch.rs:+1:5: +1:17
-+     let mut _11: bool;                   // in scope 0 at $DIR/early_otherwise_branch.rs:+1:5: +1:17
+      debug x => _1;
+      debug y => _2;
+      let mut _0: u32;
+      let mut _3: (std::option::Option<u32>, std::option::Option<bool>);
+      let mut _4: std::option::Option<u32>;
+      let mut _5: std::option::Option<bool>;
+      let mut _6: isize;
+      let mut _7: isize;
+      let _8: u32;
+      let _9: bool;
++     let mut _10: isize;
++     let mut _11: bool;
       scope 1 {
-          debug a => _8;                   // in scope 1 at $DIR/early_otherwise_branch.rs:+2:15: +2:16
-          debug b => _9;                   // in scope 1 at $DIR/early_otherwise_branch.rs:+2:24: +2:25
+          debug a => _8;
+          debug b => _9;
       }
   
       bb0: {
-          StorageLive(_3);                 // scope 0 at $DIR/early_otherwise_branch.rs:+1:11: +1:17
-          StorageLive(_4);                 // scope 0 at $DIR/early_otherwise_branch.rs:+1:12: +1:13
-          _4 = _1;                         // scope 0 at $DIR/early_otherwise_branch.rs:+1:12: +1:13
-          StorageLive(_5);                 // scope 0 at $DIR/early_otherwise_branch.rs:+1:15: +1:16
-          _5 = _2;                         // scope 0 at $DIR/early_otherwise_branch.rs:+1:15: +1:16
-          _3 = (move _4, move _5);         // scope 0 at $DIR/early_otherwise_branch.rs:+1:11: +1:17
-          StorageDead(_5);                 // scope 0 at $DIR/early_otherwise_branch.rs:+1:16: +1:17
-          StorageDead(_4);                 // scope 0 at $DIR/early_otherwise_branch.rs:+1:16: +1:17
-          _7 = discriminant((_3.0: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch.rs:+1:11: +1:17
--         switchInt(move _7) -> [1: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:+1:5: +1:17
-+         StorageLive(_10);                // scope 0 at $DIR/early_otherwise_branch.rs:+1:5: +1:17
-+         _10 = discriminant((_3.1: std::option::Option<bool>)); // scope 0 at $DIR/early_otherwise_branch.rs:+1:5: +1:17
-+         StorageLive(_11);                // scope 0 at $DIR/early_otherwise_branch.rs:+1:5: +1:17
-+         _11 = Ne(_7, move _10);          // scope 0 at $DIR/early_otherwise_branch.rs:+1:5: +1:17
-+         StorageDead(_10);                // scope 0 at $DIR/early_otherwise_branch.rs:+1:5: +1:17
-+         switchInt(move _11) -> [0: bb4, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:+1:5: +1:17
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = _1;
+          StorageLive(_5);
+          _5 = _2;
+          _3 = (move _4, move _5);
+          StorageDead(_5);
+          StorageDead(_4);
+          _7 = discriminant((_3.0: std::option::Option<u32>));
+-         switchInt(move _7) -> [1: bb2, otherwise: bb1];
++         StorageLive(_10);
++         _10 = discriminant((_3.1: std::option::Option<bool>));
++         StorageLive(_11);
++         _11 = Ne(_7, move _10);
++         StorageDead(_10);
++         switchInt(move _11) -> [0: bb4, otherwise: bb1];
       }
   
       bb1: {
-+         StorageDead(_11);                // scope 0 at $DIR/early_otherwise_branch.rs:+3:14: +3:15
-          _0 = const 1_u32;                // scope 0 at $DIR/early_otherwise_branch.rs:+3:14: +3:15
--         goto -> bb4;                     // scope 0 at $DIR/early_otherwise_branch.rs:+3:14: +3:15
-+         goto -> bb3;                     // scope 0 at $DIR/early_otherwise_branch.rs:+3:14: +3:15
++         StorageDead(_11);
+          _0 = const 1_u32;
+-         goto -> bb4;
++         goto -> bb3;
       }
   
       bb2: {
--         _6 = discriminant((_3.1: std::option::Option<bool>)); // scope 0 at $DIR/early_otherwise_branch.rs:+1:11: +1:17
--         switchInt(move _6) -> [1: bb3, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:+1:5: +1:17
+-         _6 = discriminant((_3.1: std::option::Option<bool>));
+-         switchInt(move _6) -> [1: bb3, otherwise: bb1];
 -     }
 - 
 -     bb3: {
-          StorageLive(_8);                 // scope 0 at $DIR/early_otherwise_branch.rs:+2:15: +2:16
-          _8 = (((_3.0: std::option::Option<u32>) as Some).0: u32); // scope 0 at $DIR/early_otherwise_branch.rs:+2:15: +2:16
-          StorageLive(_9);                 // scope 0 at $DIR/early_otherwise_branch.rs:+2:24: +2:25
-          _9 = (((_3.1: std::option::Option<bool>) as Some).0: bool); // scope 0 at $DIR/early_otherwise_branch.rs:+2:24: +2:25
-          _0 = const 0_u32;                // scope 1 at $DIR/early_otherwise_branch.rs:+2:31: +2:32
-          StorageDead(_9);                 // scope 0 at $DIR/early_otherwise_branch.rs:+2:31: +2:32
-          StorageDead(_8);                 // scope 0 at $DIR/early_otherwise_branch.rs:+2:31: +2:32
--         goto -> bb4;                     // scope 0 at $DIR/early_otherwise_branch.rs:+2:31: +2:32
-+         goto -> bb3;                     // scope 0 at $DIR/early_otherwise_branch.rs:+2:31: +2:32
+          StorageLive(_8);
+          _8 = (((_3.0: std::option::Option<u32>) as Some).0: u32);
+          StorageLive(_9);
+          _9 = (((_3.1: std::option::Option<bool>) as Some).0: bool);
+          _0 = const 0_u32;
+          StorageDead(_9);
+          StorageDead(_8);
+-         goto -> bb4;
++         goto -> bb3;
       }
   
 -     bb4: {
 +     bb3: {
-          StorageDead(_3);                 // scope 0 at $DIR/early_otherwise_branch.rs:+5:1: +5:2
-          return;                          // scope 0 at $DIR/early_otherwise_branch.rs:+5:2: +5:2
+          StorageDead(_3);
+          return;
 +     }
 + 
 +     bb4: {
-+         StorageDead(_11);                // scope 0 at $DIR/early_otherwise_branch.rs:+1:5: +1:17
-+         switchInt(_7) -> [1: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:+1:5: +1:17
++         StorageDead(_11);
++         switchInt(_7) -> [1: bb2, otherwise: bb1];
       }
   }
   

@@ -9,6 +9,6 @@ fn require_(_: impl PointerLike) {}
 fn main() {
     require_(1usize);
     require_(1u16);
-    //~^ ERROR `u16` needs to have the same alignment and size as a pointer
+    //~^ ERROR `u16` needs to have the same ABI as a pointer
     require_(&1i16);
 }

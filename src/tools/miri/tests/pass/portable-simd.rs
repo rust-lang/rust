@@ -2,6 +2,10 @@
 #![feature(portable_simd, platform_intrinsics)]
 use std::simd::*;
 
+extern "platform-intrinsic" {
+    pub(crate) fn simd_bitmask<T, U>(x: T) -> U;
+}
+
 fn simd_ops_f32() {
     let a = f32x4::splat(10.0);
     let b = f32x4::from_array([1.0, 2.0, 3.0, -4.0]);
@@ -208,11 +212,40 @@ fn simd_mask() {
     assert_eq!(bitmask, 0b1010001101001001);
     assert_eq!(Mask::<i64, 16>::from_bitmask(bitmask), mask);
 
+    // Also directly call intrinsic, to test both kinds of return types.
+    unsafe {
+        let bitmask1: u16 = simd_bitmask(mask.to_int());
+        let bitmask2: [u8; 2] = simd_bitmask(mask.to_int());
+        if cfg!(target_endian = "little") {
+            assert_eq!(bitmask1, 0b1010001101001001);
+            assert_eq!(bitmask2, [0b01001001, 0b10100011]);
+        } else {
+            // All the bitstrings are reversed compared to above, but the array elements are in the
+            // same order.
+            assert_eq!(bitmask1, 0b1001001011000101);
+            assert_eq!(bitmask2, [0b10010010, 0b11000101]);
+        }
+    }
+
+    // Mask less than 8 bits long, which is a special case (padding with 0s).
     let values = [false, false, false, true];
     let mask = Mask::<i64, 4>::from_array(values);
     let bitmask = mask.to_bitmask();
     assert_eq!(bitmask, 0b1000);
     assert_eq!(Mask::<i64, 4>::from_bitmask(bitmask), mask);
+
+    // Also directly call intrinsic, to test both kinds of return types.
+    unsafe {
+        let bitmask1: u8 = simd_bitmask(mask.to_int());
+        let bitmask2: [u8; 1] = simd_bitmask(mask.to_int());
+        if cfg!(target_endian = "little") {
+            assert_eq!(bitmask1, 0b1000);
+            assert_eq!(bitmask2, [0b1000]);
+        } else {
+            assert_eq!(bitmask1, 0b0001);
+            assert_eq!(bitmask2, [0b0001]);
+        }
+    }
 }
 
 fn simd_cast() {

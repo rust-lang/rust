@@ -1,5 +1,5 @@
 use crate::filesearch::make_target_lib_path;
-use crate::{config, early_error};
+use crate::EarlyErrorHandler;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug)]
@@ -46,7 +46,7 @@ impl PathKind {
 }
 
 impl SearchPath {
-    pub fn from_cli_opt(path: &str, output: config::ErrorOutputType) -> Self {
+    pub fn from_cli_opt(handler: &EarlyErrorHandler, path: &str) -> Self {
         let (kind, path) = if let Some(stripped) = path.strip_prefix("native=") {
             (PathKind::Native, stripped)
         } else if let Some(stripped) = path.strip_prefix("crate=") {
@@ -61,7 +61,7 @@ impl SearchPath {
             (PathKind::All, path)
         };
         if path.is_empty() {
-            early_error(output, "empty search path given via `-L`");
+            handler.early_error("empty search path given via `-L`");
         }
 
         let dir = PathBuf::from(path);

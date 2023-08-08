@@ -6,7 +6,7 @@ CHECK:      lfence
 CHECK:      lfence
 CHECK-NEXT: incl
 CHECK-NEXT: jmp
-CHECK-NEXT: shlq    $0, (%rsp)
+CHECK-NEXT: shlq	$0x0, (%rsp)
 CHECK-NEXT: lfence
 CHECK-NEXT: retq
 CHECK:      popq

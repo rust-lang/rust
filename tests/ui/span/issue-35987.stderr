@@ -11,7 +11,7 @@ LL | impl<T: Clone, Add> Add for Foo<T> {
    |
 help: consider importing this trait instead
    |
-LL | use std::ops::Add;
+LL + use std::ops::Add;
    |
 
 error: aborting due to previous error

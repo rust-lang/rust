@@ -4,18 +4,47 @@
 //! As this module requires additional dependencies not present during local builds, it's cfg'd
 //! away whenever the `build.metrics` config option is not set to `true`.
 
-use crate::builder::Step;
+use crate::builder::{Builder, Step};
 use crate::util::t;
 use crate::Build;
-use serde_derive::{Deserialize, Serialize};
+use build_helper::metrics::{
+    JsonInvocation, JsonInvocationSystemStats, JsonNode, JsonRoot, JsonStepSystemStats, Test,
+    TestOutcome, TestSuite, TestSuiteMetadata,
+};
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::BufWriter;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use sysinfo::{CpuExt, System, SystemExt};
+
+// Update this number whenever a breaking change is made to the build metrics.
+//
+// The output format is versioned for two reasons:
+//
+// - The metadata is intended to be consumed by external tooling, and exposing a format version
+//   helps the tools determine whether they're compatible with a metrics file.
+//
+// - If a developer enables build metrics in their local checkout, making a breaking change to the
+//   metrics format would result in a hard-to-diagnose error message when an existing metrics file
+//   is not compatible with the new changes. With a format version number, bootstrap can discard
+//   incompatible metrics files instead of appending metrics to them.
+//
+// Version changelog:
+//
+// - v0: initial version
+// - v1: replaced JsonNode::Test with JsonNode::TestSuite
+//
+const CURRENT_FORMAT_VERSION: usize = 1;
 
 pub(crate) struct BuildMetrics {
     state: RefCell<MetricsState>,
+}
+
+/// NOTE: this isn't really cloning anything, but `x suggest` doesn't need metrics so this is probably ok.
+impl Clone for BuildMetrics {
+    fn clone(&self) -> Self {
+        Self::init()
+    }
 }
 
 impl BuildMetrics {
@@ -27,12 +56,18 @@ impl BuildMetrics {
             system_info: System::new(),
             timer_start: None,
             invocation_timer_start: Instant::now(),
+            invocation_start: SystemTime::now(),
         });
 
         BuildMetrics { state }
     }
 
-    pub(crate) fn enter_step<S: Step>(&self, step: &S) {
+    pub(crate) fn enter_step<S: Step>(&self, step: &S, builder: &Builder<'_>) {
+        // Do not record dry runs, as they'd be duplicates of the actual steps.
+        if builder.config.dry_run() {
+            return;
+        }
+
         let mut state = self.state.borrow_mut();
 
         // Consider all the stats gathered so far as the parent's.
@@ -51,10 +86,16 @@ impl BuildMetrics {
             duration_excluding_children_sec: Duration::ZERO,
 
             children: Vec::new(),
+            test_suites: Vec::new(),
         });
     }
 
-    pub(crate) fn exit_step(&self) {
+    pub(crate) fn exit_step(&self, builder: &Builder<'_>) {
+        // Do not record dry runs, as they'd be duplicates of the actual steps.
+        if builder.config.dry_run() {
+            return;
+        }
+
         let mut state = self.state.borrow_mut();
 
         self.collect_stats(&mut *state);
@@ -69,6 +110,33 @@ impl BuildMetrics {
             // Start collecting again for the parent step.
             state.system_info.refresh_cpu();
             state.timer_start = Some(Instant::now());
+        }
+    }
+
+    pub(crate) fn begin_test_suite(&self, metadata: TestSuiteMetadata, builder: &Builder<'_>) {
+        // Do not record dry runs, as they'd be duplicates of the actual steps.
+        if builder.config.dry_run() {
+            return;
+        }
+
+        let mut state = self.state.borrow_mut();
+        let step = state.running_steps.last_mut().unwrap();
+        step.test_suites.push(TestSuite { metadata, tests: Vec::new() });
+    }
+
+    pub(crate) fn record_test(&self, name: &str, outcome: TestOutcome, builder: &Builder<'_>) {
+        // Do not record dry runs, as they'd be duplicates of the actual steps.
+        if builder.config.dry_run() {
+            return;
+        }
+
+        let mut state = self.state.borrow_mut();
+        let step = state.running_steps.last_mut().unwrap();
+
+        if let Some(test_suite) = step.test_suites.last_mut() {
+            test_suite.tests.push(Test { name: name.to_string(), outcome });
+        } else {
+            panic!("metrics.record_test() called without calling metrics.begin_test_suite() first");
         }
     }
 
@@ -104,7 +172,20 @@ impl BuildMetrics {
         // Some of our CI builds consist of multiple independent CI invocations. Ensure all the
         // previous invocations are still present in the resulting file.
         let mut invocations = match std::fs::read(&dest) {
-            Ok(contents) => t!(serde_json::from_slice::<JsonRoot>(&contents)).invocations,
+            Ok(contents) => {
+                // We first parse just the format_version field to have the check succeed even if
+                // the rest of the contents are not valid anymore.
+                let version: OnlyFormatVersion = t!(serde_json::from_slice(&contents));
+                if version.format_version == CURRENT_FORMAT_VERSION {
+                    t!(serde_json::from_slice::<JsonRoot>(&contents)).invocations
+                } else {
+                    println!(
+                        "warning: overriding existing build/metrics.json, as it's not \
+                         compatible with build metrics format version {CURRENT_FORMAT_VERSION}."
+                    );
+                    Vec::new()
+                }
+            }
             Err(err) => {
                 if err.kind() != std::io::ErrorKind::NotFound {
                     panic!("failed to open existing metrics file at {}: {err}", dest.display());
@@ -113,11 +194,16 @@ impl BuildMetrics {
             }
         };
         invocations.push(JsonInvocation {
+            start_time: state
+                .invocation_start
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
             duration_including_children_sec: state.invocation_timer_start.elapsed().as_secs_f64(),
             children: steps.into_iter().map(|step| self.prepare_json_step(step)).collect(),
         });
 
-        let json = JsonRoot { system_stats, invocations };
+        let json = JsonRoot { format_version: CURRENT_FORMAT_VERSION, system_stats, invocations };
 
         t!(std::fs::create_dir_all(dest.parent().unwrap()));
         let mut file = BufWriter::new(t!(File::create(&dest)));
@@ -125,6 +211,10 @@ impl BuildMetrics {
     }
 
     fn prepare_json_step(&self, step: StepMetrics) -> JsonNode {
+        let mut children = Vec::new();
+        children.extend(step.children.into_iter().map(|child| self.prepare_json_step(child)));
+        children.extend(step.test_suites.into_iter().map(JsonNode::TestSuite));
+
         JsonNode::RustbuildStep {
             type_: step.type_,
             debug_repr: step.debug_repr,
@@ -135,11 +225,7 @@ impl BuildMetrics {
                     / step.duration_excluding_children_sec.as_secs_f64(),
             },
 
-            children: step
-                .children
-                .into_iter()
-                .map(|child| self.prepare_json_step(child))
-                .collect(),
+            children,
         }
     }
 }
@@ -151,6 +237,7 @@ struct MetricsState {
     system_info: System,
     timer_start: Option<Instant>,
     invocation_timer_start: Instant,
+    invocation_start: SystemTime,
 }
 
 struct StepMetrics {
@@ -161,48 +248,11 @@ struct StepMetrics {
     duration_excluding_children_sec: Duration,
 
     children: Vec<StepMetrics>,
+    test_suites: Vec<TestSuite>,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-struct JsonRoot {
-    system_stats: JsonInvocationSystemStats,
-    invocations: Vec<JsonInvocation>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-struct JsonInvocation {
-    duration_including_children_sec: f64,
-    children: Vec<JsonNode>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-enum JsonNode {
-    RustbuildStep {
-        #[serde(rename = "type")]
-        type_: String,
-        debug_repr: String,
-
-        duration_excluding_children_sec: f64,
-        system_stats: JsonStepSystemStats,
-
-        children: Vec<JsonNode>,
-    },
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-struct JsonInvocationSystemStats {
-    cpu_threads_count: usize,
-    cpu_model: String,
-
-    memory_total_bytes: u64,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-struct JsonStepSystemStats {
-    cpu_utilization_percent: f64,
+#[derive(serde_derive::Deserialize)]
+struct OnlyFormatVersion {
+    #[serde(default)] // For version 0 the field was not present.
+    format_version: usize,
 }

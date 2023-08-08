@@ -17,10 +17,11 @@ use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;
 use super::write_shared::write_shared;
 use super::{
-    collect_spans_and_sources, print_sidebar, scrape_examples_help, sidebar_module_like, AllTypes,
-    LinkFromSrc, StylePath,
+    collect_spans_and_sources, scrape_examples_help,
+    sidebar::print_sidebar,
+    sidebar::{sidebar_module_like, Sidebar},
+    AllTypes, LinkFromSrc, StylePath,
 };
-
 use crate::clean::{self, types::ExternalLocation, ExternalCrate};
 use crate::config::{ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
@@ -35,6 +36,7 @@ use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources, static_files};
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
+use askama::Template;
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
@@ -71,6 +73,8 @@ pub(crate) struct Context<'tcx> {
     pub(crate) include_sources: bool,
     /// Collection of all types with notable traits referenced in the current module.
     pub(crate) types_with_notable_traits: FxHashSet<clean::Type>,
+    /// Field used during rendering, to know if we're inside an inlined item.
+    pub(crate) is_inside_inlined_module: bool,
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
@@ -120,9 +124,9 @@ pub(crate) struct SharedContext<'tcx> {
     /// the crate.
     redirections: Option<RefCell<FxHashMap<String, String>>>,
 
-    /// Correspondance map used to link types used in the source code pages to allow to click on
+    /// Correspondence map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
-    pub(crate) span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
+    pub(crate) span_correspondence_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
     /// The [`Cache`] used during rendering.
     pub(crate) cache: Cache,
 
@@ -158,7 +162,7 @@ impl<'tcx> Context<'tcx> {
         self.shared.tcx.sess
     }
 
-    pub(super) fn derive_id(&mut self, id: String) -> String {
+    pub(super) fn derive_id<S: AsRef<str> + ToString>(&mut self, id: S) -> String {
         self.id_map.derive(id)
     }
 
@@ -169,6 +173,19 @@ impl<'tcx> Context<'tcx> {
     }
 
     fn render_item(&mut self, it: &clean::Item, is_module: bool) -> String {
+        let mut render_redirect_pages = self.render_redirect_pages;
+        // If the item is stripped but inlined, links won't point to the item so no need to generate
+        // a file for it.
+        if it.is_stripped() &&
+            let Some(def_id) = it.def_id() &&
+            def_id.is_local()
+        {
+            if self.is_inside_inlined_module || self.shared.cache.inlined_items.contains(&def_id) {
+                // For now we're forced to generate a redirect page for stripped items until
+                // `record_extern_fqn` correctly points to external items.
+                render_redirect_pages = true;
+            }
+        }
         let mut title = String::new();
         if !is_module {
             title.push_str(it.name.unwrap().as_str());
@@ -182,11 +199,8 @@ impl<'tcx> Context<'tcx> {
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = it
-            .doc_value()
-            .as_ref()
-            .map(|doc| plain_text_summary(doc, &it.link_names(&self.cache())));
-        let desc = if let Some(desc) = desc {
+        let desc = plain_text_summary(&it.doc_value(), &it.link_names(&self.cache()));
+        let desc = if !desc.is_empty() {
             desc
         } else if it.is_crate() {
             format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
@@ -206,7 +220,7 @@ impl<'tcx> Context<'tcx> {
             tyname.as_str()
         };
 
-        if !self.render_redirect_pages {
+        if !render_redirect_pages {
             let clone_shared = Rc::clone(&self.shared);
             let page = layout::Page {
                 css_class: tyname_s,
@@ -350,7 +364,7 @@ impl<'tcx> Context<'tcx> {
                 },
             );
 
-            path = href.into_inner().to_string_lossy().to_string();
+            path = href.into_inner().to_string_lossy().into_owned();
 
             if let Some(c) = path.as_bytes().last() && *c != b'/' {
                 path.push('/');
@@ -529,7 +543,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             errors: receiver,
             redirections: if generate_redirect_map { Some(Default::default()) } else { None },
             show_type_layout,
-            span_correspondance_map: matches,
+            span_correspondence_map: matches,
             cache,
             call_locations,
         };
@@ -546,6 +560,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             shared: Rc::new(scx),
             include_sources,
             types_with_notable_traits: FxHashSet::default(),
+            is_inside_inlined_module: false,
         };
 
         if emit_crate {
@@ -575,6 +590,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,
             types_with_notable_traits: FxHashSet::default(),
+            is_inside_inlined_module: self.is_inside_inlined_module,
         }
     }
 
@@ -600,15 +616,18 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
         let all = shared.all.replace(AllTypes::new());
         let mut sidebar = Buffer::html();
-        write!(sidebar, "<h2 class=\"location\"><a href=\"#\">Crate {}</a></h2>", crate_name);
 
-        let mut items = Buffer::html();
-        sidebar_module_like(&mut items, all.item_sections());
-        if !items.is_empty() {
-            sidebar.push_str("<div class=\"sidebar-elems\">");
-            sidebar.push_buffer(items);
-            sidebar.push_str("</div>");
-        }
+        let blocks = sidebar_module_like(all.item_sections());
+        let bar = Sidebar {
+            title_prefix: "Crate ",
+            title: crate_name.as_str(),
+            is_crate: false,
+            version: "",
+            blocks: vec![blocks],
+            path: String::new(),
+        };
+
+        bar.render_into(&mut sidebar).unwrap();
 
         let v = layout::render(
             &shared.layout,
@@ -642,16 +661,40 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      </div>\
                      <noscript>\
                         <section>\
-                            You need to enable Javascript be able to update your settings.\
+                            You need to enable JavaScript be able to update your settings.\
                         </section>\
                      </noscript>\
                      <link rel=\"stylesheet\" \
                          href=\"{static_root_path}{settings_css}\">\
-                     <script defer src=\"{static_root_path}{settings_js}\"></script>",
+                     <script defer src=\"{static_root_path}{settings_js}\"></script>\
+                     <link rel=\"preload\" href=\"{static_root_path}{theme_light_css}\" \
+                         as=\"style\">\
+                     <link rel=\"preload\" href=\"{static_root_path}{theme_dark_css}\" \
+                         as=\"style\">\
+                     <link rel=\"preload\" href=\"{static_root_path}{theme_ayu_css}\" \
+                         as=\"style\">",
                     static_root_path = page.get_static_root_path(),
                     settings_css = static_files::STATIC_FILES.settings_css,
                     settings_js = static_files::STATIC_FILES.settings_js,
-                )
+                    theme_light_css = static_files::STATIC_FILES.theme_light_css,
+                    theme_dark_css = static_files::STATIC_FILES.theme_dark_css,
+                    theme_ayu_css = static_files::STATIC_FILES.theme_ayu_css,
+                );
+                // Pre-load all theme CSS files, so that switching feels seamless.
+                //
+                // When loading settings.html as a popover, the equivalent HTML is
+                // generated in main.js.
+                for file in &shared.style_files {
+                    if let Ok(theme) = file.basename() {
+                        write!(
+                            buf,
+                            "<link rel=\"preload\" href=\"{root_path}{theme}{suffix}.css\" \
+                                as=\"style\">",
+                            root_path = page.static_root_path.unwrap_or(""),
+                            suffix = page.resource_suffix,
+                        );
+                    }
+                }
             },
             &shared.style_files,
         );
@@ -680,7 +723,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      </div>\
                      <noscript>\
                         <section>\
-                            <p>You need to enable Javascript to use keyboard commands or search.</p>\
+                            <p>You need to enable JavaScript to use keyboard commands or search.</p>\
                             <p>For more information, browse the <a href=\"https://doc.rust-lang.org/rustdoc/\">rustdoc handbook</a>.</p>\
                         </section>\
                      </noscript>",
@@ -717,7 +760,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // Flush pending errors.
         Rc::get_mut(&mut self.shared).unwrap().fs.close();
         let nb_errors =
-            self.shared.errors.iter().map(|err| self.tcx().sess.struct_err(&err).emit()).count();
+            self.shared.errors.iter().map(|err| self.tcx().sess.struct_err(err).emit()).count();
         if nb_errors > 0 {
             Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
         } else {
@@ -742,18 +785,31 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         info!("Recursing into {}", self.dst.display());
 
-        let buf = self.render_item(item, true);
-        // buf will be empty if the module is stripped and there is no redirect for it
-        if !buf.is_empty() {
-            self.shared.ensure_dir(&self.dst)?;
-            let joint_dst = self.dst.join("index.html");
-            self.shared.fs.write(joint_dst, buf)?;
+        if !item.is_stripped() {
+            let buf = self.render_item(item, true);
+            // buf will be empty if the module is stripped and there is no redirect for it
+            if !buf.is_empty() {
+                self.shared.ensure_dir(&self.dst)?;
+                let joint_dst = self.dst.join("index.html");
+                self.shared.fs.write(joint_dst, buf)?;
+            }
+        }
+        if !self.is_inside_inlined_module {
+            if let Some(def_id) = item.def_id() && self.cache().inlined_items.contains(&def_id) {
+                self.is_inside_inlined_module = true;
+            }
+        } else if !self.cache().document_hidden && item.is_doc_hidden() {
+            // We're not inside an inlined module anymore since this one cannot be re-exported.
+            self.is_inside_inlined_module = false;
         }
 
         // Render sidebar-items.js used throughout this module.
         if !self.render_redirect_pages {
-            let (clean::StrippedItem(box clean::ModuleItem(ref module)) | clean::ModuleItem(ref module)) = *item.kind
-            else { unreachable!() };
+            let (clean::StrippedItem(box clean::ModuleItem(ref module))
+            | clean::ModuleItem(ref module)) = *item.kind
+            else {
+                unreachable!()
+            };
             let items = self.build_sidebar_items(module);
             let js_dst = self.dst.join(&format!("sidebar-items{}.js", self.shared.resource_suffix));
             let v = format!("window.SIDEBAR_ITEMS = {};", serde_json::to_string(&items).unwrap());

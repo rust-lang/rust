@@ -162,12 +162,17 @@ fn expressions() {
         }
     }
 
+    match 123 {
+        #[deny(non_snake_case)]
+        ARM_VAR => {} //~ ERROR variable `ARM_VAR` should have a snake case name
+    }
+
     // Statement Block
     {
         #![deny(enum_intrinsics_non_enums)]
         discriminant::<i32>(&123); //~ ERROR the return value of
     }
-    let block_tail = {
+    let block_tail: () = {
         #[deny(enum_intrinsics_non_enums)]
         discriminant::<i32>(&123); //~ ERROR the return value of
     };

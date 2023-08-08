@@ -3,7 +3,7 @@
 #![feature(type_alias_impl_trait)]
 #![deny(improper_ctypes)]
 
-pub trait Foo {
+trait Foo {
     type Assoc;
 }
 
@@ -16,7 +16,7 @@ type Bar = impl Foo<Assoc = u32>;
 fn assign() -> Bar {}
 
 extern "C" {
-    pub fn lint_me() -> <Bar as Foo>::Assoc;
+    fn lint_me() -> <Bar as Foo>::Assoc;
 }
 
 fn main() {}

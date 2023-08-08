@@ -1,4 +1,5 @@
 use core::iter::*;
+use core::num::NonZeroUsize;
 
 #[test]
 fn test_iterator_take() {
@@ -78,21 +79,21 @@ fn test_take_advance_by() {
     let mut take = (0..10).take(3);
     assert_eq!(take.advance_by(2), Ok(()));
     assert_eq!(take.next(), Some(2));
-    assert_eq!(take.advance_by(1), Err(0));
+    assert_eq!(take.advance_by(1), Err(NonZeroUsize::new(1).unwrap()));
 
     assert_eq!((0..0).take(10).advance_by(0), Ok(()));
-    assert_eq!((0..0).take(10).advance_by(1), Err(0));
-    assert_eq!((0..10).take(4).advance_by(5), Err(4));
+    assert_eq!((0..0).take(10).advance_by(1), Err(NonZeroUsize::new(1).unwrap()));
+    assert_eq!((0..10).take(4).advance_by(5), Err(NonZeroUsize::new(1).unwrap()));
 
     let mut take = (0..10).take(3);
     assert_eq!(take.advance_back_by(2), Ok(()));
     assert_eq!(take.next(), Some(0));
-    assert_eq!(take.advance_back_by(1), Err(0));
+    assert_eq!(take.advance_back_by(1), Err(NonZeroUsize::new(1).unwrap()));
 
-    assert_eq!((0..2).take(1).advance_back_by(10), Err(1));
-    assert_eq!((0..0).take(1).advance_back_by(1), Err(0));
+    assert_eq!((0..2).take(1).advance_back_by(10), Err(NonZeroUsize::new(9).unwrap()));
+    assert_eq!((0..0).take(1).advance_back_by(1), Err(NonZeroUsize::new(1).unwrap()));
     assert_eq!((0..0).take(1).advance_back_by(0), Ok(()));
-    assert_eq!((0..usize::MAX).take(100).advance_back_by(usize::MAX), Err(100));
+    assert_eq!((0..usize::MAX).take(100).advance_back_by(usize::MAX), Err(NonZeroUsize::new(usize::MAX - 100).unwrap()));
 }
 
 #[test]

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #[allow(clippy::string_add, unused)]
 #[warn(clippy::string_add_assign)]

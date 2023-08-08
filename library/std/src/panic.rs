@@ -19,14 +19,16 @@ pub macro panic_2015 {
         $crate::rt::begin_panic("explicit panic")
     }),
     ($msg:expr $(,)?) => ({
-        $crate::rt::begin_panic($msg)
+        $crate::rt::begin_panic($msg);
     }),
     // Special-case the single-argument case for const_panic.
     ("{}", $arg:expr $(,)?) => ({
-        $crate::rt::panic_display(&$arg)
+        $crate::rt::panic_display(&$arg);
     }),
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::rt::panic_fmt($crate::const_format_args!($fmt, $($arg)+))
+        // Semicolon to prevent temporaries inside the formatting machinery from
+        // being considered alive in the caller after the panic_fmt call.
+        $crate::rt::panic_fmt($crate::const_format_args!($fmt, $($arg)+));
     }),
 }
 
@@ -308,8 +310,7 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
                 BacktraceStyle::Short
             }
         })
-        .unwrap_or(if cfg!(target_os = "fuchsia") {
-            // Fuchsia components default to full backtrace.
+        .unwrap_or(if crate::sys::FULL_BACKTRACE_DEFAULT {
             BacktraceStyle::Full
         } else {
             BacktraceStyle::Off

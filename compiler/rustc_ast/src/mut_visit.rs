@@ -7,10 +7,10 @@
 //! a `MutVisitor` renaming item names in a module will miss all of those
 //! that are created by the expansion of a macro.
 
-use crate::ast::*;
 use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
+use crate::{ast::*, StaticItem};
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::sync::Lrc;
@@ -631,7 +631,7 @@ pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
 }
 
 pub fn noop_visit_mac<T: MutVisitor>(mac: &mut MacCall, vis: &mut T) {
-    let MacCall { path, args, prior_type_ascription: _ } = mac;
+    let MacCall { path, args } = mac;
     vis.visit_path(path);
     visit_delim_args(args, vis);
 }
@@ -1029,14 +1029,12 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
     match kind {
         ItemKind::ExternCrate(_orig_name) => {}
         ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
-        ItemKind::Static(ty, _, expr) => {
+        ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
             vis.visit_ty(ty);
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
-        ItemKind::Const(defaultness, ty, expr) => {
-            visit_defaultness(defaultness, vis);
-            vis.visit_ty(ty);
-            visit_opt(expr, |expr| vis.visit_expr(expr));
+        ItemKind::Const(item) => {
+            visit_const_item(item, vis);
         }
         ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
             visit_defaultness(defaultness, vis);
@@ -1119,10 +1117,8 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
     match kind {
-        AssocItemKind::Const(defaultness, ty, expr) => {
-            visit_defaultness(defaultness, visitor);
-            visitor.visit_ty(ty);
-            visit_opt(expr, |expr| visitor.visit_expr(expr));
+        AssocItemKind::Const(item) => {
+            visit_const_item(item, visitor);
         }
         AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
             visit_defaultness(defaultness, visitor);
@@ -1150,6 +1146,16 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     visitor.visit_span(span);
     visit_lazy_tts(tokens, visitor);
     smallvec![item]
+}
+
+fn visit_const_item<T: MutVisitor>(
+    ConstItem { defaultness, generics, ty, expr }: &mut ConstItem,
+    visitor: &mut T,
+) {
+    visit_defaultness(defaultness, visitor);
+    visitor.visit_generics(generics);
+    visitor.visit_ty(ty);
+    visit_opt(expr, |expr| visitor.visit_expr(expr));
 }
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
@@ -1316,7 +1322,6 @@ pub fn noop_visit_expr<T: MutVisitor>(
     vis: &mut T,
 ) {
     match kind {
-        ExprKind::Box(expr) => vis.visit_expr(expr),
         ExprKind::Array(exprs) => visit_thin_exprs(exprs, vis),
         ExprKind::ConstBlock(anon_const) => {
             vis.visit_anon_const(anon_const);
@@ -1395,7 +1400,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             fn_decl,
             body,
             fn_decl_span,
-            fn_arg_span: _,
+            fn_arg_span,
         }) => {
             vis.visit_closure_binder(binder);
             visit_constness(constness, vis);
@@ -1403,19 +1408,23 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_fn_decl(fn_decl);
             vis.visit_expr(body);
             vis.visit_span(fn_decl_span);
+            vis.visit_span(fn_arg_span);
         }
         ExprKind::Block(blk, label) => {
             vis.visit_block(blk);
             visit_opt(label, |label| vis.visit_label(label));
         }
-        ExprKind::Async(_capture_by, node_id, body) => {
-            vis.visit_id(node_id);
+        ExprKind::Async(_capture_by, body) => {
             vis.visit_block(body);
         }
-        ExprKind::Await(expr) => vis.visit_expr(expr),
-        ExprKind::Assign(el, er, _) => {
+        ExprKind::Await(expr, await_kw_span) => {
+            vis.visit_expr(expr);
+            vis.visit_span(await_kw_span);
+        }
+        ExprKind::Assign(el, er, span) => {
             vis.visit_expr(el);
             vis.visit_expr(er);
+            vis.visit_span(span);
         }
         ExprKind::AssignOp(_op, el, er) => {
             vis.visit_expr(el);
@@ -1425,9 +1434,10 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_expr(el);
             vis.visit_ident(ident);
         }
-        ExprKind::Index(el, er) => {
+        ExprKind::Index(el, er, brackets_span) => {
             vis.visit_expr(el);
             vis.visit_expr(er);
+            vis.visit_span(brackets_span);
         }
         ExprKind::Range(e1, e2, _lim) => {
             visit_opt(e1, |e1| vis.visit_expr(e1));
@@ -1451,8 +1461,15 @@ pub fn noop_visit_expr<T: MutVisitor>(
         ExprKind::Yeet(expr) => {
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
+        ExprKind::Become(expr) => vis.visit_expr(expr),
         ExprKind::InlineAsm(asm) => vis.visit_inline_asm(asm),
         ExprKind::FormatArgs(fmt) => vis.visit_format_args(fmt),
+        ExprKind::OffsetOf(container, fields) => {
+            vis.visit_ty(container);
+            for field in fields.iter_mut() {
+                vis.visit_ident(field);
+            }
+        }
         ExprKind::MacCall(mac) => vis.visit_mac_call(mac),
         ExprKind::Struct(se) => {
             let StructExpr { qself, path, fields, rest } = se.deref_mut();

@@ -282,6 +282,87 @@ impl AsyncLen {
     }
 }
 
+// issue #7232
+pub struct AsyncLenWithoutIsEmpty;
+impl AsyncLenWithoutIsEmpty {
+    pub async fn async_task(&self) -> bool {
+        true
+    }
+
+    pub async fn len(&self) -> usize {
+        usize::from(!self.async_task().await)
+    }
+}
+
+// issue #7232
+pub struct AsyncOptionLenWithoutIsEmpty;
+impl AsyncOptionLenWithoutIsEmpty {
+    async fn async_task(&self) -> bool {
+        true
+    }
+
+    pub async fn len(&self) -> Option<usize> {
+        None
+    }
+}
+
+// issue #7232
+pub struct AsyncOptionLenNonIntegral;
+impl AsyncOptionLenNonIntegral {
+    // don't lint
+    pub async fn len(&self) -> Option<String> {
+        None
+    }
+}
+
+// issue #7232
+pub struct AsyncResultLenWithoutIsEmpty;
+impl AsyncResultLenWithoutIsEmpty {
+    async fn async_task(&self) -> bool {
+        true
+    }
+
+    pub async fn len(&self) -> Result<usize, ()> {
+        Err(())
+    }
+}
+
+// issue #7232
+pub struct AsyncOptionLen;
+impl AsyncOptionLen {
+    async fn async_task(&self) -> bool {
+        true
+    }
+
+    pub async fn len(&self) -> Result<usize, ()> {
+        Err(())
+    }
+
+    pub async fn is_empty(&self) -> bool {
+        true
+    }
+}
+
+pub struct AsyncLenSyncIsEmpty;
+impl AsyncLenSyncIsEmpty {
+    pub async fn len(&self) -> u32 {
+        0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        true
+    }
+}
+
+// issue #9520
+pub struct NonStandardLen;
+impl NonStandardLen {
+    // don't lint
+    pub fn len(&self, something: usize) -> usize {
+        something
+    }
+}
+
 // issue #9520
 pub struct NonStandardLenAndIsEmptySignature;
 impl NonStandardLenAndIsEmptySignature {
@@ -325,6 +406,17 @@ impl NonStandardSignatureWithGenerics {
         } else {
             0_usize
         }
+    }
+}
+
+pub struct DifferingErrors;
+impl DifferingErrors {
+    pub fn len(&self) -> Result<usize, u8> {
+        Ok(0)
+    }
+
+    pub fn is_empty(&self) -> Result<bool, u16> {
+        Ok(true)
     }
 }
 

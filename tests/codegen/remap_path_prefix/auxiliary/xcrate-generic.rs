@@ -3,4 +3,6 @@
 
 #![crate_type = "lib"]
 
-pub fn foo<T>() {}
+pub fn foo<T: Default>() -> T {
+    T::default()
+}

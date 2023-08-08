@@ -1,0 +1,18 @@
+error: where clauses are not allowed after the type for type aliases
+  --> $DIR/where-clause-placement-type-alias.rs:6:15
+   |
+LL | type Bar = () where u32: Copy;
+   |               ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
+
+error: where clauses are not allowed after the type for type aliases
+  --> $DIR/where-clause-placement-type-alias.rs:8:15
+   |
+LL | type Baz = () where;
+   |               ^^^^^
+   |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
+
+error: aborting due to 2 previous errors
+

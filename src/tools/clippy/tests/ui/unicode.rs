@@ -1,5 +1,4 @@
-// run-rustfix
-// compile-flags: --test
+//@run-rustfix
 #![allow(dead_code)]
 
 #[warn(clippy::invisible_characters)]

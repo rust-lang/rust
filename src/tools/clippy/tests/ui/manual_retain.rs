@@ -1,12 +1,7 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::manual_retain)]
 #![allow(unused, clippy::redundant_clone)]
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
-use std::collections::BinaryHeap;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque};
 
 fn main() {
     binary_heap_retain();
@@ -23,8 +18,8 @@ fn main() {
 }
 
 fn binary_heap_retain() {
-    // NOTE: Do not lint now, because binary_heap_retain is nighyly API.
-    // And we need to add a test case for msrv if we update this implmention.
+    // NOTE: Do not lint now, because binary_heap_retain is nightly API.
+    // And we need to add a test case for msrv if we update this implementation.
     // https://github.com/rust-lang/rust/issues/71503
     let mut heap = BinaryHeap::from([1, 2, 3]);
     heap = heap.into_iter().filter(|x| x % 2 == 0).collect();

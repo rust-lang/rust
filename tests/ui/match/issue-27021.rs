@@ -4,7 +4,7 @@
 // where #54986 is implemented and #54987 is *not* implemented. For
 // now: just ignore it
 //
-// ignore-test
+// ignore-test (#54987)
 
 // These are variants of issue-26996.rs. In all cases we are writing
 // into a record field that has been moved out of, and ensuring that

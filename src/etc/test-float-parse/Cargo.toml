@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 
 [workspace]
+resolver = "1"
 
 [dependencies]
 rand = "0.4"

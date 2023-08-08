@@ -10,7 +10,7 @@
 
 //! A [prim@`char`] and its [`char::len_utf8`].
 
-#[doc(primitive = "char")]
+#[rustc_doc_primitive = "char"]
 mod char {}
 
 impl char {

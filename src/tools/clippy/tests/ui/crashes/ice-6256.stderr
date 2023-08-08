@@ -1,7 +1,7 @@
 error[E0521]: borrowed data escapes outside of closure
   --> $DIR/ice-6256.rs:13:26
    |
-LL |     let f = |x: &dyn TT| x.func(); //[default]~ ERROR: mismatched types
+LL |     let f = |x: &dyn TT| x.func();
    |              -  -        ^^^^^^^^
    |              |  |        |
    |              |  |        `x` escapes the closure body here

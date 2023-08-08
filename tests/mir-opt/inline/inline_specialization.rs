@@ -1,3 +1,4 @@
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 #![feature(specialization)]
 
 // EMIT_MIR inline_specialization.main.Inline.diff

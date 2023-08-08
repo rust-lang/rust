@@ -1,13 +1,11 @@
 // MIR for `tuples` after built
 
 fn tuples(_1: (u32, i32)) -> (u32, i32) {
-    let mut _0: (u32, i32);              // return place in scope 0 at $DIR/projections.rs:+0:29: +0:39
-    let mut _2: (u32, i32);              // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _0: (u32, i32);
 
     bb0: {
-        (_2.0: u32) = (_1.0: u32);       // scope 0 at $DIR/projections.rs:+5:13: +5:25
-        (_2.1: i32) = (_1.1: i32);       // scope 0 at $DIR/projections.rs:+6:13: +6:25
-        _0 = _2;                         // scope 0 at $DIR/projections.rs:+8:13: +8:23
-        return;                          // scope 0 at $DIR/projections.rs:+9:13: +9:21
+        (_0.0: u32) = (_1.0: u32);
+        (_0.1: i32) = (_1.1: i32);
+        return;
     }
 }

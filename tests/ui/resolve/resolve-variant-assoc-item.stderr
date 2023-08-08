@@ -3,12 +3,26 @@ error[E0433]: failed to resolve: `V` is a variant, not a module
    |
 LL |     E::V::associated_item;
    |        ^ `V` is a variant, not a module
+   |
+help: there is an enum variant `E::V`; try using the variant's enum
+   |
+LL |     E;
+   |     ~
 
 error[E0433]: failed to resolve: `V` is a variant, not a module
   --> $DIR/resolve-variant-assoc-item.rs:6:5
    |
 LL |     V::associated_item;
    |     ^ `V` is a variant, not a module
+   |
+help: there is an enum variant `E::V`; try using the variant's enum
+   |
+LL |     E;
+   |     ~
+help: an enum with a similar name exists
+   |
+LL |     E::associated_item;
+   |     ~
 
 error: aborting due to 2 previous errors
 

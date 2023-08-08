@@ -4,7 +4,7 @@ use crate::{
     FnCtxt,
 };
 use hir::{def_id::DefId, Body, HirId, HirIdMap};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::{fx::FxIndexSet, unord::UnordSet};
 use rustc_hir as hir;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_middle::{
@@ -30,13 +30,13 @@ pub(super) struct ConsumedAndBorrowedPlaces {
     ///
     /// Note that this set excludes "partial drops" -- for example, a statement like `drop(x.y)` is
     /// not considered a drop of `x`, although it would be a drop of `x.y`.
-    pub(super) consumed: HirIdMap<FxHashSet<TrackedValue>>,
+    pub(super) consumed: HirIdMap<FxIndexSet<TrackedValue>>,
 
     /// A set of hir-ids of values or variables that are borrowed at some point within the body.
-    pub(super) borrowed: FxHashSet<TrackedValue>,
+    pub(super) borrowed: UnordSet<TrackedValue>,
 
     /// A set of hir-ids of values or variables that are borrowed at some point within the body.
-    pub(super) borrowed_temporaries: FxHashSet<HirId>,
+    pub(super) borrowed_temporaries: UnordSet<HirId>,
 }
 
 /// Works with ExprUseVisitor to find interesting values for the drop range analysis.
@@ -150,9 +150,10 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
             hir.node_to_string(diag_expr_id),
             hir.node_to_string(parent)
         );
-        place_with_id
-            .try_into()
-            .map_or((), |tracked_value| self.mark_consumed(parent, tracked_value));
+
+        if let Ok(tracked_value) = place_with_id.try_into() {
+            self.mark_consumed(parent, tracked_value)
+        }
     }
 
     fn borrow(
@@ -202,10 +203,10 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         // If the type being assigned needs dropped, then the mutation counts as a borrow
         // since it is essentially doing `Drop::drop(&mut x); x = new_value;`.
         let ty = self.tcx.erase_regions(assignee_place.place.base_ty);
-        if ty.needs_infer() {
+        if ty.has_infer() {
             self.tcx.sess.delay_span_bug(
                 self.tcx.hir().span(assignee_place.hir_id),
-                &format!("inference variables in {ty}"),
+                format!("inference variables in {ty}"),
             );
         } else if ty.needs_drop(self.tcx, self.param_env) {
             self.places

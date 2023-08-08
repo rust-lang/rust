@@ -1,7 +1,6 @@
 //! Handle process life-time and message passing for proc-macro client
 
 use std::{
-    ffi::{OsStr, OsString},
     io::{self, BufRead, BufReader, Write},
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
 };
@@ -23,12 +22,9 @@ pub(crate) struct ProcMacroProcessSrv {
 }
 
 impl ProcMacroProcessSrv {
-    pub(crate) fn run(
-        process_path: AbsPathBuf,
-        args: impl IntoIterator<Item = impl AsRef<OsStr>> + Clone,
-    ) -> io::Result<ProcMacroProcessSrv> {
+    pub(crate) fn run(process_path: AbsPathBuf) -> io::Result<ProcMacroProcessSrv> {
         let create_srv = |null_stderr| {
-            let mut process = Process::run(process_path.clone(), args.clone(), null_stderr)?;
+            let mut process = Process::run(process_path.clone(), null_stderr)?;
             let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
 
             io::Result::Ok(ProcMacroProcessSrv { _process: process, stdin, stdout, version: 0 })
@@ -54,6 +50,10 @@ impl ProcMacroProcessSrv {
                 create_srv(false)
             }
         }
+    }
+
+    pub(crate) fn version(&self) -> u32 {
+        self.version
     }
 
     pub(crate) fn version_check(&mut self) -> Result<u32, ServerError> {
@@ -96,13 +96,8 @@ struct Process {
 }
 
 impl Process {
-    fn run(
-        path: AbsPathBuf,
-        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
-        null_stderr: bool,
-    ) -> io::Result<Process> {
-        let args: Vec<OsString> = args.into_iter().map(|s| s.as_ref().into()).collect();
-        let child = JodChild(mk_child(&path, args, null_stderr)?);
+    fn run(path: AbsPathBuf, null_stderr: bool) -> io::Result<Process> {
+        let child = JodChild(mk_child(&path, null_stderr)?);
         Ok(Process { child })
     }
 
@@ -115,13 +110,8 @@ impl Process {
     }
 }
 
-fn mk_child(
-    path: &AbsPath,
-    args: impl IntoIterator<Item = impl AsRef<OsStr>>,
-    null_stderr: bool,
-) -> io::Result<Child> {
+fn mk_child(path: &AbsPath, null_stderr: bool) -> io::Result<Child> {
     Command::new(path.as_os_str())
-        .args(args)
         .env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

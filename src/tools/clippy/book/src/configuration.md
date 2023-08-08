@@ -2,8 +2,14 @@
 
 > **Note:** The configuration file is unstable and may be deprecated in the future.
 
-Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`. It contains a
-basic `variable = value` mapping eg.
+Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`, which is searched for in:
+
+1. The directory specified by the `CLIPPY_CONF_DIR` environment variable, or
+2. The directory specified by the
+[CARGO_MANIFEST_DIR](https://doc.rust-lang.org/cargo/reference/environment-variables.html) environment variable, or
+3. The current directory.
+
+It contains a basic `variable = value` mapping e.g.
 
 ```toml
 avoid-breaking-exported-api = false
@@ -60,7 +66,7 @@ And to warn on `lint_name`, run
 cargo clippy -- -W clippy::lint_name
 ```
 
-This also works with lint groups. For example you can run Clippy with warnings for all lints enabled:
+This also works with lint groups. For example, you can run Clippy with warnings for all lints enabled:
 
 ```terminal
 cargo clippy -- -W clippy::pedantic
@@ -84,7 +90,7 @@ msrv = "1.30.0"
 
 The MSRV can also be specified as an attribute, like below.
 
-```rust
+```rust,ignore
 #![feature(custom_inner_attributes)]
 #![clippy::msrv = "1.30.0"]
 
@@ -96,7 +102,28 @@ fn main() {
 You can also omit the patch version when specifying the MSRV, so `msrv = 1.30`
 is equivalent to `msrv = 1.30.0`.
 
-Note: `custom_inner_attributes` is an unstable feature so it has to be enabled explicitly.
+Note: `custom_inner_attributes` is an unstable feature, so it has to be enabled explicitly.
 
 Lints that recognize this configuration option can be
 found [here](https://rust-lang.github.io/rust-clippy/master/index.html#msrv)
+
+### Disabling evaluation of certain code
+
+> **Note:** This should only be used in cases where other solutions, like `#[allow(clippy::all)]`, are not sufficient.
+
+Very rarely, you may wish to prevent Clippy from evaluating certain sections of code entirely. You can do this with
+[conditional compilation](https://doc.rust-lang.org/reference/conditional-compilation.html) by checking that the
+`cargo-clippy` feature is not set. You may need to provide a stub so that the code compiles:
+
+```rust
+#[cfg(not(feature = "cargo-clippy"))]
+include!(concat!(env!("OUT_DIR"), "/my_big_function-generated.rs"));
+
+#[cfg(feature = "cargo-clippy")]
+fn my_big_function(_input: &str) -> Option<MyStruct> {
+    None
+}
+```
+
+This feature is not actually part of your crate, so specifying `--all-features` to other tools, e.g. `cargo test
+--all-features`, will not disable it.

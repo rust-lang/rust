@@ -2,14 +2,16 @@ error[E0308]: mismatched types
   --> $DIR/issue-102206.rs:6:27
    |
 LL |     std::mem::size_of_val(foo());
-   |     --------------------- ^^^^^
-   |     |                     |
-   |     |                     expected `&_`, found future
-   |     |                     help: consider borrowing here: `&foo()`
+   |     --------------------- ^^^^^ expected `&_`, found future
+   |     |
    |     arguments to this function are incorrect
    |
 note: function defined here
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: consider borrowing here
+   |
+LL |     std::mem::size_of_val(&foo());
+   |                           +
 
 error: aborting due to previous error
 

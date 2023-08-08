@@ -2,46 +2,46 @@
 + // MIR for `no_deref_ptr` after EarlyOtherwiseBranch
   
   fn no_deref_ptr(_1: Option<i32>, _2: *const Option<i32>) -> i32 {
-      debug a => _1;                       // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:+0:24: +0:25
-      debug b => _2;                       // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:+0:40: +0:41
-      let mut _0: i32;                     // return place in scope 0 at $DIR/early_otherwise_branch_soundness.rs:+0:66: +0:69
-      let mut _3: isize;                   // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:+3:9: +3:16
-      let mut _4: isize;                   // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:+4:13: +4:20
-      let _5: i32;                         // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:+4:18: +4:19
+      debug a => _1;
+      debug b => _2;
+      let mut _0: i32;
+      let mut _3: isize;
+      let mut _4: isize;
+      let _5: i32;
       scope 1 {
-          debug v => _5;                   // in scope 1 at $DIR/early_otherwise_branch_soundness.rs:+4:18: +4:19
+          debug v => _5;
       }
   
       bb0: {
-          _3 = discriminant(_1);           // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+1:11: +1:12
-          switchInt(move _3) -> [1: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+1:5: +1:12
+          _3 = discriminant(_1);
+          switchInt(move _3) -> [1: bb2, otherwise: bb1];
       }
   
       bb1: {
-          _0 = const 0_i32;                // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+7:14: +7:15
-          goto -> bb5;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+7:14: +7:15
+          _0 = const 0_i32;
+          goto -> bb5;
       }
   
       bb2: {
-          _4 = discriminant((*_2));        // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+3:26: +3:28
-          switchInt(move _4) -> [1: bb4, otherwise: bb3]; // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+3:20: +3:28
+          _4 = discriminant((*_2));
+          switchInt(move _4) -> [1: bb4, otherwise: bb3];
       }
   
       bb3: {
-          _0 = const 0_i32;                // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+5:18: +5:19
-          goto -> bb5;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+5:18: +5:19
+          _0 = const 0_i32;
+          goto -> bb5;
       }
   
       bb4: {
-          StorageLive(_5);                 // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+4:18: +4:19
-          _5 = (((*_2) as Some).0: i32);   // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+4:18: +4:19
-          _0 = _5;                         // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+4:24: +4:25
-          StorageDead(_5);                 // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+4:24: +4:25
-          goto -> bb5;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+4:24: +4:25
+          StorageLive(_5);
+          _5 = (((*_2) as Some).0: i32);
+          _0 = _5;
+          StorageDead(_5);
+          goto -> bb5;
       }
   
       bb5: {
-          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+9:2: +9:2
+          return;
       }
   }
   

@@ -1,0 +1,82 @@
+// MIR for `main::{closure#0}` 0 generator_drop
+/* generator_layout = GeneratorLayout {
+    field_tys: {
+        _0: GeneratorSavedTy {
+            ty: std::string::String,
+            source_info: SourceInfo {
+                span: $DIR/generator_drop_cleanup.rs:11:13: 11:15 (#0),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+        },
+    },
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [_0],
+    },
+    storage_conflicts: BitMatrix(1x1) {
+        (_0, _0),
+    },
+} */
+
+fn main::{closure#0}(_1: *mut [generator@$DIR/generator_drop_cleanup.rs:10:15: 10:17]) -> () {
+    let mut _0: ();
+    let mut _2: ();
+    let _3: std::string::String;
+    let _4: ();
+    let mut _5: ();
+    let mut _6: ();
+    let mut _7: ();
+    let mut _8: u32;
+    scope 1 {
+        debug _s => (((*_1) as variant#3).0: std::string::String);
+    }
+
+    bb0: {
+        _8 = discriminant((*_1));
+        switchInt(move _8) -> [0: bb5, 3: bb8, otherwise: bb9];
+    }
+
+    bb1: {
+        StorageDead(_5);
+        StorageDead(_4);
+        drop((((*_1) as variant#3).0: std::string::String)) -> [return: bb2, unwind unreachable];
+    }
+
+    bb2: {
+        nop;
+        goto -> bb6;
+    }
+
+    bb3: {
+        return;
+    }
+
+    bb4: {
+        return;
+    }
+
+    bb5: {
+        goto -> bb7;
+    }
+
+    bb6: {
+        goto -> bb3;
+    }
+
+    bb7: {
+        goto -> bb4;
+    }
+
+    bb8: {
+        StorageLive(_4);
+        StorageLive(_5);
+        goto -> bb1;
+    }
+
+    bb9: {
+        return;
+    }
+}

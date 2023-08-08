@@ -4,7 +4,7 @@
 # This is important since its a compatibility hazard. The linker will
 # generate load commands differently based on what minimum OS it can assume.
 
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 ifeq ($(strip $(shell uname -m)),arm64)
 	GREP_PATTERN = "minos 11.0"

@@ -257,6 +257,8 @@ fn check_dbg(path: &Path, text: &str) {
         "ide-db/src/generated/lints.rs",
         // test for doc test for remove_dbg
         "src/tests/generated.rs",
+        // `expect!` string can contain `dbg!` (due to .dbg postfix)
+        "ide-completion/src/tests/special.rs",
     ];
     if need_dbg.iter().any(|p| path.ends_with(p)) {
         return;

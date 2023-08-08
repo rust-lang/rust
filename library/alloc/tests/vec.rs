@@ -1,5 +1,7 @@
 use core::alloc::{Allocator, Layout};
+use core::assert_eq;
 use core::iter::IntoIterator;
+use core::num::NonZeroUsize;
 use core::ptr::NonNull;
 use std::alloc::System;
 use std::assert_matches::assert_matches;
@@ -312,6 +314,7 @@ fn test_retain_predicate_order() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_retain_pred_panic_with_hole() {
     let v = (0..5).map(Rc::new).collect::<Vec<_>>();
     catch_unwind(AssertUnwindSafe(|| {
@@ -329,6 +332,7 @@ fn test_retain_pred_panic_with_hole() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_retain_pred_panic_no_hole() {
     let v = (0..5).map(Rc::new).collect::<Vec<_>>();
     catch_unwind(AssertUnwindSafe(|| {
@@ -344,6 +348,7 @@ fn test_retain_pred_panic_no_hole() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_retain_drop_panic() {
     struct Wrap(Rc<i32>);
 
@@ -804,6 +809,7 @@ fn test_drain_end_overflow() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_drain_leak() {
     static mut DROPS: i32 = 0;
 
@@ -1036,6 +1042,7 @@ fn test_into_iter_clone() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_into_iter_leak() {
     static mut DROPS: i32 = 0;
 
@@ -1062,21 +1069,21 @@ fn test_into_iter_leak() {
 
 #[test]
 fn test_into_iter_advance_by() {
-    let mut i = [1, 2, 3, 4, 5].into_iter();
-    i.advance_by(0).unwrap();
-    i.advance_back_by(0).unwrap();
+    let mut i = vec![1, 2, 3, 4, 5].into_iter();
+    assert_eq!(i.advance_by(0), Ok(()));
+    assert_eq!(i.advance_back_by(0), Ok(()));
     assert_eq!(i.as_slice(), [1, 2, 3, 4, 5]);
 
-    i.advance_by(1).unwrap();
-    i.advance_back_by(1).unwrap();
+    assert_eq!(i.advance_by(1), Ok(()));
+    assert_eq!(i.advance_back_by(1), Ok(()));
     assert_eq!(i.as_slice(), [2, 3, 4]);
 
-    assert_eq!(i.advance_back_by(usize::MAX), Err(3));
+    assert_eq!(i.advance_back_by(usize::MAX), Err(NonZeroUsize::new(usize::MAX - 3).unwrap()));
 
-    assert_eq!(i.advance_by(usize::MAX), Err(0));
+    assert_eq!(i.advance_by(usize::MAX), Err(NonZeroUsize::new(usize::MAX).unwrap()));
 
-    i.advance_by(0).unwrap();
-    i.advance_back_by(0).unwrap();
+    assert_eq!(i.advance_by(0), Ok(()));
+    assert_eq!(i.advance_back_by(0), Ok(()));
 
     assert_eq!(i.len(), 0);
 }
@@ -1124,7 +1131,7 @@ fn test_into_iter_zst() {
     for _ in vec![C; 5].into_iter().rev() {}
 
     let mut it = vec![C, C].into_iter();
-    it.advance_by(1).unwrap();
+    assert_eq!(it.advance_by(1), Ok(()));
     drop(it);
 
     let mut it = vec![C, C].into_iter();
@@ -1193,6 +1200,7 @@ fn test_from_iter_specialization_head_tail_drop() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_from_iter_specialization_panic_during_iteration_drops() {
     let drop_count: Vec<_> = (0..=2).map(|_| Rc::new(())).collect();
     let src: Vec<_> = drop_count.iter().cloned().collect();
@@ -1217,6 +1225,7 @@ fn test_from_iter_specialization_panic_during_iteration_drops() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_from_iter_specialization_panic_during_drop_doesnt_leak() {
     static mut DROP_COUNTER_OLD: [usize; 5] = [0; 5];
     static mut DROP_COUNTER_NEW: [usize; 2] = [0; 2];
@@ -1338,11 +1347,11 @@ fn overaligned_allocations() {
 }
 
 #[test]
-fn drain_filter_empty() {
+fn extract_if_empty() {
     let mut vec: Vec<i32> = vec![];
 
     {
-        let mut iter = vec.drain_filter(|_| true);
+        let mut iter = vec.extract_if(|_| true);
         assert_eq!(iter.size_hint(), (0, Some(0)));
         assert_eq!(iter.next(), None);
         assert_eq!(iter.size_hint(), (0, Some(0)));
@@ -1354,12 +1363,12 @@ fn drain_filter_empty() {
 }
 
 #[test]
-fn drain_filter_zst() {
+fn extract_if_zst() {
     let mut vec = vec![(), (), (), (), ()];
     let initial_len = vec.len();
     let mut count = 0;
     {
-        let mut iter = vec.drain_filter(|_| true);
+        let mut iter = vec.extract_if(|_| true);
         assert_eq!(iter.size_hint(), (0, Some(initial_len)));
         while let Some(_) = iter.next() {
             count += 1;
@@ -1376,13 +1385,13 @@ fn drain_filter_zst() {
 }
 
 #[test]
-fn drain_filter_false() {
+fn extract_if_false() {
     let mut vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
     let initial_len = vec.len();
     let mut count = 0;
     {
-        let mut iter = vec.drain_filter(|_| false);
+        let mut iter = vec.extract_if(|_| false);
         assert_eq!(iter.size_hint(), (0, Some(initial_len)));
         for _ in iter.by_ref() {
             count += 1;
@@ -1398,13 +1407,13 @@ fn drain_filter_false() {
 }
 
 #[test]
-fn drain_filter_true() {
+fn extract_if_true() {
     let mut vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
     let initial_len = vec.len();
     let mut count = 0;
     {
-        let mut iter = vec.drain_filter(|_| true);
+        let mut iter = vec.extract_if(|_| true);
         assert_eq!(iter.size_hint(), (0, Some(initial_len)));
         while let Some(_) = iter.next() {
             count += 1;
@@ -1421,7 +1430,7 @@ fn drain_filter_true() {
 }
 
 #[test]
-fn drain_filter_complex() {
+fn extract_if_complex() {
     {
         //                [+xxx++++++xxxxx++++x+x++]
         let mut vec = vec![
@@ -1429,7 +1438,7 @@ fn drain_filter_complex() {
             39,
         ];
 
-        let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        let removed = vec.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
@@ -1443,7 +1452,7 @@ fn drain_filter_complex() {
             2, 4, 6, 7, 9, 11, 13, 15, 17, 18, 20, 22, 24, 26, 27, 29, 31, 33, 34, 35, 36, 37, 39,
         ];
 
-        let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        let removed = vec.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
@@ -1456,7 +1465,7 @@ fn drain_filter_complex() {
         let mut vec =
             vec![2, 4, 6, 7, 9, 11, 13, 15, 17, 18, 20, 22, 24, 26, 27, 29, 31, 33, 34, 35, 36];
 
-        let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        let removed = vec.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
@@ -1468,7 +1477,7 @@ fn drain_filter_complex() {
         //                [xxxxxxxxxx+++++++++++]
         let mut vec = vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19];
 
-        let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        let removed = vec.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
         assert_eq!(removed, vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
 
@@ -1480,7 +1489,7 @@ fn drain_filter_complex() {
         //                [+++++++++++xxxxxxxxxx]
         let mut vec = vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
 
-        let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        let removed = vec.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
         assert_eq!(removed, vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
 
@@ -1492,7 +1501,8 @@ fn drain_filter_complex() {
 // FIXME: re-enable emscripten once it can unwind again
 #[test]
 #[cfg(not(target_os = "emscripten"))]
-fn drain_filter_consumed_panic() {
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn extract_if_consumed_panic() {
     use std::rc::Rc;
     use std::sync::Mutex;
 
@@ -1527,9 +1537,9 @@ fn drain_filter_consumed_panic() {
             }
             c.index < 6
         };
-        let drain = data.drain_filter(filter);
+        let drain = data.extract_if(filter);
 
-        // NOTE: The DrainFilter is explicitly consumed
+        // NOTE: The ExtractIf is explicitly consumed
         drain.for_each(drop);
     });
 
@@ -1544,7 +1554,8 @@ fn drain_filter_consumed_panic() {
 // FIXME: Re-enable emscripten once it can catch panics
 #[test]
 #[cfg(not(target_os = "emscripten"))]
-fn drain_filter_unconsumed_panic() {
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn extract_if_unconsumed_panic() {
     use std::rc::Rc;
     use std::sync::Mutex;
 
@@ -1579,9 +1590,9 @@ fn drain_filter_unconsumed_panic() {
             }
             c.index < 6
         };
-        let _drain = data.drain_filter(filter);
+        let _drain = data.extract_if(filter);
 
-        // NOTE: The DrainFilter is dropped without being consumed
+        // NOTE: The ExtractIf is dropped without being consumed
     });
 
     let drop_counts = drop_counts.lock().unwrap();
@@ -1593,40 +1604,11 @@ fn drain_filter_unconsumed_panic() {
 }
 
 #[test]
-fn drain_filter_unconsumed() {
+fn extract_if_unconsumed() {
     let mut vec = vec![1, 2, 3, 4];
-    let drain = vec.drain_filter(|&mut x| x % 2 != 0);
+    let drain = vec.extract_if(|&mut x| x % 2 != 0);
     drop(drain);
-    assert_eq!(vec, [2, 4]);
-}
-
-#[test]
-fn test_drain_filter_keep_rest() {
-    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
-    let mut drain = v.drain_filter(|&mut x| x % 2 == 0);
-    assert_eq!(drain.next(), Some(0));
-    assert_eq!(drain.next(), Some(2));
-
-    drain.keep_rest();
-    assert_eq!(v, &[1, 3, 4, 5, 6]);
-}
-
-#[test]
-fn test_drain_filter_keep_rest_all() {
-    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
-    v.drain_filter(|_| true).keep_rest();
-    assert_eq!(v, &[0, 1, 2, 3, 4, 5, 6]);
-}
-
-#[test]
-fn test_drain_filter_keep_rest_none() {
-    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
-    let mut drain = v.drain_filter(|_| true);
-
-    drain.by_ref().for_each(drop);
-
-    drain.keep_rest();
-    assert_eq!(v, &[]);
+    assert_eq!(vec, [1, 2, 3, 4]);
 }
 
 #[test]
@@ -1924,6 +1906,7 @@ fn test_stable_pointers() {
     assert_eq!(*v0, 13);
 
     // Smoke test that would fire even outside Miri if an actual relocation happened.
+    // Also ensures the pointer is still writeable after all this.
     *v0 -= 13;
     assert_eq!(v[0], 0);
 }
@@ -2412,6 +2395,7 @@ fn test_vec_dedup() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_vec_dedup_panicking() {
     #[derive(Debug)]
     struct Panic<'a> {
@@ -2468,7 +2452,8 @@ fn test_vec_dedup_panicking() {
 
 // Regression test for issue #82533
 #[test]
-fn test_extend_from_within_panicing_clone() {
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_extend_from_within_panicking_clone() {
     struct Panic<'dc> {
         drop_count: &'dc AtomicU32,
         aaaaa: bool,
@@ -2512,4 +2497,69 @@ fn test_extend_from_within_panicing_clone() {
 fn test_into_flattened_size_overflow() {
     let v = vec![[(); usize::MAX]; 2];
     let _ = v.into_flattened();
+}
+
+#[cfg(not(bootstrap))]
+#[test]
+fn test_box_zero_allocator() {
+    use core::{alloc::AllocError, cell::RefCell};
+    use std::collections::HashSet;
+
+    // Track ZST allocations and ensure that they all have a matching free.
+    struct ZstTracker {
+        state: RefCell<(HashSet<usize>, usize)>,
+    }
+    unsafe impl Allocator for ZstTracker {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            let ptr = if layout.size() == 0 {
+                let mut state = self.state.borrow_mut();
+                let addr = state.1;
+                assert!(state.0.insert(addr));
+                state.1 += 1;
+                std::println!("allocating {addr}");
+                std::ptr::invalid_mut(addr)
+            } else {
+                unsafe { std::alloc::alloc(layout) }
+            };
+            Ok(NonNull::slice_from_raw_parts(NonNull::new(ptr).ok_or(AllocError)?, layout.size()))
+        }
+
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            if layout.size() == 0 {
+                let addr = ptr.as_ptr() as usize;
+                let mut state = self.state.borrow_mut();
+                std::println!("freeing {addr}");
+                assert!(state.0.remove(&addr), "ZST free that wasn't allocated");
+            } else {
+                unsafe { std::alloc::dealloc(ptr.as_ptr(), layout) }
+            }
+        }
+    }
+
+    // Start the state at 100 to avoid returning null pointers.
+    let alloc = ZstTracker { state: RefCell::new((HashSet::new(), 100)) };
+
+    // Ensure that unsizing retains the same behavior.
+    {
+        let b1: Box<[u8; 0], &ZstTracker> = Box::new_in([], &alloc);
+        let b2: Box<[u8], &ZstTracker> = b1.clone();
+        let _b3: Box<[u8], &ZstTracker> = b2.clone();
+    }
+
+    // Ensure that shrinking doesn't leak a ZST allocation.
+    {
+        let mut v1: Vec<u8, &ZstTracker> = Vec::with_capacity_in(100, &alloc);
+        v1.shrink_to_fit();
+    }
+
+    // Ensure that conversion to/from vec works.
+    {
+        let v1: Vec<(), &ZstTracker> = Vec::with_capacity_in(100, &alloc);
+        let _b1: Box<[()], &ZstTracker> = v1.into_boxed_slice();
+        let b2: Box<[()], &ZstTracker> = Box::new_in([(), (), ()], &alloc);
+        let _v2: Vec<(), &ZstTracker> = b2.into();
+    }
+
+    // Ensure all ZSTs have been freed.
+    assert!(alloc.state.borrow().0.is_empty());
 }

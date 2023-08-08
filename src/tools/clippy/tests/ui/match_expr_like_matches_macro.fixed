@@ -1,11 +1,12 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::match_like_matches_macro)]
 #![allow(
     unreachable_patterns,
     dead_code,
     clippy::equatable_if_let,
-    clippy::needless_borrowed_reference
+    clippy::needless_borrowed_reference,
+    clippy::redundant_guards
 )]
 
 fn main() {
@@ -15,7 +16,7 @@ fn main() {
     let _y = matches!(x, Some(0));
 
     // Lint
-    let _w = matches!(x, Some(_));
+    let _w = x.is_some();
 
     // Turn into is_none
     let _z = x.is_none();

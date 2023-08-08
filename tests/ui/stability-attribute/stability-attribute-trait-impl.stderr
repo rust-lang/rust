@@ -18,7 +18,7 @@ LL | #[unstable(feature = "k", issue = "none")]
 error: module has missing stability attribute
   --> $DIR/stability-attribute-trait-impl.rs:1:1
    |
-LL | / #![feature(staged_api, never_type, c_unwind)]
+LL | / #![feature(staged_api, never_type, rust_cold_cc)]
 LL | |
 LL | |
 LL | | #[stable(feature = "a", since = "1")]

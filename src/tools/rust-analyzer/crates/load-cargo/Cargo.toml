@@ -1,0 +1,25 @@
+[package]
+name = "load-cargo"
+version = "0.0.0"
+description = "TBD"
+
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.62"
+crossbeam-channel = "0.5.5"
+itertools = "0.10.5"
+tracing = "0.1.35"
+
+ide.workspace = true
+ide-db.workspace =true
+proc-macro-api.workspace = true
+project-model.workspace = true
+tt.workspace = true
+vfs.workspace = true
+vfs-notify.workspace = true

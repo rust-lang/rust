@@ -3,6 +3,7 @@ use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::linux_gnu_base::opts();
+    base.cpu = "M68020".into();
     base.max_atomic_width = Some(32);
 
     Target {

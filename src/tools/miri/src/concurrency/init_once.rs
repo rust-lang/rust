@@ -1,7 +1,8 @@
 use std::collections::VecDeque;
 use std::num::NonZeroU32;
 
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
+use rustc_middle::ty::layout::TyAndLayout;
 
 use super::sync::EvalContextExtPriv as _;
 use super::thread::MachineCallback;
@@ -94,10 +95,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn init_once_get_or_create_id(
         &mut self,
         lock_op: &OpTy<'tcx, Provenance>,
+        lock_layout: TyAndLayout<'tcx>,
         offset: u64,
     ) -> InterpResult<'tcx, InitOnceId> {
         let this = self.eval_context_mut();
-        this.init_once_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
+        this.init_once_get_or_create(|ecx, next_id| {
+            ecx.get_or_create_id(next_id, lock_op, lock_layout, offset)
+        })
     }
 
     /// Provides the closure with the next InitOnceId. Creates that InitOnce if the closure returns None,
@@ -151,7 +155,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         assert_eq!(
             init_once.status,
             InitOnceStatus::Uninitialized,
-            "begining already begun or complete init once"
+            "beginning already begun or complete init once"
         );
         init_once.status = InitOnceStatus::Begun;
     }

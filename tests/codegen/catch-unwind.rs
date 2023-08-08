@@ -10,6 +10,8 @@
 // ignore-riscv64 FIXME
 // On s390x the closure is also in another function
 // ignore-s390x FIXME
+// On loongarch64 the closure is also in another function
+// ignore-loongarch64 FIXME
 
 #![crate_type = "lib"]
 #![feature(c_unwind)]

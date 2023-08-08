@@ -65,7 +65,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         Cast { source } => visitor.visit_expr(&visitor.thir()[source]),
         Use { source } => visitor.visit_expr(&visitor.thir()[source]),
         NeverToAny { source } => visitor.visit_expr(&visitor.thir()[source]),
-        Pointer { source, cast: _ } => visitor.visit_expr(&visitor.thir()[source]),
+        PointerCoercion { source, cast: _ } => visitor.visit_expr(&visitor.thir()[source]),
         Let { expr, .. } => {
             visitor.visit_expr(&visitor.thir()[expr]);
         }
@@ -100,7 +100,8 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_expr(&visitor.thir()[value])
             }
         }
-        ConstBlock { did: _, substs: _ } => {}
+        Become { value } => visitor.visit_expr(&visitor.thir()[value]),
+        ConstBlock { did: _, args: _ } => {}
         Repeat { value, count: _ } => {
             visitor.visit_expr(&visitor.thir()[value]);
         }
@@ -114,7 +115,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
             ref base,
             adt_def: _,
             variant_index: _,
-            substs: _,
+            args: _,
             user_ty: _,
         }) => {
             for field in &**fields {
@@ -129,7 +130,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         }
         Closure(box ClosureExpr {
             closure_id: _,
-            substs: _,
+            args: _,
             upvars: _,
             movability: _,
             fake_reads: _,
@@ -137,7 +138,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         Literal { lit: _, neg: _ } => {}
         NonHirLiteral { lit: _, user_ty: _ } => {}
         ZstLiteral { user_ty: _ } => {}
-        NamedConst { def_id: _, substs: _, user_ty: _ } => {}
+        NamedConst { def_id: _, args: _, user_ty: _ } => {}
         ConstParam { param: _, def_id: _ } => {}
         StaticRef { alloc_id: _, ty: _, def_id: _ } => {}
         InlineAsm(box InlineAsmExpr { ref operands, template: _, options: _, line_spans: _ }) => {
@@ -160,6 +161,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 }
             }
         }
+        OffsetOf { container: _, fields: _ } => {}
         ThreadLocalRef(_) => {}
         Yield { value } => visitor.visit_expr(&visitor.thir()[value]),
     }
@@ -175,6 +177,7 @@ pub fn walk_stmt<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, stmt: &Stm
             ref pattern,
             lint_level: _,
             else_block,
+            span: _,
         } => {
             if let Some(init) = initializer {
                 visitor.visit_expr(&visitor.thir()[*init]);
@@ -224,7 +227,7 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
             name: _,
         } => visitor.visit_pat(&subpattern),
         Binding { .. } | Wild => {}
-        Variant { subpatterns, adt_def: _, substs: _, variant_index: _ } | Leaf { subpatterns } => {
+        Variant { subpatterns, adt_def: _, args: _, variant_index: _ } | Leaf { subpatterns } => {
             for subpattern in subpatterns {
                 visitor.visit_pat(&subpattern.pattern);
             }

@@ -85,7 +85,7 @@ fn ipv6_socket_addr_to_string() {
     // IPv4-compatible address.
     assert_eq!(
         SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc000, 0x280), 8080, 0, 0).to_string(),
-        "[::192.0.2.128]:8080"
+        "[::c000:280]:8080"
     );
 
     // IPv6 address with no zero segments.

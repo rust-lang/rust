@@ -1,8 +1,8 @@
-error[E0369]: cannot subtract `(dyn Vector2<ScalarType = i32> + 'static)` from `dyn Vector2<ScalarType = i32>`
+error[E0369]: cannot subtract `dyn Vector2<ScalarType = i32>` from `dyn Vector2<ScalarType = i32>`
   --> $DIR/type-unsatisfiable.rs:57:20
    |
 LL |     let bar = *hey - *word;
-   |               ---- ^ ----- (dyn Vector2<ScalarType = i32> + 'static)
+   |               ---- ^ ----- dyn Vector2<ScalarType = i32>
    |               |
    |               dyn Vector2<ScalarType = i32>
 

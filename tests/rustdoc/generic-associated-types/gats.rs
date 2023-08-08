@@ -23,9 +23,9 @@ impl LendingIterator for () {
 pub struct Infinite<T>(T);
 
 // @has foo/trait.LendingIterator.html
-// @has - '//*[@id="associatedtype.Item-2"]//h4[@class="code-header"]' "type Item<'a> where Self: 'a = &'a T"
+// @has - '//*[@id="associatedtype.Item-2"]//h4[@class="code-header"]' "type Item<'a> = &'a T where Self: 'a"
 impl<T> LendingIterator for Infinite<T> {
-    type Item<'a> where Self: 'a = &'a T;
+    type Item<'a> = &'a T where Self: 'a;
 
     fn next<'a>(&'a self) -> Self::Item<'a> {
         &self.0

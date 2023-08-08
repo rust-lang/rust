@@ -1,5 +1,5 @@
 #![feature(portable_simd)]
-use core_simd::{Simd, Swizzle};
+use core_simd::simd::{Simd, Swizzle};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_test::*;
@@ -56,6 +56,20 @@ fn interleave() {
     let (lo, hi) = a.interleave(b);
     assert_eq!(lo.to_array(), [0, 8, 1, 9, 2, 10, 3, 11]);
     assert_eq!(hi.to_array(), [4, 12, 5, 13, 6, 14, 7, 15]);
+    let (even, odd) = lo.deinterleave(hi);
+    assert_eq!(even, a);
+    assert_eq!(odd, b);
+}
+
+// portable-simd#298
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn interleave_one() {
+    let a = Simd::from_array([0]);
+    let b = Simd::from_array([1]);
+    let (lo, hi) = a.interleave(b);
+    assert_eq!(lo.to_array(), [0]);
+    assert_eq!(hi.to_array(), [1]);
     let (even, odd) = lo.deinterleave(hi);
     assert_eq!(even, a);
     assert_eq!(odd, b);

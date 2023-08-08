@@ -192,7 +192,7 @@ fn expr_ty(
     scope: &hir::SemanticsScope<'_>,
 ) -> Option<ast::Type> {
     let ty = ctx.sema.type_of_expr(&arg).map(|it| it.adjusted())?;
-    let text = ty.display_source_code(ctx.db(), scope.module().into()).ok()?;
+    let text = ty.display_source_code(ctx.db(), scope.module().into(), false).ok()?;
     Some(make::ty(&text))
 }
 

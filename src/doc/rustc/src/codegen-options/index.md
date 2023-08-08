@@ -31,8 +31,8 @@ Supported values can also be discovered by running `rustc --print code-models`.
 
 ## codegen-units
 
-This flag controls how many code generation units the crate is split into. It
-takes an integer greater than 0.
+This flag controls the maximum number of code generation units the crate is
+split into. It takes an integer greater than 0.
 
 When a crate is split into multiple codegen units, LLVM is able to process
 them in parallel. Increasing parallelism may speed up compile times, but may
@@ -71,9 +71,11 @@ If not specified, debug assertions are automatically enabled only if the
 This flag controls the generation of debug information. It takes one of the
 following values:
 
-* `0`: no debug info at all (the default).
-* `1`: line tables only.
-* `2`: full debug info.
+* `0` or `none`: no debug info at all (the default).
+* `line-directives-only`: line info directives only. For the nvptx* targets this enables [profiling](https://reviews.llvm.org/D46061). For other use cases, `line-tables-only` is the better, more compatible choice.
+* `line-tables-only`: line tables only. Generates the minimal amount of debug info for backtraces with filename/line number info, but not anything else, i.e. no variable or function parameter info.
+* `1` or `limited`: debug info without type or variable-level information.
+* `2` or `full`: full debug info.
 
 Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
 
@@ -82,11 +84,19 @@ Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
 This flag controls whether or not the linker includes its default libraries.
 It takes one of the following values:
 
-* `y`, `yes`, `on`, `true` or no value: include default libraries (the default).
-* `n`, `no`, `off` or `false`: exclude default libraries.
+* `y`, `yes`, `on`, `true`: include default libraries.
+* `n`, `no`, `off` or `false` or no value: exclude default libraries (the default).
 
 For example, for gcc flavor linkers, this issues the `-nodefaultlibs` flag to
 the linker.
+
+## dlltool
+
+On `windows-gnu` targets, this flag controls which dlltool `rustc` invokes to
+generate import libraries when using the [`raw-dylib` link kind](../../reference/items/external-blocks.md#the-link-attribute).
+It takes a path to [the dlltool executable](https://sourceware.org/binutils/docs/binutils/dlltool.html).
+If this flag is not specified, a dlltool executable will be inferred based on
+the host environment and target.
 
 ## embed-bitcode
 
@@ -559,20 +569,23 @@ for the purpose of generating object code and linking.
 
 Supported values for this option are:
 
-* `v0` — The "v0" mangling scheme. The specific format is not specified at
-  this time.
+* `v0` — The "v0" mangling scheme.
 
 The default, if not specified, will use a compiler-chosen default which may
 change in the future.
 
+See the [Symbol Mangling] chapter for details on symbol mangling and the mangling format.
+
 [name mangling]: https://en.wikipedia.org/wiki/Name_mangling
+[Symbol Mangling]: ../symbol-mangling/index.md
 
 ## target-cpu
 
 This instructs `rustc` to generate code specifically for a particular processor.
 
 You can run `rustc --print target-cpus` to see the valid options to pass
-here. Each target has a default base CPU. Special values include:
+and the default target CPU for the current buid target.
+Each target has a default base CPU. Special values include:
 
 * `native` can be passed to use the processor of the host machine.
 * `generic` refers to an LLVM target with minimal features but modern tuning.

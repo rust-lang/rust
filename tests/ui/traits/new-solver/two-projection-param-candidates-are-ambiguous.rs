@@ -1,7 +1,7 @@
 // compile-flags: -Ztrait-solver=next
 
 // When we're solving `<T as Foo>::Assoc = i32`, we actually first solve
-// `<T as Foo>::Assoc = _#1t`, then unify `_#1t` with `i32`. That goal
+// `<T as Foo>::Assoc = ?1t`, then unify `?1t` with `i32`. That goal
 // with the inference variable is ambiguous when there are >1 param-env
 // candidates.
 

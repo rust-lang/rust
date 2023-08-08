@@ -1,3 +1,5 @@
+//@compile-flags: -Cdebug-assertions=no
+
 #[repr(transparent)]
 struct HasDrop(u8);
 
@@ -11,7 +13,7 @@ struct PartialDrop {
     b: u8,
 }
 
-//@error-pattern: /alignment 2 is required/
+//@error-in-other-file: /alignment 2 is required/
 fn main() {
     unsafe {
         // Create an unaligned pointer

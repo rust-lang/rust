@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -12,6 +11,7 @@ use crate::toolstate::ToolState;
 use crate::util::{add_dylib_path, exe, t};
 use crate::Compiler;
 use crate::Mode;
+use crate::{gha, Kind};
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -33,41 +33,28 @@ struct ToolBuild {
     allow_features: &'static str,
 }
 
-fn tooling_output(
-    mode: Mode,
-    tool: &str,
-    build_stage: u32,
-    host: &TargetSelection,
-    target: &TargetSelection,
-) -> String {
-    match mode {
-        // depends on compiler stage, different to host compiler
-        Mode::ToolRustc => {
-            if host == target {
-                format!("Building tool {} (stage{} -> stage{})", tool, build_stage, build_stage + 1)
-            } else {
-                format!(
-                    "Building tool {} (stage{}:{} -> stage{}:{})",
-                    tool,
-                    build_stage,
-                    host,
-                    build_stage + 1,
-                    target
-                )
-            }
+impl Builder<'_> {
+    #[track_caller]
+    fn msg_tool(
+        &self,
+        mode: Mode,
+        tool: &str,
+        build_stage: u32,
+        host: &TargetSelection,
+        target: &TargetSelection,
+    ) -> Option<gha::Group> {
+        match mode {
+            // depends on compiler stage, different to host compiler
+            Mode::ToolRustc => self.msg_sysroot_tool(
+                Kind::Build,
+                build_stage,
+                format_args!("tool {tool}"),
+                *host,
+                *target,
+            ),
+            // doesn't depend on compiler, same as host compiler
+            _ => self.msg(Kind::Build, build_stage, format_args!("tool {tool}"), *host, *target),
         }
-        // doesn't depend on compiler, same as host compiler
-        Mode::ToolStd => {
-            if host == target {
-                format!("Building tool {} (stage{})", tool, build_stage)
-            } else {
-                format!(
-                    "Building tool {} (stage{}:{} -> stage{}:{})",
-                    tool, build_stage, host, build_stage, target
-                )
-            }
-        }
-        _ => format!("Building tool {} (stage{})", tool, build_stage),
     }
 }
 
@@ -112,143 +99,17 @@ impl Step for ToolBuild {
         if !self.allow_features.is_empty() {
             cargo.allow_features(self.allow_features);
         }
-        let msg = tooling_output(
+        let _guard = builder.msg_tool(
             self.mode,
             self.tool,
             self.compiler.stage,
             &self.compiler.host,
             &self.target,
         );
-        builder.info(&msg);
-        let mut duplicates = Vec::new();
-        let is_expected = compile::stream_cargo(builder, cargo, vec![], &mut |msg| {
-            // Only care about big things like the RLS/Cargo for now
-            match tool {
-                "rls" | "cargo" | "clippy-driver" | "miri" | "rustfmt" => {}
 
-                _ => return,
-            }
-            let (id, features, filenames) = match msg {
-                compile::CargoMessage::CompilerArtifact {
-                    package_id,
-                    features,
-                    filenames,
-                    target: _,
-                } => (package_id, features, filenames),
-                _ => return,
-            };
-            let features = features.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-
-            for path in filenames {
-                let val = (tool, PathBuf::from(&*path), features.clone());
-                // we're only interested in deduplicating rlibs for now
-                if val.1.extension().and_then(|s| s.to_str()) != Some("rlib") {
-                    continue;
-                }
-
-                // Don't worry about compiles that turn out to be host
-                // dependencies or build scripts. To skip these we look for
-                // anything that goes in `.../release/deps` but *doesn't* go in
-                // `$target/release/deps`. This ensure that outputs in
-                // `$target/release` are still considered candidates for
-                // deduplication.
-                if let Some(parent) = val.1.parent() {
-                    if parent.ends_with("release/deps") {
-                        let maybe_target = parent
-                            .parent()
-                            .and_then(|p| p.parent())
-                            .and_then(|p| p.file_name())
-                            .and_then(|p| p.to_str())
-                            .unwrap();
-                        if maybe_target != &*target.triple {
-                            continue;
-                        }
-                    }
-                }
-
-                // Record that we've built an artifact for `id`, and if one was
-                // already listed then we need to see if we reused the same
-                // artifact or produced a duplicate.
-                let mut artifacts = builder.tool_artifacts.borrow_mut();
-                let prev_artifacts = artifacts.entry(target).or_default();
-                let prev = match prev_artifacts.get(&*id) {
-                    Some(prev) => prev,
-                    None => {
-                        prev_artifacts.insert(id.to_string(), val);
-                        continue;
-                    }
-                };
-                if prev.1 == val.1 {
-                    return; // same path, same artifact
-                }
-
-                // If the paths are different and one of them *isn't* inside of
-                // `release/deps`, then it means it's probably in
-                // `$target/release`, or it's some final artifact like
-                // `libcargo.rlib`. In these situations Cargo probably just
-                // copied it up from `$target/release/deps/libcargo-xxxx.rlib`,
-                // so if the features are equal we can just skip it.
-                let prev_no_hash = prev.1.parent().unwrap().ends_with("release/deps");
-                let val_no_hash = val.1.parent().unwrap().ends_with("release/deps");
-                if prev.2 == val.2 || !prev_no_hash || !val_no_hash {
-                    return;
-                }
-
-                // ... and otherwise this looks like we duplicated some sort of
-                // compilation, so record it to generate an error later.
-                duplicates.push((id.to_string(), val, prev.clone()));
-            }
-        });
-
-        if is_expected && !duplicates.is_empty() {
-            eprintln!(
-                "duplicate artifacts found when compiling a tool, this \
-                      typically means that something was recompiled because \
-                      a transitive dependency has different features activated \
-                      than in a previous build:\n"
-            );
-            let (same, different): (Vec<_>, Vec<_>) =
-                duplicates.into_iter().partition(|(_, cur, prev)| cur.2 == prev.2);
-            if !same.is_empty() {
-                eprintln!(
-                    "the following dependencies are duplicated although they \
-                      have the same features enabled:"
-                );
-                for (id, cur, prev) in same {
-                    eprintln!("  {}", id);
-                    // same features
-                    eprintln!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
-                }
-            }
-            if !different.is_empty() {
-                eprintln!("the following dependencies have different features:");
-                for (id, cur, prev) in different {
-                    eprintln!("  {}", id);
-                    let cur_features: HashSet<_> = cur.2.into_iter().collect();
-                    let prev_features: HashSet<_> = prev.2.into_iter().collect();
-                    eprintln!(
-                        "    `{}` additionally enabled features {:?} at {:?}",
-                        cur.0,
-                        &cur_features - &prev_features,
-                        cur.1
-                    );
-                    eprintln!(
-                        "    `{}` additionally enabled features {:?} at {:?}",
-                        prev.0,
-                        &prev_features - &cur_features,
-                        prev.1
-                    );
-                }
-            }
-            eprintln!();
-            eprintln!(
-                "to fix this you will probably want to edit the local \
-                      src/tools/rustc-workspace-hack/Cargo.toml crate, as \
-                      that will update the dependency graph to ensure that \
-                      these crates all share the same feature set"
-            );
-            panic!("tools should not compile multiple copies of the same crate");
-        }
+        let mut cargo = Command::from(cargo);
+        #[allow(deprecated)] // we check this in `is_optional_tool` in a second
+        let is_expected = builder.config.try_run(&mut cargo).is_ok();
 
         builder.save_toolstate(
             tool,
@@ -257,7 +118,7 @@ impl Step for ToolBuild {
 
         if !is_expected {
             if !is_optional_tool {
-                crate::detail_exit(1);
+                crate::exit!(1);
             } else {
                 None
             }
@@ -282,7 +143,7 @@ pub fn prepare_tool_cargo(
     mode: Mode,
     target: TargetSelection,
     command: &'static str,
-    path: &'static str,
+    path: &str,
     source_type: SourceType,
     extra_features: &[String],
 ) -> CargoCommand {
@@ -299,7 +160,9 @@ pub fn prepare_tool_cargo(
             || path.ends_with("rustfmt")
         {
             cargo.env("LIBZ_SYS_STATIC", "1");
-            features.push("rustc-workspace-hack/all-static".to_string());
+        }
+        if path.ends_with("cargo") {
+            features.push("all-static".to_string());
         }
     }
 
@@ -319,8 +182,14 @@ pub fn prepare_tool_cargo(
     cargo.env("CFG_VERSION", builder.rust_version());
     cargo.env("CFG_RELEASE_NUM", &builder.version);
     cargo.env("DOC_RUST_LANG_ORG_CHANNEL", builder.doc_rust_lang_org_channel());
+    if let Some(ref ver_date) = builder.rust_info().commit_date() {
+        cargo.env("CFG_VER_DATE", ver_date);
+    }
+    if let Some(ref ver_hash) = builder.rust_info().sha() {
+        cargo.env("CFG_VER_HASH", ver_hash);
+    }
 
-    let info = GitInfo::new(builder.config.ignore_git, &dir);
+    let info = GitInfo::new(builder.config.omit_git_hash, &dir);
     if let Some(sha) = info.sha() {
         cargo.env("CFG_COMMIT_HASH", sha);
     }
@@ -422,7 +291,7 @@ bootstrap_tool!(
     Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true, allow_features = "test";
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
-    RustInstaller, "src/tools/rust-installer", "rust-installer", is_external_tool = true;
+    RustInstaller, "src/tools/rust-installer", "rust-installer";
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
     ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
     LintDocs, "src/tools/lint-docs", "lint-docs";
@@ -433,6 +302,10 @@ bootstrap_tool!(
     ReplaceVersionPlaceholder, "src/tools/replace-version-placeholder", "replace-version-placeholder";
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
     GenerateCopyright, "src/tools/generate-copyright", "generate-copyright";
+    SuggestTests, "src/tools/suggest-tests", "suggest-tests";
+    GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
+    RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
+    OptimizedDist, "src/tools/opt-dist", "opt-dist";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
@@ -610,14 +483,13 @@ impl Step for Rustdoc {
             cargo.rustflag("--cfg=parallel_compiler");
         }
 
-        let msg = tooling_output(
+        let _guard = builder.msg_tool(
             Mode::ToolRustc,
             "rustdoc",
             build_compiler.stage,
             &self.compiler.host,
             &target,
         );
-        builder.info(&msg);
         builder.run(&mut cargo.into());
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in
@@ -686,39 +558,6 @@ impl Step for Cargo {
                 allow_features: "",
             })
             .expect("expected to build -- essential tool");
-
-        let build_cred = |name, path| {
-            // These credential helpers are currently experimental.
-            // Any build failures will be ignored.
-            let _ = builder.ensure(ToolBuild {
-                compiler: self.compiler,
-                target: self.target,
-                tool: name,
-                mode: Mode::ToolRustc,
-                path,
-                is_optional_tool: true,
-                source_type: SourceType::Submodule,
-                extra_features: Vec::new(),
-                allow_features: "",
-            });
-        };
-
-        if self.target.contains("windows") {
-            build_cred(
-                "cargo-credential-wincred",
-                "src/tools/cargo/crates/credential/cargo-credential-wincred",
-            );
-        }
-        if self.target.contains("apple-darwin") {
-            build_cred(
-                "cargo-credential-macos-keychain",
-                "src/tools/cargo/crates/credential/cargo-credential-macos-keychain",
-            );
-        }
-        build_cred(
-            "cargo-credential-1password",
-            "src/tools/cargo/crates/credential/cargo-credential-1password",
-        );
         cargo_bin_path
     }
 }
@@ -842,7 +681,7 @@ impl Step for RustAnalyzerProcMacroSrv {
             tool: "rust-analyzer-proc-macro-srv",
             mode: Mode::ToolStd,
             path: "src/tools/rust-analyzer/crates/proc-macro-srv-cli",
-            extra_features: vec!["proc-macro-srv/sysroot-abi".to_owned()],
+            extra_features: vec!["sysroot-abi".to_owned()],
             is_optional_tool: false,
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
@@ -866,6 +705,7 @@ macro_rules! tool_extended {
        stable = $stable:expr
        $(,tool_std = $tool_std:literal)?
        $(,allow_features = $allow_features:expr)?
+       $(,add_bins_to_sysroot = $add_bins_to_sysroot:expr)?
        ;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -908,7 +748,7 @@ macro_rules! tool_extended {
 
             #[allow(unused_mut)]
             fn run(mut $sel, $builder: &Builder<'_>) -> Option<PathBuf> {
-                $builder.ensure(ToolBuild {
+                let tool = $builder.ensure(ToolBuild {
                     compiler: $sel.compiler,
                     target: $sel.target,
                     tool: $tool_name,
@@ -918,7 +758,27 @@ macro_rules! tool_extended {
                     is_optional_tool: true,
                     source_type: SourceType::InTree,
                     allow_features: concat!($($allow_features)*),
-                })
+                })?;
+
+                if (false $(|| !$add_bins_to_sysroot.is_empty())?) && $sel.compiler.stage > 0 {
+                    let bindir = $builder.sysroot($sel.compiler).join("bin");
+                    t!(fs::create_dir_all(&bindir));
+
+                    #[allow(unused_variables)]
+                    let tools_out = $builder
+                        .cargo_out($sel.compiler, Mode::ToolRustc, $sel.target);
+
+                    $(for add_bin in $add_bins_to_sysroot {
+                        let bin_source = tools_out.join(exe(add_bin, $sel.target));
+                        let bin_destination = bindir.join(exe(add_bin, $sel.compiler.host));
+                        $builder.copy(&bin_source, &bin_destination);
+                    })?
+
+                    let tool = bindir.join(exe($tool_name, $sel.compiler.host));
+                    Some(tool)
+                } else {
+                    Some(tool)
+                }
             }
         }
         )+
@@ -932,15 +792,15 @@ macro_rules! tool_extended {
 tool_extended!((self, builder),
     Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true;
     CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true;
-    Clippy, "src/tools/clippy", "clippy-driver", stable=true;
-    Miri, "src/tools/miri", "miri", stable=false;
-    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=true;
+    Clippy, "src/tools/clippy", "clippy-driver", stable=true, add_bins_to_sysroot = ["clippy-driver", "cargo-clippy"];
+    Miri, "src/tools/miri", "miri", stable=false, add_bins_to_sysroot = ["miri"];
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=true, add_bins_to_sysroot = ["cargo-miri"];
     // FIXME: tool_std is not quite right, we shouldn't allow nightly features.
     // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,
     // and this is close enough for now.
     Rls, "src/tools/rls", "rls", stable=true, tool_std=true;
     RustDemangler, "src/tools/rust-demangler", "rust-demangler", stable=false, tool_std=true;
-    Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true;
+    Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
 );
 
 impl<'a> Builder<'a> {
@@ -965,7 +825,7 @@ impl<'a> Builder<'a> {
         if compiler.host.contains("msvc") {
             let curpaths = env::var_os("PATH").unwrap_or_default();
             let curpaths = env::split_paths(&curpaths).collect::<Vec<_>>();
-            for &(ref k, ref v) in self.cc[&compiler.host].env() {
+            for &(ref k, ref v) in self.cc.borrow()[&compiler.host].env() {
                 if k != "PATH" {
                     continue;
                 }

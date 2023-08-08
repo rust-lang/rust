@@ -1,6 +1,6 @@
 //! Builtin attributes.
 
-use crate::{db::AstDatabase, name, tt, ExpandResult, MacroCallId, MacroCallKind};
+use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallId, MacroCallKind};
 
 macro_rules! register_builtin {
     ( $(($name:ident, $variant:ident) => $expand:ident),* ) => {
@@ -12,7 +12,7 @@ macro_rules! register_builtin {
         impl BuiltinAttrExpander {
             pub fn expand(
                 &self,
-                db: &dyn AstDatabase,
+                db: &dyn ExpandDatabase,
                 id: MacroCallId,
                 tt: &tt::Subtree,
             ) -> ExpandResult<tt::Subtree> {
@@ -35,7 +35,7 @@ macro_rules! register_builtin {
 
 impl BuiltinAttrExpander {
     pub fn is_derive(self) -> bool {
-        matches!(self, BuiltinAttrExpander::Derive)
+        matches!(self, BuiltinAttrExpander::Derive | BuiltinAttrExpander::DeriveConst)
     }
     pub fn is_test(self) -> bool {
         matches!(self, BuiltinAttrExpander::Test)
@@ -50,6 +50,8 @@ register_builtin! {
     (cfg_accessible, CfgAccessible) => dummy_attr_expand,
     (cfg_eval, CfgEval) => dummy_attr_expand,
     (derive, Derive) => derive_attr_expand,
+    // derive const is equivalent to derive for our proposes.
+    (derive_const, DeriveConst) => derive_attr_expand,
     (global_allocator, GlobalAllocator) => dummy_attr_expand,
     (test, Test) => dummy_attr_expand,
     (test_case, TestCase) => dummy_attr_expand
@@ -60,7 +62,7 @@ pub fn find_builtin_attr(ident: &name::Name) -> Option<BuiltinAttrExpander> {
 }
 
 fn dummy_attr_expand(
-    _db: &dyn AstDatabase,
+    _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -90,13 +92,13 @@ fn dummy_attr_expand(
 /// So this hacky approach is a lot more friendly for us, though it does require a bit of support in
 /// [`hir::Semantics`] to make this work.
 fn derive_attr_expand(
-    db: &dyn AstDatabase,
+    db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
     let loc = db.lookup_intern_macro_call(id);
     let derives = match &loc.kind {
-        MacroCallKind::Attr { attr_args, is_derive: true, .. } => &attr_args.0,
+        MacroCallKind::Attr { attr_args, .. } if loc.def.is_attribute_derive() => &attr_args.0,
         _ => return ExpandResult::ok(tt::Subtree::empty()),
     };
     pseudo_derive_attr_expansion(tt, derives)

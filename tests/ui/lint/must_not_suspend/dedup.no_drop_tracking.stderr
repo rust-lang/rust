@@ -4,7 +4,7 @@ error: `No` held across a suspend point, but should not be
 LL |     let no = No {};
    |         ^^
 LL |     wheeee(&no).await;
-   |                ------ the value is held across this suspend point
+   |                 ----- the value is held across this suspend point
    |
 help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
   --> $DIR/dedup.rs:19:9
@@ -21,7 +21,7 @@ error: `No` held across a suspend point, but should not be
   --> $DIR/dedup.rs:20:13
    |
 LL |     wheeee(&no).await;
-   |             ^^ ------ the value is held across this suspend point
+   |             ^^  ----- the value is held across this suspend point
    |
 help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
   --> $DIR/dedup.rs:20:13

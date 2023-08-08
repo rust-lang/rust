@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `dyn NotObject: NotObject` is not satisfied
+  --> $DIR/deny-builtin-object-impl.rs:18:23
+   |
+LL |     test_not_object::<dyn NotObject>();
+   |                       ^^^^^^^^^^^^^ the trait `NotObject` is not implemented for `dyn NotObject`
+   |
+note: required by a bound in `test_not_object`
+  --> $DIR/deny-builtin-object-impl.rs:14:23
+   |
+LL | fn test_not_object<T: NotObject + ?Sized>() {}
+   |                       ^^^^^^^^^ required by this bound in `test_not_object`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

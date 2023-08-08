@@ -10,7 +10,8 @@ note: required by a bound in `Result::<T, E>::unwrap`
   --> $SRC_DIR/core/src/result.rs:LL:COL
 help: consider annotating `Foo` with `#[derive(Debug)]`
    |
-LL | #[derive(Debug)]
+LL + #[derive(Debug)]
+LL | struct Foo;
    |
 
 error: aborting due to previous error

@@ -12,6 +12,8 @@ impl JustTrait for Type {
     const CONSTANT: usize = 1;
 
     fn fun() {}
+
+    fn fun2() {}
 }
 
 impl Equal for Type {

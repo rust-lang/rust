@@ -6,7 +6,7 @@ LL | fn a() -> impl Fn(&u8) -> impl Debug {
 LL |     |x| x
    |     --- ^
    |     |
-   |     hidden type `&u8` captures the anonymous lifetime #1 defined here
+   |     hidden type `&u8` captures the anonymous lifetime as defined here
 
 error: aborting due to previous error
 

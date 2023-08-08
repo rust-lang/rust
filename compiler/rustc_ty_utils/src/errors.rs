@@ -1,7 +1,7 @@
 //! Errors emitted by ty_utils
 
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{GenericArg, Ty};
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
@@ -66,4 +66,59 @@ pub enum GenericConstantTooComplexSub {
     InlineAsmNotSupported(#[primary_span] Span),
     #[label(ty_utils_operation_not_supported)]
     OperationNotSupported(#[primary_span] Span),
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_unexpected_fnptr_associated_item)]
+pub struct UnexpectedFnPtrAssociatedItem {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_zero_length_simd_type)]
+pub struct ZeroLengthSimdType<'tcx> {
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_multiple_array_fields_simd_type)]
+pub struct MultipleArrayFieldsSimdType<'tcx> {
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_oversized_simd_type)]
+pub struct OversizedSimdType<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub max_lanes: u64,
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_non_primitive_simd_type)]
+pub struct NonPrimitiveSimdType<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub e_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_impl_trait_duplicate_arg)]
+pub struct DuplicateArg<'tcx> {
+    pub arg: GenericArg<'tcx>,
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[note]
+    pub opaque_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_impl_trait_not_param, code = "E0792")]
+pub struct NotParam<'tcx> {
+    pub arg: GenericArg<'tcx>,
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[note]
+    pub opaque_span: Span,
 }

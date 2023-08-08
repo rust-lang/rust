@@ -1,6 +1,6 @@
 // run-pass
 // pretty-expanded FIXME #23616
 
-fn f() { let x: () = (); return x; }
+fn f() { let x = (); return x; }
 
-pub fn main() { let _x = f(); }
+pub fn main() { f(); }

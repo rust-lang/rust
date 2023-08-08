@@ -103,7 +103,7 @@ where
     fn ref_allows_mutation(&self, kind: mir::BorrowKind, place: mir::Place<'tcx>) -> bool {
         match kind {
             mir::BorrowKind::Mut { .. } => true,
-            mir::BorrowKind::Shared | mir::BorrowKind::Shallow | mir::BorrowKind::Unique => {
+            mir::BorrowKind::Shared | mir::BorrowKind::Shallow => {
                 self.shared_borrow_allows_mutation(place)
             }
         }
@@ -337,7 +337,7 @@ where
     Q: Qualif,
 {
     fn apply_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -346,7 +346,7 @@ where
     }
 
     fn apply_terminator_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -355,7 +355,7 @@ where
     }
 
     fn apply_call_return_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,

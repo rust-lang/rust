@@ -1,0 +1,16 @@
+error[E0277]: the size for values of type `dyn Iterator<Item = &'a mut u8>` cannot be known at compilation time
+  --> $DIR/issue-20605.rs:5:17
+   |
+LL |     for item in *things { *item = 0 }
+   |                 ^^^^^^^ the trait `IntoIterator` is not implemented for `dyn Iterator<Item = &'a mut u8>`
+   |
+   = note: the trait bound `dyn Iterator<Item = &'a mut u8>: IntoIterator` is not satisfied
+   = note: required for `dyn Iterator<Item = &'a mut u8>` to implement `IntoIterator`
+help: consider mutably borrowing here
+   |
+LL |     for item in &mut *things { *item = 0 }
+   |                 ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

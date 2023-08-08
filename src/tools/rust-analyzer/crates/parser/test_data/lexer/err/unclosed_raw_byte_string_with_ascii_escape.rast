@@ -1,1 +1,1 @@
-BYTE_STRING "br##\"\\x7f" error: Missing trailing `"` with `#` symbols to terminate the raw byte string literal
+BYTE_STRING "br##\"\\x7f" error: Invalid raw string literal

@@ -1,11 +1,10 @@
 use rustc_errors::Applicability;
-use rustc_hir::{
-    intravisit::{walk_expr, Visitor},
-    Closure, Expr, ExprKind, Stmt, StmtKind,
-};
+use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::{Closure, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{source_map::Span, sym, Symbol};
+use rustc_span::source_map::Span;
+use rustc_span::{sym, Symbol};
 
 use if_chain::if_chain;
 
@@ -50,7 +49,7 @@ declare_lint_pass!(NeedlessForEach => [NEEDLESS_FOR_EACH]);
 impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         let (StmtKind::Expr(expr) | StmtKind::Semi(expr)) = stmt.kind else {
-             return
+            return;
         };
 
         if_chain! {

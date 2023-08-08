@@ -2,7 +2,7 @@
 # This test should be replaced with one in tests/debuginfo once GDB or LLDB support 128-bit
 # enums.
 
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) -Cdebuginfo=2 lib.rs -o $(TMPDIR)/repr128.rlib

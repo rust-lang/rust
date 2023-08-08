@@ -8,8 +8,7 @@ pub struct SubT<T> {
 }
 
 mod outer_box {
-    use crate::MyStruct;
-    use crate::SubT;
+    use crate::{MyStruct, SubT};
     use std::boxed::Box;
     use std::rc::Rc;
     use std::sync::Arc;
@@ -28,8 +27,7 @@ mod outer_box {
 }
 
 mod outer_rc {
-    use crate::MyStruct;
-    use crate::SubT;
+    use crate::{MyStruct, SubT};
     use std::boxed::Box;
     use std::rc::Rc;
     use std::sync::Arc;
@@ -48,8 +46,7 @@ mod outer_rc {
 }
 
 mod outer_arc {
-    use crate::MyStruct;
-    use crate::SubT;
+    use crate::{MyStruct, SubT};
     use std::boxed::Box;
     use std::rc::Rc;
     use std::sync::Arc;

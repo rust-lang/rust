@@ -12,6 +12,8 @@ use super::*;
 //     let _ = r"d";
 //     let _ = b"e";
 //     let _ = br"f";
+//     let _ = c"g";
+//     let _ = cr"h";
 // }
 pub(crate) const LITERAL_FIRST: TokenSet = TokenSet::new(&[
     T![true],
@@ -22,6 +24,7 @@ pub(crate) const LITERAL_FIRST: TokenSet = TokenSet::new(&[
     CHAR,
     STRING,
     BYTE_STRING,
+    C_STRING,
 ]);
 
 pub(crate) fn literal(p: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -163,10 +166,8 @@ pub(super) fn atom_expr(
             return None;
         }
     };
-    let blocklike = match done.kind() {
-        IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR => BlockLike::Block,
-        _ => BlockLike::NotBlock,
-    };
+    let blocklike =
+        if BlockLike::is_blocklike(done.kind()) { BlockLike::Block } else { BlockLike::NotBlock };
     Some((done, blocklike))
 }
 
@@ -183,12 +184,22 @@ fn tuple_expr(p: &mut Parser<'_>) -> CompletedMarker {
 
     let mut saw_comma = false;
     let mut saw_expr = false;
+
+    // test_err tuple_expr_leading_comma
+    // fn foo() {
+    //     (,);
+    // }
+    if p.eat(T![,]) {
+        p.error("expected expression");
+        saw_comma = true;
+    }
+
     while !p.at(EOF) && !p.at(T![')']) {
         saw_expr = true;
 
         // test tuple_attrs
         // const A: (i64, i64) = (1, #[cfg(test)] 2);
-        if !expr(p) {
+        if expr(p).is_none() {
             break;
         }
 
@@ -221,7 +232,7 @@ fn array_expr(p: &mut Parser<'_>) -> CompletedMarker {
 
         // test array_attrs
         // const A: &[i64] = &[1, #[cfg(test)] 2];
-        if !expr(p) {
+        if expr(p).is_none() {
             break;
         }
 

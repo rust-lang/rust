@@ -11,6 +11,7 @@ use rustc_hir as hir;
 use rustc_infer::{infer::TyCtxtInferExt, traits::ObligationCause};
 use rustc_middle::ty::{self, List};
 use rustc_span::{sym, Span};
+use rustc_trait_selection::traits::ObligationCtxt;
 
 declare_lint! {
     /// The `for_loops_over_fallibles` lint checks for `for` loops over `Option` or `Result` values.
@@ -50,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
 
         let ty = cx.typeck_results().expr_ty(arg);
 
-        let &ty::Adt(adt, substs) = ty.kind() else { return };
+        let &ty::Adt(adt, args) = ty.kind() else { return };
 
         let (article, ty, var) = match adt.did() {
             did if cx.tcx.is_diagnostic_item(sym::Option, did) => ("an", "Option", "Some"),
@@ -65,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
             } else {
                 ForLoopsOverFalliblesLoopSub::UseWhileLet { start_span: expr.span.with_hi(pat.span.lo()), end_span: pat.span.between(arg.span), var }
             } ;
-        let question_mark = suggest_question_mark(cx, adt, substs, expr.span)
+        let question_mark = suggest_question_mark(cx, adt, args, expr.span)
             .then(|| ForLoopsOverFalliblesQuestionMark { suggestion: arg.span.shrink_to_hi() });
         let suggestion = ForLoopsOverFalliblesSuggestion {
             var,
@@ -114,11 +115,13 @@ fn extract_iterator_next_call<'tcx>(
 fn suggest_question_mark<'tcx>(
     cx: &LateContext<'tcx>,
     adt: ty::AdtDef<'tcx>,
-    substs: &List<ty::GenericArg<'tcx>>,
+    args: &List<ty::GenericArg<'tcx>>,
     span: Span,
 ) -> bool {
     let Some(body_id) = cx.enclosing_body else { return false };
-    let Some(into_iterator_did) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else { return false };
+    let Some(into_iterator_did) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else {
+        return false;
+    };
 
     if !cx.tcx.is_diagnostic_item(sym::Result, adt.did()) {
         return false;
@@ -134,22 +137,24 @@ fn suggest_question_mark<'tcx>(
         }
     }
 
-    let ty = substs.type_at(0);
+    let ty = args.type_at(0);
     let infcx = cx.tcx.infer_ctxt().build();
+    let ocx = ObligationCtxt::new(&infcx);
+
     let body_def_id = cx.tcx.hir().body_owner_def_id(body_id);
     let cause = ObligationCause::new(
         span,
         body_def_id,
         rustc_infer::traits::ObligationCauseCode::MiscObligation,
     );
-    let errors = rustc_trait_selection::traits::fully_solve_bound(
-        &infcx,
+
+    ocx.register_bound(
         cause,
-        ty::ParamEnv::empty(),
+        cx.param_env,
         // Erase any region vids from the type, which may not be resolved
         infcx.tcx.erase_regions(ty),
         into_iterator_did,
     );
 
-    errors.is_empty()
+    ocx.select_all_or_error().is_empty()
 }

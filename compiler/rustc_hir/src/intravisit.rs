@@ -335,6 +335,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_anon_const(&mut self, c: &'v AnonConst) {
         walk_anon_const(self, c)
     }
+    fn visit_inline_const(&mut self, c: &'v ConstBlock) {
+        walk_inline_const(self, c)
+    }
     fn visit_expr(&mut self, ex: &'v Expr<'v>) {
         walk_expr(self, ex)
     }
@@ -464,9 +467,15 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
         ItemKind::Use(ref path, _) => {
             visitor.visit_use(path, item.hir_id());
         }
-        ItemKind::Static(ref typ, _, body) | ItemKind::Const(ref typ, body) => {
+        ItemKind::Static(ref typ, _, body) => {
             visitor.visit_id(item.hir_id());
             visitor.visit_ty(typ);
+            visitor.visit_nested_body(body);
+        }
+        ItemKind::Const(ref typ, ref generics, body) => {
+            visitor.visit_id(item.hir_id());
+            visitor.visit_ty(typ);
+            visitor.visit_generics(generics);
             visitor.visit_nested_body(body);
         }
         ItemKind::Fn(ref sig, ref generics, body_id) => {
@@ -499,7 +508,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             visitor.visit_ty(ty);
             visitor.visit_generics(generics)
         }
-        ItemKind::OpaqueTy(OpaqueTy { ref generics, bounds, .. }) => {
+        ItemKind::OpaqueTy(&OpaqueTy { generics, bounds, .. }) => {
             visitor.visit_id(item.hir_id());
             walk_generics(visitor, generics);
             walk_list!(visitor, visit_param_bound, bounds);
@@ -679,14 +688,18 @@ pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonCo
     visitor.visit_nested_body(constant.body);
 }
 
+pub fn walk_inline_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v ConstBlock) {
+    visitor.visit_id(constant.hir_id);
+    visitor.visit_nested_body(constant.body);
+}
+
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) {
     visitor.visit_id(expression.hir_id);
     match expression.kind {
-        ExprKind::Box(ref subexpression) => visitor.visit_expr(subexpression),
         ExprKind::Array(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
-        ExprKind::ConstBlock(ref anon_const) => visitor.visit_anon_const(anon_const),
+        ExprKind::ConstBlock(ref const_block) => visitor.visit_inline_const(const_block),
         ExprKind::Repeat(ref element, ref count) => {
             visitor.visit_expr(element);
             visitor.visit_array_length(count)
@@ -767,7 +780,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visitor.visit_expr(subexpression);
             visitor.visit_ident(ident);
         }
-        ExprKind::Index(ref main_expression, ref index_expression) => {
+        ExprKind::Index(ref main_expression, ref index_expression, _) => {
             visitor.visit_expr(main_expression);
             visitor.visit_expr(index_expression)
         }
@@ -784,8 +797,13 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::Ret(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }
+        ExprKind::Become(ref expr) => visitor.visit_expr(expr),
         ExprKind::InlineAsm(ref asm) => {
             visitor.visit_inline_asm(asm, expression.hir_id);
+        }
+        ExprKind::OffsetOf(ref container, ref fields) => {
+            visitor.visit_ty(container);
+            walk_list!(visitor, visit_ident, fields.iter().copied());
         }
         ExprKind::Yield(ref subexpression, _) => {
             visitor.visit_expr(subexpression);

@@ -6,11 +6,11 @@ pub mod map;
 pub mod nested_filter;
 pub mod place;
 
-use crate::ty::query::Providers;
-use crate::ty::{ImplSubject, TyCtxt};
-use rustc_data_structures::fingerprint::Fingerprint;
+use crate::query::Providers;
+use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
+use rustc_data_structures::sync::{par_for_each_in, DynSend, DynSync};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
@@ -24,14 +24,15 @@ use rustc_span::{ExpnId, DUMMY_SP};
 #[derive(Copy, Clone, Debug)]
 pub struct Owner<'tcx> {
     node: OwnerNode<'tcx>,
-    hash_without_bodies: Fingerprint,
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
     #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let Owner { node: _, hash_without_bodies } = self;
-        hash_without_bodies.hash_stable(hcx, hasher)
+        // Perform a shallow hash instead using the deep hash saved in `OwnerNodes`. This lets us
+        // differentiate queries that depend on the full HIR tree from those that only depend on
+        // the item signature.
+        hcx.without_hir_bodies(|hcx| self.node.hash_stable(hcx, hasher));
     }
 }
 
@@ -77,19 +78,19 @@ impl ModuleItems {
         self.owners().map(|id| id.def_id)
     }
 
-    pub fn par_items(&self, f: impl Fn(ItemId) + Send + Sync) {
+    pub fn par_items(&self, f: impl Fn(ItemId) + DynSend + DynSync) {
         par_for_each_in(&self.items[..], |&id| f(id))
     }
 
-    pub fn par_trait_items(&self, f: impl Fn(TraitItemId) + Send + Sync) {
+    pub fn par_trait_items(&self, f: impl Fn(TraitItemId) + DynSend + DynSync) {
         par_for_each_in(&self.trait_items[..], |&id| f(id))
     }
 
-    pub fn par_impl_items(&self, f: impl Fn(ImplItemId) + Send + Sync) {
+    pub fn par_impl_items(&self, f: impl Fn(ImplItemId) + DynSend + DynSync) {
         par_for_each_in(&self.impl_items[..], |&id| f(id))
     }
 
-    pub fn par_foreign_items(&self, f: impl Fn(ForeignItemId) + Send + Sync) {
+    pub fn par_foreign_items(&self, f: impl Fn(ForeignItemId) + DynSend + DynSync) {
         par_for_each_in(&self.foreign_items[..], |&id| f(id))
     }
 }
@@ -101,29 +102,45 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn parent_module(self, id: HirId) -> LocalDefId {
-        self.parent_module_from_def_id(id.owner.def_id)
+        if !id.is_owner() && self.def_kind(id.owner) == DefKind::Mod {
+            id.owner.def_id
+        } else {
+            self.parent_module_from_def_id(id.owner.def_id)
+        }
     }
 
-    pub fn impl_subject(self, def_id: DefId) -> ImplSubject<'tcx> {
-        self.impl_trait_ref(def_id)
-            .map(|t| t.subst_identity())
-            .map(ImplSubject::Trait)
-            .unwrap_or_else(|| ImplSubject::Inherent(self.type_of(def_id).subst_identity()))
+    pub fn parent_module_from_def_id(self, mut id: LocalDefId) -> LocalDefId {
+        while let Some(parent) = self.opt_local_parent(id) {
+            id = parent;
+            if self.def_kind(id) == DefKind::Mod {
+                break;
+            }
+        }
+        id
+    }
+
+    pub fn impl_subject(self, def_id: DefId) -> EarlyBinder<ImplSubject<'tcx>> {
+        match self.impl_trait_ref(def_id) {
+            Some(t) => t.map_bound(ImplSubject::Trait),
+            None => self.type_of(def_id).map_bound(ImplSubject::Inherent),
+        }
+    }
+
+    /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
+    pub fn is_foreign_item(self, def_id: impl Into<DefId>) -> bool {
+        self.opt_parent(def_id.into())
+            .is_some_and(|parent| matches!(self.def_kind(parent), DefKind::ForeignMod))
     }
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.parent_module_from_def_id = |tcx, id| {
-        let hir = tcx.hir();
-        hir.get_module_parent_node(hir.local_def_id_to_hir_id(id)).def_id
-    };
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
     providers.hir_owner = |tcx, id| {
         let owner = tcx.hir_crate(()).owners.get(id.def_id)?.as_owner()?;
         let node = owner.node();
-        Some(Owner { node, hash_without_bodies: owner.nodes.hash_without_bodies })
+        Some(Owner { node })
     };
     providers.opt_local_def_id_to_hir_id = |tcx, id| {
         let owner = tcx.hir_crate(()).owners[id].map(|_| ());
@@ -147,18 +164,18 @@ pub fn provide(providers: &mut Providers) {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
     providers.def_span = |tcx, def_id| {
-        let def_id = def_id.expect_local();
+        let def_id = def_id;
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         tcx.hir().opt_span(hir_id).unwrap_or(DUMMY_SP)
     };
     providers.def_ident_span = |tcx, def_id| {
-        let def_id = def_id.expect_local();
+        let def_id = def_id;
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         tcx.hir().opt_ident_span(hir_id)
     };
     providers.fn_arg_names = |tcx, id| {
         let hir = tcx.hir();
-        let def_id = id.expect_local();
+        let def_id = id;
         let hir_id = hir.local_def_id_to_hir_id(def_id);
         if let Some(body_id) = hir.maybe_body_owned_by(def_id) {
             tcx.arena.alloc_from_iter(hir.body_param_names(body_id))
@@ -176,13 +193,10 @@ pub fn provide(providers: &mut Providers) {
             span_bug!(hir.span(hir_id), "fn_arg_names: unexpected item {:?}", id);
         }
     };
-    providers.opt_def_kind = |tcx, def_id| tcx.hir().opt_def_kind(def_id.expect_local());
-    providers.opt_rpitit_info = |_, _| None;
+    providers.opt_def_kind = |tcx, def_id| tcx.hir().opt_def_kind(def_id);
     providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
-    providers.expn_that_defined = |tcx, id| {
-        let id = id.expect_local();
-        tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root())
-    };
+    providers.expn_that_defined =
+        |tcx, id| tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root());
     providers.in_scope_traits_map = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map(|owner_info| &owner_info.trait_map)
     };

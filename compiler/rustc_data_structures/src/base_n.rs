@@ -16,22 +16,24 @@ const BASE_64: &[u8; MAX_BASE] =
 pub fn push_str(mut n: u128, base: usize, output: &mut String) {
     debug_assert!(base >= 2 && base <= MAX_BASE);
     let mut s = [0u8; 128];
-    let mut index = 0;
+    let mut index = s.len();
 
     let base = base as u128;
 
     loop {
+        index -= 1;
         s[index] = BASE_64[(n % base) as usize];
-        index += 1;
         n /= base;
 
         if n == 0 {
             break;
         }
     }
-    s[0..index].reverse();
 
-    output.push_str(str::from_utf8(&s[0..index]).unwrap());
+    output.push_str(unsafe {
+        // SAFETY: `s` is populated using only valid utf8 characters from `BASE_64`
+        str::from_utf8_unchecked(&s[index..])
+    });
 }
 
 #[inline]

@@ -18,4 +18,10 @@ impl Foo for Bar {
     unsafe fn unsf_foo(&self) {}
 }
 
+trait Qux {
+    #[target_feature(enable = "sse2")]
+    //~^ ERROR cannot be applied to safe trait method
+    fn foo(&self) {}
+}
+
 fn main() {}

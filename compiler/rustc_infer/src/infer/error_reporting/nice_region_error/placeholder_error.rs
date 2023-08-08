@@ -13,7 +13,7 @@ use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, RegionHighlightMode};
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, RePlaceholder, Region, TyCtxt};
 
 use std::fmt;
@@ -79,7 +79,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(ty::Region::new_var(self.tcx(), *vid)),
                 cause,
                 Some(*sub_placeholder),
                 Some(*sup_placeholder),
@@ -95,7 +95,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 _,
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(ty::Region::new_var(self.tcx(), *vid)),
                 cause,
                 Some(*sub_placeholder),
                 None,
@@ -111,7 +111,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(ty::Region::new_var(self.tcx(), *vid)),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -127,7 +127,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(ty::Region::new_var(self.tcx(), *vid)),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -141,7 +141,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(ty::Region::new_var(self.tcx(), *vid)),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -196,11 +196,11 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         sup_placeholder: Option<Region<'tcx>>,
         value_pairs: &ValuePairs<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        let (expected_substs, found_substs, trait_def_id) = match value_pairs {
+        let (expected_args, found_args, trait_def_id) = match value_pairs {
             ValuePairs::TraitRefs(ExpectedFound { expected, found })
                 if expected.def_id == found.def_id =>
             {
-                (expected.substs, found.substs, expected.def_id)
+                (expected.args, found.args, expected.def_id)
             }
             ValuePairs::PolyTraitRefs(ExpectedFound { expected, found })
                 if expected.def_id() == found.def_id() =>
@@ -208,7 +208,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 // It's possible that the placeholders come from a binder
                 // outside of this value pair. Use `no_bound_vars` as a
                 // simple heuristic for that.
-                (expected.no_bound_vars()?.substs, found.no_bound_vars()?.substs, expected.def_id())
+                (expected.no_bound_vars()?.args, found.no_bound_vars()?.args, expected.def_id())
             }
             _ => return None,
         };
@@ -219,8 +219,8 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             sub_placeholder,
             sup_placeholder,
             trait_def_id,
-            expected_substs,
-            found_substs,
+            expected_args,
+            found_args,
         ))
     }
 
@@ -241,8 +241,8 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         sub_placeholder: Option<Region<'tcx>>,
         sup_placeholder: Option<Region<'tcx>>,
         trait_def_id: DefId,
-        expected_substs: SubstsRef<'tcx>,
-        actual_substs: SubstsRef<'tcx>,
+        expected_args: GenericArgsRef<'tcx>,
+        actual_args: GenericArgsRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let span = cause.span();
 
@@ -261,11 +261,16 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 (false, None, None, Some(span), String::new())
             };
 
-        let expected_trait_ref = self
-            .cx
-            .resolve_vars_if_possible(self.cx.tcx.mk_trait_ref(trait_def_id, expected_substs));
-        let actual_trait_ref =
-            self.cx.resolve_vars_if_possible(self.cx.tcx.mk_trait_ref(trait_def_id, actual_substs));
+        let expected_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new(
+            self.cx.tcx,
+            trait_def_id,
+            expected_args,
+        ));
+        let actual_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new(
+            self.cx.tcx,
+            trait_def_id,
+            actual_args,
+        ));
 
         // Search the expected and actual trait references to see (a)
         // whether the sub/sup placeholders appear in them (sometimes
@@ -408,9 +413,9 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             if self_ty.value.is_closure() && self.tcx().is_fn_trait(expected_trait_ref.value.def_id)
             {
                 let closure_sig = self_ty.map(|closure| {
-                    if let ty::Closure(_, substs) = closure.kind() {
+                    if let ty::Closure(_, args) = closure.kind() {
                         self.tcx().signature_unclosure(
-                            substs.as_closure().sig(),
+                            args.as_closure().sig(),
                             rustc_hir::Unsafety::Normal,
                         )
                     } else {

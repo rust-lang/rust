@@ -104,13 +104,17 @@ fn runtest(me: &str) {
                 "bad output3: {}", s);
 
         // Make sure a stack trace isn't printed too many times
+        //
+        // Currently it is printed 3 times ("once", "twice" and "panic in a
+        // function that cannot unwind") but in the future the last one may be
+        // removed.
         let p = template(me).arg("double-fail")
                                     .env("RUST_BACKTRACE", "1").spawn().unwrap();
         let out = p.wait_with_output().unwrap();
         assert!(!out.status.success());
         let s = str::from_utf8(&out.stderr).unwrap();
         let mut i = 0;
-        for _ in 0..2 {
+        for _ in 0..3 {
             i += s[i + 10..].find("stack backtrace").unwrap() + 10;
         }
         assert!(s[i + 10..].find("stack backtrace").is_none(),

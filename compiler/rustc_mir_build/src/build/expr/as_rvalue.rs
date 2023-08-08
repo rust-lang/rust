@@ -1,20 +1,22 @@
 //! See docs in `build/expr/mod.rs`.
 
-use rustc_index::vec::Idx;
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_target::abi::{Abi, Primitive};
+use rustc_target::abi::{Abi, FieldIdx, Primitive};
 
 use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::region;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::Place;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::cast::{mir_cast_kind, CastTy};
-use rustc_middle::ty::{self, Ty, UpvarSubsts};
+use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::{self, Ty, UpvarArgs};
 use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -63,7 +65,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block,
                             scope,
                             &this.thir[value],
-                            None,
+                            LocalInfo::Boring,
                             NeedsTemporary::No
                         )
                     );
@@ -72,19 +74,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[lhs], None, NeedsTemporary::Maybe)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        &this.thir[lhs],
+                        LocalInfo::Boring,
+                        NeedsTemporary::Maybe
+                    )
                 );
                 let rhs = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[rhs], None, NeedsTemporary::No)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        &this.thir[rhs],
+                        LocalInfo::Boring,
+                        NeedsTemporary::No
+                    )
                 );
                 this.build_binary_op(block, op, expr_span, expr.ty, lhs, rhs)
             }
             ExprKind::Unary { op, arg } => {
                 let arg = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[arg], None, NeedsTemporary::No)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        &this.thir[arg],
+                        LocalInfo::Boring,
+                        NeedsTemporary::No
+                    )
                 );
                 // Check for -MIN on signed integers
                 if this.check_overflow && op == UnOp::Neg && expr.ty.is_signed() {
@@ -145,7 +162,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     [],
                     expr_span,
                 );
-                let storage = this.temp(tcx.mk_mut_ptr(tcx.types.u8), expr_span);
+                let storage = this.temp(Ty::new_mut_ptr(tcx, tcx.types.u8), expr_span);
                 let success = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
@@ -155,8 +172,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         args: vec![Operand::Move(size), Operand::Move(align)],
                         destination: storage,
                         target: Some(success),
-                        cleanup: None,
-                        from_hir_call: false,
+                        unwind: UnwindAction::Continue,
+                        call_source: CallSource::Misc,
                         fn_span: expr_span,
                     },
                 );
@@ -209,49 +226,63 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                     let (op,ty) = (Operand::Move(discr), discr_ty);
 
-                    if let Abi::Scalar(scalar) = layout.unwrap().abi{
-                        if let Primitive::Int(_, signed) = scalar.primitive() {
-                            let range = scalar.valid_range(&this.tcx);
-                            // FIXME: Handle wraparound cases too.
-                            if range.end >= range.start {
-                                let mut assumer = |range: u128, bin_op: BinOp| {
-                                    // We will be overwriting this val if our scalar is signed value
-                                    // because sign extension on unsigned types might cause unintended things
-                                    let mut range_val =
-                                        ConstantKind::from_bits(this.tcx, range, ty::ParamEnv::empty().and(discr_ty));
-                                    let bool_ty = this.tcx.types.bool;
-                                    if signed {
-                                        let scalar_size_extend = scalar.size(&this.tcx).sign_extend(range);
-                                        let discr_layout = this.tcx.layout_of(this.param_env.and(discr_ty));
-                                        let truncated_val = discr_layout.unwrap().size.truncate(scalar_size_extend);
-                                        range_val = ConstantKind::from_bits(
-                                            this.tcx,
-                                            truncated_val,
-                                            ty::ParamEnv::empty().and(discr_ty),
-                                        );
-                                    }
-                                    let lit_op = this.literal_operand(expr.span, range_val);
-                                    let is_bin_op = this.temp(bool_ty, expr_span);
-                                    this.cfg.push_assign(
-                                        block,
-                                        source_info,
-                                        is_bin_op,
-                                        Rvalue::BinaryOp(bin_op, Box::new(((lit_op), (Operand::Copy(discr))))),
-                                    );
-                                    this.cfg.push(
-                                        block,
-                                        Statement {
-                                            source_info,
-                                            kind: StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(
-                                                Operand::Copy(is_bin_op),
-                                            ))),
-                                        },
-                                    )
-                                };
-                                assumer(range.end, BinOp::Ge);
-                                assumer(range.start, BinOp::Le);
-                            }
-                        }
+                    if let Abi::Scalar(scalar) = layout.unwrap().abi
+                        && !scalar.is_always_valid(&this.tcx)
+                        && let Primitive::Int(int_width, _signed) = scalar.primitive()
+                    {
+                        let unsigned_ty = int_width.to_ty(this.tcx, false);
+                        let unsigned_place = this.temp(unsigned_ty, expr_span);
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
+                            unsigned_place,
+                            Rvalue::Cast(CastKind::IntToInt, Operand::Copy(discr), unsigned_ty));
+
+                        let bool_ty = this.tcx.types.bool;
+                        let range = scalar.valid_range(&this.tcx);
+                        let merge_op =
+                            if range.start <= range.end {
+                                BinOp::BitAnd
+                            } else {
+                                BinOp::BitOr
+                            };
+
+                        let mut comparer = |range: u128, bin_op: BinOp| -> Place<'tcx> {
+                            let range_val =
+                                ConstantKind::from_bits(this.tcx, range, ty::ParamEnv::empty().and(unsigned_ty));
+                            let lit_op = this.literal_operand(expr.span, range_val);
+                            let is_bin_op = this.temp(bool_ty, expr_span);
+                            this.cfg.push_assign(
+                                block,
+                                source_info,
+                                is_bin_op,
+                                Rvalue::BinaryOp(bin_op, Box::new((Operand::Copy(unsigned_place), lit_op))),
+                            );
+                            is_bin_op
+                        };
+                        let assert_place = if range.start == 0 {
+                            comparer(range.end, BinOp::Le)
+                        } else {
+                            let start_place = comparer(range.start, BinOp::Ge);
+                            let end_place = comparer(range.end, BinOp::Le);
+                            let merge_place = this.temp(bool_ty, expr_span);
+                            this.cfg.push_assign(
+                                block,
+                                source_info,
+                                merge_place,
+                                Rvalue::BinaryOp(merge_op, Box::new((Operand::Move(start_place), Operand::Move(end_place)))),
+                            );
+                            merge_place
+                        };
+                        this.cfg.push(
+                            block,
+                            Statement {
+                                source_info,
+                                kind: StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(
+                                    Operand::Move(assert_place),
+                                ))),
+                            },
+                        );
                     }
 
                     (op,ty)
@@ -259,7 +290,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } else {
                     let ty = source.ty;
                     let source = unpack!(
-                        block = this.as_operand(block, scope, source, None, NeedsTemporary::No)
+                        block = this.as_operand(block, scope, source, LocalInfo::Boring, NeedsTemporary::No)
                     );
                     (source, ty)
                 };
@@ -269,12 +300,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let cast_kind = mir_cast_kind(ty, expr.ty);
                 block.and(Rvalue::Cast(cast_kind, source, expr.ty))
             }
-            ExprKind::Pointer { cast, source } => {
+            ExprKind::PointerCoercion { cast, source } => {
                 let source = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[source], None, NeedsTemporary::No)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        &this.thir[source],
+                        LocalInfo::Boring,
+                        NeedsTemporary::No
+                    )
                 );
-                block.and(Rvalue::Cast(CastKind::Pointer(cast), source, expr.ty))
+                block.and(Rvalue::Cast(CastKind::PointerCoercion(cast), source, expr.ty))
             }
             ExprKind::Array { ref fields } => {
                 // (*) We would (maybe) be closer to codegen if we
@@ -305,7 +341,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // first process the set of fields
                 let el_ty = expr.ty.sequence_element_type(this.tcx);
-                let fields: Vec<_> = fields
+                let fields: IndexVec<FieldIdx, _> = fields
                     .into_iter()
                     .copied()
                     .map(|f| {
@@ -314,7 +350,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 block,
                                 scope,
                                 &this.thir[f],
-                                None,
+                                LocalInfo::Boring,
                                 NeedsTemporary::Maybe
                             )
                         )
@@ -326,7 +362,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Tuple { ref fields } => {
                 // see (*) above
                 // first process the set of fields
-                let fields: Vec<_> = fields
+                let fields: IndexVec<FieldIdx, _> = fields
                     .into_iter()
                     .copied()
                     .map(|f| {
@@ -335,7 +371,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 block,
                                 scope,
                                 &this.thir[f],
-                                None,
+                                LocalInfo::Boring,
                                 NeedsTemporary::Maybe
                             )
                         )
@@ -346,7 +382,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Closure(box ClosureExpr {
                 closure_id,
-                substs,
+                args,
                 ref upvars,
                 movability,
                 ref fake_reads,
@@ -380,7 +416,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 // see (*) above
-                let operands: Vec<_> = upvars
+                let operands: IndexVec<FieldIdx, _> = upvars
                     .into_iter()
                     .copied()
                     .map(|upvar| {
@@ -406,7 +442,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 match upvar.kind {
                                     ExprKind::Borrow {
                                         borrow_kind:
-                                            BorrowKind::Mut { allow_two_phase_borrow: false },
+                                            BorrowKind::Mut { kind: MutBorrowKind::Default },
                                         arg,
                                     } => unpack!(
                                         block = this.limit_capture_mutability(
@@ -423,7 +459,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                                 block,
                                                 scope,
                                                 upvar,
-                                                None,
+                                                LocalInfo::Boring,
                                                 NeedsTemporary::Maybe
                                             )
                                         )
@@ -434,19 +470,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
-                let result = match substs {
-                    UpvarSubsts::Generator(substs) => {
+                let result = match args {
+                    UpvarArgs::Generator(args) => {
                         // We implicitly set the discriminant to 0. See
                         // librustc_mir/transform/deaggregator.rs for details.
                         let movability = movability.unwrap();
-                        Box::new(AggregateKind::Generator(
-                            closure_id.to_def_id(),
-                            substs,
-                            movability,
-                        ))
+                        Box::new(AggregateKind::Generator(closure_id.to_def_id(), args, movability))
                     }
-                    UpvarSubsts::Closure(substs) => {
-                        Box::new(AggregateKind::Closure(closure_id.to_def_id(), substs))
+                    UpvarArgs::Closure(args) => {
+                        Box::new(AggregateKind::Closure(closure_id.to_def_id(), args))
                     }
                 };
                 block.and(Rvalue::Aggregate(result, operands))
@@ -458,6 +490,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty: None,
                     literal: ConstantKind::zero_sized(this.tcx.types.unit),
                 }))))
+            }
+
+            ExprKind::OffsetOf { container, fields } => {
+                block.and(Rvalue::NullaryOp(NullOp::OffsetOf(fields), container))
             }
 
             ExprKind::Literal { .. }
@@ -492,6 +528,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Break { .. }
             | ExprKind::Continue { .. }
             | ExprKind::Return { .. }
+            | ExprKind::Become { .. }
             | ExprKind::InlineAsm { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. } => {
@@ -501,8 +538,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Category::of(&expr.kind),
                     Some(Category::Rvalue(RvalueFunc::AsRvalue) | Category::Constant)
                 ));
-                let operand =
-                    unpack!(block = this.as_operand(block, scope, expr, None, NeedsTemporary::No));
+                let operand = unpack!(
+                    block =
+                        this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No)
+                );
                 block.and(Rvalue::Use(operand))
             }
         }
@@ -519,30 +558,78 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<Rvalue<'tcx>> {
         let source_info = self.source_info(span);
         let bool_ty = self.tcx.types.bool;
-        if self.check_overflow && op.is_checkable() && ty.is_integral() {
-            let result_tup = self.tcx.mk_tup(&[ty, bool_ty]);
-            let result_value = self.temp(result_tup, span);
+        let rvalue = match op {
+            BinOp::Add | BinOp::Sub | BinOp::Mul if self.check_overflow && ty.is_integral() => {
+                let result_tup = Ty::new_tup(self.tcx, &[ty, bool_ty]);
+                let result_value = self.temp(result_tup, span);
 
-            self.cfg.push_assign(
-                block,
-                source_info,
-                result_value,
-                Rvalue::CheckedBinaryOp(op, Box::new((lhs.to_copy(), rhs.to_copy()))),
-            );
-            let val_fld = Field::new(0);
-            let of_fld = Field::new(1);
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    result_value,
+                    Rvalue::CheckedBinaryOp(op, Box::new((lhs.to_copy(), rhs.to_copy()))),
+                );
+                let val_fld = FieldIdx::new(0);
+                let of_fld = FieldIdx::new(1);
 
-            let tcx = self.tcx;
-            let val = tcx.mk_place_field(result_value, val_fld, ty);
-            let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
+                let tcx = self.tcx;
+                let val = tcx.mk_place_field(result_value, val_fld, ty);
+                let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
 
-            let err = AssertKind::Overflow(op, lhs, rhs);
+                let err = AssertKind::Overflow(op, lhs, rhs);
+                block = self.assert(block, Operand::Move(of), false, err, span);
 
-            block = self.assert(block, Operand::Move(of), false, err, span);
+                Rvalue::Use(Operand::Move(val))
+            }
+            BinOp::Shl | BinOp::Shr if self.check_overflow && ty.is_integral() => {
+                // For an unsigned RHS, the shift is in-range for `rhs < bits`.
+                // For a signed RHS, `IntToInt` cast to the equivalent unsigned
+                // type and do that same comparison. Because the type is the
+                // same size, there's no negative shift amount that ends up
+                // overlapping with valid ones, thus it catches negatives too.
+                let (lhs_size, _) = ty.int_size_and_signed(self.tcx);
+                let rhs_ty = rhs.ty(&self.local_decls, self.tcx);
+                let (rhs_size, _) = rhs_ty.int_size_and_signed(self.tcx);
 
-            block.and(Rvalue::Use(Operand::Move(val)))
-        } else {
-            if ty.is_integral() && (op == BinOp::Div || op == BinOp::Rem) {
+                let (unsigned_rhs, unsigned_ty) = match rhs_ty.kind() {
+                    ty::Uint(_) => (rhs.to_copy(), rhs_ty),
+                    ty::Int(int_width) => {
+                        let uint_ty = Ty::new_uint(self.tcx, int_width.to_unsigned());
+                        let rhs_temp = self.temp(uint_ty, span);
+                        self.cfg.push_assign(
+                            block,
+                            source_info,
+                            rhs_temp,
+                            Rvalue::Cast(CastKind::IntToInt, rhs.to_copy(), uint_ty),
+                        );
+                        (Operand::Move(rhs_temp), uint_ty)
+                    }
+                    _ => unreachable!("only integers are shiftable"),
+                };
+
+                // This can't overflow because the largest shiftable types are 128-bit,
+                // which fits in `u8`, the smallest possible `unsigned_ty`.
+                // (And `from_uint` will `bug!` if that's ever no longer true.)
+                let lhs_bits = Operand::const_from_scalar(
+                    self.tcx,
+                    unsigned_ty,
+                    Scalar::from_uint(lhs_size.bits(), rhs_size),
+                    span,
+                );
+
+                let inbounds = self.temp(bool_ty, span);
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    inbounds,
+                    Rvalue::BinaryOp(BinOp::Lt, Box::new((unsigned_rhs, lhs_bits))),
+                );
+
+                let overflow_err = AssertKind::Overflow(op, lhs.to_copy(), rhs.to_copy());
+                block = self.assert(block, Operand::Move(inbounds), true, overflow_err, span);
+                Rvalue::BinaryOp(op, Box::new((lhs, rhs)))
+            }
+            BinOp::Div | BinOp::Rem if ty.is_integral() => {
                 // Checking division and remainder is more complex, since we 1. always check
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
 
@@ -601,10 +688,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     block = self.assert(block, Operand::Move(of), false, overflow_err, span);
                 }
-            }
 
-            block.and(Rvalue::BinaryOp(op, Box::new((lhs, rhs))))
-        }
+                Rvalue::BinaryOp(op, Box::new((lhs, rhs)))
+            }
+            _ => Rvalue::BinaryOp(op, Box::new((lhs, rhs))),
+        };
+        block.and(rvalue)
     }
 
     fn build_zero_repeat(
@@ -621,21 +710,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Repeating a const does nothing
         } else {
             // For a non-const, we may need to generate an appropriate `Drop`
-            let value_operand =
-                unpack!(block = this.as_operand(block, scope, value, None, NeedsTemporary::No));
+            let value_operand = unpack!(
+                block = this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
+            );
             if let Operand::Move(to_drop) = value_operand {
                 let success = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
                     outer_source_info,
-                    TerminatorKind::Drop { place: to_drop, target: success, unwind: None },
+                    TerminatorKind::Drop {
+                        place: to_drop,
+                        target: success,
+                        unwind: UnwindAction::Continue,
+                        replace: false,
+                    },
                 );
                 this.diverge_from(block);
                 block = success;
             }
             this.record_operands_moved(&[value_operand]);
         }
-        block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), Vec::new()))
+        block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), IndexVec::new()))
     }
 
     fn limit_capture_mutability(
@@ -679,8 +774,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // Not in a closure
                         debug_assert!(
                             local == ty::CAPTURE_STRUCT_LOCAL,
-                            "Expected local to be Local(1), found {:?}",
-                            local
+                            "Expected local to be Local(1), found {local:?}"
                         );
                         // Not in a closure
                         debug_assert!(
@@ -697,8 +791,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         let borrow_kind = match mutability {
-            Mutability::Not => BorrowKind::Unique,
-            Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
+            Mutability::Not => BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture },
+            Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         };
 
         let arg_place = arg_place_builder.to_place(this);

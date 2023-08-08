@@ -1,5 +1,5 @@
-// normalize-stderr-test "\(\d+ byte\)" -> "(N byte)"
-// normalize-stderr-test "\(limit: \d+ byte\)" -> "(limit: N byte)"
+//@normalize-stderr-test: "\(\d+ byte\)" -> "(N byte)"
+//@normalize-stderr-test: "\(limit: \d+ byte\)" -> "(limit: N byte)"
 
 #![warn(clippy::large_types_passed_by_value)]
 

@@ -2,14 +2,17 @@
 
 use std::collections::VecDeque;
 
-use base_db::FileId;
-use hir::{ItemInNs, ModuleDef, Name, Semantics};
+use base_db::{FileId, SourceDatabaseExt};
+use hir::{Crate, ItemInNs, ModuleDef, Name, Semantics};
 use syntax::{
     ast::{self, make},
     AstToken, SyntaxKind, SyntaxToken, TokenAtOffset,
 };
 
-use crate::{defs::Definition, generated, RootDatabase};
+use crate::{
+    defs::{Definition, IdentClass},
+    generated, RootDatabase,
+};
 
 pub fn item_name(db: &RootDatabase, item: ItemInNs) -> Option<Name> {
     match item {
@@ -77,7 +80,7 @@ pub fn visit_file_defs(
     }
     module.impl_defs(db).into_iter().for_each(|impl_| cb(impl_.into()));
 
-    let is_root = module.is_crate_root(db);
+    let is_root = module.is_crate_root();
     module
         .legacy_macros(db)
         .into_iter()
@@ -102,4 +105,23 @@ pub fn lint_eq_or_in_group(lint: &str, lint_is: &str) -> bool {
     } else {
         false
     }
+}
+
+pub fn is_editable_crate(krate: Crate, db: &RootDatabase) -> bool {
+    let root_file = krate.root_file(db);
+    let source_root_id = db.file_source_root(root_file);
+    !db.source_root(source_root_id).is_library
+}
+
+pub fn get_definition(
+    sema: &Semantics<'_, RootDatabase>,
+    token: SyntaxToken,
+) -> Option<Definition> {
+    for token in sema.descend_into_macros(token) {
+        let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
+        if let Some(&[x]) = def.as_deref() {
+            return Some(x);
+        }
+    }
+    None
 }

@@ -1,0 +1,19 @@
+error[E0271]: type mismatch resolving `<dyn Pointee<Metadata = ()> as Pointee>::Metadata == ()`
+  --> $DIR/ice-with-dyn-pointee-errors.rs:9:33
+   |
+LL |     unknown_sized_object_ptr_in(x)
+   |     --------------------------- ^ expected `()`, found `DynMetadata<dyn Pointee<Metadata = ...>>`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: expected unit type `()`
+                 found struct `DynMetadata<dyn Pointee<Metadata = ()>>`
+note: required by a bound in `unknown_sized_object_ptr_in`
+  --> $DIR/ice-with-dyn-pointee-errors.rs:6:50
+   |
+LL | fn unknown_sized_object_ptr_in(_: &(impl Pointee<Metadata = ()> + ?Sized)) {}
+   |                                                  ^^^^^^^^^^^^^ required by this bound in `unknown_sized_object_ptr_in`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.

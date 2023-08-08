@@ -7,7 +7,7 @@ LL | #![feature(dyn_star, trait_upcasting)]
    = note: see issue #102425 <https://github.com/rust-lang/rust/issues/102425> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0277]: `dyn* Foo` needs to have the same alignment and size as a pointer
+error[E0277]: `dyn* Foo` needs to have the same ABI as a pointer
   --> $DIR/upcast.rs:30:23
    |
 LL |     let w: dyn* Bar = w;

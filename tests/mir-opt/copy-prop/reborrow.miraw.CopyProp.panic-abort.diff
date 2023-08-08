@@ -1,0 +1,49 @@
+- // MIR for `miraw` before CopyProp
++ // MIR for `miraw` after CopyProp
+  
+  fn miraw(_1: u8) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: *mut u8;
+      let _5: ();
+      let mut _6: *mut u8;
+      scope 1 {
+          debug a => _2;
+          let _3: *mut u8;
+          scope 2 {
+              debug b => _3;
+              let _4: *mut u8;
+              scope 4 {
+-                 debug c => _4;
++                 debug c => _2;
+              }
+          }
+          scope 3 {
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+          _2 = &raw mut _1;
+          StorageLive(_3);
+          _3 = &raw mut (*_2);
+-         StorageLive(_4);
+-         _4 = _2;
+          StorageLive(_5);
+-         StorageLive(_6);
+-         _6 = _4;
+-         _5 = opaque::<*mut u8>(move _6) -> [return: bb1, unwind unreachable];
++         _5 = opaque::<*mut u8>(_2) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         StorageDead(_6);
+          StorageDead(_5);
+          _0 = const ();
+-         StorageDead(_4);
+          StorageDead(_3);
+-         StorageDead(_2);
+          return;
+      }
+  }
+  

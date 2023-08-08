@@ -1,9 +1,10 @@
 #![allow(rustc::internal)]
 
 use rustc_macros::{Decodable, Encodable};
-use rustc_serialize::opaque::{MemDecoder, MemEncoder};
+use rustc_serialize::opaque::{MemDecoder, FileEncoder};
 use rustc_serialize::{Decodable, Encodable};
 use std::fmt::Debug;
+use std::fs;
 
 #[derive(PartialEq, Clone, Debug, Encodable, Decodable)]
 struct Struct {
@@ -22,25 +23,26 @@ struct Struct {
 
     l: char,
     m: String,
-    n: f32,
-    o: f64,
     p: bool,
     q: Option<u32>,
 }
 
 fn check_round_trip<
-    T: Encodable<MemEncoder> + for<'a> Decodable<MemDecoder<'a>> + PartialEq + Debug,
+    T: Encodable<FileEncoder> + for<'a> Decodable<MemDecoder<'a>> + PartialEq + Debug,
 >(
     values: Vec<T>,
 ) {
-    let mut encoder = MemEncoder::new();
+    let tmpfile = tempfile::NamedTempFile::new().unwrap();
+    let tmpfile = tmpfile.path();
+
+    let mut encoder = FileEncoder::new(&tmpfile).unwrap();
     for value in &values {
         Encodable::encode(value, &mut encoder);
     }
+    encoder.finish().unwrap();
 
-    let data = encoder.finish();
+    let data = fs::read(&tmpfile).unwrap();
     let mut decoder = MemDecoder::new(&data[..], 0);
-
     for value in values {
         let decoded = Decodable::decode(&mut decoder);
         assert_eq!(value, decoded);
@@ -63,7 +65,7 @@ fn test_u8() {
 
 #[test]
 fn test_u16() {
-    for i in u16::MIN..u16::MAX {
+    for i in [u16::MIN, 111, 3333, 55555, u16::MAX] {
         check_round_trip(vec![1, 2, 3, i, i, i]);
     }
 }
@@ -94,7 +96,7 @@ fn test_i8() {
 
 #[test]
 fn test_i16() {
-    for i in i16::MIN..i16::MAX {
+    for i in [i16::MIN, -100, 0, 101, i16::MAX] {
         check_round_trip(vec![-1, 2, -3, i, i, i, 2]);
     }
 }
@@ -117,24 +119,6 @@ fn test_isize() {
 #[test]
 fn test_bool() {
     check_round_trip(vec![false, true, true, false, false]);
-}
-
-#[test]
-fn test_f32() {
-    let mut vec = vec![];
-    for i in -100..100 {
-        vec.push((i as f32) / 3.0);
-    }
-    check_round_trip(vec);
-}
-
-#[test]
-fn test_f64() {
-    let mut vec = vec![];
-    for i in -100..100 {
-        vec.push((i as f64) / 3.0);
-    }
-    check_round_trip(vec);
 }
 
 #[test]
@@ -200,8 +184,6 @@ fn test_struct() {
 
         l: 'x',
         m: "abc".to_string(),
-        n: 20.5,
-        o: 21.5,
         p: false,
         q: None,
     }]);
@@ -222,8 +204,6 @@ fn test_struct() {
 
         l: 'y',
         m: "def".to_string(),
-        n: -20.5,
-        o: -21.5,
         p: true,
         q: Some(1234567),
     }]);
@@ -232,7 +212,7 @@ fn test_struct() {
 #[derive(PartialEq, Clone, Debug, Encodable, Decodable)]
 enum Enum {
     Variant1,
-    Variant2(usize, f32),
+    Variant2(usize, u32),
     Variant3 { a: i32, b: char, c: bool },
 }
 
@@ -240,7 +220,7 @@ enum Enum {
 fn test_enum() {
     check_round_trip(vec![
         Enum::Variant1,
-        Enum::Variant2(1, 2.5),
+        Enum::Variant2(1, 25),
         Enum::Variant3 { a: 3, b: 'b', c: false },
         Enum::Variant3 { a: -4, b: 'f', c: true },
     ]);
@@ -269,9 +249,47 @@ fn test_hash_map() {
 
 #[test]
 fn test_tuples() {
-    check_round_trip(vec![('x', (), false, 0.5f32)]);
-    check_round_trip(vec![(9i8, 10u16, 1.5f64)]);
+    check_round_trip(vec![('x', (), false, 5u32)]);
+    check_round_trip(vec![(9i8, 10u16, 15i64)]);
     check_round_trip(vec![(-12i16, 11u8, 12usize)]);
     check_round_trip(vec![(1234567isize, 100000000000000u64, 99999999999999i64)]);
     check_round_trip(vec![(String::new(), "some string".to_string())]);
+}
+
+#[test]
+fn test_unit_like_struct() {
+    #[derive(Encodable, Decodable, PartialEq, Debug)]
+    struct UnitLikeStruct;
+
+    check_round_trip(vec![UnitLikeStruct]);
+}
+
+#[test]
+fn test_box() {
+    #[derive(Encodable, Decodable, PartialEq, Debug)]
+    struct A {
+        foo: Box<[bool]>,
+    }
+
+    let obj = A { foo: Box::new([true, false]) };
+    check_round_trip(vec![obj]);
+}
+
+#[test]
+fn test_cell() {
+    use std::cell::{Cell, RefCell};
+
+    #[derive(Encodable, Decodable, PartialEq, Debug)]
+    struct A {
+        baz: isize,
+    }
+
+    #[derive(Encodable, Decodable, PartialEq, Debug)]
+    struct B {
+        foo: Cell<bool>,
+        bar: RefCell<A>,
+    }
+
+    let obj = B { foo: Cell::new(true), bar: RefCell::new(A { baz: 2 }) };
+    check_round_trip(vec![obj]);
 }

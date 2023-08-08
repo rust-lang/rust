@@ -1,7 +1,7 @@
 // Adapted from https://github.com/sunfishcode/mir2cranelift/blob/master/rust-examples/nocore-hello-world.rs
 
 #![feature(
-    no_core, unboxed_closures, start, lang_items, box_syntax, never_type, linkage,
+    no_core, unboxed_closures, start, lang_items, never_type, linkage,
     extern_types, thread_local
 )]
 #![no_core]
@@ -163,11 +163,14 @@ fn main() {
         let ptr: *const u8 = hello as *const [u8] as *const u8;
         puts(ptr);
 
-        let world: Box<&str> = box "World!\0";
+        let world: Box<&str> = Box::new("World!\0");
         puts(*world as *const str as *const u8);
         world as Box<dyn SomeTrait>;
 
         assert_eq!(intrinsics::bitreverse(0b10101000u8), 0b00010101u8);
+        assert_eq!(intrinsics::bitreverse(0xddccu16), 0x33bbu16);
+        assert_eq!(intrinsics::bitreverse(0xffee_ddccu32), 0x33bb77ffu32);
+        assert_eq!(intrinsics::bitreverse(0x1234_5678_ffee_ddccu64), 0x33bb77ff1e6a2c48u64);
 
         assert_eq!(intrinsics::bswap(0xabu8), 0xabu8);
         assert_eq!(intrinsics::bswap(0xddccu16), 0xccddu16);
@@ -223,10 +226,10 @@ fn main() {
         }
     }
 
-    let _ = box NoisyDrop {
+    let _ = Box::new(NoisyDrop {
         text: "Boxed outer got dropped!\0",
         inner: NoisyDropInner,
-    } as Box<dyn SomeTrait>;
+    }) as Box<dyn SomeTrait>;
 
     const FUNC_REF: Option<fn()> = Some(main);
     #[allow(unreachable_code)]

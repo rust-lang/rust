@@ -74,12 +74,20 @@ impl ModDir {
                 candidate_files.push(self.dir_path.join_attr(attr_path, self.root_non_dir_owner))
             }
             None if file_id.is_include_macro(db.upcast()) => {
-                candidate_files.push(format!("{name}.rs"));
-                candidate_files.push(format!("{name}/mod.rs"));
+                candidate_files.push(format!("{}.rs", name.display(db.upcast())));
+                candidate_files.push(format!("{}/mod.rs", name.display(db.upcast())));
             }
             None => {
-                candidate_files.push(format!("{}{name}.rs", self.dir_path.0));
-                candidate_files.push(format!("{}{name}/mod.rs", self.dir_path.0));
+                candidate_files.push(format!(
+                    "{}{}.rs",
+                    self.dir_path.0,
+                    name.display(db.upcast())
+                ));
+                candidate_files.push(format!(
+                    "{}{}/mod.rs",
+                    self.dir_path.0,
+                    name.display(db.upcast())
+                ));
             }
         };
 
@@ -91,7 +99,7 @@ impl ModDir {
                 let (dir_path, root_non_dir_owner) = if is_mod_rs || attr_path.is_some() {
                     (DirPath::empty(), false)
                 } else {
-                    (DirPath::new(format!("{name}/")), true)
+                    (DirPath::new(format!("{}/", name.display(db.upcast()))), true)
                 };
                 if let Some(mod_dir) = self.child(dir_path, root_non_dir_owner) {
                     return Ok((file_id, is_mod_rs, mod_dir));

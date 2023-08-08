@@ -63,8 +63,8 @@
 //! `is_cleanup` above.
 
 use crate::mir::*;
-use crate::ty::subst::SubstsRef;
-use crate::ty::{CanonicalUserTypeAnnotation, Ty};
+use crate::ty::GenericArgsRef;
+use crate::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::Span;
 
 macro_rules! make_mir_visitor {
@@ -192,6 +192,14 @@ macro_rules! make_mir_visitor {
                 self.super_constant(constant, location);
             }
 
+            fn visit_ty_const(
+                &mut self,
+                ct: $( & $mutability)? ty::Const<'tcx>,
+                location: Location,
+            ) {
+                self.super_ty_const(ct, location);
+            }
+
             fn visit_span(
                 &mut self,
                 span: $(& $mutability)? Span,
@@ -237,12 +245,12 @@ macro_rules! make_mir_visitor {
                 self.super_region(region);
             }
 
-            fn visit_substs(
+            fn visit_args(
                 &mut self,
-                substs: & $($mutability)? SubstsRef<'tcx>,
+                args: & $($mutability)? GenericArgsRef<'tcx>,
                 _: Location,
             ) {
-                self.super_substs(substs);
+                self.super_args(args);
             }
 
             fn visit_local_decl(
@@ -327,7 +335,7 @@ macro_rules! make_mir_visitor {
 
                     self.visit_span($(& $mutability)? *callsite_span);
 
-                    let ty::Instance { def: callee_def, substs: callee_substs } = callee;
+                    let ty::Instance { def: callee_def, args: callee_args } = callee;
                     match callee_def {
                         ty::InstanceDef::Item(_def_id) => {}
 
@@ -335,17 +343,19 @@ macro_rules! make_mir_visitor {
                         ty::InstanceDef::VTableShim(_def_id) |
                         ty::InstanceDef::ReifyShim(_def_id) |
                         ty::InstanceDef::Virtual(_def_id, _) |
+                        ty::InstanceDef::ThreadLocalShim(_def_id) |
                         ty::InstanceDef::ClosureOnceShim { call_once: _def_id, track_caller: _ } |
                         ty::InstanceDef::DropGlue(_def_id, None) => {}
 
                         ty::InstanceDef::FnPtrShim(_def_id, ty) |
                         ty::InstanceDef::DropGlue(_def_id, Some(ty)) |
-                        ty::InstanceDef::CloneShim(_def_id, ty) => {
+                        ty::InstanceDef::CloneShim(_def_id, ty) |
+                        ty::InstanceDef::FnPtrAddrShim(_def_id, ty) => {
                             // FIXME(eddyb) use a better `TyContext` here.
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                         }
                     }
-                    self.visit_substs(callee_substs, location);
+                    self.visit_args(callee_args, location);
                 }
                 if let Some(inlined_parent_scope) = inlined_parent_scope {
                     self.visit_source_scope($(& $mutability)? *inlined_parent_scope);
@@ -405,6 +415,13 @@ macro_rules! make_mir_visitor {
                     StatementKind::Retag(kind, place) => {
                         self.visit_retag($(& $mutability)? *kind, place, location);
                     }
+                    StatementKind::PlaceMention(place) => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention),
+                            location
+                        );
+                    }
                     StatementKind::AscribeUserType(
                         box (place, user_ty),
                         variance
@@ -453,7 +470,7 @@ macro_rules! make_mir_visitor {
                 match kind {
                     TerminatorKind::Goto { .. } |
                     TerminatorKind::Resume |
-                    TerminatorKind::Abort |
+                    TerminatorKind::Terminate |
                     TerminatorKind::GeneratorDrop |
                     TerminatorKind::Unreachable |
                     TerminatorKind::FalseEdge { .. } |
@@ -487,6 +504,7 @@ macro_rules! make_mir_visitor {
                         place,
                         target: _,
                         unwind: _,
+                        replace: _,
                     } => {
                         self.visit_place(
                             place,
@@ -500,8 +518,8 @@ macro_rules! make_mir_visitor {
                         args,
                         destination,
                         target: _,
-                        cleanup: _,
-                        from_hir_call: _,
+                        unwind: _,
+                        call_source: _,
                         fn_span: _
                     } => {
                         self.visit_operand(func, location);
@@ -520,7 +538,7 @@ macro_rules! make_mir_visitor {
                         expected: _,
                         msg,
                         target: _,
-                        cleanup: _,
+                        unwind: _,
                     } => {
                         self.visit_operand(cond, location);
                         self.visit_assert_message(msg, location);
@@ -546,7 +564,7 @@ macro_rules! make_mir_visitor {
                         options: _,
                         line_spans: _,
                         destination: _,
-                        cleanup: _,
+                        unwind: _,
                     } => {
                         for op in operands {
                             match op {
@@ -601,6 +619,10 @@ macro_rules! make_mir_visitor {
                     ResumedAfterReturn(_) | ResumedAfterPanic(_) => {
                         // Nothing to visit
                     }
+                    MisalignedPointerDereference { required, found } => {
+                        self.visit_operand(required, location);
+                        self.visit_operand(found, location);
+                    }
                 }
             }
 
@@ -612,8 +634,9 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(operand, location);
                     }
 
-                    Rvalue::Repeat(value, _) => {
+                    Rvalue::Repeat(value, ct) => {
                         self.visit_operand(value, location);
+                        self.visit_ty_const($(&$mutability)? *ct, location);
                     }
 
                     Rvalue::ThreadLocalRef(_) => {}
@@ -626,9 +649,6 @@ macro_rules! make_mir_visitor {
                             ),
                             BorrowKind::Shallow => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::ShallowBorrow
-                            ),
-                            BorrowKind::Unique => PlaceContext::NonMutatingUse(
-                                NonMutatingUseContext::UniqueBorrow
                             ),
                             BorrowKind::Mut { .. } =>
                                 PlaceContext::MutatingUse(MutatingUseContext::Borrow),
@@ -701,24 +721,24 @@ macro_rules! make_mir_visitor {
                             AggregateKind::Adt(
                                 _adt_def,
                                 _variant_index,
-                                substs,
-                                _user_substs,
+                                args,
+                                _user_args,
                                 _active_field_index
                             ) => {
-                                self.visit_substs(substs, location);
+                                self.visit_args(args, location);
                             }
                             AggregateKind::Closure(
                                 _,
-                                closure_substs
+                                closure_args
                             ) => {
-                                self.visit_substs(closure_substs, location);
+                                self.visit_args(closure_args, location);
                             }
                             AggregateKind::Generator(
                                 _,
-                                generator_substs,
+                                generator_args,
                                 _movability,
                             ) => {
-                                self.visit_substs(generator_substs, location);
+                                self.visit_args(generator_args, location);
                             }
                         }
 
@@ -760,12 +780,12 @@ macro_rules! make_mir_visitor {
 
             fn super_ascribe_user_ty(&mut self,
                                      place: & $($mutability)? Place<'tcx>,
-                                     _variance: $(& $mutability)? ty::Variance,
+                                     variance: $(& $mutability)? ty::Variance,
                                      user_ty: & $($mutability)? UserTypeProjection,
                                      location: Location) {
                 self.visit_place(
                     place,
-                    PlaceContext::NonUse(NonUseContext::AscribeUserTy),
+                    PlaceContext::NonUse(NonUseContext::AscribeUserTy($(* &$mutability *)? variance)),
                     location
                 );
                 self.visit_user_type_projection(user_ty);
@@ -797,7 +817,6 @@ macro_rules! make_mir_visitor {
                     source_info,
                     internal: _,
                     local_info: _,
-                    is_block_tail: _,
                 } = local_decl;
 
                 self.visit_ty($(& $mutability)? *ty, TyContext::LocalDecl {
@@ -820,6 +839,8 @@ macro_rules! make_mir_visitor {
                     name: _,
                     source_info,
                     value,
+                    argument_index: _,
+                    references: _,
                 } = var_debug_info;
 
                 self.visit_source_info(source_info);
@@ -858,17 +879,24 @@ macro_rules! make_mir_visitor {
             ) {
                 let Constant {
                     span,
-                    user_ty,
+                    user_ty: _, // no visit method for this
                     literal,
                 } = constant;
 
                 self.visit_span($(& $mutability)? *span);
-                drop(user_ty); // no visit method for this
                 match literal {
-                    ConstantKind::Ty(_) => {}
+                    ConstantKind::Ty(ct) => self.visit_ty_const($(&$mutability)? *ct, location),
                     ConstantKind::Val(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
                     ConstantKind::Unevaluated(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
                 }
+            }
+
+            fn super_ty_const(
+                &mut self,
+                _ct: $(& $mutability)? ty::Const<'tcx>,
+                _location: Location,
+            ) {
+
             }
 
             fn super_span(&mut self, _span: $(& $mutability)? Span) {
@@ -905,7 +933,7 @@ macro_rules! make_mir_visitor {
             fn super_region(&mut self, _region: $(& $mutability)? ty::Region<'tcx>) {
             }
 
-            fn super_substs(&mut self, _substs: & $($mutability)? SubstsRef<'tcx>) {
+            fn super_args(&mut self, _args: & $($mutability)? GenericArgsRef<'tcx>) {
             }
 
             // Convenience methods
@@ -1105,13 +1133,12 @@ macro_rules! visit_place_fns {
 
         fn visit_projection_elem(
             &mut self,
-            local: Local,
-            proj_base: &[PlaceElem<'tcx>],
+            place_ref: PlaceRef<'tcx>,
             elem: PlaceElem<'tcx>,
             context: PlaceContext,
             location: Location,
         ) {
-            self.super_projection_elem(local, proj_base, elem, context, location);
+            self.super_projection_elem(place_ref, elem, context, location);
         }
 
         fn super_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
@@ -1140,15 +1167,13 @@ macro_rules! visit_place_fns {
             location: Location,
         ) {
             for (base, elem) in place_ref.iter_projections().rev() {
-                let base_proj = base.projection;
-                self.visit_projection_elem(place_ref.local, base_proj, elem, context, location);
+                self.visit_projection_elem(base, elem, context, location);
             }
         }
 
         fn super_projection_elem(
             &mut self,
-            _local: Local,
-            _proj_base: &[PlaceElem<'tcx>],
+            _place_ref: PlaceRef<'tcx>,
             elem: PlaceElem<'tcx>,
             _context: PlaceContext,
             location: Location,
@@ -1234,10 +1259,13 @@ pub enum NonMutatingUseContext {
     SharedBorrow,
     /// Shallow borrow.
     ShallowBorrow,
-    /// Unique borrow.
-    UniqueBorrow,
     /// AddressOf for *const pointer.
     AddressOf,
+    /// PlaceMention statement.
+    ///
+    /// This statement is executed as a check that the `Place` is live without reading from it,
+    /// so it must be considered as a non-mutating use.
+    PlaceMention,
     /// Used as base for another place, e.g., `x` in `x.y`. Will not mutate the place.
     /// For example, the projection `x.y` is not marked as a mutation in these cases:
     /// ```ignore (illustrative)
@@ -1285,7 +1313,7 @@ pub enum NonUseContext {
     /// Ending a storage live range.
     StorageDead,
     /// User type annotation assertions for NLL.
-    AscribeUserTy,
+    AscribeUserTy(ty::Variance),
     /// The data of a user variable, for debug info.
     VarDebugInfo,
 }
@@ -1309,9 +1337,7 @@ impl PlaceContext {
         matches!(
             self,
             PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::SharedBorrow
-                    | NonMutatingUseContext::ShallowBorrow
-                    | NonMutatingUseContext::UniqueBorrow
+                NonMutatingUseContext::SharedBorrow | NonMutatingUseContext::ShallowBorrow
             ) | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
         )
     }

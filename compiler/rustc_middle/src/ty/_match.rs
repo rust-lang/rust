@@ -37,20 +37,12 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         self.tcx
     }
 
-    fn intercrate(&self) -> bool {
-        false
-    }
-
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
     fn a_is_expected(&self) -> bool {
         true
     } // irrelevant
-
-    fn mark_ambiguous(&mut self) {
-        bug!()
-    }
 
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
@@ -89,9 +81,9 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
                 Err(TypeError::Sorts(relate::expected_found(self, a, b)))
             }
 
-            (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(self.tcx().ty_error(guar)),
+            (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(Ty::new_error(self.tcx(), guar)),
 
-            _ => relate::super_relate_tys(self, a, b),
+            _ => relate::structurally_relate_tys(self, a, b),
         }
     }
 
@@ -117,7 +109,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
             _ => {}
         }
 
-        relate::super_relate_consts(self, a, b)
+        relate::structurally_relate_consts(self, a, b)
     }
 
     fn binders<T>(

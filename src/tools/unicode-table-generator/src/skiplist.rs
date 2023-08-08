@@ -1,6 +1,5 @@
 use crate::fmt_list;
 use crate::raw_emitter::RawEmitter;
-use std::convert::TryInto;
 use std::fmt::Write as _;
 use std::ops::Range;
 

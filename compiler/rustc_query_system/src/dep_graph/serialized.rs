@@ -18,7 +18,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable};
 use smallvec::SmallVec;
@@ -80,11 +80,6 @@ impl<K: DepKind> SerializedDepGraph<K> {
     }
 
     #[inline]
-    pub fn fingerprint_of(&self, dep_node: &DepNode<K>) -> Option<Fingerprint> {
-        self.index.get(dep_node).map(|&node_index| self.fingerprints[node_index])
-    }
-
-    #[inline]
     pub fn fingerprint_by_index(&self, dep_node_index: SerializedDepNodeIndex) -> Fingerprint {
         self.fingerprints[dep_node_index]
     }
@@ -99,20 +94,18 @@ impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> Decodable<MemDecoder<'a>>
 {
     #[instrument(level = "debug", skip(d))]
     fn decode(d: &mut MemDecoder<'a>) -> SerializedDepGraph<K> {
-        let start_position = d.position();
-
         // The last 16 bytes are the node count and edge count.
         debug!("position: {:?}", d.position());
-        d.set_position(d.data.len() - 2 * IntEncodedWithFixedSize::ENCODED_SIZE);
+        let (node_count, edge_count) =
+            d.with_position(d.len() - 2 * IntEncodedWithFixedSize::ENCODED_SIZE, |d| {
+                debug!("position: {:?}", d.position());
+                let node_count = IntEncodedWithFixedSize::decode(d).0 as usize;
+                let edge_count = IntEncodedWithFixedSize::decode(d).0 as usize;
+                (node_count, edge_count)
+            });
         debug!("position: {:?}", d.position());
 
-        let node_count = IntEncodedWithFixedSize::decode(d).0 as usize;
-        let edge_count = IntEncodedWithFixedSize::decode(d).0 as usize;
         debug!(?node_count, ?edge_count);
-
-        debug!("position: {:?}", d.position());
-        d.set_position(start_position);
-        debug!("position: {:?}", d.position());
 
         let mut nodes = IndexVec::with_capacity(node_count);
         let mut fingerprints = IndexVec::with_capacity(node_count);

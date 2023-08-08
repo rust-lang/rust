@@ -1,4 +1,4 @@
-// check-pass
+// known-bug: #110395
 
 #![crate_type = "lib"]
 #![feature(staged_api)]

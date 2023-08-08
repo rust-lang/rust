@@ -150,7 +150,7 @@ impl Thread {
         }
     }
 
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
     pub fn set_name(name: &CStr) {
         unsafe {
             let name = truncate_cstr::<{ libc::MAXTHREADNAMESIZE }>(name);
@@ -284,7 +284,13 @@ impl Drop for Thread {
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios", target_os = "watchos"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "tvos",
+    target_os = "watchos",
+))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
     let mut result = [0; MAX_WITH_NUL];
     for (src, dst) in cstr.to_bytes().iter().zip(&mut result[..MAX_WITH_NUL - 1]) {
@@ -300,6 +306,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             target_os = "emscripten",
             target_os = "fuchsia",
             target_os = "ios",
+            target_os = "tvos",
             target_os = "linux",
             target_os = "macos",
             target_os = "solaris",
@@ -325,6 +332,48 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             }
         } else if #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "netbsd"))] {
             use crate::ptr;
+
+            #[cfg(target_os = "freebsd")]
+            {
+                let mut set: libc::cpuset_t = unsafe { mem::zeroed() };
+                unsafe {
+                    if libc::cpuset_getaffinity(
+                        libc::CPU_LEVEL_WHICH,
+                        libc::CPU_WHICH_PID,
+                        -1,
+                        mem::size_of::<libc::cpuset_t>(),
+                        &mut set,
+                    ) == 0 {
+                        let count = libc::CPU_COUNT(&set) as usize;
+                        if count > 0 {
+                            return Ok(NonZeroUsize::new_unchecked(count));
+                        }
+                    }
+                }
+            }
+
+            #[cfg(target_os = "netbsd")]
+            {
+                unsafe {
+                    let set = libc::_cpuset_create();
+                    if !set.is_null() {
+                        let mut count: usize = 0;
+                        if libc::pthread_getaffinity_np(libc::pthread_self(), libc::_cpuset_size(set), set) == 0 {
+                            for i in 0..u64::MAX {
+                                match libc::_cpuset_isset(i, set) {
+                                    -1 => break,
+                                    0 => continue,
+                                    _ => count = count + 1,
+                                }
+                            }
+                        }
+                        libc::_cpuset_destroy(set);
+                        if let Some(count) = NonZeroUsize::new(count) {
+                            return Ok(count);
+                        }
+                    }
+                }
+            }
 
             let mut cpus: libc::c_uint = 0;
             let mut cpus_size = crate::mem::size_of_val(&cpus);

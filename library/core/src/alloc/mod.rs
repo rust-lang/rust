@@ -94,18 +94,18 @@ impl fmt::Display for AllocError {
 ///
 /// # Safety
 ///
-/// * Memory blocks returned from an allocator must point to valid memory and retain their validity
-///   until the instance and all of its clones are dropped,
+/// * Memory blocks returned from an allocator that are [*currently allocated*] must point to
+///   valid memory and retain their validity while they are [*currently allocated*] and at
+///   least one of the instance and all of its clones has not been dropped.
 ///
-/// * cloning or moving the allocator must not invalidate memory blocks returned from this
-///   allocator. A cloned allocator must behave like the same allocator, and
+/// * copying, cloning, or moving the allocator must not invalidate memory blocks returned from this
+///   allocator. A copied or cloned allocator must behave like the same allocator, and
 ///
 /// * any pointer to a memory block which is [*currently allocated*] may be passed to any other
 ///   method of the allocator.
 ///
 /// [*currently allocated*]: #currently-allocated-memory
 #[unstable(feature = "allocator_api", issue = "32838")]
-#[const_trait]
 pub unsafe trait Allocator {
     /// Attempts to allocate a block of memory.
     ///

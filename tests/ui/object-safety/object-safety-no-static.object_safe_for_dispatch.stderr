@@ -11,8 +11,7 @@ LL | trait Foo {
    |       --- this trait cannot be made into an object...
 LL |     fn foo() {}
    |        ^^^ ...because associated function `foo` has no `self` parameter
-   = note: required for `Box<Bar>` to implement `CoerceUnsized<Box<dyn Foo>>`
-   = note: required by cast to type `Box<dyn Foo>`
+   = note: required for the cast from `Box<Bar>` to `Box<dyn Foo>`
 help: consider turning `foo` into a method by giving it a `&self` argument
    |
 LL |     fn foo(&self) {}

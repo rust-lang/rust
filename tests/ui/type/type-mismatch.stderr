@@ -378,10 +378,8 @@ error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:47:23
    |
 LL |     want::<&Foo<foo>>(f);
-   |     ----------------- ^
-   |     |                 |
-   |     |                 expected `&Foo<foo>`, found `Foo<foo>`
-   |     |                 help: consider borrowing here: `&f`
+   |     ----------------- ^ expected `&Foo<foo>`, found `Foo<foo>`
+   |     |
    |     arguments to this function are incorrect
    |
    = note: expected reference `&Foo<foo>`
@@ -391,6 +389,10 @@ note: function defined here
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
+help: consider borrowing here
+   |
+LL |     want::<&Foo<foo>>(&f);
+   |                       +
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:48:26
@@ -556,10 +558,8 @@ error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:61:26
    |
 LL |     want::<&Foo<foo, B>>(f);
-   |     -------------------- ^
-   |     |                    |
-   |     |                    expected `&Foo<foo, B>`, found `Foo<foo, B>`
-   |     |                    help: consider borrowing here: `&f`
+   |     -------------------- ^ expected `&Foo<foo, B>`, found `Foo<foo, B>`
+   |     |
    |     arguments to this function are incorrect
    |
    = note: expected reference `&Foo<foo, B>`
@@ -569,6 +569,10 @@ note: function defined here
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
+help: consider borrowing here
+   |
+LL |     want::<&Foo<foo, B>>(&f);
+   |                          +
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:65:19

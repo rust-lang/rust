@@ -29,7 +29,7 @@ note: ...which requires borrow-checking `Alpha::V3::{constant#0}`...
    |
 LL |     V3 = Self::V1 {} as u8 + 2,
    |          ^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires processing MIR for `Alpha::V3::{constant#0}`...
+note: ...which requires promoting constants in MIR for `Alpha::V3::{constant#0}`...
   --> $DIR/self-in-enum-definition.rs:5:10
    |
 LL |     V3 = Self::V1 {} as u8 + 2,
@@ -67,6 +67,7 @@ LL | |     V2 = Self::V1 as u8 + 1,    // OK; See #50072.
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

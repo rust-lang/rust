@@ -1,0 +1,64 @@
+- // MIR for `drop` before Inline
++ // MIR for `drop` after Inline
+  
+  fn drop(_1: *mut Vec<A>, _2: *mut Option<B>) -> () {
+      debug a => _1;
+      debug b => _2;
+      let mut _0: ();
+      let _3: ();
+      let mut _4: *mut std::vec::Vec<A>;
+      let mut _5: *mut std::option::Option<B>;
+      scope 1 {
++         scope 3 (inlined std::ptr::drop_in_place::<Vec<A>> - shim(Some(Vec<A>))) {
++             let mut _6: &mut std::vec::Vec<A>;
++             let mut _7: ();
++         }
+      }
+      scope 2 {
++         scope 4 (inlined std::ptr::drop_in_place::<Option<B>> - shim(Some(Option<B>))) {
++             let mut _8: isize;
++             let mut _9: isize;
++         }
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = _1;
+-         _3 = std::ptr::drop_in_place::<Vec<A>>(move _4) -> [return: bb1, unwind unreachable];
++         StorageLive(_6);
++         StorageLive(_7);
++         _6 = &mut (*_4);
++         _7 = <Vec<A> as Drop>::drop(move _6) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb1: {
++         StorageDead(_7);
++         StorageDead(_6);
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageLive(_5);
+          _5 = _2;
+-         _0 = std::ptr::drop_in_place::<Option<B>>(move _5) -> [return: bb2, unwind unreachable];
++         StorageLive(_8);
++         StorageLive(_9);
++         _8 = discriminant((*_5));
++         switchInt(move _8) -> [0: bb3, otherwise: bb4];
+      }
+  
+      bb2: {
++         drop(((*_4).0: alloc::raw_vec::RawVec<A>)) -> [return: bb1, unwind unreachable];
++     }
++ 
++     bb3: {
++         StorageDead(_9);
++         StorageDead(_8);
+          StorageDead(_5);
+          return;
++     }
++ 
++     bb4: {
++         drop((((*_5) as Some).0: B)) -> [return: bb3, unwind unreachable];
+      }
+  }
+  

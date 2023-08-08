@@ -4,7 +4,6 @@
 
 #![allow(rustc::default_hash_types)]
 
-use std::convert::From;
 use std::fmt;
 
 use rustc_ast::ast;
@@ -41,13 +40,8 @@ impl JsonRenderer<'_> {
                 (String::from(&**link), id_from_item_default(id.into(), self.tcx))
             })
             .collect();
-        let docs = item.attrs.collapsed_doc_value();
-        let attrs = item
-            .attrs
-            .other_attrs
-            .iter()
-            .map(rustc_ast_pretty::pprust::attribute_to_string)
-            .collect();
+        let docs = item.opt_doc_value();
+        let attrs = item.attributes(self.tcx, true);
         let span = item.span(self.tcx);
         let visibility = item.visibility(self.tcx);
         let clean::Item { name, item_id, .. } = item;
@@ -177,6 +171,7 @@ impl FromWithTcx<clean::GenericArg> for GenericArg {
 }
 
 impl FromWithTcx<clean::Constant> for Constant {
+    // FIXME(generic_const_items): Add support for generic const items.
     fn from_tcx(constant: clean::Constant, tcx: TyCtxt<'_>) -> Self {
         let expr = constant.expr(tcx);
         let value = constant.value(tcx);
@@ -249,9 +244,7 @@ pub(crate) fn id_from_item_inner(
                     // instead, we directly get the primitive symbol and convert it to u32 to
                     // generate the ID.
                     if matches!(tcx.def_kind(def_id), DefKind::Mod) &&
-                        let Some(prim) = tcx.get_attrs(*def_id, sym::doc)
-                            .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
-                            .filter(|attr| attr.has_name(sym::primitive))
+                        let Some(prim) = tcx.get_attrs(*def_id, sym::rustc_doc_primitive)
                             .find_map(|attr| attr.value_str()) {
                         format!(":{}", prim.as_u32())
                     } else {
@@ -329,8 +322,12 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
                 impls: Vec::new(), // Added in JsonRenderer::item
             })
         }
-        TyAssocConstItem(ty) => ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: None },
-        AssocConstItem(ty, default) => {
+        // FIXME(generic_const_items): Add support for generic associated consts.
+        TyAssocConstItem(_generics, ty) => {
+            ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: None }
+        }
+        // FIXME(generic_const_items): Add support for generic associated consts.
+        AssocConstItem(_generics, ty, default) => {
             ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: Some(default.expr(tcx)) }
         }
         TyAssocTypeItem(g, b) => ItemEnum::AssocType {
@@ -456,7 +453,7 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
                 default: default.map(|x| (*x).into_tcx(tcx)),
                 synthetic,
             },
-            Const { did: _, ty, default } => GenericParamDefKind::Const {
+            Const { ty, default } => GenericParamDefKind::Const {
                 type_: (*ty).into_tcx(tcx),
                 default: default.map(|x| *x),
             },
@@ -473,9 +470,35 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
                 bounds: bounds.into_tcx(tcx),
                 generic_params: bound_params
                     .into_iter()
-                    .map(|x| GenericParamDef {
-                        name: x.0.to_string(),
-                        kind: GenericParamDefKind::Lifetime { outlives: vec![] },
+                    .map(|x| {
+                        let name = x.name.to_string();
+                        let kind = match x.kind {
+                            clean::GenericParamDefKind::Lifetime { outlives } => {
+                                GenericParamDefKind::Lifetime {
+                                    outlives: outlives.iter().map(|lt| lt.0.to_string()).collect(),
+                                }
+                            }
+                            clean::GenericParamDefKind::Type {
+                                did: _,
+                                bounds,
+                                default,
+                                synthetic,
+                            } => GenericParamDefKind::Type {
+                                bounds: bounds
+                                    .into_iter()
+                                    .map(|bound| bound.into_tcx(tcx))
+                                    .collect(),
+                                default: default.map(|ty| (*ty).into_tcx(tcx)),
+                                synthetic,
+                            },
+                            clean::GenericParamDefKind::Const { ty, default } => {
+                                GenericParamDefKind::Const {
+                                    type_: (*ty).into_tcx(tcx),
+                                    default: default.map(|d| *d),
+                                }
+                            }
+                        };
+                        GenericParamDef { name, kind }
                     })
                     .collect(),
             },
@@ -515,6 +538,10 @@ pub(crate) fn from_trait_bound_modifier(
         None => TraitBoundModifier::None,
         Maybe => TraitBoundModifier::Maybe,
         MaybeConst => TraitBoundModifier::MaybeConst,
+        // FIXME(negative-bounds): This bound should be rendered negative, but
+        // since that's experimental, maybe let's not add it to the rustdoc json
+        // API just now...
+        Negative => TraitBoundModifier::None,
     }
 }
 
@@ -552,7 +579,7 @@ impl FromWithTcx<clean::Type> for Type {
                 name: assoc.name.to_string(),
                 args: Box::new(assoc.args.into_tcx(tcx)),
                 self_type: Box::new(self_type.into_tcx(tcx)),
-                trait_: trait_.into_tcx(tcx),
+                trait_: trait_.map(|trait_| trait_.into_tcx(tcx)),
             },
         }
     }
@@ -602,10 +629,7 @@ impl FromWithTcx<clean::FnDecl> for FnDecl {
                 .into_iter()
                 .map(|arg| (arg.name.to_string(), arg.type_.into_tcx(tcx)))
                 .collect(),
-            output: match output {
-                clean::FnRetTy::Return(t) => Some(t.into_tcx(tcx)),
-                clean::FnRetTy::DefaultReturn => None,
-            },
+            output: if output.is_unit() { None } else { Some(output.into_tcx(tcx)) },
             c_variadic,
         }
     }
@@ -642,7 +666,7 @@ impl FromWithTcx<clean::Impl> for Impl {
         let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = impl_;
         // FIXME: use something like ImplKind in JSON?
         let (synthetic, blanket_impl) = match kind {
-            clean::ImplKind::Normal | clean::ImplKind::FakeVaradic => (false, None),
+            clean::ImplKind::Normal | clean::ImplKind::FakeVariadic => (false, None),
             clean::ImplKind::Auto => (true, None),
             clean::ImplKind::Blanket(ty) => (false, Some(*ty)),
         };
@@ -717,7 +741,7 @@ impl FromWithTcx<clean::Variant> for Variant {
 impl FromWithTcx<clean::Discriminant> for Discriminant {
     fn from_tcx(disr: clean::Discriminant, tcx: TyCtxt<'_>) -> Self {
         Discriminant {
-            // expr is only none if going through the inlineing path, which gets
+            // expr is only none if going through the inlining path, which gets
             // `rustc_middle` types, not `rustc_hir`, but because JSON never inlines
             // the expr is always some.
             expr: disr.expr(tcx).unwrap(),

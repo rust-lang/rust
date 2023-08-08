@@ -1,10 +1,10 @@
 // MIR for `unwrap_deref` after built
 
 fn unwrap_deref(_1: Option<&i32>) -> i32 {
-    let mut _0: i32;                     // return place in scope 0 at $DIR/projections.rs:+0:39: +0:42
+    let mut _0: i32;
 
     bb0: {
-        _0 = (*((_1 as variant#1).0: &i32)); // scope 0 at $DIR/projections.rs:+2:9: +2:49
-        return;                          // scope 0 at $DIR/projections.rs:+3:9: +3:17
+        _0 = (*((_1 as variant#1).0: &i32));
+        return;
     }
 }

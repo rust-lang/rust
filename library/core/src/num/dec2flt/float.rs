@@ -118,11 +118,13 @@ impl RawFloat for f32 {
     const SMALLEST_POWER_OF_TEN: i32 = -65;
     const LARGEST_POWER_OF_TEN: i32 = 38;
 
+    #[inline]
     fn from_u64(v: u64) -> Self {
         debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
         v as _
     }
 
+    #[inline]
     fn from_u64_bits(v: u64) -> Self {
         f32::from_bits((v & 0xFFFFFFFF) as u32)
     }
@@ -169,11 +171,13 @@ impl RawFloat for f64 {
     const SMALLEST_POWER_OF_TEN: i32 = -342;
     const LARGEST_POWER_OF_TEN: i32 = 308;
 
+    #[inline]
     fn from_u64(v: u64) -> Self {
         debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
         v as _
     }
 
+    #[inline]
     fn from_u64_bits(v: u64) -> Self {
         f64::from_bits(v)
     }

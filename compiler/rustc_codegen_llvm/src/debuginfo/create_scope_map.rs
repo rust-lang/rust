@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, Instance};
 use rustc_session::config::DebugInfo;
 
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 
 /// Produces DIScope DIEs for each MIR Scope which has variables defined in it.
 // FIXME(eddyb) almost all of this should be in `rustc_codegen_ssa::mir::debuginfo`.
@@ -65,10 +65,10 @@ fn make_mir_scope<'ll, 'tcx>(
         debug_context.scopes[parent]
     } else {
         // The root is the function itself.
-        let loc = cx.lookup_debug_loc(mir.span.lo());
+        let file = cx.sess().source_map().lookup_source_file(mir.span.lo());
         debug_context.scopes[scope] = DebugScope {
-            file_start_pos: loc.file.start_pos,
-            file_end_pos: loc.file.end_pos,
+            file_start_pos: file.start_pos,
+            file_end_pos: file.end_pos,
             ..debug_context.scopes[scope]
         };
         instantiated.insert(scope);
@@ -91,9 +91,9 @@ fn make_mir_scope<'ll, 'tcx>(
             // FIXME(eddyb) this would be `self.monomorphize(&callee)`
             // if this is moved to `rustc_codegen_ssa::mir::debuginfo`.
             let callee = cx.tcx.subst_and_normalize_erasing_regions(
-                instance.substs,
+                instance.args,
                 ty::ParamEnv::reveal_all(),
-                callee,
+                ty::EarlyBinder::bind(callee),
             );
             let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());
             cx.dbg_scope_fn(callee, callee_fn_abi, None)

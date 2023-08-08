@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::rc_buffer)]
 #![allow(dead_code, unused_imports)]
 

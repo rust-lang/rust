@@ -1,0 +1,20 @@
+error: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
+  --> $DIR/arg_inplace_observe_during.rs:LL:CC
+   |
+LL |     unsafe { ptr.read() };
+   |              ^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `change_arg` at $DIR/arg_inplace_observe_during.rs:LL:CC
+note: inside `main`
+  --> $DIR/arg_inplace_observe_during.rs:LL:CC
+   |
+LL |             Call(unit, after_call, change_arg(Move(*ptr), ptr))
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

@@ -1,0 +1,50 @@
+- // MIR for `bar` before RevealAll
++ // MIR for `bar` after RevealAll
+  
+  fn bar(_1: P) -> () {
+      debug _baz => _1;
+      let mut _0: ();
+      let _2: ();
+-     let mut _3: &impl Fn();
+-     let _4: impl Fn();
++     let mut _3: &fn() {foo};
++     let _4: fn() {foo};
+      let mut _5: ();
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = hide_foo() -> [return: bb1, unwind: bb4];
+      }
+  
+      bb1: {
+          _3 = &_4;
+          StorageLive(_5);
+          _5 = ();
+-         _2 = <impl Fn() as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb4];
++         _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb4];
+      }
+  
+      bb2: {
+          StorageDead(_5);
+          StorageDead(_3);
+          StorageDead(_4);
+          StorageDead(_2);
+          _0 = const ();
+          drop(_1) -> [return: bb3, unwind: bb5];
+      }
+  
+      bb3: {
+          return;
+      }
+  
+      bb4 (cleanup): {
+          drop(_1) -> [return: bb5, unwind terminate];
+      }
+  
+      bb5 (cleanup): {
+          resume;
+      }
+  }
+  

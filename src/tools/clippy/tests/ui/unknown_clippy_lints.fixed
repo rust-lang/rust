@@ -1,16 +1,16 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::pedantic)]
 // Should suggest lowercase
 #![allow(clippy::all)]
-#![warn(clippy::cmp_nan)]
+#![warn(clippy::cmp_owned)]
 
 // Should suggest similar clippy lint name
 #[warn(clippy::if_not_else)]
 #[warn(clippy::unnecessary_cast)]
 #[warn(clippy::useless_transmute)]
 // Shouldn't suggest rustc lint name(`dead_code`)
-#[warn(clippy::drop_copy)]
+#[warn(clippy::eq_op)]
 // Shouldn't suggest removed/deprecated clippy lint name(`unused_collect`)
 #[warn(clippy::unused_self)]
 // Shouldn't suggest renamed clippy lint name(`const_static_lifetime`)

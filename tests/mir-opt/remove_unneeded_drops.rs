@@ -1,4 +1,4 @@
-// ignore-wasm32-bare compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // EMIT_MIR remove_unneeded_drops.opt.RemoveUnneededDrops.diff
 fn opt(x: bool) {
     drop(x);

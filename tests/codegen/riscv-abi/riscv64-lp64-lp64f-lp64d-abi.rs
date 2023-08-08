@@ -127,18 +127,18 @@ pub struct Large {
     d: i64,
 }
 
-// CHECK: define void @f_agg_large({{%Large\*|ptr}} {{.*}}%x)
+// CHECK: define void @f_agg_large(ptr {{.*}}%x)
 #[no_mangle]
 pub extern "C" fn f_agg_large(mut x: Large) {
 }
 
-// CHECK: define void @f_agg_large_ret({{%Large\*|ptr}} {{.*}}sret{{.*}}, i32 noundef signext %i, i8 noundef signext %j)
+// CHECK: define void @f_agg_large_ret(ptr {{.*}}sret{{.*}}, i32 noundef signext %i, i8 noundef signext %j)
 #[no_mangle]
 pub extern "C" fn f_agg_large_ret(i: i32, j: i8) -> Large {
     Large { a: 1, b: 2, c: 3, d: 4 }
 }
 
-// CHECK: define void @f_scalar_stack_1(i64 %0, [2 x i64] %1, i128 %2, {{%Large\*|ptr}} {{.*}}%d, i8 noundef zeroext %e, i8 noundef signext %f, i8 noundef %g, i8 noundef %h)
+// CHECK: define void @f_scalar_stack_1(i64 %0, [2 x i64] %1, i128 %2, ptr {{.*}}%d, i8 noundef zeroext %e, i8 noundef signext %f, i8 noundef %g, i8 noundef %h)
 #[no_mangle]
 pub extern "C" fn f_scalar_stack_1(
     a: Tiny,
@@ -152,7 +152,7 @@ pub extern "C" fn f_scalar_stack_1(
 ) {
 }
 
-// CHECK: define void @f_scalar_stack_2({{%Large\*|ptr}} {{.*}}sret{{.*}} %0, i64 noundef %a, i128 %1, i128 %2, i64 noundef %d, i8 noundef zeroext %e, i8 noundef %f, i8 noundef %g)
+// CHECK: define void @f_scalar_stack_2(ptr {{.*}}sret{{.*}} %_0, i64 noundef %a, i128 %0, i128 %1, i64 noundef %d, i8 noundef zeroext %e, i8 noundef %f, i8 noundef %g)
 #[no_mangle]
 pub extern "C" fn f_scalar_stack_2(
     a: u64,
@@ -172,7 +172,7 @@ extern "C" {
 
 #[no_mangle]
 pub unsafe extern "C" fn f_va_caller() {
-    // CHECK: call noundef signext i32 (i32, ...) @f_va_callee(i32 noundef signext 1, i32 noundef signext 2, i64 noundef 3, double {{.*}}, double {{.*}}, i64 {{.*}}, [2 x i64] {{.*}}, i128 {{.*}}, {{%Large\*|ptr}} {{.*}})
+    // CHECK: call noundef signext i32 (i32, ...) @f_va_callee(i32 noundef signext 1, i32 noundef signext 2, i64 noundef 3, double {{.*}}, double {{.*}}, i64 {{.*}}, [2 x i64] {{.*}}, i128 {{.*}}, ptr {{.*}})
     f_va_callee(
         1,
         2i32,

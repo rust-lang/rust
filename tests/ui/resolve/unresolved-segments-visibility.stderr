@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: `String` is a struct, not a module
+  --> $DIR/unresolved-segments-visibility.rs:8:27
+   |
+LL |         pub(in b::string::String::newy) extern crate alloc as e;
+   |                           ^^^^^^ `String` is a struct, not a module
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

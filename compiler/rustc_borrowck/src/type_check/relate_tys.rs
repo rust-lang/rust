@@ -1,11 +1,13 @@
+use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Ty};
+use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use rustc_trait_selection::traits::query::Fallible;
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
@@ -29,7 +31,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         b: Ty<'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
-    ) -> Fallible<()> {
+    ) -> Result<(), NoSolution> {
         TypeRelating::new(
             self.infcx,
             NllTypeRelatingDelegate::new(self, locations, category, UniverseInfo::relate(a, b)),
@@ -40,13 +42,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     /// Add sufficient constraints to ensure `a == b`. See also [Self::relate_types].
-    pub(super) fn eq_substs(
+    pub(super) fn eq_args(
         &mut self,
-        a: ty::SubstsRef<'tcx>,
-        b: ty::SubstsRef<'tcx>,
+        a: ty::GenericArgsRef<'tcx>,
+        b: ty::GenericArgsRef<'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
-    ) -> Fallible<()> {
+    ) -> Result<(), NoSolution> {
         TypeRelating::new(
             self.infcx,
             NllTypeRelatingDelegate::new(self, locations, category, UniverseInfo::other()),
@@ -123,18 +125,21 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
             .constraints
             .placeholder_region(self.type_checker.infcx, placeholder);
 
-        let reg_info = match placeholder.name {
-            ty::BoundRegionKind::BrAnon(_, Some(span)) => BoundRegionInfo::Span(span),
-            ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(Symbol::intern("anon")),
+        let reg_info = match placeholder.bound.kind {
+            ty::BoundRegionKind::BrAnon(Some(span)) => BoundRegionInfo::Span(span),
+            ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(sym::anon),
             ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
-            ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(Symbol::intern("env")),
+            ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(sym::env),
         };
 
-        let reg_var =
-            reg.as_var().unwrap_or_else(|| bug!("expected region {:?} to be of kind ReVar", reg));
-        let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
-        let prev = var_to_origin.insert(reg_var, RegionCtxt::Placeholder(reg_info));
-        assert!(matches!(prev, None));
+        if cfg!(debug_assertions) {
+            let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
+            let new = RegionCtxt::Placeholder(reg_info);
+            let prev = var_to_origin.insert(reg.as_var(), new);
+            if let Some(prev) = prev {
+                assert_eq!(new, prev);
+            }
+        }
 
         reg
     }
@@ -146,17 +151,10 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
             universe,
         );
 
-        let reg_var =
-            reg.as_var().unwrap_or_else(|| bug!("expected region {:?} to be of kind ReVar", reg));
-
         if cfg!(debug_assertions) {
             let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
-            let prev = var_to_origin.insert(reg_var, RegionCtxt::Existential(None));
-
-            // It only makes sense to track region vars in non-canonicalization contexts. If this
-            // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
-            // or modify how we track nll region vars for that map.
-            assert!(matches!(prev, None));
+            let prev = var_to_origin.insert(reg.as_var(), RegionCtxt::Existential(None));
+            assert_eq!(prev, None);
         }
 
         reg
@@ -188,17 +186,15 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
     }
 
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
-        self.type_checker
-            .fully_perform_op(
-                self.locations,
-                self.category,
-                InstantiateOpaqueType {
-                    obligations,
-                    // These fields are filled in during execution of the operation
-                    base_universe: None,
-                    region_constraints: None,
-                },
-            )
-            .unwrap();
+        let _: Result<_, ErrorGuaranteed> = self.type_checker.fully_perform_op(
+            self.locations,
+            self.category,
+            InstantiateOpaqueType {
+                obligations,
+                // These fields are filled in during execution of the operation
+                base_universe: None,
+                region_constraints: None,
+            },
+        );
     }
 }

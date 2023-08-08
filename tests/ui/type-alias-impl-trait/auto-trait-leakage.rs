@@ -4,9 +4,9 @@
 #![allow(dead_code)]
 
 mod m {
-    type Foo = impl std::fmt::Debug;
+    pub(crate) type Foo = impl std::fmt::Debug;
 
-    pub fn foo() -> Foo {
+    pub(crate) fn foo() -> Foo {
         22_u32
     }
 }

@@ -278,7 +278,7 @@
 //!
 //! ```
 //! # #![allow(unused_must_use)]
-//! # #![cfg_attr(not(bootstrap), allow(map_unit_fn))]
+//! # #![allow(map_unit_fn)]
 //! let v = vec![1, 2, 3, 4, 5];
 //! v.iter().map(|x| println!("{x}"));
 //! ```
@@ -360,6 +360,12 @@ macro_rules! impl_fold_via_try_fold {
     };
     (rfold -> try_rfold) => {
         impl_fold_via_try_fold! { @internal rfold -> try_rfold }
+    };
+    (spec_fold -> spec_try_fold) => {
+        impl_fold_via_try_fold! { @internal spec_fold -> spec_try_fold }
+    };
+    (spec_rfold -> spec_try_rfold) => {
+        impl_fold_via_try_fold! { @internal spec_rfold -> spec_try_rfold }
     };
     (@internal $fold:ident -> $try_fold:ident) => {
         #[inline]

@@ -9,7 +9,7 @@ note: the constant `baz` is defined here
    |
 LL |     thread_local!(static baz: f64 = 0.0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `$crate::__thread_local_inner` which comes from the expansion of the macro `thread_local` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::thread::local_impl::thread_local_inner` which comes from the expansion of the macro `thread_local` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

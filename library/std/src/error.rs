@@ -121,7 +121,8 @@ mod private {
 /// This example produces the following output:
 ///
 /// ```console
-/// thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: SuperError is here!: SuperErrorSideKick is here!', src/error.rs:34:40
+/// thread 'main' panicked at src/error.rs:34:40:
+/// called `Result::unwrap()` on an `Err` value: SuperError is here!: SuperErrorSideKick is here!
 /// note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 /// ```
 ///

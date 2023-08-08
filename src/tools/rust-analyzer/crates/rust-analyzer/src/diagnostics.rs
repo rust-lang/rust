@@ -1,15 +1,16 @@
 //! Book keeping for keeping diagnostics easily in sync with the client.
 pub(crate) mod to_proto;
 
-use std::{mem, sync::Arc};
+use std::mem;
 
 use ide::FileId;
 use ide_db::FxHashMap;
-use stdx::hash::{NoHashHashMap, NoHashHashSet};
+use nohash_hasher::{IntMap, IntSet};
+use triomphe::Arc;
 
 use crate::lsp_ext;
 
-pub(crate) type CheckFixes = Arc<NoHashHashMap<usize, NoHashHashMap<FileId, Vec<Fix>>>>;
+pub(crate) type CheckFixes = Arc<IntMap<usize, IntMap<FileId, Vec<Fix>>>>;
 
 #[derive(Debug, Default, Clone)]
 pub struct DiagnosticsMapConfig {
@@ -20,12 +21,12 @@ pub struct DiagnosticsMapConfig {
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DiagnosticCollection {
-    // FIXME: should be NoHashHashMap<FileId, Vec<ra_id::Diagnostic>>
-    pub(crate) native: NoHashHashMap<FileId, Vec<lsp_types::Diagnostic>>,
+    // FIXME: should be IntMap<FileId, Vec<ra_id::Diagnostic>>
+    pub(crate) native: IntMap<FileId, Vec<lsp_types::Diagnostic>>,
     // FIXME: should be Vec<flycheck::Diagnostic>
-    pub(crate) check: NoHashHashMap<usize, NoHashHashMap<FileId, Vec<lsp_types::Diagnostic>>>,
+    pub(crate) check: IntMap<usize, IntMap<FileId, Vec<lsp_types::Diagnostic>>>,
     pub(crate) check_fixes: CheckFixes,
-    changes: NoHashHashSet<FileId>,
+    changes: IntSet<FileId>,
 }
 
 #[derive(Debug, Clone)]
@@ -105,7 +106,7 @@ impl DiagnosticCollection {
         native.chain(check)
     }
 
-    pub(crate) fn take_changes(&mut self) -> Option<NoHashHashSet<FileId>> {
+    pub(crate) fn take_changes(&mut self) -> Option<IntSet<FileId>> {
         if self.changes.is_empty() {
             return None;
         }

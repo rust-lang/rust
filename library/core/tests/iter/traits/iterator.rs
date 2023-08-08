@@ -1,3 +1,6 @@
+use core::cmp::Ordering;
+use core::num::NonZeroUsize;
+
 /// A wrapper struct that implements `Eq` and `Ord` based on the wrapped
 /// integer modulo 3. Used to test that `Iterator::max` and `Iterator::min`
 /// return the correct element if some of them are equal.
@@ -150,11 +153,11 @@ fn test_iterator_advance_by() {
         let mut iter = v.iter();
         assert_eq!(iter.advance_by(i), Ok(()));
         assert_eq!(iter.next().unwrap(), &v[i]);
-        assert_eq!(iter.advance_by(100), Err(v.len() - 1 - i));
+        assert_eq!(iter.advance_by(100), Err(NonZeroUsize::new(100 - (v.len() - 1 - i)).unwrap()));
     }
 
     assert_eq!(v.iter().advance_by(v.len()), Ok(()));
-    assert_eq!(v.iter().advance_by(100), Err(v.len()));
+    assert_eq!(v.iter().advance_by(100), Err(NonZeroUsize::new(100 - v.len()).unwrap()));
 }
 
 #[test]
@@ -165,11 +168,11 @@ fn test_iterator_advance_back_by() {
         let mut iter = v.iter();
         assert_eq!(iter.advance_back_by(i), Ok(()));
         assert_eq!(iter.next_back().unwrap(), &v[v.len() - 1 - i]);
-        assert_eq!(iter.advance_back_by(100), Err(v.len() - 1 - i));
+        assert_eq!(iter.advance_back_by(100), Err(NonZeroUsize::new(100 - (v.len() - 1 - i)).unwrap()));
     }
 
     assert_eq!(v.iter().advance_back_by(v.len()), Ok(()));
-    assert_eq!(v.iter().advance_back_by(100), Err(v.len()));
+    assert_eq!(v.iter().advance_back_by(100), Err(NonZeroUsize::new(100 - v.len()).unwrap()));
 }
 
 #[test]
@@ -180,11 +183,11 @@ fn test_iterator_rev_advance_back_by() {
         let mut iter = v.iter().rev();
         assert_eq!(iter.advance_back_by(i), Ok(()));
         assert_eq!(iter.next_back().unwrap(), &v[i]);
-        assert_eq!(iter.advance_back_by(100), Err(v.len() - 1 - i));
+        assert_eq!(iter.advance_back_by(100), Err(NonZeroUsize::new(100 - (v.len() - 1 - i)).unwrap()));
     }
 
     assert_eq!(v.iter().rev().advance_back_by(v.len()), Ok(()));
-    assert_eq!(v.iter().rev().advance_back_by(100), Err(v.len()));
+    assert_eq!(v.iter().rev().advance_back_by(100), Err(NonZeroUsize::new(100 - v.len()).unwrap()));
 }
 
 #[test]
@@ -369,11 +372,39 @@ fn test_by_ref() {
 
 #[test]
 fn test_is_sorted() {
+    // Tests on integers
     assert!([1, 2, 2, 9].iter().is_sorted());
     assert!(![1, 3, 2].iter().is_sorted());
     assert!([0].iter().is_sorted());
-    assert!(std::iter::empty::<i32>().is_sorted());
+    assert!([0, 0].iter().is_sorted());
+    assert!(core::iter::empty::<i32>().is_sorted());
+
+    // Tests on floats
+    assert!([1.0f32, 2.0, 2.0, 9.0].iter().is_sorted());
+    assert!(![1.0f32, 3.0f32, 2.0f32].iter().is_sorted());
+    assert!([0.0f32].iter().is_sorted());
+    assert!([0.0f32, 0.0f32].iter().is_sorted());
+    // Test cases with NaNs
+    assert!([f32::NAN].iter().is_sorted());
+    assert!(![f32::NAN, f32::NAN].iter().is_sorted());
     assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
+    // Tests from <https://github.com/rust-lang/rust/pull/55045#discussion_r229689884>
+    assert!(![f32::NAN, f32::NAN, f32::NAN].iter().is_sorted());
+    assert!(![1.0, f32::NAN, 2.0].iter().is_sorted());
+    assert!(![2.0, f32::NAN, 1.0].iter().is_sorted());
+    assert!(![2.0, f32::NAN, 1.0, 7.0].iter().is_sorted());
+    assert!(![2.0, f32::NAN, 1.0, 0.0].iter().is_sorted());
+    assert!(![-f32::NAN, -1.0, 0.0, 1.0, f32::NAN].iter().is_sorted());
+    assert!(![f32::NAN, -f32::NAN, -1.0, 0.0, 1.0].iter().is_sorted());
+    assert!(![1.0, f32::NAN, -f32::NAN, -1.0, 0.0].iter().is_sorted());
+    assert!(![0.0, 1.0, f32::NAN, -f32::NAN, -1.0].iter().is_sorted());
+    assert!(![-1.0, 0.0, 1.0, f32::NAN, -f32::NAN].iter().is_sorted());
+
+    // Tests for is_sorted_by
+    assert!(![6, 2, 8, 5, 1, -60, 1337].iter().is_sorted());
+    assert!([6, 2, 8, 5, 1, -60, 1337].iter().is_sorted_by(|_, _| Some(Ordering::Less)));
+
+    // Tests for is_sorted_by_key
     assert!([-2, -1, 0, 3].iter().is_sorted());
     assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
     assert!(!["c", "bb", "aaa"].iter().is_sorted());
@@ -424,11 +455,11 @@ fn test_iterator_rev_advance_by() {
         let mut iter = v.iter().rev();
         assert_eq!(iter.advance_by(i), Ok(()));
         assert_eq!(iter.next().unwrap(), &v[v.len() - 1 - i]);
-        assert_eq!(iter.advance_by(100), Err(v.len() - 1 - i));
+        assert_eq!(iter.advance_by(100), Err(NonZeroUsize::new(100 - (v.len() - 1 - i)).unwrap()));
     }
 
     assert_eq!(v.iter().rev().advance_by(v.len()), Ok(()));
-    assert_eq!(v.iter().rev().advance_by(100), Err(v.len()));
+    assert_eq!(v.iter().rev().advance_by(100), Err(NonZeroUsize::new(100 - v.len()).unwrap()));
 }
 
 #[test]

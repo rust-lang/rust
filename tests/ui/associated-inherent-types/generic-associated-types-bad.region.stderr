@@ -1,0 +1,11 @@
+error: lifetime may not live long enough
+  --> $DIR/generic-associated-types-bad.rs:25:12
+   |
+LL | fn user<'a>() {
+   |         -- lifetime `'a` defined here
+LL |     #[cfg(region)]
+LL |     let _: Ty::Static<&'a str> = "";
+   |            ^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to previous error
+

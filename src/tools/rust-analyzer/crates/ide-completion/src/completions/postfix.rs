@@ -64,7 +64,7 @@ pub(crate) fn complete_postfix(
                     &format!("drop($0{receiver_text})"),
                 );
                 item.set_documentation(drop_fn.docs(ctx.db));
-                item.add_to(acc);
+                item.add_to(acc, ctx.db);
             }
         }
     }
@@ -78,14 +78,14 @@ pub(crate) fn complete_postfix(
                     "if let Ok {}",
                     &format!("if let Ok($1) = {receiver_text} {{\n    $0\n}}"),
                 )
-                .add_to(acc);
+                .add_to(acc, ctx.db);
 
                 postfix_snippet(
                     "while",
                     "while let Ok {}",
                     &format!("while let Ok($1) = {receiver_text} {{\n    $0\n}}"),
                 )
-                .add_to(acc);
+                .add_to(acc, ctx.db);
             }
             TryEnum::Option => {
                 postfix_snippet(
@@ -93,22 +93,22 @@ pub(crate) fn complete_postfix(
                     "if let Some {}",
                     &format!("if let Some($1) = {receiver_text} {{\n    $0\n}}"),
                 )
-                .add_to(acc);
+                .add_to(acc, ctx.db);
 
                 postfix_snippet(
                     "while",
                     "while let Some {}",
                     &format!("while let Some($1) = {receiver_text} {{\n    $0\n}}"),
                 )
-                .add_to(acc);
+                .add_to(acc, ctx.db);
             }
         }
     } else if receiver_ty.is_bool() || receiver_ty.is_unknown() {
         postfix_snippet("if", "if expr {}", &format!("if {receiver_text} {{\n    $0\n}}"))
-            .add_to(acc);
+            .add_to(acc, ctx.db);
         postfix_snippet("while", "while expr {}", &format!("while {receiver_text} {{\n    $0\n}}"))
-            .add_to(acc);
-        postfix_snippet("not", "!expr", &format!("!{receiver_text}")).add_to(acc);
+            .add_to(acc, ctx.db);
+        postfix_snippet("not", "!expr", &format!("!{receiver_text}")).add_to(acc, ctx.db);
     } else if let Some(trait_) = ctx.famous_defs().core_iter_IntoIterator() {
         if receiver_ty.impls_trait(ctx.db, trait_, &[]) {
             postfix_snippet(
@@ -116,12 +116,12 @@ pub(crate) fn complete_postfix(
                 "for ele in expr {}",
                 &format!("for ele in {receiver_text} {{\n    $0\n}}"),
             )
-            .add_to(acc);
+            .add_to(acc, ctx.db);
         }
     }
 
-    postfix_snippet("ref", "&expr", &format!("&{receiver_text}")).add_to(acc);
-    postfix_snippet("refm", "&mut expr", &format!("&mut {receiver_text}")).add_to(acc);
+    postfix_snippet("ref", "&expr", &format!("&{receiver_text}")).add_to(acc, ctx.db);
+    postfix_snippet("refm", "&mut expr", &format!("&mut {receiver_text}")).add_to(acc, ctx.db);
 
     let mut unsafe_should_be_wrapped = true;
     if dot_receiver.syntax().kind() == BLOCK_EXPR {
@@ -137,7 +137,7 @@ pub(crate) fn complete_postfix(
     } else {
         format!("unsafe {receiver_text}")
     };
-    postfix_snippet("unsafe", "unsafe {}", &unsafe_completion_string).add_to(acc);
+    postfix_snippet("unsafe", "unsafe {}", &unsafe_completion_string).add_to(acc, ctx.db);
 
     // The rest of the postfix completions create an expression that moves an argument,
     // so it's better to consider references now to avoid breaking the compilation
@@ -162,7 +162,7 @@ pub(crate) fn complete_postfix(
                     "match expr {}",
                     &format!("match {receiver_text} {{\n    Ok(${{1:_}}) => {{$2}},\n    Err(${{3:_}}) => {{$0}},\n}}"),
                 )
-                .add_to(acc);
+                .add_to(acc, ctx.db);
             }
             TryEnum::Option => {
                 postfix_snippet(
@@ -172,7 +172,7 @@ pub(crate) fn complete_postfix(
                         "match {receiver_text} {{\n    Some(${{1:_}}) => {{$2}},\n    None => {{$0}},\n}}"
                     ),
                 )
-                .add_to(acc);
+                .add_to(acc, ctx.db);
             }
         },
         None => {
@@ -181,20 +181,23 @@ pub(crate) fn complete_postfix(
                 "match expr {}",
                 &format!("match {receiver_text} {{\n    ${{1:_}} => {{$0}},\n}}"),
             )
-            .add_to(acc);
+            .add_to(acc, ctx.db);
         }
     }
 
-    postfix_snippet("box", "Box::new(expr)", &format!("Box::new({receiver_text})")).add_to(acc);
-    postfix_snippet("dbg", "dbg!(expr)", &format!("dbg!({receiver_text})")).add_to(acc); // fixme
-    postfix_snippet("dbgr", "dbg!(&expr)", &format!("dbg!(&{receiver_text})")).add_to(acc);
-    postfix_snippet("call", "function(expr)", &format!("${{1}}({receiver_text})")).add_to(acc);
+    postfix_snippet("box", "Box::new(expr)", &format!("Box::new({receiver_text})"))
+        .add_to(acc, ctx.db);
+    postfix_snippet("dbg", "dbg!(expr)", &format!("dbg!({receiver_text})")).add_to(acc, ctx.db); // fixme
+    postfix_snippet("dbgr", "dbg!(&expr)", &format!("dbg!(&{receiver_text})")).add_to(acc, ctx.db);
+    postfix_snippet("call", "function(expr)", &format!("${{1}}({receiver_text})"))
+        .add_to(acc, ctx.db);
 
     if let Some(parent) = dot_receiver.syntax().parent().and_then(|p| p.parent()) {
         if matches!(parent.kind(), STMT_LIST | EXPR_STMT) {
-            postfix_snippet("let", "let", &format!("let $0 = {receiver_text};")).add_to(acc);
+            postfix_snippet("let", "let", &format!("let $0 = {receiver_text};"))
+                .add_to(acc, ctx.db);
             postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text};"))
-                .add_to(acc);
+                .add_to(acc, ctx.db);
         }
     }
 
@@ -315,7 +318,7 @@ fn add_custom_postfix_completions(
             for import in imports.into_iter() {
                 builder.add_import(import);
             }
-            builder.add_to(acc);
+            builder.add_to(acc, ctx.db);
         },
     );
     None

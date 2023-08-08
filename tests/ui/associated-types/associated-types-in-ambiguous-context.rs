@@ -1,3 +1,5 @@
+// normalize-stderr-test: "and \d+ other candidates" -> "and N other candidates"
+
 trait Get {
     type Value;
     fn get(&self) -> <Self as Get>::Value;

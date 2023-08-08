@@ -1,4 +1,4 @@
-error: user substs: UserSubsts { substs: [&ReStatic u32], user_self_ty: None }
+error: user args: UserArgs { args: [&ReStatic u32], user_self_ty: None }
   --> $DIR/dump-adt-brace-struct.rs:19:5
    |
 LL |     SomeStruct::<&'static u32> { t: &22 };

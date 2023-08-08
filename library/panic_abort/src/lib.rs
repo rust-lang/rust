@@ -14,6 +14,7 @@
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
 #![feature(c_unwind)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[cfg(target_os = "android")]
 mod android;
@@ -29,7 +30,7 @@ pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Sen
 
 // "Leak" the payload and shim to the relevant abort on the platform in question.
 #[rustc_std_internal_symbol]
-pub unsafe fn __rust_start_panic(_payload: *mut &mut dyn BoxMeUp) -> u32 {
+pub unsafe fn __rust_start_panic(_payload: &mut dyn BoxMeUp) -> u32 {
     // Android has the ability to attach a message as part of the abort.
     #[cfg(target_os = "android")]
     android::android_set_abort_message(_payload);

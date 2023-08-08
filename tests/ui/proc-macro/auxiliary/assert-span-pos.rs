@@ -26,10 +26,9 @@ pub fn assert_span_pos(input: TokenStream) -> TokenStream {
     let line: usize = str1.parse().unwrap();
     let col: usize = str2.parse().unwrap();
 
-    let sp1s = sp1.start();
-    if (line, col) != (sp1s.line, sp1s.column) {
+    if (line, col) != (sp1.line(), sp1.column()) {
         let msg = format!("line/column mismatch: ({}, {}) != ({}, {})", line, col,
-            sp1s.line, sp1s.column);
+            sp1.line(), sp1.column());
         sp1.error(msg).emit();
     }
 

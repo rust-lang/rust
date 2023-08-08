@@ -7,7 +7,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::Item;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, fast_reject::SimplifiedType, FloatTy};
+use rustc_middle::ty::fast_reject::SimplifiedType;
+use rustc_middle::ty::{self, FloatTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
 
@@ -73,10 +74,10 @@ pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
     let lang_items = cx.tcx.lang_items();
     // This list isn't complete, but good enough for our current list of paths.
     let incoherent_impls = [
-        SimplifiedType::FloatSimplifiedType(FloatTy::F32),
-        SimplifiedType::FloatSimplifiedType(FloatTy::F64),
-        SimplifiedType::SliceSimplifiedType,
-        SimplifiedType::StrSimplifiedType,
+        SimplifiedType::Float(FloatTy::F32),
+        SimplifiedType::Float(FloatTy::F64),
+        SimplifiedType::Slice,
+        SimplifiedType::Str,
     ]
     .iter()
     .flat_map(|&ty| cx.tcx.incoherent_impls(ty).iter().copied());

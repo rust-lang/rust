@@ -37,11 +37,10 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let unexpanded = ctx.find_node_at_offset::<ast::MacroCall>()?;
     let expanded = insert_ws_into(ctx.sema.expand(&unexpanded)?.clone_for_update());
-
     let text_range = unexpanded.syntax().text_range();
 
     acc.add(
-        AssistId("inline_macro", AssistKind::RefactorRewrite),
+        AssistId("inline_macro", AssistKind::RefactorInline),
         format!("Inline macro"),
         text_range,
         |builder| builder.replace(text_range, expanded.to_string()),
@@ -148,7 +147,7 @@ macro_rules! num {
     #[test]
     fn inline_macro_simple_not_applicable_broken_macro() {
         // FIXME: This is a bug. The macro should not expand, but it's
-        // the same behaviour as the "Expand Macro Recursively" commmand
+        // the same behaviour as the "Expand Macro Recursively" command
         // so it's presumably OK for the time being.
         check_assist(
             inline_macro,
@@ -253,5 +252,50 @@ macro_rules! whitespace {
 fn f() { if true{}; }
 "#,
         )
+    }
+
+    #[test]
+    fn whitespace_between_text_and_pound() {
+        check_assist(
+            inline_macro,
+            r#"
+macro_rules! foo {
+    () => {
+        cfg_if! {
+            if #[cfg(test)] {
+                1;
+            } else {
+                1;
+            }
+        }
+    }
+}
+fn main() {
+    $0foo!();
+}
+"#,
+            r#"
+macro_rules! foo {
+    () => {
+        cfg_if! {
+            if #[cfg(test)] {
+                1;
+            } else {
+                1;
+            }
+        }
+    }
+}
+fn main() {
+    cfg_if!{
+  if #[cfg(test)]{
+    1;
+  }else {
+    1;
+  }
+};
+}
+"#,
+        );
     }
 }

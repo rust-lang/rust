@@ -29,8 +29,8 @@ impl<'tcx> fmt::Debug for VtblEntry<'tcx> {
             VtblEntry::MetadataSize => write!(f, "MetadataSize"),
             VtblEntry::MetadataAlign => write!(f, "MetadataAlign"),
             VtblEntry::Vacant => write!(f, "Vacant"),
-            VtblEntry::Method(instance) => write!(f, "Method({})", instance),
-            VtblEntry::TraitVPtr(trait_ref) => write!(f, "TraitVPtr({})", trait_ref),
+            VtblEntry::Method(instance) => write!(f, "Method({instance})"),
+            VtblEntry::TraitVPtr(trait_ref) => write!(f, "TraitVPtr({trait_ref})"),
         }
     }
 }
@@ -73,7 +73,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     let ptr_align = tcx.data_layout.pointer_align.abi;
 
     let vtable_size = ptr_size * u64::try_from(vtable_entries.len()).unwrap();
-    let mut vtable = Allocation::uninit(vtable_size, ptr_align, /* panic_on_fail */ true).unwrap();
+    let mut vtable = Allocation::uninit(vtable_size, ptr_align);
 
     // No need to do any alignment checks on the memory accesses below, because we know the
     // allocation is correctly aligned as we created it above. Also we're only offsetting by

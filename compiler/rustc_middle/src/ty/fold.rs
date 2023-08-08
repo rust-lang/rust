@@ -37,7 +37,8 @@ where
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        let r = r.super_fold_with(self);
+        // This one is a little different, because `super_fold_with` is not
+        // implemented on non-recursive `Region`.
         (self.lt_op)(r)
     }
 
@@ -51,9 +52,7 @@ where
 // Region folder
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Folds the escaping and free regions in `value` using `f`, and
-    /// sets `skipped_regions` to true if any late-bound region was found
-    /// and skipped.
+    /// Folds the escaping and free regions in `value` using `f`.
     pub fn fold_regions<T>(
         self,
         value: T,
@@ -63,17 +62,6 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         value.fold_with(&mut RegionFolder::new(self, &mut f))
-    }
-
-    pub fn super_fold_regions<T>(
-        self,
-        value: T,
-        mut f: impl FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
-    ) -> T
-    where
-        T: TypeSuperFoldable<TyCtxt<'tcx>>,
-    {
-        value.super_fold_with(&mut RegionFolder::new(self, &mut f))
     }
 }
 
@@ -225,7 +213,7 @@ where
                     // debruijn index. Then we adjust it to the
                     // correct depth.
                     assert_eq!(debruijn1, ty::INNERMOST);
-                    self.tcx.mk_re_late_bound(debruijn, br)
+                    ty::Region::new_late_bound(self.tcx, debruijn, br)
                 } else {
                     region
                 }
@@ -340,7 +328,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.replace_late_bound_regions_uncached(value, |br| {
-            self.mk_re_free(all_outlive_scope, br.kind)
+            ty::Region::new_free(self, all_outlive_scope, br.kind)
         })
     }
 
@@ -353,16 +341,21 @@ impl<'tcx> TyCtxt<'tcx> {
             value,
             FnMutDelegate {
                 regions: &mut |r: ty::BoundRegion| {
-                    self.mk_re_late_bound(
+                    ty::Region::new_late_bound(
+                        self,
                         ty::INNERMOST,
                         ty::BoundRegion { var: shift_bv(r.var), kind: r.kind },
                     )
                 },
                 types: &mut |t: ty::BoundTy| {
-                    self.mk_bound(ty::INNERMOST, ty::BoundTy { var: shift_bv(t.var), kind: t.kind })
+                    Ty::new_bound(
+                        self,
+                        ty::INNERMOST,
+                        ty::BoundTy { var: shift_bv(t.var), kind: t.kind },
+                    )
                 },
                 consts: &mut |c, ty: Ty<'tcx>| {
-                    self.mk_const(ty::ConstKind::Bound(ty::INNERMOST, shift_bv(c)), ty)
+                    ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c), ty)
                 },
             },
         )
@@ -392,30 +385,26 @@ impl<'tcx> TyCtxt<'tcx> {
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let kind = entry
-                    .or_insert_with(|| {
-                        ty::BoundVariableKind::Region(ty::BrAnon(index as u32, None))
-                    })
+                    .or_insert_with(|| ty::BoundVariableKind::Region(ty::BrAnon(None)))
                     .expect_region();
                 let br = ty::BoundRegion { var, kind };
-                self.tcx.mk_re_late_bound(ty::INNERMOST, br)
+                ty::Region::new_late_bound(self.tcx, ty::INNERMOST, br)
             }
             fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
                 let entry = self.map.entry(bt.var);
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let kind = entry
-                    .or_insert_with(|| {
-                        ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon(index as u32))
-                    })
+                    .or_insert_with(|| ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon))
                     .expect_ty();
-                self.tcx.mk_bound(ty::INNERMOST, BoundTy { var, kind })
+                Ty::new_bound(self.tcx, ty::INNERMOST, BoundTy { var, kind })
             }
             fn replace_const(&mut self, bv: ty::BoundVar, ty: Ty<'tcx>) -> ty::Const<'tcx> {
                 let entry = self.map.entry(bv);
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let () = entry.or_insert_with(|| ty::BoundVariableKind::Const).expect_const();
-                self.tcx.mk_const(ty::ConstKind::Bound(ty::INNERMOST, var), ty)
+                ty::Const::new_bound(self.tcx, ty::INNERMOST, var, ty)
             }
         }
 
@@ -467,7 +456,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Shifter<'tcx> {
         match *r {
             ty::ReLateBound(debruijn, br) if debruijn >= self.current_index => {
                 let debruijn = debruijn.shifted_in(self.amount);
-                self.tcx.mk_re_late_bound(debruijn, br)
+                ty::Region::new_late_bound(self.tcx, debruijn, br)
             }
             _ => r,
         }
@@ -477,7 +466,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Shifter<'tcx> {
         match *ty.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn >= self.current_index => {
                 let debruijn = debruijn.shifted_in(self.amount);
-                self.tcx.mk_bound(debruijn, bound_ty)
+                Ty::new_bound(self.tcx, debruijn, bound_ty)
             }
 
             _ if ty.has_vars_bound_at_or_above(self.current_index) => ty.super_fold_with(self),
@@ -490,7 +479,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Shifter<'tcx> {
             && debruijn >= self.current_index
         {
             let debruijn = debruijn.shifted_in(self.amount);
-            self.tcx.mk_const(ty::ConstKind::Bound(debruijn, bound_ct), ct.ty())
+            ty::Const::new_bound(self.tcx, debruijn, bound_ct, ct.ty())
         } else {
             ct.super_fold_with(self)
         }
@@ -508,7 +497,7 @@ pub fn shift_region<'tcx>(
 ) -> ty::Region<'tcx> {
     match *region {
         ty::ReLateBound(debruijn, br) if amount > 0 => {
-            tcx.mk_re_late_bound(debruijn.shifted_in(amount), br)
+            ty::Region::new_late_bound(tcx, debruijn.shifted_in(amount), br)
         }
         _ => region,
     }

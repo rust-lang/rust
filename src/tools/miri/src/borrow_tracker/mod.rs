@@ -11,6 +11,7 @@ use rustc_target::abi::Size;
 
 use crate::*;
 pub mod stacked_borrows;
+pub mod tree_borrows;
 
 pub type CallId = NonZeroU64;
 
@@ -73,7 +74,7 @@ pub struct FrameState {
 
 impl VisitTags for FrameState {
     fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
-        // `protected_tags` are fine to GC.
+        // `protected_tags` are already recorded by `GlobalStateInner`.
     }
 }
 
@@ -102,12 +103,17 @@ pub struct GlobalStateInner {
     pub tracked_call_ids: FxHashSet<CallId>,
     /// Whether to recurse into datatypes when searching for pointers to retag.
     pub retag_fields: RetagFields,
+    /// Whether `core::ptr::Unique` gets special (`Box`-like) handling.
+    pub unique_is_unique: bool,
 }
 
 impl VisitTags for GlobalStateInner {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
-        // The only candidate is base_ptr_tags, and that does not need visiting since we don't ever
-        // GC the bottommost tag.
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        for &tag in self.protected_tags.keys() {
+            visit(tag);
+        }
+        // The only other candidate is base_ptr_tags, and that does not need visiting since we don't ever
+        // GC the bottommost/root tag.
     }
 }
 
@@ -169,6 +175,7 @@ impl GlobalStateInner {
         tracked_pointer_tags: FxHashSet<BorTag>,
         tracked_call_ids: FxHashSet<CallId>,
         retag_fields: RetagFields,
+        unique_is_unique: bool,
     ) -> Self {
         GlobalStateInner {
             borrow_tracker_method,
@@ -179,6 +186,7 @@ impl GlobalStateInner {
             tracked_pointer_tags,
             tracked_call_ids,
             retag_fields,
+            unique_is_unique,
         }
     }
 
@@ -230,17 +238,20 @@ impl GlobalStateInner {
 /// Which borrow tracking method to use
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BorrowTrackerMethod {
-    /// Stacked Borrows, as implemented in borrow_tracker/stacked
+    /// Stacked Borrows, as implemented in borrow_tracker/stacked_borrows
     StackedBorrows,
+    /// Tree borrows, as implemented in borrow_tracker/tree_borrows
+    TreeBorrows,
 }
 
 impl BorrowTrackerMethod {
-    pub fn instanciate_global_state(self, config: &MiriConfig) -> GlobalState {
+    pub fn instantiate_global_state(self, config: &MiriConfig) -> GlobalState {
         RefCell::new(GlobalStateInner::new(
             self,
             config.tracked_pointer_tags.clone(),
             config.tracked_call_ids.clone(),
             config.retag_fields,
+            config.unique_is_unique,
         ))
     }
 }
@@ -258,6 +269,10 @@ impl GlobalStateInner {
                 AllocState::StackedBorrows(Box::new(RefCell::new(Stacks::new_allocation(
                     id, alloc_size, self, kind, machine,
                 )))),
+            BorrowTrackerMethod::TreeBorrows =>
+                AllocState::TreeBorrows(Box::new(RefCell::new(Tree::new_allocation(
+                    id, alloc_size, self, kind, machine,
+                )))),
         }
     }
 }
@@ -273,6 +288,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => this.sb_retag_ptr_value(kind, val),
+            BorrowTrackerMethod::TreeBorrows => this.tb_retag_ptr_value(kind, val),
         }
     }
 
@@ -285,14 +301,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => this.sb_retag_place_contents(kind, place),
+            BorrowTrackerMethod::TreeBorrows => this.tb_retag_place_contents(kind, place),
         }
     }
 
-    fn retag_return_place(&mut self) -> InterpResult<'tcx> {
+    fn protect_place(&mut self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
-            BorrowTrackerMethod::StackedBorrows => this.sb_retag_return_place(),
+            BorrowTrackerMethod::StackedBorrows => this.sb_protect_place(place),
+            BorrowTrackerMethod::TreeBorrows => this.tb_protect_place(place),
         }
     }
 
@@ -301,6 +319,34 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => this.sb_expose_tag(alloc_id, tag),
+            BorrowTrackerMethod::TreeBorrows => this.tb_expose_tag(alloc_id, tag),
+        }
+    }
+
+    fn give_pointer_debug_name(
+        &mut self,
+        ptr: Pointer<Option<Provenance>>,
+        nth_parent: u8,
+        name: &str,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
+        match method {
+            BorrowTrackerMethod::StackedBorrows => {
+                this.tcx.tcx.sess.warn("Stacked Borrows does not support named pointers; `miri_pointer_name` is a no-op");
+                Ok(())
+            }
+            BorrowTrackerMethod::TreeBorrows =>
+                this.tb_give_pointer_debug_name(ptr, nth_parent, name),
+        }
+    }
+
+    fn print_borrow_state(&mut self, alloc_id: AllocId, show_unnamed: bool) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
+        match method {
+            BorrowTrackerMethod::StackedBorrows => this.print_stacks(alloc_id),
+            BorrowTrackerMethod::TreeBorrows => this.print_tree(alloc_id, show_unnamed),
         }
     }
 }
@@ -310,9 +356,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 pub enum AllocState {
     /// Data corresponding to Stacked Borrows
     StackedBorrows(Box<RefCell<stacked_borrows::AllocState>>),
+    /// Data corresponding to Tree Borrows
+    TreeBorrows(Box<RefCell<tree_borrows::AllocState>>),
 }
 
-impl machine::AllocExtra {
+impl machine::AllocExtra<'_> {
     #[track_caller]
     pub fn borrow_tracker_sb(&self) -> &RefCell<stacked_borrows::AllocState> {
         match self.borrow_tracker {
@@ -328,6 +376,14 @@ impl machine::AllocExtra {
             _ => panic!("expected Stacked Borrows borrow tracking, got something else"),
         }
     }
+
+    #[track_caller]
+    pub fn borrow_tracker_tb(&self) -> &RefCell<tree_borrows::AllocState> {
+        match self.borrow_tracker {
+            Some(AllocState::TreeBorrows(ref tb)) => tb,
+            _ => panic!("expected Tree Borrows borrow tracking, got something else"),
+        }
+    }
 }
 
 impl AllocState {
@@ -341,6 +397,14 @@ impl AllocState {
         match self {
             AllocState::StackedBorrows(sb) =>
                 sb.borrow_mut().before_memory_read(alloc_id, prov_extra, range, machine),
+            AllocState::TreeBorrows(tb) =>
+                tb.borrow_mut().before_memory_access(
+                    AccessKind::Read,
+                    alloc_id,
+                    prov_extra,
+                    range,
+                    machine,
+                ),
         }
     }
 
@@ -349,11 +413,19 @@ impl AllocState {
         alloc_id: AllocId,
         prov_extra: ProvenanceExtra,
         range: AllocRange,
-        machine: &mut MiriMachine<'_, 'tcx>,
+        machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         match self {
             AllocState::StackedBorrows(sb) =>
                 sb.get_mut().before_memory_write(alloc_id, prov_extra, range, machine),
+            AllocState::TreeBorrows(tb) =>
+                tb.get_mut().before_memory_access(
+                    AccessKind::Write,
+                    alloc_id,
+                    prov_extra,
+                    range,
+                    machine,
+                ),
         }
     }
 
@@ -362,17 +434,20 @@ impl AllocState {
         alloc_id: AllocId,
         prov_extra: ProvenanceExtra,
         range: AllocRange,
-        machine: &mut MiriMachine<'_, 'tcx>,
+        machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         match self {
             AllocState::StackedBorrows(sb) =>
                 sb.get_mut().before_memory_deallocation(alloc_id, prov_extra, range, machine),
+            AllocState::TreeBorrows(tb) =>
+                tb.get_mut().before_memory_deallocation(alloc_id, prov_extra, range, machine),
         }
     }
 
     pub fn remove_unreachable_tags(&self, tags: &FxHashSet<BorTag>) {
         match self {
             AllocState::StackedBorrows(sb) => sb.borrow_mut().remove_unreachable_tags(tags),
+            AllocState::TreeBorrows(tb) => tb.borrow_mut().remove_unreachable_tags(tags),
         }
     }
 }
@@ -381,6 +456,7 @@ impl VisitTags for AllocState {
     fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         match self {
             AllocState::StackedBorrows(sb) => sb.visit_tags(visit),
+            AllocState::TreeBorrows(tb) => tb.visit_tags(visit),
         }
     }
 }

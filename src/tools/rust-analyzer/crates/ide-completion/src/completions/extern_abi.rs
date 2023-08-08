@@ -42,7 +42,7 @@ const SUPPORTED_CALLING_CONVENTIONS: &[&str] = &[
 
 pub(crate) fn complete_extern_abi(
     acc: &mut Completions,
-    _ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_>,
     expanded: &ast::String,
 ) -> Option<()> {
     if !expanded.syntax().parent().map_or(false, |it| ast::Abi::can_cast(it.kind())) {
@@ -51,7 +51,7 @@ pub(crate) fn complete_extern_abi(
     let abi_str = expanded;
     let source_range = abi_str.text_range_between_quotes()?;
     for &abi in SUPPORTED_CALLING_CONVENTIONS {
-        CompletionItem::new(CompletionItemKind::Keyword, source_range, abi).add_to(acc);
+        CompletionItem::new(CompletionItemKind::Keyword, source_range, abi).add_to(acc, ctx.db);
     }
     Some(())
 }

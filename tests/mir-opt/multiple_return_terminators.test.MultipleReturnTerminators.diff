@@ -2,11 +2,11 @@
 + // MIR for `test` after MultipleReturnTerminators
   
   fn test(_1: bool) -> () {
-      debug x => _1;                       // in scope 0 at $DIR/multiple_return_terminators.rs:+0:9: +0:10
-      let mut _0: ();                      // return place in scope 0 at $DIR/multiple_return_terminators.rs:+0:18: +0:18
+      debug x => _1;
+      let mut _0: ();
   
       bb0: {
-          return;                          // scope 0 at $DIR/multiple_return_terminators.rs:+6:2: +6:2
+          return;
       }
   }
   

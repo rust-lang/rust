@@ -1,20 +1,29 @@
-error[E0515]: cannot return reference to function parameter `val`
+error[E0515]: cannot return value referencing function parameter `val`
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:21:9
    |
 LL |         val.use_self()
-   |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
+   |         ---^^^^^^^^^^^
+   |         |
+   |         returns a value referencing data owned by the current function
+   |         `val` is borrowed here
 
-error[E0515]: cannot return reference to function parameter `val`
+error[E0515]: cannot return value referencing function parameter `val`
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:43:9
    |
 LL |         val.use_self()
-   |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
+   |         ---^^^^^^^^^^^
+   |         |
+   |         returns a value referencing data owned by the current function
+   |         `val` is borrowed here
 
-error[E0515]: cannot return reference to function parameter `val`
+error[E0515]: cannot return value referencing function parameter `val`
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:109:9
    |
 LL |         val.use_self()
-   |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
+   |         ---^^^^^^^^^^^
+   |         |
+   |         returns a value referencing data owned by the current function
+   |         `val` is borrowed here
 
 error: aborting due to 3 previous errors
 

@@ -7,7 +7,7 @@ macro_rules! impl_unary_op_test {
         test_helpers::test_lanes! {
             fn $fn<const LANES: usize>() {
                 test_helpers::test_unary_elementwise(
-                    &<core_simd::Simd<$scalar, LANES> as core::ops::$trait>::$fn,
+                    &<core_simd::simd::Simd<$scalar, LANES> as core::ops::$trait>::$fn,
                     &$scalar_fn,
                     &|_| true,
                 );
@@ -27,7 +27,7 @@ macro_rules! impl_binary_op_test {
     { $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident, $scalar_fn:expr } => {
         mod $fn {
             use super::*;
-            use core_simd::Simd;
+            use core_simd::simd::Simd;
 
             test_helpers::test_lanes! {
                 fn normal<const LANES: usize>() {
@@ -64,7 +64,7 @@ macro_rules! impl_binary_checked_op_test {
     { $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident, $scalar_fn:expr, $check_fn:expr } => {
         mod $fn {
             use super::*;
-            use core_simd::Simd;
+            use core_simd::simd::Simd;
 
             test_helpers::test_lanes! {
                 fn normal<const LANES: usize>() {
@@ -173,7 +173,7 @@ macro_rules! impl_signed_tests {
     { $scalar:tt } => {
         mod $scalar {
             use core_simd::simd::SimdInt;
-            type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
+            type Vector<const LANES: usize> = core_simd::simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
             impl_common_integer_tests! { Vector, Scalar }
@@ -314,7 +314,7 @@ macro_rules! impl_unsigned_tests {
     { $scalar:tt } => {
         mod $scalar {
             use core_simd::simd::SimdUint;
-            type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
+            type Vector<const LANES: usize> = core_simd::simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
             impl_common_integer_tests! { Vector, Scalar }
@@ -348,8 +348,8 @@ macro_rules! impl_unsigned_tests {
 macro_rules! impl_float_tests {
     { $scalar:tt, $int_scalar:tt } => {
         mod $scalar {
-            use core_simd::SimdFloat;
-            type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
+            use core_simd::simd::SimdFloat;
+            type Vector<const LANES: usize> = core_simd::simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
             impl_unary_op_test!(Scalar, Neg::neg);

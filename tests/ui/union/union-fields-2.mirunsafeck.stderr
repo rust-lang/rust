@@ -16,7 +16,7 @@ error[E0560]: union `U` has no field named `c`
 LL |     let u = U { a: 0, b: 1, c: 2 };
    |                             ^ `U` does not have this field
    |
-   = note: available fields are: `a`, `b`
+   = note: all struct fields are already assigned
 
 error[E0784]: union expressions should have exactly one field
   --> $DIR/union-fields-2.rs:13:13

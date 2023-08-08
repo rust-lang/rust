@@ -2,26 +2,26 @@
 + // MIR for `test` after ConstProp
   
   fn test(_1: bool, _2: bool) -> bool {
-      debug x => _1;                       // in scope 0 at $DIR/boolean_identities.rs:+0:13: +0:14
-      debug y => _2;                       // in scope 0 at $DIR/boolean_identities.rs:+0:22: +0:23
-      let mut _0: bool;                    // return place in scope 0 at $DIR/boolean_identities.rs:+0:34: +0:38
-      let mut _3: bool;                    // in scope 0 at $DIR/boolean_identities.rs:+1:5: +1:15
-      let mut _4: bool;                    // in scope 0 at $DIR/boolean_identities.rs:+1:6: +1:7
-      let mut _5: bool;                    // in scope 0 at $DIR/boolean_identities.rs:+1:18: +1:29
-      let mut _6: bool;                    // in scope 0 at $DIR/boolean_identities.rs:+1:19: +1:20
+      debug x => _1;
+      debug y => _2;
+      let mut _0: bool;
+      let mut _3: bool;
+      let mut _4: bool;
+      let mut _5: bool;
+      let mut _6: bool;
   
       bb0: {
-          StorageLive(_3);                 // scope 0 at $DIR/boolean_identities.rs:+1:5: +1:15
--         _3 = BitOr(_2, const true);      // scope 0 at $DIR/boolean_identities.rs:+1:5: +1:15
-+         _3 = const true;                 // scope 0 at $DIR/boolean_identities.rs:+1:5: +1:15
-          StorageLive(_5);                 // scope 0 at $DIR/boolean_identities.rs:+1:18: +1:29
--         _5 = BitAnd(_1, const false);    // scope 0 at $DIR/boolean_identities.rs:+1:18: +1:29
--         _0 = BitAnd(move _3, move _5);   // scope 0 at $DIR/boolean_identities.rs:+1:5: +1:29
-+         _5 = const false;                // scope 0 at $DIR/boolean_identities.rs:+1:18: +1:29
-+         _0 = const false;                // scope 0 at $DIR/boolean_identities.rs:+1:5: +1:29
-          StorageDead(_5);                 // scope 0 at $DIR/boolean_identities.rs:+1:28: +1:29
-          StorageDead(_3);                 // scope 0 at $DIR/boolean_identities.rs:+1:28: +1:29
-          return;                          // scope 0 at $DIR/boolean_identities.rs:+2:2: +2:2
+          StorageLive(_3);
+-         _3 = BitOr(_2, const true);
++         _3 = const true;
+          StorageLive(_5);
+-         _5 = BitAnd(_1, const false);
+-         _0 = BitAnd(move _3, move _5);
++         _5 = const false;
++         _0 = const false;
+          StorageDead(_5);
+          StorageDead(_3);
+          return;
       }
   }
   

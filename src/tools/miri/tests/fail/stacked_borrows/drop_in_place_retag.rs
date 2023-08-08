@@ -1,7 +1,7 @@
 //! Test that drop_in_place mutably retags the entire place, even for a type that does not need
 //! dropping, ensuring among other things that it is writeable
 
-//@error-pattern: /retag .* for Unique permission .* only grants SharedReadOnly permission/
+//@error-in-other-file: /retag .* for Unique permission .* only grants SharedReadOnly permission/
 
 fn main() {
     unsafe {

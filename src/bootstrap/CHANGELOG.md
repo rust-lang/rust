@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `remote-test-server`'s `remote` argument has been removed in favor of the `--bind` flag. Use `--bind 0.0.0.0:12345` to replicate the behavior of the `remote` argument.
 - `x.py fmt` now formats only files modified between the merge-base of HEAD and the last commit in the master branch of the rust-lang repository and the current working directory. To restore old behaviour, use `x.py fmt .`. The check mode is not affected by this change. [#105702](https://github.com/rust-lang/rust/pull/105702)
 - The `llvm.version-check` config option has been removed. Older versions were never supported. If you still need to support older versions (e.g. you are applying custom patches), patch `check_llvm_version` in bootstrap to change the minimum version. [#108619](https://github.com/rust-lang/rust/pull/108619)
+- The `rust.ignore-git` option has been renamed to `rust.omit-git-hash`. [#110059](https://github.com/rust-lang/rust/pull/110059)
+- `--exclude` no longer accepts a `Kind` as part of a Step; instead it uses the top-level Kind of the subcommand. If this matches how you were already using --exclude (e.g. `x test --exclude test::std`), simply remove the kind: `--exclude std`. If you were using a kind that did not match the top-level subcommand, please open an issue explaining why you wanted this feature.
 
 ### Non-breaking changes
 
@@ -25,6 +27,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - If you have Rust already installed, `x.py` will now infer the host target
   from the default rust toolchain. [#78513](https://github.com/rust-lang/rust/pull/78513)
 - Add options for enabling overflow checks, one for std (`overflow-checks-std`) and one for everything else (`overflow-checks`). Both default to false.
+- Add llvm option `enable-warnings` to have control on llvm compilation warnings. Default to false.
+- Add `rpath` option in `target` section to support set rpath option for each target independently. [#111242](https://github.com/rust-lang/rust/pull/111242)
 
 
 ## [Version 2] - 2020-09-25
@@ -47,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Add `--keep-stage-std`, which behaves like `keep-stage` but allows the stage
   0 compiler artifacts (i.e., stage1/bin/rustc) to be rebuilt if changed
   [#77120](https://github.com/rust-lang/rust/pull/77120).
+- File locking is now used to avoid collisions between multiple running instances of `x.py` (e.g. when using `rust-analyzer` and `x.py` at the same time). Note that Solaris and possibly other non Unix and non Windows systems don't support it [#108607](https://github.com/rust-lang/rust/pull/108607). This might possibly lead to build data corruption.
 
 
 ## [Version 1] - 2020-09-11

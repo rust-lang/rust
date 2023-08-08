@@ -46,7 +46,9 @@ pub struct SeparateConstSwitch;
 
 impl<'tcx> MirPass<'tcx> for SeparateConstSwitch {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 4
+        // This pass participates in some as-of-yet untested unsoundness found
+        // in https://github.com/rust-lang/rust/issues/112460
+        sess.mir_opt_level() >= 2 && sess.opts.unstable_opts.unsound_mir_opts
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -112,7 +114,7 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
                         | TerminatorKind::Assert { .. }
                         | TerminatorKind::FalseUnwind { .. }
                         | TerminatorKind::Yield { .. }
-                        | TerminatorKind::Abort
+                        | TerminatorKind::Terminate
                         | TerminatorKind::Return
                         | TerminatorKind::Unreachable
                         | TerminatorKind::InlineAsm { .. }
@@ -164,7 +166,7 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
             }
 
             TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
@@ -245,6 +247,7 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
             | StatementKind::StorageLive(_)
             | StatementKind::Retag(_, _)
             | StatementKind::AscribeUserType(_, _)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Intrinsic(_)
@@ -302,8 +305,7 @@ fn find_determining_place<'tcx>(
                     | Rvalue::NullaryOp(_, _)
                     | Rvalue::ShallowInitBox(_, _)
                     | Rvalue::UnaryOp(_, Operand::Constant(_))
-                    | Rvalue::Cast(_, Operand::Constant(_), _)
-                    => return None,
+                    | Rvalue::Cast(_, Operand::Constant(_), _) => return None,
                 }
             }
 
@@ -315,6 +317,7 @@ fn find_determining_place<'tcx>(
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(_, _)
             | StatementKind::AscribeUserType(_, _)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(_)
             | StatementKind::Intrinsic(_)
             | StatementKind::ConstEvalCounter

@@ -1,10 +1,9 @@
-const QUERY = [
-    'Result<SomeTrait>',
-    'OtherThingxxxxxxxx',
-];
+// exact-check
 
 const EXPECTED = [
     {
+        'query': 'Result<SomeTrait>',
+        'correction': null,
         'in_args': [
             { 'path': 'generics_trait', 'name': 'beta' },
         ],
@@ -13,6 +12,24 @@ const EXPECTED = [
         ],
     },
     {
+        'query': 'Result<SomeTraiz>',
+        'correction': null,
+        'in_args': [],
+        'returned': [],
+    },
+    {
+        'query': 'OtherThingxxxxxxxx',
+        'correction': null,
+        'in_args': [
+            { 'path': 'generics_trait', 'name': 'alpha' },
+        ],
+        'returned': [
+            { 'path': 'generics_trait', 'name': 'alef' },
+        ],
+    },
+    {
+        'query': 'OtherThingxxxxxxxy',
+        'correction': 'OtherThingxxxxxxxx',
         'in_args': [
             { 'path': 'generics_trait', 'name': 'alpha' },
         ],

@@ -9,6 +9,10 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_results, unused_must_use)]
    |                         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = foo::<MustUse>();
+   |     +++++++
 
 error: unused `MustUseMsg` that must be used
   --> $DIR/unused-result.rs:22:5
@@ -17,6 +21,10 @@ LL |     foo::<MustUseMsg>();
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: some message
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = foo::<MustUseMsg>();
+   |     +++++++
 
 error: unused result of type `isize`
   --> $DIR/unused-result.rs:34:5
@@ -35,6 +43,11 @@ error: unused `MustUse` that must be used
    |
 LL |     foo::<MustUse>();
    |     ^^^^^^^^^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = foo::<MustUse>();
+   |     +++++++
 
 error: unused `MustUseMsg` that must be used
   --> $DIR/unused-result.rs:36:5
@@ -43,6 +56,10 @@ LL |     foo::<MustUseMsg>();
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: some message
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = foo::<MustUseMsg>();
+   |     +++++++
 
 error: aborting due to 5 previous errors
 

@@ -41,6 +41,7 @@ declare_clippy_lint! {
     /// can't be const as it calls a non-const function. Making `a` const and running Clippy again,
     /// will suggest to make `b` const, too.
     ///
+    /// If you are marking a public function with `const`, removing it again will break API compatibility.
     /// ### Example
     /// ```rust
     /// # struct Foo {
@@ -153,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
 
         if let Err((span, err)) = is_min_const_fn(cx.tcx, mir, &self.msrv) {
             if cx.tcx.is_const_fn_raw(def_id.to_def_id()) {
-                cx.tcx.sess.span_err(span, err.as_ref());
+                cx.tcx.sess.span_err(span, err);
             }
         } else {
             span_lint(cx, MISSING_CONST_FOR_FN, span, "this could be a `const fn`");

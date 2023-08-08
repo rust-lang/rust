@@ -1,6 +1,6 @@
-// run-rustfix
+//@run-rustfix
 
-#![allow(unused, clippy::suspicious_map, clippy::iter_count)]
+#![allow(unused, clippy::needless_if, clippy::suspicious_map, clippy::iter_count)]
 
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList};
 
@@ -62,4 +62,21 @@ fn main() {
 
     let _ = sample.iter().collect::<VecWrapper<_>>().is_empty();
     let _ = sample.iter().collect::<VecWrapper<_>>().contains(&&0);
+
+    #[allow(clippy::double_parens)]
+    {
+        Vec::<u8>::new().extend((0..10).collect::<Vec<_>>());
+        foo((0..10).collect::<Vec<_>>());
+        bar((0..10).collect::<Vec<_>>(), (0..10).collect::<Vec<_>>());
+        baz((0..10), (), ('a'..='z').collect::<Vec<_>>())
+    }
+
+    let values = [1, 2, 3, 4];
+    let mut out = vec![];
+    values.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>();
+    let _y = values.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>(); // this is fine
 }
+
+fn foo(_: impl IntoIterator<Item = usize>) {}
+fn bar<I: IntoIterator<Item = usize>>(_: Vec<usize>, _: I) {}
+fn baz<I: IntoIterator<Item = usize>>(_: I, _: (), _: impl IntoIterator<Item = char>) {}

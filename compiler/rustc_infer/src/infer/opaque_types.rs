@@ -1,13 +1,14 @@
+use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use super::{DefineOpaqueTypes, InferResult};
 use crate::errors::OpaqueHiddenTypeDiag;
-use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
-use crate::traits;
-use hir::def::DefKind;
+use crate::infer::{InferCtxt, InferOk};
+use crate::traits::{self, PredicateObligation};
 use hir::def_id::{DefId, LocalDefId};
 use hir::OpaqueTyOrigin;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
-use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::{DefiningAnchor, ObligationCause};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::GenericArgKind;
@@ -16,17 +17,12 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::Span;
-
 use std::ops::ControlFlow;
-
-pub type OpaqueTypeMap<'tcx> = VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
 
 mod table;
 
+pub type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
 pub use table::{OpaqueTypeStorage, OpaqueTypeTable};
-
-use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use super::InferResult;
 
 /// Information about the opaque types whose values we
 /// are inferring in this function (these are the `impl Trait` that
@@ -37,9 +33,6 @@ pub struct OpaqueTypeDecl<'tcx> {
     /// There can be multiple, but they are all `lub`ed together at the end
     /// to obtain the canonical hidden type.
     pub hidden_type: OpaqueHiddenType<'tcx>,
-
-    /// The origin of the opaque type.
-    pub origin: hir::OpaqueTyOrigin,
 }
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -52,12 +45,18 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferOk<'tcx, T> {
+        // We handle opaque types differently in the new solver.
+        if self.next_trait_solver() {
+            return InferOk { value, obligations: vec![] };
+        }
+
         if !value.has_opaque_types() {
             return InferOk { value, obligations: vec![] };
         }
+
         let mut obligations = vec![];
         let replace_opaque_type = |def_id: DefId| {
-            def_id.as_local().map_or(false, |def_id| self.opaque_type_origin(def_id).is_some())
+            def_id.as_local().is_some_and(|def_id| self.opaque_type_origin(def_id).is_some())
         };
         let value = value.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
@@ -65,7 +64,7 @@ impl<'tcx> InferCtxt<'tcx> {
             ct_op: |ct| ct,
             ty_op: |ty| match *ty.kind() {
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })
-                    if replace_opaque_type(def_id) =>
+                    if replace_opaque_type(def_id) && !ty.has_escaping_bound_vars() =>
                 {
                     let def_span = self.tcx.def_span(def_id);
                     let span = if span.contains(def_span) { def_span } else { span };
@@ -104,9 +103,9 @@ impl<'tcx> InferCtxt<'tcx> {
         }
         let (a, b) = if a_is_expected { (a, b) } else { (b, a) };
         let process = |a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected| match *a.kind() {
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) if def_id.is_local() => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
-                let origin = match self.defining_use_anchor {
+                match self.defining_use_anchor {
                     DefiningAnchor::Bind(_) => {
                         // Check that this is `impl Trait` type is
                         // declared by `parent_def_id` -- i.e., one whose
@@ -142,9 +141,11 @@ impl<'tcx> InferCtxt<'tcx> {
                         //     let x = || foo(); // returns the Opaque assoc with `foo`
                         // }
                         // ```
-                        self.opaque_type_origin(def_id)?
+                        if self.opaque_type_origin(def_id).is_none() {
+                            return None;
+                        }
                     }
-                    DefiningAnchor::Bubble => self.opaque_type_origin_unchecked(def_id),
+                    DefiningAnchor::Bubble => {}
                     DefiningAnchor::Error => return None,
                 };
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
@@ -153,7 +154,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // no one encounters it in practice.
                     // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
                     // where it is of no concern, so we only check for TAITs.
-                    if let Some(OpaqueTyOrigin::TyAlias) =
+                    if let Some(OpaqueTyOrigin::TyAlias { .. }) =
                         b_def_id.as_local().and_then(|b_def_id| self.opaque_type_origin(b_def_id))
                     {
                         self.tcx.sess.emit_err(OpaqueHiddenTypeDiag {
@@ -164,11 +165,10 @@ impl<'tcx> InferCtxt<'tcx> {
                     }
                 }
                 Some(self.register_hidden_type(
-                    OpaqueTypeKey { def_id, substs },
+                    OpaqueTypeKey { def_id, args },
                     cause.clone(),
                     param_env,
                     b,
-                    origin,
                     a_is_expected,
                 ))
             }
@@ -214,12 +214,12 @@ impl<'tcx> InferCtxt<'tcx> {
     /// fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
     ///                    //  ^^^^ ^^
     ///                    //  |    |
-    ///                    //  |    substs
+    ///                    //  |    args
     ///                    //  def_id
     /// ```
     ///
     /// As indicating in the comments above, each of those references
-    /// is (in the compiler) basically a substitution (`substs`)
+    /// is (in the compiler) basically a substitution (`args`)
     /// applied to the type of a suitable `def_id` (which identifies
     /// `Foo1` or `Foo2`).
     ///
@@ -278,7 +278,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// We generally prefer to make `<=` constraints, since they
     /// integrate best into the region solver. To do that, we find the
-    /// "minimum" of all the arguments that appear in the substs: that
+    /// "minimum" of all the arguments that appear in the args: that
     /// is, some region which is less than all the others. In the case
     /// of `Foo1<'a>`, that would be `'a` (it's the only choice, after
     /// all). Then we apply that as a least bound to the variables
@@ -350,7 +350,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // opaque type definition.
         let choice_regions: Lrc<Vec<ty::Region<'tcx>>> = Lrc::new(
             opaque_type_key
-                .substs
+                .args
                 .iter()
                 .enumerate()
                 .filter(|(i, _)| variances[*i] == ty::Variance::Invariant)
@@ -378,30 +378,22 @@ impl<'tcx> InferCtxt<'tcx> {
             DefiningAnchor::Bind(bind) => bind,
         };
 
-        let origin = self.opaque_type_origin_unchecked(def_id);
+        let origin = self.tcx.opaque_type_origin(def_id);
         let in_definition_scope = match origin {
             // Async `impl Trait`
             hir::OpaqueTyOrigin::AsyncFn(parent) => parent == parent_def_id,
             // Anonymous `impl Trait`
             hir::OpaqueTyOrigin::FnReturn(parent) => parent == parent_def_id,
             // Named `type Foo = impl Bar;`
-            hir::OpaqueTyOrigin::TyAlias => {
-                may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id)
+            hir::OpaqueTyOrigin::TyAlias { in_assoc_ty } => {
+                if in_assoc_ty {
+                    self.tcx.opaque_types_defined_by(parent_def_id).contains(&def_id)
+                } else {
+                    may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id)
+                }
             }
         };
         in_definition_scope.then_some(origin)
-    }
-
-    /// Returns the origin of the opaque type `def_id` even if we are not in its
-    /// defining scope.
-    #[instrument(skip(self), level = "trace", ret)]
-    fn opaque_type_origin_unchecked(&self, def_id: LocalDefId) -> OpaqueTyOrigin {
-        match self.tcx.hir().expect_item(def_id).kind {
-            hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => origin,
-            ref itemkind => {
-                bug!("weird opaque type: {:?}, {:#?}", def_id, itemkind)
-            }
-        }
     }
 }
 
@@ -453,41 +445,32 @@ where
         }
 
         match ty.kind() {
-            ty::Closure(_, ref substs) => {
+            ty::Closure(_, ref args) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
-                substs.as_closure().tupled_upvars_ty().visit_with(self);
-                substs.as_closure().sig_as_fn_ptr_ty().visit_with(self);
+                for upvar in args.as_closure().upvar_tys() {
+                    upvar.visit_with(self);
+                }
+                args.as_closure().sig_as_fn_ptr_ty().visit_with(self);
             }
 
-            ty::Generator(_, ref substs, _) => {
+            ty::Generator(_, ref args, _) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
-                substs.as_generator().tupled_upvars_ty().visit_with(self);
-                substs.as_generator().return_ty().visit_with(self);
-                substs.as_generator().yield_ty().visit_with(self);
-                substs.as_generator().resume_ty().visit_with(self);
+                for upvar in args.as_generator().upvar_tys() {
+                    upvar.visit_with(self);
+                }
+                args.as_generator().return_ty().visit_with(self);
+                args.as_generator().yield_ty().visit_with(self);
+                args.as_generator().resume_ty().visit_with(self);
             }
 
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, ref substs, .. }) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, ref args, .. }) => {
                 // Skip lifetime parameters that are not captures.
                 let variances = self.tcx.variances_of(*def_id);
 
-                for (v, s) in std::iter::zip(variances, substs.iter()) {
-                    if *v != ty::Variance::Bivariant {
-                        s.visit_with(self);
-                    }
-                }
-            }
-
-            ty::Alias(ty::Projection, proj)
-                if self.tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder =>
-            {
-                // Skip lifetime parameters that are not captures.
-                let variances = self.tcx.variances_of(proj.def_id);
-
-                for (v, s) in std::iter::zip(variances, proj.substs.iter()) {
+                for (v, s) in std::iter::zip(variances, args.iter()) {
                     if *v != ty::Variance::Bivariant {
                         s.visit_with(self);
                     }
@@ -525,81 +508,133 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
-        origin: hir::OpaqueTyOrigin,
         a_is_expected: bool,
     ) -> InferResult<'tcx, ()> {
-        let tcx = self.tcx;
-        let OpaqueTypeKey { def_id, substs } = opaque_type_key;
+        let mut obligations = Vec::new();
 
+        self.insert_hidden_type(
+            opaque_type_key,
+            &cause,
+            param_env,
+            hidden_ty,
+            a_is_expected,
+            &mut obligations,
+        )?;
+
+        self.add_item_bounds_for_hidden_type(
+            opaque_type_key.def_id.to_def_id(),
+            opaque_type_key.args,
+            cause,
+            param_env,
+            hidden_ty,
+            &mut obligations,
+        );
+
+        Ok(InferOk { value: (), obligations })
+    }
+
+    /// Insert a hidden type into the opaque type storage, equating it
+    /// with any previous entries if necessary.
+    ///
+    /// This **does not** add the item bounds of the opaque as nested
+    /// obligations. That is only necessary when normalizing the opaque
+    /// itself, not when getting the opaque type constraints from
+    /// somewhere else.
+    pub fn insert_hidden_type(
+        &self,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        a_is_expected: bool,
+        obligations: &mut Vec<PredicateObligation<'tcx>>,
+    ) -> Result<(), TypeError<'tcx>> {
         // Ideally, we'd get the span where *this specific `ty` came
         // from*, but right now we just use the span from the overall
         // value being folded. In simple cases like `-> impl Foo`,
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
         let span = cause.span;
+        if self.intercrate {
+            // During intercrate we do not define opaque types but instead always
+            // force ambiguity unless the hidden type is known to not implement
+            // our trait.
+            obligations.push(traits::Obligation::new(
+                self.tcx,
+                cause.clone(),
+                param_env,
+                ty::PredicateKind::Ambiguous,
+            ))
+        } else {
+            let prev = self
+                .inner
+                .borrow_mut()
+                .opaque_types()
+                .register(opaque_type_key, OpaqueHiddenType { ty: hidden_ty, span });
+            if let Some(prev) = prev {
+                obligations.extend(
+                    self.at(&cause, param_env)
+                        .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
+                        .obligations,
+                );
+            }
+        };
 
-        let mut obligations = vec![];
-        let prev = self.inner.borrow_mut().opaque_types().register(
-            OpaqueTypeKey { def_id, substs },
-            OpaqueHiddenType { ty: hidden_ty, span },
-            origin,
-        );
-        if let Some(prev) = prev {
-            obligations = self
-                .at(&cause, param_env)
-                .define_opaque_types(true)
-                .eq_exp(a_is_expected, prev, hidden_ty)?
-                .obligations;
-        }
+        Ok(())
+    }
 
-        let item_bounds = tcx.bound_explicit_item_bounds(def_id.to_def_id());
+    pub fn add_item_bounds_for_hidden_type(
+        &self,
+        def_id: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+        cause: ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        obligations: &mut Vec<PredicateObligation<'tcx>>,
+    ) {
+        let tcx = self.tcx;
+        let item_bounds = tcx.explicit_item_bounds(def_id);
 
-        for (predicate, _) in item_bounds.subst_iter_copied(tcx, substs) {
+        for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,
                 ty_op: |ty| match *ty.kind() {
                     // We can't normalize associated types from `rustc_infer`,
                     // but we can eagerly register inference variables for them.
                     // FIXME(RPITIT): Don't replace RPITITs with inference vars.
+                    // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
                     ty::Alias(ty::Projection, projection_ty)
                         if !projection_ty.has_escaping_bound_vars()
-                            && tcx.def_kind(projection_ty.def_id)
-                                != DefKind::ImplTraitPlaceholder =>
+                            && !tcx.is_impl_trait_in_trait(projection_ty.def_id)
+                            && !self.next_trait_solver() =>
                     {
                         self.infer_projection(
                             param_env,
                             projection_ty,
                             cause.clone(),
                             0,
-                            &mut obligations,
+                            obligations,
                         )
                     }
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
-                    ty::Alias(ty::Opaque, ty::AliasTy { def_id: def_id2, substs: substs2, .. })
-                        if def_id.to_def_id() == def_id2 && substs == substs2 =>
+                    ty::Alias(ty::Opaque, ty::AliasTy { def_id: def_id2, args: args2, .. })
+                        if def_id == def_id2 && args == args2 =>
                     {
                         hidden_ty
                     }
-                    // FIXME(RPITIT): This can go away when we move to associated types
-                    ty::Alias(
-                        ty::Projection,
-                        ty::AliasTy { def_id: def_id2, substs: substs2, .. },
-                    ) if def_id.to_def_id() == def_id2 && substs == substs2 => hidden_ty,
                     _ => ty,
                 },
                 lt_op: |lt| lt,
                 ct_op: |ct| ct,
             });
 
-            if let ty::PredicateKind::Clause(ty::Clause::Projection(projection)) =
-                predicate.kind().skip_binder()
-            {
+            if let ty::ClauseKind::Projection(projection) = predicate.kind().skip_binder() {
                 if projection.term.references_error() {
-                    // No point on adding these obligations since there's a type error involved.
-                    return Ok(InferOk { value: (), obligations: vec![] });
+                    // No point on adding any obligations since there's a type error involved.
+                    obligations.clear();
+                    return;
                 }
-                trace!("{:#?}", projection.term);
             }
             // Require that the predicate holds for the concrete type.
             debug!(?predicate);
@@ -610,7 +645,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 predicate,
             ));
         }
-        Ok(InferOk { value: (), obligations })
     }
 }
 

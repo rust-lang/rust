@@ -128,7 +128,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
             // No clue where this argument is coming from.
             return lint;
         }
-        if arg_macro.map_or(false, |id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
+        if arg_macro.is_some_and(|id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
             // A case of `panic!(format!(..))`.
             lint.note(fluent::lint_supports_fmt_note);
             if let Some((open, close, _)) = find_delimiters(cx, arg_span) {

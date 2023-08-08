@@ -1,8 +1,14 @@
-// run-rustfix
+//@run-rustfix
 
 #![feature(box_patterns)]
 #![warn(clippy::unnested_or_patterns)]
-#![allow(clippy::cognitive_complexity, clippy::match_ref_pats, clippy::upper_case_acronyms)]
+#![allow(
+    clippy::cognitive_complexity,
+    clippy::match_ref_pats,
+    clippy::upper_case_acronyms,
+    clippy::needless_if,
+    clippy::manual_range_patterns
+)]
 #![allow(unreachable_patterns, irrefutable_let_patterns, unused)]
 
 fn main() {

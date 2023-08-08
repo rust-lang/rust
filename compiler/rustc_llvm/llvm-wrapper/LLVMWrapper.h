@@ -92,10 +92,9 @@ enum LLVMRustAttribute {
   NoCfCheck = 35,
   ShadowCallStack = 36,
   AllocSize = 37,
-#if LLVM_VERSION_GE(15, 0)
   AllocatedPointer = 38,
   AllocAlign = 39,
-#endif
+  SanitizeSafeStack = 40,
 };
 
 typedef struct OpaqueRustString *RustStringRef;

@@ -939,7 +939,7 @@ macro_rules! uint_impl {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_shl`.
             // Any legal shift amount is losslessly representable in the self type.
-            unsafe { intrinsics::unchecked_shl(self, rhs.try_into().ok().unwrap_unchecked()) }
+            unsafe { intrinsics::unchecked_shl(self, conv_rhs_for_unchecked_shift!($SelfT, rhs)) }
         }
 
         /// Checked shift right. Computes `self >> rhs`, returning `None`
@@ -987,7 +987,7 @@ macro_rules! uint_impl {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_shr`.
             // Any legal shift amount is losslessly representable in the self type.
-            unsafe { intrinsics::unchecked_shr(self, rhs.try_into().ok().unwrap_unchecked()) }
+            unsafe { intrinsics::unchecked_shr(self, conv_rhs_for_unchecked_shift!($SelfT, rhs)) }
         }
 
         /// Checked exponentiation. Computes `self.pow(exp)`, returning `None` if
@@ -1363,12 +1363,11 @@ macro_rules! uint_impl {
         ///
         /// Basic usage:
         ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `i8` is used here.
-        ///
         /// ```
-        /// assert_eq!(100i8.wrapping_neg(), -100);
-        /// assert_eq!((-128i8).wrapping_neg(), -128);
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".wrapping_neg(), 0);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.wrapping_neg(), 1);")]
+        #[doc = concat!("assert_eq!(13_", stringify!($SelfT), ".wrapping_neg(), (!13) + 1);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_neg(), !(42 - 1));")]
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]

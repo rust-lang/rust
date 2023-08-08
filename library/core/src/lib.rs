@@ -95,22 +95,25 @@
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
-#![cfg_attr(not(bootstrap), warn(multiple_supertrait_upcastable))]
+#![warn(multiple_supertrait_upcastable)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 //
 // Library features:
-#![feature(const_align_offset)]
+// tidy-alphabetical-start
+#![feature(char_indices_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]
+#![feature(const_align_offset)]
 #![feature(const_alloc_layout)]
 #![feature(const_arguments_as_str)]
+#![feature(const_array_from_ref)]
 #![feature(const_array_into_iter_constructors)]
+#![feature(const_assume)]
 #![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
 #![feature(const_caller_location)]
 #![feature(const_cell_into_inner)]
 #![feature(const_char_from_u32_unchecked)]
-#![feature(const_clone)]
-#![feature(const_cmp)]
 #![feature(const_discriminant)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
@@ -119,7 +122,6 @@
 #![feature(const_fmt_arguments_new)]
 #![feature(const_hash)]
 #![feature(const_heap)]
-#![feature(const_convert)]
 #![feature(const_index_range_slice_index)]
 #![feature(const_inherent_unchecked_arith)]
 #![feature(const_int_unchecked_arith)]
@@ -127,43 +129,45 @@
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
 #![feature(const_likely)]
-#![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_maybe_uninit_assume_init)]
+#![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_nonnull_new)]
-#![feature(const_num_from_num)]
-#![feature(const_ops)]
+#![feature(const_num_midpoint)]
 #![feature(const_option)]
 #![feature(const_option_ext)]
 #![feature(const_pin)]
 #![feature(const_pointer_byte_offsets)]
 #![feature(const_pointer_is_aligned)]
-#![feature(const_ptr_sub_ptr)]
-#![feature(const_replace)]
-#![feature(const_result_drop)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_is_null)]
-#![feature(const_ptr_read)]
+#![feature(const_ptr_sub_ptr)]
 #![feature(const_ptr_write)]
 #![feature(const_raw_ptr_comparison)]
+#![feature(const_replace)]
 #![feature(const_size_of_val)]
 #![feature(const_size_of_val_raw)]
 #![feature(const_slice_from_raw_parts_mut)]
+#![feature(const_slice_from_ref)]
+#![feature(const_slice_index)]
+#![feature(const_slice_is_ascii)]
 #![feature(const_slice_ptr_len)]
 #![feature(const_slice_split_at_mut)]
 #![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_swap)]
-#![feature(const_trait_impl)]
+#![feature(const_transmute_copy)]
 #![feature(const_try)]
 #![feature(const_type_id)]
 #![feature(const_type_name)]
-#![feature(const_default_impls)]
 #![feature(const_unicode_case_lookup)]
 #![feature(const_unsafecell_get_mut)]
 #![feature(const_waker)]
 #![feature(core_panic)]
-#![feature(char_indices_offset)]
 #![feature(duration_consts_float)]
+#![feature(internal_impls_macro)]
+#![feature(ip)]
+#![feature(ip_bits)]
+#![feature(is_ascii_octdigit)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
@@ -171,25 +175,21 @@
 #![feature(slice_ptr_get)]
 #![feature(slice_split_at_unchecked)]
 #![feature(str_internals)]
-#![feature(str_split_remainder)]
 #![feature(str_split_inclusive_remainder)]
+#![feature(str_split_remainder)]
 #![feature(strict_provenance)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]
 #![feature(variant_count)]
-#![feature(const_array_from_ref)]
-#![feature(const_slice_from_ref)]
-#![feature(const_slice_index)]
-#![feature(const_is_char_boundary)]
-#![feature(const_cstr_methods)]
-#![feature(ip)]
-#![feature(is_ascii_octdigit)]
+// tidy-alphabetical-end
 //
 // Language features:
+// tidy-alphabetical-start
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
+#![feature(asm_const)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
 #![feature(c_unwind)]
@@ -202,24 +202,26 @@
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_refs_to_cell)]
+#![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
-#![feature(derive_const)]
 #![feature(doc_cfg)]
-#![feature(doc_notable_trait)]
-#![feature(rustdoc_internals)]
-#![feature(exhaustive_patterns)]
 #![feature(doc_cfg_hide)]
+#![feature(doc_notable_trait)]
+#![feature(exhaustive_patterns)]
 #![feature(extern_types)]
 #![feature(fundamental)]
+#![feature(generic_arg_infer)]
 #![feature(if_let_guard)]
 #![feature(inline_const)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
+#![feature(let_chains)]
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
+#![feature(multiple_supertrait_upcastable)]
 #![feature(must_not_suspend)]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -230,6 +232,7 @@
 #![feature(repr_simd)]
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
+#![feature(rustdoc_internals)]
 #![feature(simd_ffi)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
@@ -239,11 +242,10 @@
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
-#![feature(asm_const)]
-#![feature(const_transmute_copy)]
-#![cfg_attr(not(bootstrap), feature(multiple_supertrait_upcastable))]
+// tidy-alphabetical-end
 //
 // Target features:
+// tidy-alphabetical-start
 #![feature(arm_target_feature)]
 #![feature(avx512_target_feature)]
 #![feature(hexagon_target_feature)]
@@ -254,7 +256,7 @@
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
-#![cfg_attr(bootstrap, feature(cmpxchg16b_target_feature))]
+// tidy-alphabetical-end
 
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]
@@ -379,6 +381,7 @@ pub mod alloc;
 
 // note: does not need to be public
 mod bool;
+mod escape;
 mod tuple;
 mod unit;
 
@@ -397,7 +400,8 @@ pub mod primitive;
     missing_debug_implementations,
     dead_code,
     unused_imports,
-    unsafe_op_in_unsafe_fn
+    unsafe_op_in_unsafe_fn,
+    ambiguous_glob_reexports
 )]
 #[allow(rustdoc::bare_urls)]
 // FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
@@ -416,7 +420,7 @@ pub mod arch;
 // set up in such a way that directly pulling it here works such that the
 // crate uses this crate as its core.
 #[path = "../../portable-simd/crates/core_simd/src/mod.rs"]
-#[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn, unused_unsafe)]
+#[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn)]
 #[allow(rustdoc::bare_urls)]
 #[unstable(feature = "portable_simd", issue = "86656")]
 mod core_simd;

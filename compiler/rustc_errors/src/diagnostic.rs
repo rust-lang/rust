@@ -10,7 +10,7 @@ use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
-use std::fmt;
+use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
 use std::panic::Location;
 
@@ -33,7 +33,7 @@ pub type DiagnosticArgName<'source> = Cow<'source, str>;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum DiagnosticArgValue<'source> {
     Str(Cow<'source, str>),
-    Number(usize),
+    Number(i128),
     StrListSepByAnd(Vec<Cow<'source, str>>),
 }
 
@@ -352,14 +352,9 @@ impl Diagnostic {
 
     /// Labels all the given spans with the provided label.
     /// See [`Self::span_label()`] for more information.
-    pub fn span_labels(
-        &mut self,
-        spans: impl IntoIterator<Item = Span>,
-        label: impl AsRef<str>,
-    ) -> &mut Self {
-        let label = label.as_ref();
+    pub fn span_labels(&mut self, spans: impl IntoIterator<Item = Span>, label: &str) -> &mut Self {
         for span in spans {
-            self.span_label(span, label);
+            self.span_label(span, label.to_string());
         }
         self
     }
@@ -394,17 +389,18 @@ impl Diagnostic {
         expected: DiagnosticStyledString,
         found: DiagnosticStyledString,
     ) -> &mut Self {
-        let mut msg: Vec<_> = vec![("required when trying to coerce from type `", Style::NoStyle)];
+        let mut msg: Vec<_> =
+            vec![(Cow::from("required when trying to coerce from type `"), Style::NoStyle)];
         msg.extend(expected.0.iter().map(|x| match *x {
-            StringPart::Normal(ref s) => (s.as_str(), Style::NoStyle),
-            StringPart::Highlighted(ref s) => (s.as_str(), Style::Highlight),
+            StringPart::Normal(ref s) => (Cow::from(s.clone()), Style::NoStyle),
+            StringPart::Highlighted(ref s) => (Cow::from(s.clone()), Style::Highlight),
         }));
-        msg.push(("` to type '", Style::NoStyle));
+        msg.push((Cow::from("` to type '"), Style::NoStyle));
         msg.extend(found.0.iter().map(|x| match *x {
-            StringPart::Normal(ref s) => (s.as_str(), Style::NoStyle),
-            StringPart::Highlighted(ref s) => (s.as_str(), Style::Highlight),
+            StringPart::Normal(ref s) => (Cow::from(s.clone()), Style::NoStyle),
+            StringPart::Highlighted(ref s) => (Cow::from(s.clone()), Style::Highlight),
         }));
-        msg.push(("`", Style::NoStyle));
+        msg.push((Cow::from("`"), Style::NoStyle));
 
         // For now, just attach these as notes
         self.highlighted_note(msg);
@@ -424,13 +420,13 @@ impl Diagnostic {
         let expected_label = if expected_label.is_empty() {
             "expected".to_string()
         } else {
-            format!("expected {}", expected_label)
+            format!("expected {expected_label}")
         };
         let found_label = found_label.to_string();
         let found_label = if found_label.is_empty() {
             "found".to_string()
         } else {
-            format!("found {}", found_label)
+            format!("found {found_label}")
         };
         let (found_padding, expected_padding) = if expected_label.len() > found_label.len() {
             (expected_label.len() - found_label.len(), 0)
@@ -443,13 +439,13 @@ impl Diagnostic {
             StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
             StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
         }));
-        msg.push((format!("`{}\n", expected_extra), Style::NoStyle));
+        msg.push((format!("`{expected_extra}\n"), Style::NoStyle));
         msg.push((format!("{}{} `", " ".repeat(found_padding), found_label), Style::NoStyle));
         msg.extend(found.0.iter().map(|x| match *x {
             StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
             StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
         }));
-        msg.push((format!("`{}", found_extra), Style::NoStyle));
+        msg.push((format!("`{found_extra}"), Style::NoStyle));
 
         // For now, just attach these as notes.
         self.highlighted_note(msg);
@@ -458,7 +454,7 @@ impl Diagnostic {
 
     pub fn note_trait_signature(&mut self, name: Symbol, signature: String) -> &mut Self {
         self.highlighted_note(vec![
-            (format!("`{}` from trait: `", name), Style::NoStyle),
+            (format!("`{name}` from trait: `"), Style::NoStyle),
             (signature, Style::Highlight),
             ("`".to_string(), Style::NoStyle),
         ]);
@@ -880,6 +876,7 @@ impl Diagnostic {
     ///
     /// This is intended to be used for suggestions that are *very* obvious in what the changes
     /// need to be from the message, but we still want other tools to be able to apply them.
+    #[rustc_lint_diagnostics]
     pub fn tool_only_span_suggestion(
         &mut self,
         sp: Span,
@@ -956,7 +953,7 @@ impl Diagnostic {
     // Exact iteration order of diagnostic arguments shouldn't make a difference to output because
     // they're only used in interpolation.
     #[allow(rustc::potential_query_instability)]
-    pub fn args<'a>(&'a self) -> impl Iterator<Item = DiagnosticArg<'a, 'static>> {
+    pub fn args(&self) -> impl Iterator<Item = DiagnosticArg<'_, 'static>> {
         self.args.iter()
     }
 

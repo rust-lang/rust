@@ -432,12 +432,18 @@ impl CodeBlockAttribute {
 
 /// Block that is formatted as an item.
 ///
-/// An item starts with either a star `*` a dash `-` or a greater-than `>`.
+/// An item starts with either a star `*`, a dash `-`, a greater-than `>`, a plus '+', or a number
+/// `12.` or `34)` (with at most 2 digits). An item represents CommonMark's ["list
+/// items"](https://spec.commonmark.org/0.30/#list-items) and/or ["block
+/// quotes"](https://spec.commonmark.org/0.30/#block-quotes), but note that only a subset of
+/// CommonMark is recognized - see the doc comment of [`ItemizedBlock::get_marker_length`] for more
+/// details.
+///
 /// Different level of indentation are handled by shrinking the shape accordingly.
 struct ItemizedBlock {
     /// the lines that are identified as part of an itemized block
     lines: Vec<String>,
-    /// the number of characters (typically whitespaces) up to the item sigil
+    /// the number of characters (typically whitespaces) up to the item marker
     indent: usize,
     /// the string that marks the start of an item
     opener: String,
@@ -446,36 +452,70 @@ struct ItemizedBlock {
 }
 
 impl ItemizedBlock {
-    /// Returns `true` if the line is formatted as an item
-    fn is_itemized_line(line: &str) -> bool {
-        let trimmed = line.trim_start();
-        trimmed.starts_with("* ") || trimmed.starts_with("- ") || trimmed.starts_with("> ")
+    /// Checks whether the `trimmed` line includes an item marker. Returns `None` if there is no
+    /// marker. Returns the length of the marker (in bytes) if one is present. Note that the length
+    /// includes the whitespace that follows the marker, for example the marker in `"* list item"`
+    /// has the length of 2.
+    ///
+    /// This function recognizes item markers that correspond to CommonMark's
+    /// ["bullet list marker"](https://spec.commonmark.org/0.30/#bullet-list-marker),
+    /// ["block quote marker"](https://spec.commonmark.org/0.30/#block-quote-marker), and/or
+    /// ["ordered list marker"](https://spec.commonmark.org/0.30/#ordered-list-marker).
+    ///
+    /// Compared to CommonMark specification, the number of digits that are allowed in an ["ordered
+    /// list marker"](https://spec.commonmark.org/0.30/#ordered-list-marker) is more limited (to at
+    /// most 2 digits). Limiting the length of the marker helps reduce the risk of recognizing
+    /// arbitrary numbers as markers. See also
+    /// <https://talk.commonmark.org/t/blank-lines-before-lists-revisited/1990> which gives the
+    /// following example where a number (i.e. "1868") doesn't signify an ordered list:
+    /// ```md
+    /// The Captain died in
+    /// 1868. He wes buried in...
+    /// ```
+    fn get_marker_length(trimmed: &str) -> Option<usize> {
+        // https://spec.commonmark.org/0.30/#bullet-list-marker or
+        // https://spec.commonmark.org/0.30/#block-quote-marker
+        let itemized_start = ["* ", "- ", "> ", "+ "];
+        if itemized_start.iter().any(|s| trimmed.starts_with(s)) {
+            return Some(2); // All items in `itemized_start` have length 2.
+        }
+
+        // https://spec.commonmark.org/0.30/#ordered-list-marker, where at most 2 digits are
+        // allowed.
+        for suffix in [". ", ") "] {
+            if let Some((prefix, _)) = trimmed.split_once(suffix) {
+                if prefix.len() <= 2 && prefix.chars().all(|c| char::is_ascii_digit(&c)) {
+                    return Some(prefix.len() + suffix.len());
+                }
+            }
+        }
+
+        None // No markers found.
     }
 
-    /// Creates a new ItemizedBlock described with the given line.
-    /// The `is_itemized_line` needs to be called first.
-    fn new(line: &str) -> ItemizedBlock {
-        let space_to_sigil = line.chars().take_while(|c| c.is_whitespace()).count();
-        // +2 = '* ', which will add the appropriate amount of whitespace to keep itemized
-        // content formatted correctly.
-        let mut indent = space_to_sigil + 2;
+    /// Creates a new `ItemizedBlock` described with the given `line`.
+    /// Returns `None` if `line` doesn't start an item.
+    fn new(line: &str) -> Option<ItemizedBlock> {
+        let marker_length = ItemizedBlock::get_marker_length(line.trim_start())?;
+        let space_to_marker = line.chars().take_while(|c| c.is_whitespace()).count();
+        let mut indent = space_to_marker + marker_length;
         let mut line_start = " ".repeat(indent);
 
         // Markdown blockquote start with a "> "
         if line.trim_start().starts_with(">") {
             // remove the original +2 indent because there might be multiple nested block quotes
             // and it's easier to reason about the final indent by just taking the length
-            // of th new line_start. We update the indent because it effects the max width
+            // of the new line_start. We update the indent because it effects the max width
             // of each formatted line.
             line_start = itemized_block_quote_start(line, line_start, 2);
             indent = line_start.len();
         }
-        ItemizedBlock {
+        Some(ItemizedBlock {
             lines: vec![line[indent..].to_string()],
             indent,
             opener: line[..indent].to_string(),
             line_start,
-        }
+        })
     }
 
     /// Returns a `StringFormat` used for formatting the content of an item.
@@ -494,7 +534,7 @@ impl ItemizedBlock {
     /// Returns `true` if the line is part of the current itemized block.
     /// If it is, then it is added to the internal lines list.
     fn add_line(&mut self, line: &str) -> bool {
-        if !ItemizedBlock::is_itemized_line(line)
+        if ItemizedBlock::get_marker_length(line.trim_start()).is_none()
             && self.indent <= line.chars().take_while(|c| c.is_whitespace()).count()
         {
             self.lines.push(line.to_string());
@@ -726,7 +766,7 @@ impl<'a> CommentRewrite<'a> {
                 let code_block = match self.code_block_attr.as_ref().unwrap() {
                     CodeBlockAttribute::Rust
                         if self.fmt.config.format_code_in_doc_comments()
-                            && !self.code_block_buffer.is_empty() =>
+                            && !self.code_block_buffer.trim().is_empty() =>
                     {
                         let mut config = self.fmt.config.clone();
                         config.set().wrap_comments(false);
@@ -765,10 +805,11 @@ impl<'a> CommentRewrite<'a> {
         self.item_block = None;
         if let Some(stripped) = line.strip_prefix("```") {
             self.code_block_attr = Some(CodeBlockAttribute::new(stripped))
-        } else if self.fmt.config.wrap_comments() && ItemizedBlock::is_itemized_line(line) {
-            let ib = ItemizedBlock::new(line);
-            self.item_block = Some(ib);
-            return false;
+        } else if self.fmt.config.wrap_comments() {
+            if let Some(ib) = ItemizedBlock::new(line) {
+                self.item_block = Some(ib);
+                return false;
+            }
         }
 
         if self.result == self.opener {
@@ -801,10 +842,13 @@ impl<'a> CommentRewrite<'a> {
         // 2) The comment is not the start of a markdown header doc comment
         // 3) The comment width exceeds the shape's width
         // 4) No URLS were found in the comment
+        // If this changes, the documentation in ../Configurations.md#wrap_comments
+        // should be changed accordingly.
         let should_wrap_comment = self.fmt.config.wrap_comments()
             && !is_markdown_header_doc_comment
             && unicode_str_width(line) > self.fmt.shape.width
-            && !has_url(line);
+            && !has_url(line)
+            && !is_table_item(line);
 
         if should_wrap_comment {
             match rewrite_string(line, &self.fmt, self.max_width) {
@@ -937,6 +981,18 @@ fn has_url(s: &str) -> bool {
         || s.contains("ftp://")
         || s.contains("file://")
         || REFERENCE_LINK_URL.is_match(s)
+}
+
+/// Returns true if the given string may be part of a Markdown table.
+fn is_table_item(mut s: &str) -> bool {
+    // This function may return false positive, but should get its job done in most cases (i.e.
+    // markdown tables with two column delimiters).
+    s = s.trim_start();
+    return s.starts_with('|')
+        && match s.rfind('|') {
+            Some(0) | None => false,
+            _ => true,
+        };
 }
 
 /// Given the span, rewrite the missing comment inside it if available.
@@ -2003,5 +2059,97 @@ fn main() {
 }
 "#;
         assert_eq!(s, filter_normal_code(s_with_comment));
+    }
+
+    #[test]
+    fn test_itemized_block_first_line_handling() {
+        fn run_test(
+            test_input: &str,
+            expected_line: &str,
+            expected_indent: usize,
+            expected_opener: &str,
+            expected_line_start: &str,
+        ) {
+            let block = ItemizedBlock::new(test_input).unwrap();
+            assert_eq!(1, block.lines.len(), "test_input: {:?}", test_input);
+            assert_eq!(
+                expected_line, &block.lines[0],
+                "test_input: {:?}",
+                test_input
+            );
+            assert_eq!(
+                expected_indent, block.indent,
+                "test_input: {:?}",
+                test_input
+            );
+            assert_eq!(
+                expected_opener, &block.opener,
+                "test_input: {:?}",
+                test_input
+            );
+            assert_eq!(
+                expected_line_start, &block.line_start,
+                "test_input: {:?}",
+                test_input
+            );
+        }
+
+        run_test("- foo", "foo", 2, "- ", "  ");
+        run_test("* foo", "foo", 2, "* ", "  ");
+        run_test("> foo", "foo", 2, "> ", "> ");
+
+        run_test("1. foo", "foo", 3, "1. ", "   ");
+        run_test("12. foo", "foo", 4, "12. ", "    ");
+        run_test("1) foo", "foo", 3, "1) ", "   ");
+        run_test("12) foo", "foo", 4, "12) ", "    ");
+
+        run_test("    - foo", "foo", 6, "    - ", "      ");
+
+        // https://spec.commonmark.org/0.30 says: "A start number may begin with 0s":
+        run_test("0. foo", "foo", 3, "0. ", "   ");
+        run_test("01. foo", "foo", 4, "01. ", "    ");
+    }
+
+    #[test]
+    fn test_itemized_block_nonobvious_markers_are_rejected() {
+        let test_inputs = vec![
+            // Non-numeric item markers (e.g. `a.` or `iv.`) are not allowed by
+            // https://spec.commonmark.org/0.30/#ordered-list-marker. We also note that allowing
+            // them would risk misidentifying regular words as item markers. See also the
+            // discussion in https://talk.commonmark.org/t/blank-lines-before-lists-revisited/1990
+            "word.  rest of the paragraph.",
+            "a.  maybe this is a list item?  maybe not?",
+            "iv.  maybe this is a list item?  maybe not?",
+            // Numbers with 3 or more digits are not recognized as item markers, to avoid
+            // formatting the following example as a list:
+            //
+            // ```
+            // The Captain died in
+            // 1868. He was buried in...
+            // ```
+            "123.  only 2-digit numbers are recognized as item markers.",
+            // Parens:
+            "123)  giving some coverage to parens as well.",
+            "a)  giving some coverage to parens as well.",
+            // https://spec.commonmark.org/0.30 says that "at least one space or tab is needed
+            // between the list marker and any following content":
+            "1.Not a list item.",
+            "1.2.3. Not a list item.",
+            "1)Not a list item.",
+            "-Not a list item.",
+            "+Not a list item.",
+            "+1 not a list item.",
+            // https://spec.commonmark.org/0.30 says: "A start number may not be negative":
+            "-1. Not a list item.",
+            "-1 Not a list item.",
+        ];
+        for line in test_inputs.iter() {
+            let maybe_block = ItemizedBlock::new(line);
+            assert!(
+                maybe_block.is_none(),
+                "The following line shouldn't be classified as a list item: {}",
+                line
+            );
+        }
     }
 }

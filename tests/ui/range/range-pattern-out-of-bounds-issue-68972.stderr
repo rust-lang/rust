@@ -5,22 +5,10 @@ LL |         251..257 => {}
    |              ^^^ this value doesn't fit in `u8` whose maximum value is `255`
 
 error: literal out of range for `u8`
-  --> $DIR/range-pattern-out-of-bounds-issue-68972.rs:8:15
+  --> $DIR/range-pattern-out-of-bounds-issue-68972.rs:7:15
    |
 LL |         251..=256 => {}
    |               ^^^ this value doesn't fit in `u8` whose maximum value is `255`
 
-error: literal out of range for `u8`
-  --> $DIR/range-pattern-out-of-bounds-issue-68972.rs:5:14
-   |
-LL |         251..257 => {}
-   |              ^^^ this value doesn't fit in `u8` whose maximum value is `255`
-
-error: literal out of range for `u8`
-  --> $DIR/range-pattern-out-of-bounds-issue-68972.rs:8:15
-   |
-LL |         251..=256 => {}
-   |               ^^^ this value doesn't fit in `u8` whose maximum value is `255`
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 

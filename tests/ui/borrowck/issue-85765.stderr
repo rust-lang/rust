@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `*rofl` as mutable, as it is behind a `&` reference
   --> $DIR/issue-85765.rs:5:5
    |
 LL |     rofl.push(Vec::new());
-   |     ^^^^^^^^^^^^^^^^^^^^^ `rofl` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^^^^ `rofl` is a `&` reference, so the data it refers to cannot be borrowed as mutable
    |
 help: consider changing this binding's type
    |
@@ -18,7 +18,7 @@ LL |     *r = 0;
 help: consider changing this to be a mutable reference
    |
 LL |     let r = &mut mutvar;
-   |             ~~~~~~~~~~~
+   |              +++
 
 error[E0594]: cannot assign to `*x`, which is behind a `&` reference
   --> $DIR/issue-85765.rs:19:5

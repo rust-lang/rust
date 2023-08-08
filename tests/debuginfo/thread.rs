@@ -1,4 +1,4 @@
-// Testing the the display of JoinHandle and Thread in cdb.
+// Testing the display of JoinHandle and Thread in cdb.
 
 // cdb-only
 // min-cdb-version: 10.0.18317.1001
@@ -14,7 +14,7 @@
 //
 // cdb-command:dx t,d
 // cdb-check:t,d              : [...] [Type: std::thread::Thread *]
-// cdb-check:[...] inner [...][Type: core::pin::Pin<alloc::sync::Arc<std::thread::Inner> >]
+// cdb-check:[...] inner [...][Type: core::pin::Pin<alloc::sync::Arc<std::thread::Inner,alloc::alloc::Global> >]
 
 use std::thread;
 

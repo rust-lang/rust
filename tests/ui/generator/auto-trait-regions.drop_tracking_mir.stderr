@@ -9,7 +9,11 @@ LL |         let a = A(&mut true, &mut true, No);
 LL |         assert_foo(a);
    |                    - borrow later used here
    |
-   = note: consider using a `let` binding to create a longer lived value
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~         let binding = true;
+LL ~         let a = A(&mut binding, &mut true, No);
+   |
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/auto-trait-regions.rs:48:35
@@ -22,7 +26,11 @@ LL |         let a = A(&mut true, &mut true, No);
 LL |         assert_foo(a);
    |                    - borrow later used here
    |
-   = note: consider using a `let` binding to create a longer lived value
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~         let binding = true;
+LL ~         let a = A(&mut true, &mut binding, No);
+   |
 
 error: implementation of `Foo` is not general enough
   --> $DIR/auto-trait-regions.rs:34:5

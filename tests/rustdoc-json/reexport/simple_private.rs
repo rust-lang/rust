@@ -8,9 +8,9 @@ mod inner {
     pub struct Public;
 }
 
-// @is "$.index[*][?(@.kind=='import')].inner.name" \"Public\"
-// @is "$.index[*][?(@.kind=='import')].inner.id" $pub_id
-// @set use_id = "$.index[*][?(@.kind=='import')].id"
+// @is "$.index[*][?(@.inner.import)].inner.import.name" \"Public\"
+// @is "$.index[*][?(@.inner.import)].inner.import.id" $pub_id
+// @set use_id = "$.index[*][?(@.inner.import)].id"
 pub use inner::Public;
 
-// @ismany "$.index[*][?(@.name=='simple_private')].inner.items[*]" $use_id
+// @ismany "$.index[*][?(@.name=='simple_private')].inner.module.items[*]" $use_id

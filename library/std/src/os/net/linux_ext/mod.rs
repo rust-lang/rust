@@ -2,7 +2,7 @@
 
 #![doc(cfg(any(target_os = "linux", target_os = "android")))]
 
-#[unstable(feature = "unix_socket_abstract", issue = "85410")]
+#[stable(feature = "unix_socket_abstract", since = "1.70.0")]
 pub(crate) mod addr;
 
 #[unstable(feature = "tcp_quickack", issue = "96256")]

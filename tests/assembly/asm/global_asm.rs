@@ -25,9 +25,9 @@ global_asm!("movl ${}, %ecx", const 5, options(att_syntax));
 global_asm!("call {}", sym my_func);
 // CHECK: lea rax, [rip + MY_STATIC]
 global_asm!("lea rax, [rip + {}]", sym MY_STATIC);
-// CHECK: call _RNvCsiubXh4Yz005_10global_asm6foobar
+// CHECK: call _RNvCsddMtV7nAi4C_10global_asm6foobar
 global_asm!("call {}", sym foobar);
-// CHECK: _RNvCsiubXh4Yz005_10global_asm6foobar:
+// CHECK: _RNvCsddMtV7nAi4C_10global_asm6foobar:
 fn foobar() {
     loop {}
 }

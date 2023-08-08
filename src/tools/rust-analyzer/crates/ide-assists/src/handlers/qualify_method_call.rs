@@ -507,7 +507,7 @@ fn main() {
     }
 
     #[test]
-    fn struct_method_over_stuct_instance() {
+    fn struct_method_over_struct_instance() {
         check_assist_not_applicable(
             qualify_method_call,
             r#"
@@ -525,7 +525,7 @@ fn main() {
     }
 
     #[test]
-    fn trait_method_over_stuct_instance() {
+    fn trait_method_over_struct_instance() {
         check_assist_not_applicable(
             qualify_method_call,
             r#"

@@ -82,8 +82,8 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
         ty::Foreign(_) => {
             // Assert that pointers to foreign types really are thin:
             debug_assert_eq!(
-                cx.size_of(cx.tcx.mk_imm_ptr(pointee_tail_ty)),
-                cx.size_of(cx.tcx.mk_imm_ptr(cx.tcx.types.u8))
+                cx.size_of(Ty::new_imm_ptr(cx.tcx, pointee_tail_ty)),
+                cx.size_of(Ty::new_imm_ptr(cx.tcx, cx.tcx.types.u8))
             );
             None
         }
@@ -91,8 +91,7 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
             // For all other pointee types we should already have returned None
             // at the beginning of the function.
             panic!(
-                "fat_pointer_kind() - Encountered unexpected `pointee_tail_ty`: {:?}",
-                pointee_tail_ty
+                "fat_pointer_kind() - Encountered unexpected `pointee_tail_ty`: {pointee_tail_ty:?}"
             )
         }
     }

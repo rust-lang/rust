@@ -1,51 +1,63 @@
 error: non-binding `let` without a type annotation
-  --> $DIR/let_underscore_untyped.rs:32:5
+  --> $DIR/let_underscore_untyped.rs:51:5
    |
 LL |     let _ = a();
    |     ^^^^^^^^^^^^
    |
-   = help: consider adding a type annotation or removing the `let` keyword
+help: consider adding a type annotation
+  --> $DIR/let_underscore_untyped.rs:51:10
+   |
+LL |     let _ = a();
+   |          ^
    = note: `-D clippy::let-underscore-untyped` implied by `-D warnings`
 
 error: non-binding `let` without a type annotation
-  --> $DIR/let_underscore_untyped.rs:33:5
+  --> $DIR/let_underscore_untyped.rs:52:5
    |
 LL |     let _ = b(1);
    |     ^^^^^^^^^^^^^
    |
-   = help: consider adding a type annotation or removing the `let` keyword
+help: consider adding a type annotation
+  --> $DIR/let_underscore_untyped.rs:52:10
+   |
+LL |     let _ = b(1);
+   |          ^
 
 error: non-binding `let` without a type annotation
-  --> $DIR/let_underscore_untyped.rs:34:5
-   |
-LL |     let _ = c();
-   |     ^^^^^^^^^^^^
-   |
-   = help: consider adding a type annotation or removing the `let` keyword
-
-error: non-binding `let` without a type annotation
-  --> $DIR/let_underscore_untyped.rs:35:5
+  --> $DIR/let_underscore_untyped.rs:54:5
    |
 LL |     let _ = d(&1);
    |     ^^^^^^^^^^^^^^
    |
-   = help: consider adding a type annotation or removing the `let` keyword
+help: consider adding a type annotation
+  --> $DIR/let_underscore_untyped.rs:54:10
+   |
+LL |     let _ = d(&1);
+   |          ^
 
 error: non-binding `let` without a type annotation
-  --> $DIR/let_underscore_untyped.rs:36:5
+  --> $DIR/let_underscore_untyped.rs:55:5
    |
 LL |     let _ = e();
    |     ^^^^^^^^^^^^
    |
-   = help: consider adding a type annotation or removing the `let` keyword
+help: consider adding a type annotation
+  --> $DIR/let_underscore_untyped.rs:55:10
+   |
+LL |     let _ = e();
+   |          ^
 
 error: non-binding `let` without a type annotation
-  --> $DIR/let_underscore_untyped.rs:37:5
+  --> $DIR/let_underscore_untyped.rs:56:5
    |
 LL |     let _ = f();
    |     ^^^^^^^^^^^^
    |
-   = help: consider adding a type annotation or removing the `let` keyword
+help: consider adding a type annotation
+  --> $DIR/let_underscore_untyped.rs:56:10
+   |
+LL |     let _ = f();
+   |          ^
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 

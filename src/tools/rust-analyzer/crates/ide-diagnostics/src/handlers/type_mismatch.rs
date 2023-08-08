@@ -1,34 +1,49 @@
-use hir::{db::AstDatabase, HirDisplay, Type};
+use either::Either;
+use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, InFile, Type};
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
 use syntax::{
     ast::{self, BlockExpr, ExprStmt},
-    AstNode,
+    AstNode, AstPtr,
 };
 use text_edit::TextEdit;
 
-use crate::{adjusted_display_range, fix, Assist, Diagnostic, DiagnosticsContext};
+use crate::{adjusted_display_range, fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: type-mismatch
 //
-// This diagnostic is triggered when the type of an expression does not match
+// This diagnostic is triggered when the type of an expression or pattern does not match
 // the expected type.
 pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Diagnostic {
-    let display_range = adjusted_display_range::<ast::BlockExpr>(
-        ctx,
-        d.expr.clone().map(|it| it.into()),
-        &|block| {
-            let r_curly_range = block.stmt_list()?.r_curly_token()?.text_range();
-            cov_mark::hit!(type_mismatch_on_block);
-            Some(r_curly_range)
-        },
-    );
+    let display_range = match &d.expr_or_pat {
+        Either::Left(expr) => {
+            adjusted_display_range::<ast::Expr>(ctx, expr.clone().map(|it| it.into()), &|expr| {
+                let salient_token_range = match expr {
+                    ast::Expr::IfExpr(it) => it.if_token()?.text_range(),
+                    ast::Expr::LoopExpr(it) => it.loop_token()?.text_range(),
+                    ast::Expr::ForExpr(it) => it.for_token()?.text_range(),
+                    ast::Expr::WhileExpr(it) => it.while_token()?.text_range(),
+                    ast::Expr::BlockExpr(it) => it.stmt_list()?.r_curly_token()?.text_range(),
+                    ast::Expr::MatchExpr(it) => it.match_token()?.text_range(),
+                    ast::Expr::MethodCallExpr(it) => it.name_ref()?.ident_token()?.text_range(),
+                    ast::Expr::FieldExpr(it) => it.name_ref()?.ident_token()?.text_range(),
+                    ast::Expr::AwaitExpr(it) => it.await_token()?.text_range(),
+                    _ => return None,
+                };
 
+                cov_mark::hit!(type_mismatch_range_adjustment);
+                Some(salient_token_range)
+            })
+        }
+        Either::Right(pat) => {
+            ctx.sema.diagnostics_display_range(pat.clone().map(|it| it.into())).range
+        }
+    };
     let mut diag = Diagnostic::new(
-        "type-mismatch",
+        DiagnosticCode::RustcHardError("E0308"),
         format!(
             "expected {}, found {}",
-            d.expected.display(ctx.sema.db),
-            d.actual.display(ctx.sema.db)
+            d.expected.display(ctx.sema.db).with_closure_style(ClosureStyle::ClosureWithId),
+            d.actual.display(ctx.sema.db).with_closure_style(ClosureStyle::ClosureWithId),
         ),
         display_range,
     )
@@ -42,10 +57,15 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assist>> {
     let mut fixes = Vec::new();
 
-    add_reference(ctx, d, &mut fixes);
-    add_missing_ok_or_some(ctx, d, &mut fixes);
-    remove_semicolon(ctx, d, &mut fixes);
-    str_ref_to_owned(ctx, d, &mut fixes);
+    match &d.expr_or_pat {
+        Either::Left(expr_ptr) => {
+            add_reference(ctx, d, expr_ptr, &mut fixes);
+            add_missing_ok_or_some(ctx, d, expr_ptr, &mut fixes);
+            remove_semicolon(ctx, d, expr_ptr, &mut fixes);
+            str_ref_to_owned(ctx, d, expr_ptr, &mut fixes);
+        }
+        Either::Right(_pat_ptr) => {}
+    }
 
     if fixes.is_empty() {
         None
@@ -57,9 +77,10 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assi
 fn add_reference(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::TypeMismatch,
+    expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let range = ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range;
+    let range = ctx.sema.diagnostics_display_range(expr_ptr.clone().map(|it| it.into())).range;
 
     let (_, mutability) = d.expected.as_reference()?;
     let actual_with_ref = Type::reference(&d.actual, mutability);
@@ -71,7 +92,7 @@ fn add_reference(
 
     let edit = TextEdit::insert(range.start(), ampersands);
     let source_change =
-        SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
+        SourceChange::from_text_edit(expr_ptr.file_id.original_file(ctx.sema.db), edit);
     acc.push(fix("add_reference_here", "Add reference here", source_change, range));
     Some(())
 }
@@ -79,10 +100,11 @@ fn add_reference(
 fn add_missing_ok_or_some(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::TypeMismatch,
+    expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
-    let expr = d.expr.value.to_node(&root);
+    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let expr = expr_ptr.value.to_node(&root);
     let expr_range = expr.syntax().text_range();
     let scope = ctx.sema.scope(expr.syntax())?;
 
@@ -109,7 +131,7 @@ fn add_missing_ok_or_some(
     builder.insert(expr.syntax().text_range().start(), format!("{variant_name}("));
     builder.insert(expr.syntax().text_range().end(), ")".to_string());
     let source_change =
-        SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), builder.finish());
+        SourceChange::from_text_edit(expr_ptr.file_id.original_file(ctx.sema.db), builder.finish());
     let name = format!("Wrap in {variant_name}");
     acc.push(fix("wrap_in_constructor", &name, source_change, expr_range));
     Some(())
@@ -118,10 +140,11 @@ fn add_missing_ok_or_some(
 fn remove_semicolon(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::TypeMismatch,
+    expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
-    let expr = d.expr.value.to_node(&root);
+    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let expr = expr_ptr.value.to_node(&root);
     if !d.actual.is_unit() {
         return None;
     }
@@ -136,7 +159,7 @@ fn remove_semicolon(
 
     let edit = TextEdit::delete(semicolon_range);
     let source_change =
-        SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
+        SourceChange::from_text_edit(expr_ptr.file_id.original_file(ctx.sema.db), edit);
 
     acc.push(fix("remove_semicolon", "Remove this semicolon", source_change, semicolon_range));
     Some(())
@@ -145,24 +168,26 @@ fn remove_semicolon(
 fn str_ref_to_owned(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::TypeMismatch,
+    expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
     let expected = d.expected.display(ctx.sema.db);
     let actual = d.actual.display(ctx.sema.db);
 
+    // FIXME do this properly
     if expected.to_string() != "String" || actual.to_string() != "&str" {
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
-    let expr = d.expr.value.to_node(&root);
+    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let expr = expr_ptr.value.to_node(&root);
     let expr_range = expr.syntax().text_range();
 
     let to_owned = format!(".to_owned()");
 
     let edit = TextEdit::insert(expr.syntax().text_range().end(), to_owned);
     let source_change =
-        SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
+        SourceChange::from_text_edit(expr_ptr.file_id.original_file(ctx.sema.db), edit);
     acc.push(fix("str_ref_to_owned", "Add .to_owned() here", source_change, expr_range));
 
     Some(())
@@ -582,8 +607,21 @@ fn test() -> String {
     }
 
     #[test]
-    fn type_mismatch_on_block() {
-        cov_mark::check!(type_mismatch_on_block);
+    fn closure_mismatch_show_different_type() {
+        check_diagnostics(
+            r#"
+fn f() {
+    let mut x = (|| 1, 2);
+    x = (|| 3, 4);
+       //^^^^ error: expected {closure#0}, found {closure#1}
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn type_mismatch_range_adjustment() {
+        cov_mark::check!(type_mismatch_range_adjustment);
         check_diagnostics(
             r#"
 fn f() -> i32 {
@@ -592,6 +630,109 @@ fn f() -> i32 {
     let _ = x + y;
   }
 //^ error: expected i32, found ()
+
+fn g() -> i32 {
+    while true {}
+} //^^^^^ error: expected i32, found ()
+
+struct S;
+impl S { fn foo(&self) -> &S { self } }
+fn h() {
+    let _: i32 = S.foo().foo().foo();
+}                            //^^^ error: expected i32, found &S
+"#,
+        );
+    }
+
+    #[test]
+    fn unknown_type_in_function_signature() {
+        check_diagnostics(
+            r#"
+struct X<T>(T);
+
+fn foo(x: X<Unknown>) {}
+fn test1() {
+    // Unknown might be `i32`, so we should not emit type mismatch here.
+    foo(X(42));
+}
+fn test2() {
+    foo(42);
+      //^^ error: expected X<{unknown}>, found i32
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn evaluate_const_generics_in_types() {
+        check_diagnostics(
+            r#"
+pub const ONE: usize = 1;
+
+pub struct Inner<const P: usize>();
+
+pub struct Outer {
+    pub inner: Inner<ONE>,
+}
+
+fn main() {
+    _ = Outer {
+        inner: Inner::<2>(),
+             //^^^^^^^^^^^^ error: expected Inner<1>, found Inner<2>
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn type_mismatch_pat_smoke_test() {
+        check_diagnostics(
+            r#"
+fn f() {
+    let &() = &mut ();
+      //^^^ error: expected &mut (), found &()
+    match &() {
+        // FIXME: we should only show the deep one.
+        &9 => ()
+      //^^ error: expected &(), found &i32
+       //^ error: expected (), found i32
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn regression_14768() {
+        check_diagnostics(
+            r#"
+//- minicore: derive, fmt, slice, coerce_unsized, builtin_impls
+use core::fmt::Debug;
+
+#[derive(Debug)]
+struct Foo(u8, u16, [u8]);
+
+#[derive(Debug)]
+struct Bar {
+    f1: u8,
+    f2: &[u16],
+    f3: dyn Debug,
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn return_no_value() {
+        check_diagnostics(
+            r#"
+fn f() -> i32 {
+    return;
+ // ^^^^^^ error: expected i32, found ()
+    0
+}
+fn g() { return; }
 "#,
         );
     }

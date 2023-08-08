@@ -1,5 +1,3 @@
-#![feature(raw_dylib)]
-
 #[link(name = "extern_1", kind = "raw-dylib")]
 extern {
     fn extern_fn_1();

@@ -1,0 +1,66 @@
+- // MIR for `foo` before DestinationPropagation
++ // MIR for `foo` after DestinationPropagation
+  
+  fn foo() -> i32 {
+      let mut _0: i32;
+      let _1: i32;
+      let mut _3: bool;
+      let _4: i32;
+      scope 1 {
+-         debug x => _1;
++         debug x => _0;
+          let _2: i32;
+          scope 2 {
+-             debug y => _2;
++             debug y => _0;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+-         _1 = val() -> [return: bb1, unwind unreachable];
++         nop;
++         _0 = val() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         StorageLive(_2);
++         nop;
+          StorageLive(_3);
+          _3 = cond() -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          switchInt(move _3) -> [0: bb4, otherwise: bb3];
+      }
+  
+      bb3: {
+-         _2 = _1;
++         nop;
+          goto -> bb6;
+      }
+  
+      bb4: {
+          StorageLive(_4);
+          _4 = val() -> [return: bb5, unwind unreachable];
+      }
+  
+      bb5: {
+          StorageDead(_4);
+-         _2 = _1;
++         nop;
+          goto -> bb6;
+      }
+  
+      bb6: {
+          StorageDead(_3);
+-         _0 = _2;
+-         StorageDead(_2);
+-         StorageDead(_1);
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

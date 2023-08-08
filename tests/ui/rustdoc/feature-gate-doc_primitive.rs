@@ -1,7 +1,5 @@
-// check-pass
-#[doc(primitive = "usize")]
-//~^ WARNING `doc(primitive)` should never have been stable
-//~| WARNING hard error in a future release
+#[rustc_doc_primitive = "usize"]
+//~^ ERROR `rustc_doc_primitive` is a rustc internal attribute
 /// Some docs
 mod usize {}
 

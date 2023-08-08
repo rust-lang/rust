@@ -1,15 +1,6 @@
-const QUERY = [
-    'i8',
-    'u32',
-    'str',
-    'char',
-    'unit',
-    'tuple',
-    'fn',
-];
-
 const EXPECTED = [
     {
+        'query': 'i8',
         'others': [
             {
                 'path': 'std',
@@ -19,6 +10,7 @@ const EXPECTED = [
         ]
     },
     {
+        'query': 'u32',
         'others': [
             {
                 'path': 'std',
@@ -28,6 +20,7 @@ const EXPECTED = [
         ]
     },
     {
+        'query': 'str',
         'others': [
             {
                 'path': 'std',
@@ -37,6 +30,7 @@ const EXPECTED = [
         ]
     },
     {
+        'query': 'char',
         'others': [
             {
                 'path': 'std',
@@ -46,6 +40,7 @@ const EXPECTED = [
         ]
     },
     {
+        'query': 'unit',
         'others': [
             {
                 'path': 'std',
@@ -55,6 +50,7 @@ const EXPECTED = [
         ]
     },
     {
+        'query': 'tuple',
         'others': [
             {
                 'path': 'std',
@@ -64,6 +60,7 @@ const EXPECTED = [
         ]
     },
     {
+        'query': 'fn',
         'others': [
             {
                 'path': 'std',

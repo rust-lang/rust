@@ -5,7 +5,7 @@ LL |     let a = &FOO;
    |             ^^^^ thread-local variables cannot be borrowed beyond the end of the function
 ...
 LL | }
-   | - end of enclosing function is here
+   |  - end of enclosing function is here
 
 error: aborting due to previous error
 

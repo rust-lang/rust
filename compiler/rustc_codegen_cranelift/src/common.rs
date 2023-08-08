@@ -2,10 +2,11 @@ use cranelift_codegen::isa::TargetFrontendConfig;
 use gimli::write::FileId;
 
 use rustc_data_structures::sync::Lrc;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
+use rustc_span::source_map::Spanned;
 use rustc_span::SourceFile;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
@@ -72,19 +73,6 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
                 pointer_ty(tcx)
             }
         }
-        ty::Adt(adt_def, _) if adt_def.repr().simd() => {
-            let (element, count) = match &tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().abi
-            {
-                Abi::Vector { element, count } => (element.clone(), *count),
-                _ => unreachable!(),
-            };
-
-            match scalar_to_clif_type(tcx, element).by(u32::try_from(count).unwrap()) {
-                // Cranelift currently only implements icmp for 128bit vectors.
-                Some(vector_ty) if vector_ty.bits() == 128 => vector_ty,
-                _ => return None,
-            }
-        }
         ty::Param(_) => bug!("ty param {:?}", ty),
         _ => return None,
     })
@@ -96,12 +84,7 @@ fn clif_pair_type_from_ty<'tcx>(
 ) -> Option<(types::Type, types::Type)> {
     Some(match ty.kind() {
         ty::Tuple(types) if types.len() == 2 => {
-            let a = clif_type_from_ty(tcx, types[0])?;
-            let b = clif_type_from_ty(tcx, types[1])?;
-            if a.is_vector() || b.is_vector() {
-                return None;
-            }
-            (a, b)
+            (clif_type_from_ty(tcx, types[0])?, clif_type_from_ty(tcx, types[1])?)
         }
         ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
             if has_ptr_meta(tcx, *pointee_ty) {
@@ -116,7 +99,7 @@ fn clif_pair_type_from_ty<'tcx>(
 
 /// Is a pointer to this type a fat ptr?
 pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    let ptr_ty = tcx.mk_ptr(TypeAndMut { ty, mutbl: rustc_hir::Mutability::Not });
+    let ptr_ty = Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: rustc_hir::Mutability::Not });
     match &tcx.layout_of(ParamEnv::reveal_all().and(ptr_ty)).unwrap().abi {
         Abi::Scalar(_) => false,
         Abi::ScalarPair(_, _) => true,
@@ -379,7 +362,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         self.instance.subst_mir_and_normalize_erasing_regions(
             self.tcx,
             ty::ParamEnv::reveal_all(),
-            value,
+            ty::EarlyBinder::bind(value),
         )
     }
 
@@ -472,12 +455,12 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn anonymous_str(&mut self, msg: &str) -> Value {
-        let mut data_ctx = DataContext::new();
-        data_ctx.define(msg.as_bytes().to_vec().into_boxed_slice());
+        let mut data = DataDescription::new();
+        data.define(msg.as_bytes().to_vec().into_boxed_slice());
         let msg_id = self.module.declare_anonymous_data(false, false).unwrap();
 
         // Ignore DuplicateDefinition error, as the data will be the same
-        let _ = self.module.define_data(msg_id, &data_ctx);
+        let _ = self.module.define_data(msg_id, &data);
 
         let local_msg_id = self.module.declare_data_in_func(msg_id, self.bcx.func);
         if self.clif_comments.enabled() {
@@ -494,8 +477,8 @@ impl<'tcx> LayoutOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
 
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
-        if let layout::LayoutError::SizeOverflow(_) = err {
-            self.0.sess.span_fatal(span, &err.to_string())
+        if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
+            self.0.sess.span_fatal(span, err.to_string())
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
         }
@@ -513,25 +496,16 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.0.sess.span_fatal(span, &err.to_string())
+            self.0.sess.emit_fatal(Spanned { span, node: err })
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {
-                    span_bug!(
-                        span,
-                        "`fn_abi_of_fn_ptr({}, {:?})` failed: {}",
-                        sig,
-                        extra_args,
-                        err
-                    );
+                    span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}");
                 }
                 FnAbiRequest::OfInstance { instance, extra_args } => {
                     span_bug!(
                         span,
-                        "`fn_abi_of_instance({}, {:?})` failed: {}",
-                        instance,
-                        extra_args,
-                        err
+                        "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}"
                     );
                 }
             }

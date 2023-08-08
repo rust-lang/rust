@@ -1,19 +1,22 @@
 // run-pass
 
 #![feature(generators)]
-#![feature(unboxed_closures, fn_traits)]
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
+#![allow(redundant_semicolons)]
 #![allow(unreachable_code)]
 #![allow(unused_braces, unused_must_use, unused_parens)]
 #![allow(uncommon_codepoints, confusable_idents)]
+#![allow(unused_imports)]
 #![allow(unreachable_patterns)]
 
 #![recursion_limit = "256"]
 
+extern crate core;
 use std::cell::Cell;
 use std::mem::swap;
+use std::ops::Deref;
 
 // Just a grab bag of stuff that you wouldn't want to actually write.
 
@@ -78,7 +81,7 @@ fn angrydome() {
       break; }
 }
 
-fn evil_lincoln() { let _evil = println!("lincoln"); }
+fn evil_lincoln() { let _evil: () = println!("lincoln"); }
 
 fn dots() {
     assert_eq!(String::from(".................................................."),
@@ -134,7 +137,7 @@ fn punch_card() -> impl std::fmt::Debug {
 }
 
 fn r#match() {
-    let val = match match match match match () {
+    let val: () = match match match match match () {
         () => ()
     } {
         () => ()
@@ -163,7 +166,7 @@ fn match_nested_if() {
 }
 
 fn monkey_barrel() {
-    let val = ()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=();
+    let val: () = ()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=();
     assert_eq!(val, ());
 }
 
@@ -180,10 +183,10 @@ fn 𝚌𝚘𝚗𝚝𝚒𝚗𝚞𝚎() {
 
 fn function() {
     struct foo;
-    impl FnOnce<()> for foo {
-        type Output = foo;
-        extern "rust-call" fn call_once(self, _args: ()) -> Self::Output {
-            foo
+    impl Deref for foo {
+        type Target = fn() -> Self;
+        fn deref(&self) -> &Self::Target {
+            &((|| foo) as _)
         }
     }
     let foo = foo () ()() ()()() ()()()() ()()()()();
@@ -202,6 +205,30 @@ fn closure_matching() {
         |_| _ => unreachable!(),
     };
     assert!(matches!(x(..), |_| Some(4)));
+}
+
+fn semisemisemisemisemi() {
+    ;;;;;;; ;;;;;;; ;;;    ;;; ;;
+    ;;      ;;      ;;;;  ;;;; ;;
+    ;;;;;;; ;;;;;   ;; ;;;; ;; ;;
+         ;; ;;      ;;  ;;  ;; ;;
+    ;;;;;;; ;;;;;;; ;;      ;; ;;
+}
+
+fn useful_syntax() {
+    use {{std::{{collections::{{HashMap}}}}}};
+    use ::{{{{core}, {std}}}};
+    use {{::{{core as core2}}}};
+}
+
+fn infcx() {
+    pub mod cx {
+        pub mod cx {
+            pub use super::cx;
+            pub struct Cx;
+        }
+    }
+    let _cx: cx::cx::Cx = cx::cx::cx::cx::cx::Cx;
 }
 
 pub fn main() {
@@ -227,4 +254,7 @@ pub fn main() {
     function();
     bathroom_stall();
     closure_matching();
+    semisemisemisemisemi();
+    useful_syntax();
+    infcx();
 }

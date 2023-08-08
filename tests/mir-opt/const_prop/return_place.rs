@@ -1,3 +1,5 @@
+// unit-test: ConstProp
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // compile-flags: -C overflow-checks=on
 
 // EMIT_MIR return_place.add.ConstProp.diff

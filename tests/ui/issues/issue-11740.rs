@@ -24,5 +24,5 @@ impl Element {
 
 fn main() {
     let element = Element { attrs: Vec::new() };
-    let _ = unsafe { element.get_attr("foo") };
+    unsafe { let () = element.get_attr("foo"); };
 }

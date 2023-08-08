@@ -11,8 +11,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::sym;
 
-use super::UNNECESSARY_FILTER_MAP;
-use super::UNNECESSARY_FIND_MAP;
+use super::{UNNECESSARY_FILTER_MAP, UNNECESSARY_FIND_MAP};
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, arg: &'tcx hir::Expr<'tcx>, name: &str) {
     if !is_trait_method(cx, expr, sym::Iterator) {
@@ -77,6 +76,16 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
                 return (true, false);
             }
             (true, true)
+        },
+        hir::ExprKind::MethodCall(segment, recv, [arg], _) => {
+            if segment.ident.name == sym!(then_some)
+                && cx.typeck_results().expr_ty(recv).is_bool()
+                && path_to_local_id(arg, arg_id)
+            {
+                (false, true)
+            } else {
+                (true, true)
+            }
         },
         hir::ExprKind::Block(block, _) => block
             .expr

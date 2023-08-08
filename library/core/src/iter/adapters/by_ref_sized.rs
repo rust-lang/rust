@@ -1,3 +1,4 @@
+use crate::num::NonZeroUsize;
 use crate::ops::{NeverShortCircuit, Try};
 
 /// Like `Iterator::by_ref`, but requiring `Sized` so it can forward generics.
@@ -26,7 +27,7 @@ impl<I: Iterator> Iterator for ByRefSized<'_, I> {
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         I::advance_by(self.0, n)
     }
 
@@ -62,7 +63,7 @@ impl<I: DoubleEndedIterator> DoubleEndedIterator for ByRefSized<'_, I> {
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         I::advance_back_by(self.0, n)
     }
 

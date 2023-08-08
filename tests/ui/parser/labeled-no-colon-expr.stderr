@@ -77,6 +77,10 @@ LL |     m!({});
    |     ------ in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: wrap this in another block
+   |
+LL |             'l5 { $b };
+   |                 +    +
 
 error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:14:8

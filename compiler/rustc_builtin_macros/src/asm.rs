@@ -2,9 +2,10 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{Applicability, PResult};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_errors::PResult;
 use rustc_expand::base::{self, *};
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
 use rustc_session::lint;
@@ -15,11 +16,13 @@ use rustc_span::{InnerSpan, Span};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
 
+use crate::errors;
+
 pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
     pub operands: Vec<(ast::InlineAsmOperand, Span)>,
-    named_args: FxHashMap<Symbol, usize>,
-    reg_args: FxHashSet<usize>,
+    named_args: FxIndexMap<Symbol, usize>,
+    reg_args: GrowableBitSet<usize>,
     pub clobber_abis: Vec<(Symbol, Span)>,
     options: ast::InlineAsmOptions,
     pub options_spans: Vec<Span>,
@@ -47,15 +50,15 @@ pub fn parse_asm_args<'a>(
     let diag = &sess.span_diagnostic;
 
     if p.token == token::Eof {
-        return Err(diag.struct_span_err(sp, "requires at least a template string argument"));
+        return Err(diag.create_err(errors::AsmRequiresTemplate { span: sp }));
     }
 
     let first_template = p.parse_expr()?;
     let mut args = AsmArgs {
         templates: vec![first_template],
         operands: vec![],
-        named_args: FxHashMap::default(),
-        reg_args: FxHashSet::default(),
+        named_args: Default::default(),
+        reg_args: Default::default(),
         clobber_abis: Vec::new(),
         options: ast::InlineAsmOptions::empty(),
         options_spans: vec![],
@@ -66,10 +69,7 @@ pub fn parse_asm_args<'a>(
         if !p.eat(&token::Comma) {
             if allow_templates {
                 // After a template string, we always expect *only* a comma...
-                let mut err = diag.struct_span_err(p.token.span, "expected token: `,`");
-                err.span_label(p.token.span, "expected `,`");
-                p.maybe_annotate_with_ascription(&mut err, false);
-                return Err(err);
+                return Err(diag.create_err(errors::AsmExpectedComma { span: p.token.span }));
             } else {
                 // ...after that delegate to `expect` to also include the other expected tokens.
                 return Err(p.expect(&token::Comma).err().unwrap());
@@ -110,7 +110,7 @@ pub fn parse_asm_args<'a>(
         let op = if !is_global_asm && p.eat_keyword(kw::In) {
             let reg = parse_reg(p, &mut explicit_reg)?;
             if p.eat_keyword(kw::Underscore) {
-                let err = diag.struct_span_err(p.token.span, "_ cannot be used for input operands");
+                let err = diag.create_err(errors::AsmUnderscoreInput { span: p.token.span });
                 return Err(err);
             }
             let expr = p.parse_expr()?;
@@ -126,7 +126,7 @@ pub fn parse_asm_args<'a>(
         } else if !is_global_asm && p.eat_keyword(sym::inout) {
             let reg = parse_reg(p, &mut explicit_reg)?;
             if p.eat_keyword(kw::Underscore) {
-                let err = diag.struct_span_err(p.token.span, "_ cannot be used for input operands");
+                let err = diag.create_err(errors::AsmUnderscoreInput { span: p.token.span });
                 return Err(err);
             }
             let expr = p.parse_expr()?;
@@ -140,7 +140,7 @@ pub fn parse_asm_args<'a>(
         } else if !is_global_asm && p.eat_keyword(sym::inlateout) {
             let reg = parse_reg(p, &mut explicit_reg)?;
             if p.eat_keyword(kw::Underscore) {
-                let err = diag.struct_span_err(p.token.span, "_ cannot be used for input operands");
+                let err = diag.create_err(errors::AsmUnderscoreInput { span: p.token.span });
                 return Err(err);
             }
             let expr = p.parse_expr()?;
@@ -157,8 +157,7 @@ pub fn parse_asm_args<'a>(
         } else if p.eat_keyword(sym::sym) {
             let expr = p.parse_expr()?;
             let ast::ExprKind::Path(qself, path) = &expr.kind else {
-                let err = diag
-                    .struct_span_err(expr.span, "expected a path for argument to `sym`");
+                let err = diag.create_err(errors::AsmSymNoPath { span: expr.span });
                 return Err(err);
             };
             let sym = ast::InlineAsmSym {
@@ -179,13 +178,10 @@ pub fn parse_asm_args<'a>(
                     ) => {}
                 ast::ExprKind::MacCall(..) => {}
                 _ => {
-                    let errstr = if is_global_asm {
-                        "expected operand, options, or additional template string"
-                    } else {
-                        "expected operand, clobber_abi, options, or additional template string"
-                    };
-                    let mut err = diag.struct_span_err(template.span, errstr);
-                    err.span_label(template.span, errstr);
+                    let err = diag.create_err(errors::AsmExpectedOther {
+                        span: template.span,
+                        is_global_asm,
+                    });
                     return Err(err);
                 }
             }
@@ -203,57 +199,23 @@ pub fn parse_asm_args<'a>(
         // Validate the order of named, positional & explicit register operands and
         // clobber_abi/options. We do this at the end once we have the full span
         // of the argument available.
-        if !args.options_spans.is_empty() {
-            diag.struct_span_err(span, "arguments are not allowed after options")
-                .span_labels(args.options_spans.clone(), "previous options")
-                .span_label(span, "argument")
-                .emit();
-        } else if let Some((_, abi_span)) = args.clobber_abis.last() {
-            diag.struct_span_err(span, "arguments are not allowed after clobber_abi")
-                .span_label(*abi_span, "clobber_abi")
-                .span_label(span, "argument")
-                .emit();
-        }
         if explicit_reg {
             if name.is_some() {
-                diag.struct_span_err(span, "explicit register arguments cannot have names").emit();
+                diag.emit_err(errors::AsmExplicitRegisterName { span });
             }
             args.reg_args.insert(slot);
         } else if let Some(name) = name {
             if let Some(&prev) = args.named_args.get(&name) {
-                diag.struct_span_err(span, &format!("duplicate argument named `{}`", name))
-                    .span_label(args.operands[prev].1, "previously here")
-                    .span_label(span, "duplicate argument")
-                    .emit();
+                diag.emit_err(errors::AsmDuplicateArg { span, name, prev: args.operands[prev].1 });
                 continue;
-            }
-            if !args.reg_args.is_empty() {
-                let mut err = diag.struct_span_err(
-                    span,
-                    "named arguments cannot follow explicit register arguments",
-                );
-                err.span_label(span, "named argument");
-                for pos in &args.reg_args {
-                    err.span_label(args.operands[*pos].1, "explicit register argument");
-                }
-                err.emit();
             }
             args.named_args.insert(name, slot);
         } else {
             if !args.named_args.is_empty() || !args.reg_args.is_empty() {
-                let mut err = diag.struct_span_err(
-                    span,
-                    "positional arguments cannot follow named arguments \
-                     or explicit register arguments",
-                );
-                err.span_label(span, "positional argument");
-                for pos in args.named_args.values() {
-                    err.span_label(args.operands[*pos].1, "named argument");
-                }
-                for pos in &args.reg_args {
-                    err.span_label(args.operands[*pos].1, "explicit register argument");
-                }
-                err.emit();
+                let named = args.named_args.values().map(|p| args.operands[*p].1).collect();
+                let explicit = args.reg_args.iter().map(|p| args.operands[p].1).collect();
+
+                diag.emit_err(errors::AsmPositionalAfter { span, named, explicit });
             }
         }
     }
@@ -262,25 +224,19 @@ pub fn parse_asm_args<'a>(
         && args.options.contains(ast::InlineAsmOptions::READONLY)
     {
         let spans = args.options_spans.clone();
-        diag.struct_span_err(spans, "the `nomem` and `readonly` options are mutually exclusive")
-            .emit();
+        diag.emit_err(errors::AsmMutuallyExclusive { spans, opt1: "nomem", opt2: "readonly" });
     }
     if args.options.contains(ast::InlineAsmOptions::PURE)
         && args.options.contains(ast::InlineAsmOptions::NORETURN)
     {
         let spans = args.options_spans.clone();
-        diag.struct_span_err(spans, "the `pure` and `noreturn` options are mutually exclusive")
-            .emit();
+        diag.emit_err(errors::AsmMutuallyExclusive { spans, opt1: "pure", opt2: "noreturn" });
     }
     if args.options.contains(ast::InlineAsmOptions::PURE)
         && !args.options.intersects(ast::InlineAsmOptions::NOMEM | ast::InlineAsmOptions::READONLY)
     {
         let spans = args.options_spans.clone();
-        diag.struct_span_err(
-            spans,
-            "the `pure` option must be combined with either `nomem` or `readonly`",
-        )
-        .emit();
+        diag.emit_err(errors::AsmPureCombine { spans });
     }
 
     let mut have_real_output = false;
@@ -307,41 +263,28 @@ pub fn parse_asm_args<'a>(
         }
     }
     if args.options.contains(ast::InlineAsmOptions::PURE) && !have_real_output {
-        diag.struct_span_err(
-            args.options_spans.clone(),
-            "asm with the `pure` option must have at least one output",
-        )
-        .emit();
+        diag.emit_err(errors::AsmPureNoOutput { spans: args.options_spans.clone() });
     }
     if args.options.contains(ast::InlineAsmOptions::NORETURN) && !outputs_sp.is_empty() {
-        let err = diag
-            .struct_span_err(outputs_sp, "asm outputs are not allowed with the `noreturn` option");
-
+        let err = diag.create_err(errors::AsmNoReturn { outputs_sp });
         // Bail out now since this is likely to confuse MIR
         return Err(err);
     }
 
     if args.clobber_abis.len() > 0 {
         if is_global_asm {
-            let err = diag.struct_span_err(
-                args.clobber_abis.iter().map(|(_, span)| *span).collect::<Vec<Span>>(),
-                "`clobber_abi` cannot be used with `global_asm!`",
-            );
+            let err = diag.create_err(errors::GlobalAsmClobberAbi {
+                spans: args.clobber_abis.iter().map(|(_, span)| *span).collect(),
+            });
 
             // Bail out now since this is likely to confuse later stages
             return Err(err);
         }
         if !regclass_outputs.is_empty() {
-            diag.struct_span_err(
-                regclass_outputs.clone(),
-                "asm with `clobber_abi` must specify explicit registers for outputs",
-            )
-            .span_labels(
-                args.clobber_abis.iter().map(|(_, span)| *span).collect::<Vec<Span>>(),
-                "clobber_abi",
-            )
-            .span_labels(regclass_outputs, "generic outputs")
-            .emit();
+            diag.emit_err(errors::AsmClobberNoReg {
+                spans: regclass_outputs,
+                clobbers: args.clobber_abis.iter().map(|(_, span)| *span).collect(),
+            });
         }
     }
 
@@ -353,25 +296,9 @@ pub fn parse_asm_args<'a>(
 /// This function must be called immediately after the option token is parsed.
 /// Otherwise, the suggestion will be incorrect.
 fn err_duplicate_option(p: &mut Parser<'_>, symbol: Symbol, span: Span) {
-    let mut err = p
-        .sess
-        .span_diagnostic
-        .struct_span_err(span, &format!("the `{}` option was already provided", symbol));
-    err.span_label(span, "this option was already provided");
-
     // Tool-only output
-    let mut full_span = span;
-    if p.token.kind == token::Comma {
-        full_span = full_span.to(p.token.span);
-    }
-    err.tool_only_span_suggestion(
-        full_span,
-        "remove this option",
-        "",
-        Applicability::MachineApplicable,
-    );
-
-    err.emit();
+    let full_span = if p.token.kind == token::Comma { span.to(p.token.span) } else { span };
+    p.sess.span_diagnostic.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
 }
 
 /// Try to set the provided option in the provided `AsmArgs`.
@@ -443,24 +370,16 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
     p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
     if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-        let err = p.sess.span_diagnostic.struct_span_err(
-            p.token.span,
-            "at least one abi must be provided as an argument to `clobber_abi`",
-        );
-        return Err(err);
+        return Err(p.sess.span_diagnostic.create_err(errors::NonABI { span: p.token.span }));
     }
 
     let mut new_abis = Vec::new();
-    loop {
+    while !p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
         match p.parse_str_lit() {
             Ok(str_lit) => {
                 new_abis.push((str_lit.symbol_unescaped, str_lit.span));
             }
             Err(opt_lit) => {
-                // If the non-string literal is a closing paren then it's the end of the list and is fine
-                if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-                    break;
-                }
                 let span = opt_lit.map_or(p.token.span, |lit| lit.span);
                 let mut err =
                     p.sess.span_diagnostic.struct_span_err(span, "expected string literal");
@@ -478,20 +397,11 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
 
     let full_span = span_start.to(p.prev_token.span);
 
-    if !args.options_spans.is_empty() {
-        let mut err = p
-            .sess
-            .span_diagnostic
-            .struct_span_err(full_span, "clobber_abi is not allowed after options");
-        err.span_labels(args.options_spans.clone(), "options");
-        return Err(err);
-    }
-
     match &new_abis[..] {
         // should have errored above during parsing
         [] => unreachable!(),
         [(abi, _span)] => args.clobber_abis.push((*abi, full_span)),
-        [abis @ ..] => {
+        abis => {
             for (abi, span) in abis {
                 args.clobber_abis.push((*abi, *span));
             }
@@ -513,9 +423,9 @@ fn parse_reg<'a>(
             ast::InlineAsmRegOrRegClass::Reg(symbol)
         }
         _ => {
-            return Err(
-                p.struct_span_err(p.token.span, "expected register class or explicit register")
-            );
+            return Err(p.sess.create_err(errors::ExpectedRegisterClassOrExplicitRegister {
+                span: p.token.span,
+            }));
         }
     };
     p.bump();
@@ -528,8 +438,8 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
     // Register operands are implicitly used since they are not allowed to be
     // referenced in the template string.
     let mut used = vec![false; args.operands.len()];
-    for pos in &args.reg_args {
-        used[*pos] = true;
+    for pos in args.reg_args.iter() {
+        used[pos] = true;
     }
     let named_pos: FxHashMap<usize, Symbol> =
         args.named_args.iter().map(|(&sym, &idx)| (idx, sym)).collect();
@@ -631,11 +541,11 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
         if !parser.errors.is_empty() {
             let err = parser.errors.remove(0);
             let err_sp = template_span.from_inner(InnerSpan::new(err.span.start, err.span.end));
-            let msg = &format!("invalid asm template string: {}", err.description);
+            let msg = format!("invalid asm template string: {}", err.description);
             let mut e = ecx.struct_span_err(err_sp, msg);
             e.span_label(err_sp, err.label + " in asm template string");
             if let Some(note) = err.note {
-                e.note(&note);
+                e.note(note);
             }
             if let Some((label, span)) = err.secondary_label {
                 let err_sp = template_span.from_inner(InnerSpan::new(span.start, span.end));
@@ -663,10 +573,10 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                         parse::ArgumentIs(idx) | parse::ArgumentImplicitlyIs(idx) => {
                             if idx >= args.operands.len()
                                 || named_pos.contains_key(&idx)
-                                || args.reg_args.contains(&idx)
+                                || args.reg_args.contains(idx)
                             {
-                                let msg = format!("invalid reference to argument at index {}", idx);
-                                let mut err = ecx.struct_span_err(span, &msg);
+                                let msg = format!("invalid reference to argument at index {idx}");
+                                let mut err = ecx.struct_span_err(span, msg);
                                 err.span_label(span, "from here");
 
                                 let positional_args = args.operands.len()
@@ -678,11 +588,11 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                     ""
                                 };
                                 let msg = match positional_args {
-                                    0 => format!("no {}arguments were given", positional),
-                                    1 => format!("there is 1 {}argument", positional),
-                                    x => format!("there are {} {}arguments", x, positional),
+                                    0 => format!("no {positional}arguments were given"),
+                                    1 => format!("there is 1 {positional}argument"),
+                                    x => format!("there are {x} {positional}arguments"),
                                 };
-                                err.note(&msg);
+                                err.note(msg);
 
                                 if named_pos.contains_key(&idx) {
                                     err.span_label(args.operands[idx].1, "named argument");
@@ -690,7 +600,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                         args.operands[idx].1,
                                         "named arguments cannot be referenced by position",
                                     );
-                                } else if args.reg_args.contains(&idx) {
+                                } else if args.reg_args.contains(idx) {
                                     err.span_label(
                                         args.operands[idx].1,
                                         "explicit register argument",
@@ -698,6 +608,10 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                     err.span_note(
                                         args.operands[idx].1,
                                         "explicit register arguments cannot be used in the asm template",
+                                    );
+                                    err.span_help(
+                                        args.operands[idx].1,
+                                        "use the register name directly in the assembly code",
                                     );
                                 }
                                 err.emit();
@@ -710,12 +624,12 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                             match args.named_args.get(&Symbol::intern(name)) {
                                 Some(&idx) => Some(idx),
                                 None => {
-                                    let msg = format!("there is no argument named `{}`", name);
+                                    let msg = format!("there is no argument named `{name}`");
                                     let span = arg.position_span;
                                     ecx.struct_span_err(
                                         template_span
                                             .from_inner(InnerSpan::new(span.start, span.end)),
-                                        &msg,
+                                        msg,
                                     )
                                     .emit();
                                     None
@@ -732,11 +646,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                             .ty_span
                             .map(|sp| template_sp.from_inner(InnerSpan::new(sp.start, sp.end)))
                             .unwrap_or(template_sp);
-                        ecx.struct_span_err(
-                            span,
-                            "asm template modifier must be a single character",
-                        )
-                        .emit();
+                        ecx.emit_err(errors::AsmModifierInvalid { span });
                         modifier = None;
                     }
 
@@ -785,10 +695,9 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             let (sp, msg) = unused_operands.into_iter().next().unwrap();
             let mut err = ecx.struct_span_err(sp, msg);
             err.span_label(sp, msg);
-            err.help(&format!(
+            err.help(format!(
                 "if this argument is intentionally unused, \
-                 consider using it in an asm comment: `\"/*{} */\"`",
-                help_str
+                 consider using it in an asm comment: `\"/*{help_str} */\"`"
             ));
             err.emit();
         }
@@ -800,10 +709,9 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             for (sp, msg) in unused_operands {
                 err.span_label(sp, msg);
             }
-            err.help(&format!(
+            err.help(format!(
                 "if these arguments are intentionally unused, \
-                 consider using them in an asm comment: `\"/*{} */\"`",
-                help_str
+                 consider using them in an asm comment: `\"/*{help_str} */\"`"
             ));
             err.emit();
         }

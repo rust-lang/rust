@@ -2,12 +2,15 @@
 
 #![allow(clippy::module_name_repetitions)]
 
+use rustc_session::Session;
+use rustc_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
 use serde::de::{Deserializer, IgnoredAny, IntoDeserializer, MapAccess, Visitor};
 use serde::Deserialize;
-use std::error::Error;
+use std::fmt::{Debug, Display, Formatter};
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::{cmp, env, fmt, fs, io, iter};
+use std::{cmp, env, fmt, fs, io};
 
 #[rustfmt::skip]
 const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
@@ -18,6 +21,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "GitHub", "GitLab",
     "IPv4", "IPv6",
     "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript",
+    "WebAssembly",
     "NaN", "NaNs",
     "OAuth", "GraphQL",
     "OCaml",
@@ -31,6 +35,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "CamelCase",
 ];
 const DEFAULT_DISALLOWED_NAMES: &[&str] = &["foo", "baz", "quux"];
+const DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS: &[&str] = &["i", "j", "x", "y", "z", "w", "n"];
 
 /// Holds information used by `MISSING_ENFORCED_IMPORT_RENAMES` lint.
 #[derive(Clone, Debug, Deserialize)]
@@ -67,33 +72,70 @@ impl DisallowedPath {
 #[derive(Default)]
 pub struct TryConf {
     pub conf: Conf,
-    pub errors: Vec<Box<dyn Error>>,
-    pub warnings: Vec<Box<dyn Error>>,
+    pub errors: Vec<ConfError>,
+    pub warnings: Vec<ConfError>,
 }
 
 impl TryConf {
-    fn from_error(error: impl Error + 'static) -> Self {
+    fn from_toml_error(file: &SourceFile, error: &toml::de::Error) -> Self {
+        ConfError::from_toml(file, error).into()
+    }
+}
+
+impl From<ConfError> for TryConf {
+    fn from(value: ConfError) -> Self {
         Self {
             conf: Conf::default(),
-            errors: vec![Box::new(error)],
+            errors: vec![value],
             warnings: vec![],
         }
     }
 }
 
-#[derive(Debug)]
-struct ConfError(String);
-
-impl fmt::Display for ConfError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        <String as fmt::Display>::fmt(&self.0, f)
+impl From<io::Error> for TryConf {
+    fn from(value: io::Error) -> Self {
+        ConfError::from(value).into()
     }
 }
 
-impl Error for ConfError {}
+#[derive(Debug)]
+pub struct ConfError {
+    pub message: String,
+    pub span: Option<Span>,
+}
 
-fn conf_error(s: impl Into<String>) -> Box<dyn Error> {
-    Box::new(ConfError(s.into()))
+impl ConfError {
+    fn from_toml(file: &SourceFile, error: &toml::de::Error) -> Self {
+        if let Some(span) = error.span() {
+            Self::spanned(file, error.message(), span)
+        } else {
+            Self {
+                message: error.message().to_string(),
+                span: None,
+            }
+        }
+    }
+
+    fn spanned(file: &SourceFile, message: impl Into<String>, span: Range<usize>) -> Self {
+        Self {
+            message: message.into(),
+            span: Some(Span::new(
+                file.start_pos + BytePos::from_usize(span.start),
+                file.start_pos + BytePos::from_usize(span.end),
+                SyntaxContext::root(),
+                None,
+            )),
+        }
+    }
+}
+
+impl From<io::Error> for ConfError {
+    fn from(value: io::Error) -> Self {
+        Self {
+            message: value.to_string(),
+            span: None,
+        }
+    }
 }
 
 macro_rules! define_Conf {
@@ -117,20 +159,14 @@ macro_rules! define_Conf {
             }
         }
 
-        impl<'de> Deserialize<'de> for TryConf {
-            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
-                deserializer.deserialize_map(ConfVisitor)
-            }
-        }
-
         #[derive(Deserialize)]
         #[serde(field_identifier, rename_all = "kebab-case")]
         #[allow(non_camel_case_types)]
         enum Field { $($name,)* third_party, }
 
-        struct ConfVisitor;
+        struct ConfVisitor<'a>(&'a SourceFile);
 
-        impl<'de> Visitor<'de> for ConfVisitor {
+        impl<'de> Visitor<'de> for ConfVisitor<'_> {
             type Value = TryConf;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -141,32 +177,38 @@ macro_rules! define_Conf {
                 let mut errors = Vec::new();
                 let mut warnings = Vec::new();
                 $(let mut $name = None;)*
-                // could get `Field` here directly, but get `str` first for diagnostics
-                while let Some(name) = map.next_key::<&str>()? {
-                    match Field::deserialize(name.into_deserializer())? {
-                        $(Field::$name => {
-                            $(warnings.push(conf_error(format!("deprecated field `{}`. {}", name, $dep)));)?
-                            match map.next_value() {
-                                Err(e) => errors.push(conf_error(e.to_string())),
+                // could get `Field` here directly, but get `String` first for diagnostics
+                while let Some(name) = map.next_key::<toml::Spanned<String>>()? {
+                    match Field::deserialize(name.get_ref().as_str().into_deserializer()) {
+                        Err(e) => {
+                            let e: FieldError = e;
+                            errors.push(ConfError::spanned(self.0, e.0, name.span()));
+                        }
+                        $(Ok(Field::$name) => {
+                            $(warnings.push(ConfError::spanned(self.0, format!("deprecated field `{}`. {}", name.get_ref(), $dep), name.span()));)?
+                            let raw_value = map.next_value::<toml::Spanned<toml::Value>>()?;
+                            let value_span = raw_value.span();
+                            match <$ty>::deserialize(raw_value.into_inner()) {
+                                Err(e) => errors.push(ConfError::spanned(self.0, e.to_string().replace('\n', " ").trim(), value_span)),
                                 Ok(value) => match $name {
-                                    Some(_) => errors.push(conf_error(format!("duplicate field `{}`", name))),
+                                    Some(_) => errors.push(ConfError::spanned(self.0, format!("duplicate field `{}`", name.get_ref()), name.span())),
                                     None => {
                                         $name = Some(value);
                                         // $new_conf is the same as one of the defined `$name`s, so
                                         // this variable is defined in line 2 of this function.
                                         $(match $new_conf {
-                                            Some(_) => errors.push(conf_error(concat!(
+                                            Some(_) => errors.push(ConfError::spanned(self.0, concat!(
                                                 "duplicate field `", stringify!($new_conf),
                                                 "` (provided as `", stringify!($name), "`)"
-                                            ))),
+                                            ), name.span())),
                                             None => $new_conf = $name.clone(),
                                         })?
                                     },
                                 }
                             }
                         })*
-                        // white-listed; ignore
-                        Field::third_party => drop(map.next_value::<IgnoredAny>())
+                        // ignore contents of the third_party key
+                        Ok(Field::third_party) => drop(map.next_value::<IgnoredAny>())
                     }
                 }
                 let conf = Conf { $($name: $name.unwrap_or_else(defaults::$name),)* };
@@ -174,16 +216,15 @@ macro_rules! define_Conf {
             }
         }
 
-        #[cfg(feature = "internal")]
         pub mod metadata {
-            use crate::utils::internal_lints::metadata_collector::ClippyConfiguration;
+            use crate::utils::ClippyConfiguration;
 
             macro_rules! wrap_option {
                 () => (None);
                 ($x:literal) => (Some($x));
             }
 
-            pub(crate) fn get_configuration_metadata() -> Vec<ClippyConfiguration> {
+            pub fn get_configuration_metadata() -> Vec<ClippyConfiguration> {
                 vec![
                     $(
                         {
@@ -249,11 +290,11 @@ define_Conf! {
     /// arithmetic-side-effects-allowed-unary = ["SomeType", "AnotherType"]
     /// ```
     (arithmetic_side_effects_allowed_unary: rustc_data_structures::fx::FxHashSet<String> = <_>::default()),
-    /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UNUSED_SELF, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_COLLECTION, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX.
+    /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UNUSED_SELF, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_COLLECTION, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX, UNNECESSARY_BOX_RETURNS, SINGLE_CALL_FN.
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN.
+    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, OPTION_MAP_UNWRAP_OR, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN, TYPE_REPETITION_IN_BOUNDS, TUPLE_ARRAY_CONVERSIONS, MANUAL_TRY_FOLD.
     ///
     /// The minimum rust version that the project supports
     (msrv: Option<String> = None),
@@ -266,6 +307,10 @@ define_Conf! {
     ///
     /// The maximum cognitive complexity a function can have
     (cognitive_complexity_threshold: u64 = 25),
+    /// Lint: EXCESSIVE_NESTING.
+    ///
+    /// The maximum amount of nesting a block can reside in
+    (excessive_nesting_threshold: u64 = 0),
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
     ///
     /// Use the Cognitive Complexity lint instead.
@@ -274,14 +319,22 @@ define_Conf! {
     /// Lint: DISALLOWED_NAMES.
     ///
     /// The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
-    /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
-    /// default configuration of Clippy. By default any configuration will replace the default value.
+    /// `".."` can be used as part of the list to indicate that the configured values should be appended to the
+    /// default configuration of Clippy. By default, any configuration will replace the default value.
     (disallowed_names: Vec<String> = super::DEFAULT_DISALLOWED_NAMES.iter().map(ToString::to_string).collect()),
+    /// Lint: SEMICOLON_INSIDE_BLOCK.
+    ///
+    /// Whether to lint only if it's multiline.
+    (semicolon_inside_block_ignore_singleline: bool = false),
+    /// Lint: SEMICOLON_OUTSIDE_BLOCK.
+    ///
+    /// Whether to lint only if it's singleline.
+    (semicolon_outside_block_ignore_multiline: bool = false),
     /// Lint: DOC_MARKDOWN.
     ///
     /// The list of words this lint should not consider as identifiers needing ticks. The value
     /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
-    /// default configuration of Clippy. By default any configuraction will replace the default value. For example:
+    /// default configuration of Clippy. By default, any configuration will replace the default value. For example:
     /// * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
     /// * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
     ///
@@ -335,6 +388,10 @@ define_Conf! {
     ///
     /// The maximum allowed size for arrays on the stack
     (array_size_threshold: u64 = 512_000),
+    /// Lint: LARGE_STACK_FRAMES.
+    ///
+    /// The maximum allowed stack size for functions in bytes
+    (stack_size_threshold: u64 = 512_000),
     /// Lint: VEC_BOX.
     ///
     /// The size of the boxed type in bytes, where boxing in a `Vec` is allowed
@@ -390,7 +447,7 @@ define_Conf! {
     /// Enforce the named macros always use the braces specified.
     ///
     /// A `MacroMatcher` can be added like so `{ name = "macro_name", brace = "(" }`. If the macro
-    /// is could be used with a full path two `MacroMatcher`s have to be added one with the full path
+    /// could be used with a full path two `MacroMatcher`s have to be added one with the full path
     /// `crate_name::macro_name` and one with just the macro name.
     (standard_macro_braces: Vec<crate::nonstandard_macro_braces::MacroMatcher> = Vec::new()),
     /// Lint: MISSING_ENFORCED_IMPORT_RENAMES.
@@ -408,7 +465,7 @@ define_Conf! {
     /// Lint: INDEX_REFUTABLE_SLICE.
     ///
     /// When Clippy suggests using a slice pattern, this is the maximum number of elements allowed in
-    /// the slice pattern that is suggested. If more elements would be necessary, the lint is suppressed.
+    /// the slice pattern that is suggested. If more elements are necessary, the lint is suppressed.
     /// For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
     (max_suggested_slice_pattern_length: u64 = 3),
     /// Lint: AWAIT_HOLDING_INVALID_TYPE.
@@ -437,7 +494,7 @@ define_Conf! {
     ///
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     (large_error_threshold: u64 = 128),
-    /// Lint: MUTABLE_KEY_TYPE.
+    /// Lint: MUTABLE_KEY_TYPE, IFS_SAME_COND.
     ///
     /// A list of paths to types that should be treated like `Arc`, i.e. ignored but
     /// for the generic parameters for determining interior mutability
@@ -459,6 +516,51 @@ define_Conf! {
     /// Whether to **only** check for missing documentation in items visible within the current
     /// crate. For example, `pub(crate)` items.
     (missing_docs_in_crate_items: bool = false),
+    /// Lint: LARGE_FUTURES.
+    ///
+    /// The maximum byte size a `Future` can have, before it triggers the `clippy::large_futures` lint
+    (future_size_threshold: u64 = 16 * 1024),
+    /// Lint: UNNECESSARY_BOX_RETURNS.
+    ///
+    /// The byte size a `T` in `Box<T>` can have, below which it triggers the `clippy::unnecessary_box` lint
+    (unnecessary_box_size: u64 = 128),
+    /// Lint: MODULE_INCEPTION.
+    ///
+    /// Whether to allow module inception if it's not public.
+    (allow_private_module_inception: bool = false),
+    /// Lint: MIN_IDENT_CHARS.
+    ///
+    /// Allowed names below the minimum allowed characters. The value `".."` can be used as part of
+    /// the list to indicate, that the configured values should be appended to the default
+    /// configuration of Clippy. By default, any configuration will replace the default value.
+    (allowed_idents_below_min_chars: rustc_data_structures::fx::FxHashSet<String> =
+        super::DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string).collect()),
+    /// Lint: MIN_IDENT_CHARS.
+    ///
+    /// Minimum chars an ident can have, anything below or equal to this will be linted.
+    (min_ident_chars_threshold: u64 = 1),
+    /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
+    ///
+    /// Whether to accept a safety comment to be placed above the statement containing the `unsafe` block
+    (accept_comment_above_statement: bool = false),
+    /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
+    ///
+    /// Whether to accept a safety comment to be placed above the attributes for the `unsafe` block
+    (accept_comment_above_attributes: bool = false),
+    /// Lint: UNNECESSARY_RAW_STRING_HASHES.
+    ///
+    /// Whether to allow `r#""#` when `r""` can be used
+    (allow_one_hash_in_raw_strings: bool = false),
+    /// Lint: ABSOLUTE_PATHS.
+    ///
+    /// The maximum number of segments a path can have before being linted, anything above this will
+    /// be linted.
+    (absolute_paths_max_segments: u64 = 2),
+    /// Lint: ABSOLUTE_PATHS.
+    ///
+    /// Which crates to allow absolute paths from
+    (absolute_paths_allowed_crates: rustc_data_structures::fx::FxHashSet<String> =
+        rustc_data_structures::fx::FxHashSet::default()),
 }
 
 /// Search for the configuration file.
@@ -466,17 +568,19 @@ define_Conf! {
 /// # Errors
 ///
 /// Returns any unexpected filesystem error encountered when searching for the config file
-pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
+pub fn lookup_conf_file() -> io::Result<(Option<PathBuf>, Vec<String>)> {
     /// Possible filename to search for.
     const CONFIG_FILE_NAMES: [&str; 2] = [".clippy.toml", "clippy.toml"];
 
     // Start looking for a config file in CLIPPY_CONF_DIR, or failing that, CARGO_MANIFEST_DIR.
-    // If neither of those exist, use ".".
+    // If neither of those exist, use ".". (Update documentation if this priority changes)
     let mut current = env::var_os("CLIPPY_CONF_DIR")
         .or_else(|| env::var_os("CARGO_MANIFEST_DIR"))
-        .map_or_else(|| PathBuf::from("."), PathBuf::from);
+        .map_or_else(|| PathBuf::from("."), PathBuf::from)
+        .canonicalize()?;
 
     let mut found_config: Option<PathBuf> = None;
+    let mut warnings = vec![];
 
     loop {
         for config_file_name in &CONFIG_FILE_NAMES {
@@ -487,12 +591,12 @@ pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
                     Ok(md) if md.is_dir() => {},
                     Ok(_) => {
                         // warn if we happen to find two config files #8323
-                        if let Some(ref found_config_) = found_config {
-                            eprintln!(
-                                "Using config file `{}`\nWarning: `{}` will be ignored.",
-                                found_config_.display(),
-                                config_file.display(),
-                            );
+                        if let Some(ref found_config) = found_config {
+                            warnings.push(format!(
+                                "using config file `{}`, `{}` will be ignored",
+                                found_config.display(),
+                                config_file.display()
+                            ));
                         } else {
                             found_config = Some(config_file);
                         }
@@ -502,12 +606,12 @@ pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
         }
 
         if found_config.is_some() {
-            return Ok(found_config);
+            return Ok((found_config, warnings));
         }
 
         // If the current directory has no parent, we're done searching.
         if !current.pop() {
-            return Ok(None);
+            return Ok((None, warnings));
         }
     }
 }
@@ -515,19 +619,25 @@ pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
 /// Read the `toml` configuration file.
 ///
 /// In case of error, the function tries to continue as much as possible.
-pub fn read(path: &Path) -> TryConf {
-    let content = match fs::read_to_string(path) {
-        Err(e) => return TryConf::from_error(e),
-        Ok(content) => content,
+pub fn read(sess: &Session, path: &Path) -> TryConf {
+    let file = match sess.source_map().load_file(path) {
+        Err(e) => return e.into(),
+        Ok(file) => file,
     };
-    match toml::from_str::<TryConf>(&content) {
+    match toml::de::Deserializer::new(file.src.as_ref().unwrap()).deserialize_map(ConfVisitor(&file)) {
         Ok(mut conf) => {
             extend_vec_if_indicator_present(&mut conf.conf.doc_valid_idents, DEFAULT_DOC_VALID_IDENTS);
             extend_vec_if_indicator_present(&mut conf.conf.disallowed_names, DEFAULT_DISALLOWED_NAMES);
+            // TODO: THIS SHOULD BE TESTED, this comment will be gone soon
+            if conf.conf.allowed_idents_below_min_chars.contains(&"..".to_owned()) {
+                conf.conf
+                    .allowed_idents_below_min_chars
+                    .extend(DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string));
+            }
 
             conf
         },
-        Err(e) => TryConf::from_error(e),
+        Err(e) => TryConf::from_toml_error(&file, &e),
     }
 }
 
@@ -539,65 +649,42 @@ fn extend_vec_if_indicator_present(vec: &mut Vec<String>, default: &[&str]) {
 
 const SEPARATOR_WIDTH: usize = 4;
 
-// Check whether the error is "unknown field" and, if so, list the available fields sorted and at
-// least one per line, more if `CLIPPY_TERMINAL_WIDTH` is set and allows it.
-pub fn format_error(error: Box<dyn Error>) -> String {
-    let s = error.to_string();
+#[derive(Debug)]
+struct FieldError(String);
 
-    if_chain! {
-        if error.downcast::<toml::de::Error>().is_ok();
-        if let Some((prefix, mut fields, suffix)) = parse_unknown_field_message(&s);
-        then {
-            use fmt::Write;
+impl std::error::Error for FieldError {}
 
-            fields.sort_unstable();
-
-            let (rows, column_widths) = calculate_dimensions(&fields);
-
-            let mut msg = String::from(prefix);
-            for row in 0..rows {
-                writeln!(msg).unwrap();
-                for (column, column_width) in column_widths.iter().copied().enumerate() {
-                    let index = column * rows + row;
-                    let field = fields.get(index).copied().unwrap_or_default();
-                    write!(
-                        msg,
-                        "{:SEPARATOR_WIDTH$}{field:column_width$}",
-                        " "
-                    )
-                    .unwrap();
-                }
-            }
-            write!(msg, "\n{suffix}").unwrap();
-            msg
-        } else {
-            s
-        }
+impl Display for FieldError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.pad(&self.0)
     }
 }
 
-// `parse_unknown_field_message` will become unnecessary if
-// https://github.com/alexcrichton/toml-rs/pull/364 is merged.
-fn parse_unknown_field_message(s: &str) -> Option<(&str, Vec<&str>, &str)> {
-    // An "unknown field" message has the following form:
-    //   unknown field `UNKNOWN`, expected one of `FIELD0`, `FIELD1`, ..., `FIELDN` at line X column Y
-    //                                           ^^      ^^^^                     ^^
-    if_chain! {
-        if s.starts_with("unknown field");
-        let slices = s.split("`, `").collect::<Vec<_>>();
-        let n = slices.len();
-        if n >= 2;
-        if let Some((prefix, first_field)) = slices[0].rsplit_once(" `");
-        if let Some((last_field, suffix)) = slices[n - 1].split_once("` ");
-        then {
-            let fields = iter::once(first_field)
-                .chain(slices[1..n - 1].iter().copied())
-                .chain(iter::once(last_field))
-                .collect::<Vec<_>>();
-            Some((prefix, fields, suffix))
-        } else {
-            None
+impl serde::de::Error for FieldError {
+    fn custom<T: Display>(msg: T) -> Self {
+        Self(msg.to_string())
+    }
+
+    fn unknown_field(field: &str, expected: &'static [&'static str]) -> Self {
+        // List the available fields sorted and at least one per line, more if `CLIPPY_TERMINAL_WIDTH` is
+        // set and allows it.
+        use fmt::Write;
+
+        let mut expected = expected.to_vec();
+        expected.sort_unstable();
+
+        let (rows, column_widths) = calculate_dimensions(&expected);
+
+        let mut msg = format!("unknown field `{field}`, expected one of");
+        for row in 0..rows {
+            writeln!(msg).unwrap();
+            for (column, column_width) in column_widths.iter().copied().enumerate() {
+                let index = column * rows + row;
+                let field = expected.get(index).copied().unwrap_or_default();
+                write!(msg, "{:SEPARATOR_WIDTH$}{field:column_width$}", " ").unwrap();
+            }
         }
+        Self(msg)
     }
 }
 

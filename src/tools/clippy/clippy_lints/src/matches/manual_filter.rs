@@ -143,7 +143,7 @@ fn check<'tcx>(
             MANUAL_FILTER,
             expr.span,
             "manual implementation of `Option::filter`",
-            "try this",
+            "try",
             if sugg_info.needs_brackets {
                 format!(
                     "{{ {}{}.filter({body_str}) }}",

@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) --crate-type lib foo.rs -Z dump-mono-stats=$(TMPDIR) -Zdump-mono-stats-format=json

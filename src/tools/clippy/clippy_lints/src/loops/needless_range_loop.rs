@@ -208,7 +208,7 @@ fn is_end_eq_array_len<'tcx>(
     indexed_ty: Ty<'tcx>,
 ) -> bool {
     if_chain! {
-        if let ExprKind::Lit(ref lit) = end.kind;
+        if let ExprKind::Lit(lit) = end.kind;
         if let ast::LitKind::Int(end_int, _) = lit.node;
         if let ty::Array(_, arr_len_const) = indexed_ty.kind();
         if let Some(arr_len) = arr_len_const.try_eval_target_usize(cx.tcx, cx.param_env);
@@ -319,7 +319,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
 
         if_chain! {
             // an index op
-            if let ExprKind::Index(seqexpr, idx) = expr.kind;
+            if let ExprKind::Index(seqexpr, idx, _) = expr.kind;
             if !self.check(idx, seqexpr, expr);
             then {
                 return;
@@ -370,7 +370,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             ExprKind::MethodCall(_, receiver, args, _) => {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in iter::zip(
-                    self.cx.tcx.fn_sig(def_id).subst_identity().inputs().skip_binder(),
+                    self.cx.tcx.fn_sig(def_id).instantiate_identity().inputs().skip_binder(),
                     std::iter::once(receiver).chain(args.iter()),
                 ) {
                     self.prefer_mutable = false;

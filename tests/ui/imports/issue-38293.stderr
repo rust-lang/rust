@@ -12,7 +12,7 @@ LL |     baz();
    |
 help: consider importing this function instead
    |
-LL | use bar::baz;
+LL + use bar::baz;
    |
 
 error: aborting due to 2 previous errors

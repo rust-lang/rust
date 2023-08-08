@@ -181,19 +181,23 @@ impl Span {
     #[inline]
     pub fn ctxt(self) -> SyntaxContext {
         let ctxt_or_tag = self.ctxt_or_tag as u32;
-        if ctxt_or_tag <= MAX_CTXT {
-            if self.len_or_tag == LEN_TAG || self.len_or_tag & PARENT_MASK == 0 {
-                // Inline format or interned format with inline ctxt.
-                SyntaxContext::from_u32(ctxt_or_tag)
+        // Check for interned format.
+        if self.len_or_tag == LEN_TAG {
+            if ctxt_or_tag == CTXT_TAG {
+                // Fully interned format.
+                let index = self.base_or_index;
+                with_span_interner(|interner| interner.spans[index as usize].ctxt)
             } else {
-                // Inline format or interned format with inline parent.
-                // We know that the SyntaxContext is root.
-                SyntaxContext::root()
+                // Interned format with inline ctxt.
+                SyntaxContext::from_u32(ctxt_or_tag)
             }
+        } else if self.len_or_tag & PARENT_MASK == 0 {
+            // Inline format with inline ctxt.
+            SyntaxContext::from_u32(ctxt_or_tag)
         } else {
-            // Interned format.
-            let index = self.base_or_index;
-            with_span_interner(|interner| interner.spans[index as usize].ctxt)
+            // Inline format with inline parent.
+            // We know that the SyntaxContext is root.
+            SyntaxContext::root()
         }
     }
 }

@@ -11,22 +11,31 @@ it exists. The marker is the attribute `#[lang = "..."]` and there are
 various different values of `...`, i.e. various different 'lang
 items'.
 
-For example, `Box` pointers require two lang items, one for allocation
-and one for deallocation. A freestanding program that uses the `Box`
+For example, `Box` pointers require a lang item for allocation.
+A freestanding program that uses the `Box`
 sugar for dynamic allocations via `malloc` and `free`:
 
 ```rust,ignore (libc-is-finicky)
-#![feature(lang_items, box_syntax, start, libc, core_intrinsics, rustc_private)]
+#![feature(lang_items, start, libc, core_intrinsics, rustc_private, rustc_attrs)]
+#![allow(internal_features)]
 #![no_std]
 use core::intrinsics;
 use core::panic::PanicInfo;
+use core::ptr::NonNull;
 
 extern crate libc;
 
-struct Unique<T>(*mut T);
+struct Unique<T>(NonNull<T>);
 
 #[lang = "owned_box"]
 pub struct Box<T>(Unique<T>);
+
+impl<T> Box<T> {
+    pub fn new(x: T) -> Self {
+        #[rustc_box]
+        Box::new(x)
+    }
+}
 
 #[lang = "exchange_malloc"]
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
@@ -40,20 +49,21 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     p
 }
 
-#[lang = "box_free"]
-unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
-    libc::free(ptr as *mut libc::c_void)
+impl<T> Drop for Box<T> {
+    fn drop(&mut self) {
+      libc::free(self.0.0.0 as *mut libc::c_void)
+    }
 }
 
 #[start]
 fn main(_argc: isize, _argv: *const *const u8) -> isize {
-    let _x = box 1;
+    let _x = Box::new(1);
 
     0
 }
 
 #[lang = "eh_personality"] extern fn rust_eh_personality() {}
-#[lang = "panic_impl"] extern fn rust_begin_panic(info: &PanicInfo) -> ! { unsafe { intrinsics::abort() } }
+#[lang = "panic_impl"] extern fn rust_begin_panic(_info: &PanicInfo) -> ! { intrinsics::abort() }
 #[no_mangle] pub extern fn rust_eh_register_frames () {}
 #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
 ```
@@ -76,8 +86,8 @@ Other features provided by lang items include:
   `contravariant_lifetime`, etc.
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses
-`Box` then there is no need to define functions for `exchange_malloc`
-and `box_free`. `rustc` will emit an error when an item is needed
+`Box` then there is no need to define a function for `exchange_malloc`.
+`rustc` will emit an error when an item is needed
 but not found in the current crate or any that it depends on.
 
 Most lang items are defined by `libcore`, but if you're trying to build
@@ -110,6 +120,7 @@ in the same format as C:
 ```rust,ignore (libc-is-finicky)
 #![feature(lang_items, core_intrinsics, rustc_private)]
 #![feature(start)]
+#![allow(internal_features)]
 #![no_std]
 use core::intrinsics;
 use core::panic::PanicInfo;
@@ -146,6 +157,7 @@ compiler's name mangling too:
 ```rust,ignore (libc-is-finicky)
 #![feature(lang_items, core_intrinsics, rustc_private)]
 #![feature(start)]
+#![allow(internal_features)]
 #![no_std]
 #![no_main]
 use core::intrinsics;
@@ -242,7 +254,6 @@ the source code.
 - Allocations
   - `owned_box`: `liballoc/boxed.rs`
   - `exchange_malloc`: `liballoc/heap.rs`
-  - `box_free`: `liballoc/heap.rs`
 - Operands
   - `not`: `libcore/ops/bit.rs`
   - `bitand`: `libcore/ops/bit.rs`

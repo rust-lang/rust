@@ -32,8 +32,8 @@ pub(crate) fn complete_expr_snippet(
     }
 
     if in_block_expr {
-        snippet(ctx, cap, "pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);
-        snippet(ctx, cap, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
+        snippet(ctx, cap, "pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc, ctx.db);
+        snippet(ctx, cap, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc, ctx.db);
         let item = snippet(
             ctx,
             cap,
@@ -45,7 +45,7 @@ macro_rules! $1 {
     };
 }",
         );
-        item.add_to(acc);
+        item.add_to(acc, ctx.db);
     }
 }
 
@@ -88,7 +88,7 @@ mod tests {
 }",
         );
         item.lookup_by("tmod");
-        item.add_to(acc);
+        item.add_to(acc, ctx.db);
 
         let mut item = snippet(
             ctx,
@@ -101,7 +101,7 @@ fn ${1:feature}() {
 }",
         );
         item.lookup_by("tfn");
-        item.add_to(acc);
+        item.add_to(acc, ctx.db);
 
         let item = snippet(
             ctx,
@@ -114,7 +114,7 @@ macro_rules! $1 {
     };
 }",
         );
-        item.add_to(acc);
+        item.add_to(acc, ctx.db);
     }
 }
 
@@ -146,7 +146,7 @@ fn add_custom_completions(
                 builder.add_import(import);
             }
             builder.set_detail(snip.description.clone());
-            builder.add_to(acc);
+            builder.add_to(acc, ctx.db);
         },
     );
     None

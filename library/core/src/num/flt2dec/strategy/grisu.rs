@@ -487,6 +487,22 @@ pub fn format_exact_opt<'a>(
     let vint = (v.f >> e) as u32;
     let vfrac = v.f & ((1 << e) - 1);
 
+    let requested_digits = buf.len();
+
+    const POW10_UP_TO_9: [u32; 10] =
+        [1, 10, 100, 1000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000];
+
+    // We deviate from the original algorithm here and do some early checks to determine if we can satisfy requested_digits.
+    // If we determine that we can't, we exit early and avoid most of the heavy lifting that the algorithm otherwise does.
+    //
+    // When vfrac is zero, we can easily determine if vint can satisfy requested digits:
+    //      If requested_digits >= 11, vint is not able to exhaust the count by itself since 10^(11 -1) > u32 max value >= vint.
+    //      If vint < 10^(requested_digits - 1), vint cannot exhaust the count.
+    //      Otherwise, vint might be able to exhaust the count and we need to execute the rest of the code.
+    if (vfrac == 0) && ((requested_digits >= 11) || (vint < POW10_UP_TO_9[requested_digits - 1])) {
+        return None;
+    }
+
     // both old `v` and new `v` (scaled by `10^-k`) has an error of < 1 ulp (Theorem 5.1).
     // as we don't know the error is positive or negative, we use two approximations
     // spaced equally and have the maximal error of 2 ulps (same to the shortest case).

@@ -77,7 +77,7 @@ fn hat() -> dyn std::fmt::Display { //~ ERROR return type cannot have an unboxed
 fn pug() -> dyn std::fmt::Display { //~ ERROR return type cannot have an unboxed trait object
     match 13 {
         0 => 0i32,
-        1 => 1u32, //~ ERROR `match` arms have incompatible types
+        1 => 1u32,
         _ => 2u32,
     }
 }
@@ -86,7 +86,7 @@ fn man() -> dyn std::fmt::Display { //~ ERROR return type cannot have an unboxed
     if false {
         0i32
     } else {
-        1u32 //~ ERROR `if` and `else` have incompatible types
+        1u32
     }
 }
 

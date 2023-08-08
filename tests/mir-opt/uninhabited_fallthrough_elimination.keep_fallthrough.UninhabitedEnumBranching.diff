@@ -2,33 +2,33 @@
 + // MIR for `keep_fallthrough` after UninhabitedEnumBranching
   
   fn keep_fallthrough(_1: S) -> u32 {
-      debug s => _1;                       // in scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+0:21: +0:22
-      let mut _0: u32;                     // return place in scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+0:30: +0:33
-      let mut _2: isize;                   // in scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+2:9: +2:13
+      debug s => _1;
+      let mut _0: u32;
+      let mut _2: isize;
   
       bb0: {
-          _2 = discriminant(_1);           // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+1:11: +1:12
--         switchInt(move _2) -> [0: bb2, 1: bb3, otherwise: bb1]; // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+1:5: +1:12
-+         switchInt(move _2) -> [1: bb3, otherwise: bb1]; // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+1:5: +1:12
+          _2 = discriminant(_1);
+-         switchInt(move _2) -> [0: bb2, 1: bb3, otherwise: bb1];
++         switchInt(move _2) -> [1: bb3, otherwise: bb1];
       }
   
       bb1: {
-          _0 = const 3_u32;                // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+4:14: +4:15
-          goto -> bb4;                     // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+4:14: +4:15
+          _0 = const 3_u32;
+          goto -> bb4;
       }
   
       bb2: {
-          _0 = const 1_u32;                // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+2:17: +2:18
-          goto -> bb4;                     // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+2:17: +2:18
+          _0 = const 1_u32;
+          goto -> bb4;
       }
   
       bb3: {
-          _0 = const 2_u32;                // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+3:14: +3:15
-          goto -> bb4;                     // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+3:14: +3:15
+          _0 = const 2_u32;
+          goto -> bb4;
       }
   
       bb4: {
-          return;                          // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:+6:2: +6:2
+          return;
       }
   }
   

@@ -6,7 +6,7 @@ use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::OnceCell;
-use rustc_index::vec::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
 
@@ -26,7 +26,8 @@ struct Cache {
     predecessors: OnceCell<Predecessors>,
     switch_sources: OnceCell<SwitchSources>,
     is_cyclic: OnceCell<bool>,
-    postorder: OnceCell<Vec<BasicBlock>>,
+    reverse_postorder: OnceCell<Vec<BasicBlock>>,
+    dominators: OnceCell<Dominators<BasicBlock>>,
 }
 
 impl<'tcx> BasicBlocks<'tcx> {
@@ -41,8 +42,8 @@ impl<'tcx> BasicBlocks<'tcx> {
         *self.cache.is_cyclic.get_or_init(|| graph::is_cyclic(self))
     }
 
-    pub fn dominators(&self) -> Dominators<BasicBlock> {
-        dominators(&self)
+    pub fn dominators(&self) -> &Dominators<BasicBlock> {
+        self.cache.dominators.get_or_init(|| dominators(self))
     }
 
     /// Returns predecessors for each basic block.
@@ -61,11 +62,14 @@ impl<'tcx> BasicBlocks<'tcx> {
         })
     }
 
-    /// Returns basic blocks in a postorder.
+    /// Returns basic blocks in a reverse postorder.
     #[inline]
-    pub fn postorder(&self) -> &[BasicBlock] {
-        self.cache.postorder.get_or_init(|| {
-            Postorder::new(&self.basic_blocks, START_BLOCK).map(|(bb, _)| bb).collect()
+    pub fn reverse_postorder(&self) -> &[BasicBlock] {
+        self.cache.reverse_postorder.get_or_init(|| {
+            let mut rpo: Vec<_> =
+                Postorder::new(&self.basic_blocks, START_BLOCK).map(|(bb, _)| bb).collect();
+            rpo.reverse();
+            rpo
         })
     }
 
@@ -124,10 +128,10 @@ impl<'tcx> BasicBlocks<'tcx> {
 }
 
 impl<'tcx> std::ops::Deref for BasicBlocks<'tcx> {
-    type Target = IndexVec<BasicBlock, BasicBlockData<'tcx>>;
+    type Target = IndexSlice<BasicBlock, BasicBlockData<'tcx>>;
 
     #[inline]
-    fn deref(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+    fn deref(&self) -> &IndexSlice<BasicBlock, BasicBlockData<'tcx>> {
         &self.basic_blocks
     }
 }
@@ -174,9 +178,7 @@ impl<'tcx> graph::WithPredecessors for BasicBlocks<'tcx> {
     }
 }
 
-TrivialTypeTraversalAndLiftImpls! {
-    Cache,
-}
+TrivialTypeTraversalAndLiftImpls! { Cache }
 
 impl<S: Encoder> Encodable<S> for Cache {
     #[inline]

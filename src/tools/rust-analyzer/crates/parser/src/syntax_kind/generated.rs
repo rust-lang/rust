@@ -117,6 +117,7 @@ pub enum SyntaxKind {
     BYTE,
     STRING,
     BYTE_STRING,
+    C_STRING,
     ERROR,
     IDENT,
     WHITESPACE,
@@ -135,6 +136,7 @@ pub enum SyntaxKind {
     STATIC,
     CONST,
     TRAIT,
+    TRAIT_ALIAS,
     IMPL,
     TYPE_ALIAS,
     MACRO_CALL,
@@ -244,6 +246,7 @@ pub enum SyntaxKind {
     GENERIC_PARAM,
     LIFETIME_PARAM,
     TYPE_PARAM,
+    RETURN_TYPE_ARG,
     CONST_PARAM,
     GENERIC_ARG_LIST,
     LIFETIME,
@@ -259,6 +262,7 @@ pub enum SyntaxKind {
     TYPE_BOUND_LIST,
     MACRO_ITEMS,
     MACRO_STMTS,
+    MACRO_EAGER_INPUT,
     #[doc(hidden)]
     __LAST,
 }
@@ -377,7 +381,7 @@ impl SyntaxKind {
         )
     }
     pub fn is_literal(self) -> bool {
-        matches!(self, INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE | STRING | BYTE_STRING)
+        matches!(self, INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE | STRING | BYTE_STRING | C_STRING)
     }
     pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {
         let kw = match ident {

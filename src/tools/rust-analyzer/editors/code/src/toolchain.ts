@@ -4,6 +4,8 @@ import * as path from "path";
 import * as readline from "readline";
 import * as vscode from "vscode";
 import { execute, log, memoizeAsync } from "./util";
+import { unwrapNullable } from "./nullable";
+import { unwrapUndefinable } from "./undefinable";
 
 interface CompilationArtifact {
     fileName: string;
@@ -18,7 +20,11 @@ export interface ArtifactSpec {
 }
 
 export class Cargo {
-    constructor(readonly rootFolder: string, readonly output: vscode.OutputChannel) {}
+    constructor(
+        readonly rootFolder: string,
+        readonly output: vscode.OutputChannel,
+        readonly env: Record<string, string>,
+    ) {}
 
     // Made public for testing purposes
     static artifactSpec(args: readonly string[]): ArtifactSpec {
@@ -70,7 +76,7 @@ export class Cargo {
                         this.output.append(message.message.rendered);
                     }
                 },
-                (stderr) => this.output.append(stderr)
+                (stderr) => this.output.append(stderr),
             );
         } catch (err) {
             this.output.show(true);
@@ -89,19 +95,21 @@ export class Cargo {
             throw new Error("Multiple compilation artifacts are not supported.");
         }
 
-        return artifacts[0].fileName;
+        const artifact = unwrapUndefinable(artifacts[0]);
+        return artifact.fileName;
     }
 
     private async runCargo(
         cargoArgs: string[],
         onStdoutJson: (obj: any) => void,
-        onStderrString: (data: string) => void
+        onStderrString: (data: string) => void,
     ): Promise<number> {
         const path = await cargoPath();
         return await new Promise((resolve, reject) => {
             const cargo = cp.spawn(path, cargoArgs, {
                 stdio: ["ignore", "pipe", "pipe"],
                 cwd: this.rootFolder,
+                env: this.env,
             });
 
             cargo.on("error", (err) => reject(new Error(`could not launch cargo: ${err}`)));
@@ -137,7 +145,9 @@ export async function getRustcId(dir: string): Promise<string> {
     const data = await execute(`${rustcPath} -V -v`, { cwd: dir });
     const rx = /commit-hash:\s(.*)$/m;
 
-    return rx.exec(data)![1];
+    const result = unwrapNullable(rx.exec(data));
+    const first = unwrapUndefinable(result[1]);
+    return first;
 }
 
 /** Mirrors `toolchain::cargo()` implementation */
@@ -156,26 +166,17 @@ export const getPathForExecutable = memoizeAsync(
 
         if (await lookupInPath(executableName)) return executableName;
 
-        try {
-            // hmm, `os.homedir()` seems to be infallible
-            // it is not mentioned in docs and cannot be inferred by the type signature...
-            const standardPath = vscode.Uri.joinPath(
-                vscode.Uri.file(os.homedir()),
-                ".cargo",
-                "bin",
-                executableName
-            );
-
+        const cargoHome = getCargoHome();
+        if (cargoHome) {
+            const standardPath = vscode.Uri.joinPath(cargoHome, "bin", executableName);
             if (await isFileAtUri(standardPath)) return standardPath.fsPath;
-        } catch (err) {
-            log.error("Failed to read the fs info", err);
         }
         return executableName;
-    }
+    },
 );
 
 async function lookupInPath(exec: string): Promise<boolean> {
-    const paths = process.env.PATH ?? "";
+    const paths = process.env["PATH"] ?? "";
 
     const candidates = paths.split(path.delimiter).flatMap((dirInPath) => {
         const candidate = path.join(dirInPath, exec);
@@ -188,6 +189,21 @@ async function lookupInPath(exec: string): Promise<boolean> {
         }
     }
     return false;
+}
+
+function getCargoHome(): vscode.Uri | null {
+    const envVar = process.env["CARGO_HOME"];
+    if (envVar) return vscode.Uri.file(envVar);
+
+    try {
+        // hmm, `os.homedir()` seems to be infallible
+        // it is not mentioned in docs and cannot be inferred by the type signature...
+        return vscode.Uri.joinPath(vscode.Uri.file(os.homedir()), ".cargo");
+    } catch (err) {
+        log.error("Failed to read the fs info", err);
+    }
+
+    return null;
 }
 
 async function isFileAtPath(path: string): Promise<boolean> {

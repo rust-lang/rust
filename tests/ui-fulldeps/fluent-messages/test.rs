@@ -1,10 +1,10 @@
-// normalize-stderr-test "note.*" -> "note: os-specific message"
+// normalize-stderr-test "could not open Fluent resource:.*" -> "could not open Fluent resource: os-specific message"
 
 #![feature(rustc_private)]
 #![crate_type = "lib"]
 
-extern crate rustc_macros;
-use rustc_macros::fluent_messages;
+extern crate rustc_fluent_macro;
+use rustc_fluent_macro::fluent_messages;
 
 /// Copy of the relevant `DiagnosticMessage` variant constructed by `fluent_messages` as it
 /// expects `crate::DiagnosticMessage` to exist.
@@ -91,4 +91,13 @@ mod missing_message_ref {
 
     fluent_messages! { "./missing-message-ref.ftl" }
     //~^ ERROR referenced message `message` does not exist
+}
+
+mod bad_escape {
+    use super::fluent_messages;
+
+    fluent_messages! { "./invalid-escape.ftl" }
+    //~^ ERROR invalid escape `\n`
+    //~| ERROR invalid escape `\"`
+    //~| ERROR invalid escape `\'`
 }

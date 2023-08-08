@@ -1,5 +1,4 @@
 #![feature(return_position_impl_trait_in_trait)]
-//~^ WARN the feature `return_position_impl_trait_in_trait` is incomplete
 
 trait MyTrait {
     fn foo(&self) -> impl Sized;
@@ -7,7 +6,7 @@ trait MyTrait {
 }
 
 impl MyTrait for i32 {
-//~^ ERROR not all trait items implemented, missing: `foo`
+    //~^ ERROR not all trait items implemented, missing: `foo`
     fn bar(&self) -> impl Sized {
         self.foo()
     }

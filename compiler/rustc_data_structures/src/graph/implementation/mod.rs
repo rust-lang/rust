@@ -206,17 +206,11 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         AdjacentEdges { graph: self, direction, next: first_edge }
     }
 
-    pub fn successor_nodes<'a>(
-        &'a self,
-        source: NodeIndex,
-    ) -> impl Iterator<Item = NodeIndex> + 'a {
+    pub fn successor_nodes(&self, source: NodeIndex) -> impl Iterator<Item = NodeIndex> + '_ {
         self.outgoing_edges(source).targets()
     }
 
-    pub fn predecessor_nodes<'a>(
-        &'a self,
-        target: NodeIndex,
-    ) -> impl Iterator<Item = NodeIndex> + 'a {
+    pub fn predecessor_nodes(&self, target: NodeIndex) -> impl Iterator<Item = NodeIndex> + '_ {
         self.incoming_edges(target).sources()
     }
 

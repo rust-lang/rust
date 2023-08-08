@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![feature(exhaustive_patterns, never_type)]
 #![allow(dead_code, unreachable_code, unused_variables)]
 #![allow(clippy::let_and_return)]

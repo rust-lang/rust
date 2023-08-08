@@ -1,14 +1,11 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
-USER rustbuild
 WORKDIR /tmp
-
-USER root
 
 RUN apt-get install -y --no-install-recommends rpm2cpio cpio
 COPY host-x86_64/dist-powerpc64le-linux/shared.sh host-x86_64/dist-powerpc64le-linux/build-powerpc64le-toolchain.sh /tmp/

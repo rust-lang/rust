@@ -64,7 +64,7 @@ pub fn main() {
     };
     assert_eq!(trait_unified_3, ["Yes"]);
 
-    let regular_break = loop {
+    let regular_break: () = loop {
         if true {
             break;
         } else {
@@ -73,7 +73,7 @@ pub fn main() {
     };
     assert_eq!(regular_break, ());
 
-    let regular_break_2 = loop {
+    let regular_break_2: () = loop {
         if true {
             break Default::default();
         } else {
@@ -82,7 +82,7 @@ pub fn main() {
     };
     assert_eq!(regular_break_2, ());
 
-    let regular_break_3 = loop {
+    let regular_break_3: () = loop {
         break if true {
             Default::default()
         } else {
@@ -91,13 +91,13 @@ pub fn main() {
     };
     assert_eq!(regular_break_3, ());
 
-    let regular_break_4 = loop {
+    let regular_break_4: () = loop {
         break ();
         break;
     };
     assert_eq!(regular_break_4, ());
 
-    let regular_break_5 = loop {
+    let regular_break_5: () = loop {
         break;
         break ();
     };

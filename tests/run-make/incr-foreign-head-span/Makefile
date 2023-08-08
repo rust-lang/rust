@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 # ignore-none no-std is not supported
 # ignore-nvptx64-nvidia-cuda FIXME: can't find crate for 'std'

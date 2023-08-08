@@ -1,10 +1,10 @@
 // MIR for `int_to_ptr` after built
 
 fn int_to_ptr(_1: usize) -> *const i32 {
-    let mut _0: *const i32;              // return place in scope 0 at $DIR/as_cast.rs:+0:28: +0:38
+    let mut _0: *const i32;
 
     bb0: {
-        _0 = _1 as *const i32 (PointerFromExposedAddress); // scope 0 at $DIR/as_cast.rs:+3:13: +3:34
-        return;                          // scope 0 at $DIR/as_cast.rs:+4:13: +4:21
+        _0 = _1 as *const i32 (PointerFromExposedAddress);
+        return;
     }
 }

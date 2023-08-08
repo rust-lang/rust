@@ -4,19 +4,19 @@
 #![no_core]
 
 mod bar {
-    // @set baz = "$.index[*][?(@.kind=='struct')].id"
+    // @set baz = "$.index[*][?(@.inner.struct)].id"
     pub struct Baz;
-    // @set impl = "$.index[*][?(@.kind=='impl')].id"
+    // @set impl = "$.index[*][?(@.inner.impl)].id"
     impl Baz {
-        // @set doit = "$.index[*][?(@.kind=='function')].id"
+        // @set doit = "$.index[*][?(@.inner.function)].id"
         pub fn doit() {}
     }
 }
 
-// @set import = "$.index[*][?(@.kind=='import')].id"
+// @set import = "$.index[*][?(@.inner.import)].id"
 pub use bar::Baz;
 
-// @is "$.index[*][?(@.kind=='module')].inner.items[*]" $import
-// @is "$.index[*][?(@.kind=='import')].inner.id" $baz
-// @is "$.index[*][?(@.kind=='struct')].inner.impls[*]" $impl
-// @is "$.index[*][?(@.kind=='impl')].inner.items[*]" $doit
+// @is "$.index[*].inner.module.items[*]" $import
+// @is "$.index[*].inner.import.id" $baz
+// @is "$.index[*].inner.struct.impls[*]" $impl
+// @is "$.index[*].inner.impl.items[*]" $doit

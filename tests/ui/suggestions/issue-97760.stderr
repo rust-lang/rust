@@ -1,8 +1,8 @@
 error[E0277]: `<impl IntoIterator as IntoIterator>::Item` doesn't implement `std::fmt::Display`
-  --> $DIR/issue-97760.rs:4:20
+  --> $DIR/issue-97760.rs:4:19
    |
 LL |         println!("{x}");
-   |                    ^ `<impl IntoIterator as IntoIterator>::Item` cannot be formatted with the default formatter
+   |                   ^^^ `<impl IntoIterator as IntoIterator>::Item` cannot be formatted with the default formatter
    |
    = help: the trait `std::fmt::Display` is not implemented for `<impl IntoIterator as IntoIterator>::Item`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead

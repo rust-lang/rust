@@ -86,7 +86,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "_NSGetEnviron" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.write_pointer(
-                    this.machine.env_vars.environ.expect("machine must be initialized").ptr,
+                    this.machine
+                        .env_vars
+                        .environ
+                        .as_ref()
+                        .expect("machine must be initialized")
+                        .ptr,
                     dest,
                 )?;
             }
@@ -125,7 +130,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.check_no_isolation("`_NSGetExecutablePath`")?;
 
                 let buf_ptr = this.read_pointer(buf)?;
-                let bufsize = this.deref_operand(bufsize)?;
+                let bufsize = this.deref_pointer(bufsize)?;
 
                 // Using the host current_exe is a bit off, but consistent with Linux
                 // (where stdlib reads /proc/self/exe).
@@ -133,16 +138,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let (written, size_needed) = this.write_path_to_c_str(
                     &path,
                     buf_ptr,
-                    this.read_scalar(&bufsize.into())?.to_u32()?.into(),
+                    this.read_scalar(&bufsize)?.to_u32()?.into(),
                 )?;
 
                 if written {
                     this.write_null(dest)?;
                 } else {
-                    this.write_scalar(
-                        Scalar::from_u32(size_needed.try_into().unwrap()),
-                        &bufsize.into(),
-                    )?;
+                    this.write_scalar(Scalar::from_u32(size_needed.try_into().unwrap()), &bufsize)?;
                     this.write_int(-1, dest)?;
                 }
             }
@@ -195,16 +197,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.read_scalar(len)?,
                 )?;
                 this.write_scalar(res, dest)?;
-            }
-
-            // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
-            // These shims are enabled only when the caller is in the standard library.
-            "mmap" if this.frame_in_std() => {
-                // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.
-                let [addr, _, _, _, _, _] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let addr = this.read_scalar(addr)?;
-                this.write_scalar(addr, dest)?;
             }
 
             _ => return Ok(EmulateByNameResult::NotSupported),

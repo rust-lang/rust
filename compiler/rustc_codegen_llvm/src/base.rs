@@ -86,8 +86,8 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
         {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
-            for &(mono_item, (linkage, visibility)) in &mono_items {
-                mono_item.predefine::<Builder<'_, '_, '_>>(&cx, linkage, visibility);
+            for &(mono_item, data) in &mono_items {
+                mono_item.predefine::<Builder<'_, '_, '_>>(&cx, data.linkage, data.visibility);
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.
@@ -123,8 +123,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             // happen after the llvm.used variables are created.
             for &(old_g, new_g) in cx.statics_to_rauw().borrow().iter() {
                 unsafe {
-                    let bitcast = llvm::LLVMConstPointerCast(new_g, cx.val_ty(old_g));
-                    llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
+                    llvm::LLVMReplaceAllUsesWith(old_g, new_g);
                     llvm::LLVMDeleteGlobal(old_g);
                 }
             }

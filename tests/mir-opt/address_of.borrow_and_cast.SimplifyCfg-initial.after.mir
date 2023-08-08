@@ -1,47 +1,47 @@
 // MIR for `borrow_and_cast` after SimplifyCfg-initial
 
 fn borrow_and_cast(_1: i32) -> () {
-    debug x => _1;                       // in scope 0 at $DIR/address_of.rs:+0:20: +0:25
-    let mut _0: ();                      // return place in scope 0 at $DIR/address_of.rs:+0:32: +0:32
-    let _2: *const i32;                  // in scope 0 at $DIR/address_of.rs:+1:9: +1:10
-    let _3: &i32;                        // in scope 0 at $DIR/address_of.rs:+1:13: +1:15
-    let _5: &mut i32;                    // in scope 0 at $DIR/address_of.rs:+2:13: +2:19
-    let mut _7: &mut i32;                // in scope 0 at $DIR/address_of.rs:+3:13: +3:19
+    debug x => _1;
+    let mut _0: ();
+    let _2: *const i32;
+    let _3: &i32;
+    let _5: &mut i32;
+    let mut _7: &mut i32;
     scope 1 {
-        debug p => _2;                   // in scope 1 at $DIR/address_of.rs:+1:9: +1:10
-        let _4: *const i32;              // in scope 1 at $DIR/address_of.rs:+2:9: +2:10
+        debug p => _2;
+        let _4: *const i32;
         scope 2 {
-            debug q => _4;               // in scope 2 at $DIR/address_of.rs:+2:9: +2:10
-            let _6: *mut i32;            // in scope 2 at $DIR/address_of.rs:+3:9: +3:10
+            debug q => _4;
+            let _6: *mut i32;
             scope 3 {
-                debug r => _6;           // in scope 3 at $DIR/address_of.rs:+3:9: +3:10
+                debug r => _6;
             }
         }
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/address_of.rs:+1:9: +1:10
-        StorageLive(_3);                 // scope 0 at $DIR/address_of.rs:+1:13: +1:15
-        _3 = &_1;                        // scope 0 at $DIR/address_of.rs:+1:13: +1:15
-        _2 = &raw const (*_3);           // scope 0 at $DIR/address_of.rs:+1:13: +1:15
-        FakeRead(ForLet(None), _2);      // scope 0 at $DIR/address_of.rs:+1:9: +1:10
-        StorageDead(_3);                 // scope 0 at $DIR/address_of.rs:+1:29: +1:30
-        StorageLive(_4);                 // scope 1 at $DIR/address_of.rs:+2:9: +2:10
-        StorageLive(_5);                 // scope 1 at $DIR/address_of.rs:+2:13: +2:19
-        _5 = &mut _1;                    // scope 1 at $DIR/address_of.rs:+2:13: +2:19
-        _4 = &raw const (*_5);           // scope 1 at $DIR/address_of.rs:+2:13: +2:19
-        FakeRead(ForLet(None), _4);      // scope 1 at $DIR/address_of.rs:+2:9: +2:10
-        StorageDead(_5);                 // scope 1 at $DIR/address_of.rs:+2:33: +2:34
-        StorageLive(_6);                 // scope 2 at $DIR/address_of.rs:+3:9: +3:10
-        StorageLive(_7);                 // scope 2 at $DIR/address_of.rs:+3:13: +3:19
-        _7 = &mut _1;                    // scope 2 at $DIR/address_of.rs:+3:13: +3:19
-        _6 = &raw mut (*_7);             // scope 2 at $DIR/address_of.rs:+3:13: +3:19
-        FakeRead(ForLet(None), _6);      // scope 2 at $DIR/address_of.rs:+3:9: +3:10
-        StorageDead(_7);                 // scope 2 at $DIR/address_of.rs:+3:31: +3:32
-        _0 = const ();                   // scope 0 at $DIR/address_of.rs:+0:32: +4:2
-        StorageDead(_6);                 // scope 2 at $DIR/address_of.rs:+4:1: +4:2
-        StorageDead(_4);                 // scope 1 at $DIR/address_of.rs:+4:1: +4:2
-        StorageDead(_2);                 // scope 0 at $DIR/address_of.rs:+4:1: +4:2
-        return;                          // scope 0 at $DIR/address_of.rs:+4:2: +4:2
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = &_1;
+        _2 = &raw const (*_3);
+        FakeRead(ForLet(None), _2);
+        StorageDead(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = &mut _1;
+        _4 = &raw const (*_5);
+        FakeRead(ForLet(None), _4);
+        StorageDead(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = &mut _1;
+        _6 = &raw mut (*_7);
+        FakeRead(ForLet(None), _6);
+        StorageDead(_7);
+        _0 = const ();
+        StorageDead(_6);
+        StorageDead(_4);
+        StorageDead(_2);
+        return;
     }
 }

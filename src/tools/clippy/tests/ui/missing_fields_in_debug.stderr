@@ -1,0 +1,73 @@
+error: manual `Debug` impl does not include all fields
+  --> $DIR/missing_fields_in_debug.rs:13:1
+   |
+LL | / impl fmt::Debug for NamedStruct1Ignored {
+LL | |     // unused field: hidden
+LL | |     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+LL | |         formatter
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   |
+note: this field is unused
+  --> $DIR/missing_fields_in_debug.rs:10:5
+   |
+LL |     hidden: u32,
+   |     ^^^^^^^^^^^
+   = help: consider including all fields in this `Debug` impl
+   = help: consider calling `.finish_non_exhaustive()` if you intend to ignore fields
+   = note: `-D clippy::missing-fields-in-debug` implied by `-D warnings`
+
+error: manual `Debug` impl does not include all fields
+  --> $DIR/missing_fields_in_debug.rs:31:1
+   |
+LL | / impl fmt::Debug for NamedStructMultipleIgnored {
+LL | |     // unused fields: hidden, hidden2, hidden4
+LL | |     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+LL | |         formatter
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   |
+note: this field is unused
+  --> $DIR/missing_fields_in_debug.rs:25:5
+   |
+LL |     hidden: u32,
+   |     ^^^^^^^^^^^
+note: this field is unused
+  --> $DIR/missing_fields_in_debug.rs:26:5
+   |
+LL |     hidden2: String,
+   |     ^^^^^^^^^^^^^^^
+note: this field is unused
+  --> $DIR/missing_fields_in_debug.rs:28:5
+   |
+LL |     hidden4: ((((u8), u16), u32), u64),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider including all fields in this `Debug` impl
+   = help: consider calling `.finish_non_exhaustive()` if you intend to ignore fields
+
+error: manual `Debug` impl does not include all fields
+  --> $DIR/missing_fields_in_debug.rs:92:1
+   |
+LL | / impl fmt::Debug for MultiExprDebugImpl {
+LL | |     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+LL | |         let mut f = formatter.debug_struct("MultiExprDebugImpl");
+LL | |         f.field("a", &self.a);
+LL | |         f.finish()
+LL | |     }
+LL | | }
+   | |_^
+   |
+note: this field is unused
+  --> $DIR/missing_fields_in_debug.rs:88:5
+   |
+LL |     b: String,
+   |     ^^^^^^^^^
+   = help: consider including all fields in this `Debug` impl
+   = help: consider calling `.finish_non_exhaustive()` if you intend to ignore fields
+
+error: aborting due to 3 previous errors
+

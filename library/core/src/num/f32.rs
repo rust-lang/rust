@@ -403,6 +403,7 @@ impl f32 {
     /// and the stability of its representation over Rust versions
     /// and target platforms isn't guaranteed.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
+    #[rustc_diagnostic_item = "f32_nan"]
     pub const NAN: f32 = 0.0_f32 / 0.0_f32;
     /// Infinity (∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
@@ -940,6 +941,42 @@ impl f32 {
         }
     }
 
+    /// Calculates the middle point of `self` and `rhs`.
+    ///
+    /// This returns NaN when *either* argument is NaN or if a combination of
+    /// +inf and -inf is provided as arguments.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(num_midpoint)]
+    /// assert_eq!(1f32.midpoint(4.0), 2.5);
+    /// assert_eq!((-5.5f32).midpoint(8.0), 1.25);
+    /// ```
+    #[unstable(feature = "num_midpoint", issue = "110840")]
+    pub fn midpoint(self, other: f32) -> f32 {
+        const LO: f32 = f32::MIN_POSITIVE * 2.;
+        const HI: f32 = f32::MAX / 2.;
+
+        let (a, b) = (self, other);
+        let abs_a = a.abs_private();
+        let abs_b = b.abs_private();
+
+        if abs_a <= HI && abs_b <= HI {
+            // Overflow is impossible
+            (a + b) / 2.
+        } else if abs_a < LO {
+            // Not safe to halve a
+            a + (b / 2.)
+        } else if abs_b < LO {
+            // Not safe to halve b
+            (a / 2.) + b
+        } else {
+            // Not safe to halve a and b
+            (a / 2.) + (b / 2.)
+        }
+    }
+
     /// Rounds toward zero and converts to any primitive integer type,
     /// assuming that the value is finite and fits in that type.
     ///
@@ -1391,7 +1428,7 @@ impl f32 {
     #[stable(feature = "clamp", since = "1.50.0")]
     #[inline]
     pub fn clamp(mut self, min: f32, max: f32) -> f32 {
-        assert!(min <= max);
+        assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");
         if self < min {
             self = min;
         }

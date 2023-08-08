@@ -1,0 +1,8 @@
+error: expected one of `#`, `>`, `const`, identifier, or lifetime, found `<`
+  --> $DIR/issue-111148.rs:1:6
+   |
+LL | fn a<<i<Y<w<>#
+   |      ^ expected one of `#`, `>`, `const`, identifier, or lifetime
+
+error: aborting due to previous error
+

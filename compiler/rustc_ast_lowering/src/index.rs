@@ -5,7 +5,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::definitions;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::*;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::span_bug;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
@@ -220,6 +220,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
         self.with_parent(constant.hir_id, |this| {
             intravisit::walk_anon_const(this, constant);
+        });
+    }
+
+    fn visit_inline_const(&mut self, constant: &'hir ConstBlock) {
+        self.insert(DUMMY_SP, constant.hir_id, Node::ConstBlock(constant));
+
+        self.with_parent(constant.hir_id, |this| {
+            intravisit::walk_inline_const(this, constant);
         });
     }
 

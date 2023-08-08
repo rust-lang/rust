@@ -16,17 +16,33 @@ warning: literal out of range for `i8`
   --> $DIR/type-overflow.rs:10:16
    |
 LL |     let fail = 0b1000_0001i8;
-   |                ^^^^^^^^^^^^^ help: consider using the type `u8` instead: `0b1000_0001u8`
+   |                ^^^^^^^^^^^^^
    |
    = note: the literal `0b1000_0001i8` (decimal `129`) does not fit into the type `i8` and will become `-127i8`
+help: consider using the type `u8` instead
+   |
+LL |     let fail = 0b1000_0001u8;
+   |                ~~~~~~~~~~~~~
+help: to use as a negative number (decimal `-127`), consider using the type `u8` for the literal and cast it to `i8`
+   |
+LL |     let fail = 0b1000_0001u8 as i8;
+   |                ~~~~~~~~~~~~~~~~~~~
 
 warning: literal out of range for `i64`
   --> $DIR/type-overflow.rs:12:16
    |
 LL |     let fail = 0x8000_0000_0000_0000i64;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using the type `u64` instead: `0x8000_0000_0000_0000u64`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the literal `0x8000_0000_0000_0000i64` (decimal `9223372036854775808`) does not fit into the type `i64` and will become `-9223372036854775808i64`
+help: consider using the type `u64` instead
+   |
+LL |     let fail = 0x8000_0000_0000_0000u64;
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~
+help: to use as a negative number (decimal `-9223372036854775808`), consider using the type `u64` for the literal and cast it to `i64`
+   |
+LL |     let fail = 0x8000_0000_0000_0000u64 as i64;
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: literal out of range for `u32`
   --> $DIR/type-overflow.rs:14:16
@@ -44,6 +60,10 @@ LL |     let fail: i128 = 0x8000_0000_0000_0000_0000_0000_0000_0000;
    |
    = note: the literal `0x8000_0000_0000_0000_0000_0000_0000_0000` (decimal `170141183460469231731687303715884105728`) does not fit into the type `i128` and will become `-170141183460469231731687303715884105728i128`
    = help: consider using the type `u128` instead
+help: to use as a negative number (decimal `-170141183460469231731687303715884105728`), consider using the type `u128` for the literal and cast it to `i128`
+   |
+LL |     let fail: i128 = 0x8000_0000_0000_0000_0000_0000_0000_0000u128 as i128;
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: literal out of range for `i32`
   --> $DIR/type-overflow.rs:19:16
@@ -53,6 +73,10 @@ LL |     let fail = 0x8FFF_FFFF_FFFF_FFFE;
    |
    = note: the literal `0x8FFF_FFFF_FFFF_FFFE` (decimal `10376293541461622782`) does not fit into the type `i32` and will become `-2i32`
    = help: consider using the type `i128` instead
+help: to use as a negative number (decimal `-2`), consider using the type `u32` for the literal and cast it to `i32`
+   |
+LL |     let fail = 0x8FFF_FFFF_FFFF_FFFEu32 as i32;
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: literal out of range for `i8`
   --> $DIR/type-overflow.rs:21:17

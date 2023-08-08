@@ -1,14 +1,15 @@
 use crate::io::prelude::*;
 
 use crate::env;
-use crate::fs::{self, File, OpenOptions};
-use crate::io::{ErrorKind, SeekFrom};
+use crate::fs::{self, File, FileTimes, OpenOptions};
+use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
+use crate::mem::MaybeUninit;
 use crate::path::Path;
 use crate::str;
 use crate::sync::Arc;
 use crate::sys_common::io::test::{tmpdir, TempDir};
 use crate::thread;
-use crate::time::{Duration, Instant};
+use crate::time::{Duration, Instant, SystemTime};
 
 use rand::RngCore;
 
@@ -399,6 +400,23 @@ fn file_test_io_seek_read_write() {
         assert_eq!(check!(read.seek_read(&mut buf, 15)), 0);
     }
     check!(fs::remove_file(&filename));
+}
+
+#[test]
+fn file_test_read_buf() {
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("test");
+    check!(fs::write(filename, &[1, 2, 3, 4]));
+
+    let mut buf: [MaybeUninit<u8>; 128] = MaybeUninit::uninit_array();
+    let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    let mut file = check!(File::open(filename));
+    check!(file.read_buf(buf.unfilled()));
+    assert_eq!(buf.filled(), &[1, 2, 3, 4]);
+    // File::read_buf should omit buffer initialization.
+    assert_eq!(buf.init_len(), 4);
+
+    check!(fs::remove_file(filename));
 }
 
 #[test]
@@ -901,6 +919,7 @@ fn symlink_noexist() {
 
 #[test]
 fn read_link() {
+    let tmpdir = tmpdir();
     if cfg!(windows) {
         // directory symlink
         assert_eq!(check!(fs::read_link(r"C:\Users\All Users")), Path::new(r"C:\ProgramData"));
@@ -915,8 +934,11 @@ fn read_link() {
                 Path::new(r"C:\Users")
             );
         }
+        // Check that readlink works with non-drive paths on Windows.
+        let link = tmpdir.join("link_unc");
+        check!(symlink_dir(r"\\localhost\c$\", &link));
+        assert_eq!(check!(fs::read_link(&link)), Path::new(r"\\localhost\c$\"));
     }
-    let tmpdir = tmpdir();
     let link = tmpdir.join("link");
     if !got_symlink_permission(&tmpdir) {
         return;
@@ -935,6 +957,7 @@ fn readlink_not_symlink() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating hardlinks
 fn links_work() {
     let tmpdir = tmpdir();
     let input = tmpdir.join("in.txt");
@@ -1431,6 +1454,7 @@ fn metadata_access_times() {
 
 /// Test creating hard links to symlinks.
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating hardlinks
 fn symlink_hard_link() {
     let tmpdir = tmpdir();
     if !got_symlink_permission(&tmpdir) {
@@ -1610,4 +1634,76 @@ fn rename_directory() {
     fs::rename(&old_path, &new_path.join("newdir")).unwrap();
     assert!(new_path.join("newdir").is_dir());
     assert!(new_path.join("newdir/temp.txt").exists());
+}
+
+#[test]
+fn test_file_times() {
+    #[cfg(target_os = "ios")]
+    use crate::os::ios::fs::FileTimesExt;
+    #[cfg(target_os = "macos")]
+    use crate::os::macos::fs::FileTimesExt;
+    #[cfg(target_os = "tvos")]
+    use crate::os::tvos::fs::FileTimesExt;
+    #[cfg(target_os = "tvos")]
+    use crate::os::tvos::fs::FileTimesExt;
+    #[cfg(target_os = "watchos")]
+    use crate::os::watchos::fs::FileTimesExt;
+    #[cfg(windows)]
+    use crate::os::windows::fs::FileTimesExt;
+
+    let tmp = tmpdir();
+    let file = File::create(tmp.join("foo")).unwrap();
+    let mut times = FileTimes::new();
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(12345);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(54321);
+    times = times.set_accessed(accessed).set_modified(modified);
+    #[cfg(any(
+        windows,
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "tvos",
+    ))]
+    let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
+    #[cfg(any(
+        windows,
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "tvos",
+    ))]
+    {
+        times = times.set_created(created);
+    }
+    match file.set_times(times) {
+        // Allow unsupported errors on platforms which don't support setting times.
+        #[cfg(not(any(
+            windows,
+            all(
+                unix,
+                not(any(
+                    target_os = "android",
+                    target_os = "redox",
+                    target_os = "espidf",
+                    target_os = "horizon"
+                ))
+            )
+        )))]
+        Err(e) if e.kind() == ErrorKind::Unsupported => return,
+        Err(e) => panic!("error setting file times: {e:?}"),
+        Ok(_) => {}
+    }
+    let metadata = file.metadata().unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), modified);
+    #[cfg(any(
+        windows,
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "tvos",
+    ))]
+    {
+        assert_eq!(metadata.created().unwrap(), created);
+    }
 }

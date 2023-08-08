@@ -8,6 +8,7 @@
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]
 extern crate tracing;
@@ -18,9 +19,9 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrItem, Attribute, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, Diagnostic, FatalError, Level, PResult};
+use rustc_errors::{Diagnostic, FatalError, Level, PResult};
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 
@@ -36,7 +37,7 @@ pub mod validate_attr;
 
 mod errors;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`
 // where <thing> includes crate, expr, item, stmt, tts, and one that
@@ -153,7 +154,7 @@ fn try_file_to_source_file(
 ) -> Result<Lrc<SourceFile>, Diagnostic> {
     sess.source_map().load_file(path).map_err(|e| {
         let msg = format!("couldn't read {}: {}", path.display(), e);
-        let mut diag = Diagnostic::new(Level::Fatal, &msg);
+        let mut diag = Diagnostic::new(Level::Fatal, msg);
         if let Some(sp) = spanopt {
             diag.set_span(sp);
         }
@@ -190,7 +191,7 @@ pub fn maybe_file_to_stream(
     override_span: Option<Span>,
 ) -> Result<TokenStream, Vec<Diagnostic>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
-        sess.span_diagnostic.bug(&format!(
+        sess.span_diagnostic.bug(format!(
             "cannot lex `source_file` without source: {}",
             sess.source_map().filename_for_diagnostics(&source_file.name)
         ));
@@ -205,7 +206,7 @@ pub fn stream_to_parser<'a>(
     stream: TokenStream,
     subparser_name: Option<&'static str>,
 ) -> Parser<'a> {
-    Parser::new(sess, stream, false, subparser_name)
+    Parser::new(sess, stream, subparser_name)
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
@@ -215,7 +216,7 @@ pub fn parse_in<'a, T>(
     name: &'static str,
     mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
 ) -> PResult<'a, T> {
-    let mut parser = Parser::new(sess, tts, false, Some(name));
+    let mut parser = Parser::new(sess, tts, Some(name));
     let result = f(&mut parser)?;
     if parser.token != token::Eof {
         parser.unexpected()?;
@@ -243,12 +244,11 @@ pub fn parse_cfg_attr(
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, ref tokens })
             if !tokens.is_empty() =>
         {
-            let msg = "wrong `cfg_attr` delimiters";
-            crate::validate_attr::check_meta_bad_delim(parse_sess, dspan, delim, msg);
+            crate::validate_attr::check_cfg_attr_bad_delim(parse_sess, dspan, delim);
             match parse_in(parse_sess, tokens.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                 Ok(r) => return Some(r),
                 Err(mut e) => {
-                    e.help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
+                    e.help(format!("the valid syntax is `{CFG_ATTR_GRAMMAR_HELP}`"))
                         .note(CFG_ATTR_NOTE_REF)
                         .emit();
                 }
@@ -265,15 +265,5 @@ const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
     #the-cfg_attr-attribute>";
 
 fn error_malformed_cfg_attr_missing(span: Span, parse_sess: &ParseSess) {
-    parse_sess
-        .span_diagnostic
-        .struct_span_err(span, "malformed `cfg_attr` attribute input")
-        .span_suggestion(
-            span,
-            "missing condition and attribute",
-            CFG_ATTR_GRAMMAR_HELP,
-            Applicability::HasPlaceholders,
-        )
-        .note(CFG_ATTR_NOTE_REF)
-        .emit();
+    parse_sess.emit_err(errors::MalformedCfgAttr { span, sugg: CFG_ATTR_GRAMMAR_HELP });
 }

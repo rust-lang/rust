@@ -7,7 +7,7 @@ LL |     let _ = &mut x[2..4];
 help: consider changing this to be a mutable reference
    |
 LL |     let x: &[isize] = &mut [1, 2, 3, 4, 5];
-   |                       ~~~~~~~~~~~~~~~~~~~~
+   |                        +++
 
 error: aborting due to previous error
 

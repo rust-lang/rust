@@ -1,0 +1,21 @@
+error[E0425]: cannot find function `foo1` in crate `similar_unstable_method`
+  --> $DIR/issue-109177.rs:7:30
+   |
+LL |     similar_unstable_method::foo1();
+   |                              ^^^^ help: a function with a similar name exists: `foo`
+   |
+  ::: $DIR/auxiliary/similar-unstable-method.rs:5:1
+   |
+LL | pub fn foo() {}
+   | ------------ similarly named function `foo` defined here
+
+error[E0599]: no method named `foo1` found for struct `Foo` in the current scope
+  --> $DIR/issue-109177.rs:11:9
+   |
+LL |     foo.foo1();
+   |         ^^^^ method not found in `Foo`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0425, E0599.
+For more information about an error, try `rustc --explain E0425`.

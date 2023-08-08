@@ -1,0 +1,74 @@
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:16:10
+   |
+LL |     field!(bar:u128),
+   |          ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:22:10
+   |
+LL |     field!(recovers:()),
+   |          ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:28:12
+   |
+LL |     variant!(whoops),
+   |            ^ unexpected token after this
+   |
+   = note: macros cannot expand to enum variants
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:34:12
+   |
+LL |     variant!(recovers),
+   |            ^ unexpected token after this
+   |
+   = note: macros cannot expand to enum variants
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:39:14
+   |
+LL |         field!(x:u32),
+   |              ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:48:14
+   |
+LL |         field!(oopsies:()),
+   |              ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:52:14
+   |
+LL |         field!(oopsies2:()),
+   |              ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:61:10
+   |
+LL |     field!(oopsies:()),
+   |          ^ unexpected token after this
+   |
+   = note: macros cannot expand to union fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:66:10
+   |
+LL |     field!(recovers:()),
+   |          ^ unexpected token after this
+   |
+   = note: macros cannot expand to union fields
+
+error: aborting due to 9 previous errors
+

@@ -1,4 +1,5 @@
 #![crate_name = "foo"]
+#![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 
 // tests for the html <title> element
@@ -39,6 +40,6 @@ mod continue_keyword {}
 
 // @has foo/primitive.u8.html '//head/title' 'u8 - Rust'
 // @!has - '//head/title' 'foo'
-#[doc(primitive = "u8")]
+#[rustc_doc_primitive = "u8"]
 /// `u8` docs
 mod u8 {}

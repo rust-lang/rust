@@ -9,6 +9,7 @@ function initSearch(searchIndex){}
 /**
  * @typedef {{
  *     name: string,
+ *     id: integer,
  *     fullPath: Array<string>,
  *     pathWithoutLast: Array<string>,
  *     pathLast: string,
@@ -36,6 +37,8 @@ let ParserState;
  *     args: Array<QueryElement>,
  *     returned: Array<QueryElement>,
  *     foundElems: number,
+ *     literalSearch: boolean,
+ *     corrections: Array<{from: string, to: integer}>,
  * }}
  */
 let ParsedQuery;
@@ -50,7 +53,7 @@ let ParsedQuery;
  *    parent: (Object|null|undefined),
  *    path: string,
  *    ty: (Number|null|number),
- *    type: (Array<?>|null)
+ *    type: FunctionSearchType?
  * }}
  */
 let Row;
@@ -64,6 +67,11 @@ let Row;
  * }}
  */
 let ResultsTable;
+
+/**
+ * @typedef {Map<String, ResultObject>}
+ */
+let Results;
 
 /**
  * @typedef {{
@@ -80,7 +88,7 @@ let ResultsTable;
  *     ty: number,
  * }}
  */
-let Results;
+let ResultObject;
 
 /**
  * A pair of [inputs, outputs], or 0 for null. This is stored in the search index.
@@ -127,14 +135,14 @@ let RawFunctionType;
 /**
  * @typedef {{
  *     inputs: Array<FunctionType>,
- *     outputs: Array<FunctionType>,
+ *     output: Array<FunctionType>,
  * }}
  */
 let FunctionSearchType;
 
 /**
  * @typedef {{
- *     name: (null|string),
+ *     id: (null|number),
  *     ty: (null|number),
  *     generics: Array<FunctionType>,
  * }}

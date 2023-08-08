@@ -1,3 +1,4 @@
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // compile-flags: -Zmir-opt-level=1
 
 fn foo<T>() {

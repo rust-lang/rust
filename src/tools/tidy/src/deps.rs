@@ -6,62 +6,83 @@ use std::path::Path;
 
 /// These are licenses that are allowed for all crates, including the runtime,
 /// rustc, tools, etc.
+#[rustfmt::skip]
 const LICENSES: &[&str] = &[
-    "MIT/Apache-2.0",
-    "MIT / Apache-2.0",
-    "Apache-2.0/MIT",
+    // tidy-alphabetical-start
+    "(MIT OR Apache-2.0) AND Unicode-DFS-2016",            // unicode_ident
+    "0BSD OR MIT OR Apache-2.0",                           // adler license
+    "0BSD",
     "Apache-2.0 / MIT",
-    "MIT OR Apache-2.0",
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
-    "MIT",
+    "Apache-2.0/MIT",
     "ISC",
-    "Unlicense/MIT",
+    "MIT / Apache-2.0",
+    "MIT OR Apache-2.0 OR Zlib",                           // tinyvec_macros
+    "MIT OR Apache-2.0",
+    "MIT OR Zlib OR Apache-2.0",                           // miniz_oxide
+    "MIT",
+    "MIT/Apache-2.0",
+    "Unicode-DFS-2016",                                    // tinystr and icu4x
     "Unlicense OR MIT",
-    "0BSD OR MIT OR Apache-2.0",                // adler license
-    "Zlib OR Apache-2.0 OR MIT",                // tinyvec
-    "MIT OR Apache-2.0 OR Zlib",                // tinyvec_macros
-    "MIT OR Zlib OR Apache-2.0",                // miniz_oxide
-    "(MIT OR Apache-2.0) AND Unicode-DFS-2016", // unicode_ident
-    "Unicode-DFS-2016",                         // tinystr and icu4x
+    "Unlicense/MIT",
+    "Zlib OR Apache-2.0 OR MIT",                           // tinyvec
+    // tidy-alphabetical-end
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
 /// should be considered bugs. Exceptions are only allowed in Rust
 /// tooling. It is _crucial_ that no exception crates be dependencies
 /// of the Rust runtime (std/test).
+#[rustfmt::skip]
 const EXCEPTIONS: &[(&str, &str)] = &[
+    // tidy-alphabetical-start
     ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
-    ("mdbook", "MPL-2.0"),                                   // mdbook
-    ("openssl", "Apache-2.0"),                               // cargo, mdbook
     ("colored", "MPL-2.0"),                                  // rustfmt
+    ("dissimilar", "Apache-2.0"),                            // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
+    ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"), // opt-dist
+    ("fluent-langneg", "Apache-2.0"),                        // rustc (fluent translations)
+    ("fortanix-sgx-abi", "MPL-2.0"),                         // libstd but only for `sgx` target. FIXME: this dependency violates the documentation comment above.
+    ("instant", "BSD-3-Clause"),                             // rustc_driver/tracing-subscriber/parking_lot
+    ("mdbook", "MPL-2.0"),                                   // mdbook
+    ("openssl", "Apache-2.0"),                               // opt-dist
+    ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),     // rustc (license is the same as LLVM uses)
     ("ryu", "Apache-2.0 OR BSL-1.0"),                        // cargo/... (because of serde)
-    ("bytesize", "Apache-2.0"),                              // cargo
-    ("im-rc", "MPL-2.0+"),                                   // cargo
-    ("sized-chunks", "MPL-2.0+"),                            // cargo via im-rc
-    ("bitmaps", "MPL-2.0+"),                                 // cargo via im-rc
-    ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),    // cargo via pasetors
-    ("subtle", "BSD-3-Clause"),                              // cargo via pasetors
-    ("dunce", "CC0-1.0 OR MIT-0"),                           // cargo via gix (and dev dependency)
-    ("imara-diff", "Apache-2.0"),                            // cargo via gix
-    ("sha1_smol", "BSD-3-Clause"),                           // cargo via gix
-    ("unicode-bom", "Apache-2.0"),                           // cargo via gix
-    ("instant", "BSD-3-Clause"), // rustc_driver/tracing-subscriber/parking_lot
-    ("snap", "BSD-3-Clause"),    // rustc
-    ("fluent-langneg", "Apache-2.0"), // rustc (fluent translations)
-    ("self_cell", "Apache-2.0"), // rustc (fluent translations)
-    // FIXME: this dependency violates the documentation comment above:
-    ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
-    ("similar", "Apache-2.0"),       // cargo (dev dependency)
-    ("normalize-line-endings", "Apache-2.0"), // cargo (dev dependency)
-    ("dissimilar", "Apache-2.0"),    // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
+    ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
+    ("snap", "BSD-3-Clause"),                                // rustc
+    // tidy-alphabetical-end
+];
+
+const EXCEPTIONS_CARGO: &[(&str, &str)] = &[
+    // tidy-alphabetical-start
+    ("bitmaps", "MPL-2.0+"),
+    ("bytesize", "Apache-2.0"),
+    ("ciborium", "Apache-2.0"),
+    ("ciborium-io", "Apache-2.0"),
+    ("ciborium-ll", "Apache-2.0"),
+    ("dunce", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
+    ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),
+    ("im-rc", "MPL-2.0+"),
+    ("imara-diff", "Apache-2.0"),
+    ("instant", "BSD-3-Clause"),
+    ("normalize-line-endings", "Apache-2.0"),
+    ("openssl", "Apache-2.0"),
+    ("ryu", "Apache-2.0 OR BSL-1.0"),
+    ("sha1_smol", "BSD-3-Clause"),
+    ("similar", "Apache-2.0"),
+    ("sized-chunks", "MPL-2.0+"),
+    ("subtle", "BSD-3-Clause"),
+    ("unicode-bom", "Apache-2.0"),
+    // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
+    // tidy-alphabetical-start
     ("cranelift-bforest", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-meta", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-shared", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-control", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-entity", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-frontend", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-isle", "Apache-2.0 WITH LLVM-exception"),
@@ -73,6 +94,7 @@ const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
     ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
     ("wasmtime-jit-icache-coherence", "Apache-2.0 WITH LLVM-exception"),
+    // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_BOOTSTRAP: &[(&str, &str)] = &[
@@ -83,31 +105,31 @@ const EXCEPTIONS_BOOTSTRAP: &[(&str, &str)] = &[
 /// these and all their dependencies *must not* be in the exception list.
 const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "test", "panic_abort", "panic_unwind"];
 
+const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
+
 /// Crates rustc is allowed to depend on. Avoid adding to the list if possible.
 ///
 /// This list is here to provide a speed-bump to adding a new dependency to
 /// rustc. Please check with the compiler team before adding an entry.
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
+    // tidy-alphabetical-start
     "addr2line",
     "adler",
     "ahash",
     "aho-corasick",
+    "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "annotate-snippets",
-    "ansi_term",
     "ar_archive_writer",
     "arrayvec",
     "atty",
     "autocfg",
     "bitflags",
     "block-buffer",
+    "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
     "cfg-if",
-    "chalk-derive",
-    "chalk-engine",
-    "chalk-ir",
-    "chalk-solve",
-    "convert_case", // dependency of derive_more
     "compiler_builtins",
+    "convert_case", // dependency of derive_more
     "cpufeatures",
     "crc32fast",
     "crossbeam-channel",
@@ -116,8 +138,12 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "crossbeam-utils",
     "crypto-common",
     "cstr",
+    "darling",
+    "darling_core",
+    "darling_macro",
     "datafrog",
     "derive_more",
+    "derive_setters",
     "digest",
     "displaydoc",
     "dissimilar",
@@ -125,14 +151,18 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "either",
     "elsa",
     "ena",
+    "equivalent",
+    "errno",
+    "errno-dragonfly",
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
-    "fixedbitset",
+    "field-offset",
     "flate2",
     "fluent-bundle",
     "fluent-langneg",
     "fluent-syntax",
+    "fnv",
     "fortanix-sgx-abi",
     "generic-array",
     "getopts",
@@ -146,17 +176,19 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "icu_provider",
     "icu_provider_adapters",
     "icu_provider_macros",
+    "ident_case",
     "indexmap",
     "instant",
     "intl-memoizer",
     "intl_pluralrules",
+    "io-lifetimes",
     "itertools",
     "itoa",
     "jobserver",
     "lazy_static",
     "libc",
     "libloading",
-    "libz-sys",
+    "linux-raw-sys",
     "litemap",
     "lock_api",
     "log",
@@ -167,23 +199,23 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "memmap2",
     "memoffset",
     "miniz_oxide",
+    "nu-ansi-term",
     "num_cpus",
     "object",
     "odht",
     "once_cell",
+    "overload",
     "parking_lot",
     "parking_lot_core",
     "pathdiff",
     "perf-event-open-sys",
-    "petgraph",
     "pin-project-lite",
-    "pkg-config",
     "polonius-engine",
     "ppv-lite86",
     "proc-macro-hack",
     "proc-macro2",
-    "pulldown-cmark",
     "psm",
+    "pulldown-cmark",
     "punycode",
     "quote",
     "rand",
@@ -195,12 +227,14 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "regex",
     "regex-automata",
     "regex-syntax",
-    "remove_dir_all",
     "rustc-demangle",
     "rustc-hash",
     "rustc-rayon",
     "rustc-rayon-core",
+    "rustc_apfloat",
     "rustc_version",
+    "rustix",
+    "ruzstd", // via object in thorin-dwp
     "ryu",
     "scoped-tls",
     "scopeguard",
@@ -217,20 +251,23 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "stable_deref_trait",
     "stacker",
     "static_assertions",
-    "subtle", // dependency of cargo (via pasetors)
+    "strsim",
     "syn",
     "synstructure",
     "tempfile",
     "termcolor",
     "termize",
+    "thin-vec",
     "thiserror",
     "thiserror-impl",
     "thorin-dwp",
     "thread_local",
+    "time",
+    "time-core",
+    "time-macros",
     "tinystr",
     "tinyvec",
     "tinyvec_macros",
-    "thin-vec",
     "tracing",
     "tracing-attributes",
     "tracing-core",
@@ -240,23 +277,18 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "twox-hash",
     "type-map",
     "typenum",
-    "unic-char-property",
-    "unic-char-range",
-    "unic-common",
-    "unic-emoji-char",
     "unic-langid",
     "unic-langid-impl",
     "unic-langid-macros",
     "unic-langid-macros-impl",
-    "unic-ucd-version",
     "unicase",
     "unicode-ident",
     "unicode-normalization",
+    "unicode-properties",
     "unicode-script",
     "unicode-security",
     "unicode-width",
     "unicode-xid",
-    "vcpkg",
     "valuable",
     "version_check",
     "wasi",
@@ -264,31 +296,41 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "winapi-i686-pc-windows-gnu",
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
+    "windows",
+    "windows-sys",
+    "windows-targets",
+    "windows_aarch64_gnullvm",
+    "windows_aarch64_msvc",
+    "windows_i686_gnu",
+    "windows_i686_msvc",
+    "windows_x86_64_gnu",
+    "windows_x86_64_gnullvm",
+    "windows_x86_64_msvc",
     "writeable",
-    // this is a false-positive: it's only used by rustfmt, but because it's enabled through a
-    // feature, tidy thinks it's used by rustc as well.
-    "yansi-term",
+    "yansi-term", // this is a false-positive: it's only used by rustfmt, but because it's enabled through a feature, tidy thinks it's used by rustc as well.
     "yoke",
     "yoke-derive",
     "zerofrom",
     "zerofrom-derive",
     "zerovec",
     "zerovec-derive",
+    // tidy-alphabetical-end
 ];
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
+    // tidy-alphabetical-start
     "ahash",
     "anyhow",
-    "arrayvec",
+    "arbitrary",
     "autocfg",
-    "bumpalo",
     "bitflags",
-    "byteorder",
+    "bumpalo",
     "cfg-if",
     "cranelift-bforest",
     "cranelift-codegen",
     "cranelift-codegen-meta",
     "cranelift-codegen-shared",
+    "cranelift-control",
     "cranelift-entity",
     "cranelift-frontend",
     "cranelift-isle",
@@ -297,9 +339,8 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-native",
     "cranelift-object",
     "crc32fast",
+    "equivalent",
     "fallible-iterator",
-    "fxhash",
-    "getrandom",
     "gimli",
     "hashbrown",
     "indexmap",
@@ -309,20 +350,20 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "mach",
     "memchr",
     "object",
-    "once_cell",
     "regalloc2",
     "region",
+    "rustc-hash",
     "slice-group-by",
     "smallvec",
     "stable_deref_trait",
     "target-lexicon",
     "version_check",
-    "wasi",
     "wasmtime-jit-icache-coherence",
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-x86_64-pc-windows-gnu",
     "windows-sys",
+    "windows-targets",
     "windows_aarch64_gnullvm",
     "windows_aarch64_msvc",
     "windows_i686_gnu",
@@ -330,13 +371,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
-];
-
-const FORBIDDEN_TO_HAVE_DUPLICATES: &[&str] = &[
-    // This crate takes quite a long time to build, so don't allow two versions of them
-    // to accidentally sneak into our dependency graph, in order to ensure we keep our CI times
-    // under control.
-    "cargo",
+    // tidy-alphabetical-end
 ];
 
 /// Dependency checks.
@@ -358,8 +393,16 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
         &["rustc_driver", "rustc_codegen_llvm"],
         bad,
     );
-    check_crate_duplicate(&metadata, FORBIDDEN_TO_HAVE_DUPLICATES, bad);
-    check_rustfix(&metadata, bad);
+
+    // Check cargo independently as it has it's own workspace.
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    cmd.cargo_path(cargo)
+        .manifest_path(root.join("src/tools/cargo/Cargo.toml"))
+        .features(cargo_metadata::CargoOpt::AllFeatures);
+    let cargo_metadata = t!(cmd.exec());
+    let runtime_ids = HashSet::new();
+    check_license_exceptions(&cargo_metadata, EXCEPTIONS_CARGO, runtime_ids, bad);
+    check_rustfix(&metadata, &cargo_metadata, bad);
 
     // Check rustc_codegen_cranelift independently as it has it's own workspace.
     let mut cmd = cargo_metadata::MetadataCommand::new();
@@ -376,7 +419,6 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
         &["rustc_codegen_cranelift"],
         bad,
     );
-    check_crate_duplicate(&metadata, &[], bad);
 
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.cargo_path(cargo)
@@ -471,6 +513,7 @@ fn check_permitted_dependencies(
     restricted_dependency_crates: &[&'static str],
     bad: &mut bool,
 ) {
+    let mut has_permitted_dep_error = false;
     let mut deps = HashSet::new();
     for to_check in restricted_dependency_crates {
         let to_check = pkg_from_name(metadata, to_check);
@@ -505,6 +548,7 @@ fn check_permitted_dependencies(
                 "could not find allowed package `{permitted}`\n\
                 Remove from PERMITTED_DEPENDENCIES list if it is no longer used.",
             );
+            has_permitted_dep_error = true;
         }
     }
 
@@ -517,42 +561,13 @@ fn check_permitted_dependencies(
         if dep.source.is_some() {
             if !permitted_dependencies.contains(dep.name.as_str()) {
                 tidy_error!(bad, "Dependency for {descr} not explicitly permitted: {}", dep.id);
+                has_permitted_dep_error = true;
             }
         }
     }
-}
 
-/// Prevents multiple versions of some expensive crates.
-fn check_crate_duplicate(
-    metadata: &Metadata,
-    forbidden_to_have_duplicates: &[&str],
-    bad: &mut bool,
-) {
-    for &name in forbidden_to_have_duplicates {
-        let matches: Vec<_> = metadata.packages.iter().filter(|pkg| pkg.name == name).collect();
-        match matches.len() {
-            0 => {
-                tidy_error!(
-                    bad,
-                    "crate `{}` is missing, update `check_crate_duplicate` \
-                    if it is no longer used",
-                    name
-                );
-            }
-            1 => {}
-            _ => {
-                tidy_error!(
-                    bad,
-                    "crate `{}` is duplicated in `Cargo.lock`, \
-                    it is too expensive to build multiple times, \
-                    so make sure only one version appears across all dependencies",
-                    name
-                );
-                for pkg in matches {
-                    println!("  * {}", pkg.id);
-                }
-            }
-        }
+    if has_permitted_dep_error {
+        eprintln!("Go to `{PERMITTED_DEPS_LOCATION}` for the list.");
     }
 }
 
@@ -605,19 +620,24 @@ fn deps_of_filtered<'a>(
     }
 }
 
-fn direct_deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId) -> Vec<&'a Package> {
+fn direct_deps_of<'a>(
+    metadata: &'a Metadata,
+    pkg_id: &'a PackageId,
+) -> impl Iterator<Item = &'a Package> {
     let resolve = metadata.resolve.as_ref().unwrap();
     let node = resolve.nodes.iter().find(|n| &n.id == pkg_id).unwrap();
-    node.deps.iter().map(|dep| pkg_from_id(metadata, &dep.pkg)).collect()
+    node.deps.iter().map(|dep| pkg_from_id(metadata, &dep.pkg))
 }
 
-fn check_rustfix(metadata: &Metadata, bad: &mut bool) {
-    let cargo = pkg_from_name(metadata, "cargo");
-    let compiletest = pkg_from_name(metadata, "compiletest");
-    let cargo_deps = direct_deps_of(metadata, &cargo.id);
-    let compiletest_deps = direct_deps_of(metadata, &compiletest.id);
-    let cargo_rustfix = cargo_deps.iter().find(|p| p.name == "rustfix").unwrap();
-    let compiletest_rustfix = compiletest_deps.iter().find(|p| p.name == "rustfix").unwrap();
+fn check_rustfix(rust_metadata: &Metadata, cargo_metadata: &Metadata, bad: &mut bool) {
+    let cargo = pkg_from_name(cargo_metadata, "cargo");
+    let cargo_rustfix =
+        direct_deps_of(cargo_metadata, &cargo.id).find(|p| p.name == "rustfix").unwrap();
+
+    let compiletest = pkg_from_name(rust_metadata, "compiletest");
+    let compiletest_rustfix =
+        direct_deps_of(rust_metadata, &compiletest.id).find(|p| p.name == "rustfix").unwrap();
+
     if cargo_rustfix.version != compiletest_rustfix.version {
         tidy_error!(
             bad,

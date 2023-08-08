@@ -36,7 +36,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_outer_attributes(&mut self) -> PResult<'a, AttrWrapper> {
         let mut outer_attrs = ast::AttrVec::new();
         let mut just_parsed_doc_comment = false;
-        let start_pos = self.token_cursor.num_next_calls;
+        let start_pos = self.num_bump_calls;
         loop {
             let attr = if self.check(&token::Pound) {
                 let prev_outer_attr_sp = outer_attrs.last().map(|attr| attr.span);
@@ -45,10 +45,10 @@ impl<'a> Parser<'a> {
                     Some(InnerAttrForbiddenReason::AfterOuterDocComment {
                         prev_doc_comment_span: prev_outer_attr_sp.unwrap(),
                     })
-                } else if let Some(prev_outer_attr_sp) = prev_outer_attr_sp {
-                    Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp })
                 } else {
-                    None
+                    prev_outer_attr_sp.map(|prev_outer_attr_sp| {
+                        InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }
+                    })
                 };
                 let inner_parse_policy = InnerAttrPolicy::Forbidden(inner_error_reason);
                 just_parsed_doc_comment = false;
@@ -277,7 +277,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse_inner_attributes(&mut self) -> PResult<'a, ast::AttrVec> {
         let mut attrs = ast::AttrVec::new();
         loop {
-            let start_pos: u32 = self.token_cursor.num_next_calls.try_into().unwrap();
+            let start_pos: u32 = self.num_bump_calls.try_into().unwrap();
             // Only try to parse if it is an inner attribute (has `!`).
             let attr = if self.check(&token::Pound) && self.look_ahead(1, |t| t == &token::Not) {
                 Some(self.parse_attribute(InnerAttrPolicy::Permitted)?)
@@ -298,7 +298,7 @@ impl<'a> Parser<'a> {
                 None
             };
             if let Some(attr) = attr {
-                let end_pos: u32 = self.token_cursor.num_next_calls.try_into().unwrap();
+                let end_pos: u32 = self.num_bump_calls.try_into().unwrap();
                 // If we are currently capturing tokens, mark the location of this inner attribute.
                 // If capturing ends up creating a `LazyAttrTokenStream`, we will include
                 // this replace range with it, removing the inner attribute from the final
@@ -422,15 +422,12 @@ impl<'a> Parser<'a> {
     }
 }
 
-pub fn maybe_needs_tokens(attrs: &[ast::Attribute]) -> bool {
-    // One of the attributes may either itself be a macro,
-    // or expand to macro attributes (`cfg_attr`).
-    attrs.iter().any(|attr| {
-        if attr.is_doc_comment() {
-            return false;
-        }
-        attr.ident().map_or(true, |ident| {
-            ident.name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(ident.name)
-        })
+/// The attributes are complete if all attributes are either a doc comment or a builtin attribute other than `cfg_attr`
+pub fn is_complete(attrs: &[ast::Attribute]) -> bool {
+    attrs.iter().all(|attr| {
+        attr.is_doc_comment()
+            || attr.ident().is_some_and(|ident| {
+                ident.name != sym::cfg_attr && rustc_feature::is_builtin_attr_name(ident.name)
+            })
     })
 }

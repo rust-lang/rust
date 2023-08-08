@@ -31,5 +31,5 @@ mod foo {
 
 fn main() {
     lint_unused_extern_crate3::foo();
-    let y = foo();
+    foo();
 }

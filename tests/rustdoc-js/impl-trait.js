@@ -1,32 +1,24 @@
 // ignore-order
 
-const QUERY = [
-    'Aaaaaaa -> i32',
-    'Aaaaaaa -> Aaaaaaa',
-    'Aaaaaaa -> usize',
-    '-> Aaaaaaa',
-    'Aaaaaaa',
-];
-
 const EXPECTED = [
     {
-        // Aaaaaaa -> i32
+        'query': 'Aaaaaaa -> i32',
         'others': [
             { 'path': 'impl_trait::Ccccccc', 'name': 'eeeeeee' },
         ],
     },
     {
-        // Aaaaaaa -> Aaaaaaa
+        'query': 'Aaaaaaa -> Aaaaaaa',
         'others': [
             { 'path': 'impl_trait::Ccccccc', 'name': 'fffffff' },
         ],
     },
     {
-        // Aaaaaaa -> usize
+        'query': 'Aaaaaaa -> usize',
         'others': [],
     },
     {
-        // -> Aaaaaaa
+        'query': '-> Aaaaaaa',
         'others': [
             { 'path': 'impl_trait::Ccccccc', 'name': 'fffffff' },
             { 'path': 'impl_trait::Ccccccc', 'name': 'ddddddd' },
@@ -34,7 +26,7 @@ const EXPECTED = [
         ],
     },
     {
-        // Aaaaaaa
+        'query': 'Aaaaaaa',
         'others': [
             { 'path': 'impl_trait', 'name': 'Aaaaaaa' },
         ],

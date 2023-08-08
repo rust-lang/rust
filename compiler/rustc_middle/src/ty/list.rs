@@ -1,5 +1,7 @@
 use crate::arena::Arena;
+use rustc_data_structures::aligned::{align_of, Aligned};
 use rustc_serialize::{Encodable, Encoder};
+use rustc_type_ir::{InferCtxtLike, OptWithInfcx};
 use std::alloc::Layout;
 use std::cmp::Ordering;
 use std::fmt;
@@ -118,6 +120,14 @@ impl<T: fmt::Debug> fmt::Debug for List<T> {
         (**self).fmt(f)
     }
 }
+impl<'tcx, T: super::DebugWithInfcx<TyCtxt<'tcx>>> super::DebugWithInfcx<TyCtxt<'tcx>> for List<T> {
+    fn fmt<InfCtx: InferCtxtLike<TyCtxt<'tcx>>>(
+        this: OptWithInfcx<'_, TyCtxt<'tcx>, InfCtx, &Self>,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result {
+        fmt::Debug::fmt(&this.map(|this| this.as_slice()), f)
+    }
+}
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for List<T> {
     #[inline]
@@ -198,22 +208,25 @@ impl<'a, T: Copy> IntoIterator for &'a List<T> {
 
 unsafe impl<T: Sync> Sync for List<T> {}
 
-unsafe impl<'a, T: 'a> rustc_data_structures::tagged_ptr::Pointer for &'a List<T> {
-    const BITS: usize = std::mem::align_of::<usize>().trailing_zeros() as usize;
+// We need this since `List` uses extern type `OpaqueListContents`.
+#[cfg(parallel_compiler)]
+use rustc_data_structures::sync::DynSync;
 
-    #[inline]
-    fn into_usize(self) -> usize {
-        self as *const List<T> as usize
-    }
+use super::TyCtxt;
+#[cfg(parallel_compiler)]
+unsafe impl<T: DynSync> DynSync for List<T> {}
 
-    #[inline]
-    unsafe fn from_usize(ptr: usize) -> &'a List<T> {
-        &*(ptr as *const List<T>)
-    }
+// Safety:
+// Layouts of `Equivalent<T>` and `List<T>` are the same, modulo opaque tail,
+// thus aligns of `Equivalent<T>` and `List<T>` must be the same.
+unsafe impl<T> Aligned for List<T> {
+    const ALIGN: ptr::Alignment = {
+        #[repr(C)]
+        struct Equivalent<T> {
+            _len: usize,
+            _data: [T; 0],
+        }
 
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
-        // `Self` is `&'a List<T>` which impls `Copy`, so this is fine.
-        let ptr = Self::from_usize(ptr);
-        f(&ptr)
-    }
+        align_of::<Equivalent<T>>()
+    };
 }

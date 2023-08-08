@@ -3,10 +3,8 @@ use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_middle::{
-    mir::Mutability,
-    ty::{self, Ty, TypeAndMut},
-};
+use rustc_middle::mir::Mutability;
+use rustc_middle::ty::{self, Ty, TypeAndMut};
 
 use super::AS_PTR_CAST_MUT;
 
@@ -17,7 +15,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
         && let ExprKind::MethodCall(method_name, receiver, [], _) = cast_expr.peel_blocks().kind
         && method_name.ident.name == rustc_span::sym::as_ptr
         && let Some(as_ptr_did) = cx.typeck_results().type_dependent_def_id(cast_expr.peel_blocks().hir_id)
-        && let as_ptr_sig = cx.tcx.fn_sig(as_ptr_did).subst_identity()
+        && let as_ptr_sig = cx.tcx.fn_sig(as_ptr_did).instantiate_identity()
         && let Some(first_param_ty) = as_ptr_sig.skip_binder().inputs().iter().next()
         && let ty::Ref(_, _, Mutability::Not) = first_param_ty.kind()
         && let Some(recv) = snippet_opt(cx, receiver.span)

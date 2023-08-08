@@ -2,7 +2,9 @@ warning: unexpected `cfg` condition value
   --> $DIR/no-values.rs:6:7
    |
 LL | #[cfg(feature = "foo")]
-   |       ^^^^^^^^^^^^^^^
+   |       ^^^^^^^--------
+   |              |
+   |              help: remove the value
    |
    = note: no expected value for `feature`
    = note: `#[warn(unexpected_cfgs)]` on by default

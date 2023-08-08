@@ -31,9 +31,9 @@ fn main() {
     //
     // - `wf(typeof(x))` because we use a projection candidate.
     // - `<i32 as B>::V: Clone` because that's a bound on the trait.
-    // - `<i32 as B>::V` normalizes to `_#1` where `<i32 as A>::U == _#1`
+    // - `<i32 as B>::V` normalizes to `?1t` where `<i32 as A>::U == ?1t`
     //
-    // This all works if we evaluate `<i32 as A>::U == _#1` before
+    // This all works if we evaluate `<i32 as A>::U == ?1t` before
     // `<i32 as B>::V`, but we previously had the opposite order.
     let x = hide(X(0));
 }

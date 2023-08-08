@@ -1,7 +1,7 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::transmute_ptr_to_ref)]
-#![allow(clippy::match_single_binding)]
+#![allow(clippy::match_single_binding, clippy::unnecessary_cast)]
 
 unsafe fn _ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
     let _: &T = std::mem::transmute(p);

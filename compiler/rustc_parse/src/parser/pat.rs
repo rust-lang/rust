@@ -1,14 +1,14 @@
 use super::{ForceCollect, Parser, PathStyle, TrailingToken};
 use crate::errors::{
-    AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
+    self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
     DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
-    ExpectedCommaAfterPatternField, InclusiveRangeExtraEquals, InclusiveRangeMatchArrow,
-    InclusiveRangeNoEnd, InvalidMutInPattern, PatternOnWrongSideOfAt, RefMutOrderIncorrect,
-    RemoveLet, RepeatedMutInPattern, TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg,
-    TrailingVertNotAllowed, UnexpectedLifetimeInPattern, UnexpectedVertVertBeforeFunctionParam,
+    ExpectedCommaAfterPatternField, GenericArgsInPatRequireTurbofishSyntax,
+    InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern,
+    PatternOnWrongSideOfAt, RefMutOrderIncorrect, RemoveLet, RepeatedMutInPattern,
+    TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed,
+    UnexpectedLifetimeInPattern, UnexpectedVertVertBeforeFunctionParam,
     UnexpectedVertVertInPattern,
 };
-use crate::fluent_generated as fluent;
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
@@ -81,7 +81,8 @@ enum EatOrResult {
 }
 
 /// The syntax location of a given pattern. Used for diagnostics.
-pub(super) enum PatternLocation {
+#[derive(Clone, Copy)]
+pub enum PatternLocation {
     LetBinding,
     FunctionParameter,
 }
@@ -92,8 +93,12 @@ impl<'a> Parser<'a> {
     /// Corresponds to `pat<no_top_alt>` in RFC 2535 and does not admit or-patterns
     /// at the top level. Used when parsing the parameters of lambda expressions,
     /// functions, function pointers, and `pat` macro fragments.
-    pub fn parse_pat_no_top_alt(&mut self, expected: Option<Expected>) -> PResult<'a, P<Pat>> {
-        self.parse_pat_with_range_pat(true, expected)
+    pub fn parse_pat_no_top_alt(
+        &mut self,
+        expected: Option<Expected>,
+        syntax_loc: Option<PatternLocation>,
+    ) -> PResult<'a, P<Pat>> {
+        self.parse_pat_with_range_pat(true, expected, syntax_loc)
     }
 
     /// Parses a pattern.
@@ -111,7 +116,7 @@ impl<'a> Parser<'a> {
         ra: RecoverColon,
         rt: CommaRecoveryMode,
     ) -> PResult<'a, P<Pat>> {
-        self.parse_pat_allow_top_alt_inner(expected, rc, ra, rt).map(|(pat, _)| pat)
+        self.parse_pat_allow_top_alt_inner(expected, rc, ra, rt, None).map(|(pat, _)| pat)
     }
 
     /// Returns the pattern and a bool indicating whether we recovered from a trailing vert (true =
@@ -122,6 +127,7 @@ impl<'a> Parser<'a> {
         rc: RecoverComma,
         ra: RecoverColon,
         rt: CommaRecoveryMode,
+        syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, (P<Pat>, bool)> {
         // Keep track of whether we recovered from a trailing vert so that we can avoid duplicated
         // suggestions (which bothers rustfix).
@@ -134,9 +140,13 @@ impl<'a> Parser<'a> {
         };
 
         // Parse the first pattern (`p_0`).
-        let mut first_pat = self.parse_pat_no_top_alt(expected)?;
+        let mut first_pat = self.parse_pat_no_top_alt(expected, syntax_loc)?;
         if rc == RecoverComma::Yes {
-            self.maybe_recover_unexpected_comma(first_pat.span, rt)?;
+            self.maybe_recover_unexpected_comma(
+                first_pat.span,
+                matches!(first_pat.kind, PatKind::MacCall(_)),
+                rt,
+            )?;
         }
 
         // If the next token is not a `|`,
@@ -173,12 +183,12 @@ impl<'a> Parser<'a> {
                     break;
                 }
             }
-            let pat = self.parse_pat_no_top_alt(expected).map_err(|mut err| {
+            let pat = self.parse_pat_no_top_alt(expected, syntax_loc).map_err(|mut err| {
                 err.span_label(lo, WHILE_PARSING_OR_MSG);
                 err
             })?;
             if rc == RecoverComma::Yes {
-                self.maybe_recover_unexpected_comma(pat.span, rt)?;
+                self.maybe_recover_unexpected_comma(pat.span, false, rt)?;
             }
             pats.push(pat);
         }
@@ -209,46 +219,31 @@ impl<'a> Parser<'a> {
             rc,
             RecoverColon::No,
             CommaRecoveryMode::LikelyTuple,
+            Some(syntax_loc),
         )?;
         let colon = self.eat(&token::Colon);
 
         if let PatKind::Or(pats) = &pat.kind {
             let span = pat.span;
-
-            if trailing_vert {
-                // We already emitted an error and suggestion to remove the trailing vert. Don't
-                // emit again.
-
-                // FIXME(#100717): pass `TopLevelOrPatternNotAllowed::* { sub: None }` to
-                // `delay_span_bug()` instead of fluent message
-                self.sess.span_diagnostic.delay_span_bug(
-                    span,
-                    match syntax_loc {
-                        PatternLocation::LetBinding => {
-                            fluent::parse_or_pattern_not_allowed_in_let_binding
-                        }
-                        PatternLocation::FunctionParameter => {
-                            fluent::parse_or_pattern_not_allowed_in_fn_parameters
-                        }
-                    },
-                );
+            let pat = pprust::pat_to_string(&pat);
+            let sub = if pats.len() == 1 {
+                Some(TopLevelOrPatternNotAllowedSugg::RemoveLeadingVert { span, pat })
             } else {
-                let pat = pprust::pat_to_string(&pat);
-                let sub = if pats.len() == 1 {
-                    Some(TopLevelOrPatternNotAllowedSugg::RemoveLeadingVert { span, pat })
-                } else {
-                    Some(TopLevelOrPatternNotAllowedSugg::WrapInParens { span, pat })
-                };
+                Some(TopLevelOrPatternNotAllowedSugg::WrapInParens { span, pat })
+            };
 
-                self.sess.emit_err(match syntax_loc {
-                    PatternLocation::LetBinding => {
-                        TopLevelOrPatternNotAllowed::LetBinding { span, sub }
-                    }
-                    PatternLocation::FunctionParameter => {
-                        TopLevelOrPatternNotAllowed::FunctionParameter { span, sub }
-                    }
-                });
+            let mut err = self.sess.create_err(match syntax_loc {
+                PatternLocation::LetBinding => {
+                    TopLevelOrPatternNotAllowed::LetBinding { span, sub }
+                }
+                PatternLocation::FunctionParameter => {
+                    TopLevelOrPatternNotAllowed::FunctionParameter { span, sub }
+                }
+            });
+            if trailing_vert {
+                err.delay_as_bug();
             }
+            err.emit();
         }
 
         Ok((pat, colon))
@@ -336,6 +331,7 @@ impl<'a> Parser<'a> {
         &mut self,
         allow_range_pat: bool,
         expected: Option<Expected>,
+        syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, P<Pat>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
         maybe_whole!(self, NtPat, |x| x);
@@ -375,11 +371,11 @@ impl<'a> Parser<'a> {
             // Parse _
             PatKind::Wild
         } else if self.eat_keyword(kw::Mut) {
-            self.parse_pat_ident_mut()?
+            self.parse_pat_ident_mut(syntax_loc)?
         } else if self.eat_keyword(kw::Ref) {
             // Parse ref ident @ pat / ref mut ident @ pat
             let mutbl = self.parse_mutability();
-            self.parse_pat_ident(BindingAnnotation(ByRef::Yes, mutbl))?
+            self.parse_pat_ident(BindingAnnotation(ByRef::Yes, mutbl), syntax_loc)?
         } else if self.eat_keyword(kw::Box) {
             self.parse_pat_box()?
         } else if self.check_inline_const(0) {
@@ -391,20 +387,26 @@ impl<'a> Parser<'a> {
             } else {
                 PatKind::Lit(const_expr)
             }
-        } else if self.can_be_ident_pat() {
+        // Don't eagerly error on semantically invalid tokens when matching
+        // declarative macros, as the input to those doesn't have to be
+        // semantically valid. For attribute/derive proc macros this is not the
+        // case, so doing the recovery for them is fine.
+        } else if self.can_be_ident_pat()
+            || (self.is_lit_bad_ident().is_some() && self.may_recover())
+        {
             // Parse `ident @ pat`
             // This can give false positives and parse nullary enums,
             // they are dealt with later in resolve.
-            self.parse_pat_ident(BindingAnnotation::NONE)?
+            self.parse_pat_ident(BindingAnnotation::NONE, syntax_loc)?
         } else if self.is_start_of_pat_with_path() {
             // Parse pattern starting with a path
             let (qself, path) = if self.eat_lt() {
                 // Parse a qualified path
-                let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+                let (qself, path) = self.parse_qpath(PathStyle::Pat)?;
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Expr)?)
+                (None, self.parse_path(PathStyle::Pat)?)
             };
             let span = lo.to(self.prev_token.span);
 
@@ -438,8 +440,8 @@ impl<'a> Parser<'a> {
                         super::token_descr(&self_.token)
                     );
 
-                    let mut err = self_.struct_span_err(self_.token.span, &msg);
-                    err.span_label(self_.token.span, format!("expected {}", expected));
+                    let mut err = self_.struct_span_err(self_.token.span, msg);
+                    err.span_label(self_.token.span, format!("expected {expected}"));
                     err
                 });
             PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
@@ -496,7 +498,7 @@ impl<'a> Parser<'a> {
 
         // At this point we attempt to parse `@ $pat_rhs` and emit an error.
         self.bump(); // `@`
-        let mut rhs = self.parse_pat_no_top_alt(None)?;
+        let mut rhs = self.parse_pat_no_top_alt(None, None)?;
         let whole_span = lhs.span.to(rhs.span);
 
         if let PatKind::Ident(_, _, sub @ None) = &mut rhs.kind {
@@ -552,7 +554,7 @@ impl<'a> Parser<'a> {
         }
 
         let mutbl = self.parse_mutability();
-        let subpat = self.parse_pat_with_range_pat(false, expected)?;
+        let subpat = self.parse_pat_with_range_pat(false, expected, None)?;
         Ok(PatKind::Ref(subpat, mutbl))
     }
 
@@ -577,12 +579,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a mutable binding with the `mut` token already eaten.
-    fn parse_pat_ident_mut(&mut self) -> PResult<'a, PatKind> {
+    fn parse_pat_ident_mut(&mut self, syntax_loc: Option<PatternLocation>) -> PResult<'a, PatKind> {
         let mut_span = self.prev_token.span;
 
         if self.eat_keyword(kw::Ref) {
             self.sess.emit_err(RefMutOrderIncorrect { span: mut_span.to(self.prev_token.span) });
-            return self.parse_pat_ident(BindingAnnotation::REF_MUT);
+            return self.parse_pat_ident(BindingAnnotation::REF_MUT, syntax_loc);
         }
 
         self.recover_additional_muts();
@@ -590,12 +592,12 @@ impl<'a> Parser<'a> {
         // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
         if let token::Interpolated(nt) = &self.token.kind {
             if let token::NtPat(_) = **nt {
-                self.expected_ident_found().emit();
+                self.expected_ident_found_err().emit();
             }
         }
 
         // Parse the pattern we hope to be an identifier.
-        let mut pat = self.parse_pat_no_top_alt(Some(Expected::Identifier))?;
+        let mut pat = self.parse_pat_no_top_alt(Some(Expected::Identifier), None)?;
 
         // If we don't have `mut $ident (@ pat)?`, error.
         if let PatKind::Ident(BindingAnnotation(ByRef::No, m @ Mutability::Not), ..) = &mut pat.kind
@@ -660,7 +662,7 @@ impl<'a> Parser<'a> {
     fn parse_pat_mac_invoc(&mut self, path: Path) -> PResult<'a, PatKind> {
         self.bump();
         let args = self.parse_delim_args()?;
-        let mac = P(MacCall { path, args, prior_type_ascription: self.last_type_ascription });
+        let mac = P(MacCall { path, args });
         Ok(PatKind::MacCall(mac))
     }
 
@@ -674,8 +676,8 @@ impl<'a> Parser<'a> {
         let expected = Expected::to_string_or_fallback(expected);
         let msg = format!("expected {}, found {}", expected, super::token_descr(&self.token));
 
-        let mut err = self.struct_span_err(self.token.span, &msg);
-        err.span_label(self.token.span, format!("expected {}", expected));
+        let mut err = self.struct_span_err(self.token.span, msg);
+        err.span_label(self.token.span, format!("expected {expected}"));
 
         let sp = self.sess.source_map().start_point(self.token.span);
         if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
@@ -783,11 +785,11 @@ impl<'a> Parser<'a> {
             let lo = self.token.span;
             let (qself, path) = if self.eat_lt() {
                 // Parse a qualified path
-                let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+                let (qself, path) = self.parse_qpath(PathStyle::Pat)?;
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Expr)?)
+                (None, self.parse_path(PathStyle::Pat)?)
             };
             let hi = self.prev_token.span;
             Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path)))
@@ -821,10 +823,25 @@ impl<'a> Parser<'a> {
     /// Parses `ident` or `ident @ pat`.
     /// Used by the copy foo and ref foo patterns to give a good
     /// error message when parsing mistakes like `ref foo(a, b)`.
-    fn parse_pat_ident(&mut self, binding_annotation: BindingAnnotation) -> PResult<'a, PatKind> {
+    fn parse_pat_ident(
+        &mut self,
+        binding_annotation: BindingAnnotation,
+        syntax_loc: Option<PatternLocation>,
+    ) -> PResult<'a, PatKind> {
         let ident = self.parse_ident()?;
+
+        if !matches!(syntax_loc, Some(PatternLocation::FunctionParameter))
+            && self.check_noexpect(&token::Lt)
+            && self.look_ahead(1, |t| t.can_begin_type())
+        {
+            return Err(self.sess.create_err(GenericArgsInPatRequireTurbofishSyntax {
+                span: self.token.span,
+                suggest_turbofish: self.token.span.shrink_to_lo(),
+            }));
+        }
+
         let sub = if self.eat(&token::At) {
-            Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern))?)
+            Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern), None)?)
         } else {
             None
         };
@@ -902,30 +919,25 @@ impl<'a> Parser<'a> {
         let box_span = self.prev_token.span;
 
         if self.isnt_pattern_start() {
-            self.struct_span_err(
-                self.token.span,
-                format!("expected pattern, found {}", super::token_descr(&self.token)),
-            )
-            .span_note(box_span, "`box` is a reserved keyword")
-            .span_suggestion_verbose(
-                box_span.shrink_to_lo(),
-                "escape `box` to use it as an identifier",
-                "r#",
-                Applicability::MaybeIncorrect,
-            )
-            .emit();
+            let descr = super::token_descr(&self.token);
+            self.sess.emit_err(errors::BoxNotPat {
+                span: self.token.span,
+                kw: box_span,
+                lo: box_span.shrink_to_lo(),
+                descr,
+            });
 
             // We cannot use `parse_pat_ident()` since it will complain `box`
             // is not an identifier.
             let sub = if self.eat(&token::At) {
-                Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern))?)
+                Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern), None)?)
             } else {
                 None
             };
 
             Ok(PatKind::Ident(BindingAnnotation::NONE, Ident::new(kw::Box, box_span), sub))
         } else {
-            let pat = self.parse_pat_with_range_pat(false, None)?;
+            let pat = self.parse_pat_with_range_pat(false, None, None)?;
             self.sess.gated_spans.gate(sym::box_patterns, box_span.to(self.prev_token.span));
             Ok(PatKind::Box(pat))
         }
@@ -937,7 +949,8 @@ impl<'a> Parser<'a> {
         let mut etc = false;
         let mut ate_comma = true;
         let mut delayed_err: Option<DiagnosticBuilder<'a, ErrorGuaranteed>> = None;
-        let mut etc_span = None;
+        let mut first_etc_and_maybe_comma_span = None;
+        let mut last_non_comma_dotdot_span = None;
 
         while self.token != token::CloseDelim(Delimiter::Brace) {
             let attrs = match self.parse_outer_attributes() {
@@ -968,16 +981,31 @@ impl<'a> Parser<'a> {
             {
                 etc = true;
                 let mut etc_sp = self.token.span;
+                if first_etc_and_maybe_comma_span.is_none() {
+                    if let Some(comma_tok) = self
+                        .look_ahead(1, |t| if *t == token::Comma { Some(t.clone()) } else { None })
+                    {
+                        let nw_span = self
+                            .sess
+                            .source_map()
+                            .span_extend_to_line(comma_tok.span)
+                            .trim_start(comma_tok.span.shrink_to_lo())
+                            .map(|s| self.sess.source_map().span_until_non_whitespace(s));
+                        first_etc_and_maybe_comma_span = nw_span.map(|s| etc_sp.to(s));
+                    } else {
+                        first_etc_and_maybe_comma_span =
+                            Some(self.sess.source_map().span_until_non_whitespace(etc_sp));
+                    }
+                }
 
                 self.recover_bad_dot_dot();
                 self.bump(); // `..` || `...` || `_`
 
                 if self.token == token::CloseDelim(Delimiter::Brace) {
-                    etc_span = Some(etc_sp);
                     break;
                 }
                 let token_str = super::token_descr(&self.token);
-                let msg = &format!("expected `}}`, found {}", token_str);
+                let msg = format!("expected `}}`, found {token_str}");
                 let mut err = self.struct_span_err(self.token.span, msg);
 
                 err.span_label(self.token.span, "expected `}`");
@@ -995,7 +1023,6 @@ impl<'a> Parser<'a> {
                     ate_comma = true;
                 }
 
-                etc_span = Some(etc_sp.until(self.token.span));
                 if self.token == token::CloseDelim(Delimiter::Brace) {
                     // If the struct looks otherwise well formed, recover and continue.
                     if let Some(sp) = comma_sp {
@@ -1039,6 +1066,9 @@ impl<'a> Parser<'a> {
                         }
                     }?;
                     ate_comma = this.eat(&token::Comma);
+
+                    last_non_comma_dotdot_span = Some(this.prev_token.span);
+
                     // We just ate a comma, so there's no need to use
                     // `TrailingToken::Comma`
                     Ok((field, TrailingToken::None))
@@ -1048,15 +1078,30 @@ impl<'a> Parser<'a> {
         }
 
         if let Some(mut err) = delayed_err {
-            if let Some(etc_span) = etc_span {
-                err.multipart_suggestion(
-                    "move the `..` to the end of the field list",
-                    vec![
-                        (etc_span, String::new()),
-                        (self.token.span, format!("{}.. }}", if ate_comma { "" } else { ", " })),
-                    ],
-                    Applicability::MachineApplicable,
-                );
+            if let Some(first_etc_span) = first_etc_and_maybe_comma_span {
+                if self.prev_token == token::DotDot {
+                    // We have `.., x, ..`.
+                    err.multipart_suggestion(
+                        "remove the starting `..`",
+                        vec![(first_etc_span, String::new())],
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    if let Some(last_non_comma_dotdot_span) = last_non_comma_dotdot_span {
+                        // We have `.., x`.
+                        err.multipart_suggestion(
+                            "move the `..` to the end of the field list",
+                            vec![
+                                (first_etc_span, String::new()),
+                                (
+                                    self.token.span.to(last_non_comma_dotdot_span.shrink_to_hi()),
+                                    format!("{} .. }}", if ate_comma { "" } else { "," }),
+                                ),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
             }
             err.emit();
         }

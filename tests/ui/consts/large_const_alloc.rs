@@ -13,6 +13,6 @@ static FOO2: () = {
 };
 
 fn main() {
-    let _ = FOO;
-    let _ = FOO2;
+    FOO;
+    FOO2;
 }

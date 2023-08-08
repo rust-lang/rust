@@ -1,7 +1,6 @@
-import * as lc from "vscode-languageclient/node";
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
-import { exec, ExecOptions, spawnSync } from "child_process";
+import { exec, type ExecOptions, spawnSync } from "child_process";
 import { inspect } from "util";
 
 export function assert(condition: boolean, explanation: string): asserts condition {
@@ -57,37 +56,6 @@ export const log = new (class {
     }
 })();
 
-export async function sendRequestWithRetry<TParam, TRet>(
-    client: lc.LanguageClient,
-    reqType: lc.RequestType<TParam, TRet, unknown>,
-    param: TParam,
-    token?: vscode.CancellationToken
-): Promise<TRet> {
-    // The sequence is `10 * (2 ** (2 * n))` where n is 1, 2, 3...
-    for (const delay of [40, 160, 640, 2560, 10240, null]) {
-        try {
-            return await (token
-                ? client.sendRequest(reqType, param, token)
-                : client.sendRequest(reqType, param));
-        } catch (error) {
-            if (delay === null) {
-                log.warn("LSP request timed out", { method: reqType.method, param, error });
-                throw error;
-            }
-            if (error.code === lc.LSPErrorCodes.RequestCancelled) {
-                throw error;
-            }
-
-            if (error.code !== lc.LSPErrorCodes.ContentModified) {
-                log.warn("LSP request failed", { method: reqType.method, param, error });
-                throw error;
-            }
-            await sleep(delay);
-        }
-    }
-    throw "unreachable";
-}
-
 export function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -112,6 +80,19 @@ export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
     return isRustDocument(editor.document);
 }
 
+export function isDocumentInWorkspace(document: RustDocument): boolean {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) {
+        return false;
+    }
+    for (const folder of workspaceFolders) {
+        if (document.uri.fsPath.startsWith(folder.uri.fsPath)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 export function isValidExecutable(path: string): boolean {
     log.debug("Checking availability of a binary at", path);
 
@@ -133,7 +114,7 @@ export function setContextValue(key: string, value: any): Thenable<void> {
  * underlying async function.
  */
 export function memoizeAsync<Ret, TThis, Param extends string>(
-    func: (this: TThis, arg: Param) => Promise<Ret>
+    func: (this: TThis, arg: Param) => Promise<Ret>,
 ) {
     const cache = new Map<string, Ret>();
 
@@ -150,15 +131,32 @@ export function memoizeAsync<Ret, TThis, Param extends string>(
 
 /** Awaitable wrapper around `child_process.exec` */
 export function execute(command: string, options: ExecOptions): Promise<string> {
+    log.info(`running command: ${command}`);
     return new Promise((resolve, reject) => {
         exec(command, options, (err, stdout, stderr) => {
             if (err) {
+                log.error(err);
                 reject(err);
                 return;
             }
 
             if (stderr) {
                 reject(new Error(stderr));
+                return;
+            }
+
+            resolve(stdout.trimEnd());
+        });
+    });
+}
+
+export function executeDiscoverProject(command: string, options: ExecOptions): Promise<string> {
+    log.info(`running command: ${command}`);
+    return new Promise((resolve, reject) => {
+        exec(command, options, (err, stdout, _) => {
+            if (err) {
+                log.error(err);
+                reject(err);
                 return;
             }
 

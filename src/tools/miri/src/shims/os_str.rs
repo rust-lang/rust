@@ -8,6 +8,7 @@ use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
 use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::Ty;
 
 use crate::*;
 
@@ -18,27 +19,12 @@ pub enum PathConversion {
 }
 
 #[cfg(unix)]
-pub fn os_str_to_bytes<'tcx>(os_str: &OsStr) -> InterpResult<'tcx, &[u8]> {
-    Ok(os_str.as_bytes())
-}
-
-#[cfg(not(unix))]
-pub fn os_str_to_bytes<'tcx>(os_str: &OsStr) -> InterpResult<'tcx, &[u8]> {
-    // On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
-    // intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
-    // valid.
-    os_str
-        .to_str()
-        .map(|s| s.as_bytes())
-        .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str).into())
-}
-
-#[cfg(unix)]
 pub fn bytes_to_os_str<'tcx>(bytes: &[u8]) -> InterpResult<'tcx, &OsStr> {
     Ok(OsStr::from_bytes(bytes))
 }
 #[cfg(not(unix))]
 pub fn bytes_to_os_str<'tcx>(bytes: &[u8]) -> InterpResult<'tcx, &OsStr> {
+    // We cannot use `from_os_str_bytes_unchecked` here since we can't trust `bytes`.
     let s = std::str::from_utf8(bytes)
         .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
     Ok(OsStr::new(s))
@@ -97,7 +83,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         ptr: Pointer<Option<Provenance>>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
-        let bytes = os_str_to_bytes(os_str)?;
+        let bytes = os_str.as_os_str_bytes();
         self.eval_context_mut().write_c_str(bytes, ptr, size)
     }
 
@@ -155,7 +141,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0` terminator.
         let this = self.eval_context_mut();
 
-        let arg_type = this.tcx.mk_array(this.tcx.types.u8, size);
+        let arg_type = Ty::new_array(this.tcx.tcx, this.tcx.types.u8, size);
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
         let (written, _) = self.write_os_str_to_c_str(os_str, arg_place.ptr, size).unwrap();
         assert!(written);
@@ -171,7 +157,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0x0000` terminator.
         let this = self.eval_context_mut();
 
-        let arg_type = this.tcx.mk_array(this.tcx.types.u16, size);
+        let arg_type = Ty::new_array(this.tcx.tcx, this.tcx.types.u16, size);
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
         let (written, _) =
             self.write_os_str_to_wide_str(os_str, arg_place.ptr, size, /*truncate*/ false).unwrap();
@@ -329,7 +315,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             match direction {
                 PathConversion::HostToTarget => {
                     // If this start withs a `\`, we add `\\?` so it starts with `\\?\` which is
-                    // some magic path on Windos that *is* considered absolute.
+                    // some magic path on Windows that *is* considered absolute.
                     if converted.get(0).copied() == Some(b'\\') {
                         converted.splice(0..0, b"\\\\?".iter().copied());
                     }

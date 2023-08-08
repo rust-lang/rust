@@ -59,6 +59,7 @@ pub mod edition;
 pub mod error_codes;
 pub mod extdeps;
 pub mod features;
+pub mod fluent_alphabetical;
 pub mod mir_opt_tests;
 pub mod pal;
 pub mod primitive_docs;

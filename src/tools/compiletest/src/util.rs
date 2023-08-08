@@ -104,6 +104,8 @@ pub const XRAY_SUPPORTED_TARGETS: &[&str] = &[
     "x86_64-unknown-openbsd",
 ];
 
+pub const SAFESTACK_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
+
 pub fn make_new_path(path: &str) -> String {
     assert!(cfg!(windows));
     // Windows just uses PATH as the library search path, so we have to
@@ -156,6 +158,8 @@ pub fn dylib_env_var() -> &'static str {
         "DYLD_LIBRARY_PATH"
     } else if cfg!(target_os = "haiku") {
         "LIBRARY_PATH"
+    } else if cfg!(target_os = "aix") {
+        "LIBPATH"
     } else {
         "LD_LIBRARY_PATH"
     }

@@ -1,17 +1,18 @@
 //! Defines hir-level representation of visibility (e.g. `pub` and `pub(crate)`).
 
-use std::{iter, sync::Arc};
+use std::iter;
 
 use hir_expand::{hygiene::Hygiene, InFile};
 use la_arena::ArenaMap;
 use syntax::ast;
+use triomphe::Arc;
 
 use crate::{
     db::DefDatabase,
     nameres::DefMap,
     path::{ModPath, PathKind},
     resolver::HasResolver,
-    ConstId, FunctionId, HasModule, LocalFieldId, ModuleId, VariantId,
+    ConstId, FunctionId, HasModule, LocalFieldId, LocalModuleId, ModuleId, VariantId,
 };
 
 /// Visibility of an item, not yet resolved.
@@ -120,7 +121,7 @@ impl Visibility {
         self,
         db: &dyn DefDatabase,
         def_map: &DefMap,
-        mut from_module: crate::LocalModuleId,
+        mut from_module: LocalModuleId,
     ) -> bool {
         let mut to_module = match self {
             Visibility::Module(m) => m,
@@ -131,20 +132,23 @@ impl Visibility {
         // visibility as the containing module (even though no items are directly nameable from
         // there, getting this right is important for method resolution).
         // In that case, we adjust the visibility of `to_module` to point to the containing module.
+
         // Additional complication: `to_module` might be in `from_module`'s `DefMap`, which we're
         // currently computing, so we must not call the `def_map` query for it.
-        let arc;
-        let to_module_def_map =
-            if to_module.krate == def_map.krate() && to_module.block == def_map.block_id() {
-                cov_mark::hit!(is_visible_from_same_block_def_map);
-                def_map
-            } else {
-                arc = to_module.def_map(db);
-                &arc
-            };
-        let is_block_root = matches!(to_module.block, Some(_) if to_module_def_map[to_module.local_id].parent.is_none());
-        if is_block_root {
-            to_module = to_module_def_map.containing_module(to_module.local_id).unwrap();
+        let mut arc;
+        loop {
+            let to_module_def_map =
+                if to_module.krate == def_map.krate() && to_module.block == def_map.block_id() {
+                    cov_mark::hit!(is_visible_from_same_block_def_map);
+                    def_map
+                } else {
+                    arc = to_module.def_map(db);
+                    &arc
+                };
+            match to_module_def_map.parent() {
+                Some(parent) => to_module = parent,
+                None => break,
+            }
         }
 
         // from_module needs to be a descendant of to_module

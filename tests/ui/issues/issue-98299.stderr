@@ -4,7 +4,7 @@ error[E0282]: type annotations needed for `SmallCString<N>`
 LL |     SmallCString::try_from(p).map(|cstr| cstr);
    |                                    ^^^^
    |
-help: consider giving this closure parameter an explicit type, where the the value of const parameter `N` is specified
+help: consider giving this closure parameter an explicit type, where the value of const parameter `N` is specified
    |
 LL |     SmallCString::try_from(p).map(|cstr: SmallCString<N>| cstr);
    |                                        +++++++++++++++++

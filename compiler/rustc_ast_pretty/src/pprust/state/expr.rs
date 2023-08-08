@@ -244,6 +244,10 @@ impl<'a> State<'a> {
             (&ast::ExprKind::Let { .. }, _) if !parser::needs_par_as_let_scrutinee(prec) => {
                 parser::PREC_FORCE_PAREN
             }
+            // For a binary expression like `(match () { _ => a }) OP b`, the parens are required
+            // otherwise the parser would interpret `match () { _ => a }` as a statement,
+            // with the remaining `OP b` not making sense. So we force parens.
+            (&ast::ExprKind::Match(..), _) => parser::PREC_FORCE_PAREN,
             _ => left_prec,
         };
 
@@ -292,10 +296,6 @@ impl<'a> State<'a> {
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
         match &expr.kind {
-            ast::ExprKind::Box(expr) => {
-                self.word_space("box");
-                self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
-            }
             ast::ExprKind::Array(exprs) => {
                 self.print_expr_vec(exprs);
             }
@@ -341,10 +341,16 @@ impl<'a> State<'a> {
                 self.print_type(ty);
             }
             ast::ExprKind::Type(expr, ty) => {
-                let prec = AssocOp::Colon.precedence() as i8;
-                self.print_expr_maybe_paren(expr, prec);
-                self.word_space(":");
+                self.word("type_ascribe!(");
+                self.ibox(0);
+                self.print_expr(expr);
+
+                self.word(",");
+                self.space_if_not_bol();
                 self.print_type(ty);
+
+                self.end();
+                self.word(")");
             }
             ast::ExprKind::Let(pat, scrutinee, _) => {
                 self.print_let(pat, scrutinee);
@@ -439,7 +445,7 @@ impl<'a> State<'a> {
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Async(capture_clause, _, blk) => {
+            ast::ExprKind::Async(capture_clause, blk) => {
                 self.word_nbsp("async");
                 self.print_capture_clause(*capture_clause);
                 // cbox/ibox in analogy to the `ExprKind::Block` arm above
@@ -447,7 +453,7 @@ impl<'a> State<'a> {
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Await(expr) => {
+            ast::ExprKind::Await(expr, _) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
                 self.word(".await");
             }
@@ -471,7 +477,7 @@ impl<'a> State<'a> {
                 self.word(".");
                 self.print_ident(*ident);
             }
-            ast::ExprKind::Index(expr, index) => {
+            ast::ExprKind::Index(expr, index, _) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
                 self.word("[");
                 self.print_expr(index);
@@ -531,6 +537,11 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
             }
+            ast::ExprKind::Become(result) => {
+                self.word("become");
+                self.word(" ");
+                self.print_expr_maybe_paren(result, parser::PREC_JUMP);
+            }
             ast::ExprKind::InlineAsm(a) => {
                 // FIXME: This should have its own syntax, distinct from a macro invocation.
                 self.word("asm!");
@@ -548,6 +559,25 @@ impl<'a> State<'a> {
                 }
                 self.end();
                 self.pclose();
+            }
+            ast::ExprKind::OffsetOf(container, fields) => {
+                self.word("builtin # offset_of");
+                self.popen();
+                self.rbox(0, Inconsistent);
+                self.print_type(container);
+                self.word(",");
+                self.space();
+
+                if let Some((&first, rest)) = fields.split_first() {
+                    self.print_ident(first);
+
+                    for &field in rest {
+                        self.word(".");
+                        self.print_ident(field);
+                    }
+                }
+                self.pclose();
+                self.end();
             }
             ast::ExprKind::MacCall(m) => self.print_mac(m),
             ast::ExprKind::Paren(e) => {
@@ -667,15 +697,15 @@ pub fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> St
                 write!(template, "{n}").unwrap();
                 if p.format_options != Default::default() || p.format_trait != FormatTrait::Display
                 {
-                    template.push_str(":");
+                    template.push(':');
                 }
                 if let Some(fill) = p.format_options.fill {
                     template.push(fill);
                 }
                 match p.format_options.alignment {
-                    Some(FormatAlignment::Left) => template.push_str("<"),
-                    Some(FormatAlignment::Right) => template.push_str(">"),
-                    Some(FormatAlignment::Center) => template.push_str("^"),
+                    Some(FormatAlignment::Left) => template.push('<'),
+                    Some(FormatAlignment::Right) => template.push('>'),
+                    Some(FormatAlignment::Center) => template.push('^'),
                     None => {}
                 }
                 match p.format_options.sign {

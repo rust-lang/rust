@@ -83,6 +83,48 @@ fn copies_append_mode_sink() -> Result<()> {
     Ok(())
 }
 
+#[test]
+fn dont_splice_pipes_from_files() -> Result<()> {
+    // splicing to a pipe and then modifying the source could lead to changes
+    // becoming visible in an unexpected order.
+
+    use crate::io::SeekFrom;
+    use crate::os::unix::fs::FileExt;
+    use crate::process::{ChildStdin, ChildStdout};
+    use crate::sys_common::FromInner;
+
+    let (read_end, write_end) = crate::sys::pipe::anon_pipe()?;
+
+    let mut read_end = ChildStdout::from_inner(read_end);
+    let mut write_end = ChildStdin::from_inner(write_end);
+
+    let tmp_path = tmpdir();
+    let file = tmp_path.join("to_be_modified");
+    let mut file =
+        crate::fs::OpenOptions::new().create_new(true).read(true).write(true).open(file)?;
+
+    const SZ: usize = libc::PIPE_BUF as usize;
+
+    // put data in page cache
+    let mut buf: [u8; SZ] = [0x01; SZ];
+    file.write_all(&buf).unwrap();
+
+    // copy page into pipe
+    file.seek(SeekFrom::Start(0)).unwrap();
+    assert!(io::copy(&mut file, &mut write_end).unwrap() == SZ as u64);
+
+    // modify file
+    buf[0] = 0x02;
+    file.write_at(&buf, 0).unwrap();
+
+    // read from pipe
+    read_end.read_exact(buf.as_mut_slice()).unwrap();
+
+    assert_eq!(buf[0], 0x01, "data in pipe should reflect the original, not later modifications");
+
+    Ok(())
+}
+
 #[bench]
 fn bench_file_to_file_copy(b: &mut test::Bencher) {
     const BYTES: usize = 128 * 1024;

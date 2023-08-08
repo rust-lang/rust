@@ -22,7 +22,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
         cmd.arg("--check");
     }
     cmd.args(paths);
-    let cmd_debug = format!("{:?}", cmd);
+    let cmd_debug = format!("{cmd:?}");
     let mut cmd = cmd.spawn().expect("running rustfmt");
     // poor man's async: return a closure that'll wait for rustfmt's completion
     move |block: bool| -> bool {
@@ -40,7 +40,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
                         code, run `./x.py fmt` instead.",
                 cmd_debug,
             );
-            crate::detail_exit(1);
+            crate::exit!(1);
         }
         true
     }
@@ -66,13 +66,17 @@ fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
 
 /// Return whether the format cache can be reused.
 fn verify_rustfmt_version(build: &Builder<'_>) -> bool {
-    let Some((version, stamp_file)) = get_rustfmt_version(build) else {return false;};
+    let Some((version, stamp_file)) = get_rustfmt_version(build) else {
+        return false;
+    };
     !program_out_of_date(&stamp_file, &version)
 }
 
 /// Updates the last rustfmt version used
 fn update_rustfmt_version(build: &Builder<'_>) {
-    let Some((version, stamp_file)) = get_rustfmt_version(build) else {return;};
+    let Some((version, stamp_file)) = get_rustfmt_version(build) else {
+        return;
+    };
     t!(std::fs::write(stamp_file, version))
 }
 
@@ -109,9 +113,9 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     }
     let rustfmt_config = t!(std::fs::read_to_string(&rustfmt_config));
     let rustfmt_config: RustfmtConfig = t!(toml::from_str(&rustfmt_config));
-    let mut ignore_fmt = ignore::overrides::OverrideBuilder::new(&build.src);
+    let mut fmt_override = ignore::overrides::OverrideBuilder::new(&build.src);
     for ignore in rustfmt_config.ignore {
-        ignore_fmt.add(&format!("!{}", ignore)).expect(&ignore);
+        fmt_override.add(&format!("!{ignore}")).expect(&ignore);
     }
     let git_available = match Command::new("git")
         .arg("--version")
@@ -145,19 +149,19 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
             let untracked_paths = untracked_paths_output
                 .lines()
                 .filter(|entry| entry.starts_with("??"))
-                .filter_map(|entry| {
-                    let path =
-                        entry.split(' ').nth(1).expect("every git status entry should list a path");
-                    path.ends_with(".rs").then_some(path)
+                .map(|entry| {
+                    entry.split(' ').nth(1).expect("every git status entry should list a path")
                 });
+            let mut untracked_count = 0;
             for untracked_path in untracked_paths {
-                println!("skip untracked path {} during rustfmt invocations", untracked_path);
+                println!("skip untracked path {untracked_path} during rustfmt invocations");
                 // The leading `/` makes it an exact match against the
                 // repository root, rather than a glob. Without that, if you
                 // have `foo.rs` in the repository root it will also match
                 // against anything like `compiler/rustc_foo/src/foo.rs`,
                 // preventing the latter from being formatted.
-                ignore_fmt.add(&format!("!/{}", untracked_path)).expect(&untracked_path);
+                untracked_count += 1;
+                fmt_override.add(&format!("!/{untracked_path}")).expect(&untracked_path);
             }
             // Only check modified files locally to speed up runtime.
             // We still check all files in CI to avoid bugs in `get_modified_rs_files` letting regressions slip through;
@@ -165,9 +169,30 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
             if !CiEnv::is_ci() && paths.is_empty() {
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
+                        if files.len() <= 10 {
+                            for file in &files {
+                                println!("formatting modified file {file}");
+                            }
+                        } else {
+                            let pluralized = |count| if count > 1 { "files" } else { "file" };
+                            let untracked_msg = if untracked_count == 0 {
+                                "".to_string()
+                            } else {
+                                format!(
+                                    ", skipped {} untracked {}",
+                                    untracked_count,
+                                    pluralized(untracked_count),
+                                )
+                            };
+                            println!(
+                                "formatting {} modified {}{}",
+                                files.len(),
+                                pluralized(files.len()),
+                                untracked_msg
+                            );
+                        }
                         for file in files {
-                            println!("formatting modified file {file}");
-                            ignore_fmt.add(&format!("/{file}")).expect(&file);
+                            fmt_override.add(&format!("/{file}")).expect(&file);
                         }
                     }
                     Ok(None) => {}
@@ -188,11 +213,11 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         println!("Could not find usable git. Skipping git-aware format checks");
     }
 
-    let ignore_fmt = ignore_fmt.build().unwrap();
+    let fmt_override = fmt_override.build().unwrap();
 
     let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {
         eprintln!("./x.py fmt is not supported on this channel");
-        crate::detail_exit(1);
+        crate::exit!(1);
     });
     assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
     let src = build.src.clone();
@@ -244,7 +269,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         None => WalkBuilder::new(src.clone()),
     }
     .types(matcher)
-    .overrides(ignore_fmt)
+    .overrides(fmt_override)
     .build_parallel();
 
     // there is a lot of blocking involved in spawning a child process and reading files to format.

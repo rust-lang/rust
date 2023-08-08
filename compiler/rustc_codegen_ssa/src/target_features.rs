@@ -1,3 +1,4 @@
+use crate::errors;
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
 use rustc_data_structures::fx::FxHashMap;
@@ -7,7 +8,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -28,7 +29,6 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("aclass", Some(sym::arm_target_feature)),
     ("aes", Some(sym::arm_target_feature)),
     ("crc", Some(sym::arm_target_feature)),
-    ("crypto", Some(sym::arm_target_feature)),
     ("d32", Some(sym::arm_target_feature)),
     ("dotprod", Some(sym::arm_target_feature)),
     ("dsp", Some(sym::arm_target_feature)),
@@ -43,6 +43,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // #[target_feature].
     ("thumb-mode", Some(sym::arm_target_feature)),
     ("thumb2", Some(sym::arm_target_feature)),
+    ("trustzone", Some(sym::arm_target_feature)),
     ("v5te", Some(sym::arm_target_feature)),
     ("v6", Some(sym::arm_target_feature)),
     ("v6k", Some(sym::arm_target_feature)),
@@ -52,6 +53,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("vfp2", Some(sym::arm_target_feature)),
     ("vfp3", Some(sym::arm_target_feature)),
     ("vfp4", Some(sym::arm_target_feature)),
+    ("virtualization", Some(sym::arm_target_feature)),
     // tidy-alphabetical-end
 ];
 
@@ -172,16 +174,13 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("avx512dq", Some(sym::avx512_target_feature)),
     ("avx512er", Some(sym::avx512_target_feature)),
     ("avx512f", Some(sym::avx512_target_feature)),
-    ("avx512gfni", Some(sym::avx512_target_feature)),
     ("avx512ifma", Some(sym::avx512_target_feature)),
     ("avx512pf", Some(sym::avx512_target_feature)),
-    ("avx512vaes", Some(sym::avx512_target_feature)),
     ("avx512vbmi", Some(sym::avx512_target_feature)),
     ("avx512vbmi2", Some(sym::avx512_target_feature)),
     ("avx512vl", Some(sym::avx512_target_feature)),
     ("avx512vnni", Some(sym::avx512_target_feature)),
     ("avx512vp2intersect", Some(sym::avx512_target_feature)),
-    ("avx512vpclmulqdq", Some(sym::avx512_target_feature)),
     ("avx512vpopcntdq", Some(sym::avx512_target_feature)),
     ("bmi1", None),
     ("bmi2", None),
@@ -192,7 +191,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("fxsr", None),
     ("gfni", Some(sym::avx512_target_feature)),
     ("lzcnt", None),
-    ("movbe", Some(sym::movbe_target_feature)),
+    ("movbe", None),
     ("pclmulqdq", None),
     ("popcnt", None),
     ("rdrand", None),
@@ -251,6 +250,8 @@ const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("e", Some(sym::riscv_target_feature)),
     ("f", Some(sym::riscv_target_feature)),
     ("m", Some(sym::riscv_target_feature)),
+    ("relax", Some(sym::riscv_target_feature)),
+    ("unaligned-scalar-mem", Some(sym::riscv_target_feature)),
     ("v", Some(sym::riscv_target_feature)),
     ("zba", Some(sym::riscv_target_feature)),
     ("zbb", Some(sym::riscv_target_feature)),
@@ -282,6 +283,7 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // tidy-alphabetical-start
     ("atomics", Some(sym::wasm_target_feature)),
     ("bulk-memory", Some(sym::wasm_target_feature)),
+    ("exception-handling", Some(sym::wasm_target_feature)),
     ("multivalue", Some(sym::wasm_target_feature)),
     ("mutable-globals", Some(sym::wasm_target_feature)),
     ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
@@ -318,7 +320,7 @@ pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Opt
         "aarch64" => AARCH64_ALLOWED_FEATURES,
         "x86" | "x86_64" => X86_ALLOWED_FEATURES,
         "hexagon" => HEXAGON_ALLOWED_FEATURES,
-        "mips" | "mips64" => MIPS_ALLOWED_FEATURES,
+        "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_ALLOWED_FEATURES,
         "powerpc" | "powerpc64" => POWERPC_ALLOWED_FEATURES,
         "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
         "wasm32" | "wasm64" => WASM_ALLOWED_FEATURES,
@@ -366,13 +368,9 @@ pub fn from_target_feature(
         // We allow comma separation to enable multiple features.
         target_features.extend(value.as_str().split(',').filter_map(|feature| {
             let Some(feature_gate) = supported_target_features.get(feature) else {
-                let msg =
-                    format!("the feature named `{}` is not valid for this target", feature);
-                let mut err = tcx.sess.struct_span_err(item.span(), &msg);
-                err.span_label(
-                    item.span(),
-                    format!("`{}` is not valid for this target", feature),
-                );
+                let msg = format!("the feature named `{feature}` is not valid for this target");
+                let mut err = tcx.sess.struct_span_err(item.span(), msg);
+                err.span_label(item.span(), format!("`{feature}` is not valid for this target"));
                 if let Some(stripped) = feature.strip_prefix('+') {
                     let valid = supported_target_features.contains_key(stripped);
                     if valid {
@@ -394,7 +392,6 @@ pub fn from_target_feature(
                 Some(sym::sse4a_target_feature) => rust_features.sse4a_target_feature,
                 Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
                 Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
-                Some(sym::movbe_target_feature) => rust_features.movbe_target_feature,
                 Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
                 Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
                 Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
@@ -407,7 +404,7 @@ pub fn from_target_feature(
                     &tcx.sess.parse_sess,
                     feature_gate.unwrap(),
                     item.span(),
-                    &format!("the target feature `{}` is currently unstable", feature),
+                    format!("the target feature `{feature}` is currently unstable"),
                 )
                 .emit();
             }
@@ -442,15 +439,11 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
 pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
     if let DefKind::AssocFn = tcx.def_kind(id) {
         let parent_id = tcx.local_parent(id);
-        if let DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
-            tcx.sess
-                .struct_span_err(
-                    attr_span,
-                    "`#[target_feature(..)]` cannot be applied to safe trait method",
-                )
-                .span_label(attr_span, "cannot be applied to safe trait method")
-                .span_label(tcx.def_span(id), "not an `unsafe` function")
-                .emit();
+        if let DefKind::Trait | DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
+            tcx.sess.emit_err(errors::TargetFeatureSafeTrait {
+                span: attr_span,
+                def: tcx.def_span(id),
+            });
         }
     }
 }

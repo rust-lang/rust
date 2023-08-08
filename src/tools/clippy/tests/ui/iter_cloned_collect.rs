@@ -1,9 +1,9 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(unused)]
+#![allow(clippy::useless_vec)]
 
-use std::collections::HashSet;
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 
 fn main() {
     let v = [1, 2, 3, 4, 5];

@@ -12,7 +12,7 @@
 //
 // We have opted for these instead of one target per processor (e.g., `cortex-m0`, `cortex-m3`,
 // etc) because the differences between some processors like the cortex-m0 and cortex-m1 are almost
-// non-existent from the POV of codegen so it doesn't make sense to have separate targets for them.
+// nonexistent from the POV of codegen so it doesn't make sense to have separate targets for them.
 // And if differences exist between two processors under the same target, rustc flags can be used to
 // optimize for one processor or the other.
 //
@@ -52,7 +52,7 @@ pub fn opts() -> TargetOptions {
         // breaks debugging. Preserve LR by default to prevent that from happening.
         frame_pointer: FramePointer::Always,
         // ARM supports multiple ABIs for enums, the linux one matches the default of 32 here
-        // but any arm-none or thumb-none target will be defaulted to 8 on GCC and clang
+        // but any arm-none or thumb-none target will be defaulted to 8 on GCC.
         c_enum_min_bits: Some(8),
         ..Default::default()
     }

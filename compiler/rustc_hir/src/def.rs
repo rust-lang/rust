@@ -61,7 +61,9 @@ pub enum DefKind {
     Variant,
     Trait,
     /// Type alias: `type Foo = Bar;`
-    TyAlias,
+    TyAlias {
+        lazy: bool,
+    },
     /// Type from an `extern` block.
     ForeignTy,
     /// Trait alias: `trait IntIterator = Iterator<Item = i32>;`
@@ -109,8 +111,6 @@ pub enum DefKind {
     InlineConst,
     /// Opaque type, aka `impl Trait`.
     OpaqueTy,
-    /// A return-position `impl Trait` in a trait definition
-    ImplTraitPlaceholder,
     Field,
     /// Lifetime parameter: the `'a` in `struct Foo<'a> { ... }`
     LifetimeParam,
@@ -143,8 +143,7 @@ impl DefKind {
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fn) => "tuple struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
             DefKind::OpaqueTy => "opaque type",
-            DefKind::ImplTraitPlaceholder => "opaque type in trait",
-            DefKind::TyAlias => "type alias",
+            DefKind::TyAlias { .. } => "type alias",
             DefKind::TraitAlias => "trait alias",
             DefKind::AssocTy => "associated type",
             DefKind::Union => "union",
@@ -200,7 +199,7 @@ impl DefKind {
             | DefKind::Variant
             | DefKind::Trait
             | DefKind::OpaqueTy
-            | DefKind::TyAlias
+            | DefKind::TyAlias { .. }
             | DefKind::ForeignTy
             | DefKind::TraitAlias
             | DefKind::AssocTy
@@ -227,17 +226,13 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
-            | DefKind::Impl { .. }
-            | DefKind::ImplTraitPlaceholder => None,
+            | DefKind::Impl { .. } => None,
         }
     }
 
     #[inline]
     pub fn is_fn_like(self) -> bool {
-        match self {
-            DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator => true,
-            _ => false,
-        }
+        matches!(self, DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator)
     }
 
     /// Whether `query get_codegen_attrs` should be used with this definition.
@@ -255,7 +250,7 @@ impl DefKind {
             | DefKind::Enum
             | DefKind::Variant
             | DefKind::Trait
-            | DefKind::TyAlias
+            | DefKind::TyAlias { .. }
             | DefKind::ForeignTy
             | DefKind::TraitAlias
             | DefKind::AssocTy
@@ -265,7 +260,6 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::OpaqueTy
-            | DefKind::ImplTraitPlaceholder
             | DefKind::Impl { .. }
             | DefKind::Field
             | DefKind::TyParam

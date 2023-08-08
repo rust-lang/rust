@@ -81,7 +81,7 @@ impl DebugContext {
 
         match tcx.sess.source_map().lookup_line(span.lo()) {
             Ok(SourceFileAndLine { sf: file, line }) => {
-                let line_pos = file.line_begin_pos(span.lo());
+                let line_pos = file.lines(|lines| lines[line]);
 
                 (
                     file,
@@ -165,7 +165,7 @@ impl FunctionDebugContext {
         for &MachSrcLoc { start, end, loc } in mcr.buffer.get_srclocs_sorted() {
             debug_context.dwarf.unit.line_program.row().address_offset = u64::from(start);
             if !loc.is_default() {
-                let source_loc = *self.source_loc_set.get_index(loc.bits() as usize).unwrap();
+                let source_loc = self.source_loc_set[loc.bits() as usize];
                 create_row_for_span(debug_context, source_loc);
             } else {
                 create_row_for_span(debug_context, self.function_source_loc);

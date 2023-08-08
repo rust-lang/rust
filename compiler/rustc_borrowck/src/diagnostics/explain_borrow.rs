@@ -3,13 +3,13 @@
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::{
-    Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Rvalue,
-    Statement, StatementKind, TerminatorKind,
+    Body, CallSource, CastKind, ConstraintCategory, FakeReadCause, Local, LocalInfo, Location,
+    Operand, Place, Rvalue, Statement, StatementKind, TerminatorKind,
 };
-use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
@@ -60,7 +60,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        local_names: &IndexVec<Local, Option<Symbol>>,
+        local_names: &IndexSlice<Local, Option<Symbol>>,
         err: &mut Diagnostic,
         borrow_desc: &str,
         borrow_span: Option<Span>,
@@ -79,7 +79,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         | hir::ExprKind::Unary(hir::UnOp::Deref, inner)
                         | hir::ExprKind::Field(inner, _)
                         | hir::ExprKind::MethodCall(_, inner, _, _)
-                        | hir::ExprKind::Index(inner, _) = &expr.kind
+                        | hir::ExprKind::Index(inner, _, _) = &expr.kind
                     {
                         expr = inner;
                     }
@@ -90,7 +90,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     {
                         err.span_label(
                             pat.span,
-                            &format!("binding `{ident}` declared here"),
+                            format!("binding `{ident}` declared here"),
                         );
                     }
                 }
@@ -118,7 +118,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     let path_span = path_span.unwrap();
                     // path_span is only present in the case of closure capture
                     assert!(matches!(later_use_kind, LaterUseKind::ClosureCapture));
-                    if !borrow_span.map_or(false, |sp| sp.overlaps(var_or_use_span)) {
+                    if !borrow_span.is_some_and(|sp| sp.overlaps(var_or_use_span)) {
                         let path_label = "used here by closure";
                         let capture_kind_label = message;
                         err.span_label(
@@ -168,17 +168,17 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 let local_decl = &body.local_decls[dropped_local];
                 let mut ty = local_decl.ty;
                 if local_decl.source_info.span.desugaring_kind() == Some(DesugaringKind::ForLoop) {
-                    if let ty::Adt(adt, substs) = local_decl.ty.kind() {
+                    if let ty::Adt(adt, args) = local_decl.ty.kind() {
                         if tcx.is_diagnostic_item(sym::Option, adt.did()) {
                             // in for loop desugaring, only look at the `Some(..)` inner type
-                            ty = substs.type_at(0);
+                            ty = args.type_at(0);
                         }
                     }
                 }
                 let (dtor_desc, type_desc) = match ty.kind() {
                     // If type is an ADT that implements Drop, then
                     // simplify output by reporting just the ADT name.
-                    ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() => {
+                    ty::Adt(adt, _args) if adt.has_dtor(tcx) && !adt.is_box() => {
                         ("`Drop` code", format!("type `{}`", tcx.def_path_str(adt.did())))
                     }
 
@@ -220,16 +220,13 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         );
                         err.span_label(body.source_info(drop_loc).span, message);
 
-                        if let Some(info) = &local_decl.is_block_tail {
+                        if let LocalInfo::BlockTailTemp(info) = local_decl.local_info() {
                             if info.tail_result_is_ignored {
                                 // #85581: If the first mutable borrow's scope contains
                                 // the second borrow, this suggestion isn't helpful.
-                                if !multiple_borrow_span
-                                    .map(|(old, new)| {
-                                        old.to(info.span.shrink_to_hi()).contains(new)
-                                    })
-                                    .unwrap_or(false)
-                                {
+                                if !multiple_borrow_span.is_some_and(|(old, new)| {
+                                    old.to(info.span.shrink_to_hi()).contains(new)
+                                }) {
                                     err.span_suggestion_verbose(
                                         info.span.shrink_to_hi(),
                                         "consider adding semicolon after the expression so its \
@@ -323,7 +320,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),
-                &msg,
+                msg,
                 format!(" + {suggestable_name}"),
                 Applicability::Unspecified,
             );
@@ -497,7 +494,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if self.was_captured_by_trait_object(borrow) {
                     LaterUseKind::TraitCapture
                 } else if location.statement_index == block.statements.len() {
-                    if let TerminatorKind::Call { func, from_hir_call: true, .. } =
+                    if let TerminatorKind::Call { func, call_source: CallSource::Normal, .. } =
                         &block.terminator().kind
                     {
                         // Just point to the function, to reduce the chance of overlapping spans.
@@ -587,7 +584,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         },
                         // If we see an unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
-                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), operand, ty) => {
+                        Rvalue::Cast(
+                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            operand,
+                            ty,
+                        ) => {
                             match operand {
                                 Operand::Copy(place) | Operand::Move(place) => {
                                     if let Some(from) = place.as_local() {

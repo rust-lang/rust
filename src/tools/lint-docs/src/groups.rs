@@ -43,7 +43,7 @@ impl<'a> LintExtractor<'a> {
         let output = cmd.output().map_err(|e| format!("failed to run command {:?}\n{}", cmd, e))?;
         if !output.status.success() {
             return Err(format!(
-                "failed to collect lint info: {:?}\n--- stderr\n{}--- stdout\n{}\n",
+                "failed to collect lint info: failed to run {cmd:?}: {:?}\n--- stderr\n{}--- stdout\n{}\n",
                 output.status,
                 std::str::from_utf8(&output.stderr).unwrap(),
                 std::str::from_utf8(&output.stdout).unwrap(),

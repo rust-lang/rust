@@ -1,0 +1,54 @@
+- // MIR for `change_loop_body` before ConstProp
++ // MIR for `change_loop_body` after ConstProp
+  
+  fn change_loop_body() -> () {
+      let mut _0: ();
+      let mut _1: i32;
+      let mut _2: ();
+      let mut _3: std::option::Option<u32>;
+      let mut _4: isize;
+      let mut _5: !;
+      let mut _6: !;
+      let _7: ();
+      let mut _8: !;
+      scope 1 {
+          debug _x => _1;
+          scope 2 {
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const 0_i32;
+          StorageLive(_3);
+          _3 = Option::<u32>::None;
+-         _4 = discriminant(_3);
+-         switchInt(move _4) -> [1: bb1, otherwise: bb3];
++         _4 = const 0_isize;
++         switchInt(const 0_isize) -> [1: bb1, otherwise: bb3];
+      }
+  
+      bb1: {
+          switchInt(((_3 as Some).0: u32)) -> [0: bb2, otherwise: bb3];
+      }
+  
+      bb2: {
+          _1 = const 1_i32;
+          _0 = const ();
+          goto -> bb4;
+      }
+  
+      bb3: {
+          StorageLive(_7);
+          _0 = const ();
+          StorageDead(_7);
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

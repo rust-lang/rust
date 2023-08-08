@@ -1,20 +1,20 @@
 // These tests verify that labels like "UNIX" and "Deprecated" stay on the same line as their symbol.
 // It also verifies the staggered layout on mobile.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
 // Desktop view
-size: (1080, 600)
+set-window-size: (1080, 600)
 assert: (".stab.deprecated")
 assert: (".stab.portability")
 
 // make sure that deprecated and portability have the right colors
 assert-css: (
     ".item-table .item-name .stab.deprecated",
-    { "background-color": "rgb(255, 245, 214)" },
+    { "background-color": "#fff5d6" },
 )
 assert-css: (
     ".item-table .item-name .stab.portability",
-    { "background-color": "rgb(255, 245, 214)" },
+    { "background-color": "#fff5d6" },
 )
 
 // table like view
@@ -37,9 +37,8 @@ compare-elements-position: (
     ("y"),
 )
 
-
 // Mobile view
-size: (600, 600)
+set-window-size: (600, 600)
 // staggered layout with 2em spacing
 assert-css: (".desc.docblock-short", { "padding-left": "32px" })
 compare-elements-position-near: (
@@ -62,5 +61,16 @@ compare-elements-position-false: (
 compare-elements-position-false: (
     ".item-name .stab.deprecated",
     "//*[@class='desc docblock-short'][text()='a thing with a label']",
+    ("y"),
+)
+
+// Ensure it doesn't expand.
+set-window-size: (800, 800)
+go-to: "file://" + |DOC_PATH| + "/test_docs/cfgs/index.html"
+// This part of the tags should not be on the same line as the beginning since the width
+// is too small for that.
+compare-elements-position-false: (
+    "//*[@class='stab portability']/code[text()='appservice-api-c']",
+    "//*[@class='stab portability']/code[text()='server']",
     ("y"),
 )

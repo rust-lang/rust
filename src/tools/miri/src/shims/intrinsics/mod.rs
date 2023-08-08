@@ -26,7 +26,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
-        _unwind: StackPopUnwind,
+        _unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -96,13 +96,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Raw memory accesses
             "volatile_load" => {
                 let [place] = check_arg_count(args)?;
-                let place = this.deref_operand(place)?;
-                this.copy_op(&place.into(), dest, /*allow_transmute*/ false)?;
+                let place = this.deref_pointer(place)?;
+                this.copy_op(&place, dest, /*allow_transmute*/ false)?;
             }
             "volatile_store" => {
                 let [place, dest] = check_arg_count(args)?;
-                let place = this.deref_operand(place)?;
-                this.copy_op(dest, &place.into(), /*allow_transmute*/ false)?;
+                let place = this.deref_pointer(place)?;
+                this.copy_op(dest, &place, /*allow_transmute*/ false)?;
             }
 
             "write_bytes" | "volatile_set_memory" => {
@@ -157,6 +157,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "ceilf32"
             | "truncf32"
             | "roundf32"
+            | "rintf32"
             => {
                 let [f] = check_arg_count(args)?;
                 // FIXME: Using host floats.
@@ -174,6 +175,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "ceilf32" => f.ceil(),
                     "truncf32" => f.trunc(),
                     "roundf32" => f.round(),
+                    "rintf32" => f.round_ties_even(),
                     _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
@@ -192,6 +194,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "ceilf64"
             | "truncf64"
             | "roundf64"
+            | "rintf64"
             => {
                 let [f] = check_arg_count(args)?;
                 // FIXME: Using host floats.
@@ -209,6 +212,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "ceilf64" => f.ceil(),
                     "truncf64" => f.trunc(),
                     "roundf64" => f.round(),
+                    "rintf64" => f.round_ties_even(),
                     _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;

@@ -1,17 +1,26 @@
 // ignore-tidy-tab
 
-const QUERY = [
-    'aaaaaa	b',
-    'a b',
-    'a,b',
-    'a\tb',
-    'a<b c>',
-    'a<b,c>',
-    'a<b\tc>',
-];
-
 const PARSED = [
     {
+        query: 'aaaaaa	b',
+        elems: [
+            {
+                name: 'aaaaaa\tb',
+                fullPath: ['aaaaaa', 'b'],
+                pathWithoutLast: ['aaaaaa'],
+                pathLast: 'b',
+                generics: [],
+                typeFilter: -1,
+            },
+        ],
+        foundElems: 1,
+        original: "aaaaaa	b",
+        returned: [],
+        userQuery: "aaaaaa	b",
+        error: null,
+    },
+    {
+        query: "aaaaaa,	b",
         elems: [
             {
                 name: 'aaaaaa',
@@ -19,6 +28,7 @@ const PARSED = [
                 pathWithoutLast: [],
                 pathLast: 'aaaaaa',
                 generics: [],
+                typeFilter: -1,
             },
             {
                 name: 'b',
@@ -26,40 +36,35 @@ const PARSED = [
                 pathWithoutLast: [],
                 pathLast: 'b',
                 generics: [],
+                typeFilter: -1,
             },
         ],
         foundElems: 2,
-        original: "aaaaaa	b",
+        original: "aaaaaa,	b",
         returned: [],
-        typeFilter: -1,
-        userQuery: "aaaaaa	b",
+        userQuery: "aaaaaa,	b",
         error: null,
     },
     {
+        query: 'a b',
         elems: [
             {
-                name: 'a',
-                fullPath: ['a'],
-                pathWithoutLast: [],
-                pathLast: 'a',
-                generics: [],
-            },
-            {
-                name: 'b',
-                fullPath: ['b'],
-                pathWithoutLast: [],
+                name: 'a b',
+                fullPath: ['a', 'b'],
+                pathWithoutLast: ['a'],
                 pathLast: 'b',
                 generics: [],
+                typeFilter: -1,
             },
         ],
-        foundElems: 2,
+        foundElems: 1,
         original: "a b",
         returned: [],
-        typeFilter: -1,
         userQuery: "a b",
         error: null,
     },
     {
+        query: 'a,b',
         elems: [
             {
                 name: 'a',
@@ -67,6 +72,7 @@ const PARSED = [
                 pathWithoutLast: [],
                 pathLast: 'a',
                 generics: [],
+                typeFilter: -1,
             },
             {
                 name: 'b',
@@ -74,40 +80,35 @@ const PARSED = [
                 pathWithoutLast: [],
                 pathLast: 'b',
                 generics: [],
+                typeFilter: -1,
             },
         ],
         foundElems: 2,
         original: "a,b",
         returned: [],
-        typeFilter: -1,
         userQuery: "a,b",
         error: null,
     },
     {
+        query: 'a\tb',
         elems: [
             {
-                name: 'a',
-                fullPath: ['a'],
-                pathWithoutLast: [],
-                pathLast: 'a',
-                generics: [],
-            },
-            {
-                name: 'b',
-                fullPath: ['b'],
-                pathWithoutLast: [],
+                name: 'a\tb',
+                fullPath: ['a', 'b'],
+                pathWithoutLast: ['a'],
                 pathLast: 'b',
                 generics: [],
+                typeFilter: -1,
             },
         ],
-        foundElems: 2,
+        foundElems: 1,
         original: "a\tb",
         returned: [],
-        typeFilter: -1,
         userQuery: "a\tb",
         error: null,
     },
     {
+        query: 'a<b c>',
         elems: [
             {
                 name: 'a',
@@ -116,30 +117,24 @@ const PARSED = [
                 pathLast: 'a',
                 generics: [
                     {
-                        name: 'b',
-                        fullPath: ['b'],
-                        pathWithoutLast: [],
-                        pathLast: 'b',
-                        generics: [],
-                    },
-                    {
-                        name: 'c',
-                        fullPath: ['c'],
-                        pathWithoutLast: [],
+                        name: 'b c',
+                        fullPath: ['b', 'c'],
+                        pathWithoutLast: ['b'],
                         pathLast: 'c',
                         generics: [],
                     },
                 ],
+                typeFilter: -1,
             },
         ],
         foundElems: 1,
         original: "a<b c>",
         returned: [],
-        typeFilter: -1,
         userQuery: "a<b c>",
         error: null,
     },
     {
+        query: 'a<b,c>',
         elems: [
             {
                 name: 'a',
@@ -162,16 +157,17 @@ const PARSED = [
                         generics: [],
                     },
                 ],
+                typeFilter: -1,
             },
         ],
         foundElems: 1,
         original: "a<b,c>",
         returned: [],
-        typeFilter: -1,
         userQuery: "a<b,c>",
         error: null,
     },
     {
+        query: 'a<b\tc>',
         elems: [
             {
                 name: 'a',
@@ -180,26 +176,19 @@ const PARSED = [
                 pathLast: 'a',
                 generics: [
                     {
-                        name: 'b',
-                        fullPath: ['b'],
-                        pathWithoutLast: [],
-                        pathLast: 'b',
-                        generics: [],
-                    },
-                    {
-                        name: 'c',
-                        fullPath: ['c'],
-                        pathWithoutLast: [],
+                        name: 'b\tc',
+                        fullPath: ['b', 'c'],
+                        pathWithoutLast: ['b'],
                         pathLast: 'c',
                         generics: [],
                     },
                 ],
+                typeFilter: -1,
             },
         ],
         foundElems: 1,
         original: "a<b\tc>",
         returned: [],
-        typeFilter: -1,
         userQuery: "a<b\tc>",
         error: null,
     },

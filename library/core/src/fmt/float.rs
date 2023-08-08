@@ -45,7 +45,8 @@ where
         &mut buf,
         &mut parts,
     );
-    fmt.pad_formatted_parts(&formatted)
+    // SAFETY: `to_exact_fixed_str` and `format_exact` produce only ASCII characters.
+    unsafe { fmt.pad_formatted_parts(&formatted) }
 }
 
 // Don't inline this so callers that call both this and the above won't wind
@@ -71,7 +72,8 @@ where
         &mut buf,
         &mut parts,
     );
-    fmt.pad_formatted_parts(&formatted)
+    // SAFETY: `to_shortest_str` and `format_shortest` produce only ASCII characters.
+    unsafe { fmt.pad_formatted_parts(&formatted) }
 }
 
 fn float_to_decimal_display<T>(fmt: &mut Formatter<'_>, num: &T) -> Result
@@ -116,7 +118,8 @@ where
         &mut buf,
         &mut parts,
     );
-    fmt.pad_formatted_parts(&formatted)
+    // SAFETY: `to_exact_exp_str` and `format_exact` produce only ASCII characters.
+    unsafe { fmt.pad_formatted_parts(&formatted) }
 }
 
 // Don't inline this so callers that call both this and the above won't wind
@@ -143,7 +146,8 @@ where
         &mut buf,
         &mut parts,
     );
-    fmt.pad_formatted_parts(&formatted)
+    // SAFETY: `to_shortest_exp_str` and `format_shortest` produce only ASCII characters.
+    unsafe { fmt.pad_formatted_parts(&formatted) }
 }
 
 // Common code of floating point LowerExp and UpperExp.

@@ -306,9 +306,11 @@ fn atomic_compare_exchange() {
     ATOMIC.compare_exchange_weak(0, 1, SeqCst, SeqCst).ok();
 }
 
+/* FIXME(#110395)
 #[test]
 fn atomic_const_from() {
     const _ATOMIC_U8: AtomicU8 = AtomicU8::from(1);
     const _ATOMIC_BOOL: AtomicBool = AtomicBool::from(true);
     const _ATOMIC_PTR: AtomicPtr<u32> = AtomicPtr::from(core::ptr::null_mut());
 }
+*/

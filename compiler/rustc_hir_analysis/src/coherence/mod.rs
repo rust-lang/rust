@@ -5,11 +5,11 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
+use crate::errors;
 use rustc_errors::{error_code, struct_span_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_span::sym;
 use rustc_trait_selection::traits;
 
 mod builtin;
@@ -22,7 +22,7 @@ fn check_impl(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, trait_ref: ty::TraitRef<
     debug!(
         "(checking implementation) adding impl for trait '{:?}', item '{}'",
         trait_ref,
-        tcx.def_path_str(impl_def_id.to_def_id())
+        tcx.def_path_str(impl_def_id)
     );
 
     // Skip impls where one of the self type is an error type.
@@ -43,7 +43,7 @@ fn enforce_trait_manually_implementable(
     let impl_header_span = tcx.def_span(impl_def_id);
 
     // Disallow *all* explicit impls of traits marked `#[rustc_deny_explicit_impl]`
-    if tcx.has_attr(trait_def_id, sym::rustc_deny_explicit_impl) {
+    if tcx.trait_def(trait_def_id).deny_explicit_impl {
         let trait_name = tcx.item_name(trait_def_id);
         let mut err = struct_span_err!(
             tcx.sess,
@@ -67,13 +67,7 @@ fn enforce_trait_manually_implementable(
         tcx.trait_def(trait_def_id).specialization_kind
     {
         if !tcx.features().specialization && !tcx.features().min_specialization {
-            tcx.sess
-                .struct_span_err(
-                    impl_header_span,
-                    "implementing `rustc_specialization_trait` traits is unstable",
-                )
-                .help("add `#![feature(min_specialization)]` to the crate attributes to enable")
-                .emit();
+            tcx.sess.emit_err(errors::SpecializationTrait { span: impl_header_span });
             return;
         }
     }
@@ -128,13 +122,13 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
 
     let impls = tcx.hir().trait_impls(def_id);
     for &impl_def_id in impls {
-        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity();
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
 
         check_impl(tcx, impl_def_id, trait_ref);
         check_object_overlap(tcx, impl_def_id, trait_ref);
 
-        tcx.sess.time("unsafety_checking", || unsafety::check_item(tcx, impl_def_id));
-        tcx.sess.time("orphan_checking", || tcx.ensure().orphan_check_impl(impl_def_id));
+        unsafety::check_item(tcx, impl_def_id);
+        tcx.ensure().orphan_check_impl(impl_def_id);
     }
 
     builtin::check_trait(tcx, def_id);

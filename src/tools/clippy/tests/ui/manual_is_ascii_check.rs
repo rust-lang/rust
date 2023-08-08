@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(unused, dead_code)]
 #![warn(clippy::manual_is_ascii_check)]

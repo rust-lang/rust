@@ -1,7 +1,7 @@
 // check-pass
 
 #![allow(incomplete_features)]
-#![feature(adt_const_params, const_ptr_read, generic_const_exprs)]
+#![feature(adt_const_params, generic_const_exprs)]
 #![allow(dead_code)]
 
 const fn catone<const M: usize>(_a: &[u8; M]) -> [u8; M + 1]

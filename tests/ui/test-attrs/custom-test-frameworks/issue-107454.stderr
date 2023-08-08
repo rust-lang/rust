@@ -1,0 +1,15 @@
+error: cannot test inner items
+  --> $DIR/issue-107454.rs:7:5
+   |
+LL |     #[test_case]
+   |     ^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-107454.rs:4:9
+   |
+LL | #![deny(unnameable_test_items)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the attribute macro `test_case` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

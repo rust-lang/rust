@@ -83,7 +83,7 @@ impl ProcOutput {
                 }
 
                 let new_len = bytes.len();
-                if *filtered_len <= HEAD_LEN + TAIL_LEN {
+                if (*filtered_len).min(new_len) <= HEAD_LEN + TAIL_LEN {
                     return;
                 }
 
@@ -232,7 +232,7 @@ mod imp {
     use miow::iocp::{CompletionPort, CompletionStatus};
     use miow::pipe::NamedPipe;
     use miow::Overlapped;
-    use winapi::shared::winerror::ERROR_BROKEN_PIPE;
+    use windows::Win32::Foundation::ERROR_BROKEN_PIPE;
 
     struct Pipe<'a> {
         dst: &'a mut Vec<u8>,
@@ -295,7 +295,7 @@ mod imp {
             match self.pipe.read_overlapped(dst, self.overlapped.raw()) {
                 Ok(_) => Ok(()),
                 Err(e) => {
-                    if e.raw_os_error() == Some(ERROR_BROKEN_PIPE as i32) {
+                    if e.raw_os_error() == Some(ERROR_BROKEN_PIPE.0 as i32) {
                         self.done = true;
                         Ok(())
                     } else {

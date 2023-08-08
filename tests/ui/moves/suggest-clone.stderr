@@ -2,9 +2,8 @@ error[E0507]: cannot move out of `*foo` which is behind a shared reference
   --> $DIR/suggest-clone.rs:10:5
    |
 LL |     foo.foo();
-   |     ^^^^-----
-   |     |   |
-   |     |   `*foo` moved due to this method call
+   |     ^^^ ----- `*foo` moved due to this method call
+   |     |
    |     move occurs because `*foo` has type `Foo`, which does not implement the `Copy` trait
    |
 note: `Foo::foo` takes ownership of the receiver `self`, which moves `*foo`
@@ -15,7 +14,7 @@ LL |     fn foo(self) {}
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     foo.clone().foo();
-   |         ++++++++
+   |        ++++++++
 
 error: aborting due to previous error
 

@@ -5,13 +5,12 @@ use clippy_utils::ty::same_type_and_consts;
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
+use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::intravisit::{walk_inf, walk_ty, Visitor};
 use rustc_hir::{
-    self as hir,
-    def::{CtorOf, DefKind, Res},
-    def_id::LocalDefId,
-    intravisit::{walk_inf, walk_ty, Visitor},
-    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath,
-    TyKind,
+    self as hir, Expr, ExprKind, FnRetTy, FnSig, GenericArg, GenericArgsParentheses, GenericParam, GenericParamKind,
+    HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
 };
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -96,19 +95,27 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         // avoid linting on nested items, we push `StackItem::NoCheck` on the stack to signal, that
         // we're in an `impl` or nested item, that we don't want to lint
         let stack_item = if_chain! {
-            if let ItemKind::Impl(Impl { self_ty, .. }) = item.kind;
+            if let ItemKind::Impl(Impl { self_ty, generics,.. }) = item.kind;
             if let TyKind::Path(QPath::Resolved(_, item_path)) = self_ty.kind;
             let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
             if parameters.as_ref().map_or(true, |params| {
-                !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
+                params.parenthesized  == GenericArgsParentheses::No
+                    && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
             });
             if !item.span.from_expansion();
             if !is_from_proc_macro(cx, item); // expensive, should be last check
             then {
+                // Self cannot be used inside const generic parameters
+                let types_to_skip = generics.params.iter().filter_map(|param| {
+                    match param {
+                        GenericParam { kind: GenericParamKind::Const { ty: Ty { hir_id, ..}, ..}, ..} => Some(*hir_id),
+                        _ => None,
+                    }
+                }).chain(std::iter::once(self_ty.hir_id)).collect();
                 StackItem::Check {
                     impl_id: item.owner_id.def_id,
                     in_body: 0,
-                    types_to_skip: std::iter::once(self_ty.hir_id).collect(),
+                    types_to_skip,
                 }
             } else {
                 StackItem::NoCheck
@@ -137,7 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             then {
                 // `self_ty` is the semantic self type of `impl <trait> for <type>`. This cannot be
                 // `Self`.
-                let self_ty = impl_trait_ref.subst_identity().self_ty();
+                let self_ty = impl_trait_ref.instantiate_identity().self_ty();
 
                 // `trait_method_sig` is the signature of the function, how it is declared in the
                 // trait, not in the impl of the trait.
@@ -146,7 +153,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                     .associated_item(impl_item.owner_id)
                     .trait_item_def_id
                     .expect("impl method matches a trait method");
-                let trait_method_sig = cx.tcx.fn_sig(trait_method).subst_identity();
+                let trait_method_sig = cx.tcx.fn_sig(trait_method).instantiate_identity();
                 let trait_method_sig = cx.tcx.erase_late_bound_regions(trait_method_sig);
 
                 // `impl_inputs_outputs` is an iterator over the types (`hir::Ty`) declared in the
@@ -218,7 +225,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             } else {
                 hir_ty_to_ty(cx.tcx, hir_ty)
             };
-            if same_type_and_consts(ty, cx.tcx.type_of(impl_id).subst_identity());
+            if same_type_and_consts(ty, cx.tcx.type_of(impl_id).instantiate_identity());
             then {
                 span_lint(cx, hir_ty.span);
             }
@@ -230,7 +237,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if !expr.span.from_expansion();
             if self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
-            if cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id).subst_identity();
+            if cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id).instantiate_identity();
             then {} else { return; }
         }
         match expr.kind {
@@ -254,7 +261,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if let PatKind::Path(QPath::Resolved(_, path))
                  | PatKind::TupleStruct(QPath::Resolved(_, path), _, _)
                  | PatKind::Struct(QPath::Resolved(_, path), _, _) = pat.kind;
-            if cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id).subst_identity();
+            if cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id).instantiate_identity();
             then {
                 check_path(cx, path);
             }

@@ -1,5 +1,6 @@
 use crate::array;
 use crate::cmp::{self, Ordering};
+use crate::num::NonZeroUsize;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::try_process;
@@ -25,13 +26,13 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
-        _Self = "std::ops::RangeTo<Idx>",
+        any(_Self = "core::ops::RangeTo<Idx>", _Self = "std::ops::RangeTo<Idx>"),
         label = "if you meant to iterate until a value, add a starting value",
         note = "`..end` is a `RangeTo`, which cannot be iterated on; you might have meant to have a \
               bounded `Range`: `0..end`"
     ),
     on(
-        _Self = "std::ops::RangeToInclusive<Idx>",
+        any(_Self = "core::ops::RangeToInclusive<Idx>", _Self = "std::ops::RangeToInclusive<Idx>"),
         label = "if you meant to iterate until a value (including it), add a starting value",
         note = "`..=end` is a `RangeToInclusive`, which cannot be iterated on; you might have meant \
               to have a bounded `RangeInclusive`: `0..=end`"
@@ -42,7 +43,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     ),
     on(_Self = "&[]", label = "`{Self}` is not an iterator; try calling `.iter()`"),
     on(
-        _Self = "std::vec::Vec<T, A>",
+        any(_Self = "alloc::vec::Vec<T, A>", _Self = "std::vec::Vec<T, A>"),
         label = "`{Self}` is not an iterator; try calling `.into_iter()` or `.iter()`"
     ),
     on(
@@ -50,7 +51,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
     on(
-        _Self = "std::string::String",
+        any(_Self = "alloc::string::String", _Self = "std::string::String"),
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
     on(
@@ -69,7 +70,6 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 #[doc(notable_trait)]
 #[rustc_diagnostic_item = "Iterator"]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[cfg_attr(not(bootstrap), const_trait)]
 pub trait Iterator {
     /// The type of the elements being iterated over.
     #[rustc_diagnostic_item = "IteratorItem"]
@@ -307,10 +307,11 @@ pub trait Iterator {
     /// This method will eagerly skip `n` elements by calling [`next`] up to `n`
     /// times until [`None`] is encountered.
     ///
-    /// `advance_by(n)` will return [`Ok(())`][Ok] if the iterator successfully advances by
-    /// `n` elements, or [`Err(k)`][Err] if [`None`] is encountered, where `k` is the number
-    /// of elements the iterator is advanced by before running out of elements (i.e. the
-    /// length of the iterator). Note that `k` is always less than `n`.
+    /// `advance_by(n)` will return `Ok(())` if the iterator successfully advances by
+    /// `n` elements, or a `Err(NonZeroUsize)` with value `k` if [`None`] is encountered,
+    /// where `k` is remaining number of steps that could not be advanced because the iterator ran out.
+    /// If `self` is empty and `n` is non-zero, then this returns `Err(n)`.
+    /// Otherwise, `k` is always less than `n`.
     ///
     /// Calling `advance_by(0)` can do meaningful work, for example [`Flatten`]
     /// can advance its outer iterator until it finds an inner iterator that is not empty, which
@@ -326,20 +327,24 @@ pub trait Iterator {
     /// ```
     /// #![feature(iter_advance_by)]
     ///
+    /// use std::num::NonZeroUsize;
     /// let a = [1, 2, 3, 4];
     /// let mut iter = a.iter();
     ///
     /// assert_eq!(iter.advance_by(2), Ok(()));
     /// assert_eq!(iter.next(), Some(&3));
     /// assert_eq!(iter.advance_by(0), Ok(()));
-    /// assert_eq!(iter.advance_by(100), Err(1)); // only `&4` was skipped
+    /// assert_eq!(iter.advance_by(100), Err(NonZeroUsize::new(99).unwrap())); // only `&4` was skipped
     /// ```
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
     #[rustc_do_not_const_check]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         for i in 0..n {
-            self.next().ok_or(i)?;
+            if self.next().is_none() {
+                // SAFETY: `i` is always less than `n`.
+                return Err(unsafe { NonZeroUsize::new_unchecked(n - i) });
+            }
         }
         Ok(())
     }
@@ -758,7 +763,6 @@ pub trait Iterator {
     /// more idiomatic to use [`for`] than `map()`.
     ///
     /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
-    /// [`FnMut`]: crate::ops::FnMut
     ///
     /// # Examples
     ///
@@ -1998,7 +2002,7 @@ pub trait Iterator {
     /// a.iter().map(|&x| x * 2).collect_into(&mut vec);
     /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
     ///
-    /// assert_eq!(vec![0, 1, 2, 4, 6, 10, 20, 30], vec);
+    /// assert_eq!(vec, vec![0, 1, 2, 4, 6, 10, 20, 30]);
     /// ```
     ///
     /// `Vec` can have a manual set capacity to avoid reallocating it:
@@ -2013,7 +2017,7 @@ pub trait Iterator {
     /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
     ///
     /// assert_eq!(6, vec.capacity());
-    /// println!("{:?}", vec);
+    /// assert_eq!(vec, vec![2, 4, 6, 10, 20, 30]);
     /// ```
     ///
     /// The returned mutable reference can be used to continue the call chain:
@@ -2027,12 +2031,12 @@ pub trait Iterator {
     /// let count = a.iter().collect_into(&mut vec).iter().count();
     ///
     /// assert_eq!(count, vec.len());
-    /// println!("Vec len is {}", count);
+    /// assert_eq!(vec, vec![1, 2, 3]);
     ///
     /// let count = a.iter().collect_into(&mut vec).iter().count();
     ///
     /// assert_eq!(count, vec.len());
-    /// println!("Vec len now is {}", count);
+    /// assert_eq!(vec, vec![1, 2, 3, 1, 2, 3]);
     /// ```
     #[inline]
     #[unstable(feature = "iter_collect_into", reason = "new API", issue = "94780")]
@@ -2109,8 +2113,8 @@ pub trait Iterator {
     ///
     /// # Current implementation
     ///
-    /// Current algorithms tries finding the first element for which the predicate evaluates
-    /// to false, and the last element for which it evaluates to true and repeatedly swaps them.
+    /// The current algorithm tries to find the first element for which the predicate evaluates
+    /// to false and the last element for which it evaluates to true, and repeatedly swaps them.
     ///
     /// Time complexity: *O*(*n*)
     ///
@@ -3443,6 +3447,9 @@ pub trait Iterator {
     ///
     /// An empty iterator returns the zero value of the type.
     ///
+    /// `sum()` can be used to sum any type implementing [`Sum`][`core::iter::Sum`],
+    /// including [`Option`][`Option::sum`] and [`Result`][`Result::sum`].
+    ///
     /// # Panics
     ///
     /// When calling `sum()` and a primitive integer type is being returned, this
@@ -3472,6 +3479,9 @@ pub trait Iterator {
     /// Iterates over the entire iterator, multiplying all the elements
     ///
     /// An empty iterator returns the one value of the type.
+    ///
+    /// `product()` can be used to multiply any type implementing [`Product`][`core::iter::Product`],
+    /// including [`Option`][`Option::product`] and [`Result`][`Result::product`].
     ///
     /// # Panics
     ///
@@ -3721,7 +3731,7 @@ pub trait Iterator {
         }
     }
 
-    /// Determines if the elements of this [`Iterator`] are unequal to those of
+    /// Determines if the elements of this [`Iterator`] are not equal to those of
     /// another.
     ///
     /// # Examples
@@ -4002,10 +4012,72 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
     }
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         (**self).advance_by(n)
     }
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
+    }
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.spec_fold(init, f)
+    }
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        self.spec_try_fold(init, f)
+    }
+}
+
+/// Helper trait to specialize `fold` and `try_fold` for `&mut I where I: Sized`
+trait IteratorRefSpec: Iterator {
+    fn spec_fold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B;
+
+    fn spec_try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>;
+}
+
+impl<I: Iterator + ?Sized> IteratorRefSpec for &mut I {
+    default fn spec_fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x);
+        }
+        accum
+    }
+
+    default fn spec_try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x)?;
+        }
+        try { accum }
+    }
+}
+
+impl<I: Iterator> IteratorRefSpec for &mut I {
+    impl_fold_via_try_fold! { spec_fold -> spec_try_fold }
+
+    fn spec_try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        (**self).try_fold(init, f)
     }
 }

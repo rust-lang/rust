@@ -1,5 +1,5 @@
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:5:22
+  --> $DIR/dbg_macro.rs:4:22
    |
 LL |     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
    |                      ^^^^^^^^^^^^^^^^^^^^^^
@@ -99,7 +99,63 @@ LL |     (1, 2, 3, 4, 5);
    |     ~~~~~~~~~~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:41:9
+  --> $DIR/dbg_macro.rs:41:5
+   |
+LL |     dbg!();
+   |     ^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!();
+LL +     
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:43:13
+   |
+LL |     let _ = dbg!();
+   |             ^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL |     let _ = ();
+   |             ~~
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:44:9
+   |
+LL |     bar(dbg!());
+   |         ^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL |     bar(());
+   |         ~~
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:45:10
+   |
+LL |     foo!(dbg!());
+   |          ^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL |     foo!(());
+   |          ~~
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:46:16
+   |
+LL |     foo2!(foo!(dbg!()));
+   |                ^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL |     foo2!(foo!(()));
+   |                ~~
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:67:9
    |
 LL |         dbg!(2);
    |         ^^^^^^^
@@ -110,7 +166,7 @@ LL |         2;
    |         ~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:47:5
+  --> $DIR/dbg_macro.rs:73:5
    |
 LL |     dbg!(1);
    |     ^^^^^^^
@@ -121,7 +177,7 @@ LL |     1;
    |     ~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:52:5
+  --> $DIR/dbg_macro.rs:78:5
    |
 LL |     dbg!(1);
    |     ^^^^^^^
@@ -132,7 +188,7 @@ LL |     1;
    |     ~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:58:9
+  --> $DIR/dbg_macro.rs:84:9
    |
 LL |         dbg!(1);
    |         ^^^^^^^
@@ -142,5 +198,5 @@ help: remove the invocation before committing it to a version control system
 LL |         1;
    |         ~
 
-error: aborting due to 13 previous errors
+error: aborting due to 18 previous errors
 

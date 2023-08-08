@@ -16,7 +16,6 @@ fn arm_linux() {
     // tidy-alphabetical-start
     println!("aes: {}", is_arm_feature_detected!("aes"));
     println!("crc: {}", is_arm_feature_detected!("crc"));
-    println!("crypto: {}", is_arm_feature_detected!("crypto"));
     println!("neon: {}", is_arm_feature_detected!("neon"));
     println!("pmull: {}", is_arm_feature_detected!("pmull"));
     println!("sha2: {}", is_arm_feature_detected!("sha2"));

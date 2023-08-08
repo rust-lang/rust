@@ -3,22 +3,24 @@
 //!
 //! Each tick provides an immutable snapshot of the state as `WorldSnapshot`.
 
-use std::{sync::Arc, time::Instant};
+use std::time::Instant;
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use ide::{Analysis, AnalysisHost, Cancellable, Change, FileId};
-use ide_db::base_db::{CrateId, FileLoader, SourceDatabase};
+use ide_db::base_db::{CrateId, FileLoader, ProcMacroPaths, SourceDatabase};
+use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
+use nohash_hasher::IntMap;
 use parking_lot::{Mutex, RwLock};
 use proc_macro_api::ProcMacroServer;
 use project_model::{CargoWorkspace, ProjectWorkspace, Target, WorkspaceBuildScripts};
-use rustc_hash::FxHashMap;
-use stdx::hash::NoHashHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
+use triomphe::Arc;
 use vfs::AnchoredPathBuf;
 
 use crate::{
-    config::Config,
+    config::{Config, ConfigError},
     diagnostics::{CheckFixes, DiagnosticCollection},
     from_proto,
     line_index::{LineEndings, LineIndex},
@@ -26,10 +28,9 @@ use crate::{
     main_loop::Task,
     mem_docs::MemDocs,
     op_queue::OpQueue,
-    reload::{self, SourceRootConfig},
+    reload,
     task_pool::TaskPool,
     to_proto::url_from_abs_path,
-    Result,
 };
 
 // Enforces drop order
@@ -51,24 +52,35 @@ pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 pub(crate) struct GlobalState {
     sender: Sender<lsp_server::Message>,
     req_queue: ReqQueue,
+
     pub(crate) task_pool: Handle<TaskPool<Task>, Receiver<Task>>,
-    pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
+    pub(crate) fmt_pool: Handle<TaskPool<Task>, Receiver<Task>>,
+
     pub(crate) config: Arc<Config>,
+    pub(crate) config_errors: Option<ConfigError>,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
     pub(crate) mem_docs: MemDocs,
-    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
-    pub(crate) shutdown_requested: bool,
-    pub(crate) proc_macro_changed: bool,
-    pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
     pub(crate) source_root_config: SourceRootConfig,
-    pub(crate) proc_macro_clients: Vec<Result<ProcMacroServer, String>>,
+    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
 
+    // status
+    pub(crate) shutdown_requested: bool,
+    pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
+
+    // proc macros
+    pub(crate) proc_macro_changed: bool,
+    pub(crate) proc_macro_clients: Arc<[anyhow::Result<ProcMacroServer>]>,
+
+    // Flycheck
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
     pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
+    pub(crate) last_flycheck_error: Option<String>,
 
-    pub(crate) vfs: Arc<RwLock<(vfs::Vfs, NoHashHashMap<FileId, LineEndings>)>>,
+    // VFS
+    pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
+    pub(crate) vfs: Arc<RwLock<(vfs::Vfs, IntMap<FileId, LineEndings>)>>,
     pub(crate) vfs_config_version: u32,
     pub(crate) vfs_progress_config_version: u32,
     pub(crate) vfs_progress_n_total: usize,
@@ -92,7 +104,7 @@ pub(crate) struct GlobalState {
     /// first phase is much faster, and is much less likely to fail.
     ///
     /// This creates a complication -- by the time the second phase completes,
-    /// the results of the fist phase could be invalid. That is, while we run
+    /// the results of the first phase could be invalid. That is, while we run
     /// `cargo check`, the user edits `Cargo.toml`, we notice this, and the new
     /// `cargo metadata` completes before `cargo check`.
     ///
@@ -100,11 +112,15 @@ pub(crate) struct GlobalState {
     /// the user just adds comments or whitespace to Cargo.toml, we do not want
     /// to invalidate any salsa caches.
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub(crate) fetch_workspaces_queue: OpQueue<Option<Vec<anyhow::Result<ProjectWorkspace>>>>,
-    pub(crate) fetch_build_data_queue:
-        OpQueue<(Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
+    pub(crate) crate_graph_file_dependencies: FxHashSet<vfs::VfsPath>,
 
-    pub(crate) prime_caches_queue: OpQueue<()>,
+    // op queues
+    pub(crate) fetch_workspaces_queue:
+        OpQueue<bool, Option<(Vec<anyhow::Result<ProjectWorkspace>>, bool)>>,
+    pub(crate) fetch_build_data_queue:
+        OpQueue<(), (Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
+    pub(crate) fetch_proc_macros_queue: OpQueue<Vec<ProcMacroPaths>, bool>,
+    pub(crate) prime_caches_queue: OpQueue,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -114,8 +130,9 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) check_fixes: CheckFixes,
     mem_docs: MemDocs,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
-    vfs: Arc<RwLock<(vfs::Vfs, NoHashHashMap<FileId, LineEndings>)>>,
+    vfs: Arc<RwLock<(vfs::Vfs, IntMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
+    // used to signal semantic highlighting to fall back to syntax based highlighting until proc-macros have been loaded
     pub(crate) proc_macros_loaded: bool,
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
 }
@@ -137,13 +154,22 @@ impl GlobalState {
             let handle = TaskPool::new_with_threads(sender, config.main_loop_num_threads());
             Handle { handle, receiver }
         };
+        let fmt_pool = {
+            let (sender, receiver) = unbounded();
+            let handle = TaskPool::new_with_threads(sender, 1);
+            Handle { handle, receiver }
+        };
 
-        let analysis_host = AnalysisHost::new(config.lru_capacity());
+        let mut analysis_host = AnalysisHost::new(config.lru_parse_query_capacity());
+        if let Some(capacities) = config.lru_query_capacities() {
+            analysis_host.update_lru_capacities(capacities);
+        }
         let (flycheck_sender, flycheck_receiver) = unbounded();
         let mut this = GlobalState {
             sender,
             req_queue: ReqQueue::default(),
             task_pool,
+            fmt_pool,
             loader,
             config: Arc::new(config.clone()),
             analysis_host,
@@ -151,26 +177,33 @@ impl GlobalState {
             mem_docs: MemDocs::default(),
             semantic_tokens_cache: Arc::new(Default::default()),
             shutdown_requested: false,
-            proc_macro_changed: false,
             last_reported_status: None,
             source_root_config: SourceRootConfig::default(),
-            proc_macro_clients: vec![],
+            config_errors: Default::default(),
 
-            flycheck: Arc::new([]),
+            proc_macro_changed: false,
+            // FIXME: use `Arc::from_iter` when it becomes available
+            proc_macro_clients: Arc::from(Vec::new()),
+
+            // FIXME: use `Arc::from_iter` when it becomes available
+            flycheck: Arc::from(Vec::new()),
             flycheck_sender,
             flycheck_receiver,
+            last_flycheck_error: None,
 
-            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), NoHashHashMap::default()))),
+            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), IntMap::default()))),
             vfs_config_version: 0,
             vfs_progress_config_version: 0,
             vfs_progress_n_total: 0,
             vfs_progress_n_done: 0,
 
             workspaces: Arc::new(Vec::new()),
+            crate_graph_file_dependencies: FxHashSet::default(),
             fetch_workspaces_queue: OpQueue::default(),
-            prime_caches_queue: OpQueue::default(),
-
             fetch_build_data_queue: OpQueue::default(),
+            fetch_proc_macros_queue: OpQueue::default(),
+
+            prime_caches_queue: OpQueue::default(),
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
@@ -179,13 +212,12 @@ impl GlobalState {
 
     pub(crate) fn process_changes(&mut self) -> bool {
         let _p = profile::span("GlobalState::process_changes");
-        let mut workspace_structure_change = None;
 
         let mut file_changes = FxHashMap::default();
-        let (change, changed_files) = {
+        let (change, changed_files, workspace_structure_change) = {
             let mut change = Change::new();
             let (vfs, line_endings_map) = &mut *self.vfs.write();
-            let mut changed_files = vfs.take_changes();
+            let changed_files = vfs.take_changes();
             if changed_files.is_empty() {
                 return false;
             }
@@ -193,7 +225,7 @@ impl GlobalState {
             // We need to fix up the changed events a bit. If we have a create or modify for a file
             // id that is followed by a delete we actually skip observing the file text from the
             // earlier event, to avoid problems later on.
-            for changed_file in &changed_files {
+            for changed_file in changed_files {
                 use vfs::ChangeKind::*;
 
                 file_changes
@@ -229,25 +261,28 @@ impl GlobalState {
                     ));
             }
 
-            changed_files.extend(
-                file_changes
-                    .into_iter()
-                    .filter(|(_, (change_kind, just_created))| {
-                        !matches!((change_kind, just_created), (vfs::ChangeKind::Delete, true))
-                    })
-                    .map(|(file_id, (change_kind, _))| vfs::ChangedFile { file_id, change_kind }),
-            );
+            let changed_files: Vec<_> = file_changes
+                .into_iter()
+                .filter(|(_, (change_kind, just_created))| {
+                    !matches!((change_kind, just_created), (vfs::ChangeKind::Delete, true))
+                })
+                .map(|(file_id, (change_kind, _))| vfs::ChangedFile { file_id, change_kind })
+                .collect();
 
+            let mut workspace_structure_change = None;
             // A file was added or deleted
             let mut has_structure_changes = false;
             for file in &changed_files {
-                if let Some(path) = vfs.file_path(file.file_id).as_path() {
+                let vfs_path = &vfs.file_path(file.file_id);
+                if let Some(path) = vfs_path.as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.change_kind) {
-                        workspace_structure_change = Some(path);
+                        workspace_structure_change = Some((path.clone(), false));
                     }
                     if file.is_created_or_deleted() {
                         has_structure_changes = true;
+                        workspace_structure_change =
+                            Some((path, self.crate_graph_file_dependencies.contains(vfs_path)));
                     }
                 }
 
@@ -261,7 +296,7 @@ impl GlobalState {
                     String::from_utf8(bytes).ok().and_then(|text| {
                         let (text, line_endings) = LineEndings::normalize(text);
                         line_endings_map.insert(file.file_id, line_endings);
-                        Some(Arc::new(text))
+                        Some(Arc::from(text))
                     })
                 } else {
                     None
@@ -272,7 +307,7 @@ impl GlobalState {
                 let roots = self.source_root_config.partition(vfs);
                 change.set_roots(roots);
             }
-            (change, changed_files)
+            (change, changed_files, workspace_structure_change)
         };
 
         self.analysis_host.apply_change(change);
@@ -280,11 +315,13 @@ impl GlobalState {
         {
             let raw_database = self.analysis_host.raw_database();
             // FIXME: ideally we should only trigger a workspace fetch for non-library changes
-            // but somethings going wrong with the source root business when we add a new local
+            // but something's going wrong with the source root business when we add a new local
             // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
-            if let Some(path) = workspace_structure_change {
-                self.fetch_workspaces_queue
-                    .request_op(format!("workspace vfs file change: {}", path.display()));
+            if let Some((path, force_crate_graph_reload)) = workspace_structure_change {
+                self.fetch_workspaces_queue.request_op(
+                    format!("workspace vfs file change: {path}"),
+                    force_crate_graph_reload,
+                );
             }
             self.proc_macro_changed =
                 changed_files.iter().filter(|file| !file.is_created_or_deleted()).any(|file| {
@@ -307,7 +344,8 @@ impl GlobalState {
             check_fixes: Arc::clone(&self.diagnostics.check_fixes),
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
-            proc_macros_loaded: !self.fetch_build_data_queue.last_op_result().0.is_empty(),
+            proc_macros_loaded: !self.config.expand_proc_macros()
+                || *self.fetch_proc_macros_queue.last_op_result(),
             flycheck: self.flycheck.clone(),
         }
     }
@@ -331,7 +369,7 @@ impl GlobalState {
     }
 
     pub(crate) fn send_notification<N: lsp_types::notification::Notification>(
-        &mut self,
+        &self,
         params: N::Params,
     ) {
         let not = lsp_server::Notification::new(N::METHOD.to_string(), params);
@@ -372,7 +410,7 @@ impl GlobalState {
         self.req_queue.incoming.is_completed(&request.id)
     }
 
-    fn send(&mut self, message: lsp_server::Message) {
+    fn send(&self, message: lsp_server::Message) {
         self.sender.send(message).unwrap()
     }
 }
@@ -384,7 +422,7 @@ impl Drop for GlobalState {
 }
 
 impl GlobalStateSnapshot {
-    pub(crate) fn url_to_file_id(&self, url: &Url) -> Result<FileId> {
+    pub(crate) fn url_to_file_id(&self, url: &Url) -> anyhow::Result<FileId> {
         url_to_file_id(&self.vfs.read().0, url)
     }
 
@@ -431,6 +469,10 @@ impl GlobalStateSnapshot {
             ProjectWorkspace::DetachedFiles { .. } => None,
         })
     }
+
+    pub(crate) fn vfs_memory_usage(&self) -> usize {
+        self.vfs.read().0.memory_usage()
+    }
 }
 
 pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
@@ -439,8 +481,8 @@ pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
     url_from_abs_path(path)
 }
 
-pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> Result<FileId> {
+pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> anyhow::Result<FileId> {
     let path = from_proto::vfs_path(url)?;
-    let res = vfs.file_id(&path).ok_or_else(|| format!("file not found: {path}"))?;
+    let res = vfs.file_id(&path).ok_or_else(|| anyhow::format_err!("file not found: {path}"))?;
     Ok(res)
 }

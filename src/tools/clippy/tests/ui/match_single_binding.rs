@@ -1,7 +1,13 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::match_single_binding)]
-#![allow(unused_variables)]
-#![allow(clippy::toplevel_ref_arg, clippy::uninlined_format_args)]
+#![allow(
+    unused,
+    clippy::let_unit_value,
+    clippy::no_effect,
+    clippy::toplevel_ref_arg,
+    clippy::uninlined_format_args,
+    clippy::useless_vec
+)]
 
 struct Point {
     x: i32,
@@ -127,7 +133,6 @@ fn main() {
     }
 }
 
-#[allow(dead_code)]
 fn issue_8723() {
     let (mut val, idx) = ("a b", 1);
 
@@ -141,15 +146,14 @@ fn issue_8723() {
     let _ = val;
 }
 
-#[allow(dead_code)]
+fn side_effects() {}
+
 fn issue_9575() {
-    fn side_effects() {}
     let _ = || match side_effects() {
         _ => println!("Needs curlies"),
     };
 }
 
-#[allow(dead_code)]
 fn issue_9725(r: Option<u32>) {
     match r {
         x => match x {
@@ -161,4 +165,44 @@ fn issue_9725(r: Option<u32>) {
             },
         },
     };
+}
+
+fn issue_10447() -> usize {
+    match 1 {
+        _ => (),
+    }
+
+    let a = match 1 {
+        _ => (),
+    };
+
+    match 1 {
+        _ => side_effects(),
+    }
+
+    let b = match 1 {
+        _ => side_effects(),
+    };
+
+    match 1 {
+        _ => println!("1"),
+    }
+
+    let c = match 1 {
+        _ => println!("1"),
+    };
+
+    let in_expr = [
+        match 1 {
+            _ => (),
+        },
+        match 1 {
+            _ => side_effects(),
+        },
+        match 1 {
+            _ => println!("1"),
+        },
+    ];
+
+    2
 }

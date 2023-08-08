@@ -1,0 +1,176 @@
+// MIR for `array_casts` after SimplifyCfg-elaborate-drops
+
+fn array_casts() -> () {
+    let mut _0: ();
+    let mut _1: [usize; 2];
+    let mut _3: *mut [usize; 2];
+    let mut _4: &mut [usize; 2];
+    let _5: ();
+    let mut _6: *mut usize;
+    let mut _7: *mut usize;
+    let mut _10: *const [usize; 2];
+    let _11: &[usize; 2];
+    let _12: ();
+    let mut _13: (&usize, &usize);
+    let mut _14: &usize;
+    let _15: usize;
+    let mut _16: *const usize;
+    let mut _17: *const usize;
+    let mut _18: &usize;
+    let _19: usize;
+    let mut _22: bool;
+    let mut _23: bool;
+    let mut _24: usize;
+    let mut _25: usize;
+    let mut _26: !;
+    let _28: !;
+    let mut _29: core::panicking::AssertKind;
+    let mut _30: &usize;
+    let _31: &usize;
+    let mut _32: &usize;
+    let _33: &usize;
+    let mut _34: std::option::Option<std::fmt::Arguments<'_>>;
+    scope 1 {
+        debug x => _1;
+        let _2: *mut usize;
+        scope 2 {
+            debug p => _2;
+            let _8: [usize; 2];
+            scope 3 {
+            }
+            scope 4 {
+                debug x => _8;
+                let _9: *const usize;
+                scope 5 {
+                    debug p => _9;
+                    let _20: &usize;
+                    let _21: &usize;
+                    let mut _35: &usize;
+                    scope 6 {
+                    }
+                    scope 7 {
+                        debug left_val => _20;
+                        debug right_val => _21;
+                        let _27: core::panicking::AssertKind;
+                        scope 8 {
+                            debug kind => _27;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = [const 0_usize, const 0_usize];
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = &mut _1;
+        _3 = &raw mut (*_4);
+        _2 = move _3 as *mut usize (PointerCoercion(ArrayToPointer));
+        StorageDead(_3);
+        StorageDead(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = _2;
+        _6 = ptr::mut_ptr::<impl *mut usize>::add(move _7, const 1_usize) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        StorageDead(_7);
+        (*_6) = const 1_usize;
+        StorageDead(_6);
+        _5 = const ();
+        StorageDead(_5);
+        StorageLive(_8);
+        _8 = [const 0_usize, const 1_usize];
+        StorageLive(_9);
+        StorageLive(_10);
+        StorageLive(_11);
+        _11 = &_8;
+        _10 = &raw const (*_11);
+        _9 = move _10 as *const usize (PointerCoercion(ArrayToPointer));
+        StorageDead(_10);
+        StorageDead(_11);
+        StorageLive(_12);
+        StorageLive(_13);
+        StorageLive(_14);
+        StorageLive(_15);
+        StorageLive(_16);
+        StorageLive(_17);
+        _17 = _9;
+        _16 = ptr::const_ptr::<impl *const usize>::add(move _17, const 1_usize) -> [return: bb2, unwind continue];
+    }
+
+    bb2: {
+        StorageDead(_17);
+        _15 = (*_16);
+        _14 = &_15;
+        StorageLive(_18);
+        _35 = const _;
+        Retag(_35);
+        _18 = &(*_35);
+        _13 = (move _14, move _18);
+        Retag(_13);
+        StorageDead(_18);
+        StorageDead(_14);
+        StorageLive(_20);
+        _20 = (_13.0: &usize);
+        Retag(_20);
+        StorageLive(_21);
+        _21 = (_13.1: &usize);
+        Retag(_21);
+        StorageLive(_22);
+        StorageLive(_23);
+        StorageLive(_24);
+        _24 = (*_20);
+        StorageLive(_25);
+        _25 = (*_21);
+        _23 = Eq(move _24, move _25);
+        StorageDead(_25);
+        StorageDead(_24);
+        _22 = Not(move _23);
+        StorageDead(_23);
+        switchInt(move _22) -> [0: bb4, otherwise: bb3];
+    }
+
+    bb3: {
+        StorageLive(_27);
+        _27 = core::panicking::AssertKind::Eq;
+        StorageLive(_28);
+        StorageLive(_29);
+        _29 = move _27;
+        StorageLive(_30);
+        StorageLive(_31);
+        _31 = &(*_20);
+        _30 = &(*_31);
+        StorageLive(_32);
+        StorageLive(_33);
+        _33 = &(*_21);
+        _32 = &(*_33);
+        StorageLive(_34);
+        _34 = Option::<Arguments<'_>>::None;
+        Retag(_34);
+        _28 = core::panicking::assert_failed::<usize, usize>(move _29, move _30, move _32, move _34) -> unwind continue;
+    }
+
+    bb4: {
+        _12 = const ();
+        StorageDead(_22);
+        StorageDead(_21);
+        StorageDead(_20);
+        StorageDead(_16);
+        StorageDead(_15);
+        StorageDead(_13);
+        StorageDead(_12);
+        _0 = const ();
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+}

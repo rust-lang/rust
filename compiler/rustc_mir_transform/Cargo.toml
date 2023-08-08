@@ -18,12 +18,15 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_const_eval = { path = "../rustc_const_eval" }
+rustc_mir_build = { path = "../rustc_mir_build" }
 rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_span = { path = "../rustc_span" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_macros = { path = "../rustc_macros" }
 
 [dev-dependencies]
 coverage_test_macros = { path = "src/coverage/test_macros" }

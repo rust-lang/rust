@@ -23,7 +23,8 @@ LL | #[derive(Clone)]
            candidate #1: `Clone`
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | struct NotClone;
    |
 
 error: aborting due to previous error

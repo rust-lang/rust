@@ -2,7 +2,7 @@ error[E0277]: the size for values of type `T` cannot be known at compilation tim
   --> $DIR/adt-param-with-implicit-sized-bound.rs:25:9
    |
 LL | struct Struct5<T: ?Sized>{
-   |                - this type parameter needs to be `std::marker::Sized`
+   |                - this type parameter needs to be `Sized`
 LL |     _t: X<T>,
    |         ^^^^ doesn't have a size known at compile-time
    |

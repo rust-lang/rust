@@ -1,4 +1,4 @@
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_span::{Span, SpanData, DUMMY_SP};
 use smallvec::SmallVec;
 use std::{
@@ -9,7 +9,7 @@ use std::{
 
 /// A vector clock index, this is associated with a thread id
 /// but in some cases one vector index may be shared with
-/// multiple thread ids if it safe to do so.
+/// multiple thread ids if it's safe to do so.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct VectorIdx(u32);
 

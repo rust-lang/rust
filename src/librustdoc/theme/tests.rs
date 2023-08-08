@@ -13,11 +13,11 @@ rule d
 // another line comment
 e {}
 
-rule f/* a multine
+rule f/* a multiline
 
 comment*/{}
 
-rule g/* another multine
+rule g/* another multiline
 
 comment*/h
 

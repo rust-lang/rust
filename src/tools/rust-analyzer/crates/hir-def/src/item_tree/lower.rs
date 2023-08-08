@@ -1,9 +1,9 @@
 //! AST -> `ItemTree` lowering code.
 
-use std::{collections::hash_map::Entry, sync::Arc};
+use std::collections::hash_map::Entry;
 
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, HirFileId};
-use syntax::ast::{self, HasModuleItem};
+use syntax::ast::{self, HasModuleItem, HasTypeBounds};
 
 use crate::{
     generics::{GenericParams, TypeParamData, TypeParamProvenance},
@@ -20,7 +20,7 @@ pub(super) struct Ctx<'a> {
     db: &'a dyn DefDatabase,
     tree: ItemTree,
     source_ast_id_map: Arc<AstIdMap>,
-    body_ctx: crate::body::LowerCtx<'a>,
+    body_ctx: crate::lower::LowerCtx<'a>,
 }
 
 impl<'a> Ctx<'a> {
@@ -29,7 +29,7 @@ impl<'a> Ctx<'a> {
             db,
             tree: ItemTree::default(),
             source_ast_id_map: db.ast_id_map(file),
-            body_ctx: crate::body::LowerCtx::new(db, file),
+            body_ctx: crate::lower::LowerCtx::with_file_id(db, file),
         }
     }
 
@@ -90,6 +90,13 @@ impl<'a> Ctx<'a> {
                 _ => None,
             })
             .collect();
+        if let Some(ast::Expr::MacroExpr(expr)) = block.tail_expr() {
+            if let Some(call) = expr.macro_call() {
+                if let Some(mod_item) = self.lower_mod_item(&call.into()) {
+                    self.tree.top_level.push(mod_item);
+                }
+            }
+        }
 
         self.tree
     }
@@ -110,6 +117,7 @@ impl<'a> Ctx<'a> {
             ast::Item::Const(ast) => self.lower_const(ast).into(),
             ast::Item::Module(ast) => self.lower_module(ast)?.into(),
             ast::Item::Trait(ast) => self.lower_trait(ast)?.into(),
+            ast::Item::TraitAlias(ast) => self.lower_trait_alias(ast)?.into(),
             ast::Item::Impl(ast) => self.lower_impl(ast)?.into(),
             ast::Item::Use(ast) => self.lower_use(ast)?.into(),
             ast::Item::ExternCrate(ast) => self.lower_extern_crate(ast)?.into(),
@@ -147,7 +155,7 @@ impl<'a> Ctx<'a> {
     fn lower_struct(&mut self, strukt: &ast::Struct) -> Option<FileItemTreeId<Struct>> {
         let visibility = self.lower_visibility(strukt);
         let name = strukt.name()?.as_name();
-        let generic_params = self.lower_generic_params(GenericsOwner::Struct, strukt);
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, strukt);
         let fields = self.lower_fields(&strukt.kind());
         let ast_id = self.source_ast_id_map.ast_id(strukt);
         let res = Struct { name, visibility, generic_params, fields, ast_id };
@@ -211,7 +219,7 @@ impl<'a> Ctx<'a> {
     fn lower_union(&mut self, union: &ast::Union) -> Option<FileItemTreeId<Union>> {
         let visibility = self.lower_visibility(union);
         let name = union.name()?.as_name();
-        let generic_params = self.lower_generic_params(GenericsOwner::Union, union);
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, union);
         let fields = match union.record_field_list() {
             Some(record_field_list) => self.lower_fields(&StructKind::Record(record_field_list)),
             None => Fields::Record(IdxRange::new(self.next_field_idx()..self.next_field_idx())),
@@ -224,7 +232,7 @@ impl<'a> Ctx<'a> {
     fn lower_enum(&mut self, enum_: &ast::Enum) -> Option<FileItemTreeId<Enum>> {
         let visibility = self.lower_visibility(enum_);
         let name = enum_.name()?.as_name();
-        let generic_params = self.lower_generic_params(GenericsOwner::Enum, enum_);
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, enum_);
         let variants = match &enum_.variant_list() {
             Some(variant_list) => self.lower_variants(variant_list),
             None => IdxRange::new(self.next_variant_idx()..self.next_variant_idx()),
@@ -285,7 +293,7 @@ impl<'a> Ctx<'a> {
                     }
                 };
                 let ty = Interned::new(self_type);
-                let idx = self.data().params.alloc(Param::Normal(None, ty));
+                let idx = self.data().params.alloc(Param::Normal(ty));
                 self.add_attrs(
                     idx.into(),
                     RawAttrs::new(self.db.upcast(), &self_param, self.hygiene()),
@@ -298,19 +306,7 @@ impl<'a> Ctx<'a> {
                     None => {
                         let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
                         let ty = Interned::new(type_ref);
-                        let mut pat = param.pat();
-                        // FIXME: This really shouldn't be here, in fact FunctionData/ItemTree's function shouldn't know about
-                        // pattern names at all
-                        let name = 'name: loop {
-                            match pat {
-                                Some(ast::Pat::RefPat(ref_pat)) => pat = ref_pat.pat(),
-                                Some(ast::Pat::IdentPat(ident)) => {
-                                    break 'name ident.name().map(|it| it.as_name())
-                                }
-                                _ => break 'name None,
-                            }
-                        };
-                        self.data().params.alloc(Param::Normal(name, ty))
+                        self.data().params.alloc(Param::Normal(ty))
                     }
                 };
                 self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &param, self.hygiene()));
@@ -328,13 +324,12 @@ impl<'a> Ctx<'a> {
             None => TypeRef::unit(),
         };
 
-        let (ret_type, async_ret_type) = if func.async_token().is_some() {
-            let async_ret_type = ret_type.clone();
+        let ret_type = if func.async_token().is_some() {
             let future_impl = desugar_future_path(ret_type);
             let ty_bound = Interned::new(TypeBound::Path(future_impl, TraitBoundModifier::None));
-            (TypeRef::ImplTrait(vec![ty_bound]), Some(async_ret_type))
+            TypeRef::ImplTrait(vec![ty_bound])
         } else {
-            (ret_type, None)
+            ret_type
         };
 
         let abi = func.abi().map(lower_abi);
@@ -368,12 +363,10 @@ impl<'a> Ctx<'a> {
             abi,
             params,
             ret_type: Interned::new(ret_type),
-            async_ret_type: async_ret_type.map(Interned::new),
             ast_id,
             flags,
         };
-        res.explicit_generic_params =
-            self.lower_generic_params(GenericsOwner::Function(&res), func);
+        res.explicit_generic_params = self.lower_generic_params(HasImplicitSelf::No, func);
 
         Some(id(self.data().functions.alloc(res)))
     }
@@ -386,7 +379,7 @@ impl<'a> Ctx<'a> {
         let type_ref = type_alias.ty().map(|it| self.lower_type_ref(&it));
         let visibility = self.lower_visibility(type_alias);
         let bounds = self.lower_type_bounds(type_alias);
-        let generic_params = self.lower_generic_params(GenericsOwner::TypeAlias, type_alias);
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
         let res = TypeAlias {
             name,
@@ -442,27 +435,49 @@ impl<'a> Ctx<'a> {
     fn lower_trait(&mut self, trait_def: &ast::Trait) -> Option<FileItemTreeId<Trait>> {
         let name = trait_def.name()?.as_name();
         let visibility = self.lower_visibility(trait_def);
-        let generic_params = self.lower_generic_params(GenericsOwner::Trait(trait_def), trait_def);
+        let generic_params =
+            self.lower_generic_params(HasImplicitSelf::Yes(trait_def.type_bound_list()), trait_def);
         let is_auto = trait_def.auto_token().is_some();
         let is_unsafe = trait_def.unsafe_token().is_some();
-        let items = trait_def.assoc_item_list().map(|list| {
-            list.assoc_items()
-                .filter_map(|item| {
-                    let attrs = RawAttrs::new(self.db.upcast(), &item, self.hygiene());
-                    self.lower_assoc_item(&item).map(|item| {
-                        self.add_attrs(ModItem::from(item).into(), attrs);
-                        item
-                    })
-                })
-                .collect()
-        });
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
-        let res = Trait { name, visibility, generic_params, is_auto, is_unsafe, items, ast_id };
-        Some(id(self.data().traits.alloc(res)))
+
+        let items = trait_def
+            .assoc_item_list()
+            .into_iter()
+            .flat_map(|list| list.assoc_items())
+            .filter_map(|item| {
+                let attrs = RawAttrs::new(self.db.upcast(), &item, self.hygiene());
+                self.lower_assoc_item(&item).map(|item| {
+                    self.add_attrs(ModItem::from(item).into(), attrs);
+                    item
+                })
+            })
+            .collect();
+
+        let def = Trait { name, visibility, generic_params, is_auto, is_unsafe, items, ast_id };
+        Some(id(self.data().traits.alloc(def)))
+    }
+
+    fn lower_trait_alias(
+        &mut self,
+        trait_alias_def: &ast::TraitAlias,
+    ) -> Option<FileItemTreeId<TraitAlias>> {
+        let name = trait_alias_def.name()?.as_name();
+        let visibility = self.lower_visibility(trait_alias_def);
+        let generic_params = self.lower_generic_params(
+            HasImplicitSelf::Yes(trait_alias_def.type_bound_list()),
+            trait_alias_def,
+        );
+        let ast_id = self.source_ast_id_map.ast_id(trait_alias_def);
+
+        let alias = TraitAlias { name, visibility, generic_params, ast_id };
+        Some(id(self.data().trait_aliases.alloc(alias)))
     }
 
     fn lower_impl(&mut self, impl_def: &ast::Impl) -> Option<FileItemTreeId<Impl>> {
-        let generic_params = self.lower_generic_params(GenericsOwner::Impl, impl_def);
+        // Note that trait impls don't get implicit `Self` unlike traits, because here they are a
+        // type alias rather than a type parameter, so this is handled by the resolver.
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, impl_def);
         // FIXME: If trait lowering fails, due to a non PathType for example, we treat this impl
         // as if it was an non-trait impl. Ideally we want to create a unique missing ref that only
         // equals itself.
@@ -487,13 +502,13 @@ impl<'a> Ctx<'a> {
         Some(id(self.data().impls.alloc(res)))
     }
 
-    fn lower_use(&mut self, use_item: &ast::Use) -> Option<FileItemTreeId<Import>> {
+    fn lower_use(&mut self, use_item: &ast::Use) -> Option<FileItemTreeId<Use>> {
         let visibility = self.lower_visibility(use_item);
         let ast_id = self.source_ast_id_map.ast_id(use_item);
         let (use_tree, _) = lower_use_tree(self.db, self.hygiene(), use_item.use_tree()?)?;
 
-        let res = Import { visibility, ast_id, use_tree };
-        Some(id(self.data().imports.alloc(res)))
+        let res = Use { visibility, ast_id, use_tree };
+        Some(id(self.data().uses.alloc(res)))
     }
 
     fn lower_extern_crate(
@@ -566,41 +581,28 @@ impl<'a> Ctx<'a> {
 
     fn lower_generic_params(
         &mut self,
-        owner: GenericsOwner<'_>,
+        has_implicit_self: HasImplicitSelf,
         node: &dyn ast::HasGenericParams,
     ) -> Interned<GenericParams> {
         let mut generics = GenericParams::default();
-        match owner {
-            GenericsOwner::Function(_)
-            | GenericsOwner::Struct
-            | GenericsOwner::Enum
-            | GenericsOwner::Union
-            | GenericsOwner::TypeAlias => {
-                generics.fill(&self.body_ctx, node);
-            }
-            GenericsOwner::Trait(trait_def) => {
-                // traits get the Self type as an implicit first type parameter
-                generics.type_or_consts.alloc(
-                    TypeParamData {
-                        name: Some(name![Self]),
-                        default: None,
-                        provenance: TypeParamProvenance::TraitSelf,
-                    }
-                    .into(),
-                );
-                // add super traits as bounds on Self
-                // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
-                let self_param = TypeRef::Path(name![Self].into());
-                generics.fill_bounds(&self.body_ctx, trait_def, Either::Left(self_param));
-                generics.fill(&self.body_ctx, node);
-            }
-            GenericsOwner::Impl => {
-                // Note that we don't add `Self` here: in `impl`s, `Self` is not a
-                // type-parameter, but rather is a type-alias for impl's target
-                // type, so this is handled by the resolver.
-                generics.fill(&self.body_ctx, node);
-            }
+
+        if let HasImplicitSelf::Yes(bounds) = has_implicit_self {
+            // Traits and trait aliases get the Self type as an implicit first type parameter.
+            generics.type_or_consts.alloc(
+                TypeParamData {
+                    name: Some(name![Self]),
+                    default: None,
+                    provenance: TypeParamProvenance::TraitSelf,
+                }
+                .into(),
+            );
+            // add super traits as bounds on Self
+            // i.e., `trait Foo: Bar` is equivalent to `trait Foo where Self: Bar`
+            let self_param = TypeRef::Path(name![Self].into());
+            generics.fill_bounds(&self.body_ctx, bounds, Either::Left(self_param));
         }
+
+        generics.fill(&self.body_ctx, node);
 
         generics.shrink_to_fit();
         Interned::new(generics)
@@ -673,17 +675,10 @@ fn desugar_future_path(orig: TypeRef) -> Path {
     Path::from_known_path(path, generic_args)
 }
 
-enum GenericsOwner<'a> {
-    /// We need access to the partially-lowered `Function` for lowering `impl Trait` in argument
-    /// position.
-    Function(&'a Function),
-    Struct,
-    Enum,
-    Union,
-    /// The `TraitDef` is needed to fill the source map for the implicit `Self` parameter.
-    Trait(&'a ast::Trait),
-    TypeAlias,
-    Impl,
+enum HasImplicitSelf {
+    /// Inner list is a type bound list for the implicit `Self`.
+    Yes(Option<ast::TypeBoundList>),
+    No,
 }
 
 fn lower_abi(abi: ast::Abi) -> Interned<str> {

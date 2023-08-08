@@ -174,10 +174,10 @@ pub fn find_best_match_for_name(
 fn find_best_match_for_name_impl(
     use_substring_score: bool,
     candidates: &[Symbol],
-    lookup: Symbol,
+    lookup_symbol: Symbol,
     dist: Option<usize>,
 ) -> Option<Symbol> {
-    let lookup = lookup.as_str();
+    let lookup = lookup_symbol.as_str();
     let lookup_uppercase = lookup.to_uppercase();
 
     // Priority of matches:
@@ -190,6 +190,8 @@ fn find_best_match_for_name_impl(
 
     let mut dist = dist.unwrap_or_else(|| cmp::max(lookup.len(), 3) / 3);
     let mut best = None;
+    // store the candidates with the same distance, only for `use_substring_score` current.
+    let mut next_candidates = vec![];
     for c in candidates {
         match if use_substring_score {
             edit_distance_with_substrings(lookup, c.as_str(), dist)
@@ -198,11 +200,35 @@ fn find_best_match_for_name_impl(
         } {
             Some(0) => return Some(*c),
             Some(d) => {
-                dist = d - 1;
+                if use_substring_score {
+                    if d < dist {
+                        dist = d;
+                        next_candidates.clear();
+                    } else {
+                        // `d == dist` here, we need to store the candidates with the same distance
+                        // so we won't decrease the distance in the next loop.
+                    }
+                    next_candidates.push(*c);
+                } else {
+                    dist = d - 1;
+                }
                 best = Some(*c);
             }
             None => {}
         }
+    }
+
+    // We have a tie among several candidates, try to select the best among them ignoring substrings.
+    // For example, the candidates list `force_capture`, `capture`, and user inputted `forced_capture`,
+    // we select `force_capture` with a extra round of edit distance calculation.
+    if next_candidates.len() > 1 {
+        debug_assert!(use_substring_score);
+        best = find_best_match_for_name_impl(
+            false,
+            &next_candidates,
+            lookup_symbol,
+            Some(lookup.len()),
+        );
     }
     if best.is_some() {
         return best;
@@ -212,8 +238,9 @@ fn find_best_match_for_name_impl(
 }
 
 fn find_match_by_sorted_words(iter_names: &[Symbol], lookup: &str) -> Option<Symbol> {
+    let lookup_sorted_by_words = sort_by_words(lookup);
     iter_names.iter().fold(None, |result, candidate| {
-        if sort_by_words(candidate.as_str()) == sort_by_words(lookup) {
+        if sort_by_words(candidate.as_str()) == lookup_sorted_by_words {
             Some(*candidate)
         } else {
             result
@@ -221,9 +248,9 @@ fn find_match_by_sorted_words(iter_names: &[Symbol], lookup: &str) -> Option<Sym
     })
 }
 
-fn sort_by_words(name: &str) -> String {
+fn sort_by_words(name: &str) -> Vec<&str> {
     let mut split_words: Vec<&str> = name.split('_').collect();
     // We are sorting primitive &strs and can use unstable sort here.
     split_words.sort_unstable();
-    split_words.join("_")
+    split_words
 }

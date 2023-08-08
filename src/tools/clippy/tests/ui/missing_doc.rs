@@ -1,5 +1,5 @@
-// needs-asm-support
-// aux-build: proc_macro_with_span.rs
+//@needs-asm-support
+//@aux-build: proc_macros.rs:proc-macro
 
 #![warn(clippy::missing_docs_in_private_items)]
 // When denying at the crate level, be sure to not get random warnings from the
@@ -8,9 +8,9 @@
 //! Some garbage docs for the crate here
 #![doc = "More garbage"]
 
-extern crate proc_macro_with_span;
+extern crate proc_macros;
 
-use proc_macro_with_span::with_span;
+use proc_macros::with_span;
 use std::arch::global_asm;
 
 type Typedef = String;
@@ -96,10 +96,8 @@ mod internal_impl {
 }
 /// dox
 pub mod public_interface {
-    pub use crate::internal_impl::documented as foo;
     pub use crate::internal_impl::globbed::*;
-    pub use crate::internal_impl::undocumented1 as bar;
-    pub use crate::internal_impl::{documented, undocumented2};
+    pub use crate::internal_impl::{documented as foo, documented, undocumented1 as bar, undocumented2};
 }
 
 fn main() {}

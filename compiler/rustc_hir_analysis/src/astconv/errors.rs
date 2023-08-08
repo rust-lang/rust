@@ -1,10 +1,14 @@
 use crate::astconv::AstConv;
-use crate::errors::{ManualImplementation, MissingTypeParams};
+use crate::errors::{
+    AssocTypeBindingNotAllowed, ManualImplementation, MissingTypeParams,
+    ParenthesizedFnTraitExpansion,
+};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::FulfillmentError;
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -51,7 +55,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let trait_def = self.tcx().trait_def(trait_def_id);
         if !trait_def.paren_sugar {
-            if trait_segment.args().parenthesized {
+            if trait_segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar {
                 // For now, require that parenthetical notation be used only with `Fn()` etc.
                 let mut err = feature_err(
                     &self.tcx().sess.parse_sess,
@@ -67,7 +71,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let sess = self.tcx().sess;
 
-        if !trait_segment.args().parenthesized {
+        if trait_segment.args().parenthesized != hir::GenericArgsParentheses::ParenSugar {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let mut err = feature_err(
                 &sess.parse_sess,
@@ -78,43 +82,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // Do not suggest the other syntax if we are in trait impl:
             // the desugaring would contain an associated type constraint.
             if !is_impl {
-                let args = trait_segment
-                    .args
-                    .as_ref()
-                    .and_then(|args| args.args.get(0))
-                    .and_then(|arg| match arg {
-                        hir::GenericArg::Type(ty) => match ty.kind {
-                            hir::TyKind::Tup(t) => t
-                                .iter()
-                                .map(|e| sess.source_map().span_to_snippet(e.span))
-                                .collect::<Result<Vec<_>, _>>()
-                                .map(|a| a.join(", ")),
-                            _ => sess.source_map().span_to_snippet(ty.span),
-                        }
-                        .map(|s| format!("({})", s))
-                        .ok(),
-                        _ => None,
-                    })
-                    .unwrap_or_else(|| "()".to_string());
-                let ret = trait_segment
-                    .args()
-                    .bindings
-                    .iter()
-                    .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
-                        (true, hir::TypeBindingKind::Equality { term }) => {
-                            let span = match term {
-                                hir::Term::Ty(ty) => ty.span,
-                                hir::Term::Const(c) => self.tcx().hir().span(c.hir_id),
-                            };
-                            sess.source_map().span_to_snippet(span).ok()
-                        }
-                        _ => None,
-                    })
-                    .unwrap_or_else(|| "()".to_string());
                 err.span_suggestion(
                     span,
                     "use parenthetical notation instead",
-                    format!("{}{} -> {}", trait_segment.ident, args, ret),
+                    fn_trait_to_string(self.tcx(), trait_segment, true),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -151,9 +122,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let all_candidate_names: Vec<_> = all_candidates()
             .flat_map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
-            .filter_map(
-                |item| if item.kind == ty::AssocKind::Type { Some(item.name) } else { None },
-            )
+            .filter_map(|item| {
+                if !item.is_impl_trait_in_trait() && item.kind == ty::AssocKind::Type {
+                    Some(item.name)
+                } else {
+                    None
+                }
+            })
             .collect();
 
         if let (Some(suggested_name), true) = (
@@ -188,9 +163,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .flat_map(|trait_def_id| {
                 self.tcx().associated_items(*trait_def_id).in_definition_order()
             })
-            .filter_map(
-                |item| if item.kind == ty::AssocKind::Type { Some(item.name) } else { None },
-            )
+            .filter_map(|item| {
+                if !item.is_impl_trait_in_trait() && item.kind == ty::AssocKind::Type {
+                    Some(item.name)
+                } else {
+                    None
+                }
+            })
             .collect();
 
         if let (Some(suggested_name), true) = (
@@ -218,7 +197,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        err.span_label(span, format!("associated type `{}` not found", assoc_name));
+        err.span_label(span, format!("associated type `{assoc_name}` not found"));
         err.emit()
     }
 
@@ -268,17 +247,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "the candidate".into()
             };
 
-            let impl_ty = tcx.at(span).type_of(impl_).subst_identity();
+            let impl_ty = tcx.at(span).type_of(impl_).instantiate_identity();
             let note = format!("{title} is defined in an impl for the type `{impl_ty}`");
 
             if let Some(span) = note_span {
-                err.span_note(span, &note);
+                err.span_note(span, note);
             } else {
-                err.note(&note);
+                err.note(note);
             }
         }
         if candidates.len() > limit {
-            err.note(&format!("and {} others", candidates.len() - limit));
+            err.note(format!("and {} others", candidates.len() - limit));
         }
     }
 
@@ -316,7 +295,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let type_candidates = candidates
                 .iter()
                 .take(limit)
-                .map(|&(impl_, _)| format!("- `{}`", tcx.at(span).type_of(impl_).subst_identity()))
+                .map(|&(impl_, _)| {
+                    format!("- `{}`", tcx.at(span).type_of(impl_).instantiate_identity())
+                })
                 .collect::<Vec<_>>()
                 .join("\n");
             let additional_types = if candidates.len() > limit {
@@ -332,7 +313,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "associated type `{name}` not found for `{self_ty}` in the current scope"
             );
             err.span_label(name.span, format!("associated item not found in `{self_ty}`"));
-            err.note(&format!(
+            err.note(format!(
                 "the associated type was found for\n{type_candidates}{additional_types}",
             ));
             add_def_label(&mut err);
@@ -372,18 +353,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let format_pred = |pred: ty::Predicate<'tcx>| {
             let bound_predicate = pred.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
                     let pred = bound_predicate.rebind(pred);
                     // `<Foo as Iterator>::Item = String`.
                     let projection_ty = pred.skip_binder().projection_ty;
 
-                    let substs_with_infer_self = tcx.mk_substs_from_iter(
-                        std::iter::once(tcx.mk_ty_var(ty::TyVid::from_u32(0)).into())
-                            .chain(projection_ty.substs.iter().skip(1)),
+                    let args_with_infer_self = tcx.mk_args_from_iter(
+                        std::iter::once(Ty::new_var(tcx, ty::TyVid::from_u32(0)).into())
+                            .chain(projection_ty.args.iter().skip(1)),
                     );
 
                     let quiet_projection_ty =
-                        tcx.mk_alias_ty(projection_ty.def_id, substs_with_infer_self);
+                        tcx.mk_alias_ty(projection_ty.def_id, args_with_infer_self);
 
                     let term = pred.skip_binder().term;
 
@@ -393,7 +374,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
                     Some((obligation, projection_ty.self_ty()))
                 }
-                ty::PredicateKind::Clause(ty::Clause::Trait(poly_trait_ref)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(poly_trait_ref)) => {
                     let p = poly_trait_ref.trait_ref;
                     let self_ty = p.self_ty();
                     let path = p.print_only_trait_path();
@@ -412,17 +393,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .into_iter()
             .map(|error| error.root_obligation.predicate)
             .filter_map(format_pred)
-            .map(|(p, _)| format!("`{}`", p))
+            .map(|(p, _)| format!("`{p}`"))
             .collect();
         bounds.sort();
         bounds.dedup();
 
         let mut err = tcx.sess.struct_span_err(
             name.span,
-            &format!("the associated type `{name}` exists for `{self_ty}`, but its trait bounds were not satisfied")
+            format!("the associated type `{name}` exists for `{self_ty}`, but its trait bounds were not satisfied")
         );
         if !bounds.is_empty() {
-            err.note(&format!(
+            err.note(format!(
                 "the following trait bounds were not satisfied:\n{}",
                 bounds.join("\n")
             ));
@@ -438,7 +419,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             if !tcx.sess.source_map().is_span_accessible(span) {
                 continue;
             }
-            err.span_label(span, &msg);
+            err.span_label(span, msg);
         }
         add_def_label(&mut err);
         err.emit()
@@ -512,8 +493,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 [segment] if segment.args.is_none() => {
                     trait_bound_spans = vec![segment.ident.span];
                     associated_types = associated_types
-                        .into_iter()
-                        .map(|(_, items)| (segment.ident.span, items))
+                        .into_values()
+                        .map(|items| (segment.ident.span, items))
                         .collect();
                 }
                 _ => {}
@@ -618,7 +599,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
         if !suggestions.is_empty() {
             err.multipart_suggestion(
-                &format!("specify the associated type{}", pluralize!(types_count)),
+                format!("specify the associated type{}", pluralize!(types_count)),
                 suggestions,
                 Applicability::HasPlaceholders,
             );
@@ -627,5 +608,79 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
         err.emit();
+    }
+}
+
+/// Emits an error regarding forbidden type binding associations
+pub fn prohibit_assoc_ty_binding(
+    tcx: TyCtxt<'_>,
+    span: Span,
+    segment: Option<(&hir::PathSegment<'_>, Span)>,
+) {
+    tcx.sess.emit_err(AssocTypeBindingNotAllowed {
+        span,
+        fn_trait_expansion: if let Some((segment, span)) = segment
+            && segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar
+        {
+            Some(ParenthesizedFnTraitExpansion {
+                span,
+                expanded_type: fn_trait_to_string(tcx, segment, false),
+            })
+        } else {
+            None
+        },
+    });
+}
+
+pub(crate) fn fn_trait_to_string(
+    tcx: TyCtxt<'_>,
+    trait_segment: &hir::PathSegment<'_>,
+    parenthesized: bool,
+) -> String {
+    let args = trait_segment
+        .args
+        .as_ref()
+        .and_then(|args| args.args.get(0))
+        .and_then(|arg| match arg {
+            hir::GenericArg::Type(ty) => match ty.kind {
+                hir::TyKind::Tup(t) => t
+                    .iter()
+                    .map(|e| tcx.sess.source_map().span_to_snippet(e.span))
+                    .collect::<Result<Vec<_>, _>>()
+                    .map(|a| a.join(", ")),
+                _ => tcx.sess.source_map().span_to_snippet(ty.span),
+            }
+            .map(|s| {
+                // `s.empty()` checks to see if the type is the unit tuple, if so we don't want a comma
+                if parenthesized || s.is_empty() { format!("({s})") } else { format!("({s},)") }
+            })
+            .ok(),
+            _ => None,
+        })
+        .unwrap_or_else(|| "()".to_string());
+
+    let ret = trait_segment
+        .args()
+        .bindings
+        .iter()
+        .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
+            (true, hir::TypeBindingKind::Equality { term }) => {
+                let span = match term {
+                    hir::Term::Ty(ty) => ty.span,
+                    hir::Term::Const(c) => tcx.hir().span(c.hir_id),
+                };
+
+                (span != tcx.hir().span(trait_segment.hir_id))
+                    .then_some(tcx.sess.source_map().span_to_snippet(span).ok())
+                    .flatten()
+            }
+            _ => None,
+        })
+        .unwrap_or_else(|| "()".to_string());
+
+    if parenthesized {
+        format!("{}{} -> {}", trait_segment.ident, args, ret)
+    } else {
+        format!("{}<{}, Output={}>", trait_segment.ident, args, ret)
     }
 }

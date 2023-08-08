@@ -7,17 +7,29 @@ LL | #![feature(adt_const_params)]
    = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0741]: using function pointers as const generic parameters is forbidden
+error[E0741]: `CompileTimeSettings` must implement `ConstParamTy` to be used as the type of a const generic parameter
   --> $DIR/refs_check_const_eq-issue-88384.rs:10:21
    |
 LL | struct Foo<const T: CompileTimeSettings>;
    |                     ^^^^^^^^^^^^^^^^^^^
+   |
+help: add `#[derive(ConstParamTy)]` to the struct
+   |
+LL + #[derive(ConstParamTy)]
+LL | struct CompileTimeSettings{
+   |
 
-error[E0741]: using function pointers as const generic parameters is forbidden
+error[E0741]: `CompileTimeSettings` must implement `ConstParamTy` to be used as the type of a const generic parameter
   --> $DIR/refs_check_const_eq-issue-88384.rs:13:15
    |
 LL | impl<const T: CompileTimeSettings> Foo<T> {
    |               ^^^^^^^^^^^^^^^^^^^
+   |
+help: add `#[derive(ConstParamTy)]` to the struct
+   |
+LL + #[derive(ConstParamTy)]
+LL | struct CompileTimeSettings{
+   |
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

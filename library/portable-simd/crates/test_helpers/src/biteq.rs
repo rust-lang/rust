@@ -55,6 +55,26 @@ macro_rules! impl_float_biteq {
 
 impl_float_biteq! { f32, f64 }
 
+impl<T> BitEq for *const T {
+    fn biteq(&self, other: &Self) -> bool {
+        self == other
+    }
+
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl<T> BitEq for *mut T {
+    fn biteq(&self, other: &Self) -> bool {
+        self == other
+    }
+
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 impl<T: BitEq, const N: usize> BitEq for [T; N] {
     fn biteq(&self, other: &Self) -> bool {
         self.iter()

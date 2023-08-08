@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 DYLIB_NAME := $(shell echo | $(RUSTC) --crate-name foo --crate-type dylib --print file-names -)
 

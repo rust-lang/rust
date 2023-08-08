@@ -179,7 +179,7 @@ $ rustdoc src/lib.rs --test
 This flag will run your code examples as tests. For more, see [the chapter
 on documentation tests](write-documentation/documentation-tests.md).
 
-See also `--test-args`.
+See also `--test-args` and `--test-run-directory`.
 
 ## `--test-args`: pass options to test runner
 
@@ -190,6 +190,19 @@ $ rustdoc src/lib.rs --test --test-args ignored
 ```
 
 This flag will pass options to the test runner when running documentation tests.
+For more, see [the chapter on documentation tests](write-documentation/documentation-tests.md).
+
+See also `--test`.
+
+## `--test-run-directory`: run code examples in a specific directory
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs --test --test-run-directory=/path/to/working/directory
+```
+
+This flag will run your code examples in the specified working directory.
 For more, see [the chapter on documentation tests](write-documentation/documentation-tests.md).
 
 See also `--test`.
@@ -320,10 +333,7 @@ $ rustdoc src/lib.rs --extend-css extra.css
 ```
 
 With this flag, the contents of the files you pass are included at the bottom
-of Rustdoc's `theme.css` file.
-
-While this flag is stable, the contents of `theme.css` are not, so be careful!
-Updates may break your theme extensions.
+of the `theme.css` file.
 
 ## `--sysroot`: override the system root
 

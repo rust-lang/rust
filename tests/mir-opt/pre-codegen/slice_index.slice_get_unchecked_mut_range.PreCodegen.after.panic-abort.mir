@@ -1,0 +1,96 @@
+// MIR for `slice_get_unchecked_mut_range` after PreCodegen
+
+fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> &mut [u32] {
+    debug slice => _1;
+    debug index => _2;
+    let mut _0: &mut [u32];
+    let mut _3: usize;
+    let mut _4: usize;
+    scope 1 (inlined core::slice::<impl [u32]>::get_unchecked_mut::<std::ops::Range<usize>>) {
+        debug self => _1;
+        debug index => std::ops::Range<usize>{ .0 => _3, .1 => _4, };
+        let mut _5: *mut [u32];
+        let mut _13: *mut [u32];
+        scope 2 {
+            scope 3 (inlined <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked_mut) {
+                debug self => std::ops::Range<usize>{ .0 => _3, .1 => _4, };
+                debug slice => _5;
+                let mut _7: *mut u32;
+                let mut _8: *mut u32;
+                let _14: usize;
+                let _15: usize;
+                scope 4 {
+                    debug this => std::ops::Range<usize>{ .0 => _14, .1 => _15, };
+                    scope 5 {
+                        let _6: usize;
+                        scope 6 {
+                            debug new_len => _6;
+                            scope 7 (inlined ptr::mut_ptr::<impl *mut [u32]>::as_mut_ptr) {
+                                debug self => _5;
+                            }
+                            scope 8 (inlined ptr::mut_ptr::<impl *mut u32>::add) {
+                                debug self => _7;
+                                debug count => _3;
+                                scope 9 {
+                                }
+                            }
+                            scope 10 (inlined slice_from_raw_parts_mut::<u32>) {
+                                debug data => _8;
+                                debug len => _6;
+                                let mut _9: *mut ();
+                                scope 11 (inlined ptr::mut_ptr::<impl *mut u32>::cast::<()>) {
+                                    debug self => _8;
+                                }
+                                scope 12 (inlined std::ptr::from_raw_parts_mut::<[u32]>) {
+                                    debug data_address => _9;
+                                    debug metadata => _6;
+                                    let mut _10: *const ();
+                                    let mut _11: std::ptr::metadata::PtrComponents<[u32]>;
+                                    let mut _12: std::ptr::metadata::PtrRepr<[u32]>;
+                                    scope 13 {
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _3 = move (_2.0: usize);
+        _4 = move (_2.1: usize);
+        StorageLive(_5);
+        _5 = &raw mut (*_1);
+        StorageLive(_14);
+        StorageLive(_15);
+        StorageLive(_6);
+        _6 = SubUnchecked(_4, _3);
+        StorageLive(_8);
+        StorageLive(_7);
+        _7 = _5 as *mut u32 (PtrToPtr);
+        _8 = Offset(_7, _3);
+        StorageDead(_7);
+        StorageLive(_9);
+        _9 = _8 as *mut () (PtrToPtr);
+        StorageLive(_12);
+        StorageLive(_11);
+        StorageLive(_10);
+        _10 = _9 as *const () (PointerCoercion(MutToConstPointer));
+        _11 = ptr::metadata::PtrComponents::<[u32]> { data_address: move _10, metadata: _6 };
+        StorageDead(_10);
+        _12 = ptr::metadata::PtrRepr::<[u32]> { const_ptr: move _11 };
+        StorageDead(_11);
+        _13 = (_12.1: *mut [u32]);
+        StorageDead(_12);
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_6);
+        StorageDead(_14);
+        StorageDead(_15);
+        StorageDead(_5);
+        _0 = &mut (*_13);
+        return;
+    }
+}

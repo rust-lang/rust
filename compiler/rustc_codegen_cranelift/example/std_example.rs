@@ -1,4 +1,12 @@
-#![feature(core_intrinsics, generators, generator_trait, is_sorted)]
+#![feature(
+    core_intrinsics,
+    generators,
+    generator_trait,
+    is_sorted,
+    repr_simd,
+    tuple_trait,
+    unboxed_closures
+)]
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -56,10 +64,14 @@ fn main() {
 
     assert_eq!(0b0000000000000000000000000010000010000000000000000000000000000000_0000000000100000000000000000000000001000000000000100000000000000u128.leading_zeros(), 26);
     assert_eq!(0b0000000000000000000000000010000000000000000000000000000000000000_0000000000000000000000000000000000001000000000000000000010000000u128.trailing_zeros(), 7);
-    assert_eq!(core::intrinsics::saturating_sub(0, -170141183460469231731687303715884105728i128), 170141183460469231731687303715884105727i128);
+    assert_eq!(
+        core::intrinsics::saturating_sub(0, -170141183460469231731687303715884105728i128),
+        170141183460469231731687303715884105727i128
+    );
 
-    let _d = 0i128.checked_div(2i128);
-    let _d = 0u128.checked_div(2u128);
+    std::hint::black_box(std::hint::black_box(7571400400375753350092698930310845914i128) * 10);
+    assert!(0i128.checked_div(2i128).is_some());
+    assert!(0u128.checked_div(2u128).is_some());
     assert_eq!(1u128 + 2, 3);
 
     assert_eq!(0b100010000000000000000000000000000u128 >> 10, 0b10001000000000000000000u128);
@@ -112,7 +124,9 @@ fn main() {
 
     Box::pin(move |mut _task_context| {
         yield ();
-    }).as_mut().resume(0);
+    })
+    .as_mut()
+    .resume(0);
 
     #[derive(Copy, Clone)]
     enum Nums {
@@ -147,11 +161,41 @@ fn main() {
 
         enum Never {}
     }
+
+    foo(I64X2(0, 0));
+
+    transmute_fat_pointer();
+
+    rust_call_abi();
 }
 
 fn panic(_: u128) {
     panic!();
 }
+
+use std::mem::transmute;
+
+#[cfg(target_pointer_width = "32")]
+type TwoPtrs = i64;
+#[cfg(target_pointer_width = "64")]
+type TwoPtrs = i128;
+
+fn transmute_fat_pointer() -> TwoPtrs {
+    unsafe { transmute::<_, TwoPtrs>("true !") }
+}
+
+extern "rust-call" fn rust_call_abi_callee<T: std::marker::Tuple>(_: T) {}
+
+fn rust_call_abi() {
+    rust_call_abi_callee(());
+    rust_call_abi_callee((1, 2));
+}
+
+#[repr(simd)]
+struct I64X2(i64, i64);
+
+#[allow(improper_ctypes_definitions)]
+extern "C" fn foo(_a: I64X2) {}
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "sse2")]
@@ -167,7 +211,10 @@ unsafe fn test_simd() {
     let (zero0, zero1) = std::mem::transmute::<_, (u64, u64)>(x);
     assert_eq!((zero0, zero1), (0, 0));
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(or), [7, 7, 7, 7, 7, 7, 7, 7]);
-    assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_eq), [0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff]);
+    assert_eq!(
+        std::mem::transmute::<_, [u16; 8]>(cmp_eq),
+        [0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff]
+    );
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_lt), [0, 0, 0, 0, 0, 0, 0, 0]);
 
     test_mm_slli_si128();
@@ -180,7 +227,12 @@ unsafe fn test_simd() {
 
     test_mm_extract_epi8();
     test_mm_insert_epi16();
+    test_mm_shuffle_epi8();
 
+    test_mm256_shuffle_epi8();
+    test_mm256_permute2x128_si256();
+
+    #[rustfmt::skip]
     let mask1 = _mm_movemask_epi8(dbg!(_mm_setr_epi8(255u8 as i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)));
     assert_eq!(mask1, 1);
 }
@@ -276,6 +328,12 @@ pub unsafe fn assert_eq_m128d(a: __m128d, b: __m128d) {
 }
 
 #[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx")]
+pub unsafe fn assert_eq_m256i(a: __m256i, b: __m256i) {
+    assert_eq!(std::mem::transmute::<_, [u64; 4]>(a), std::mem::transmute::<_, [u64; 4]>(b))
+}
+
+#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "sse2")]
 unsafe fn test_mm_cvtsi128_si64() {
     let r = _mm_cvtsi128_si64(std::mem::transmute::<[i64; 2], _>([5, 0]));
@@ -318,6 +376,64 @@ unsafe fn test_mm_insert_epi16() {
     assert_eq_m128i(r, e);
 }
 
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "ssse3")]
+unsafe fn test_mm_shuffle_epi8() {
+    #[rustfmt::skip]
+        let a = _mm_setr_epi8(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16,
+        );
+    #[rustfmt::skip]
+        let b = _mm_setr_epi8(
+            4, 128_u8 as i8, 4, 3,
+            24, 12, 6, 19,
+            12, 5, 5, 10,
+            4, 1, 8, 0,
+        );
+    let expected = _mm_setr_epi8(5, 0, 5, 4, 9, 13, 7, 4, 13, 6, 6, 11, 5, 2, 9, 1);
+    let r = _mm_shuffle_epi8(a, b);
+    assert_eq_m128i(r, expected);
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+unsafe fn test_mm256_shuffle_epi8() {
+    #[rustfmt::skip]
+    let a = _mm256_setr_epi8(
+        1, 2, 3, 4, 5, 6, 7, 8,
+        9, 10, 11, 12, 13, 14, 15, 16,
+        17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26, 27, 28, 29, 30, 31, 32,
+    );
+    #[rustfmt::skip]
+    let b = _mm256_setr_epi8(
+        4, 128u8 as i8, 4, 3, 24, 12, 6, 19,
+        12, 5, 5, 10, 4, 1, 8, 0,
+        4, 128u8 as i8, 4, 3, 24, 12, 6, 19,
+        12, 5, 5, 10, 4, 1, 8, 0,
+    );
+    #[rustfmt::skip]
+    let expected = _mm256_setr_epi8(
+        5, 0, 5, 4, 9, 13, 7, 4,
+        13, 6, 6, 11, 5, 2, 9, 1,
+        21, 0, 21, 20, 25, 29, 23, 20,
+        29, 22, 22, 27, 21, 18, 25, 17,
+    );
+    let r = _mm256_shuffle_epi8(a, b);
+    assert_eq_m256i(r, expected);
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+unsafe fn test_mm256_permute2x128_si256() {
+    let a = _mm256_setr_epi64x(100, 200, 500, 600);
+    let b = _mm256_setr_epi64x(300, 400, 700, 800);
+    let r = _mm256_permute2x128_si256::<0b00_01_00_11>(a, b);
+    let e = _mm256_setr_epi64x(700, 800, 500, 600);
+    assert_eq_m256i(r, e);
+}
+
 fn test_checked_mul() {
     let u: Option<u8> = u8::from_str_radix("1000", 10).ok();
     assert_eq!(u, None);
@@ -342,7 +458,7 @@ fn test_checked_mul() {
 #[derive(PartialEq)]
 enum LoopState {
     Continue(()),
-    Break(())
+    Break(()),
 }
 
 pub enum Instruction {

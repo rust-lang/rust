@@ -164,9 +164,9 @@ pub enum ProgramKind {
 
 impl ProgramKind {
     fn new(program: &OsStr) -> Self {
-        if program.bytes().starts_with(b"/") {
+        if program.as_os_str_bytes().starts_with(b"/") {
             Self::Absolute
-        } else if program.bytes().contains(&b'/') {
+        } else if program.as_os_str_bytes().contains(&b'/') {
             // If the program has more than one component in it, it is a relative path.
             Self::Relative
         } else {

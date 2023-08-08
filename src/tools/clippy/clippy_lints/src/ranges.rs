@@ -1,10 +1,9 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::higher;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, in_constant, is_integer_const, path_to_local};
+use clippy_utils::{get_parent_expr, higher, in_constant, is_integer_const, path_to_local};
 use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
@@ -296,8 +295,8 @@ fn check_possible_range_contains(
     }
 }
 
-struct RangeBounds<'a> {
-    val: Constant,
+struct RangeBounds<'a, 'tcx> {
+    val: Constant<'tcx>,
     expr: &'a Expr<'a>,
     id: HirId,
     name_span: Span,
@@ -309,7 +308,7 @@ struct RangeBounds<'a> {
 // Takes a binary expression such as x <= 2 as input
 // Breaks apart into various pieces, such as the value of the number,
 // hir id of the variable, and direction/inclusiveness of the operator
-fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<RangeBounds<'a>> {
+fn check_range_bounds<'a, 'tcx>(cx: &'a LateContext<'tcx>, ex: &'a Expr<'_>) -> Option<RangeBounds<'a, 'tcx>> {
     if let ExprKind::Binary(ref op, l, r) = ex.kind {
         let (inclusive, ordering) = match op.node {
             BinOpKind::Gt => (false, Ordering::Greater),
@@ -319,7 +318,7 @@ fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<R
             _ => return None,
         };
         if let Some(id) = path_to_local(l) {
-            if let Some((c, _)) = constant(cx, cx.typeck_results(), r) {
+            if let Some(c) = constant(cx, cx.typeck_results(), r) {
                 return Some(RangeBounds {
                     val: c,
                     expr: r,
@@ -331,7 +330,7 @@ fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<R
                 });
             }
         } else if let Some(id) = path_to_local(r) {
-            if let Some((c, _)) = constant(cx, cx.typeck_results(), l) {
+            if let Some(c) = constant(cx, cx.typeck_results(), l) {
                 return Some(RangeBounds {
                     val: c,
                     expr: l,
@@ -451,8 +450,8 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::Range::hir(expr);
         let ty = cx.typeck_results().expr_ty(start);
         if let ty::Int(_) | ty::Uint(_) = ty.kind();
-        if let Some((start_idx, _)) = constant(cx, cx.typeck_results(), start);
-        if let Some((end_idx, _)) = constant(cx, cx.typeck_results(), end);
+        if let Some(start_idx) = constant(cx, cx.typeck_results(), start);
+        if let Some(end_idx) = constant(cx, cx.typeck_results(), end);
         if let Some(ordering) = Constant::partial_cmp(cx.tcx, ty, &start_idx, &end_idx);
         if is_empty_range(limits, ordering);
         then {

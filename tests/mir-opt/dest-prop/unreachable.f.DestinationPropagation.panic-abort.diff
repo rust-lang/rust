@@ -1,0 +1,80 @@
+- // MIR for `f` before DestinationPropagation
++ // MIR for `f` after DestinationPropagation
+  
+  fn f(_1: T) -> () {
+      debug a => _1;
+      let mut _0: ();
+      let _2: T;
+      let mut _3: bool;
+      let _4: ();
+      let mut _5: T;
+      let mut _6: T;
+      let _7: ();
+      let mut _8: T;
+      let mut _9: T;
+      scope 1 {
+-         debug b => _2;
++         debug b => _1;
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _2 = _1;
++         nop;
++         nop;
+          StorageLive(_3);
+          _3 = const false;
+-         goto -> bb3;
++         goto -> bb1;
+      }
+  
+      bb1: {
+-         StorageLive(_4);
+-         StorageLive(_5);
+-         _5 = _1;
+-         StorageLive(_6);
+-         _6 = _2;
+-         _4 = g::<T>(move _5, move _6) -> [return: bb2, unwind unreachable];
+-     }
+- 
+-     bb2: {
+-         StorageDead(_6);
+-         StorageDead(_5);
+-         StorageDead(_4);
+-         _0 = const ();
+-         goto -> bb5;
+-     }
+- 
+-     bb3: {
+          StorageLive(_7);
+-         StorageLive(_8);
+-         _8 = _2;
++         nop;
++         nop;
+          StorageLive(_9);
+-         _9 = _2;
+-         _7 = g::<T>(move _8, move _9) -> [return: bb4, unwind unreachable];
++         _9 = _1;
++         _7 = g::<T>(move _1, move _9) -> [return: bb2, unwind unreachable];
+      }
+  
+-     bb4: {
++     bb2: {
+          StorageDead(_9);
+-         StorageDead(_8);
++         nop;
+          StorageDead(_7);
+          _0 = const ();
+-         goto -> bb5;
++         goto -> bb3;
+      }
+  
+-     bb5: {
++     bb3: {
+          StorageDead(_3);
+-         StorageDead(_2);
++         nop;
+          return;
+      }
+  }
+  

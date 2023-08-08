@@ -1,5 +1,5 @@
-// unit-test
-// compile-flags: -O
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
+// unit-test: ConstProp
 
 // EMIT_MIR mutable_variable_unprop_assign.main.ConstProp.diff
 fn main() {

@@ -7,9 +7,10 @@
 
 use arrayvec::ArrayVec;
 use hir::{
-    Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Crate, DeriveHelper, Field,
-    Function, GenericParam, HasVisibility, Impl, ItemInNs, Label, Local, Macro, Module, ModuleDef,
-    Name, PathResolution, Semantics, Static, ToolModule, Trait, TypeAlias, Variant, Visibility,
+    Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Crate, DeriveHelper,
+    ExternCrateDecl, Field, Function, GenericParam, HasVisibility, Impl, Label, Local, Macro,
+    Module, ModuleDef, Name, PathResolution, Semantics, Static, ToolModule, Trait, TraitAlias,
+    TypeAlias, Variant, Visibility,
 };
 use stdx::impl_from;
 use syntax::{
@@ -31,6 +32,7 @@ pub enum Definition {
     Const(Const),
     Static(Static),
     Trait(Trait),
+    TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
     BuiltinType(BuiltinType),
     SelfType(Impl),
@@ -40,6 +42,7 @@ pub enum Definition {
     DeriveHelper(DeriveHelper),
     BuiltinAttr(BuiltinAttr),
     ToolModule(ToolModule),
+    ExternCrateDecl(ExternCrateDecl),
 }
 
 impl Definition {
@@ -64,12 +67,14 @@ impl Definition {
             Definition::Const(it) => it.module(db),
             Definition::Static(it) => it.module(db),
             Definition::Trait(it) => it.module(db),
+            Definition::TraitAlias(it) => it.module(db),
             Definition::TypeAlias(it) => it.module(db),
             Definition::Variant(it) => it.module(db),
             Definition::SelfType(it) => it.module(db),
             Definition::Local(it) => it.module(db),
             Definition::GenericParam(it) => it.module(db),
             Definition::Label(it) => it.module(db),
+            Definition::ExternCrateDecl(it) => it.module(db),
             Definition::DeriveHelper(it) => it.derive().module(db),
             Definition::BuiltinAttr(_) | Definition::BuiltinType(_) | Definition::ToolModule(_) => {
                 return None
@@ -87,8 +92,10 @@ impl Definition {
             Definition::Const(it) => it.visibility(db),
             Definition::Static(it) => it.visibility(db),
             Definition::Trait(it) => it.visibility(db),
+            Definition::TraitAlias(it) => it.visibility(db),
             Definition::TypeAlias(it) => it.visibility(db),
             Definition::Variant(it) => it.visibility(db),
+            Definition::ExternCrateDecl(it) => it.visibility(db),
             Definition::BuiltinType(_) => Visibility::Public,
             Definition::Macro(_) => return None,
             Definition::BuiltinAttr(_)
@@ -113,6 +120,7 @@ impl Definition {
             Definition::Const(it) => it.name(db)?,
             Definition::Static(it) => it.name(db),
             Definition::Trait(it) => it.name(db),
+            Definition::TraitAlias(it) => it.name(db),
             Definition::TypeAlias(it) => it.name(db),
             Definition::BuiltinType(it) => it.name(),
             Definition::SelfType(_) => return None,
@@ -122,6 +130,7 @@ impl Definition {
             Definition::BuiltinAttr(_) => return None, // FIXME
             Definition::ToolModule(_) => return None,  // FIXME
             Definition::DeriveHelper(it) => it.name(db),
+            Definition::ExternCrateDecl(it) => return it.alias_or_name(db),
         };
         Some(name)
     }
@@ -191,6 +200,10 @@ impl IdentClass {
                 res.push(Definition::Local(local_ref));
                 res.push(Definition::Field(field_ref));
             }
+            IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand { decl, krate }) => {
+                res.push(Definition::ExternCrateDecl(decl));
+                res.push(Definition::Module(krate.root_module()));
+            }
             IdentClass::Operator(
                 OperatorClass::Await(func)
                 | OperatorClass::Prefix(func)
@@ -216,6 +229,10 @@ impl IdentClass {
             IdentClass::NameRefClass(NameRefClass::FieldShorthand { local_ref, field_ref }) => {
                 res.push(Definition::Local(local_ref));
                 res.push(Definition::Field(field_ref));
+            }
+            IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand { decl, krate }) => {
+                res.push(Definition::ExternCrateDecl(decl));
+                res.push(Definition::Module(krate.root_module()));
             }
             IdentClass::Operator(_) => (),
         }
@@ -300,10 +317,12 @@ impl NameClass {
                 ast::Item::Module(it) => Definition::Module(sema.to_def(&it)?),
                 ast::Item::Static(it) => Definition::Static(sema.to_def(&it)?),
                 ast::Item::Trait(it) => Definition::Trait(sema.to_def(&it)?),
+                ast::Item::TraitAlias(it) => Definition::TraitAlias(sema.to_def(&it)?),
                 ast::Item::TypeAlias(it) => Definition::TypeAlias(sema.to_def(&it)?),
                 ast::Item::Enum(it) => Definition::Adt(hir::Adt::Enum(sema.to_def(&it)?)),
                 ast::Item::Struct(it) => Definition::Adt(hir::Adt::Struct(sema.to_def(&it)?)),
                 ast::Item::Union(it) => Definition::Adt(hir::Adt::Union(sema.to_def(&it)?)),
+                ast::Item::ExternCrate(it) => Definition::ExternCrateDecl(sema.to_def(&it)?),
                 _ => return None,
             };
             Some(definition)
@@ -321,7 +340,7 @@ impl NameClass {
             let pat_parent = ident_pat.syntax().parent();
             if let Some(record_pat_field) = pat_parent.and_then(ast::RecordPatField::cast) {
                 if record_pat_field.name_ref().is_none() {
-                    if let Some(field) = sema.resolve_record_pat_field(&record_pat_field) {
+                    if let Some((field, _)) = sema.resolve_record_pat_field(&record_pat_field) {
                         return Some(NameClass::PatFieldShorthand {
                             local_def: local,
                             field_ref: field,
@@ -340,10 +359,8 @@ impl NameClass {
                 let path = use_tree.path()?;
                 sema.resolve_path(&path).map(Definition::from)
             } else {
-                let extern_crate = rename.syntax().parent().and_then(ast::ExternCrate::cast)?;
-                let krate = sema.resolve_extern_crate(&extern_crate)?;
-                let root_module = krate.root_module(sema.db);
-                Some(Definition::Module(root_module))
+                sema.to_def(&rename.syntax().parent().and_then(ast::ExternCrate::cast)?)
+                    .map(Definition::ExternCrateDecl)
             }
         }
     }
@@ -421,7 +438,19 @@ impl OperatorClass {
 #[derive(Debug)]
 pub enum NameRefClass {
     Definition(Definition),
-    FieldShorthand { local_ref: Local, field_ref: Field },
+    FieldShorthand {
+        local_ref: Local,
+        field_ref: Field,
+    },
+    /// The specific situation where we have an extern crate decl without a rename
+    /// Here we have both a declaration and a reference.
+    /// ```rs
+    /// extern crate foo;
+    /// ```
+    ExternCrateShorthand {
+        decl: ExternCrateDecl,
+        krate: Crate,
+    },
 }
 
 impl NameRefClass {
@@ -463,9 +492,12 @@ impl NameRefClass {
         match_ast! {
             match parent {
                 ast::MethodCallExpr(method_call) => {
-                    sema.resolve_method_call(&method_call)
-                        .map(Definition::Function)
-                        .map(NameRefClass::Definition)
+                    sema.resolve_method_call_field_fallback(&method_call)
+                        .map(|it| {
+                            it.map_left(Definition::Function)
+                                .map_right(Definition::Field)
+                                .either(NameRefClass::Definition, NameRefClass::Definition)
+                        })
                 },
                 ast::FieldExpr(field_expr) => {
                     sema.resolve_field(&field_expr)
@@ -474,6 +506,13 @@ impl NameRefClass {
                 },
                 ast::RecordPatField(record_pat_field) => {
                     sema.resolve_record_pat_field(&record_pat_field)
+                        .map(|(field, ..)|field)
+                        .map(Definition::Field)
+                        .map(NameRefClass::Definition)
+                },
+                ast::RecordExprField(record_expr_field) => {
+                    sema.resolve_record_field(&record_expr_field)
+                        .map(|(field, ..)|field)
                         .map(Definition::Field)
                         .map(NameRefClass::Definition)
                 },
@@ -497,10 +536,14 @@ impl NameRefClass {
                     }
                     None
                 },
-                ast::ExternCrate(extern_crate) => {
-                    let krate = sema.resolve_extern_crate(&extern_crate)?;
-                    let root_module = krate.root_module(sema.db);
-                    Some(NameRefClass::Definition(Definition::Module(root_module)))
+                ast::ExternCrate(extern_crate_ast) => {
+                    let extern_crate = sema.to_def(&extern_crate_ast)?;
+                    let krate = extern_crate.resolved_crate(sema.db)?;
+                    Some(if extern_crate_ast.rename().is_some() {
+                        NameRefClass::Definition(Definition::Module(krate.root_module()))
+                    } else {
+                        NameRefClass::ExternCrateShorthand { krate, decl: extern_crate }
+                    })
                 },
                 _ => None
             }
@@ -542,7 +585,7 @@ impl NameRefClass {
 }
 
 impl_from!(
-    Field, Module, Function, Adt, Variant, Const, Static, Trait, TypeAlias, BuiltinType, Local,
+    Field, Module, Function, Adt, Variant, Const, Static, Trait, TraitAlias, TypeAlias, BuiltinType, Local,
     GenericParam, Label, Macro
     for Definition
 );
@@ -599,27 +642,10 @@ impl From<ModuleDef> for Definition {
             ModuleDef::Const(it) => Definition::Const(it),
             ModuleDef::Static(it) => Definition::Static(it),
             ModuleDef::Trait(it) => Definition::Trait(it),
+            ModuleDef::TraitAlias(it) => Definition::TraitAlias(it),
             ModuleDef::TypeAlias(it) => Definition::TypeAlias(it),
             ModuleDef::Macro(it) => Definition::Macro(it),
             ModuleDef::BuiltinType(it) => Definition::BuiltinType(it),
         }
-    }
-}
-
-impl From<Definition> for Option<ItemInNs> {
-    fn from(def: Definition) -> Self {
-        let item = match def {
-            Definition::Module(it) => ModuleDef::Module(it),
-            Definition::Function(it) => ModuleDef::Function(it),
-            Definition::Adt(it) => ModuleDef::Adt(it),
-            Definition::Variant(it) => ModuleDef::Variant(it),
-            Definition::Const(it) => ModuleDef::Const(it),
-            Definition::Static(it) => ModuleDef::Static(it),
-            Definition::Trait(it) => ModuleDef::Trait(it),
-            Definition::TypeAlias(it) => ModuleDef::TypeAlias(it),
-            Definition::BuiltinType(it) => ModuleDef::BuiltinType(it),
-            _ => return None,
-        };
-        Some(ItemInNs::from(item))
     }
 }

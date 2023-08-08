@@ -10,6 +10,7 @@ const OPTIONAL_COMPONENTS: &[&str] = &[
     "aarch64",
     "amdgpu",
     "avr",
+    "loongarch",
     "m68k",
     "mips",
     "powerpc",
@@ -250,8 +251,11 @@ fn main() {
     } else if target.contains("windows-gnu") {
         println!("cargo:rustc-link-lib=shell32");
         println!("cargo:rustc-link-lib=uuid");
-    } else if target.contains("netbsd") || target.contains("haiku") || target.contains("darwin") {
+    } else if target.contains("haiku") || target.contains("darwin") {
         println!("cargo:rustc-link-lib=z");
+    } else if target.contains("netbsd") {
+        println!("cargo:rustc-link-lib=z");
+        println!("cargo:rustc-link-lib=execinfo");
     }
     cmd.args(&components);
 
@@ -333,6 +337,7 @@ fn main() {
     } else if target.contains("darwin")
         || target.contains("freebsd")
         || target.contains("windows-gnullvm")
+        || target.contains("aix")
     {
         "c++"
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {

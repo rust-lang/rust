@@ -1,0 +1,18 @@
+- // MIR for `unreachable` before LowerIntrinsics
++ // MIR for `unreachable` after LowerIntrinsics
+  
+  fn unreachable() -> ! {
+      let mut _0: !;
+      let _1: ();
+      let mut _2: !;
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+-         _2 = std::intrinsics::unreachable() -> unwind unreachable;
++         unreachable;
+      }
+  }
+  

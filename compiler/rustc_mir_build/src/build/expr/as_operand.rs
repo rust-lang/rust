@@ -20,7 +20,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
         let local_scope = self.local_scope();
-        self.as_operand(block, Some(local_scope), expr, None, NeedsTemporary::Maybe)
+        self.as_operand(block, Some(local_scope), expr, LocalInfo::Boring, NeedsTemporary::Maybe)
     }
 
     /// Returns an operand suitable for use until the end of the current scope expression and
@@ -102,7 +102,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         scope: Option<region::Scope>,
         expr: &Expr<'tcx>,
-        local_info: Option<Box<LocalInfo<'tcx>>>,
+        local_info: LocalInfo<'tcx>,
         needs_temporary: NeedsTemporary,
     ) -> BlockAnd<Operand<'tcx>> {
         let this = self;
@@ -118,14 +118,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let category = Category::of(&expr.kind).unwrap();
         debug!(?category, ?expr.kind);
         match category {
-            Category::Constant if let NeedsTemporary::No = needs_temporary || !expr.ty.needs_drop(this.tcx, this.param_env) => {
+            Category::Constant
+                if matches!(needs_temporary, NeedsTemporary::No)
+                    || !expr.ty.needs_drop(this.tcx, this.param_env) =>
+            {
                 let constant = this.as_constant(expr);
                 block.and(Operand::Constant(Box::new(constant)))
             }
             Category::Constant | Category::Place | Category::Rvalue(..) => {
                 let operand = unpack!(block = this.as_temp(block, scope, expr, Mutability::Mut));
-                if this.local_decls[operand].local_info.is_none() {
-                    this.local_decls[operand].local_info = local_info;
+                // Overwrite temp local info if we have something more interesting to record.
+                if !matches!(local_info, LocalInfo::Boring) {
+                    let decl_info =
+                        this.local_decls[operand].local_info.as_mut().assert_crate_local();
+                    if let LocalInfo::Boring | LocalInfo::BlockTailTemp(_) = **decl_info {
+                        **decl_info = local_info;
+                    }
                 }
                 block.and(Operand::Move(Place::from(operand)))
             }
@@ -178,6 +186,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        this.as_operand(block, scope, expr, None, NeedsTemporary::Maybe)
+        this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::Maybe)
     }
 }

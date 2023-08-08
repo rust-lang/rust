@@ -468,6 +468,7 @@ fn const_cells() {
     const CELL: Cell<i32> = Cell::new(3);
     const _: i32 = CELL.into_inner();
 
+/* FIXME(#110395)
     const UNSAFE_CELL_FROM: UnsafeCell<i32> = UnsafeCell::from(3);
     const _: i32 = UNSAFE_CELL.into_inner();
 
@@ -476,4 +477,5 @@ fn const_cells() {
 
     const CELL_FROM: Cell<i32> = Cell::from(3);
     const _: i32 = CELL.into_inner();
+*/
 }

@@ -1,0 +1,31 @@
+// run-rustfix
+
+#![deny(unused_qualifications)]
+#![feature(unsized_fn_params)]
+
+#[allow(unused_imports)]
+use std::ops;
+use std::ops::Index;
+
+pub struct A;
+
+impl Index<str> for A {
+    //~^ ERROR unnecessary qualification
+    type Output = ();
+    fn index(&self, _: str) -> &Self::Output {
+        &()
+    }
+}
+
+mod inner {
+    pub trait Trait<T> {}
+}
+
+// the import needs to be here for the lint to show up
+#[allow(unused_imports)]
+use inner::Trait;
+
+impl Trait<u8> for () {}
+//~^ ERROR unnecessary qualification
+
+fn main() {}

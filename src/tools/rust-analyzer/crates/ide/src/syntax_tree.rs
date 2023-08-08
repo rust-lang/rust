@@ -1,5 +1,7 @@
-use ide_db::base_db::{FileId, SourceDatabase};
-use ide_db::RootDatabase;
+use ide_db::{
+    base_db::{FileId, SourceDatabase},
+    RootDatabase,
+};
 use syntax::{
     AstNode, NodeOrToken, SourceFile, SyntaxKind::STRING, SyntaxToken, TextRange, TextSize,
 };

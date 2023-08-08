@@ -8,6 +8,6 @@ enum Nat {
 }
 
 fn foo<const N: Nat>() {}
-//~^ ERROR `Box<Nat>` must be annotated with `#[derive(PartialEq, Eq)]` to be used as the type of a const parameter
+//~^ ERROR `Nat` must implement `ConstParamTy` to be used as the type of a const generic parameter
 
 fn main() {}

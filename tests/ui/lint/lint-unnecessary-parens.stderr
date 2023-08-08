@@ -63,8 +63,68 @@ LL -     (5)
 LL +     5
    |
 
+error: unnecessary parentheses around `if` condition
+  --> $DIR/lint-unnecessary-parens.rs:39:7
+   |
+LL |     if(true) {}
+   |       ^    ^
+   |
+help: remove these parentheses
+   |
+LL -     if(true) {}
+LL +     if true {}
+   |
+
+error: unnecessary parentheses around `while` condition
+  --> $DIR/lint-unnecessary-parens.rs:40:10
+   |
+LL |     while(true) {}
+   |          ^    ^
+   |
+help: remove these parentheses
+   |
+LL -     while(true) {}
+LL +     while true {}
+   |
+
+error: unnecessary parentheses around `for` iterator expression
+  --> $DIR/lint-unnecessary-parens.rs:41:13
+   |
+LL |     for _ in(e) {}
+   |             ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     for _ in(e) {}
+LL +     for _ in e {}
+   |
+
+error: unnecessary parentheses around `match` scrutinee expression
+  --> $DIR/lint-unnecessary-parens.rs:42:10
+   |
+LL |     match(1) { _ => ()}
+   |          ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     match(1) { _ => ()}
+LL +     match 1 { _ => ()}
+   |
+
+error: unnecessary parentheses around `return` value
+  --> $DIR/lint-unnecessary-parens.rs:43:11
+   |
+LL |     return(1);
+   |           ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     return(1);
+LL +     return 1;
+   |
+
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:44:31
+  --> $DIR/lint-unnecessary-parens.rs:52:31
    |
 LL | pub const CONST_ITEM: usize = (10);
    |                               ^  ^
@@ -76,7 +136,7 @@ LL + pub const CONST_ITEM: usize = 10;
    |
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:45:33
+  --> $DIR/lint-unnecessary-parens.rs:53:33
    |
 LL | pub static STATIC_ITEM: usize = (10);
    |                                 ^  ^
@@ -88,7 +148,7 @@ LL + pub static STATIC_ITEM: usize = 10;
    |
 
 error: unnecessary parentheses around function argument
-  --> $DIR/lint-unnecessary-parens.rs:49:9
+  --> $DIR/lint-unnecessary-parens.rs:57:9
    |
 LL |     bar((true));
    |         ^    ^
@@ -100,7 +160,7 @@ LL +     bar(true);
    |
 
 error: unnecessary parentheses around `if` condition
-  --> $DIR/lint-unnecessary-parens.rs:51:8
+  --> $DIR/lint-unnecessary-parens.rs:59:8
    |
 LL |     if (true) {}
    |        ^    ^
@@ -112,7 +172,7 @@ LL +     if true {}
    |
 
 error: unnecessary parentheses around `while` condition
-  --> $DIR/lint-unnecessary-parens.rs:52:11
+  --> $DIR/lint-unnecessary-parens.rs:60:11
    |
 LL |     while (true) {}
    |           ^    ^
@@ -124,7 +184,7 @@ LL +     while true {}
    |
 
 error: unnecessary parentheses around `match` scrutinee expression
-  --> $DIR/lint-unnecessary-parens.rs:53:11
+  --> $DIR/lint-unnecessary-parens.rs:61:11
    |
 LL |     match (true) {
    |           ^    ^
@@ -136,7 +196,7 @@ LL +     match true {
    |
 
 error: unnecessary parentheses around `let` scrutinee expression
-  --> $DIR/lint-unnecessary-parens.rs:56:16
+  --> $DIR/lint-unnecessary-parens.rs:64:16
    |
 LL |     if let 1 = (1) {}
    |                ^ ^
@@ -148,7 +208,7 @@ LL +     if let 1 = 1 {}
    |
 
 error: unnecessary parentheses around `let` scrutinee expression
-  --> $DIR/lint-unnecessary-parens.rs:57:19
+  --> $DIR/lint-unnecessary-parens.rs:65:19
    |
 LL |     while let 1 = (2) {}
    |                   ^ ^
@@ -160,7 +220,7 @@ LL +     while let 1 = 2 {}
    |
 
 error: unnecessary parentheses around method argument
-  --> $DIR/lint-unnecessary-parens.rs:73:24
+  --> $DIR/lint-unnecessary-parens.rs:81:24
    |
 LL |     X { y: false }.foo((true));
    |                        ^    ^
@@ -172,7 +232,7 @@ LL +     X { y: false }.foo(true);
    |
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:75:18
+  --> $DIR/lint-unnecessary-parens.rs:83:18
    |
 LL |     let mut _a = (0);
    |                  ^ ^
@@ -184,7 +244,7 @@ LL +     let mut _a = 0;
    |
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:76:10
+  --> $DIR/lint-unnecessary-parens.rs:84:10
    |
 LL |     _a = (0);
    |          ^ ^
@@ -196,7 +256,7 @@ LL +     _a = 0;
    |
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:77:11
+  --> $DIR/lint-unnecessary-parens.rs:85:11
    |
 LL |     _a += (1);
    |           ^ ^
@@ -207,5 +267,5 @@ LL -     _a += (1);
 LL +     _a += 1;
    |
 
-error: aborting due to 17 previous errors
+error: aborting due to 22 previous errors
 

@@ -3,8 +3,9 @@
 use std::mem;
 
 use cfg::{CfgAtom, CfgExpr};
-use ide::{Cancellable, FileId, RunnableKind, TestId};
+use ide::{Cancellable, CrateId, FileId, RunnableKind, TestId};
 use project_model::{self, CargoFeatures, ManifestPath, TargetKind};
+use rustc_hash::FxHashSet;
 use vfs::AbsPathBuf;
 
 use crate::global_state::GlobalStateSnapshot;
@@ -20,7 +21,9 @@ pub(crate) struct CargoTargetSpec {
     pub(crate) package: String,
     pub(crate) target: String,
     pub(crate) target_kind: TargetKind,
+    pub(crate) crate_id: CrateId,
     pub(crate) required_features: Vec<String>,
+    pub(crate) features: FxHashSet<String>,
 }
 
 impl CargoTargetSpec {
@@ -73,12 +76,13 @@ impl CargoTargetSpec {
             }
         }
 
-        let target_required_features = if let Some(mut spec) = spec {
+        let (allowed_features, target_required_features) = if let Some(mut spec) = spec {
+            let allowed_features = mem::take(&mut spec.features);
             let required_features = mem::take(&mut spec.required_features);
             spec.push_to(&mut args, kind);
-            required_features
+            (allowed_features, required_features)
         } else {
-            Vec::new()
+            (Default::default(), Default::default())
         };
 
         let cargo_config = snap.config.cargo();
@@ -97,7 +101,9 @@ impl CargoTargetSpec {
                     required_features(cfg, &mut feats);
                 }
 
-                feats.extend(features.iter().cloned());
+                feats.extend(
+                    features.iter().filter(|&feat| allowed_features.contains(feat)).cloned(),
+                );
                 feats.extend(target_required_features);
 
                 feats.dedup();
@@ -136,6 +142,8 @@ impl CargoTargetSpec {
             target: target_data.name.clone(),
             target_kind: target_data.kind,
             required_features: target_data.required_features.clone(),
+            features: package_data.features.keys().cloned().collect(),
+            crate_id,
         };
 
         Ok(Some(res))

@@ -6,7 +6,7 @@ LL |     T: Into<Cow<'static, str>>,
    |
 help: consider importing this enum
    |
-LL | use std::borrow::Cow;
+LL + use std::borrow::Cow;
    |
 
 error[E0119]: conflicting implementations of trait `From<LabelText>` for type `LabelText`

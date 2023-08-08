@@ -10,7 +10,7 @@ trait Trait: SuperTrait<A = <Self as SuperTrait>::B> {}
 
 fn transmute<A, B>(x: A) -> B {
     foo::<A, B, dyn Trait<A = A, B = B>>(x)
-    //~^ ERROR type annotations needed: cannot satisfy `dyn Trait<A = A, B = B>: Trait`
+    //~^ ERROR the trait bound `dyn Trait<A = A, B = B>: Trait` is not satisfied
 }
 
 fn foo<A, B, T: ?Sized>(x: T::A) -> B

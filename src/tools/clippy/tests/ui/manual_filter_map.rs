@@ -1,7 +1,8 @@
-// run-rustfix
+//@run-rustfix
 #![allow(dead_code)]
 #![warn(clippy::manual_filter_map)]
 #![allow(clippy::redundant_closure)] // FIXME suggestion may have redundant closure
+#![allow(clippy::useless_vec)]
 
 fn main() {
     // is_some(), unwrap()
@@ -131,4 +132,32 @@ fn issue_8920() {
         .iter()
         .filter(|f| f.result_field.is_ok())
         .map(|f| f.result_field.to_owned().unwrap());
+}
+
+fn issue8010() {
+    #[derive(Clone)]
+    enum Enum {
+        A(i32),
+        B,
+    }
+
+    let iter = [Enum::A(123), Enum::B].into_iter();
+
+    let _x = iter.clone().filter(|x| matches!(x, Enum::A(_))).map(|x| match x {
+        Enum::A(s) => s,
+        _ => unreachable!(),
+    });
+    let _x = iter.clone().filter(|x| matches!(x, Enum::B)).map(|x| match x {
+        Enum::A(s) => s,
+        _ => unreachable!(),
+    });
+    let _x = iter
+        .clone()
+        .filter(|x| matches!(x, Enum::A(_)))
+        .map(|x| if let Enum::A(s) = x { s } else { unreachable!() });
+    #[allow(clippy::unused_unit)]
+    let _x = iter
+        .clone()
+        .filter(|x| matches!(x, Enum::B))
+        .map(|x| if let Enum::B = x { () } else { unreachable!() });
 }

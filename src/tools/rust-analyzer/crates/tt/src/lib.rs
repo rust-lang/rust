@@ -65,7 +65,22 @@ pub mod token_id {
     }
     impl TokenTree {
         pub const fn empty() -> Self {
-            Self::Subtree(Subtree { delimiter: Delimiter::unspecified(), token_trees: vec![] })
+            Self::Subtree(Subtree::empty())
+        }
+    }
+
+    impl Subtree {
+        pub fn visit_ids(&mut self, f: &mut impl FnMut(TokenId) -> TokenId) {
+            self.delimiter.open = f(self.delimiter.open);
+            self.delimiter.close = f(self.delimiter.close);
+            self.token_trees.iter_mut().for_each(|tt| match tt {
+                crate::TokenTree::Leaf(leaf) => match leaf {
+                    crate::Leaf::Literal(it) => it.span = f(it.span),
+                    crate::Leaf::Punct(it) => it.span = f(it.span),
+                    crate::Leaf::Ident(it) => it.span = f(it.span),
+                },
+                crate::TokenTree::Subtree(s) => s.visit_ids(f),
+            })
         }
     }
 }
@@ -107,7 +122,6 @@ impl_from!(Literal<Span>, Punct<Span>, Ident<Span> for Leaf);
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Subtree<Span> {
-    // FIXME, this should not be Option
     pub delimiter: Delimiter<Span>,
     pub token_trees: Vec<TokenTree<Span>>,
 }
@@ -151,6 +165,12 @@ pub enum Spacing {
 pub struct Ident<Span> {
     pub text: SmolStr,
     pub span: Span,
+}
+
+impl<S> Ident<S> {
+    pub fn new(text: impl Into<SmolStr>, span: S) -> Self {
+        Ident { text: text.into(), span }
+    }
 }
 
 fn print_debug_subtree<Span: fmt::Debug>(

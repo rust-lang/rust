@@ -10,7 +10,7 @@ LL | trait Foo = dyn issue_3907::Foo;
    |
 help: consider importing this trait instead
    |
-LL | use issue_3907::Foo;
+LL + use issue_3907::Foo;
    |
 
 error: aborting due to previous error

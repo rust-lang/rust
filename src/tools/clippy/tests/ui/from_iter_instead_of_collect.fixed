@@ -1,7 +1,8 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::from_iter_instead_of_collect)]
 #![allow(unused_imports, unused_tuple_struct_fields)]
+#![allow(clippy::useless_vec)]
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 

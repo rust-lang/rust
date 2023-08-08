@@ -1,14 +1,14 @@
-use clippy_utils::{
-    diagnostics::span_lint_and_sugg, get_parent_node, is_default_equivalent, macros::macro_backtrace, match_path,
-    path_def_id, paths, ty::expr_sig,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::macros::macro_backtrace;
+use clippy_utils::ty::expr_sig;
+use clippy_utils::{get_parent_node, is_default_equivalent, match_path, path_def_id, paths};
 use rustc_errors::Applicability;
-use rustc_hir::{
-    intravisit::{walk_ty, Visitor},
-    Block, Expr, ExprKind, Local, Node, QPath, TyKind,
-};
+use rustc_hir::intravisit::{walk_ty, Visitor};
+use rustc_hir::{Block, Expr, ExprKind, Local, Node, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::{lint::in_external_macro, ty::print::with_forced_trimmed_paths};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::print::with_forced_trimmed_paths;
+use rustc_middle::ty::IsSuggestable;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
@@ -49,7 +49,6 @@ impl LateLintPass<'_> for BoxDefault {
             && path_def_id(cx, ty).map_or(false, |id| Some(id) == cx.tcx.lang_items().owned_box())
             && is_default_equivalent(cx, arg)
         {
-            let arg_ty = cx.typeck_results().expr_ty(arg);
             span_lint_and_sugg(
                 cx,
                 BOX_DEFAULT,
@@ -58,8 +57,10 @@ impl LateLintPass<'_> for BoxDefault {
                 "try",
                 if is_plain_default(arg_path) || given_type(cx, expr) {
                     "Box::default()".into()
-                } else {
+                } else if let Some(arg_ty) = cx.typeck_results().expr_ty(arg).make_suggestable(cx.tcx, true) {
                     with_forced_trimmed_paths!(format!("Box::<{arg_ty}>::default()"))
+                } else {
+                    return
                 },
                 Applicability::MachineApplicable
             );

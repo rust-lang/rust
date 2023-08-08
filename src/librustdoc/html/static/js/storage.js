@@ -7,31 +7,15 @@
 
 const darkThemes = ["dark", "ayu"];
 window.currentTheme = document.getElementById("themeStyle");
-window.mainTheme = document.getElementById("mainThemeStyle");
-
-// WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
-// If you update this line, then you also need to update the media query with the same
-// warning in rustdoc.css
-window.RUSTDOC_MOBILE_BREAKPOINT = 700;
 
 const settingsDataset = (function() {
     const settingsElement = document.getElementById("default-settings");
-    if (settingsElement === null) {
-        return null;
-    }
-    const dataset = settingsElement.dataset;
-    if (dataset === undefined) {
-        return null;
-    }
-    return dataset;
+    return settingsElement && settingsElement.dataset ? settingsElement.dataset : null;
 })();
 
 function getSettingValue(settingName) {
     const current = getCurrentValue(settingName);
-    if (current !== null) {
-        return current;
-    }
-    if (settingsDataset !== null) {
+    if (current === null && settingsDataset !== null) {
         // See the comment for `default_settings.into_iter()` etc. in
         // `Options::from_matches` in `librustdoc/config.rs`.
         const def = settingsDataset[settingName.replace(/-/g,"_")];
@@ -39,12 +23,10 @@ function getSettingValue(settingName) {
             return def;
         }
     }
-    return null;
+    return current;
 }
 
 const localStoredTheme = getSettingValue("theme");
-
-const savedHref = [];
 
 // eslint-disable-next-line no-unused-vars
 function hasClass(elem, className) {
@@ -52,18 +34,16 @@ function hasClass(elem, className) {
 }
 
 function addClass(elem, className) {
-    if (!elem || !elem.classList) {
-        return;
+    if (elem && elem.classList) {
+        elem.classList.add(className);
     }
-    elem.classList.add(className);
 }
 
 // eslint-disable-next-line no-unused-vars
 function removeClass(elem, className) {
-    if (!elem || !elem.classList) {
-        return;
+    if (elem && elem.classList) {
+        elem.classList.remove(className);
     }
-    elem.classList.remove(className);
 }
 
 /**
@@ -73,10 +53,9 @@ function removeClass(elem, className) {
  * @param {boolean}     [reversed] - Whether to iterate in reverse
  */
 function onEach(arr, func, reversed) {
-    if (arr && arr.length > 0 && func) {
+    if (arr && arr.length > 0) {
         if (reversed) {
-            const length = arr.length;
-            for (let i = length - 1; i >= 0; --i) {
+            for (let i = arr.length - 1; i >= 0; --i) {
                 if (func(arr[i])) {
                     return true;
                 }
@@ -102,6 +81,7 @@ function onEach(arr, func, reversed) {
  * @param {function(?)}                   func       - The callback
  * @param {boolean}                       [reversed] - Whether to iterate in reverse
  */
+// eslint-disable-next-line no-unused-vars
 function onEachLazy(lazyArray, func, reversed) {
     return onEach(
         Array.prototype.slice.call(lazyArray),
@@ -125,34 +105,40 @@ function getCurrentValue(name) {
     }
 }
 
-function switchTheme(styleElem, mainStyleElem, newThemeName, saveTheme) {
+// Get a value from the rustdoc-vars div, which is used to convey data from
+// Rust to the JS. If there is no such element, return null.
+const getVar = (function getVar(name) {
+    const el = document.querySelector("head > meta[name='rustdoc-vars']");
+    return el ? el.attributes["data-" + name].value : null;
+});
+
+function switchTheme(newThemeName, saveTheme) {
     // If this new value comes from a system setting or from the previously
     // saved theme, no need to save it.
     if (saveTheme) {
         updateLocalStorage("theme", newThemeName);
     }
 
-    if (savedHref.length === 0) {
-        onEachLazy(document.getElementsByTagName("link"), el => {
-            savedHref.push(el.href);
-        });
+    let newHref;
+
+    if (newThemeName === "light" || newThemeName === "dark" || newThemeName === "ayu") {
+        newHref = getVar("static-root-path") + getVar("theme-" + newThemeName + "-css");
+    } else {
+        newHref = getVar("root-path") + newThemeName + getVar("resource-suffix") + ".css";
     }
-    const newHref = savedHref.find(url => {
-        const m = url.match(/static\.files\/(.*)-[a-f0-9]{16}\.css$/);
-        if (m && m[1] === newThemeName) {
-            return true;
-        }
-        const m2 = url.match(/\/([^/]*)\.css$/);
-        if (m2 && m2[1].startsWith(newThemeName)) {
-            return true;
-        }
-    });
-    if (newHref && newHref !== styleElem.href) {
-        styleElem.href = newHref;
+
+    if (!window.currentTheme) {
+        document.write(`<link rel="stylesheet" id="themeStyle" href="${newHref}">`);
+        window.currentTheme = document.getElementById("themeStyle");
+    } else if (newHref !== window.currentTheme.href) {
+        window.currentTheme.href = newHref;
     }
 }
 
 const updateTheme = (function() {
+    // only listen to (prefers-color-scheme: dark) because light is the default
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+
     /**
      * Update the current theme to match whatever the current combination of
      * * the preference for using the system theme
@@ -163,60 +149,23 @@ const updateTheme = (function() {
      * … dictates that it should be.
      */
     function updateTheme() {
-        const use = (theme, saveTheme) => {
-            switchTheme(window.currentTheme, window.mainTheme, theme, saveTheme);
-        };
-
         // maybe the user has disabled the setting in the meantime!
         if (getSettingValue("use-system-theme") !== "false") {
             const lightTheme = getSettingValue("preferred-light-theme") || "light";
             const darkTheme = getSettingValue("preferred-dark-theme") || "dark";
+            updateLocalStorage("use-system-theme", "true");
 
-            if (isDarkMode()) {
-                use(darkTheme, true);
-            } else {
-                // prefers a light theme, or has no preference
-                use(lightTheme, true);
-            }
+            // use light theme if user prefers it, or has no preference
+            switchTheme(mql.matches ? darkTheme : lightTheme, true);
             // note: we save the theme so that it doesn't suddenly change when
             // the user disables "use-system-theme" and reloads the page or
             // navigates to another page
         } else {
-            use(getSettingValue("theme"), false);
+            switchTheme(getSettingValue("theme"), false);
         }
     }
 
-    // This is always updated below to a function () => bool.
-    let isDarkMode;
-
-    // Determine the function for isDarkMode, and if we have
-    // `window.matchMedia`, set up an event listener on the preferred color
-    // scheme.
-    //
-    // Otherwise, fall back to the prefers-color-scheme value CSS captured in
-    // the "content" property.
-    if (window.matchMedia) {
-        // only listen to (prefers-color-scheme: dark) because light is the default
-        const mql = window.matchMedia("(prefers-color-scheme: dark)");
-
-        isDarkMode = () => mql.matches;
-
-        if (mql.addEventListener) {
-            mql.addEventListener("change", updateTheme);
-        } else {
-            // This is deprecated, see:
-            // https://developer.mozilla.org/en-US/docs/Web/API/MediaQueryList/addListener
-            mql.addListener(updateTheme);
-        }
-    } else {
-        // fallback to the CSS computed value
-        const cssContent = getComputedStyle(document.documentElement)
-            .getPropertyValue("content");
-        // (Note: the double-quotes come from that this is a CSS value, which
-        // might be a length, string, etc.)
-        const cssColorScheme = cssContent || "\"light\"";
-        isDarkMode = () => (cssColorScheme === "\"dark\"");
-    }
+    mql.addEventListener("change", updateTheme);
 
     return updateTheme;
 })();
@@ -236,7 +185,7 @@ updateTheme();
 if (getSettingValue("source-sidebar-show") === "true") {
     // At this point in page load, `document.body` is not available yet.
     // Set a class on the `<html>` element instead.
-    addClass(document.documentElement, "source-sidebar-expanded");
+    addClass(document.documentElement, "src-sidebar-expanded");
 }
 
 // If we navigate away (for example to a settings page), and then use the back or

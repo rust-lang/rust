@@ -1,4 +1,3 @@
-#![feature(raw_dylib)]
 #![feature(abi_vectorcall)]
 
 #[link(name = "extern", kind = "raw-dylib", import_name_type = "undecorated")]

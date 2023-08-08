@@ -106,9 +106,11 @@ impl_lint_pass!(Shadow => [SHADOW_SAME, SHADOW_REUSE, SHADOW_UNRELATED]);
 
 impl<'tcx> LateLintPass<'tcx> for Shadow {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
-        let PatKind::Binding(_, id, ident, _) = pat.kind else { return };
+        let PatKind::Binding(_, id, ident, _) = pat.kind else {
+            return;
+        };
 
-        if pat.span.desugaring_kind().is_some() {
+        if pat.span.desugaring_kind().is_some() || pat.span.from_expansion() {
             return;
         }
 
@@ -213,8 +215,7 @@ fn is_self_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, mut expr: &Expr<'_>, hir_
     }
     loop {
         expr = match expr.kind {
-            ExprKind::Box(e)
-            | ExprKind::AddrOf(_, _, e)
+            ExprKind::AddrOf(_, _, e)
             | ExprKind::Block(
                 &Block {
                     stmts: [],

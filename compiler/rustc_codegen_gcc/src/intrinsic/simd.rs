@@ -1,11 +1,11 @@
-#[cfg(feature="master")]
-use gccjit::{ComparisonOp, UnaryOp};
 use gccjit::ToRValue;
 use gccjit::{BinaryOp, RValue, Type};
+#[cfg(feature = "master")]
+use gccjit::{ComparisonOp, UnaryOp};
 
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
-#[cfg(feature="master")]
+#[cfg(feature = "master")]
 use rustc_codegen_ssa::errors::ExpectedPointerMutability;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::OperandRef;
@@ -19,21 +19,8 @@ use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::Align;
 
 use crate::builder::Builder;
-#[cfg(feature="master")]
+#[cfg(feature = "master")]
 use crate::context::CodegenCx;
-#[cfg(feature="master")]
-use crate::errors::{InvalidMonomorphizationExpectedSignedUnsigned, InvalidMonomorphizationInsertedType};
-use crate::errors::{
-    InvalidMonomorphizationExpectedSimd,
-    InvalidMonomorphizationInvalidBitmask,
-    InvalidMonomorphizationInvalidFloatVector, InvalidMonomorphizationMaskType,
-    InvalidMonomorphizationMismatchedLengths, InvalidMonomorphizationNotFloat,
-    InvalidMonomorphizationReturnElement, InvalidMonomorphizationReturnIntegerType,
-    InvalidMonomorphizationReturnLength, InvalidMonomorphizationReturnLengthInputType,
-    InvalidMonomorphizationReturnType, InvalidMonomorphizationSimdShuffle,
-    InvalidMonomorphizationUnrecognized, InvalidMonomorphizationUnsupportedElement,
-    InvalidMonomorphizationUnsupportedOperation,
-};
 
 pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     bx: &mut Builder<'a, 'gcc, 'tcx>,
@@ -59,16 +46,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         };
     }
     macro_rules! require_simd {
-        ($ty: expr, $position: expr) => {
-            require!(
-                $ty.is_simd(),
-                InvalidMonomorphizationExpectedSimd {
-                    span,
-                    name,
-                    position: $position,
-                    found_ty: $ty
-                }
-            )
+        ($ty: expr, $diag: expr) => {
+            require!($ty.is_simd(), $diag)
         };
     }
 
@@ -78,7 +57,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     let arg_tys = sig.inputs();
 
     if name == sym::simd_select_bitmask {
-        require_simd!(arg_tys[1], "argument");
+        require_simd!(
+            arg_tys[1],
+            InvalidMonomorphization::SimdArgument { span, name, ty: arg_tys[1] }
+        );
         let (len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
 
         let expected_int_bits = (len.max(8) - 1).next_power_of_two();
@@ -99,10 +81,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let ptr = bx.pointercast(place.llval, bx.cx.type_ptr_to(int_ty));
                 bx.load(int_ty, ptr, Align::ONE)
             }
-            _ => return_error!(InvalidMonomorphizationInvalidBitmask {
+            _ => return_error!(InvalidMonomorphization::InvalidBitmask {
                 span,
                 name,
-                ty: mask_ty,
+                mask_ty,
                 expected_int_bits,
                 expected_bytes
             }),
@@ -116,7 +98,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // NOTE: since the arguments can be vectors of floats, make sure the mask is a vector of
         // integer.
         let mask_element_type = bx.type_ix(arg1_element_type.get_size() as u64 * 8);
-        let vector_mask_type = bx.context.new_vector_type(mask_element_type, arg1_vector_type.get_num_units() as u64);
+        let vector_mask_type =
+            bx.context.new_vector_type(mask_element_type, arg1_vector_type.get_num_units() as u64);
 
         let mut elements = vec![];
         let one = bx.context.new_rvalue_one(mask.get_type());
@@ -131,7 +114,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     }
 
     // every intrinsic below takes a SIMD vector as its first argument
-    require_simd!(arg_tys[0], "input");
+    require_simd!(arg_tys[0], InvalidMonomorphization::SimdInput { span, name, ty: arg_tys[0] });
     let in_ty = arg_tys[0];
 
     let comparison = match name {
@@ -146,12 +129,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
     let (in_len, in_elem) = arg_tys[0].simd_size_and_type(bx.tcx());
     if let Some(cmp_op) = comparison {
-        require_simd!(ret_ty, "return");
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
 
         let (out_len, out_ty) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
-            InvalidMonomorphizationReturnLengthInputType {
+            InvalidMonomorphization::ReturnLengthInputType {
                 span,
                 name,
                 in_len,
@@ -162,51 +145,42 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         );
         require!(
             bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
-            InvalidMonomorphizationReturnIntegerType { span, name, ret_ty, out_ty }
+            InvalidMonomorphization::ReturnIntegerType { span, name, ret_ty, out_ty }
         );
 
-        return Ok(compare_simd_types(
-            bx,
-            args[0].immediate(),
-            args[1].immediate(),
-            in_elem,
-            llret_ty,
-            cmp_op,
-        ));
+        let arg1 = args[0].immediate();
+        // NOTE: we get different vector types for the same vector type and libgccjit doesn't
+        // compare them as equal, so bitcast.
+        // FIXME(antoyo): allow comparing vector types as equal in libgccjit.
+        let arg2 = bx.context.new_bitcast(None, args[1].immediate(), arg1.get_type());
+        return Ok(compare_simd_types(bx, arg1, arg2, in_elem, llret_ty, cmp_op));
     }
 
-    if let Some(stripped) = name.as_str().strip_prefix("simd_shuffle") {
-        let n: u64 = if stripped.is_empty() {
-            // Make sure this is actually an array, since typeck only checks the length-suffixed
-            // version of this intrinsic.
-            match args[2].layout.ty.kind() {
-                ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => {
-                    len.try_eval_target_usize(bx.cx.tcx, ty::ParamEnv::reveal_all()).unwrap_or_else(
-                        || span_bug!(span, "could not evaluate shuffle index array length"),
-                    )
-                }
-                _ => return_error!(InvalidMonomorphizationSimdShuffle {
-                    span,
-                    name,
-                    ty: args[2].layout.ty
-                }),
+    if name == sym::simd_shuffle {
+        // Make sure this is actually an array, since typeck only checks the length-suffixed
+        // version of this intrinsic.
+        let n: u64 = match args[2].layout.ty.kind() {
+            ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => {
+                len.try_eval_target_usize(bx.cx.tcx, ty::ParamEnv::reveal_all()).unwrap_or_else(
+                    || span_bug!(span, "could not evaluate shuffle index array length"),
+                )
             }
-        } else {
-            stripped.parse().unwrap_or_else(|_| {
-                span_bug!(span, "bad `simd_shuffle` instruction only caught in codegen?")
-            })
+            _ => return_error!(InvalidMonomorphization::SimdShuffle {
+                span,
+                name,
+                ty: args[2].layout.ty
+            }),
         };
-
-        require_simd!(ret_ty, "return");
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
 
         let (out_len, out_ty) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             out_len == n,
-            InvalidMonomorphizationReturnLength { span, name, in_len: n, ret_ty, out_len }
+            InvalidMonomorphization::ReturnLength { span, name, in_len: n, ret_ty, out_len }
         );
         require!(
             in_elem == out_ty,
-            InvalidMonomorphizationReturnElement { span, name, in_elem, in_ty, ret_ty, out_ty }
+            InvalidMonomorphization::ReturnElement { span, name, in_elem, in_ty, ret_ty, out_ty }
         );
 
         let vector = args[2].immediate();
@@ -218,7 +192,13 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     if name == sym::simd_insert {
         require!(
             in_elem == arg_tys[2],
-            InvalidMonomorphizationInsertedType { span, name, in_elem, in_ty, out_ty: arg_tys[2] }
+            InvalidMonomorphization::InsertedType {
+                span,
+                name,
+                in_elem,
+                in_ty,
+                out_ty: arg_tys[2]
+            }
         );
         let vector = args[0].immediate();
         let index = args[1].immediate();
@@ -235,7 +215,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     if name == sym::simd_extract {
         require!(
             ret_ty == in_elem,
-            InvalidMonomorphizationReturnType { span, name, in_elem, in_ty, ret_ty }
+            InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
         );
         let vector = args[0].immediate();
         return Ok(bx.context.new_vector_access(None, vector, args[1].immediate()).to_rvalue());
@@ -244,26 +224,29 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     if name == sym::simd_select {
         let m_elem_ty = in_elem;
         let m_len = in_len;
-        require_simd!(arg_tys[1], "argument");
+        require_simd!(
+            arg_tys[1],
+            InvalidMonomorphization::SimdArgument { span, name, ty: arg_tys[1] }
+        );
         let (v_len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
         require!(
             m_len == v_len,
-            InvalidMonomorphizationMismatchedLengths { span, name, m_len, v_len }
+            InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
         );
         match m_elem_ty.kind() {
             ty::Int(_) => {}
-            _ => return_error!(InvalidMonomorphizationMaskType { span, name, ty: m_elem_ty }),
+            _ => return_error!(InvalidMonomorphization::MaskType { span, name, ty: m_elem_ty }),
         }
         return Ok(bx.vector_select(args[0].immediate(), args[1].immediate(), args[2].immediate()));
     }
 
-    #[cfg(feature="master")]
+    #[cfg(feature = "master")]
     if name == sym::simd_cast || name == sym::simd_as {
-        require_simd!(ret_ty, "return");
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
-            InvalidMonomorphizationReturnLengthInputType {
+            InvalidMonomorphization::ReturnLengthInputType {
                 span,
                 name,
                 in_len,
@@ -283,19 +266,17 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             Unsupported,
         }
 
-        let in_style =
-            match in_elem.kind() {
-                ty::Int(_) | ty::Uint(_) => Style::Int,
-                ty::Float(_) => Style::Float,
-                 _ => Style::Unsupported,
-            };
+        let in_style = match in_elem.kind() {
+            ty::Int(_) | ty::Uint(_) => Style::Int,
+            ty::Float(_) => Style::Float,
+            _ => Style::Unsupported,
+        };
 
-        let out_style =
-            match out_elem.kind() {
-                ty::Int(_) | ty::Uint(_) => Style::Int,
-                ty::Float(_) => Style::Float,
-                 _ => Style::Unsupported,
-            };
+        let out_style = match out_elem.kind() {
+            ty::Int(_) | ty::Uint(_) => Style::Int,
+            ty::Float(_) => Style::Float,
+            _ => Style::Unsupported,
+        };
 
         match (in_style, out_style) {
             (Style::Unsupported, Style::Unsupported) => {
@@ -310,7 +291,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                         out_elem
                     }
                 );
-            },
+            }
             _ => return Ok(bx.context.convert_vector(None, args[0].immediate(), llret_ty)),
         }
     }
@@ -324,7 +305,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                     })*
                     _ => {},
                 }
-                return_error!(InvalidMonomorphizationUnsupportedOperation { span, name, in_ty, in_elem })
+                return_error!(InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem })
             })*
         }
     }
@@ -341,7 +322,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // endian and MSB-first for big endian.
 
         let vector = args[0].immediate();
-        let vector_type = vector.get_type().dyncast_vector().expect("vector type");
+        // TODO(antoyo): dyncast_vector should not require a call to unqualified.
+        let vector_type = vector.get_type().unqualified().dyncast_vector().expect("vector type");
         let elem_type = vector_type.get_element_type();
 
         let expected_int_bits = in_len.max(8);
@@ -357,10 +339,13 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         let mut shift = 0;
         for i in 0..in_len {
-            let elem = bx.extract_element(vector, bx.context.new_rvalue_from_int(bx.int_type, i as i32));
+            let elem =
+                bx.extract_element(vector, bx.context.new_rvalue_from_int(bx.int_type, i as i32));
             let shifted = elem >> sign_shift;
             let masked = shifted & one;
-            result = result | (bx.context.new_cast(None, masked, result_type) << bx.context.new_rvalue_from_int(result_type, shift));
+            result = result
+                | (bx.context.new_cast(None, masked, result_type)
+                    << bx.context.new_rvalue_from_int(result_type, shift));
             shift += 1;
         }
 
@@ -409,46 +394,50 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 return Err(());
             }};
         }
-        let (elem_ty_str, elem_ty) =
-            if let ty::Float(f) = in_elem.kind() {
-                let elem_ty = bx.cx.type_float_from_ty(*f);
-                match f.bit_width() {
-                    32 => ("f", elem_ty),
-                    64 => ("", elem_ty),
-                    _ => {
-                        return_error!(InvalidMonomorphizationInvalidFloatVector { span, name, elem_ty: f.name_str(), vec_ty: in_ty });
-                    }
+        let (elem_ty_str, elem_ty) = if let ty::Float(f) = in_elem.kind() {
+            let elem_ty = bx.cx.type_float_from_ty(*f);
+            match f.bit_width() {
+                32 => ("f", elem_ty),
+                64 => ("", elem_ty),
+                _ => {
+                    return_error!(InvalidMonomorphization::FloatingPointVector {
+                        span,
+                        name,
+                        f_ty: *f,
+                        in_ty
+                    });
                 }
             }
-            else {
-                return_error!(InvalidMonomorphizationNotFloat { span, name, ty: in_ty });
-            };
+        } else {
+            return_error!(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
+        };
 
         let vec_ty = bx.cx.type_vector(elem_ty, in_len);
 
-        let intr_name =
-            match name {
-                sym::simd_ceil => "ceil",
-                sym::simd_fabs => "fabs", // TODO(antoyo): pand with 170141183420855150465331762880109871103
-                sym::simd_fcos => "cos",
-                sym::simd_fexp2 => "exp2",
-                sym::simd_fexp => "exp",
-                sym::simd_flog10 => "log10",
-                sym::simd_flog2 => "log2",
-                sym::simd_flog => "log",
-                sym::simd_floor => "floor",
-                sym::simd_fma => "fma",
-                sym::simd_fpowi => "__builtin_powi",
-                sym::simd_fpow => "pow",
-                sym::simd_fsin => "sin",
-                sym::simd_fsqrt => "sqrt",
-                sym::simd_round => "round",
-                sym::simd_trunc => "trunc",
-                _ => return_error!(InvalidMonomorphizationUnrecognized { span, name })
-            };
+        let intr_name = match name {
+            sym::simd_ceil => "ceil",
+            sym::simd_fabs => "fabs", // TODO(antoyo): pand with 170141183420855150465331762880109871103
+            sym::simd_fcos => "cos",
+            sym::simd_fexp2 => "exp2",
+            sym::simd_fexp => "exp",
+            sym::simd_flog10 => "log10",
+            sym::simd_flog2 => "log2",
+            sym::simd_flog => "log",
+            sym::simd_floor => "floor",
+            sym::simd_fma => "fma",
+            sym::simd_fpowi => "__builtin_powi",
+            sym::simd_fpow => "pow",
+            sym::simd_fsin => "sin",
+            sym::simd_fsqrt => "sqrt",
+            sym::simd_round => "round",
+            sym::simd_trunc => "trunc",
+            _ => return_error!(InvalidMonomorphization::UnrecognizedIntrinsic { span, name }),
+        };
         let builtin_name = format!("{}{}", intr_name, elem_ty_str);
         let funcs = bx.cx.functions.borrow();
-        let function = funcs.get(&builtin_name).unwrap_or_else(|| panic!("unable to find builtin function {}", builtin_name));
+        let function = funcs
+            .get(&builtin_name)
+            .unwrap_or_else(|| panic!("unable to find builtin function {}", builtin_name));
 
         // TODO(antoyo): add platform-specific behavior here for architectures that have these
         // intrinsics as instructions (for instance, gpus)
@@ -494,8 +483,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         return simd_simple_float_intrinsic(name, in_elem, in_ty, in_len, bx, span, args);
     }
 
-    #[cfg(feature="master")]
-    fn vector_ty<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, elem_ty: Ty<'tcx>, vec_len: u64) -> Type<'gcc> {
+    #[cfg(feature = "master")]
+    fn vector_ty<'gcc, 'tcx>(
+        cx: &CodegenCx<'gcc, 'tcx>,
+        elem_ty: Ty<'tcx>,
+        vec_len: u64,
+    ) -> Type<'gcc> {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
         let elem_ty = match *elem_ty.kind() {
             ty::Int(v) => cx.type_int_from_ty(v),
@@ -506,15 +499,22 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         cx.type_vector(elem_ty, vec_len)
     }
 
-    #[cfg(feature="master")]
-    fn gather<'a, 'gcc, 'tcx>(default: RValue<'gcc>, pointers: RValue<'gcc>, mask: RValue<'gcc>, pointer_count: usize, bx: &mut Builder<'a, 'gcc, 'tcx>, in_len: u64, underlying_ty: Ty<'tcx>, invert: bool) -> RValue<'gcc> {
-        let vector_type =
-            if pointer_count > 1 {
-                bx.context.new_vector_type(bx.usize_type, in_len)
-            }
-            else {
-                vector_ty(bx, underlying_ty, in_len)
-            };
+    #[cfg(feature = "master")]
+    fn gather<'a, 'gcc, 'tcx>(
+        default: RValue<'gcc>,
+        pointers: RValue<'gcc>,
+        mask: RValue<'gcc>,
+        pointer_count: usize,
+        bx: &mut Builder<'a, 'gcc, 'tcx>,
+        in_len: u64,
+        underlying_ty: Ty<'tcx>,
+        invert: bool,
+    ) -> RValue<'gcc> {
+        let vector_type = if pointer_count > 1 {
+            bx.context.new_vector_type(bx.usize_type, in_len)
+        } else {
+            vector_ty(bx, underlying_ty, in_len)
+        };
         let elem_type = vector_type.dyncast_vector().expect("vector type").get_element_type();
 
         let mut values = vec![];
@@ -545,13 +545,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         if invert {
             bx.shuffle_vector(vector, default, mask)
-        }
-        else {
+        } else {
             bx.shuffle_vector(default, vector, mask)
         }
     }
 
-    #[cfg(feature="master")]
+    #[cfg(feature = "master")]
     if name == sym::simd_gather {
         // simd_gather(values: <N x T>, pointers: <N x *_ T>,
         //             mask: <N x i{M}>) -> <N x T>
@@ -560,10 +559,16 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // * M: any integer width is supported, will be truncated to i1
 
         // All types must be simd vector types
-        require_simd!(in_ty, "first");
-        require_simd!(arg_tys[1], "second");
-        require_simd!(arg_tys[2], "third");
-        require_simd!(ret_ty, "return");
+        require_simd!(in_ty, InvalidMonomorphization::SimdFirst { span, name, ty: in_ty });
+        require_simd!(
+            arg_tys[1],
+            InvalidMonomorphization::SimdSecond { span, name, ty: arg_tys[1] }
+        );
+        require_simd!(
+            arg_tys[2],
+            InvalidMonomorphization::SimdThird { span, name, ty: arg_tys[2] }
+        );
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
 
         // Of the same length:
         let (out_len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
@@ -656,10 +661,19 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }
         }
 
-        return Ok(gather(args[0].immediate(), args[1].immediate(), args[2].immediate(), pointer_count, bx, in_len, underlying_ty, false));
+        return Ok(gather(
+            args[0].immediate(),
+            args[1].immediate(),
+            args[2].immediate(),
+            pointer_count,
+            bx,
+            in_len,
+            underlying_ty,
+            false,
+        ));
     }
 
-    #[cfg(feature="master")]
+    #[cfg(feature = "master")]
     if name == sym::simd_scatter {
         // simd_scatter(values: <N x T>, pointers: <N x *mut T>,
         //             mask: <N x i{M}>) -> ()
@@ -668,9 +682,15 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // * M: any integer width is supported, will be truncated to i1
 
         // All types must be simd vector types
-        require_simd!(in_ty, "first");
-        require_simd!(arg_tys[1], "second");
-        require_simd!(arg_tys[2], "third");
+        require_simd!(in_ty, InvalidMonomorphization::SimdFirst { span, name, ty: in_ty });
+        require_simd!(
+            arg_tys[1],
+            InvalidMonomorphization::SimdSecond { span, name, ty: arg_tys[1] }
+        );
+        require_simd!(
+            arg_tys[2],
+            InvalidMonomorphization::SimdThird { span, name, ty: arg_tys[2] }
+        );
 
         // Of the same length:
         let (element_len1, _) = arg_tys[1].simd_size_and_type(bx.tcx());
@@ -759,17 +779,24 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }
         }
 
-        let result = gather(args[0].immediate(), args[1].immediate(), args[2].immediate(), pointer_count, bx, in_len, underlying_ty, true);
+        let result = gather(
+            args[0].immediate(),
+            args[1].immediate(),
+            args[2].immediate(),
+            pointer_count,
+            bx,
+            in_len,
+            underlying_ty,
+            true,
+        );
 
         let pointers = args[1].immediate();
 
-        let vector_type =
-            if pointer_count > 1 {
-                bx.context.new_vector_type(bx.usize_type, in_len)
-            }
-            else {
-                vector_ty(bx, underlying_ty, in_len)
-            };
+        let vector_type = if pointer_count > 1 {
+            bx.context.new_vector_type(bx.usize_type, in_len)
+        } else {
+            vector_ty(bx, underlying_ty, in_len)
+        };
         let elem_type = vector_type.dyncast_vector().expect("vector type").get_element_type();
 
         for i in 0..in_len {
@@ -809,7 +836,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                     })*
                     _ => {},
                 }
-                return_error!(InvalidMonomorphizationUnsupportedOperation { span, name, in_ty, in_elem })
+                return_error!(InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem })
             })*
         }
     }
@@ -824,89 +851,97 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let rhs = args[1].immediate();
         let is_add = name == sym::simd_saturating_add;
         let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
-        let (signed, elem_width, elem_ty) =
-            match *in_elem.kind() {
-                ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits) / 8, bx.cx.type_int_from_ty(i)),
-                ty::Uint(i) => (false, i.bit_width().unwrap_or(ptr_bits) / 8, bx.cx.type_uint_from_ty(i)),
-                _ => {
-                return_error!(InvalidMonomorphizationExpectedSignedUnsigned {
+        let (signed, elem_width, elem_ty) = match *in_elem.kind() {
+            ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits) / 8, bx.cx.type_int_from_ty(i)),
+            ty::Uint(i) => {
+                (false, i.bit_width().unwrap_or(ptr_bits) / 8, bx.cx.type_uint_from_ty(i))
+            }
+            _ => {
+                return_error!(InvalidMonomorphization::ExpectedVectorElementType {
                     span,
                     name,
-                    elem_ty: arg_tys[0].simd_size_and_type(bx.tcx()).1,
-                    vec_ty: arg_tys[0],
+                    expected_element: arg_tys[0].simd_size_and_type(bx.tcx()).1,
+                    vector_type: arg_tys[0],
                 });
             }
         };
 
-        let result =
-            match (signed, is_add) {
-                (false, true) => {
-                    let res = lhs + rhs;
-                    let cmp = bx.context.new_comparison(None, ComparisonOp::LessThan, res, lhs);
-                    res | cmp
-                },
-                (true, true) => {
-                    // Algorithm from: https://codereview.stackexchange.com/questions/115869/saturated-signed-addition
-                    // TODO(antoyo): improve using conditional operators if possible.
-                    let arg_type = lhs.get_type();
-                    // TODO(antoyo): convert lhs and rhs to unsigned.
-                    let sum = lhs + rhs;
-                    let vector_type = arg_type.dyncast_vector().expect("vector type");
-                    let unit = vector_type.get_num_units();
-                    let a = bx.context.new_rvalue_from_int(elem_ty, ((elem_width as i32) << 3) - 1);
-                    let width = bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![a; unit]);
+        let result = match (signed, is_add) {
+            (false, true) => {
+                let res = lhs + rhs;
+                let cmp = bx.context.new_comparison(None, ComparisonOp::LessThan, res, lhs);
+                res | cmp
+            }
+            (true, true) => {
+                // Algorithm from: https://codereview.stackexchange.com/questions/115869/saturated-signed-addition
+                // TODO(antoyo): improve using conditional operators if possible.
+                // TODO(antoyo): dyncast_vector should not require a call to unqualified.
+                let arg_type = lhs.get_type().unqualified();
+                // TODO(antoyo): convert lhs and rhs to unsigned.
+                let sum = lhs + rhs;
+                let vector_type = arg_type.dyncast_vector().expect("vector type");
+                let unit = vector_type.get_num_units();
+                let a = bx.context.new_rvalue_from_int(elem_ty, ((elem_width as i32) << 3) - 1);
+                let width = bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![a; unit]);
 
-                    let xor1 = lhs ^ rhs;
-                    let xor2 = lhs ^ sum;
-                    let and = bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, xor1) & xor2;
-                    let mask = and >> width;
+                let xor1 = lhs ^ rhs;
+                let xor2 = lhs ^ sum;
+                let and =
+                    bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, xor1) & xor2;
+                let mask = and >> width;
 
-                    let one = bx.context.new_rvalue_one(elem_ty);
-                    let ones = bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![one; unit]);
-                    let shift1 = ones << width;
-                    let shift2 = sum >> width;
-                    let mask_min = shift1 ^ shift2;
+                let one = bx.context.new_rvalue_one(elem_ty);
+                let ones =
+                    bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![one; unit]);
+                let shift1 = ones << width;
+                let shift2 = sum >> width;
+                let mask_min = shift1 ^ shift2;
 
-                    let and1 = bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, mask) & sum;
-                    let and2 = mask & mask_min;
+                let and1 =
+                    bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, mask) & sum;
+                let and2 = mask & mask_min;
 
-                    and1 + and2
-                },
-                (false, false) => {
-                    let res = lhs - rhs;
-                    let cmp = bx.context.new_comparison(None, ComparisonOp::LessThanEquals, res, lhs);
-                    res & cmp
-                },
-                (true, false) => {
-                    let arg_type = lhs.get_type();
-                    // TODO(antoyo): this uses the same algorithm from saturating add, but add the
-                    // negative of the right operand. Find a proper subtraction algorithm.
-                    let rhs = bx.context.new_unary_op(None, UnaryOp::Minus, arg_type, rhs);
+                and1 + and2
+            }
+            (false, false) => {
+                let res = lhs - rhs;
+                let cmp = bx.context.new_comparison(None, ComparisonOp::LessThanEquals, res, lhs);
+                res & cmp
+            }
+            (true, false) => {
+                // TODO(antoyo): dyncast_vector should not require a call to unqualified.
+                let arg_type = lhs.get_type().unqualified();
+                // TODO(antoyo): this uses the same algorithm from saturating add, but add the
+                // negative of the right operand. Find a proper subtraction algorithm.
+                let rhs = bx.context.new_unary_op(None, UnaryOp::Minus, arg_type, rhs);
 
-                    // TODO(antoyo): convert lhs and rhs to unsigned.
-                    let sum = lhs + rhs;
-                    let vector_type = arg_type.dyncast_vector().expect("vector type");
-                    let unit = vector_type.get_num_units();
-                    let a = bx.context.new_rvalue_from_int(elem_ty, ((elem_width as i32) << 3) - 1);
-                    let width = bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![a; unit]);
+                // TODO(antoyo): convert lhs and rhs to unsigned.
+                let sum = lhs + rhs;
+                let vector_type = arg_type.dyncast_vector().expect("vector type");
+                let unit = vector_type.get_num_units();
+                let a = bx.context.new_rvalue_from_int(elem_ty, ((elem_width as i32) << 3) - 1);
+                let width = bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![a; unit]);
 
-                    let xor1 = lhs ^ rhs;
-                    let xor2 = lhs ^ sum;
-                    let and = bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, xor1) & xor2;
-                    let mask = and >> width;
+                let xor1 = lhs ^ rhs;
+                let xor2 = lhs ^ sum;
+                let and =
+                    bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, xor1) & xor2;
+                let mask = and >> width;
 
-                    let one = bx.context.new_rvalue_one(elem_ty);
-                    let ones = bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![one; unit]);
-                    let shift1 = ones << width;
-                    let shift2 = sum >> width;
-                    let mask_min = shift1 ^ shift2;
+                let one = bx.context.new_rvalue_one(elem_ty);
+                let ones =
+                    bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![one; unit]);
+                let shift1 = ones << width;
+                let shift2 = sum >> width;
+                let mask_min = shift1 ^ shift2;
 
-                    let and1 = bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, mask) & sum;
-                    let and2 = mask & mask_min;
+                let and1 =
+                    bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, mask) & sum;
+                let and2 = mask & mask_min;
 
-                    and1 + and2
-                }
-            };
+                and1 + and2
+            }
+        };
 
         return Ok(result);
     }
@@ -917,7 +952,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             if name == sym::$name {
                 require!(
                     ret_ty == in_elem,
-                    InvalidMonomorphizationReturnType { span, name, in_elem, in_ty, ret_ty }
+                    InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
                 );
                 return match in_elem.kind() {
                     ty::Int(_) | ty::Uint(_) => {
@@ -939,11 +974,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                             Ok(bx.vector_reduce_op(args[0].immediate(), $vec_op))
                         }
                     }
-                    _ => return_error!(InvalidMonomorphizationUnsupportedElement {
+                    _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
                         span,
                         name,
+                        symbol: sym::$name,
                         in_ty,
-                        elem_ty: in_elem,
+                        in_elem,
                         ret_ty
                     }),
                 };
@@ -980,18 +1016,24 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         1.0
     );
 
-
     macro_rules! minmax_red {
         ($name:ident: $int_red:ident, $float_red:ident) => {
             if name == sym::$name {
                 require!(
                     ret_ty == in_elem,
-                    InvalidMonomorphizationReturnType { span, name, in_elem, in_ty, ret_ty }
+                    InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
                 );
                 return match in_elem.kind() {
                     ty::Int(_) | ty::Uint(_) => Ok(bx.$int_red(args[0].immediate())),
                     ty::Float(_) => Ok(bx.$float_red(args[0].immediate())),
-                    _ => return_error!(InvalidMonomorphizationUnsupportedElement { span, name, in_ty, elem_ty: in_elem, ret_ty }),
+                    _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
+                        span,
+                        name,
+                        symbol: sym::$name,
+                        in_ty,
+                        in_elem,
+                        ret_ty
+                    }),
                 };
             }
         };
@@ -1009,17 +1051,18 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let input = if !$boolean {
                     require!(
                         ret_ty == in_elem,
-                        InvalidMonomorphizationReturnType { span, name, in_elem, in_ty, ret_ty }
+                        InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
                     );
                     args[0].immediate()
                 } else {
                     match in_elem.kind() {
                         ty::Int(_) | ty::Uint(_) => {}
-                        _ => return_error!(InvalidMonomorphizationUnsupportedElement {
+                        _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
                             span,
                             name,
+                            symbol: sym::$name,
                             in_ty,
-                            elem_ty: in_elem,
+                            in_elem,
                             ret_ty
                         }),
                     }
@@ -1029,13 +1072,22 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 return match in_elem.kind() {
                     ty::Int(_) | ty::Uint(_) => {
                         let r = bx.vector_reduce_op(input, $op);
-                        Ok(if !$boolean { r } else { bx.icmp(IntPredicate::IntNE, r, bx.context.new_rvalue_zero(r.get_type())) })
+                        Ok(if !$boolean {
+                            r
+                        } else {
+                            bx.icmp(
+                                IntPredicate::IntNE,
+                                r,
+                                bx.context.new_rvalue_zero(r.get_type()),
+                            )
+                        })
                     }
-                    _ => return_error!(InvalidMonomorphizationUnsupportedElement {
+                    _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
                         span,
                         name,
+                        symbol: sym::$name,
                         in_ty,
-                        elem_ty: in_elem,
+                        in_elem,
                         ret_ty
                     }),
                 };

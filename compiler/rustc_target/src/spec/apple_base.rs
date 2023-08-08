@@ -1,7 +1,7 @@
 use std::{borrow::Cow, env};
 
 use crate::spec::{cvs, Cc, DebuginfoKind, FramePointer, LinkArgs};
-use crate::spec::{LinkerFlavor, Lld, SplitDebuginfo, StaticCow, TargetOptions};
+use crate::spec::{LinkerFlavor, Lld, SplitDebuginfo, StaticCow, Target, TargetOptions};
 
 #[cfg(test)]
 #[path = "apple/tests.rs"]
@@ -19,6 +19,7 @@ pub enum Arch {
     I386,
     I686,
     X86_64,
+    X86_64h,
     X86_64_sim,
     X86_64_macabi,
     Arm64_macabi,
@@ -36,6 +37,7 @@ impl Arch {
             I386 => "i386",
             I686 => "i686",
             X86_64 | X86_64_sim | X86_64_macabi => "x86_64",
+            X86_64h => "x86_64h",
         }
     }
 
@@ -44,13 +46,13 @@ impl Arch {
             Armv7 | Armv7k | Armv7s => "arm",
             Arm64 | Arm64_32 | Arm64_macabi | Arm64_sim => "aarch64",
             I386 | I686 => "x86",
-            X86_64 | X86_64_sim | X86_64_macabi => "x86_64",
+            X86_64 | X86_64_sim | X86_64_macabi | X86_64h => "x86_64",
         })
     }
 
     fn target_abi(self) -> &'static str {
         match self {
-            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 => "",
+            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64h => "",
             X86_64_macabi | Arm64_macabi => "macabi",
             // x86_64-apple-ios is a simulator target, even though it isn't
             // declared that way in the target like the other ones...
@@ -67,6 +69,10 @@ impl Arch {
             Arm64_32 => "apple-s4",
             I386 | I686 => "yonah",
             X86_64 | X86_64_sim => "core2",
+            // Note: `core-avx2` is slightly more advanced than `x86_64h`, see
+            // comments (and disabled features) in `x86_64h_apple_darwin` for
+            // details.
+            X86_64h => "core-avx2",
             X86_64_macabi => "core2",
             Arm64_macabi => "apple-a12",
             Arm64_sim => "apple-a12",
@@ -173,21 +179,43 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
     }
 }
 
-fn deployment_target(var_name: &str) -> Option<(u32, u32)> {
-    let deployment_target = env::var(var_name).ok();
-    deployment_target
-        .as_ref()
-        .and_then(|s| s.split_once('.'))
-        .and_then(|(a, b)| a.parse::<u32>().and_then(|a| b.parse::<u32>().map(|b| (a, b))).ok())
+pub fn deployment_target(target: &Target) -> Option<String> {
+    let (major, minor) = match &*target.os {
+        "macos" => {
+            // This does not need to be specific. It just needs to handle x86 vs M1.
+            let arch = if target.arch == "x86" || target.arch == "x86_64" { X86_64 } else { Arm64 };
+            macos_deployment_target(arch)
+        }
+        "ios" => ios_deployment_target(),
+        "watchos" => watchos_deployment_target(),
+        "tvos" => tvos_deployment_target(),
+        _ => return None,
+    };
+
+    Some(format!("{major}.{minor}"))
+}
+
+fn from_set_deployment_target(var_name: &str) -> Option<(u32, u32)> {
+    let deployment_target = env::var(var_name).ok()?;
+    let (unparsed_major, unparsed_minor) = deployment_target.split_once('.')?;
+    let (major, minor) = (unparsed_major.parse().ok()?, unparsed_minor.parse().ok()?);
+
+    Some((major, minor))
 }
 
 fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
-    // Note: Arm64_sim is not included since macOS has no simulator.
-    if matches!(arch, Arm64 | Arm64_macabi) { (11, 0) } else { (10, 7) }
+    match arch {
+        // Note: Arm64_sim is not included since macOS has no simulator.
+        Arm64 | Arm64_macabi => (11, 0),
+        // x86_64h-apple-darwin only supports macOS 10.8 and later
+        X86_64h => (10, 8),
+        _ => (10, 7),
+    }
 }
 
 fn macos_deployment_target(arch: Arch) -> (u32, u32) {
-    deployment_target("MACOSX_DEPLOYMENT_TARGET")
+    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    from_set_deployment_target("MACOSX_DEPLOYMENT_TARGET")
         .unwrap_or_else(|| macos_default_deployment_target(arch))
 }
 
@@ -212,7 +240,12 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
         // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform, which
         // may occur when we're linking a custom build script while targeting iOS for example.
         if let Ok(sdkroot) = env::var("SDKROOT") {
-            if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("iPhoneSimulator.platform")
+            if sdkroot.contains("iPhoneOS.platform")
+                || sdkroot.contains("iPhoneSimulator.platform")
+                || sdkroot.contains("AppleTVOS.platform")
+                || sdkroot.contains("AppleTVSimulator.platform")
+                || sdkroot.contains("WatchOS.platform")
+                || sdkroot.contains("WatchSimulator.platform")
             {
                 env_remove.push("SDKROOT".into())
             }
@@ -221,13 +254,14 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
         // "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
         // although this is apparently ignored when using the linker at "/usr/bin/ld".
         env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".into());
+        env_remove.push("TVOS_DEPLOYMENT_TARGET".into());
         env_remove.into()
     } else {
         // Otherwise if cross-compiling for a different OS/SDK, remove any part
         // of the linking environment that's wrong and reversed.
         match arch {
             Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64_sim
-            | Arm64_sim => {
+            | X86_64h | Arm64_sim => {
                 cvs!["MACOSX_DEPLOYMENT_TARGET"]
             }
             X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],
@@ -236,7 +270,8 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
 }
 
 fn ios_deployment_target() -> (u32, u32) {
-    deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
+    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
 }
 
 pub fn ios_llvm_target(arch: Arch) -> String {
@@ -261,7 +296,8 @@ pub fn ios_sim_llvm_target(arch: Arch) -> String {
 }
 
 fn tvos_deployment_target() -> (u32, u32) {
-    deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
+    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
 }
 
 fn tvos_lld_platform_version() -> String {
@@ -269,8 +305,19 @@ fn tvos_lld_platform_version() -> String {
     format!("{major}.{minor}")
 }
 
+pub fn tvos_llvm_target(arch: Arch) -> String {
+    let (major, minor) = tvos_deployment_target();
+    format!("{}-apple-tvos{}.{}.0", arch.target_name(), major, minor)
+}
+
+pub fn tvos_sim_llvm_target(arch: Arch) -> String {
+    let (major, minor) = tvos_deployment_target();
+    format!("{}-apple-tvos{}.{}.0-simulator", arch.target_name(), major, minor)
+}
+
 fn watchos_deployment_target() -> (u32, u32) {
-    deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
+    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    from_set_deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
 }
 
 fn watchos_lld_platform_version() -> String {

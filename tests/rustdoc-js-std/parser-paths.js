@@ -1,22 +1,22 @@
-const QUERY = ['A::B', 'A::B,C',  'A::B<f>,C', 'mod::a'];
-
 const PARSED = [
     {
+        query: 'A::B',
         elems: [{
             name: "a::b",
             fullPath: ["a", "b"],
             pathWithoutLast: ["a"],
             pathLast: "b",
             generics: [],
+            typeFilter: -1,
         }],
         foundElems: 1,
         original: "A::B",
         returned: [],
-        typeFilter: -1,
         userQuery: "a::b",
         error: null,
     },
     {
+        query: 'A::B,C',
         elems: [
             {
                 name: "a::b",
@@ -24,6 +24,7 @@ const PARSED = [
                 pathWithoutLast: ["a"],
                 pathLast: "b",
                 generics: [],
+                typeFilter: -1,
             },
             {
                 name: "c",
@@ -31,16 +32,17 @@ const PARSED = [
                 pathWithoutLast: [],
                 pathLast: "c",
                 generics: [],
+                typeFilter: -1,
             },
         ],
         foundElems: 2,
         original: 'A::B,C',
         returned: [],
-        typeFilter: -1,
         userQuery: 'a::b,c',
         error: null,
     },
     {
+        query: 'A::B<f>,C',
         elems: [
             {
                 name: "a::b",
@@ -56,6 +58,7 @@ const PARSED = [
                         generics: [],
                     },
                 ],
+                typeFilter: -1,
             },
             {
                 name: "c",
@@ -63,27 +66,28 @@ const PARSED = [
                 pathWithoutLast: [],
                 pathLast: "c",
                 generics: [],
+                typeFilter: -1,
             },
         ],
         foundElems: 2,
         original: 'A::B<f>,C',
         returned: [],
-        typeFilter: -1,
         userQuery: 'a::b<f>,c',
         error: null,
     },
     {
+        query: 'mod::a',
         elems: [{
             name: "mod::a",
             fullPath: ["mod", "a"],
             pathWithoutLast: ["mod"],
             pathLast: "a",
             generics: [],
+            typeFilter: -1,
         }],
         foundElems: 1,
         original: "mod::a",
         returned: [],
-        typeFilter: -1,
         userQuery: "mod::a",
         error: null,
     },

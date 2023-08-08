@@ -10,7 +10,7 @@ use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of the non-existent `=*`, `=!` and `=-`
+    /// Checks for usage of the non-existent `=*`, `=!` and `=-`
     /// operators.
     ///
     /// ### Why is this bad?
@@ -234,6 +234,12 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
                 then {
                     return;
                 }
+            }
+
+            // Don't warn if the only thing inside post_else_post_eol is a comment block.
+            let trimmed_post_else_post_eol = post_else_post_eol.trim();
+            if trimmed_post_else_post_eol.starts_with("/*") && trimmed_post_else_post_eol.ends_with("*/") {
+                return
             }
 
             let else_desc = if is_if(else_) { "if" } else { "{..}" };

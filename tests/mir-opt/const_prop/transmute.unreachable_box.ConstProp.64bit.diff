@@ -1,0 +1,20 @@
+- // MIR for `unreachable_box` before ConstProp
++ // MIR for `unreachable_box` after ConstProp
+  
+  fn unreachable_box() -> ! {
+      let mut _0: !;
+      let _1: std::boxed::Box<Never>;
+      scope 1 {
+          debug x => _1;
+      }
+      scope 2 {
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = const 1_usize as std::boxed::Box<Never> (Transmute);
++         _1 = const Box::<Never>(Unique::<Never> {{ pointer: NonNull::<Never> {{ pointer: {0x1 as *const Never} }}, _marker: PhantomData::<Never> }}, std::alloc::Global);
+          unreachable;
+      }
+  }
+  

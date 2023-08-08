@@ -26,14 +26,6 @@ LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
    |
    = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-note: erroneous constant used
-  --> $DIR/defaults-not-assumed-fail.rs:33:5
-   |
-LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

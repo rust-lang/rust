@@ -3,7 +3,7 @@ use rustc_ast as ast;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::def_id::DefId;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use std::{cmp, mem};
 
@@ -26,11 +26,13 @@ pub enum DocFragmentKind {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct DocFragment {
     pub span: Span,
-    /// The module this doc-comment came from.
-    ///
-    /// This allows distinguishing between the original documentation and a pub re-export.
-    /// If it is `None`, the item was not re-exported.
-    pub parent_module: Option<DefId>,
+    /// The item this doc-comment came from.
+    /// Used to determine the scope in which doc links in this fragment are resolved.
+    /// Typically filled for reexport docs when they are merged into the docs of the
+    /// original reexported item.
+    /// If the id is not filled, which happens for the original reexported item, then
+    /// it has to be taken from somewhere else during doc link resolution.
+    pub item_id: Option<DefId>,
     pub doc: Symbol,
     pub kind: DocFragmentKind,
     pub indent: usize,
@@ -186,7 +188,7 @@ pub fn attrs_to_doc_fragments<'a>(
 ) -> (Vec<DocFragment>, ast::AttrVec) {
     let mut doc_fragments = Vec::new();
     let mut other_attrs = ast::AttrVec::new();
-    for (attr, parent_module) in attrs {
+    for (attr, item_id) in attrs {
         if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
             let doc = beautify_doc_string(doc_str, comment_kind);
             let kind = if attr.is_doc_comment() {
@@ -194,7 +196,7 @@ pub fn attrs_to_doc_fragments<'a>(
             } else {
                 DocFragmentKind::RawDoc
             };
-            let fragment = DocFragment { span: attr.span, doc, kind, parent_module, indent: 0 };
+            let fragment = DocFragment { span: attr.span, doc, kind, item_id, indent: 0 };
             doc_fragments.push(fragment);
         } else if !doc_only {
             other_attrs.push(attr.clone());
@@ -216,7 +218,7 @@ pub fn prepare_to_doc_link_resolution(
 ) -> FxHashMap<Option<DefId>, String> {
     let mut res = FxHashMap::default();
     for fragment in doc_fragments {
-        let out_str = res.entry(fragment.parent_module).or_default();
+        let out_str = res.entry(fragment.item_id).or_default();
         add_doc_fragment(out_str, fragment);
     }
     res
@@ -337,6 +339,22 @@ pub fn inner_docs(attrs: &[ast::Attribute]) -> bool {
     attrs.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == ast::AttrStyle::Inner)
 }
 
+/// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]`.
+pub fn has_primitive_or_keyword_docs(attrs: &[ast::Attribute]) -> bool {
+    for attr in attrs {
+        if attr.has_name(sym::rustc_doc_primitive) {
+            return true;
+        } else if attr.has_name(sym::doc) && let Some(items) = attr.meta_item_list() {
+            for item in items {
+                if item.has_name(sym::keyword) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 /// Simplified version of the corresponding function in rustdoc.
 /// If the rustdoc version returns a successful result, this function must return the same result.
 /// Otherwise this function may return anything.
@@ -349,6 +367,7 @@ fn preprocess_link(link: &str) -> Box<str> {
     let link = link.strip_suffix("{}").unwrap_or(link);
     let link = link.strip_suffix("[]").unwrap_or(link);
     let link = if link != "!" { link.strip_suffix('!').unwrap_or(link) } else { link };
+    let link = link.trim();
     strip_generics_from_path(link).unwrap_or_else(|_| link.into())
 }
 

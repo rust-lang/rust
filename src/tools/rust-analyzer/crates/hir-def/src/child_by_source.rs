@@ -1,7 +1,7 @@
 //! When *constructing* `hir`, we start at some parent syntax node and recursively
 //! lower the children.
 //!
-//! This modules allows one to go in the opposite direction: start with a syntax
+//! This module allows one to go in the opposite direction: start with a syntax
 //! node for a *child*, and get its hir.
 
 use either::Either;
@@ -10,12 +10,12 @@ use syntax::ast::HasDocComments;
 
 use crate::{
     db::DefDatabase,
-    dyn_map::DynMap,
+    dyn_map::{keys, DynMap},
     item_scope::ItemScope,
-    keys,
+    nameres::DefMap,
     src::{HasChildSource, HasSource},
-    AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, FieldId, ImplId, Lookup, MacroId,
-    ModuleDefId, ModuleId, TraitId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId, FieldId, ImplId,
+    Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId, VariantId,
 };
 
 pub trait ChildBySource {
@@ -91,6 +91,8 @@ impl ChildBySource for ItemScope {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         self.declarations().for_each(|item| add_module_def(db, res, file_id, item));
         self.impls().for_each(|imp| add_impl(db, res, file_id, imp));
+        self.extern_crate_decls().for_each(|ext| add_extern_crate(db, res, file_id, ext));
+        self.use_decls().for_each(|ext| add_use(db, res, file_id, ext));
         self.unnamed_consts().for_each(|konst| {
             let loc = konst.lookup(db);
             if loc.id.file_id() == file_id {
@@ -145,6 +147,7 @@ impl ChildBySource for ItemScope {
                 ModuleDefId::StaticId(id) => insert!(map[keys::STATIC].insert(id)),
                 ModuleDefId::TypeAliasId(id) => insert!(map[keys::TYPE_ALIAS].insert(id)),
                 ModuleDefId::TraitId(id) => insert!(map[keys::TRAIT].insert(id)),
+                ModuleDefId::TraitAliasId(id) => insert!(map[keys::TRAIT_ALIAS].insert(id)),
                 ModuleDefId::AdtId(adt) => match adt {
                     AdtId::StructId(id) => insert!(map[keys::STRUCT].insert(id)),
                     AdtId::UnionId(id) => insert!(map[keys::UNION].insert(id)),
@@ -164,6 +167,23 @@ impl ChildBySource for ItemScope {
             let loc = imp.lookup(db);
             if loc.id.file_id() == file_id {
                 map[keys::IMPL].insert(loc.source(db).value, imp)
+            }
+        }
+        fn add_extern_crate(
+            db: &dyn DefDatabase,
+            map: &mut DynMap,
+            file_id: HirFileId,
+            ext: ExternCrateId,
+        ) {
+            let loc = ext.lookup(db);
+            if loc.id.file_id() == file_id {
+                map[keys::EXTERN_CRATE].insert(loc.source(db).value, ext)
+            }
+        }
+        fn add_use(db: &dyn DefDatabase, map: &mut DynMap, file_id: HirFileId, ext: UseId) {
+            let loc = ext.lookup(db);
+            if loc.id.file_id() == file_id {
+                map[keys::USE].insert(loc.source(db).value, ext)
             }
         }
     }
@@ -205,7 +225,7 @@ impl ChildBySource for DefWithBodyId {
         for (_, def_map) in body.blocks(db) {
             // All block expressions are merged into the same map, because they logically all add
             // inner items to the containing `DefWithBodyId`.
-            def_map[def_map.root()].scope.child_by_source_to(db, res, file_id);
+            def_map[DefMap::ROOT].scope.child_by_source_to(db, res, file_id);
         }
     }
 }

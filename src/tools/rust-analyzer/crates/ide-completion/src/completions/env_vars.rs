@@ -37,10 +37,10 @@ pub(crate) fn complete_cargo_env_vars(
     guard_env_macro(expanded, &ctx.sema)?;
     let range = expanded.text_range_between_quotes()?;
 
-    CARGO_DEFINED_VARS.iter().for_each(|(var, detail)| {
+    CARGO_DEFINED_VARS.into_iter().for_each(|&(var, detail)| {
         let mut item = CompletionItem::new(CompletionItemKind::Keyword, range, var);
-        item.detail(*detail);
-        item.add_to(acc);
+        item.detail(detail);
+        item.add_to(acc, ctx.db);
     });
 
     Some(())

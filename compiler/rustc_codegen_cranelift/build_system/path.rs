@@ -9,6 +9,7 @@ pub(crate) struct Dirs {
     pub(crate) download_dir: PathBuf,
     pub(crate) build_dir: PathBuf,
     pub(crate) dist_dir: PathBuf,
+    pub(crate) frozen: bool,
 }
 
 #[doc(hidden)]

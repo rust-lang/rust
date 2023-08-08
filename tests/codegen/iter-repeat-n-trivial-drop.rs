@@ -33,7 +33,8 @@ pub fn iter_repeat_n_next(it: &mut std::iter::RepeatN<NotCopy>) -> Option<NotCop
 
     // CHECK: [[EMPTY]]:
     // CHECK-NOT: br
-    // CHECK: phi i16 [ undef, %start ], [ %[[VAL]], %[[NOT_EMPTY]] ]
+    // CHECK: phi i16
+    // CHECK-SAME: [ %[[VAL]], %[[NOT_EMPTY]] ]
     // CHECK-NOT: br
     // CHECK: ret
 

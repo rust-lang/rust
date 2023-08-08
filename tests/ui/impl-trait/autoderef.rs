@@ -1,3 +1,5 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
 // check-pass
 
 use std::path::Path;

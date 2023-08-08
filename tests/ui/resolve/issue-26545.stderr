@@ -6,7 +6,7 @@ LL |         B(());
    |
 help: consider importing this tuple struct
    |
-LL |     use foo::B;
+LL +     use foo::B;
    |
 
 error: aborting due to previous error

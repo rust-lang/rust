@@ -336,8 +336,8 @@ const ASCII_ARRAY: &[(&str, &str, Option<token::TokenKind>)] = &[
     ("\"", "Quotation Mark", None),
 ];
 
-pub(super) fn check_for_substitution<'a>(
-    reader: &StringReader<'a>,
+pub(super) fn check_for_substitution(
+    reader: &StringReader<'_>,
     pos: BytePos,
     ch: char,
     count: usize,
@@ -349,8 +349,8 @@ pub(super) fn check_for_substitution<'a>(
     let span = Span::with_root_ctxt(pos, pos + Pos::from_usize(ch.len_utf8() * count));
 
     let Some((_, ascii_name, token)) = ASCII_ARRAY.iter().find(|&&(s, _, _)| s == ascii_str) else {
-        let msg = format!("substitution character not found for '{}'", ch);
-        reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
+        let msg = format!("substitution character not found for '{ch}'");
+        reader.sess.span_diagnostic.span_bug_no_panic(span, msg);
         return (None, None);
     };
 

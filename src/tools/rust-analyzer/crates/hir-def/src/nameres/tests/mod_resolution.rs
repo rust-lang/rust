@@ -887,7 +887,7 @@ mod module;
 //- /module.rs
 #![cfg(NEVER)]
 
-struct AlsoShoulntAppear;
+struct AlsoShouldNotAppear;
         "#,
         expect![[r#"
             crate

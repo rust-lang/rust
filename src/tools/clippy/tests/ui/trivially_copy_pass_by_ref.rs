@@ -1,11 +1,12 @@
-// normalize-stderr-test "\(\d+ byte\)" -> "(N byte)"
-// normalize-stderr-test "\(limit: \d+ byte\)" -> "(limit: N byte)"
+//@normalize-stderr-test: "\(\d+ byte\)" -> "(N byte)"
+//@normalize-stderr-test: "\(limit: \d+ byte\)" -> "(limit: N byte)"
 #![deny(clippy::trivially_copy_pass_by_ref)]
 #![allow(
     clippy::disallowed_names,
     clippy::needless_lifetimes,
     clippy::redundant_field_names,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::needless_pass_by_ref_mut
 )]
 
 #[derive(Copy, Clone)]

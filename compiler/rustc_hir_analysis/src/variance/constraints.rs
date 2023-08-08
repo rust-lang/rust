@@ -6,8 +6,8 @@
 use hir::def_id::{DefId, LocalDefId};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 
 use super::terms::VarianceTerm::*;
 use super::terms::*;
@@ -78,6 +78,11 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
                 }
             }
             DefKind::Fn | DefKind::AssocFn => constraint_cx.build_constraints_for_item(def_id),
+            DefKind::TyAlias { lazy }
+                if lazy || tcx.type_of(def_id).instantiate_identity().has_opaque_types() =>
+            {
+                constraint_cx.build_constraints_for_item(def_id)
+            }
             _ => {}
         }
     }
@@ -92,7 +97,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
     fn build_constraints_for_item(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx();
-        debug!("build_constraints_for_item({})", tcx.def_path_str(def_id.to_def_id()));
+        debug!("build_constraints_for_item({})", tcx.def_path_str(def_id));
 
         // Skip items with no generics - there's nothing to infer in them.
         if tcx.generics_of(def_id).count() == 0 {
@@ -101,7 +106,18 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         let inferred_start = self.terms_cx.inferred_starts[&def_id];
         let current_item = &CurrentItem { inferred_start };
-        match tcx.type_of(def_id).subst_identity().kind() {
+        let ty = tcx.type_of(def_id).instantiate_identity();
+
+        // The type as returned by `type_of` is the underlying type and generally not a weak projection.
+        // Therefore we need to check the `DefKind` first.
+        if let DefKind::TyAlias { lazy } = tcx.def_kind(def_id)
+            && (lazy || ty.has_opaque_types())
+        {
+            self.add_constraints_from_ty(current_item, ty, self.covariant);
+            return;
+        }
+
+        match ty.kind() {
             ty::Adt(def, _) => {
                 // Not entirely obvious: constraints on structs/enums do not
                 // affect the variance of their type parameters. See discussion
@@ -112,7 +128,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 for field in def.all_fields() {
                     self.add_constraints_from_ty(
                         current_item,
-                        tcx.type_of(field.did).subst_identity(),
+                        tcx.type_of(field.did).instantiate_identity(),
                         self.covariant,
                     );
                 }
@@ -121,12 +137,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             ty::FnDef(..) => {
                 self.add_constraints_from_sig(
                     current_item,
-                    tcx.fn_sig(def_id).subst_identity(),
+                    tcx.fn_sig(def_id).instantiate_identity(),
                     self.covariant,
                 );
             }
 
             ty::Error(_) => {}
+
             _ => {
                 span_bug!(
                     tcx.def_span(def_id),
@@ -175,16 +192,16 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, current))]
-    fn add_constraints_from_invariant_substs(
+    fn add_constraints_from_invariant_args(
         &mut self,
         current: &CurrentItem,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
         variance: VarianceTermPtr<'a>,
     ) {
         // Trait are always invariant so we can take advantage of that.
         let variance_i = self.invariant(variance);
 
-        for k in substs {
+        for k in args {
             match k.unpack() {
                 GenericArgKind::Lifetime(lt) => {
                     self.add_constraints_from_region(current, lt, variance_i)
@@ -248,12 +265,16 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::Adt(def, substs) => {
-                self.add_constraints_from_substs(current, def.did(), substs, variance);
+            ty::Adt(def, args) => {
+                self.add_constraints_from_args(current, def.did(), args, variance);
             }
 
-            ty::Alias(_, ref data) => {
-                self.add_constraints_from_invariant_substs(current, data.substs, variance);
+            ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, ref data) => {
+                self.add_constraints_from_invariant_args(current, data.args, variance);
+            }
+
+            ty::Alias(ty::Weak, ref data) => {
+                self.add_constraints_from_args(current, data.def_id, data.args, variance);
             }
 
             ty::Dynamic(data, r, _) => {
@@ -261,9 +282,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_region(current, r, variance);
 
                 if let Some(poly_trait_ref) = data.principal() {
-                    self.add_constraints_from_invariant_substs(
+                    self.add_constraints_from_invariant_args(
                         current,
-                        poly_trait_ref.skip_binder().substs,
+                        poly_trait_ref.skip_binder().args,
                         variance,
                     );
                 }
@@ -305,20 +326,20 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
     /// Adds constraints appropriate for a nominal type (enum, struct,
     /// object, etc) appearing in a context with ambient variance `variance`
-    fn add_constraints_from_substs(
+    fn add_constraints_from_args(
         &mut self,
         current: &CurrentItem,
         def_id: DefId,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
         variance: VarianceTermPtr<'a>,
     ) {
         debug!(
-            "add_constraints_from_substs(def_id={:?}, substs={:?}, variance={:?})",
-            def_id, substs, variance
+            "add_constraints_from_args(def_id={:?}, args={:?}, variance={:?})",
+            def_id, args, variance
         );
 
         // We don't record `inferred_starts` entries for empty generics.
-        if substs.is_empty() {
+        if args.is_empty() {
             return;
         }
 
@@ -328,7 +349,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             (None, Some(self.tcx().variances_of(def_id)))
         };
 
-        for (i, k) in substs.iter().enumerate() {
+        for (i, k) in args.iter().enumerate() {
             let variance_decl = if let Some(InferredIndex(start)) = local {
                 // Parameter on an item defined within current crate:
                 // variance not yet inferred, so return a symbolic
@@ -341,7 +362,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             };
             let variance_i = self.xform(variance, variance_decl);
             debug!(
-                "add_constraints_from_substs: variance_decl={:?} variance_i={:?}",
+                "add_constraints_from_args: variance_decl={:?} variance_i={:?}",
                 variance_decl, variance_i
             );
             match k.unpack() {
@@ -368,7 +389,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         match &c.kind() {
             ty::ConstKind::Unevaluated(uv) => {
-                self.add_constraints_from_invariant_substs(current, uv.substs, variance);
+                self.add_constraints_from_invariant_args(current, uv.args, variance);
             }
             _ => {}
         }

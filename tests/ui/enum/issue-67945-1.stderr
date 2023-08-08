@@ -1,11 +1,10 @@
-error: generic parameters may not be used in const operations
+error: generic parameters may not be used in enum discriminant values
   --> $DIR/issue-67945-1.rs:3:16
    |
 LL |         let x: S = 0;
    |                ^ cannot perform const operation using `S`
    |
-   = note: type parameters may not be used in const expressions
-   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in enum discriminant values
 
 error[E0392]: parameter `S` is never used
   --> $DIR/issue-67945-1.rs:1:10

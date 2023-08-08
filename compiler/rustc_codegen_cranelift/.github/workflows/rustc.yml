@@ -6,6 +6,7 @@ on:
 jobs:
   bootstrap_rustc:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
     - uses: actions/checkout@v3
@@ -16,20 +17,16 @@ jobs:
         path: build/cg_clif
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
 
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
-
     - name: Prepare dependencies
-      run: ./y.rs prepare
+      run: ./y.sh prepare
 
     - name: Test
       run: ./scripts/test_bootstrap.sh
+
+
   rustc_test_suite:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
     - uses: actions/checkout@v3
@@ -40,15 +37,8 @@ jobs:
         path: build/cg_clif
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
 
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
-
     - name: Prepare dependencies
-      run: ./y.rs prepare
+      run: ./y.sh prepare
 
     - name: Test
       run: ./scripts/test_rustc_tests.sh

@@ -7,7 +7,6 @@ fn main() {
     match 1 {
         NUM => unimplemented!(),
         //~^ ERROR could not evaluate constant pattern
-        //~| ERROR could not evaluate constant pattern
         _ => unimplemented!(),
     }
 }

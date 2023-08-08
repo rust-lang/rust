@@ -25,6 +25,12 @@ error[E0229]: associated type bindings are not allowed here
    |
 LL | impl Fn(&isize) for Error {
    |      ^^^^^^^^^^ associated type not allowed here
+   |
+help: parenthesized trait syntax expands to `Fn<(&isize,), Output=()>`
+  --> $DIR/issue-95023.rs:3:6
+   |
+LL | impl Fn(&isize) for Error {
+   |      ^^^^^^^^^^
 
 error[E0220]: associated type `B` not found for `Self`
   --> $DIR/issue-95023.rs:6:44

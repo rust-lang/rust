@@ -8,7 +8,8 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{edition::Edition, sym, Span};
+use rustc_span::edition::Edition;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -100,7 +101,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
             });
             if !id.is_local();
             then {
-                for kid in cx.tcx.module_children(id).iter() {
+                for kid in cx.tcx.module_children(id) {
                     if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
                         let span = mac_attr.span;
                         let def_path = cx.tcx.def_path_str(mac_id);

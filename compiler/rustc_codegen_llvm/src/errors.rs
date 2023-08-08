@@ -50,9 +50,15 @@ pub(crate) struct SymbolAlreadyDefined<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_invalid_minimum_alignment)]
-pub(crate) struct InvalidMinimumAlignment {
-    pub err: String,
+#[diag(codegen_llvm_invalid_minimum_alignment_not_power_of_two)]
+pub(crate) struct InvalidMinimumAlignmentNotPowerOfTwo {
+    pub align: u64,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_invalid_minimum_alignment_too_large)]
+pub(crate) struct InvalidMinimumAlignmentTooLarge {
+    pub align: u64,
 }
 
 #[derive(Diagnostic)]
@@ -67,13 +73,16 @@ pub(crate) struct ErrorWritingDEFFile {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_error_calling_dlltool)]
-pub(crate) struct ErrorCallingDllTool {
+pub(crate) struct ErrorCallingDllTool<'a> {
+    pub dlltool_path: Cow<'a, str>,
     pub error: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_dlltool_fail_import_library)]
 pub(crate) struct DlltoolFailImportLibrary<'a> {
+    pub dlltool_path: Cow<'a, str>,
+    pub dlltool_args: String,
     pub stdout: Cow<'a, str>,
     pub stderr: Cow<'a, str>,
 }
@@ -195,6 +204,7 @@ pub(crate) struct FromLlvmOptimizationDiag<'a> {
     pub line: std::ffi::c_uint,
     pub column: std::ffi::c_uint,
     pub pass_name: &'a str,
+    pub kind: &'a str,
     pub message: &'a str,
 }
 

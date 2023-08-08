@@ -1,4 +1,6 @@
-"""Bootstrap tests"""
+"""Bootstrap tests
+
+Run these with `x test bootstrap`, or `python -m unittest src/bootstrap/bootstrap_test.py`."""
 
 from __future__ import absolute_import, division, print_function
 import os
@@ -10,7 +12,28 @@ import sys
 
 from shutil import rmtree
 
+# Allow running this from the top-level directory.
+bootstrap_dir = os.path.dirname(os.path.abspath(__file__))
+# For the import below, have Python search in src/bootstrap first.
+sys.path.insert(0, bootstrap_dir)
 import bootstrap
+import configure
+
+def serialize_and_parse(configure_args, bootstrap_args=bootstrap.FakeArgs()):
+    from io import StringIO
+
+    section_order, sections, targets = configure.parse_args(configure_args)
+    buffer = StringIO()
+    configure.write_config_toml(buffer, section_order, targets, sections)
+    build = bootstrap.RustBuild(config_toml=buffer.getvalue(), args=bootstrap_args)
+
+    try:
+        import tomllib
+        # Verify this is actually valid TOML.
+        tomllib.loads(build.config_toml)
+    except ImportError:
+        print("warning: skipping TOML validation, need at least python 3.11", file=sys.stderr)
+    return build
 
 
 class VerifyTestCase(unittest.TestCase):
@@ -74,14 +97,65 @@ class ProgramOutOfDate(unittest.TestCase):
         self.assertFalse(self.build.program_out_of_date(self.rustc_stamp_path, self.key))
 
 
-if __name__ == '__main__':
-    SUITE = unittest.TestSuite()
-    TEST_LOADER = unittest.TestLoader()
-    SUITE.addTest(doctest.DocTestSuite(bootstrap))
-    SUITE.addTests([
-        TEST_LOADER.loadTestsFromTestCase(VerifyTestCase),
-        TEST_LOADER.loadTestsFromTestCase(ProgramOutOfDate)])
+class GenerateAndParseConfig(unittest.TestCase):
+    """Test that we can serialize and deserialize a config.toml file"""
+    def test_no_args(self):
+        build = serialize_and_parse([])
+        self.assertEqual(build.get_toml("changelog-seen"), '2')
+        self.assertEqual(build.get_toml("profile"), 'dist')
+        self.assertIsNone(build.get_toml("llvm.download-ci-llvm"))
 
-    RUNNER = unittest.TextTestRunner(stream=sys.stdout, verbosity=2)
-    result = RUNNER.run(SUITE)
-    sys.exit(0 if result.wasSuccessful() else 1)
+    def test_set_section(self):
+        build = serialize_and_parse(["--set", "llvm.download-ci-llvm"])
+        self.assertEqual(build.get_toml("download-ci-llvm", section="llvm"), 'true')
+
+    def test_set_target(self):
+        build = serialize_and_parse(["--set", "target.x86_64-unknown-linux-gnu.cc=gcc"])
+        self.assertEqual(build.get_toml("cc", section="target.x86_64-unknown-linux-gnu"), 'gcc')
+
+    def test_set_top_level(self):
+        build = serialize_and_parse(["--set", "profile=compiler"])
+        self.assertEqual(build.get_toml("profile"), 'compiler')
+
+    def test_set_codegen_backends(self):
+        build = serialize_and_parse(["--set", "rust.codegen-backends=cranelift"])
+        self.assertNotEqual(build.config_toml.find("codegen-backends = ['cranelift']"), -1)
+        build = serialize_and_parse(["--set", "rust.codegen-backends=cranelift,llvm"])
+        self.assertNotEqual(build.config_toml.find("codegen-backends = ['cranelift', 'llvm']"), -1)
+        build = serialize_and_parse(["--enable-full-tools"])
+        self.assertNotEqual(build.config_toml.find("codegen-backends = ['llvm']"), -1)
+
+
+class BuildBootstrap(unittest.TestCase):
+    """Test that we generate the appropriate arguments when building bootstrap"""
+
+    def build_args(self, configure_args=[], args=[], env={}):
+        env = env.copy()
+        env["PATH"] = os.environ["PATH"]
+
+        parsed = bootstrap.parse_args(args)
+        build = serialize_and_parse(configure_args, parsed)
+        # Make these optional so that `python -m unittest` works when run manually.
+        build_dir = os.environ.get("BUILD_DIR")
+        if build_dir is not None:
+            build.build_dir = build_dir
+        build_platform = os.environ.get("BUILD_PLATFORM")
+        if build_platform is not None:
+            build.build = build_platform
+        return build.build_bootstrap_cmd(env), env
+
+    def test_cargoflags(self):
+        args, _ = self.build_args(env={"CARGOFLAGS": "--timings"})
+        self.assertTrue("--timings" in args)
+
+    def test_warnings(self):
+        for toml_warnings in ['false', 'true', None]:
+            configure_args = []
+            if toml_warnings is not None:
+                configure_args = ["--set", "rust.deny-warnings=" + toml_warnings]
+
+            _, env = self.build_args(configure_args, args=["--warnings=warn"])
+            self.assertFalse("-Dwarnings" in env["RUSTFLAGS"])
+
+            _, env = self.build_args(configure_args, args=["--warnings=deny"])
+            self.assertTrue("-Dwarnings" in env["RUSTFLAGS"])

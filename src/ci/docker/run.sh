@@ -79,7 +79,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       loaded_images=$(/usr/bin/timeout -k 720 600 docker load -i /tmp/rustci_docker_cache \
         | sed 's/.* sha/sha/')
       set -e
-      echo "Downloaded containers:\n$loaded_images"
+      printf "Downloaded containers:\n$loaded_images\n"
     fi
 
     dockerfile="$docker_dir/$image/Dockerfile"
@@ -89,12 +89,14 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     else
         context="$script_dir"
     fi
+    echo "::group::Building docker image for $image"
     retry docker \
       build \
       --rm \
       -t rust-ci \
       -f "$dockerfile" \
       "$context"
+    echo "::endgroup::"
 
     if [ "$CI" != "" ]; then
       s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
@@ -169,6 +171,7 @@ if [ "$SCCACHE_BUCKET" != "" ]; then
     args="$args --env SCCACHE_REGION"
     args="$args --env AWS_ACCESS_KEY_ID"
     args="$args --env AWS_SECRET_ACCESS_KEY"
+    args="$args --env AWS_REGION"
 else
     mkdir -p $HOME/.cache/sccache
     args="$args --env SCCACHE_DIR=/sccache --volume $HOME/.cache/sccache:/sccache"
@@ -253,8 +256,6 @@ docker \
   --env DEPLOY \
   --env DEPLOY_ALT \
   --env CI \
-  --env TF_BUILD \
-  --env BUILD_SOURCEBRANCHNAME \
   --env GITHUB_ACTIONS \
   --env GITHUB_REF \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
@@ -263,6 +264,9 @@ docker \
   --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
   --env BASE_COMMIT="$BASE_COMMIT" \
+  --env DIST_TRY_BUILD \
+  --env PR_CI_JOB \
+  --env OBJDIR_ON_HOST="$objdir" \
   --init \
   --rm \
   rust-ci \

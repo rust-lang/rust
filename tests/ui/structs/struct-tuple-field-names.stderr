@@ -20,6 +20,22 @@ help: use the tuple variant pattern syntax instead
 LL |         S(_, _) => {}
    |          ~~~~~~
 
-error: aborting due to 2 previous errors
+error[E0027]: pattern does not mention field `1`
+  --> $DIR/struct-tuple-field-names.rs:16:12
+   |
+LL |     if let E::S { 0: a } = x {
+   |            ^^^^^^^^^^^^^ missing field `1`
+   |
+help: include the missing field in the pattern
+   |
+LL |     if let E::S { 0: a, 1: _ } = x {
+   |                       ~~~~~~~~
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |     if let E::S { 0: a, .. } = x {
+   |                       ~~~~~~
 
-For more information about this error, try `rustc --explain E0769`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0027, E0769.
+For more information about an error, try `rustc --explain E0027`.

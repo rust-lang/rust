@@ -1,12 +1,10 @@
 mod diagnostic;
 mod diagnostic_builder;
 mod error;
-mod fluent;
 mod subdiagnostic;
 mod utils;
 
 use diagnostic::{DiagnosticDerive, LintDiagnosticDerive};
-pub(crate) use fluent::fluent_messages;
 use proc_macro2::TokenStream;
 use quote::format_ident;
 use subdiagnostic::SubdiagnosticDeriveBuilder;
@@ -142,7 +140,7 @@ pub fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// ```fluent
 /// parser_expected_identifier = expected identifier
 ///
-/// parser_expected_identifier-found = expected identifier, found {$found}
+/// parser_expected_identifier_found = expected identifier, found {$found}
 ///
 /// parser_raw_identifier = escape `{$ident}` to use it as an identifier
 /// ```

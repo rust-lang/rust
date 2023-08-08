@@ -10,7 +10,7 @@
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::fast_reject::{simplify_type, SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -24,7 +24,7 @@ pub fn crate_inherent_impls(tcx: TyCtxt<'_>, (): ()) -> CrateInherentImpls {
     collect.impls_map
 }
 
-pub fn crate_incoherent_impls(tcx: TyCtxt<'_>, (_, simp): (CrateNum, SimplifiedType)) -> &[DefId] {
+pub fn crate_incoherent_impls(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
     let crate_map = tcx.crate_inherent_impls(());
     tcx.arena.alloc_from_iter(
         crate_map.incoherent_impls.get(&simp).unwrap_or(&Vec::new()).iter().map(|d| d.to_def_id()),
@@ -32,9 +32,7 @@ pub fn crate_incoherent_impls(tcx: TyCtxt<'_>, (_, simp): (CrateNum, SimplifiedT
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
-pub fn inherent_impls(tcx: TyCtxt<'_>, ty_def_id: DefId) -> &[DefId] {
-    let ty_def_id = ty_def_id.expect_local();
-
+pub fn inherent_impls(tcx: TyCtxt<'_>, ty_def_id: LocalDefId) -> &[DefId] {
     let crate_map = tcx.crate_inherent_impls(());
     match crate_map.inherent_impls.get(&ty_def_id) {
         Some(v) => &v[..],
@@ -99,7 +97,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 }
             }
 
-            if let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsInfer) {
+            if let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsCandidateKey) {
                 self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
             } else {
                 bug!("unexpected self type: {:?}", self_ty);
@@ -148,10 +146,9 @@ impl<'tcx> InherentCollect<'tcx> {
                 );
                 err.help("consider using an extension trait instead");
                 if let ty::Ref(_, subty, _) = ty.kind() {
-                    err.note(&format!(
+                    err.note(format!(
                         "you could also try moving the reference to \
-                            uses of `{}` (such as `self`) within the implementation",
-                        subty
+                            uses of `{subty}` (such as `self`) within the implementation"
                     ));
                 }
                 err.emit();
@@ -159,7 +156,7 @@ impl<'tcx> InherentCollect<'tcx> {
             }
         }
 
-        if let Some(simp) = simplify_type(self.tcx, ty, TreatParams::AsInfer) {
+        if let Some(simp) = simplify_type(self.tcx, ty, TreatParams::AsCandidateKey) {
             self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
         } else {
             bug!("unexpected primitive type: {:?}", ty);
@@ -173,7 +170,7 @@ impl<'tcx> InherentCollect<'tcx> {
 
         let id = id.owner_id.def_id;
         let item_span = self.tcx.def_span(id);
-        let self_ty = self.tcx.type_of(id).subst_identity();
+        let self_ty = self.tcx.type_of(id).instantiate_identity();
         match *self_ty.kind() {
             ty::Adt(def, _) => self.check_def_id(id, self_ty, def.did()),
             ty::Foreign(did) => self.check_def_id(id, self_ty, did),

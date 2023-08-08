@@ -8,8 +8,10 @@ use std::task::Poll;
 use std::thread;
 
 use log::info;
+use rustc_middle::ty::Ty;
 
 use crate::borrow_tracker::RetagFields;
+use crate::diagnostics::report_leaks;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
@@ -87,8 +89,12 @@ pub struct MiriConfig {
     pub env: Vec<(OsString, OsString)>,
     /// Determine if validity checking is enabled.
     pub validate: bool,
-    /// Determines if Stacked Borrows is enabled.
+    /// Determines if Stacked Borrows or Tree Borrows is enabled.
     pub borrow_tracker: Option<BorrowTrackerMethod>,
+    /// Whether `core::ptr::Unique` receives special treatment.
+    /// If `true` then `Unique` is reborrowed with its own new tag and permission,
+    /// otherwise `Unique` is just another raw pointer.
+    pub unique_is_unique: bool,
     /// Controls alignment checking.
     pub check_alignment: AlignmentCheck,
     /// Controls function [ABI](Abi) checking.
@@ -134,7 +140,7 @@ pub struct MiriConfig {
     pub preemption_rate: f64,
     /// Report the current instruction being executed every N basic blocks.
     pub report_progress: Option<u32>,
-    /// Whether Stacked Borrows retagging should recurse into fields of datatypes.
+    /// Whether Stacked Borrows and Tree Borrows retagging should recurse into fields of datatypes.
     pub retag_fields: RetagFields,
     /// The location of a shared object file to load when calling external functions
     /// FIXME! consider allowing users to specify paths to multiple SO files, or to a directory
@@ -145,6 +151,8 @@ pub struct MiriConfig {
     pub num_cpus: u32,
     /// Requires Miri to emulate pages of a certain size
     pub page_size: Option<u64>,
+    /// Whether to collect a backtrace when each allocation is created, just in case it leaks.
+    pub collect_leak_backtraces: bool,
 }
 
 impl Default for MiriConfig {
@@ -153,6 +161,7 @@ impl Default for MiriConfig {
             env: vec![],
             validate: true,
             borrow_tracker: Some(BorrowTrackerMethod::StackedBorrows),
+            unique_is_unique: false,
             check_alignment: AlignmentCheck::Int,
             check_abi: true,
             isolated_op: IsolatedOp::Reject(RejectOpWith::Abort),
@@ -174,11 +183,12 @@ impl Default for MiriConfig {
             mute_stdout_stderr: false,
             preemption_rate: 0.01, // 1%
             report_progress: None,
-            retag_fields: RetagFields::OnlyScalar,
+            retag_fields: RetagFields::Yes,
             external_so_file: None,
             gc_interval: 10_000,
             num_cpus: 1,
             page_size: None,
+            collect_leak_backtraces: true,
         }
     }
 }
@@ -236,7 +246,7 @@ impl MainThreadState {
                     this.machine.main_fn_ret_place.unwrap().ptr,
                     this.machine.layouts.isize,
                 );
-                let exit_code = this.read_target_isize(&ret_place.into())?;
+                let exit_code = this.read_target_isize(&ret_place)?;
                 // Need to call this ourselves since we are not going to return to the scheduler
                 // loop, and we want the main thread TLS to not show up as memory leaks.
                 this.terminate_active_thread()?;
@@ -295,7 +305,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         for arg in config.args.iter() {
             // Make space for `0` terminator.
             let size = u64::try_from(arg.len()).unwrap().checked_add(1).unwrap();
-            let arg_type = tcx.mk_array(tcx.types.u8, size);
+            let arg_type = Ty::new_array(tcx, tcx.types.u8, size);
             let arg_place =
                 ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Machine.into())?;
             ecx.write_os_str_to_c_str(OsStr::new(arg), arg_place.ptr, size)?;
@@ -303,13 +313,15 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             argvs.push(arg_place.to_ref(&ecx));
         }
         // Make an array with all these pointers, in the Miri memory.
-        let argvs_layout = ecx.layout_of(
-            tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), u64::try_from(argvs.len()).unwrap()),
-        )?;
+        let argvs_layout = ecx.layout_of(Ty::new_array(
+            tcx,
+            Ty::new_imm_ptr(tcx, tcx.types.u8),
+            u64::try_from(argvs.len()).unwrap(),
+        ))?;
         let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Machine.into())?;
         for (idx, arg) in argvs.into_iter().enumerate() {
-            let place = ecx.mplace_field(&argvs_place, idx)?;
-            ecx.write_immediate(arg, &place.into())?;
+            let place = ecx.project_field(&argvs_place, idx)?;
+            ecx.write_immediate(arg, &place)?;
         }
         ecx.mark_immutable(&argvs_place);
         // A pointer to that place is the 3rd argument for main.
@@ -318,15 +330,15 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         {
             let argc_place =
                 ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
-            ecx.write_scalar(argc, &argc_place.into())?;
+            ecx.write_scalar(argc, &argc_place)?;
             ecx.mark_immutable(&argc_place);
             ecx.machine.argc = Some(*argc_place);
 
             let argv_place = ecx.allocate(
-                ecx.layout_of(tcx.mk_imm_ptr(tcx.types.unit))?,
+                ecx.layout_of(Ty::new_imm_ptr(tcx, tcx.types.unit))?,
                 MiriMemoryKind::Machine.into(),
             )?;
-            ecx.write_immediate(argv, &argv_place.into())?;
+            ecx.write_immediate(argv, &argv_place)?;
             ecx.mark_immutable(&argv_place);
             ecx.machine.argv = Some(*argv_place);
         }
@@ -335,14 +347,15 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             // Construct a command string with all the arguments.
             let cmd_utf16: Vec<u16> = args_to_utf16_command_string(config.args.iter());
 
-            let cmd_type = tcx.mk_array(tcx.types.u16, u64::try_from(cmd_utf16.len()).unwrap());
+            let cmd_type =
+                Ty::new_array(tcx, tcx.types.u16, u64::try_from(cmd_utf16.len()).unwrap());
             let cmd_place =
                 ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Machine.into())?;
             ecx.machine.cmd_line = Some(*cmd_place);
             // Store the UTF-16 string. We just allocated so we know the bounds are fine.
             for (idx, &c) in cmd_utf16.iter().enumerate() {
-                let place = ecx.mplace_field(&cmd_place, idx)?;
-                ecx.write_scalar(Scalar::from_u16(c), &place.into())?;
+                let place = ecx.project_field(&cmd_place, idx)?;
+                ecx.write_scalar(Scalar::from_u16(c), &place)?;
             }
             ecx.mark_immutable(&cmd_place);
         }
@@ -356,14 +369,18 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
     match entry_type {
         EntryFnType::Main { .. } => {
-            let start_id = tcx.lang_items().start_fn().unwrap();
+            let start_id = tcx.lang_items().start_fn().unwrap_or_else(|| {
+                tcx.sess.fatal(
+                    "could not find start function. Make sure the entry point is marked with `#[start]`."
+                );
+            });
             let main_ret_ty = tcx.fn_sig(entry_id).no_bound_vars().unwrap().output();
             let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
             let start_instance = ty::Instance::resolve(
                 tcx,
                 ty::ParamEnv::reveal_all(),
                 start_id,
-                tcx.mk_substs(&[ty::subst::GenericArg::from(main_ret_ty)]),
+                tcx.mk_args(&[ty::GenericArg::from(main_ret_ty)]),
             )
             .unwrap()
             .unwrap();
@@ -372,7 +389,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
             // Inlining of `DEFAULT` from
             // https://github.com/rust-lang/rust/blob/master/compiler/rustc_session/src/config/sigpipe.rs.
-            // Alaways using DEFAULT is okay since we don't support signals in Miri anyway.
+            // Always using DEFAULT is okay since we don't support signals in Miri anyway.
             let sigpipe = 2;
 
             ecx.call_function(
@@ -418,8 +435,9 @@ pub fn eval_entry<'tcx>(
     let mut ecx = match create_ecx(tcx, entry_id, entry_type, &config) {
         Ok(v) => v,
         Err(err) => {
-            err.print_backtrace();
-            panic!("Miri initialization error: {}", err.kind())
+            let (kind, backtrace) = err.into_parts();
+            backtrace.print_backtrace();
+            panic!("Miri initialization error: {kind:?}")
         }
     };
 
@@ -456,11 +474,18 @@ pub fn eval_entry<'tcx>(
             return None;
         }
         // Check for memory leaks.
-        info!("Additonal static roots: {:?}", ecx.machine.static_roots);
-        let leaks = ecx.leak_report(&ecx.machine.static_roots);
-        if leaks != 0 {
-            tcx.sess.err("the evaluated program leaked memory");
-            tcx.sess.note_without_error("pass `-Zmiri-ignore-leaks` to disable this check");
+        info!("Additional static roots: {:?}", ecx.machine.static_roots);
+        let leaks = ecx.find_leaked_allocations(&ecx.machine.static_roots);
+        if !leaks.is_empty() {
+            report_leaks(&ecx, leaks);
+            let leak_message = "the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check";
+            if ecx.machine.collect_leak_backtraces {
+                // If we are collecting leak backtraces, each leak is a distinct error diagnostic.
+                tcx.sess.note_without_error(leak_message);
+            } else {
+                // If we do not have backtraces, we just report an error without any span.
+                tcx.sess.err(leak_message);
+            };
             // Ignore the provided return code - let the reported error
             // determine the return code.
             return None;

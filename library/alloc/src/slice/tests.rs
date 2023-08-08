@@ -187,6 +187,7 @@ std::thread_local!(static SILENCE_PANIC: Cell<bool> = Cell::new(false));
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)] // no threads
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn panic_safe() {
     panic::update_hook(move |prev, info| {
         if !SILENCE_PANIC.with(|s| s.get()) {

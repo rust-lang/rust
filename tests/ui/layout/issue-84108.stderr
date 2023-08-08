@@ -6,7 +6,7 @@ LL | static FOO: (dyn AsRef<OsStr>, u8) = ("hello", 42);
    |
 help: consider importing this struct
    |
-LL | use std::ffi::OsStr;
+LL + use std::ffi::OsStr;
    |
 
 error[E0412]: cannot find type `Path` in this scope
@@ -17,7 +17,7 @@ LL | const BAR: (&Path, [u8], usize) = ("hello", [], 42);
    |
 help: consider importing this struct
    |
-LL | use std::path::Path;
+LL + use std::path::Path;
    |
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time

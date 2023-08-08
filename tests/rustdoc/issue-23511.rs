@@ -3,7 +3,7 @@
 #![no_std]
 
 pub mod str {
-    #![doc(primitive = "str")]
+    #![rustc_doc_primitive = "str"]
 
     impl str {
         // @hasraw search-index.js foo

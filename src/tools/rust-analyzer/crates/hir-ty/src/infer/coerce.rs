@@ -5,14 +5,15 @@
 //! See <https://doc.rust-lang.org/nomicon/coercions.html> and
 //! `rustc_hir_analysis/check/coercion.rs`.
 
-use std::{iter, sync::Arc};
+use std::iter;
 
-use chalk_ir::{cast::Cast, BoundVar, Goal, Mutability, TyVariableKind};
+use chalk_ir::{cast::Cast, BoundVar, Goal, Mutability, TyKind, TyVariableKind};
 use hir_def::{
-    expr::ExprId,
+    hir::ExprId,
     lang_item::{LangItem, LangItemTarget},
 };
 use stdx::always;
+use triomphe::Arc;
 
 use crate::{
     autoderef::{Autoderef, AutoderefKind},
@@ -21,8 +22,10 @@ use crate::{
         Adjust, Adjustment, AutoBorrow, InferOk, InferenceContext, OverloadedDeref, PointerCast,
         TypeError, TypeMismatch,
     },
-    static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, Guidance, InEnvironment, Interner,
-    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
+    static_lifetime,
+    utils::ClosureSubst,
+    Canonical, DomainGoal, FnPointer, FnSig, Guidance, InEnvironment, Interner, Solution,
+    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
 use super::unify::InferenceTable;
@@ -47,14 +50,59 @@ fn success(
     Ok(InferOk { goals, value: (adj, target) })
 }
 
+pub(super) enum CoercionCause {
+    // FIXME: Make better use of this. Right now things like return and break without a value
+    // use it to point to themselves, causing us to report a mismatch on those expressions even
+    // though technically they themselves are `!`
+    Expr(ExprId),
+}
+
 #[derive(Clone, Debug)]
 pub(super) struct CoerceMany {
     expected_ty: Ty,
+    final_ty: Option<Ty>,
+    expressions: Vec<ExprId>,
 }
 
 impl CoerceMany {
     pub(super) fn new(expected: Ty) -> Self {
-        CoerceMany { expected_ty: expected }
+        CoerceMany { expected_ty: expected, final_ty: None, expressions: vec![] }
+    }
+
+    /// Returns the "expected type" with which this coercion was
+    /// constructed. This represents the "downward propagated" type
+    /// that was given to us at the start of typing whatever construct
+    /// we are typing (e.g., the match expression).
+    ///
+    /// Typically, this is used as the expected type when
+    /// type-checking each of the alternative expressions whose types
+    /// we are trying to merge.
+    pub(super) fn expected_ty(&self) -> Ty {
+        self.expected_ty.clone()
+    }
+
+    /// Returns the current "merged type", representing our best-guess
+    /// at the LUB of the expressions we've seen so far (if any). This
+    /// isn't *final* until you call `self.complete()`, which will return
+    /// the merged type.
+    pub(super) fn merged_ty(&self) -> Ty {
+        self.final_ty.clone().unwrap_or_else(|| self.expected_ty.clone())
+    }
+
+    pub(super) fn complete(self, ctx: &mut InferenceContext<'_>) -> Ty {
+        if let Some(final_ty) = self.final_ty {
+            final_ty
+        } else {
+            ctx.result.standard_types.never.clone()
+        }
+    }
+
+    pub(super) fn coerce_forced_unit(
+        &mut self,
+        ctx: &mut InferenceContext<'_>,
+        cause: CoercionCause,
+    ) {
+        self.coerce(ctx, None, &ctx.result.standard_types.unit.clone(), cause)
     }
 
     /// Merge two types from different branches, with possible coercion.
@@ -69,6 +117,7 @@ impl CoerceMany {
         ctx: &mut InferenceContext<'_>,
         expr: Option<ExprId>,
         expr_ty: &Ty,
+        cause: CoercionCause,
     ) {
         let expr_ty = ctx.resolve_ty_shallow(expr_ty);
         self.expected_ty = ctx.resolve_ty_shallow(&self.expected_ty);
@@ -76,25 +125,34 @@ impl CoerceMany {
         // Special case: two function types. Try to coerce both to
         // pointers to have a chance at getting a match. See
         // https://github.com/rust-lang/rust/blob/7b805396bf46dce972692a6846ce2ad8481c5f85/src/librustc_typeck/check/coercion.rs#L877-L916
-        let sig = match (self.expected_ty.kind(Interner), expr_ty.kind(Interner)) {
+        let sig = match (self.merged_ty().kind(Interner), expr_ty.kind(Interner)) {
+            (TyKind::FnDef(x, _), TyKind::FnDef(y, _)) if x == y => None,
+            (TyKind::Closure(x, _), TyKind::Closure(y, _)) if x == y => None,
             (TyKind::FnDef(..) | TyKind::Closure(..), TyKind::FnDef(..) | TyKind::Closure(..)) => {
                 // FIXME: we're ignoring safety here. To be more correct, if we have one FnDef and one Closure,
                 // we should be coercing the closure to a fn pointer of the safety of the FnDef
                 cov_mark::hit!(coerce_fn_reification);
                 let sig =
-                    self.expected_ty.callable_sig(ctx.db).expect("FnDef without callable sig");
+                    self.merged_ty().callable_sig(ctx.db).expect("FnDef without callable sig");
                 Some(sig)
             }
             _ => None,
         };
         if let Some(sig) = sig {
             let target_ty = TyKind::Function(sig.to_fn_ptr()).intern(Interner);
-            let result1 = ctx.table.coerce_inner(self.expected_ty.clone(), &target_ty);
+            let result1 = ctx.table.coerce_inner(self.merged_ty(), &target_ty);
             let result2 = ctx.table.coerce_inner(expr_ty.clone(), &target_ty);
             if let (Ok(result1), Ok(result2)) = (result1, result2) {
-                ctx.table.register_infer_ok(result1);
-                ctx.table.register_infer_ok(result2);
-                return self.expected_ty = target_ty;
+                ctx.table.register_infer_ok(InferOk { value: (), goals: result1.goals });
+                for &e in &self.expressions {
+                    ctx.write_expr_adj(e, result1.value.0.clone());
+                }
+                ctx.table.register_infer_ok(InferOk { value: (), goals: result2.goals });
+                if let Some(expr) = expr {
+                    ctx.write_expr_adj(expr, result2.value.0);
+                    self.expressions.push(expr);
+                }
+                return self.final_ty = Some(target_ty);
             }
         }
 
@@ -102,24 +160,24 @@ impl CoerceMany {
         // type is a type variable and the new one is `!`, trying it the other
         // way around first would mean we make the type variable `!`, instead of
         // just marking it as possibly diverging.
-        if ctx.coerce(expr, &expr_ty, &self.expected_ty).is_ok() {
-            /* self.expected_ty is already correct */
-        } else if ctx.coerce(expr, &self.expected_ty, &expr_ty).is_ok() {
-            self.expected_ty = expr_ty;
+        if let Ok(res) = ctx.coerce(expr, &expr_ty, &self.merged_ty()) {
+            self.final_ty = Some(res);
+        } else if let Ok(res) = ctx.coerce(expr, &self.merged_ty(), &expr_ty) {
+            self.final_ty = Some(res);
         } else {
-            if let Some(id) = expr {
-                ctx.result.type_mismatches.insert(
-                    id.into(),
-                    TypeMismatch { expected: self.expected_ty.clone(), actual: expr_ty },
-                );
+            match cause {
+                CoercionCause::Expr(id) => {
+                    ctx.result.type_mismatches.insert(
+                        id.into(),
+                        TypeMismatch { expected: self.merged_ty(), actual: expr_ty.clone() },
+                    );
+                }
             }
             cov_mark::hit!(coerce_merge_fail_fallback);
-            /* self.expected_ty is already correct */
         }
-    }
-
-    pub(super) fn complete(self) -> Ty {
-        self.expected_ty
+        if let Some(expr) = expr {
+            self.expressions.push(expr);
+        }
     }
 }
 
@@ -162,7 +220,7 @@ pub(crate) fn coerce(
     Ok((adjustments, table.resolve_with_fallback(ty, &fallback)))
 }
 
-impl<'a> InferenceContext<'a> {
+impl InferenceContext<'_> {
     /// Unify two types, but may coerce the first one to the second one
     /// using "implicit coercion rules" if needed.
     pub(super) fn coerce(
@@ -181,7 +239,7 @@ impl<'a> InferenceContext<'a> {
     }
 }
 
-impl<'a> InferenceTable<'a> {
+impl InferenceTable<'_> {
     /// Unify two types, but may coerce the first one to the second one
     /// using "implicit coercion rules" if needed.
     pub(crate) fn coerce(
@@ -319,7 +377,7 @@ impl<'a> InferenceTable<'a> {
 
         let snapshot = self.snapshot();
 
-        let mut autoderef = Autoderef::new(self, from_ty.clone());
+        let mut autoderef = Autoderef::new(self, from_ty.clone(), false);
         let mut first_error = None;
         let mut found = None;
 
@@ -597,7 +655,7 @@ impl<'a> InferenceTable<'a> {
         // Need to find out in what cases this is necessary
         let solution = self
             .db
-            .trait_solve(krate, canonicalized.value.clone().cast(Interner))
+            .trait_solve(krate, self.trait_env.block, canonicalized.value.clone().cast(Interner))
             .ok_or(TypeError)?;
 
         match solution {
@@ -629,7 +687,7 @@ impl<'a> InferenceTable<'a> {
 }
 
 fn coerce_closure_fn_ty(closure_substs: &Substitution, safety: chalk_ir::Safety) -> Ty {
-    let closure_sig = closure_substs.at(Interner, 0).assert_ty_ref(Interner).clone();
+    let closure_sig = ClosureSubst(closure_substs).sig_ty().clone();
     match closure_sig.kind(Interner) {
         TyKind::Function(fn_ty) => TyKind::Function(FnPointer {
             num_binders: fn_ty.num_binders,
@@ -665,7 +723,7 @@ pub(super) fn auto_deref_adjust_steps(autoderef: &Autoderef<'_, '_>) -> Vec<Adju
         .iter()
         .map(|(kind, _source)| match kind {
             // We do not know what kind of deref we require at this point yet
-            AutoderefKind::Overloaded => Some(OverloadedDeref(Mutability::Not)),
+            AutoderefKind::Overloaded => Some(OverloadedDeref(None)),
             AutoderefKind::Builtin => None,
         })
         .zip(targets)

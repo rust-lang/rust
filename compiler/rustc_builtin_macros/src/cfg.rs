@@ -2,13 +2,13 @@
 //! a literal `true` or `false` based on whether the given cfg matches the
 //! current compilation environment.
 
+use crate::errors;
 use rustc_ast as ast;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_attr as attr;
 use rustc_errors::PResult;
 use rustc_expand::base::{self, *};
-use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
 pub fn expand_cfg(
@@ -35,26 +35,11 @@ pub fn expand_cfg(
     }
 }
 
-#[derive(Diagnostic)]
-#[diag(builtin_macros_requires_cfg_pattern)]
-struct RequiresCfgPattern {
-    #[primary_span]
-    #[label]
-    span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_expected_one_cfg_pattern)]
-struct OneCfgPattern {
-    #[primary_span]
-    span: Span,
-}
-
 fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<'a, ast::MetaItem> {
     let mut p = cx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
-        return Err(cx.create_err(RequiresCfgPattern { span }));
+        return Err(cx.create_err(errors::RequiresCfgPattern { span }));
     }
 
     let cfg = p.parse_meta_item()?;
@@ -62,7 +47,7 @@ fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<
     let _ = p.eat(&token::Comma);
 
     if !p.eat(&token::Eof) {
-        return Err(cx.create_err(OneCfgPattern { span }));
+        return Err(cx.create_err(errors::OneCfgPattern { span }));
     }
 
     Ok(cfg)

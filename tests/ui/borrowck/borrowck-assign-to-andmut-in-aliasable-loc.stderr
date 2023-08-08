@@ -6,8 +6,8 @@ LL |     *s.pointer += 1;
    |
 help: consider changing this to be a mutable reference
    |
-LL | fn a(s: &mut S<'_>) {
-   |         ~~~~~~~~~~
+LL | fn a(s: &mut S) {
+   |          +++
 
 error[E0594]: cannot assign to `*s.pointer`, which is behind a `&` reference
   --> $DIR/borrowck-assign-to-andmut-in-aliasable-loc.rs:17:5
@@ -17,8 +17,8 @@ LL |     *s.pointer += 1;
    |
 help: consider changing this to be a mutable reference
    |
-LL | fn c(s: &mut &mut S<'_>) {
-   |         ~~~~~~~~~~~~~~~
+LL | fn c(s: &mut  &mut S) {
+   |          +++
 
 error: aborting due to 2 previous errors
 

@@ -1,9 +1,9 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_hir};
 use clippy_utils::source::is_present_in_source;
 use clippy_utils::str_utils::{camel_case_split, count_match_end, count_match_start};
-use rustc_hir::{EnumDef, Item, ItemKind, Variant};
+use rustc_hir::{EnumDef, Item, ItemKind, OwnerId, Variant};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
@@ -105,18 +105,20 @@ declare_clippy_lint! {
 }
 
 pub struct EnumVariantNames {
-    modules: Vec<(Symbol, String)>,
+    modules: Vec<(Symbol, String, OwnerId)>,
     threshold: u64,
     avoid_breaking_exported_api: bool,
+    allow_private_module_inception: bool,
 }
 
 impl EnumVariantNames {
     #[must_use]
-    pub fn new(threshold: u64, avoid_breaking_exported_api: bool) -> Self {
+    pub fn new(threshold: u64, avoid_breaking_exported_api: bool, allow_private_module_inception: bool) -> Self {
         Self {
             modules: Vec::new(),
             threshold,
             avoid_breaking_exported_api,
+            allow_private_module_inception,
         }
     }
 }
@@ -135,9 +137,10 @@ fn check_enum_start(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>
         && name.chars().nth(item_name_chars).map_or(false, |c| !c.is_lowercase())
         && name.chars().nth(item_name_chars + 1).map_or(false, |c| !c.is_numeric())
     {
-        span_lint(
+        span_lint_hir(
             cx,
             ENUM_VARIANT_NAMES,
+            variant.hir_id,
             variant.span,
             "variant name starts with the enum's name",
         );
@@ -149,9 +152,10 @@ fn check_enum_end(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) 
     let item_name_chars = item_name.chars().count();
 
     if count_match_end(item_name, name).char_count == item_name_chars {
-        span_lint(
+        span_lint_hir(
             cx,
             ENUM_VARIANT_NAMES,
+            variant.hir_id,
             variant.span,
             "variant name ends with the enum's name",
         );
@@ -250,18 +254,19 @@ impl LateLintPass<'_> for EnumVariantNames {
         let item_name = item.ident.name.as_str();
         let item_camel = to_camel_case(item_name);
         if !item.span.from_expansion() && is_present_in_source(cx, item.span) {
-            if let Some((mod_name, mod_camel)) = self.modules.last() {
+            if let [.., (mod_name, mod_camel, owner_id)] = &*self.modules {
                 // constants don't have surrounding modules
                 if !mod_camel.is_empty() {
-                    if mod_name == &item.ident.name {
-                        if let ItemKind::Mod(..) = item.kind {
-                            span_lint(
-                                cx,
-                                MODULE_INCEPTION,
-                                item.span,
-                                "module has the same name as its containing module",
-                            );
-                        }
+                    if mod_name == &item.ident.name
+                        && let ItemKind::Mod(..) = item.kind
+                        && (!self.allow_private_module_inception || cx.tcx.visibility(owner_id.def_id).is_public())
+                    {
+                        span_lint(
+                            cx,
+                            MODULE_INCEPTION,
+                            item.span,
+                            "module has the same name as its containing module",
+                        );
                     }
                     // The `module_name_repetitions` lint should only trigger if the item has the module in its
                     // name. Having the same name is accepted.
@@ -300,6 +305,6 @@ impl LateLintPass<'_> for EnumVariantNames {
                 check_variant(cx, self.threshold, def, item_name, item.span);
             }
         }
-        self.modules.push((item.ident.name, item_camel));
+        self.modules.push((item.ident.name, item_camel, item.owner_id));
     }
 }

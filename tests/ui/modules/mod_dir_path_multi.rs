@@ -1,5 +1,4 @@
 // run-pass
-// ignore-pretty issue #37195
 
 #[path = "mod_dir_simple"]
 mod biscuits {

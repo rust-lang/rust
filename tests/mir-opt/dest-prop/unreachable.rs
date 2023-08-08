@@ -1,3 +1,4 @@
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // Check that unreachable code is removed after the destination propagation.
 // Regression test for issue #105428.
 //

@@ -5,7 +5,7 @@ fn test<const N: usize>() {}
 
 fn issue_75323_and_74447_1<'a>() -> &'a () {
     test::<{ let _: &'a (); 3 },>();
-   //~^ ERROR a non-static lifetime is not allowed in a `const`
+   //~^ ERROR generic parameters may not be used in const operations
     &()
 }
 
@@ -19,7 +19,7 @@ fn issue_75323_and_74447_3() {
 
 fn issue_73375<'a>() {
     [(); (|_: &'a u8| (), 0).1];
-    //~^ ERROR a non-static lifetime is not allowed in a `const`
+    //~^ ERROR generic parameters may not be used in const operations
 }
 
 fn main() {}

@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2018"
 
 [workspace]
-members = ["subcrate"]
+members = ["subcrate", "module_style/pass_no_mod_with_dep_in_subdir", "module_style/pass_mod_with_dep_in_subdir"]

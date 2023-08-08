@@ -1,0 +1,27 @@
+warning: unresolved link to `3`
+  --> $DIR/broken-link-in-unused-doc-string.rs:14:6
+   |
+LL | /// [3]
+   |      ^ no item named `3` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
+
+warning: unresolved link to `1`
+  --> $DIR/broken-link-in-unused-doc-string.rs:6:6
+   |
+LL | /// [1]
+   |      ^ no item named `1` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `1`
+  --> $DIR/broken-link-in-unused-doc-string.rs:6:6
+   |
+LL | /// [1]
+   |      ^ no item named `1` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: 3 warnings emitted
+

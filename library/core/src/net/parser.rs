@@ -9,7 +9,7 @@ use crate::fmt;
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use crate::str::FromStr;
 
-trait ReadNumberHelper: crate::marker::Sized {
+trait ReadNumberHelper: Sized {
     const ZERO: Self;
     fn checked_mul(&self, other: u32) -> Option<Self>;
     fn checked_add(&self, other: u32) -> Option<Self>;

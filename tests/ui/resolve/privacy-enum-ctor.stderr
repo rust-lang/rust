@@ -84,9 +84,9 @@ LL |     let _: E = m::f;
    |                   ~
 help: consider importing one of these items instead
    |
-LL | use std::f32::consts::E;
+LL + use std::f32::consts::E;
    |
-LL | use std::f64::consts::E;
+LL + use std::f64::consts::E;
    |
 help: if you import `E`, refer to it directly
    |
@@ -121,9 +121,9 @@ LL |     let _: E = (E::Fn(/* fields */));
    |                ~~~~~~~~~~~~~~~~~~~~~
 help: consider importing one of these items instead
    |
-LL | use std::f32::consts::E;
+LL + use std::f32::consts::E;
    |
-LL | use std::f64::consts::E;
+LL + use std::f64::consts::E;
    |
 
 error[E0412]: cannot find type `Z` in this scope
@@ -228,7 +228,9 @@ error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:61:22
    |
 LL |     let _: Z = m::n::Z::Fn;
-   |                      ^ private enum
+   |                      ^  -- tuple variant `Fn` is not publicly re-exported
+   |                      |
+   |                      private enum
    |
 note: the enum `Z` is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
@@ -252,7 +254,9 @@ error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:68:22
    |
 LL |     let _: Z = m::n::Z::Unit {};
-   |                      ^ private enum
+   |                      ^  ---- variant `Unit` is not publicly re-exported
+   |                      |
+   |                      private enum
    |
 note: the enum `Z` is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9

@@ -1,0 +1,8 @@
+error: multiple `import_name_type` arguments in a single `#[link]` attribute
+  --> $DIR/import-name-type-multiple.rs:4:74
+   |
+LL | #[link(name = "foo", kind = "raw-dylib", import_name_type = "decorated", import_name_type = "decorated")]
+   |                                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

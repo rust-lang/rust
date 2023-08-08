@@ -3,6 +3,8 @@ error[E0770]: the type of const parameters must not depend on other generic para
    |
 LL | fn foo<const LEN: usize, const DATA: [u8; LEN]>() {}
    |                                           ^^^ the type must not depend on the parameter `LEN`
+   |
+   = note: const parameters may not be used in the type of const parameters
 
 error: aborting due to previous error
 

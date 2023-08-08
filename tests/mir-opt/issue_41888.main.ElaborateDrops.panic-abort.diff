@@ -1,0 +1,148 @@
+- // MIR for `main` before ElaborateDrops
++ // MIR for `main` after ElaborateDrops
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: E;
+      let mut _2: bool;
+      let mut _3: E;
+      let mut _4: K;
+      let mut _5: isize;
++     let mut _7: bool;
++     let mut _8: bool;
++     let mut _9: bool;
++     let mut _10: isize;
++     let mut _11: isize;
+      scope 1 {
+          debug e => _1;
+          scope 2 {
+              debug _k => _6;
+              let _6: K;
+          }
+      }
+  
+      bb0: {
++         _7 = const false;
++         _8 = const false;
++         _9 = const false;
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = cond() -> [return: bb1, unwind: bb11];
+      }
+  
+      bb1: {
+          switchInt(move _2) -> [0: bb8, otherwise: bb2];
+      }
+  
+      bb2: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = K;
+          _3 = E::F(move _4);
+          StorageDead(_4);
+-         drop(_1) -> [return: bb3, unwind: bb4];
++         goto -> bb3;
+      }
+  
+      bb3: {
++         _7 = const true;
++         _8 = const true;
++         _9 = const true;
+          _1 = move _3;
+-         drop(_3) -> [return: bb5, unwind: bb11];
++         goto -> bb5;
+      }
+  
+      bb4 (cleanup): {
+          _1 = move _3;
+          drop(_3) -> [return: bb11, unwind terminate];
+      }
+  
+      bb5: {
+          StorageDead(_3);
+          _5 = discriminant(_1);
+          switchInt(move _5) -> [0: bb6, otherwise: bb7];
+      }
+  
+      bb6: {
+          StorageLive(_6);
++         _9 = const false;
+          _6 = move ((_1 as F).0: K);
+          _0 = const ();
+          StorageDead(_6);
+          goto -> bb9;
+      }
+  
+      bb7: {
+          _0 = const ();
+          goto -> bb9;
+      }
+  
+      bb8: {
+          _0 = const ();
+          goto -> bb9;
+      }
+  
+      bb9: {
+          StorageDead(_2);
+-         drop(_1) -> [return: bb10, unwind: bb12];
++         goto -> bb19;
+      }
+  
+      bb10: {
++         _7 = const false;
++         _8 = const false;
++         _9 = const false;
+          StorageDead(_1);
+          return;
+      }
+  
+      bb11 (cleanup): {
+-         drop(_1) -> [return: bb12, unwind terminate];
++         goto -> bb12;
+      }
+  
+      bb12 (cleanup): {
+          resume;
++     }
++ 
++     bb13 (cleanup): {
++         unreachable;
++     }
++ 
++     bb14: {
++         _7 = const false;
++         goto -> bb10;
++     }
++ 
++     bb15 (cleanup): {
++         goto -> bb12;
++     }
++ 
++     bb16: {
++         drop(_1) -> [return: bb14, unwind: bb12];
++     }
++ 
++     bb17 (cleanup): {
++         drop(_1) -> [return: bb12, unwind terminate];
++     }
++ 
++     bb18: {
++         _10 = discriminant(_1);
++         switchInt(move _10) -> [0: bb14, otherwise: bb16];
++     }
++ 
++     bb19: {
++         switchInt(_7) -> [0: bb14, otherwise: bb18];
++     }
++ 
++     bb20 (cleanup): {
++         _11 = discriminant(_1);
++         switchInt(move _11) -> [0: bb15, otherwise: bb17];
++     }
++ 
++     bb21 (cleanup): {
++         switchInt(_7) -> [0: bb12, otherwise: bb20];
+      }
+  }
+  

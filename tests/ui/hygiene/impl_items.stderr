@@ -1,5 +1,5 @@
 error: type `for<'a> fn(&'a foo::S) {foo::S::f}` is private
-  --> $DIR/impl_items.rs:12:23
+  --> $DIR/impl_items.rs:10:23
    |
 LL |         let _: () = S.f();
    |                       ^ private type

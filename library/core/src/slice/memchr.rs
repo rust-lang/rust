@@ -1,7 +1,6 @@
 // Original implementation taken from rust-memchr.
 // Copyright 2015 Andrew Gallant, bluss and Nicolas Koch
 
-use crate::cmp;
 use crate::mem;
 
 const LO_USIZE: usize = usize::repeat_u8(0x01);
@@ -83,8 +82,12 @@ const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
     let mut offset = ptr.align_offset(USIZE_BYTES);
 
     if offset > 0 {
-        offset = cmp::min(offset, len);
-        if let Some(index) = memchr_naive(x, &text[..offset]) {
+        // FIXME(const-hack, fee1-dead): replace with min
+        offset = if offset < len { offset } else { len };
+        // FIXME(const-hack, fee1-dead): replace with range slicing
+        // SAFETY: offset is within bounds
+        let slice = unsafe { super::from_raw_parts(text.as_ptr(), offset) };
+        if let Some(index) = memchr_naive(x, slice) {
             return Some(index);
         }
     }
@@ -110,7 +113,10 @@ const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
 
     // Find the byte after the point the body loop stopped.
     // FIXME(const-hack): Use `?` instead.
-    if let Some(i) = memchr_naive(x, &text[offset..]) { Some(offset + i) } else { None }
+    // FIXME(const-hack, fee1-dead): use range slicing
+    // SAFETY: offset is within bounds
+    let slice = unsafe { super::from_raw_parts(text.as_ptr().add(offset), text.len() - offset) };
+    if let Some(i) = memchr_naive(x, slice) { Some(offset + i) } else { None }
 }
 
 /// Returns the last index matching the byte `x` in `text`.

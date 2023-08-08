@@ -1,7 +1,7 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::len_zero)]
-#![allow(dead_code, unused, clippy::len_without_is_empty)]
+#![allow(dead_code, unused, clippy::needless_if, clippy::len_without_is_empty)]
 
 extern crate core;
 use core::ops::Deref;
@@ -176,6 +176,10 @@ fn main() {
         // No error; `HasWrongIsEmpty` does not have `.is_empty()`.
         println!("Or this!");
     }
+
+    // issue #10529
+    (has_is_empty.len() > 0).then(|| println!("This can happen."));
+    (has_is_empty.len() == 0).then(|| println!("Or this!"));
 }
 
 fn test_slice(b: &[u8]) {

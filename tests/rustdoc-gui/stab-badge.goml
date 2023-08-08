@@ -1,12 +1,12 @@
 // All stability badges should have rounded corners and colored backgrounds.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true
 define-function: (
     "check-badge",
     (theme, background, color),
     block {
-        local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": |theme|}
-        goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+        set-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": |theme|}
+        go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
         assert: ".docblock .stab"
         assert: ".item-table .stab"
         assert-css: (".stab", {
@@ -14,7 +14,7 @@ define-function: (
             "color": |color|,
             "background-color": |background|,
         })
-        goto: "file://" + |DOC_PATH| + "/test_docs/fn.replaced_function.html"
+        go-to: "file://" + |DOC_PATH| + "/test_docs/fn.replaced_function.html"
         assert: (".item-info .stab")
         assert-css: (".stab", {
             "border-radius": "3px",
@@ -26,16 +26,16 @@ define-function: (
 
 call-function: ("check-badge", {
     "theme": "ayu",
-    "color": "rgb(197, 197, 197)",
-    "background": "rgb(49, 69, 89)",
+    "color": "#c5c5c5",
+    "background": "#314559",
 })
 call-function: ("check-badge", {
     "theme": "dark",
-    "color": "rgb(221, 221, 221)",
-    "background": "rgb(49, 69, 89)",
+    "color": "#ddd",
+    "background": "#314559",
 })
 call-function: ("check-badge", {
     "theme": "light",
-    "color": "rgb(0, 0, 0)",
-    "background": "rgb(255, 245, 214)",
+    "color": "black",
+    "background": "#fff5d6",
 })

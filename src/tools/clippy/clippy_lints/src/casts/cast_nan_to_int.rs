@@ -21,8 +21,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
 
 fn is_known_nan(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     match constant(cx, cx.typeck_results(), e) {
-        Some((Constant::F64(n), _)) => n.is_nan(),
-        Some((Constant::F32(n), _)) => n.is_nan(),
+        Some(Constant::F64(n)) => n.is_nan(),
+        Some(Constant::F32(n)) => n.is_nan(),
         _ => false,
     }
 }

@@ -40,7 +40,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .control            { font-style: italic; }
 .reference          { font-style: italic; font-weight: bold; }
 
-.unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
+.invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
+.unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
 </style>
 <pre><code><span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">allow</span><span class="parenthesis attribute">(</span><span class="none attribute">dead_code</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="tool_module attribute library">rustfmt</span><span class="operator attribute">::</span><span class="tool_module attribute library">skip</span><span class="attribute_bracket attribute">]</span>
@@ -53,6 +54,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="comment">// This is another normal comment</span>
 <span class="comment documentation">/// This is another doc comment</span>
 <span class="comment">// This is another normal comment</span>
-<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="attribute attribute default_library library">derive</span><span class="parenthesis attribute">(</span><span class="derive attribute default_library library">Copy</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
+<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="attribute attribute default_library library">derive</span><span class="parenthesis attribute">(</span><span class="derive attribute default_library library">Copy</span><span class="comma attribute">,</span> <span class="unresolved_reference attribute">Unresolved</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
 <span class="comment">// The reason for these being here is to test AttrIds</span>
 <span class="keyword">struct</span> <span class="struct declaration">Foo</span><span class="semicolon">;</span></code></pre>

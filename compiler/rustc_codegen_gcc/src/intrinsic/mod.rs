@@ -12,7 +12,8 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{ArgAbiMethods, BaseTypeMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods};
 #[cfg(feature="master")]
-use rustc_codegen_ssa::traits::{DerivedTypeMethods, MiscMethods};
+use rustc_codegen_ssa::traits::MiscMethods;
+use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::ty::layout::LayoutOf;
@@ -31,7 +32,6 @@ use crate::abi::FnAbiGccExt;
 use crate::builder::Builder;
 use crate::common::{SignType, TypeReflection};
 use crate::context::CodegenCx;
-use crate::errors::InvalidMonomorphizationBasicInteger;
 use crate::type_of::LayoutGccExt;
 use crate::intrinsic::simd::generic_simd_intrinsic;
 
@@ -92,8 +92,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
-        let (def_id, substs) = match *callee_ty.kind() {
-            ty::FnDef(def_id, substs) => (def_id, substs),
+        let (def_id, fn_args) = match *callee_ty.kind() {
+            ty::FnDef(def_id, fn_args) => (def_id, fn_args),
             _ => bug!("expected fn item type, found {}", callee_ty),
         };
 
@@ -113,7 +113,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 _ if simple.is_some() => {
                     // FIXME(antoyo): remove this cast when the API supports function.
                     let func = unsafe { std::mem::transmute(simple.expect("simple")) };
-                    self.call(self.type_void(), None, func, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None)
+                    self.call(self.type_void(), None, None, func, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None)
                 },
                 sym::likely => {
                     self.expect(args[0].immediate(), true)
@@ -142,7 +142,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 }
 
                 sym::volatile_load | sym::unaligned_volatile_load => {
-                    let tp_ty = substs.type_at(0);
+                    let tp_ty = fn_args.type_at(0);
                     let mut ptr = args[0].immediate();
                     if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
                         ptr = self.pointercast(ptr, self.type_ptr_to(ty.gcc_type(self)));
@@ -256,7 +256,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                 _ => bug!(),
                             },
                             None => {
-                                tcx.sess.emit_err(InvalidMonomorphizationBasicInteger { span, name, ty });
+                                tcx.sess.emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
                                 return;
                             }
                         }
@@ -264,7 +264,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 sym::raw_eq => {
                     use rustc_target::abi::Abi::*;
-                    let tp_ty = substs.type_at(0);
+                    let tp_ty = fn_args.type_at(0);
                     let layout = self.layout_of(tp_ty).layout;
                     let _use_integer_compare = match layout.abi() {
                         Scalar(_) | ScalarPair(_, _) => true,
@@ -302,6 +302,21 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     }
                 }
 
+                sym::compare_bytes => {
+                    let a = args[0].immediate();
+                    let b = args[1].immediate();
+                    let n = args[2].immediate();
+
+                    let void_ptr_type = self.context.new_type::<*const ()>();
+                    let a_ptr = self.bitcast(a, void_ptr_type);
+                    let b_ptr = self.bitcast(b, void_ptr_type);
+
+                    // Here we assume that the `memcmp` provided by the target is a NOP for size 0.
+                    let builtin = self.context.get_builtin_function("memcmp");
+                    let cmp = self.context.new_call(None, builtin, &[a_ptr, b_ptr, n]);
+                    self.sext(cmp, self.type_ix(32))
+                }
+
                 sym::black_box => {
                     args[0].val.store(self, result);
 
@@ -326,7 +341,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     let masked = self.and(addr, mask);
                     self.bitcast(masked, void_ptr_type)
                 },
-                
+
                 _ if name_str.starts_with("simd_") => {
                     match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
                         Ok(llval) => llval,
@@ -354,7 +369,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn abort(&mut self) {
         let func = self.context.get_builtin_function("abort");
         let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
-        self.call(self.type_void(), None, func, &[], None);
+        self.call(self.type_void(), None, None, func, &[], None);
     }
 
     fn assume(&mut self, value: Self::Value) {
@@ -551,141 +566,52 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let context = &self.cx.context;
         let result =
             match width {
-                8 => {
+                8 | 16 | 32 | 64 => {
+                    let mask = ((1u128 << width) - 1) as u64;
+                    let (m0, m1, m2) = if width > 16 {
+                        (
+                            context.new_rvalue_from_long(typ, (0x5555555555555555u64 & mask) as i64),
+                            context.new_rvalue_from_long(typ, (0x3333333333333333u64 & mask) as i64),
+                            context.new_rvalue_from_long(typ, (0x0f0f0f0f0f0f0f0fu64 & mask) as i64),
+                        )
+                    } else {
+                        (
+                            context.new_rvalue_from_int(typ, (0x5555u64 & mask) as i32),
+                            context.new_rvalue_from_int(typ, (0x3333u64 & mask) as i32),
+                            context.new_rvalue_from_int(typ, (0x0f0fu64 & mask) as i32),
+                        )
+                    };
+                    let one = context.new_rvalue_from_int(typ, 1);
+                    let two = context.new_rvalue_from_int(typ, 2);
+                    let four = context.new_rvalue_from_int(typ, 4);
+
                     // First step.
-                    let left = self.and(value, context.new_rvalue_from_int(typ, 0xF0));
-                    let left = self.lshr(left, context.new_rvalue_from_int(typ, 4));
-                    let right = self.and(value, context.new_rvalue_from_int(typ, 0x0F));
-                    let right = self.shl(right, context.new_rvalue_from_int(typ, 4));
+                    let left = self.lshr(value, one);
+                    let left = self.and(left, m0);
+                    let right = self.and(value, m0);
+                    let right = self.shl(right, one);
                     let step1 = self.or(left, right);
 
                     // Second step.
-                    let left = self.and(step1, context.new_rvalue_from_int(typ, 0xCC));
-                    let left = self.lshr(left, context.new_rvalue_from_int(typ, 2));
-                    let right = self.and(step1, context.new_rvalue_from_int(typ, 0x33));
-                    let right = self.shl(right, context.new_rvalue_from_int(typ, 2));
+                    let left = self.lshr(step1, two);
+                    let left = self.and(left, m1);
+                    let right = self.and(step1, m1);
+                    let right = self.shl(right, two);
                     let step2 = self.or(left, right);
 
                     // Third step.
-                    let left = self.and(step2, context.new_rvalue_from_int(typ, 0xAA));
-                    let left = self.lshr(left, context.new_rvalue_from_int(typ, 1));
-                    let right = self.and(step2, context.new_rvalue_from_int(typ, 0x55));
-                    let right = self.shl(right, context.new_rvalue_from_int(typ, 1));
-                    let step3 = self.or(left, right);
-
-                    step3
-                },
-                16 => {
-                    // First step.
-                    let left = self.and(value, context.new_rvalue_from_int(typ, 0x5555));
-                    let left = self.shl(left, context.new_rvalue_from_int(typ, 1));
-                    let right = self.and(value, context.new_rvalue_from_int(typ, 0xAAAA));
-                    let right = self.lshr(right, context.new_rvalue_from_int(typ, 1));
-                    let step1 = self.or(left, right);
-
-                    // Second step.
-                    let left = self.and(step1, context.new_rvalue_from_int(typ, 0x3333));
-                    let left = self.shl(left, context.new_rvalue_from_int(typ, 2));
-                    let right = self.and(step1, context.new_rvalue_from_int(typ, 0xCCCC));
-                    let right = self.lshr(right, context.new_rvalue_from_int(typ, 2));
-                    let step2 = self.or(left, right);
-
-                    // Third step.
-                    let left = self.and(step2, context.new_rvalue_from_int(typ, 0x0F0F));
-                    let left = self.shl(left, context.new_rvalue_from_int(typ, 4));
-                    let right = self.and(step2, context.new_rvalue_from_int(typ, 0xF0F0));
-                    let right = self.lshr(right, context.new_rvalue_from_int(typ, 4));
+                    let left = self.lshr(step2, four);
+                    let left = self.and(left, m2);
+                    let right = self.and(step2, m2);
+                    let right = self.shl(right, four);
                     let step3 = self.or(left, right);
 
                     // Fourth step.
-                    let left = self.and(step3, context.new_rvalue_from_int(typ, 0x00FF));
-                    let left = self.shl(left, context.new_rvalue_from_int(typ, 8));
-                    let right = self.and(step3, context.new_rvalue_from_int(typ, 0xFF00));
-                    let right = self.lshr(right, context.new_rvalue_from_int(typ, 8));
-                    let step4 = self.or(left, right);
-
-                    step4
-                },
-                32 => {
-                    // TODO(antoyo): Refactor with other implementations.
-                    // First step.
-                    let left = self.and(value, context.new_rvalue_from_long(typ, 0x55555555));
-                    let left = self.shl(left, context.new_rvalue_from_long(typ, 1));
-                    let right = self.and(value, context.new_rvalue_from_long(typ, 0xAAAAAAAA));
-                    let right = self.lshr(right, context.new_rvalue_from_long(typ, 1));
-                    let step1 = self.or(left, right);
-
-                    // Second step.
-                    let left = self.and(step1, context.new_rvalue_from_long(typ, 0x33333333));
-                    let left = self.shl(left, context.new_rvalue_from_long(typ, 2));
-                    let right = self.and(step1, context.new_rvalue_from_long(typ, 0xCCCCCCCC));
-                    let right = self.lshr(right, context.new_rvalue_from_long(typ, 2));
-                    let step2 = self.or(left, right);
-
-                    // Third step.
-                    let left = self.and(step2, context.new_rvalue_from_long(typ, 0x0F0F0F0F));
-                    let left = self.shl(left, context.new_rvalue_from_long(typ, 4));
-                    let right = self.and(step2, context.new_rvalue_from_long(typ, 0xF0F0F0F0));
-                    let right = self.lshr(right, context.new_rvalue_from_long(typ, 4));
-                    let step3 = self.or(left, right);
-
-                    // Fourth step.
-                    let left = self.and(step3, context.new_rvalue_from_long(typ, 0x00FF00FF));
-                    let left = self.shl(left, context.new_rvalue_from_long(typ, 8));
-                    let right = self.and(step3, context.new_rvalue_from_long(typ, 0xFF00FF00));
-                    let right = self.lshr(right, context.new_rvalue_from_long(typ, 8));
-                    let step4 = self.or(left, right);
-
-                    // Fifth step.
-                    let left = self.and(step4, context.new_rvalue_from_long(typ, 0x0000FFFF));
-                    let left = self.shl(left, context.new_rvalue_from_long(typ, 16));
-                    let right = self.and(step4, context.new_rvalue_from_long(typ, 0xFFFF0000));
-                    let right = self.lshr(right, context.new_rvalue_from_long(typ, 16));
-                    let step5 = self.or(left, right);
-
-                    step5
-                },
-                64 => {
-                    // First step.
-                    let left = self.shl(value, context.new_rvalue_from_long(typ, 32));
-                    let right = self.lshr(value, context.new_rvalue_from_long(typ, 32));
-                    let step1 = self.or(left, right);
-
-                    // Second step.
-                    let left = self.and(step1, context.new_rvalue_from_long(typ, 0x0001FFFF0001FFFF));
-                    let left = self.shl(left, context.new_rvalue_from_long(typ, 15));
-                    let right = self.and(step1, context.new_rvalue_from_long(typ, 0xFFFE0000FFFE0000u64 as i64)); // TODO(antoyo): transmute the number instead?
-                    let right = self.lshr(right, context.new_rvalue_from_long(typ, 17));
-                    let step2 = self.or(left, right);
-
-                    // Third step.
-                    let left = self.lshr(step2, context.new_rvalue_from_long(typ, 10));
-                    let left = self.xor(step2, left);
-                    let temp = self.and(left, context.new_rvalue_from_long(typ, 0x003F801F003F801F));
-
-                    let left = self.shl(temp, context.new_rvalue_from_long(typ, 10));
-                    let left = self.or(temp, left);
-                    let step3 = self.xor(left, step2);
-
-                    // Fourth step.
-                    let left = self.lshr(step3, context.new_rvalue_from_long(typ, 4));
-                    let left = self.xor(step3, left);
-                    let temp = self.and(left, context.new_rvalue_from_long(typ, 0x0E0384210E038421));
-
-                    let left = self.shl(temp, context.new_rvalue_from_long(typ, 4));
-                    let left = self.or(temp, left);
-                    let step4 = self.xor(left, step3);
-
-                    // Fifth step.
-                    let left = self.lshr(step4, context.new_rvalue_from_long(typ, 2));
-                    let left = self.xor(step4, left);
-                    let temp = self.and(left, context.new_rvalue_from_long(typ, 0x2248884222488842));
-
-                    let left = self.shl(temp, context.new_rvalue_from_long(typ, 2));
-                    let left = self.or(temp, left);
-                    let step5 = self.xor(left, step4);
-
-                    step5
+                    if width == 8 {
+                        step3
+                    } else {
+                        self.gcc_bswap(step3, width)
+                    }
                 },
                 128 => {
                     // TODO(antoyo): find a more efficient implementation?
@@ -1135,7 +1061,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
 fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(bx: &'b mut Builder<'a, 'gcc, 'tcx>, try_func: RValue<'gcc>, data: RValue<'gcc>, _catch_func: RValue<'gcc>, dest: RValue<'gcc>) {
     if bx.sess().panic_strategy() == PanicStrategy::Abort {
-        bx.call(bx.type_void(), None, try_func, &[data], None);
+        bx.call(bx.type_void(), None, None, try_func, &[data], None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
         let ret_align = bx.tcx.data_layout.i32_align.abi;
@@ -1204,21 +1130,21 @@ fn codegen_gnu_try<'gcc>(bx: &mut Builder<'_, 'gcc, '_>, try_func: RValue<'gcc>,
         let zero = bx.cx.context.new_rvalue_zero(bx.int_type);
         let ptr = bx.cx.context.new_call(None, eh_pointer_builtin, &[zero]);
         let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
-        bx.call(catch_ty, None, catch_func, &[data, ptr], None);
+        bx.call(catch_ty, None, None, catch_func, &[data, ptr], None);
         bx.ret(bx.const_i32(1));
 
         // NOTE: the blocks must be filled before adding the try/catch, otherwise gcc will not
         // generate a try/catch.
         // FIXME(antoyo): add a check in the libgccjit API to prevent this.
         bx.switch_to_block(current_block);
-        bx.invoke(try_func_ty, None, try_func, &[data], then, catch, None);
+        bx.invoke(try_func_ty, None, None, try_func, &[data], then, catch, None);
     });
 
     let func = unsafe { std::mem::transmute(func) };
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llty, None, func, &[try_func, data, catch_func], None);
+    let ret = bx.call(llty, None, None, func, &[try_func, data, catch_func], None);
     let i32_align = bx.tcx().data_layout.i32_align.abi;
     bx.store(ret, dest, i32_align);
 }
@@ -1236,19 +1162,19 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, codegen: &mut 
 
     // Define the type up front for the signature of the rust_try function.
     let tcx = cx.tcx;
-    let i8p = tcx.mk_mut_ptr(tcx.types.i8);
+    let i8p = Ty::new_mut_ptr(tcx,tcx.types.i8);
     // `unsafe fn(*mut i8) -> ()`
-    let try_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
+    let try_fn_ty = Ty::new_fn_ptr(tcx,ty::Binder::dummy(tcx.mk_fn_sig(
         iter::once(i8p),
-        tcx.mk_unit(),
+        Ty::new_unit(tcx,),
         false,
         rustc_hir::Unsafety::Unsafe,
         Abi::Rust,
     )));
     // `unsafe fn(*mut i8, *mut i8) -> ()`
-    let catch_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
+    let catch_fn_ty = Ty::new_fn_ptr(tcx,ty::Binder::dummy(tcx.mk_fn_sig(
         [i8p, i8p].iter().cloned(),
-        tcx.mk_unit(),
+        Ty::new_unit(tcx,),
         false,
         rustc_hir::Unsafety::Unsafe,
         Abi::Rust,

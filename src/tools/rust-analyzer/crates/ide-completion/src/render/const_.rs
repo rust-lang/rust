@@ -29,5 +29,5 @@ fn render(ctx: RenderContext<'_>, const_: hir::Const) -> Option<CompletionItem> 
     }
     item.insert_text(escaped_name);
 
-    Some(item.build())
+    Some(item.build(ctx.db()))
 }

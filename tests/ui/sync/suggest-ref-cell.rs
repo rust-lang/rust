@@ -1,5 +1,3 @@
-#![feature(once_cell)]
-
 fn require_sync<T: Sync>() {}
 //~^ NOTE required by this bound in `require_sync`
 //~| NOTE required by a bound in `require_sync`

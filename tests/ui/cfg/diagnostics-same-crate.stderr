@@ -1,0 +1,47 @@
+error[E0433]: failed to resolve: could not find `doesnt_exist` in `inner`
+  --> $DIR/diagnostics-same-crate.rs:38:12
+   |
+LL |     inner::doesnt_exist::hello();
+   |            ^^^^^^^^^^^^ could not find `doesnt_exist` in `inner`
+
+error[E0425]: cannot find function `uwu` in module `inner`
+  --> $DIR/diagnostics-same-crate.rs:32:12
+   |
+LL |     inner::uwu();
+   |            ^^^ not found in `inner`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:3:12
+   |
+LL |     pub fn uwu() {}
+   |            ^^^
+
+error[E0425]: cannot find function `meow` in module `inner::right`
+  --> $DIR/diagnostics-same-crate.rs:42:19
+   |
+LL |     inner::right::meow();
+   |                   ^^^^ not found in `inner::right`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:18:16
+   |
+LL |         pub fn meow() {}
+   |                ^^^^
+   = note: the item is gated behind the `what-a-cool-feature` feature
+
+error[E0425]: cannot find function `uwu` in this scope
+  --> $DIR/diagnostics-same-crate.rs:28:5
+   |
+LL |     uwu();
+   |     ^^^ not found in this scope
+
+error[E0425]: cannot find function `vanished` in this scope
+  --> $DIR/diagnostics-same-crate.rs:49:5
+   |
+LL |     vanished();
+   |     ^^^^^^^^ not found in this scope
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.

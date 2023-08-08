@@ -2,7 +2,7 @@ use rustc_attr as attr;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
 
@@ -28,16 +28,18 @@ pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         && tcx.constness(parent_id) == hir::Constness::Const
 }
 
-/// Checks whether an item is considered to be `const`. If it is a constructor, it is const. If
-/// it is a trait impl/function, return if it has a `const` modifier. If it is an intrinsic,
-/// report whether said intrinsic has a `rustc_const_{un,}stable` attribute. Otherwise, return
-/// `Constness::NotConst`.
-fn constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
-    let def_id = def_id.expect_local();
+/// Checks whether an item is considered to be `const`. If it is a constructor, anonymous const,
+/// const block, const item or associated const, it is const. If it is a trait impl/function,
+/// return if it has a `const` modifier. If it is an intrinsic, report whether said intrinsic
+/// has a `rustc_const_{un,}stable` attribute. Otherwise, return `Constness::NotConst`.
+fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
     let node = tcx.hir().get_by_def_id(def_id);
 
     match node {
-        hir::Node::Ctor(_) => hir::Constness::Const,
+        hir::Node::Ctor(_)
+        | hir::Node::AnonConst(_)
+        | hir::Node::ConstBlock(_)
+        | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => hir::Constness::Const,
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.constness,
         hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) => {
             // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other

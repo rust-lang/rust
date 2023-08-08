@@ -10,6 +10,7 @@ tracing = "0.1"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_error_messages = { path = "../rustc_error_messages" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
 rustc_macros = { path = "../rustc_macros" }
@@ -19,14 +20,20 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_type_ir = { path = "../rustc_type_ir" }
 unicode-width = "0.1.4"
-termcolor = "1.0"
+termcolor = "1.2.0"
 annotate-snippets = "0.9"
 termize = "0.1.1"
 serde = { version = "1.0.125", features = [ "derive" ] }
 serde_json = "1.0.59"
+derive_setters = "0.1.6"
 
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = [ "handleapi", "synchapi", "winbase" ] }
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.48.0"
+features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Threading",
+]
 
 [features]
 rustc_use_parallel_compiler = ['rustc_error_messages/rustc_use_parallel_compiler']

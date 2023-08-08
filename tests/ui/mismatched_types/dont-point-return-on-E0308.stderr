@@ -2,10 +2,8 @@ error[E0308]: mismatched types
   --> $DIR/dont-point-return-on-E0308.rs:11:11
    |
 LL |         f(());
-   |         - ^^
-   |         | |
-   |         | expected `&()`, found `()`
-   |         | help: consider borrowing here: `&()`
+   |         - ^^ expected `&()`, found `()`
+   |         |
    |         arguments to this function are incorrect
    |
 note: function defined here
@@ -13,6 +11,10 @@ note: function defined here
    |
 LL | async fn f(_: &()) {}
    |          ^ ------
+help: consider borrowing here
+   |
+LL |         f(&());
+   |           +
 
 error: aborting due to previous error
 

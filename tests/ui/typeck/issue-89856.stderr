@@ -13,7 +13,7 @@ note: function defined here
    |
 LL | fn take_str_maybe(_: Option<&str>) { }
    |    ^^^^^^^^^^^^^^ ---------------
-help: try converting the passed type into a `&str`
+help: try using `.as_deref()` to convert `Option<String>` to `Option<&str>`
    |
 LL |     take_str_maybe(option.as_deref());
    |                          +++++++++++

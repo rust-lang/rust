@@ -10,7 +10,7 @@ error[E0560]: struct `Demo` has no field named `egregiously_nonexistent_field`
 LL |             Self { secret_integer: 3, egregiously_nonexistent_field: () }
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Demo` does not have this field
    |
-   = note: available fields are: `favorite_integer`, `secret_integer`, `innocently_misspellable`, `another_field`, `yet_another_field` ... and 2 others
+   = note: available fields are: `favorite_integer`, `innocently_misspellable`, `another_field`, `yet_another_field`, `always_more_fields`, `and_ever`
 
 error[E0609]: no field `inocently_mispellable` on type `Demo`
   --> $DIR/issue-42599_available_fields_note.rs:32:41

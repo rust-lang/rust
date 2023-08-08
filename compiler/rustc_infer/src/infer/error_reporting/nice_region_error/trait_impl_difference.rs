@@ -13,7 +13,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::RegionHighlightMode;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 use rustc_span::Span;
 
 use std::ops::ControlFlow;
@@ -41,8 +41,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             // all of the region highlighting machinery only deals with those.
             let guar = self.emit_err(
                 var_origin.span(),
-                self.cx.tcx.mk_fn_ptr(ty::Binder::dummy(expected)),
-                self.cx.tcx.mk_fn_ptr(ty::Binder::dummy(found)),
+                Ty::new_fn_ptr(self.cx.tcx,ty::Binder::dummy(expected)),
+                Ty::new_fn_ptr(self.cx.tcx,ty::Binder::dummy(found)),
                 *trait_item_def_id,
             );
             return Some(guar);
@@ -81,7 +81,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     self.highlight.highlighting_region(r, self.counter);
                     self.counter += 1;
                 }
-                r.super_visit_with(self)
+                ControlFlow::Continue(())
             }
         }
 

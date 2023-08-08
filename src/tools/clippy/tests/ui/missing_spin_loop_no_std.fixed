@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::missing_spin_loop)]
 #![feature(lang_items, start, libc)]
 #![no_std]

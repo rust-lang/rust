@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 
 fn main() {
     let x = FooImpl::<BarImpl<1>> { phantom: PhantomData };
-    let _ = x.foo::<BarImpl<1>>();
+    x.foo::<BarImpl<1>>();
 }
 
 trait Foo<T>

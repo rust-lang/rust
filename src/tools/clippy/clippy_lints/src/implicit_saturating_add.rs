@@ -1,7 +1,7 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use if_chain::if_chain;
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
@@ -55,15 +55,25 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
             if let ExprKind::AssignOp(op1, target, value) = ex.kind;
             let ty = cx.typeck_results().expr_ty(target);
             if Some(c) == get_int_max(ty);
+            let ctxt = expr.span.ctxt();
+            if ex.span.ctxt() == ctxt;
+            if expr1.span.ctxt() == ctxt;
             if clippy_utils::SpanlessEq::new(cx).eq_expr(l, target);
             if BinOpKind::Add == op1.node;
-            if let ExprKind::Lit(ref lit) = value.kind;
+            if let ExprKind::Lit(lit) = value.kind;
             if let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node;
             if block.expr.is_none();
             then {
                 let mut app = Applicability::MachineApplicable;
-                let code = snippet_with_applicability(cx, target.span, "_", &mut app);
-                let sugg = if let Some(parent) = get_parent_expr(cx, expr) && let ExprKind::If(_cond, _then, Some(else_)) = parent.kind && else_.hir_id == expr.hir_id {format!("{{{code} = {code}.saturating_add(1); }}")} else {format!("{code} = {code}.saturating_add(1);")};
+                let code = snippet_with_context(cx, target.span, ctxt, "_", &mut app).0;
+                let sugg = if let Some(parent) = get_parent_expr(cx, expr)
+                    && let ExprKind::If(_cond, _then, Some(else_)) = parent.kind
+                    && else_.hir_id == expr.hir_id
+                {
+                    format!("{{{code} = {code}.saturating_add(1); }}")
+                } else {
+                    format!("{code} = {code}.saturating_add(1);")
+                };
                 span_lint_and_sugg(cx, IMPLICIT_SATURATING_ADD, expr.span, "manual saturating add detected", "use instead", sugg, app);
             }
         }
@@ -91,10 +101,10 @@ fn get_int_max(ty: Ty<'_>) -> Option<u128> {
 fn get_const<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<(u128, BinOpKind, &'tcx Expr<'tcx>)> {
     if let ExprKind::Binary(op, l, r) = expr.kind {
         let tr = cx.typeck_results();
-        if let Some((Constant::Int(c), _)) = constant(cx, tr, r) {
+        if let Some(Constant::Int(c)) = constant(cx, tr, r) {
             return Some((c, op.node, l));
         };
-        if let Some((Constant::Int(c), _)) = constant(cx, tr, l) {
+        if let Some(Constant::Int(c)) = constant(cx, tr, l) {
             return Some((c, invert_op(op.node)?, r));
         }
     }

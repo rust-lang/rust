@@ -62,7 +62,7 @@ impl Handle {
         let floor_log2 = variant_count.ilog2();
 
         // we need to add one for non powers of two to compensate for the difference
-        #[allow(clippy::integer_arithmetic)] // cannot overflow
+        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
         if variant_count.is_power_of_two() { floor_log2 } else { floor_log2 + 1 }
     }
 
@@ -87,7 +87,7 @@ impl Handle {
 
         // packs the data into the lower `data_size` bits
         // and packs the discriminant right above the data
-        #[allow(clippy::integer_arithmetic)] // cannot overflow
+        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
         return discriminant << data_size | data;
     }
 
@@ -106,11 +106,11 @@ impl Handle {
         let data_size = u32::BITS.checked_sub(disc_size).unwrap();
 
         // the lower `data_size` bits of this mask are 1
-        #[allow(clippy::integer_arithmetic)] // cannot overflow
+        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
         let data_mask = 2u32.pow(data_size) - 1;
 
         // the discriminant is stored right above the lower `data_size` bits
-        #[allow(clippy::integer_arithmetic)] // cannot overflow
+        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
         let discriminant = handle >> data_size;
 
         // the data is stored in the lower `data_size` bits

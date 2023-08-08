@@ -19,7 +19,7 @@ use super::*;
 // struct S;
 pub(super) fn mod_contents(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     attributes::inner_attrs(p);
-    while !p.at(EOF) && !(p.at(T!['}']) && stop_on_r_curly) {
+    while !(p.at(EOF) || (p.at(T!['}']) && stop_on_r_curly)) {
         item_or_macro(p, stop_on_r_curly);
     }
 }
@@ -328,9 +328,6 @@ fn macro_rules(p: &mut Parser<'_>, m: Marker) {
     p.bump_remap(T![macro_rules]);
     p.expect(T![!]);
 
-    if p.at(IDENT) {
-        name(p);
-    }
     // Special-case `macro_rules! try`.
     // This is a hack until we do proper edition support
 
@@ -340,6 +337,8 @@ fn macro_rules(p: &mut Parser<'_>, m: Marker) {
         let m = p.start();
         p.bump_remap(IDENT);
         m.complete(p, NAME);
+    } else {
+        name(p);
     }
 
     match p.current() {

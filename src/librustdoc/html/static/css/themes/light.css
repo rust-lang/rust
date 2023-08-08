@@ -2,6 +2,7 @@
 	--main-background-color: white;
 	--main-color: black;
 	--settings-input-color: #2196f3;
+	--settings-input-border-color: #717171;
 	--settings-button-color: #000;
 	--settings-button-border-focus: #717171;
 	--sidebar-background-color: #F5F5F5;
@@ -67,7 +68,7 @@
 	--test-arrow-color: #f5f5f5;
 	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
 	--test-arrow-hover-color: #f5f5f5;
-	--test-arrow-hover-background-color: #4e8bca;
+	--test-arrow-hover-background-color: rgb(78, 139, 202);
 	--target-background-color: #fdffd3;
 	--target-border-color: #ad7c37;
 	--kbd-color: #000;
@@ -80,8 +81,8 @@
 	--crate-search-div-hover-filter: invert(44%) sepia(18%) saturate(23%) hue-rotate(317deg)
 		brightness(96%) contrast(93%);
 	--crate-search-hover-border: #717171;
-	--source-sidebar-background-selected: #fff;
-	--source-sidebar-background-hover: #e0e0e0;
+	--src-sidebar-background-selected: #fff;
+	--src-sidebar-background-hover: #e0e0e0;
 	--table-alt-row-background-color: #F5F5F5;
 	--codeblock-link-background: #eee;
 	--scrape-example-toggle-line-background: #ccc;

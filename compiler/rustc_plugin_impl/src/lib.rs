@@ -12,13 +12,13 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 use rustc_lint::LintStore;
-use rustc_macros::fluent_messages;
 
 mod errors;
 pub mod load;
 
-fluent_messages! { "../locales/en-US.ftl" }
+fluent_messages! { "../messages.ftl" }
 
 /// Structure used to register plugins.
 ///

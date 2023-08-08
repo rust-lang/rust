@@ -3,7 +3,10 @@ use std::time::{Duration, Instant as StdInstant};
 
 /// When using a virtual clock, this defines how many nanoseconds we pretend are passing for each
 /// basic block.
-const NANOSECONDS_PER_BASIC_BLOCK: u64 = 10;
+/// This number is pretty random, but it has been shown to approximately cause
+/// some sample programs to run within an order of magnitude of real time on desktop CPUs.
+/// (See `tests/pass/shims/time-with-isolation*.rs`.)
+const NANOSECONDS_PER_BASIC_BLOCK: u64 = 5000;
 
 #[derive(Debug)]
 pub struct Instant {

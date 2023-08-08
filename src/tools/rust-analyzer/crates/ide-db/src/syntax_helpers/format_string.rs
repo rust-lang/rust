@@ -92,7 +92,7 @@ pub fn lex_format_specifiers(
                 let (_, second) = cloned.next().unwrap_or_default();
                 match second {
                     '<' | '^' | '>' => {
-                        // alignment specifier, first char specifies fillment
+                        // alignment specifier, first char specifies fill
                         skip_char_and_emit(&mut chars, FormatSpecifier::Fill, &mut callback);
                         skip_char_and_emit(&mut chars, FormatSpecifier::Align, &mut callback);
                     }

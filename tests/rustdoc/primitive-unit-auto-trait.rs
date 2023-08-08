@@ -1,7 +1,7 @@
 // compile-flags: --crate-type lib --edition 2018
 
 #![crate_name = "foo"]
-#![feature(rustdoc_internals)]
+#![feature(rustc_attrs)]
 
 // @has foo/primitive.unit.html '//a[@class="primitive"]' 'unit'
 // @has - '//h1' 'Primitive Type unit'
@@ -9,6 +9,6 @@
 // @has - '//h2[@id="synthetic-implementations"]' 'Auto Trait Implementations'
 // @has - '//div[@id="synthetic-implementations-list"]//h3' 'impl Send for ()'
 // @has - '//div[@id="synthetic-implementations-list"]//h3' 'impl Sync for ()'
-#[doc(primitive = "unit")]
+#[rustc_doc_primitive = "unit"]
 /// this is a test!
 mod unit_prim {}

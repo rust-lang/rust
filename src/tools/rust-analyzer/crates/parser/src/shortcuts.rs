@@ -24,7 +24,7 @@ pub enum StrStep<'a> {
     Error { msg: &'a str, pos: usize },
 }
 
-impl<'a> LexedStr<'a> {
+impl LexedStr<'_> {
     pub fn to_input(&self) -> crate::Input {
         let mut res = crate::Input::default();
         let mut was_joint = false;
@@ -46,10 +46,8 @@ impl<'a> LexedStr<'a> {
                     // Tag the token as joint if it is float with a fractional part
                     // we use this jointness to inform the parser about what token split
                     // event to emit when we encounter a float literal in a field access
-                    if kind == SyntaxKind::FLOAT_NUMBER {
-                        if !self.text(i).ends_with('.') {
-                            res.was_joint();
-                        }
+                    if kind == SyntaxKind::FLOAT_NUMBER && !self.text(i).ends_with('.') {
+                        res.was_joint();
                     }
                 }
 
@@ -225,7 +223,8 @@ fn n_attached_trivias<'a>(
 ) -> usize {
     match kind {
         CONST | ENUM | FN | IMPL | MACRO_CALL | MACRO_DEF | MACRO_RULES | MODULE | RECORD_FIELD
-        | STATIC | STRUCT | TRAIT | TUPLE_FIELD | TYPE_ALIAS | UNION | USE | VARIANT => {
+        | STATIC | STRUCT | TRAIT | TUPLE_FIELD | TYPE_ALIAS | UNION | USE | VARIANT
+        | EXTERN_CRATE => {
             let mut res = 0;
             let mut trivias = trivias.enumerate().peekable();
 

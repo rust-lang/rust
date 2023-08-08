@@ -1,59 +1,5 @@
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/patterns-capture-analysis.rs:10:14
-   |
-LL |     let c =  #[rustc_capture_analysis]
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/patterns-capture-analysis.rs:31:14
-   |
-LL |     let c =  #[rustc_capture_analysis]
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/patterns-capture-analysis.rs:52:14
-   |
-LL |     let c =  #[rustc_capture_analysis]
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/patterns-capture-analysis.rs:68:14
-   |
-LL |     let c =  #[rustc_capture_analysis]
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/patterns-capture-analysis.rs:90:14
-   |
-LL |     let c =  #[rustc_capture_analysis]
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/patterns-capture-analysis.rs:114:14
-   |
-LL |     let c =  #[rustc_capture_analysis]
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:14:5
+  --> $DIR/patterns-capture-analysis.rs:12:5
    |
 LL | /     || {
 LL | |
@@ -65,13 +11,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:17:15
+  --> $DIR/patterns-capture-analysis.rs:15:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:14:5
+  --> $DIR/patterns-capture-analysis.rs:12:5
    |
 LL | /     || {
 LL | |
@@ -83,13 +29,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:17:15
+  --> $DIR/patterns-capture-analysis.rs:15:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:34:5
+  --> $DIR/patterns-capture-analysis.rs:30:5
    |
 LL | /     || {
 LL | |
@@ -100,7 +46,7 @@ LL | |     };
    | |_____^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:55:5
+  --> $DIR/patterns-capture-analysis.rs:49:5
    |
 LL | /     || {
 LL | |
@@ -111,7 +57,7 @@ LL | |     };
    | |_____^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:71:5
+  --> $DIR/patterns-capture-analysis.rs:63:5
    |
 LL | /     || {
 LL | |
@@ -123,18 +69,18 @@ LL | |     };
    | |_____^
    |
 note: Capturing variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:74:15
+  --> $DIR/patterns-capture-analysis.rs:66:15
    |
 LL |         match variant {
    |               ^^^^^^^
 note: Capturing variant[(0, 0)] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:74:15
+  --> $DIR/patterns-capture-analysis.rs:66:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:71:5
+  --> $DIR/patterns-capture-analysis.rs:63:5
    |
 LL | /     || {
 LL | |
@@ -146,13 +92,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:74:15
+  --> $DIR/patterns-capture-analysis.rs:66:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:93:5
+  --> $DIR/patterns-capture-analysis.rs:83:5
    |
 LL | /     || {
 LL | |
@@ -163,7 +109,29 @@ LL | |     };
    | |_____^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:117:5
+  --> $DIR/patterns-capture-analysis.rs:95:5
+   |
+LL | /     || {
+LL | |
+LL | |         match array {
+LL | |             [_, _, _] => {}
+LL | |         }
+LL | |     };
+   | |_____^
+
+error: First Pass analysis includes:
+  --> $DIR/patterns-capture-analysis.rs:108:5
+   |
+LL | /     || {
+LL | |
+LL | |         match f {
+LL | |             Foo([_, _, _]) => ()
+LL | |         }
+LL | |     };
+   | |_____^
+
+error: First Pass analysis includes:
+  --> $DIR/patterns-capture-analysis.rs:130:5
    |
 LL | /     || {
 LL | |
@@ -175,13 +143,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:120:15
+  --> $DIR/patterns-capture-analysis.rs:133:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:117:5
+  --> $DIR/patterns-capture-analysis.rs:130:5
    |
 LL | /     || {
 LL | |
@@ -193,11 +161,130 @@ LL | |     };
    | |_____^
    |
 note: Min Capture variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:120:15
+  --> $DIR/patterns-capture-analysis.rs:133:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
-error: aborting due to 15 previous errors
+error: First Pass analysis includes:
+  --> $DIR/patterns-capture-analysis.rs:148:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         match slice {
+...  |
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+note: Capturing slice[] -> ImmBorrow
+  --> $DIR/patterns-capture-analysis.rs:151:15
+   |
+LL |         match slice {
+   |               ^^^^^
 
-For more information about this error, try `rustc --explain E0658`.
+error: Min Capture analysis includes:
+  --> $DIR/patterns-capture-analysis.rs:148:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         match slice {
+...  |
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+note: Min Capture slice[] -> ImmBorrow
+  --> $DIR/patterns-capture-analysis.rs:151:15
+   |
+LL |         match slice {
+   |               ^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/patterns-capture-analysis.rs:160:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         match slice {
+...  |
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+note: Capturing slice[] -> ImmBorrow
+  --> $DIR/patterns-capture-analysis.rs:163:15
+   |
+LL |         match slice {
+   |               ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/patterns-capture-analysis.rs:160:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         match slice {
+...  |
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+note: Min Capture slice[] -> ImmBorrow
+  --> $DIR/patterns-capture-analysis.rs:163:15
+   |
+LL |         match slice {
+   |               ^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/patterns-capture-analysis.rs:172:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         match slice {
+...  |
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+note: Capturing slice[] -> ImmBorrow
+  --> $DIR/patterns-capture-analysis.rs:175:15
+   |
+LL |         match slice {
+   |               ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/patterns-capture-analysis.rs:172:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         match slice {
+...  |
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+note: Min Capture slice[] -> ImmBorrow
+  --> $DIR/patterns-capture-analysis.rs:175:15
+   |
+LL |         match slice {
+   |               ^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/patterns-capture-analysis.rs:189:5
+   |
+LL | /     || {
+LL | |
+LL | |         match slice {
+LL | |             [..] => {},
+LL | |             _ => {}
+LL | |         }
+LL | |     };
+   | |_____^
+
+error: aborting due to 18 previous errors
+

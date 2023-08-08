@@ -8,8 +8,7 @@ use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::BinOpKind;
-use rustc_hir::{BorrowKind, Expr, ExprKind};
+use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -144,7 +143,7 @@ fn len_arg<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx E
 
 // Returns the length of the `expr` if it's a constant string or char.
 fn constant_length(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<u128> {
-    let (value, _) = constant(cx, cx.typeck_results(), expr)?;
+    let value = constant(cx, cx.typeck_results(), expr)?;
     match value {
         Constant::Str(value) => Some(value.len() as u128),
         Constant::Char(value) => Some(value.len_utf8() as u128),
@@ -159,7 +158,7 @@ fn eq_pattern_length<'tcx>(cx: &LateContext<'tcx>, pattern: &Expr<'_>, expr: &'t
         ..
     }) = expr.kind
     {
-        constant_length(cx, pattern).map_or(false, |length| length == n)
+        constant_length(cx, pattern).map_or(false, |length| length == *n)
     } else {
         len_arg(cx, expr).map_or(false, |arg| eq_expr_value(cx, pattern, arg))
     }
@@ -205,7 +204,7 @@ fn find_stripping<'tcx>(
             if_chain! {
                 if is_ref_str(self.cx, ex);
                 let unref = peel_ref(ex);
-                if let ExprKind::Index(indexed, index) = &unref.kind;
+                if let ExprKind::Index(indexed, index, _) = &unref.kind;
                 if let Some(higher::Range { start, end, .. }) = higher::Range::hir(index);
                 if let ExprKind::Path(path) = &indexed.kind;
                 if self.cx.qpath_res(path, ex.hir_id) == self.target;

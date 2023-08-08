@@ -1,6 +1,8 @@
 error[E0597]: `p` does not live long enough
   --> $DIR/issue-18118.rs:4:9
    |
+LL |         let p = 3;
+   |             - binding `p` declared here
 LL |         &p
    |         ^^
    |         |

@@ -1,6 +1,8 @@
-// run-rustfix
+//@run-rustfix
 #![deny(clippy::trait_duplication_in_bounds)]
 #![allow(unused)]
+
+use std::any::Any;
 
 fn bad_foo<T: Clone + Copy, U: Clone + Copy>(arg0: T, argo1: U) {
     unimplemented!();
@@ -106,6 +108,14 @@ mod foo {
 }
 
 fn qualified_path<T: std::clone::Clone + foo::Clone>(arg0: T) {
+    unimplemented!();
+}
+
+fn good_trait_object(arg0: &(dyn Any + Send)) {
+    unimplemented!();
+}
+
+fn bad_trait_object(arg0: &(dyn Any + Send)) {
     unimplemented!();
 }
 

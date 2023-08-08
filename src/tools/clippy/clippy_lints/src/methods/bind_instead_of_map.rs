@@ -1,7 +1,8 @@
 use super::{contains_return, BIND_INSTEAD_OF_MAP};
 use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, snippet_with_macro_callsite};
-use clippy_utils::{peel_blocks, visitors::find_all_ret_expressions};
+use clippy_utils::peel_blocks;
+use clippy_utils::source::{snippet, snippet_with_context};
+use clippy_utils::visitors::find_all_ret_expressions;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -76,11 +77,8 @@ pub(crate) trait BindInsteadOfMap {
             if !contains_return(inner_expr);
             if let Some(msg) = Self::lint_msg(cx);
             then {
-                let some_inner_snip = if inner_expr.span.from_expansion() {
-                    snippet_with_macro_callsite(cx, inner_expr.span, "_")
-                } else {
-                    snippet(cx, inner_expr.span, "_")
-                };
+                let mut app = Applicability::MachineApplicable;
+                let some_inner_snip = snippet_with_context(cx, inner_expr.span, closure_expr.span.ctxt(), "_", &mut app).0;
 
                 let closure_args_snip = snippet(cx, closure_args_span, "..");
                 let option_snip = snippet(cx, recv.span, "..");
@@ -90,9 +88,9 @@ pub(crate) trait BindInsteadOfMap {
                     BIND_INSTEAD_OF_MAP,
                     expr.span,
                     &msg,
-                    "try this",
+                    "try",
                     note,
-                    Applicability::MachineApplicable,
+                    app,
                 );
                 true
             } else {
@@ -127,7 +125,7 @@ pub(crate) trait BindInsteadOfMap {
         span_lint_and_then(cx, BIND_INSTEAD_OF_MAP, expr.span, &msg, |diag| {
             multispan_sugg_with_applicability(
                 diag,
-                "try this",
+                "try",
                 Applicability::MachineApplicable,
                 std::iter::once((span, Self::GOOD_METHOD_NAME.into())).chain(
                     suggs

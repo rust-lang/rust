@@ -1,6 +1,6 @@
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::query::Providers;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
@@ -47,7 +47,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Par
             // us a test case.
             debug_assert_eq!(normalized_value, resolved_value);
             let erased = infcx.tcx.erase_regions(resolved_value);
-            debug_assert!(!erased.needs_infer(), "{erased:?}");
+            debug_assert!(!erased.has_infer(), "{erased:?}");
             Ok(erased)
         }
         Err(NoSolution) => Err(NoSolution),
@@ -56,20 +56,19 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Par
 
 fn not_outlives_predicate(p: ty::Predicate<'_>) -> bool {
     match p.kind().skip_binder() {
-        ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
-        | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..)) => false,
-        ty::PredicateKind::Clause(ty::Clause::Trait(..))
-        | ty::PredicateKind::Clause(ty::Clause::Projection(..))
-        | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
-        | ty::PredicateKind::AliasEq(..)
-        | ty::PredicateKind::WellFormed(..)
+        ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..)) => false,
+        ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
+        | ty::PredicateKind::AliasRelate(..)
+        | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
-        | ty::PredicateKind::ConstEvaluatable(..)
+        | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
         | ty::PredicateKind::ConstEquate(..)
-        | ty::PredicateKind::Ambiguous
-        | ty::PredicateKind::TypeWellFormedFromEnv(..) => true,
+        | ty::PredicateKind::Ambiguous => true,
     }
 }

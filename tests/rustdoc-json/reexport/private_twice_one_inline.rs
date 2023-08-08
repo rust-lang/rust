@@ -11,18 +11,18 @@ extern crate pub_struct as foo;
 #[doc(inline)]
 
 // @set crate_use_id = "$.index[*][?(@.docs=='Hack A')].id"
-// @set foo_id = "$.index[*][?(@.docs=='Hack A')].inner.id"
+// @set foo_id = "$.index[*][?(@.docs=='Hack A')].inner.import.id"
 /// Hack A
 pub use foo::Foo;
 
 // @set bar_id = "$.index[*][?(@.name=='bar')].id"
 pub mod bar {
-    // @is "$.index[*][?(@.docs=='Hack B')].inner.id" $foo_id
+    // @is "$.index[*][?(@.docs=='Hack B')].inner.import.id" $foo_id
     // @set bar_use_id = "$.index[*][?(@.docs=='Hack B')].id"
-    // @ismany "$.index[*][?(@.name=='bar')].inner.items[*]" $bar_use_id
+    // @ismany "$.index[*][?(@.name=='bar')].inner.module.items[*]" $bar_use_id
     /// Hack B
     pub use foo::Foo;
 }
 
-// @ismany "$.index[*][?(@.kind=='import')].id" $crate_use_id $bar_use_id
-// @ismany "$.index[*][?(@.name=='private_twice_one_inline')].inner.items[*]" $bar_id $crate_use_id
+// @ismany "$.index[*][?(@.inner.import)].id" $crate_use_id $bar_use_id
+// @ismany "$.index[*][?(@.name=='private_twice_one_inline')].inner.module.items[*]" $bar_id $crate_use_id

@@ -1,5 +1,6 @@
 use crate::fmt;
 use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map, TrustedLen};
+use crate::num::NonZeroUsize;
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that maps each element to an iterator, and yields the elements
@@ -75,7 +76,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         self.inner.advance_by(n)
     }
 
@@ -120,7 +121,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         self.inner.advance_back_by(n)
     }
 }
@@ -135,26 +136,12 @@ where
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, I, F, const N: usize> TrustedLen for FlatMap<I, [T; N], F>
+unsafe impl<I, U, F> TrustedLen for FlatMap<I, U, F>
 where
-    I: TrustedLen,
-    F: FnMut(I::Item) -> [T; N],
-{
-}
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T, I, F, const N: usize> TrustedLen for FlatMap<I, &'a [T; N], F>
-where
-    I: TrustedLen,
-    F: FnMut(I::Item) -> &'a [T; N],
-{
-}
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T, I, F, const N: usize> TrustedLen for FlatMap<I, &'a mut [T; N], F>
-where
-    I: TrustedLen,
-    F: FnMut(I::Item) -> &'a mut [T; N],
+    I: Iterator,
+    U: IntoIterator,
+    F: FnMut(I::Item) -> U,
+    FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>: TrustedLen,
 {
 }
 
@@ -236,7 +223,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         self.inner.advance_by(n)
     }
 
@@ -281,7 +268,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         self.inner.advance_back_by(n)
     }
 }
@@ -297,14 +284,33 @@ where
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<I> TrustedLen for Flatten<I>
 where
-    I: TrustedLen,
-    <I as Iterator>::Item: TrustedConstSize,
+    I: Iterator<Item: IntoIterator>,
+    FlattenCompat<I, <I::Item as IntoIterator>::IntoIter>: TrustedLen,
 {
+}
+
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<I> Default for Flatten<I>
+where
+    I: Default + Iterator<Item: IntoIterator>,
+{
+    /// Creates a `Flatten` iterator from the default value of `I`.
+    ///
+    /// ```
+    /// # use core::slice;
+    /// # use std::iter::Flatten;
+    /// let iter: Flatten<slice::Iter<'_, [u8; 4]>> = Default::default();
+    /// assert_eq!(iter.count(), 0);
+    /// ```
+    fn default() -> Self {
+        Flatten::new(Default::default())
+    }
 }
 
 /// Real logic of both `Flatten` and `FlatMap` which simply delegate to
 /// this type.
 #[derive(Clone, Debug)]
+#[unstable(feature = "trusted_len", issue = "37572")]
 struct FlattenCompat<I, U> {
     iter: Fuse<I>,
     frontiter: Option<U>,
@@ -534,18 +540,18 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         #[inline]
         #[rustc_inherit_overflow_checks]
         fn advance<U: Iterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
             match iter.advance_by(n) {
                 Ok(()) => ControlFlow::Break(()),
-                Err(advanced) => ControlFlow::Continue(n - advanced),
+                Err(remaining) => ControlFlow::Continue(remaining.get()),
             }
         }
 
         match self.iter_try_fold(n, advance) {
-            ControlFlow::Continue(remaining) if remaining > 0 => Err(n - remaining),
+            ControlFlow::Continue(remaining) => NonZeroUsize::new(remaining).map_or(Ok(()), Err),
             _ => Ok(()),
         }
     }
@@ -624,21 +630,42 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         #[inline]
         #[rustc_inherit_overflow_checks]
         fn advance<U: DoubleEndedIterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
             match iter.advance_back_by(n) {
                 Ok(()) => ControlFlow::Break(()),
-                Err(advanced) => ControlFlow::Continue(n - advanced),
+                Err(remaining) => ControlFlow::Continue(remaining.get()),
             }
         }
 
         match self.iter_try_rfold(n, advance) {
-            ControlFlow::Continue(remaining) if remaining > 0 => Err(n - remaining),
+            ControlFlow::Continue(remaining) => NonZeroUsize::new(remaining).map_or(Ok(()), Err),
             _ => Ok(()),
         }
     }
+}
+
+unsafe impl<const N: usize, I, T> TrustedLen
+    for FlattenCompat<I, <[T; N] as IntoIterator>::IntoIter>
+where
+    I: TrustedLen<Item = [T; N]>,
+{
+}
+
+unsafe impl<'a, const N: usize, I, T> TrustedLen
+    for FlattenCompat<I, <&'a [T; N] as IntoIterator>::IntoIter>
+where
+    I: TrustedLen<Item = &'a [T; N]>,
+{
+}
+
+unsafe impl<'a, const N: usize, I, T> TrustedLen
+    for FlattenCompat<I, <&'a mut [T; N] as IntoIterator>::IntoIter>
+where
+    I: TrustedLen<Item = &'a mut [T; N]>,
+{
 }
 
 trait ConstSizeIntoIterator: IntoIterator {
@@ -676,19 +703,6 @@ impl<T, const N: usize> ConstSizeIntoIterator for &mut [T; N] {
         Some(N)
     }
 }
-
-#[doc(hidden)]
-#[unstable(feature = "std_internals", issue = "none")]
-// FIXME(#20400): Instead of this helper trait there should be multiple impl TrustedLen for Flatten<>
-//   blocks with different bounds on Iterator::Item but the compiler erroneously considers them overlapping
-pub unsafe trait TrustedConstSize: IntoIterator {}
-
-#[unstable(feature = "std_internals", issue = "none")]
-unsafe impl<T, const N: usize> TrustedConstSize for [T; N] {}
-#[unstable(feature = "std_internals", issue = "none")]
-unsafe impl<T, const N: usize> TrustedConstSize for &'_ [T; N] {}
-#[unstable(feature = "std_internals", issue = "none")]
-unsafe impl<T, const N: usize> TrustedConstSize for &'_ mut [T; N] {}
 
 #[inline]
 fn and_then_or_clear<T, U>(opt: &mut Option<T>, f: impl FnOnce(&mut T) -> Option<U>) -> Option<U> {

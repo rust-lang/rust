@@ -9,7 +9,7 @@
 
 use crate::traits::query::NoSolution;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
-use crate::ty::{self, EarlyBinder, SubstsRef, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 
 #[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
 pub enum NormalizationError<'tcx> {
@@ -20,8 +20,8 @@ pub enum NormalizationError<'tcx> {
 impl<'tcx> NormalizationError<'tcx> {
     pub fn get_type_for_failure(&self) -> String {
         match self {
-            NormalizationError::Type(t) => format!("{}", t),
-            NormalizationError::Const(c) => format!("{}", c),
+            NormalizationError::Type(t) => format!("{t}"),
+            NormalizationError::Const(c) => format!("{c}"),
         }
     }
 }
@@ -32,7 +32,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// This should only be used outside of type inference. For example,
     /// it assumes that normalization will succeed.
-    #[tracing::instrument(level = "debug", skip(self, param_env))]
+    #[tracing::instrument(level = "debug", skip(self, param_env), ret)]
     pub fn normalize_erasing_regions<T>(self, param_env: ty::ParamEnv<'tcx>, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -137,21 +137,21 @@ impl<'tcx> TyCtxt<'tcx> {
     /// use `try_subst_and_normalize_erasing_regions` instead.
     pub fn subst_and_normalize_erasing_regions<T>(
         self,
-        param_substs: SubstsRef<'tcx>,
+        param_args: GenericArgsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: T,
+        value: EarlyBinder<T>,
     ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!(
             "subst_and_normalize_erasing_regions(\
-             param_substs={:?}, \
+             param_args={:?}, \
              value={:?}, \
              param_env={:?})",
-            param_substs, value, param_env,
+            param_args, value, param_env,
         );
-        let substituted = EarlyBinder(value).subst(self, param_substs);
+        let substituted = value.instantiate(self, param_args);
         self.normalize_erasing_regions(param_env, substituted)
     }
 
@@ -161,21 +161,21 @@ impl<'tcx> TyCtxt<'tcx> {
     /// not assume that normalization succeeds.
     pub fn try_subst_and_normalize_erasing_regions<T>(
         self,
-        param_substs: SubstsRef<'tcx>,
+        param_args: GenericArgsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: T,
+        value: EarlyBinder<T>,
     ) -> Result<T, NormalizationError<'tcx>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!(
             "subst_and_normalize_erasing_regions(\
-             param_substs={:?}, \
+             param_args={:?}, \
              value={:?}, \
              param_env={:?})",
-            param_substs, value, param_env,
+            param_args, value, param_env,
         );
-        let substituted = EarlyBinder(value).subst(self, param_substs);
+        let substituted = value.instantiate(self, param_args);
         self.try_normalize_erasing_regions(param_env, substituted)
     }
 }
@@ -193,9 +193,9 @@ impl<'tcx> NormalizeAfterErasingRegionsFolder<'tcx> {
         let arg = self.param_env.and(arg);
 
         self.tcx.try_normalize_generic_arg_after_erasing_regions(arg).unwrap_or_else(|_| bug!(
-                "Failed to normalize {:?}, maybe try to call `try_normalize_erasing_regions` instead",
-                arg.value
-            ))
+            "Failed to normalize {:?}, maybe try to call `try_normalize_erasing_regions` instead",
+            arg.value
+        ))
     }
 }
 

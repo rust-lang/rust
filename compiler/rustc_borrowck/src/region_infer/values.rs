@@ -4,8 +4,8 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::IntervalSet;
 use rustc_index::interval::SparseIntervalMatrix;
-use rustc_index::vec::Idx;
-use rustc_index::vec::IndexVec;
+use rustc_index::Idx;
+use rustc_index::IndexVec;
 use rustc_middle::mir::{BasicBlock, Body, Location};
 use rustc_middle::ty::{self, RegionVid};
 use std::fmt::Debug;
@@ -159,7 +159,7 @@ impl<N: Idx> LivenessValues<N> {
     /// Returns `true` if the region `r` contains the given element.
     pub(crate) fn contains(&self, row: N, location: Location) -> bool {
         let index = self.elements.point_from_location(location);
-        self.points.row(row).map_or(false, |r| r.contains(index))
+        self.points.row(row).is_some_and(|r| r.contains(index))
     }
 
     /// Returns an iterator of all the elements contained by the region `r`
@@ -281,6 +281,22 @@ impl<N: Idx> RegionValues<N> {
     /// Returns `true` if the region `r` contains the given element.
     pub(crate) fn contains(&self, r: N, elem: impl ToElementIndex) -> bool {
         elem.contained_in_row(self, r)
+    }
+
+    /// Returns the lowest statement index in `start..=end` which is not contained by `r`.
+    pub(crate) fn first_non_contained_inclusive(
+        &self,
+        r: N,
+        block: BasicBlock,
+        start: usize,
+        end: usize,
+    ) -> Option<usize> {
+        let row = self.points.row(r)?;
+        let block = self.elements.entry_point(block);
+        let start = block.plus(start);
+        let end = block.plus(end);
+        let first_unset = row.first_unset_in(start..=end)?;
+        Some(first_unset.index() - block.index())
     }
 
     /// `self[to] |= values[from]`, essentially: that is, take all the
@@ -454,7 +470,7 @@ fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String
                 }
 
                 push_sep(&mut result);
-                result.push_str(&format!("{:?}", fr));
+                result.push_str(&format!("{fr:?}"));
             }
 
             RegionElement::PlaceholderRegion(placeholder) => {
@@ -465,7 +481,7 @@ fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String
                 }
 
                 push_sep(&mut result);
-                result.push_str(&format!("{:?}", placeholder));
+                result.push_str(&format!("{placeholder:?}"));
             }
         }
     }
@@ -481,7 +497,7 @@ fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String
 
     fn push_location_range(str: &mut String, location1: Location, location2: Location) {
         if location1 == location2 {
-            str.push_str(&format!("{:?}", location1));
+            str.push_str(&format!("{location1:?}"));
         } else {
             assert_eq!(location1.block, location2.block);
             str.push_str(&format!(

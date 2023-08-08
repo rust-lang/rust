@@ -1,4 +1,4 @@
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexSlice;
 use rustc_middle::{mir::*, thir::*, ty::Ty};
 use rustc_span::Span;
 
@@ -74,14 +74,14 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             kind @ StmtKind::Let { pattern, .. } => {
                 return Err(ParseError {
                     span: pattern.span,
-                    item_description: format!("{:?}", kind),
+                    item_description: format!("{kind:?}"),
                     expected: "expression".to_string(),
                 });
             }
         }
     }
 
-    pub fn parse_args(&mut self, params: &IndexVec<ParamId, Param<'tcx>>) -> PResult<()> {
+    pub fn parse_args(&mut self, params: &IndexSlice<ParamId, Param<'tcx>>) -> PResult<()> {
         for param in params.iter() {
             let (var, span) = {
                 let pat = param.pat.as_ref().unwrap();
@@ -241,9 +241,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             });
         }
 
-        let Some(trailing) = block.expr else {
-            return Err(self.expr_error(expr_id, "terminator"))
-        };
+        let Some(trailing) = block.expr else { return Err(self.expr_error(expr_id, "terminator")) };
         let span = self.thir[trailing].span;
         let terminator = self.parse_terminator(trailing)?;
         data.terminator = Some(Terminator {

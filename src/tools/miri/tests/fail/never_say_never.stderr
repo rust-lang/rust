@@ -1,8 +1,8 @@
 error: Undefined Behavior: entering unreachable code
   --> $DIR/never_say_never.rs:LL:CC
    |
-LL |         *(y as *const _ as *const !)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ entering unreachable code
+LL |     f(x)
+   |     ^^^^ entering unreachable code
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -5,6 +5,7 @@
 #![feature(c_unwind)]
 #![feature(cfg_target_abi)]
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 cfg_if::cfg_if! {
     if #[cfg(target_env = "msvc")] {
@@ -50,6 +51,22 @@ cfg_if::cfg_if! {
     } else {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
         #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
+        extern "C" {}
+    }
+}
+
+// This is the same as musl except that we default to using the system libunwind
+// instead of libgcc.
+#[cfg(target_env = "ohos")]
+cfg_if::cfg_if! {
+    if #[cfg(all(feature = "llvm-libunwind", feature = "system-llvm-libunwind"))] {
+        compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
+    } else if #[cfg(feature = "llvm-libunwind")] {
+        #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
+        extern "C" {}
+    } else {
+        #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+        #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
         extern "C" {}
     }
 }

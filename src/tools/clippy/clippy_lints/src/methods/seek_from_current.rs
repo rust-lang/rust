@@ -3,10 +3,10 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 
-use clippy_utils::{
-    diagnostics::span_lint_and_sugg, get_trait_def_id, match_def_path, paths, source::snippet_with_applicability,
-    ty::implements_trait,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::implements_trait;
+use clippy_utils::{get_trait_def_id, match_def_path, paths};
 
 use super::SEEK_FROM_CURRENT;
 
@@ -38,7 +38,7 @@ fn arg_is_seek_from_current<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) 
         match_def_path(cx, def_id, &paths::STD_IO_SEEK_FROM_CURRENT) {
         // check if argument of `SeekFrom::Current` is `0`
         if args.len() == 1 &&
-            let ExprKind::Lit(ref lit) = args[0].kind &&
+            let ExprKind::Lit(lit) = args[0].kind &&
             let LitKind::Int(0, LitIntType::Unsuffixed) = lit.node {
             return true
         }

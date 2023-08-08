@@ -2,27 +2,27 @@
 + // MIR for `main` after ConstProp
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/cast.rs:+0:11: +0:11
-      let _1: u32;                         // in scope 0 at $DIR/cast.rs:+1:9: +1:10
+      let mut _0: ();
+      let _1: u32;
       scope 1 {
-          debug x => _1;                   // in scope 1 at $DIR/cast.rs:+1:9: +1:10
-          let _2: u8;                      // in scope 1 at $DIR/cast.rs:+3:9: +3:10
+          debug x => _1;
+          let _2: u8;
           scope 2 {
-              debug y => _2;               // in scope 2 at $DIR/cast.rs:+3:9: +3:10
+              debug y => _2;
           }
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/cast.rs:+1:9: +1:10
--         _1 = const 42_u8 as u32 (IntToInt); // scope 0 at $DIR/cast.rs:+1:13: +1:24
-+         _1 = const 42_u32;               // scope 0 at $DIR/cast.rs:+1:13: +1:24
-          StorageLive(_2);                 // scope 1 at $DIR/cast.rs:+3:9: +3:10
--         _2 = const 42_u32 as u8 (IntToInt); // scope 1 at $DIR/cast.rs:+3:13: +3:24
-+         _2 = const 42_u8;                // scope 1 at $DIR/cast.rs:+3:13: +3:24
-          _0 = const ();                   // scope 0 at $DIR/cast.rs:+0:11: +4:2
-          StorageDead(_2);                 // scope 1 at $DIR/cast.rs:+4:1: +4:2
-          StorageDead(_1);                 // scope 0 at $DIR/cast.rs:+4:1: +4:2
-          return;                          // scope 0 at $DIR/cast.rs:+4:2: +4:2
+          StorageLive(_1);
+-         _1 = const 42_u8 as u32 (IntToInt);
++         _1 = const 42_u32;
+          StorageLive(_2);
+-         _2 = const 42_u32 as u8 (IntToInt);
++         _2 = const 42_u8;
+          _0 = const ();
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
       }
   }
   

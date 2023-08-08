@@ -4,11 +4,12 @@
 
 use crate::MirPass;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_target::abi::FieldIdx;
 
 /// Constructs the types used when accessing a Box's pointer
 pub fn build_ptr_tys<'tcx>(
@@ -17,10 +18,10 @@ pub fn build_ptr_tys<'tcx>(
     unique_did: DefId,
     nonnull_did: DefId,
 ) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
-    let substs = tcx.mk_substs(&[pointee.into()]);
-    let unique_ty = tcx.type_of(unique_did).subst(tcx, substs);
-    let nonnull_ty = tcx.type_of(nonnull_did).subst(tcx, substs);
-    let ptr_ty = tcx.mk_imm_ptr(pointee);
+    let args = tcx.mk_args(&[pointee.into()]);
+    let unique_ty = tcx.type_of(unique_did).instantiate(tcx, args);
+    let nonnull_ty = tcx.type_of(nonnull_did).instantiate(tcx, args);
+    let ptr_ty = Ty::new_imm_ptr(tcx, pointee);
 
     (unique_ty, nonnull_ty, ptr_ty)
 }
@@ -32,9 +33,9 @@ pub fn build_projection<'tcx>(
     ptr_ty: Ty<'tcx>,
 ) -> [PlaceElem<'tcx>; 3] {
     [
-        PlaceElem::Field(Field::new(0), unique_ty),
-        PlaceElem::Field(Field::new(0), nonnull_ty),
-        PlaceElem::Field(Field::new(0), ptr_ty),
+        PlaceElem::Field(FieldIdx::new(0), unique_ty),
+        PlaceElem::Field(FieldIdx::new(0), nonnull_ty),
+        PlaceElem::Field(FieldIdx::new(0), ptr_ty),
     ]
 }
 
@@ -91,13 +92,15 @@ pub struct ElaborateBoxDerefs;
 impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if let Some(def_id) = tcx.lang_items().owned_box() {
-            let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[0].did;
+            let unique_did =
+                tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::from_u32(0)].did;
 
-            let Some(nonnull_def) = tcx.type_of(unique_did).subst_identity().ty_adt_def() else {
+            let Some(nonnull_def) = tcx.type_of(unique_did).instantiate_identity().ty_adt_def()
+            else {
                 span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
             };
 
-            let nonnull_did = nonnull_def.non_enum_variant().fields[0].did;
+            let nonnull_did = nonnull_def.non_enum_variant().fields[FieldIdx::from_u32(0)].did;
 
             let patch = MirPatch::new(body);
 

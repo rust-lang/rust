@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
-use clippy_utils::source::snippet_with_macro_callsite;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{has_drop, is_copy};
 use clippy_utils::{
     any_parent_is_automatically_derived, contains_name, get_parent_expr, is_from_proc_macro, match_def_path, paths,
@@ -150,7 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     .fields
                     .iter()
                     .all(|field| {
-                        is_copy(cx, cx.tcx.type_of(field.did).subst_identity())
+                        is_copy(cx, cx.tcx.type_of(field.did).instantiate_identity())
                     });
                 if !has_drop(cx, binding_type) || all_fields_are_copy;
                 then {
@@ -159,6 +159,8 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     continue;
                 }
             };
+
+            let init_ctxt = local.span.ctxt();
 
             // find all "later statement"'s where the fields of the binding set as
             // Default::default() get reassigned, unless the reassignment refers to the original binding
@@ -169,7 +171,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 // find out if and which field was set by this `consecutive_statement`
                 if let Some((field_ident, assign_rhs)) = field_reassigned_by_stmt(consecutive_statement, binding_name) {
                     // interrupt and cancel lint if assign_rhs references the original binding
-                    if contains_name(binding_name, assign_rhs, cx) {
+                    if contains_name(binding_name, assign_rhs, cx) || init_ctxt != consecutive_statement.span.ctxt() {
                         cancel_lint = true;
                         break;
                     }
@@ -204,11 +206,12 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     .iter()
                     .all(|field| assigned_fields.iter().any(|(a, _)| a == &field.name));
 
+                let mut app = Applicability::Unspecified;
                 let field_list = assigned_fields
                     .into_iter()
                     .map(|(field, rhs)| {
                         // extract and store the assigned value for help message
-                        let value_snippet = snippet_with_macro_callsite(cx, rhs.span, "..");
+                        let value_snippet = snippet_with_context(cx, rhs.span, init_ctxt, "..", &mut app).0;
                         format!("{field}: {value_snippet}")
                     })
                     .collect::<Vec<String>>()
@@ -216,11 +219,11 @@ impl<'tcx> LateLintPass<'tcx> for Default {
 
                 // give correct suggestion if generics are involved (see #6944)
                 let binding_type = if_chain! {
-                    if let ty::Adt(adt_def, substs) = binding_type.kind();
-                    if !substs.is_empty();
+                    if let ty::Adt(adt_def, args) = binding_type.kind();
+                    if !args.is_empty();
                     then {
                         let adt_def_ty_name = cx.tcx.item_name(adt_def.did());
-                        let generic_args = substs.iter().collect::<Vec<_>>();
+                        let generic_args = args.iter().collect::<Vec<_>>();
                         let tys_str = generic_args
                             .iter()
                             .map(ToString::to_string)

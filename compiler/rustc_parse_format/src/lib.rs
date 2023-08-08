@@ -14,6 +14,7 @@
 // We want to be able to build this crate with a stable compiler, so no
 // `#![feature]` attributes should be added.
 
+use rustc_lexer::unescape;
 pub use Alignment::*;
 pub use Count::*;
 pub use Piece::*;
@@ -108,6 +109,8 @@ pub struct Argument<'a> {
 pub struct FormatSpec<'a> {
     /// Optionally specified character to fill alignment with.
     pub fill: Option<char>,
+    /// Span of the optionally specified fill character.
+    pub fill_span: Option<InnerSpan>,
     /// Optionally specified alignment.
     pub align: Alignment,
     /// The `+` or `-` flag.
@@ -234,8 +237,10 @@ pub struct Parser<'a> {
     last_opening_brace: Option<InnerSpan>,
     /// Whether the source string is comes from `println!` as opposed to `format!` or `print!`
     append_newline: bool,
-    /// Whether this formatting string is a literal or it comes from a macro.
-    pub is_literal: bool,
+    /// Whether this formatting string was written directly in the source. This controls whether we
+    /// can use spans to refer into it and give better error messages.
+    /// N.B: This does _not_ control whether implicit argument captures can be used.
+    pub is_source_literal: bool,
     /// Start position of the current line.
     cur_line_start: usize,
     /// Start and end byte offset of every line of the format string. Excludes
@@ -261,8 +266,8 @@ impl<'a> Iterator for Parser<'a> {
                         Some(String(self.string(pos + 1)))
                     } else {
                         let arg = self.argument(lbrace_end);
-                        if let Some(rbrace_pos) = self.must_consume('}') {
-                            if self.is_literal {
+                        if let Some(rbrace_pos) = self.consume_closing_brace(&arg) {
+                            if self.is_source_literal {
                                 let lbrace_byte_pos = self.to_span_index(pos);
                                 let rbrace_byte_pos = self.to_span_index(rbrace_pos);
 
@@ -302,7 +307,7 @@ impl<'a> Iterator for Parser<'a> {
                 _ => Some(String(self.string(pos))),
             }
         } else {
-            if self.is_literal {
+            if self.is_source_literal {
                 let span = self.span(self.cur_line_start, self.input.len());
                 if self.line_spans.last() != Some(&span) {
                     self.line_spans.push(span);
@@ -322,8 +327,8 @@ impl<'a> Parser<'a> {
         append_newline: bool,
         mode: ParseMode,
     ) -> Parser<'a> {
-        let input_string_kind = find_width_map_from_snippet(snippet, style);
-        let (width_map, is_literal) = match input_string_kind {
+        let input_string_kind = find_width_map_from_snippet(s, snippet, style);
+        let (width_map, is_source_literal) = match input_string_kind {
             InputStringKind::Literal { width_mappings } => (width_mappings, true),
             InputStringKind::NotALiteral => (Vec::new(), false),
         };
@@ -339,7 +344,7 @@ impl<'a> Parser<'a> {
             width_map,
             last_opening_brace: None,
             append_newline,
-            is_literal,
+            is_source_literal,
             cur_line_start: 0,
             line_spans: vec![],
         }
@@ -447,69 +452,51 @@ impl<'a> Parser<'a> {
 
     /// Forces consumption of the specified character. If the character is not
     /// found, an error is emitted.
-    fn must_consume(&mut self, c: char) -> Option<usize> {
+    fn consume_closing_brace(&mut self, arg: &Argument<'_>) -> Option<usize> {
         self.ws();
 
-        if let Some(&(pos, maybe)) = self.cur.peek() {
-            if c == maybe {
+        let pos;
+        let description;
+
+        if let Some(&(peek_pos, maybe)) = self.cur.peek() {
+            if maybe == '}' {
                 self.cur.next();
-                Some(pos)
-            } else {
-                let pos = self.to_span_index(pos);
-                let description = format!("expected `'}}'`, found `{maybe:?}`");
-                let label = "expected `}`".to_owned();
-                let (note, secondary_label) = if c == '}' {
-                    (
-                        Some(
-                            "if you intended to print `{`, you can escape it using `{{`".to_owned(),
-                        ),
-                        self.last_opening_brace
-                            .map(|sp| ("because of this opening brace".to_owned(), sp)),
-                    )
-                } else {
-                    (None, None)
-                };
-                self.errors.push(ParseError {
-                    description,
-                    note,
-                    label,
-                    span: pos.to(pos),
-                    secondary_label,
-                    should_be_replaced_with_positional_argument: false,
-                });
-                None
+                return Some(peek_pos);
             }
+
+            pos = peek_pos;
+            description = format!("expected `'}}'`, found `{maybe:?}`");
         } else {
-            let description = format!("expected `{c:?}` but string was terminated");
+            description = "expected `'}'` but string was terminated".to_owned();
             // point at closing `"`
-            let pos = self.input.len() - if self.append_newline { 1 } else { 0 };
-            let pos = self.to_span_index(pos);
-            if c == '}' {
-                let label = format!("expected `{c:?}`");
-                let (note, secondary_label) = if c == '}' {
-                    (
-                        Some(
-                            "if you intended to print `{`, you can escape it using `{{`".to_owned(),
-                        ),
-                        self.last_opening_brace
-                            .map(|sp| ("because of this opening brace".to_owned(), sp)),
-                    )
-                } else {
-                    (None, None)
-                };
-                self.errors.push(ParseError {
-                    description,
-                    note,
-                    label,
-                    span: pos.to(pos),
-                    secondary_label,
-                    should_be_replaced_with_positional_argument: false,
-                });
-            } else {
-                self.err(description, format!("expected `{c:?}`"), pos.to(pos));
-            }
-            None
+            pos = self.input.len() - if self.append_newline { 1 } else { 0 };
         }
+
+        let pos = self.to_span_index(pos);
+
+        let label = "expected `'}'`".to_owned();
+        let (note, secondary_label) = if arg.format.fill == Some('}') {
+            (
+                Some("the character `'}'` is interpreted as a fill character because of the `:` that precedes it".to_owned()),
+                arg.format.fill_span.map(|sp| ("this is not interpreted as a formatting closing brace".to_owned(), sp)),
+            )
+        } else {
+            (
+                Some("if you intended to print `{`, you can escape it using `{{`".to_owned()),
+                self.last_opening_brace.map(|sp| ("because of this opening brace".to_owned(), sp)),
+            )
+        };
+
+        self.errors.push(ParseError {
+            description,
+            note,
+            label,
+            span: pos.to(pos),
+            secondary_label,
+            should_be_replaced_with_positional_argument: false,
+        });
+
+        None
     }
 
     /// Consumes all whitespace characters until the first non-whitespace character
@@ -532,13 +519,13 @@ impl<'a> Parser<'a> {
                 '{' | '}' => {
                     return &self.input[start..pos];
                 }
-                '\n' if self.is_literal => {
+                '\n' if self.is_source_literal => {
                     self.line_spans.push(self.span(self.cur_line_start, pos));
                     self.cur_line_start = pos + 1;
                     self.cur.next();
                 }
                 _ => {
-                    if self.is_literal && pos == self.cur_line_start && c.is_whitespace() {
+                    if self.is_source_literal && pos == self.cur_line_start && c.is_whitespace() {
                         self.cur_line_start = pos + c.len_utf8();
                     }
                     self.cur.next();
@@ -605,6 +592,7 @@ impl<'a> Parser<'a> {
     fn format(&mut self) -> FormatSpec<'a> {
         let mut spec = FormatSpec {
             fill: None,
+            fill_span: None,
             align: AlignUnknown,
             sign: None,
             alternate: false,
@@ -622,9 +610,10 @@ impl<'a> Parser<'a> {
         }
 
         // fill character
-        if let Some(&(_, c)) = self.cur.peek() {
+        if let Some(&(idx, c)) = self.cur.peek() {
             if let Some((_, '>' | '<' | '^')) = self.cur.clone().nth(1) {
                 spec.fill = Some(c);
+                spec.fill_span = Some(self.span(idx, idx + 1));
                 self.cur.next();
             }
         }
@@ -719,6 +708,7 @@ impl<'a> Parser<'a> {
     fn inline_asm(&mut self) -> FormatSpec<'a> {
         let mut spec = FormatSpec {
             fill: None,
+            fill_span: None,
             align: AlignUnknown,
             sign: None,
             alternate: false,
@@ -890,6 +880,7 @@ impl<'a> Parser<'a> {
 /// written code (code snippet) and the `InternedString` that gets processed in the `Parser`
 /// in order to properly synthesise the intra-string `Span`s for error diagnostics.
 fn find_width_map_from_snippet(
+    input: &str,
     snippet: Option<string::String>,
     str_style: Option<usize>,
 ) -> InputStringKind {
@@ -902,7 +893,26 @@ fn find_width_map_from_snippet(
         return InputStringKind::Literal { width_mappings: Vec::new() };
     }
 
+    // Strip quotes.
     let snippet = &snippet[1..snippet.len() - 1];
+
+    // Macros like `println` add a newline at the end. That technically doesn't make them "literals" anymore, but it's fine
+    // since we will never need to point our spans there, so we lie about it here by ignoring it.
+    // Since there might actually be newlines in the source code, we need to normalize away all trailing newlines.
+    // If we only trimmed it off the input, `format!("\n")` would cause a mismatch as here we they actually match up.
+    // Alternatively, we could just count the trailing newlines and only trim one from the input if they don't match up.
+    let input_no_nl = input.trim_end_matches('\n');
+    let Some(unescaped) = unescape_string(snippet) else {
+        return InputStringKind::NotALiteral;
+    };
+
+    let unescaped_no_nl = unescaped.trim_end_matches('\n');
+
+    if unescaped_no_nl != input_no_nl {
+        // The source string that we're pointing at isn't our input, so spans pointing at it will be incorrect.
+        // This can for example happen with proc macros that respan generated literals.
+        return InputStringKind::NotALiteral;
+    }
 
     let mut s = snippet.char_indices();
     let mut width_mappings = vec![];
@@ -984,6 +994,19 @@ fn find_width_map_from_snippet(
     }
 
     InputStringKind::Literal { width_mappings }
+}
+
+fn unescape_string(string: &str) -> Option<string::String> {
+    let mut buf = string::String::new();
+    let mut ok = true;
+    unescape::unescape_literal(string, unescape::Mode::Str, &mut |_, unescaped_char| {
+        match unescaped_char {
+            Ok(c) => buf.push(c),
+            Err(_) => ok = false,
+        }
+    });
+
+    ok.then_some(buf)
 }
 
 // Assert a reasonable size for `Piece`

@@ -1,11 +1,10 @@
-error: generic parameters may not be used in const operations
+error: generic parameters may not be used in enum discriminant values
   --> $DIR/issue-70453-generics-in-discr-ice.rs:10:32
    |
 LL |     Some = std::mem::size_of::<T>(),
    |                                ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
-   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in enum discriminant values
 
 error[E0392]: parameter `T` is never used
   --> $DIR/issue-70453-generics-in-discr-ice.rs:7:20

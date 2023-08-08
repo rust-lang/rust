@@ -4,7 +4,7 @@ error[E0046]: not all trait items implemented, missing: `Item`
 LL |         impl Iterator for Recurrence {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Item` in implementation
    |
-   = help: implement the missing item: `type Item = Type;`
+   = help: implement the missing item: `type Item = /* Type */;`
 
 error: aborting due to previous error
 

@@ -26,7 +26,8 @@ LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
    |            ^^^^^ required by this bound in `copy`
 help: consider annotating `NoClone` with `#[derive(Copy)]`
    |
-LL | #[derive(Copy)]
+LL + #[derive(Copy)]
+LL | struct NoClone;
    |
 
 error: aborting due to 2 previous errors

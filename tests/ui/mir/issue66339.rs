@@ -5,7 +5,7 @@
 
 fn foo() {
     let bar = |_| { };
-    let _ = bar("a");
+    bar("a");
 }
 
 fn main() {

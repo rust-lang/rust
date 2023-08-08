@@ -18,8 +18,18 @@ LL | impl JustTrait for Type {}
    = note: use of unstable library feature 'fun_default_body'
    = help: add `#![feature(fun_default_body)]` to the crate attributes to enable
 
+error[E0046]: not all trait items implemented, missing: `fun2`
+  --> $DIR/default-body-stability-err.rs:10:1
+   |
+LL | impl JustTrait for Type {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: default implementation of `fun2` is unstable
+   = note: use of unstable library feature 'fun_default_body': reason
+   = help: add `#![feature(fun_default_body)]` to the crate attributes to enable
+
 error[E0046]: not all trait items implemented, missing: `eq`
-  --> $DIR/default-body-stability-err.rs:14:1
+  --> $DIR/default-body-stability-err.rs:15:1
    |
 LL | / impl Equal for Type {
 LL | |
@@ -33,6 +43,6 @@ LL | | }
    = note: use of unstable library feature 'eq_default_body'
    = help: add `#![feature(eq_default_body)]` to the crate attributes to enable
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0046`.

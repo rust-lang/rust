@@ -27,7 +27,6 @@ use rustc_codegen_ssa::traits::{
     BaseTypeMethods,
     BuilderMethods,
     ConstMethods,
-    DerivedTypeMethods,
     LayoutTypeMethods,
     HasCodegen,
     OverflowOp,
@@ -35,6 +34,7 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_span::Span;
@@ -180,6 +180,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             })
             .collect();
 
+        debug_assert_eq!(casted_args.len(), args.len());
+
         Cow::Owned(casted_args)
     }
 
@@ -206,7 +208,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let func_name = format!("{:?}", func_ptr);
 
-        let casted_args: Vec<_> = param_types
+        let mut casted_args: Vec<_> = param_types
             .into_iter()
             .zip(args.iter())
             .enumerate()
@@ -235,6 +237,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 }
             })
             .collect();
+
+        // NOTE: to take into account variadic functions.
+        for i in casted_args.len()..args.len() {
+            casted_args.push(args[i]);
+        }
 
         Cow::Owned(casted_args)
     }
@@ -279,8 +286,17 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         }
     }
 
-    fn function_ptr_call(&mut self, func_ptr: RValue<'gcc>, args: &[RValue<'gcc>], _funclet: Option<&Funclet>) -> RValue<'gcc> {
-        let gcc_func = func_ptr.get_type().dyncast_function_ptr_type().expect("function ptr");
+    fn function_ptr_call(&mut self, typ: Type<'gcc>, mut func_ptr: RValue<'gcc>, args: &[RValue<'gcc>], _funclet: Option<&Funclet>) -> RValue<'gcc> {
+        let gcc_func =
+            match func_ptr.get_type().dyncast_function_ptr_type() {
+                Some(func) => func,
+                None => {
+                    // NOTE: due to opaque pointers now being used, we need to cast here.
+                    let new_func_type = typ.dyncast_function_ptr_type().expect("function ptr");
+                    func_ptr = self.context.new_cast(None, func_ptr, typ);
+                    new_func_type
+                },
+            };
         let func_name = format!("{:?}", func_ptr);
         let previous_arg_count = args.len();
         let orig_args = args;
@@ -423,16 +439,17 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.llbb().end_with_void_return(None)
     }
 
-    fn ret(&mut self, value: RValue<'gcc>) {
-        let value =
-            if self.structs_as_pointer.borrow().contains(&value) {
-                // NOTE: hack to workaround a limitation of the rustc API: see comment on
-                // CodegenCx.structs_as_pointer
-                value.dereference(None).to_rvalue()
-            }
-            else {
-                value
-            };
+    fn ret(&mut self, mut value: RValue<'gcc>) {
+        if self.structs_as_pointer.borrow().contains(&value) {
+            // NOTE: hack to workaround a limitation of the rustc API: see comment on
+            // CodegenCx.structs_as_pointer
+            value = value.dereference(None).to_rvalue();
+        }
+        let expected_return_type = self.current_func().get_return_type();
+        if !expected_return_type.is_compatible_with(value.get_type()) {
+            // NOTE: due to opaque pointers now being used, we need to cast here.
+            value = self.context.new_cast(None, value, expected_return_type);
+        }
         self.llbb().end_with_return(None, value);
     }
 
@@ -455,12 +472,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(feature="master")]
-    fn invoke(&mut self, typ: Type<'gcc>, _fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
+    fn invoke(&mut self, typ: Type<'gcc>, fn_attrs: Option<&CodegenFnAttrs>, _fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
         let try_block = self.current_func().new_block("try");
 
         let current_block = self.block.clone();
         self.block = try_block;
-        let call = self.call(typ, None, func, args, None); // TODO(antoyo): use funclet here?
+        let call = self.call(typ, fn_attrs, None, func, args, None); // TODO(antoyo): use funclet here?
         self.block = current_block;
 
         let return_value = self.current_func()
@@ -483,8 +500,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(not(feature="master"))]
-    fn invoke(&mut self, typ: Type<'gcc>, fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
-        let call_site = self.call(typ, None, func, args, None);
+    fn invoke(&mut self, typ: Type<'gcc>, fn_attrs: &CodegenFnAttrs, fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
+        let call_site = self.call(typ, fn_attrs, None, func, args, None);
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(None, condition, then, catch);
         if let Some(_fn_abi) = fn_abi {
@@ -718,17 +735,25 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
+    fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
         let block = self.llbb();
         let function = block.get_function();
         // NOTE: instead of returning the dereference here, we have to assign it to a variable in
         // the current basic block. Otherwise, it could be used in another basic block, causing a
         // dereference after a drop, for instance.
-        // TODO(antoyo): handle align of the load instruction.
-        let ptr = self.context.new_cast(None, ptr, pointee_ty.make_pointer());
+        // FIXME(antoyo): this check that we don't call get_aligned() a second time on a type.
+        // Ideally, we shouldn't need to do this check.
+        let aligned_type =
+            if pointee_ty == self.cx.u128_type || pointee_ty == self.cx.i128_type {
+                pointee_ty
+            }
+            else {
+                pointee_ty.get_aligned(align.bytes())
+            };
+        let ptr = self.context.new_cast(None, ptr, aligned_type.make_pointer());
         let deref = ptr.dereference(None).to_rvalue();
         unsafe { RETURN_VALUE_COUNT += 1 };
-        let loaded_value = function.new_local(None, pointee_ty, &format!("loadedValue{}", unsafe { RETURN_VALUE_COUNT }));
+        let loaded_value = function.new_local(None, aligned_type, &format!("loadedValue{}", unsafe { RETURN_VALUE_COUNT }));
         block.add_assignment(None, loaded_value, deref);
         loaded_value.to_rvalue()
     }
@@ -757,7 +782,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         assert_eq!(place.llextra.is_some(), place.layout.is_unsized());
 
         if place.layout.is_zst() {
-            return OperandRef::new_zst(self, place.layout);
+            return OperandRef::zero_sized(place.layout);
         }
 
         fn scalar_load_metadata<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, load: RValue<'gcc>, scalar: &abi::Scalar) {
@@ -908,7 +933,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.context.new_bitcast(None, result, ptr_type)
     }
 
-    fn inbounds_gep(&mut self, _typ: Type<'gcc>, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
+    fn inbounds_gep(&mut self, typ: Type<'gcc>, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
+        // NOTE: due to opaque pointers now being used, we need to cast here.
+        let ptr = self.context.new_cast(None, ptr, typ.make_pointer());
         // NOTE: array indexing is always considered in bounds in GCC (TODO(antoyo): to be verified).
         let mut indices = indices.into_iter();
         let index = indices.next().expect("first index in inbounds_gep");
@@ -937,6 +964,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             element.get_address(None)
         }
         else if let Some(struct_type) = value_type.is_struct() {
+            // NOTE: due to opaque pointers now being used, we need to bitcast here.
+            let ptr = self.bitcast_if_needed(ptr, value_type.make_pointer());
             ptr.dereference_field(None, struct_type.get_field(idx as i32)).get_address(None)
         }
         else {
@@ -1226,6 +1255,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         (value1, value2)
     }
 
+    fn filter_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+        // TODO(antoyo): generate the correct landing pad
+        self.cleanup_landing_pad(pers_fn)
+    }
+
     #[cfg(feature="master")]
     fn resume(&mut self, exn0: RValue<'gcc>, _exn1: RValue<'gcc>) {
         let exn_type = exn0.get_type();
@@ -1350,7 +1384,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn call(
         &mut self,
-        _typ: Type<'gcc>,
+        typ: Type<'gcc>,
+        _fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
         args: &[RValue<'gcc>],
@@ -1363,7 +1398,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
         else {
             // If it's a not function that was defined, it's a function pointer.
-            self.function_ptr_call(func, args, funclet)
+            self.function_ptr_call(typ, func, args, funclet)
         };
         if let Some(_fn_abi) = fn_abi {
             // TODO(bjorn3): Apply function attributes
@@ -1836,7 +1871,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         #[cfg(feature="master")]
         let (cond, element_type) = {
-            let then_val_vector_type = then_val.get_type().dyncast_vector().expect("vector type");
+            // TODO(antoyo): dyncast_vector should not require a call to unqualified.
+            let then_val_vector_type = then_val.get_type().unqualified().dyncast_vector().expect("vector type");
             let then_val_element_type = then_val_vector_type.get_element_type();
             let then_val_element_size = then_val_element_type.get_size();
 

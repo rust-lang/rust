@@ -78,7 +78,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                         // HACK(hkmatsumoto): For impls of primitive types, we index them
                         // regardless of whether they're local. This is because users can
                         // document primitive items in an arbitrary crate by using
-                        // `doc(primitive)`.
+                        // `rustc_doc_primitive`.
                         let mut is_primitive_impl = false;
                         if let clean::types::ItemKind::ImplItem(ref impl_) = *item.kind &&
                             impl_.trait_.is_none() &&
@@ -279,7 +279,10 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         p.push(output.index.get(&output.root).unwrap().name.clone().unwrap());
         p.set_extension("json");
         let mut file = BufWriter::new(try_err!(File::create(&p), p));
-        serde_json::ser::to_writer(&mut file, &output).unwrap();
+        self.tcx
+            .sess
+            .time("rustdoc_json_serialization", || serde_json::ser::to_writer(&mut file, &output))
+            .unwrap();
         try_err!(file.flush(), p);
 
         Ok(())

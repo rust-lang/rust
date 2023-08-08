@@ -1,6 +1,12 @@
+//@run-rustfix
 #![warn(clippy::single_match)]
-#![allow(clippy::uninlined_format_args)]
-
+#![allow(
+    unused,
+    clippy::uninlined_format_args,
+    clippy::needless_if,
+    clippy::redundant_guards,
+    clippy::redundant_pattern_matching
+)]
 fn dummy() {}
 
 fn single_match() {
@@ -243,4 +249,65 @@ fn main() {
         Some(x) => x,
         _ => 0,
     };
+}
+
+fn issue_10808(bar: Option<i32>) {
+    match bar {
+        Some(v) => unsafe {
+            let r = &v as *const i32;
+            println!("{}", *r);
+        },
+        _ => {},
+    }
+
+    match bar {
+        #[rustfmt::skip]
+        Some(v) => {
+            unsafe {
+                let r = &v as *const i32;
+                println!("{}", *r);
+            }
+        },
+        _ => {},
+    }
+}
+
+mod issue8634 {
+    struct SomeError(i32, i32);
+
+    fn foo(x: Result<i32, ()>) {
+        match x {
+            Ok(y) => {
+                println!("Yay! {y}");
+            },
+            Err(()) => {
+                // Ignore this error because blah blah blah.
+            },
+        }
+    }
+
+    fn bar(x: Result<i32, SomeError>) {
+        match x {
+            Ok(y) => {
+                println!("Yay! {y}");
+            },
+            Err(_) => {
+                // TODO: Process the error properly.
+            },
+        }
+    }
+
+    fn block_comment(x: Result<i32, SomeError>) {
+        match x {
+            Ok(y) => {
+                println!("Yay! {y}");
+            },
+            Err(_) => {
+                /*
+                let's make sure that this also
+                does not lint block comments.
+                */
+            },
+        }
+    }
 }

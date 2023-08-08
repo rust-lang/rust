@@ -6,7 +6,7 @@ use crate::{validate, MirPass};
 
 /// Just like `MirPass`, except it cannot mutate `Body`.
 pub trait MirLint<'tcx> {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         let name = std::any::type_name::<Self>();
         if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }
     }
@@ -26,7 +26,7 @@ impl<'tcx, T> MirPass<'tcx> for Lint<T>
 where
     T: MirLint<'tcx>,
 {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         self.0.name()
     }
 
@@ -49,7 +49,7 @@ impl<'tcx, T> MirPass<'tcx> for WithMinOptLevel<T>
 where
     T: MirPass<'tcx>,
 {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         self.1.name()
     }
 
@@ -118,16 +118,16 @@ fn run_passes_inner<'tcx>(
                 dump_mir_for_pass(tcx, body, &name, false);
             }
             if validate {
-                validate_body(tcx, body, format!("before pass {}", name));
+                validate_body(tcx, body, format!("before pass {name}"));
             }
 
-            pass.run_pass(tcx, body);
+            tcx.sess.time(name, || pass.run_pass(tcx, body));
 
             if dump_enabled {
                 dump_mir_for_pass(tcx, body, &name, true);
             }
             if validate {
-                validate_body(tcx, body, format!("after pass {}", name));
+                validate_body(tcx, body, format!("after pass {name}"));
             }
 
             body.pass_count += 1;

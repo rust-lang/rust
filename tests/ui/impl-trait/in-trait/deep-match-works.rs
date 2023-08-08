@@ -10,7 +10,9 @@ trait Foo {
 }
 
 impl Foo for () {
-    fn bar() -> Wrapper<i32> { Wrapper(0) }
+    fn bar() -> Wrapper<i32> {
+        Wrapper(0)
+    }
 }
 
 fn main() {}

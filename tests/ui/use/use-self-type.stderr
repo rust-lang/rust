@@ -1,14 +1,14 @@
-error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+error[E0433]: failed to resolve: `Self` cannot be used in imports
   --> $DIR/use-self-type.rs:7:16
    |
 LL |         pub(in Self::f) struct Z;
-   |                ^^^^ `Self` is only available in impls, traits, and type definitions
+   |                ^^^^ `Self` cannot be used in imports
 
 error[E0432]: unresolved import `Self`
   --> $DIR/use-self-type.rs:6:13
    |
 LL |         use Self::f;
-   |             ^^^^ `Self` is only available in impls, traits, and type definitions
+   |             ^^^^ `Self` cannot be used in imports
 
 error: aborting due to 2 previous errors
 

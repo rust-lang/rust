@@ -1,11 +1,11 @@
-error[E0658]: a non-static lifetime is not allowed in a `const`
+error: generic parameters may not be used in const operations
   --> $DIR/issue-64173-unused-lifetimes.rs:16:23
    |
 LL |     beta: [(); foo::<&'a ()>()],
-   |                       ^^
+   |                       ^^ cannot perform const operation using `'a`
    |
-   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
-   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
+   = note: lifetime parameters may not be used in const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic `Self` types are currently not permitted in anonymous constants
   --> $DIR/issue-64173-unused-lifetimes.rs:4:28
@@ -31,5 +31,4 @@ LL | struct Bar<'a> {
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0392, E0658.
-For more information about an error, try `rustc --explain E0392`.
+For more information about this error, try `rustc --explain E0392`.

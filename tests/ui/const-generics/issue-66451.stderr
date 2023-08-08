@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-66451.rs:27:10
+  --> $DIR/issue-66451.rs:29:10
    |
 LL |       let y: Test<{
    |  ____________-

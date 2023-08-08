@@ -57,7 +57,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.32.0"]
     pub REDUNDANT_CLONE,
-    perf,
+    nursery,
     "`clone()` of an owned value that is going to be dropped immediately"
 }
 
@@ -320,8 +320,6 @@ fn base_local_and_movability<'tcx>(
     mir: &mir::Body<'tcx>,
     place: mir::Place<'tcx>,
 ) -> (mir::Local, CannotMoveOut) {
-    use rustc_middle::mir::PlaceRef;
-
     // Dereference. You cannot move things out from a borrowed value.
     let mut deref = false;
     // Accessing a field of an ADT that has `Drop`. Moving the field out will cause E0509.
@@ -330,17 +328,14 @@ fn base_local_and_movability<'tcx>(
     // underlying type implements Copy
     let mut slice = false;
 
-    let PlaceRef { local, mut projection } = place.as_ref();
-    while let [base @ .., elem] = projection {
-        projection = base;
+    for (base, elem) in place.as_ref().iter_projections() {
+        let base_ty = base.ty(&mir.local_decls, cx.tcx).ty;
         deref |= matches!(elem, mir::ProjectionElem::Deref);
-        field |= matches!(elem, mir::ProjectionElem::Field(..))
-            && has_drop(cx, mir::Place::ty_from(local, projection, &mir.local_decls, cx.tcx).ty);
-        slice |= matches!(elem, mir::ProjectionElem::Index(..))
-            && !is_copy(cx, mir::Place::ty_from(local, projection, &mir.local_decls, cx.tcx).ty);
+        field |= matches!(elem, mir::ProjectionElem::Field(..)) && has_drop(cx, base_ty);
+        slice |= matches!(elem, mir::ProjectionElem::Index(..)) && !is_copy(cx, base_ty);
     }
 
-    (local, deref || field || slice)
+    (place.local, deref || field || slice)
 }
 
 #[derive(Default)]

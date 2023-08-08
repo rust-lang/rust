@@ -1,29 +1,29 @@
 // MIR for `match_bool` after built
 
 fn match_bool(_1: bool) -> usize {
-    debug x => _1;                       // in scope 0 at $DIR/simple_match.rs:+0:15: +0:16
-    let mut _0: usize;                   // return place in scope 0 at $DIR/simple_match.rs:+0:27: +0:32
+    debug x => _1;
+    let mut _0: usize;
 
     bb0: {
-        FakeRead(ForMatchedPlace(None), _1); // scope 0 at $DIR/simple_match.rs:+1:11: +1:12
-        switchInt(_1) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/simple_match.rs:+1:5: +1:12
+        FakeRead(ForMatchedPlace(None), _1);
+        switchInt(_1) -> [0: bb2, otherwise: bb1];
     }
 
     bb1: {
-        falseEdge -> [real: bb3, imaginary: bb2]; // scope 0 at $DIR/simple_match.rs:+2:9: +2:13
+        falseEdge -> [real: bb3, imaginary: bb2];
     }
 
     bb2: {
-        _0 = const 20_usize;             // scope 0 at $DIR/simple_match.rs:+3:14: +3:16
-        goto -> bb4;                     // scope 0 at $DIR/simple_match.rs:+3:14: +3:16
+        _0 = const 20_usize;
+        goto -> bb4;
     }
 
     bb3: {
-        _0 = const 10_usize;             // scope 0 at $DIR/simple_match.rs:+2:17: +2:19
-        goto -> bb4;                     // scope 0 at $DIR/simple_match.rs:+2:17: +2:19
+        _0 = const 10_usize;
+        goto -> bb4;
     }
 
     bb4: {
-        return;                          // scope 0 at $DIR/simple_match.rs:+5:2: +5:2
+        return;
     }
 }

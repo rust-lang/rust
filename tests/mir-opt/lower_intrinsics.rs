@@ -1,7 +1,7 @@
 // unit-test: LowerIntrinsics
-// ignore-wasm32 compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
-#![feature(core_intrinsics, intrinsics)]
+#![feature(core_intrinsics, intrinsics, rustc_attrs)]
 #![crate_type = "lib"]
 
 // EMIT_MIR lower_intrinsics.wrapping.LowerIntrinsics.diff
@@ -9,6 +9,17 @@ pub fn wrapping(a: i32, b: i32) {
     let _x = core::intrinsics::wrapping_add(a, b);
     let _y = core::intrinsics::wrapping_sub(a, b);
     let _z = core::intrinsics::wrapping_mul(a, b);
+}
+
+// EMIT_MIR lower_intrinsics.unchecked.LowerIntrinsics.diff
+pub unsafe fn unchecked(a: i32, b: i32) {
+    let _a = core::intrinsics::unchecked_add(a, b);
+    let _b = core::intrinsics::unchecked_sub(a, b);
+    let _c = core::intrinsics::unchecked_mul(a, b);
+    let _x = core::intrinsics::unchecked_div(a, b);
+    let _y = core::intrinsics::unchecked_rem(a, b);
+    let _i = core::intrinsics::unchecked_shl(a, b);
+    let _j = core::intrinsics::unchecked_shr(a, b);
 }
 
 // EMIT_MIR lower_intrinsics.size_of.LowerIntrinsics.diff
@@ -38,6 +49,39 @@ pub fn non_const<T>() -> usize {
     size_of_t()
 }
 
+// EMIT_MIR lower_intrinsics.transmute_inhabited.LowerIntrinsics.diff
+pub fn transmute_inhabited(c: std::cmp::Ordering) -> i8 {
+    unsafe { std::mem::transmute(c) }
+}
+
+// EMIT_MIR lower_intrinsics.transmute_uninhabited.LowerIntrinsics.diff
+pub unsafe fn transmute_uninhabited(u: ()) -> Never {
+    unsafe { std::mem::transmute::<(), Never>(u) }
+}
+
+// EMIT_MIR lower_intrinsics.transmute_ref_dst.LowerIntrinsics.diff
+pub unsafe fn transmute_ref_dst<T: ?Sized>(u: &T) -> *const T {
+    unsafe { std::mem::transmute(u) }
+}
+
+// EMIT_MIR lower_intrinsics.transmute_to_ref_uninhabited.LowerIntrinsics.diff
+pub unsafe fn transmute_to_ref_uninhabited() -> ! {
+    let x: &Never = std::mem::transmute(1usize);
+    match *x {}
+}
+
+// EMIT_MIR lower_intrinsics.transmute_to_mut_uninhabited.LowerIntrinsics.diff
+pub unsafe fn transmute_to_mut_uninhabited() -> ! {
+    let x: &mut Never = std::mem::transmute(1usize);
+    match *x {}
+}
+
+// EMIT_MIR lower_intrinsics.transmute_to_box_uninhabited.LowerIntrinsics.diff
+pub unsafe fn transmute_to_box_uninhabited() -> ! {
+    let x: Box<Never> = std::mem::transmute(1usize);
+    match *x {}
+}
+
 pub enum E {
     A,
     B,
@@ -54,6 +98,7 @@ pub fn discriminant<T>(t: T) {
 
 extern "rust-intrinsic" {
     // Cannot use `std::intrinsics::copy_nonoverlapping` as that is a wrapper function
+    #[rustc_nounwind]
     fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 }
 
@@ -78,4 +123,34 @@ pub fn with_overflow(a: i32, b: i32) {
     let _x = core::intrinsics::add_with_overflow(a, b);
     let _y = core::intrinsics::sub_with_overflow(a, b);
     let _z = core::intrinsics::mul_with_overflow(a, b);
+}
+
+// EMIT_MIR lower_intrinsics.read_via_copy_primitive.LowerIntrinsics.diff
+pub fn read_via_copy_primitive(r: &i32) -> i32 {
+    unsafe { core::intrinsics::read_via_copy(r) }
+}
+
+// EMIT_MIR lower_intrinsics.read_via_copy_uninhabited.LowerIntrinsics.diff
+pub fn read_via_copy_uninhabited(r: &Never) -> Never {
+    unsafe { core::intrinsics::read_via_copy(r) }
+}
+
+// EMIT_MIR lower_intrinsics.write_via_move_string.LowerIntrinsics.diff
+pub fn write_via_move_string(r: &mut String, v: String) {
+    unsafe { core::intrinsics::write_via_move(r, v) }
+}
+
+pub enum Never {}
+
+// EMIT_MIR lower_intrinsics.option_payload.LowerIntrinsics.diff
+pub fn option_payload(o: &Option<usize>, p: &Option<String>) {
+    unsafe {
+        let _x = core::intrinsics::option_payload_ptr(o);
+        let _y = core::intrinsics::option_payload_ptr(p);
+    }
+}
+
+// EMIT_MIR lower_intrinsics.ptr_offset.LowerIntrinsics.diff
+pub unsafe fn ptr_offset(p: *const i32, d: isize) -> *const i32 {
+    core::intrinsics::offset(p, d)
 }

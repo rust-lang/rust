@@ -309,7 +309,7 @@ impl<'a> Tarball<'a> {
         let mut cmd = self.builder.tool_cmd(crate::tool::Tool::RustInstaller);
 
         let package_name = self.package_name();
-        self.builder.info(&format!("Dist {}", package_name));
+        self.builder.info(&format!("Dist {package_name}"));
         let _time = crate::util::timeit(self.builder);
 
         build_cli(&self, &mut cmd);
@@ -318,6 +318,7 @@ impl<'a> Tarball<'a> {
             assert!(!formats.is_empty(), "dist.compression-formats can't be empty");
             cmd.arg("--compression-formats").arg(formats.join(","));
         }
+        cmd.args(&["--compression-profile", &self.builder.config.dist_compression_profile]);
         self.builder.run(&mut cmd);
 
         // Ensure there are no symbolic links in the tarball. In particular,
@@ -343,7 +344,7 @@ impl<'a> Tarball<'a> {
             .unwrap_or("gz");
 
         GeneratedTarball {
-            path: crate::dist::distdir(self.builder).join(format!("{}.tar.{}", package_name, ext)),
+            path: crate::dist::distdir(self.builder).join(format!("{package_name}.tar.{ext}")),
             decompressed_output,
             work: self.temp_dir,
         }

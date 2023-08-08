@@ -1,13 +1,14 @@
 use clippy_utils::diagnostics::{self, span_lint_and_sugg};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{source_map::Spanned, sym};
+use rustc_span::source_map::Spanned;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -161,14 +162,9 @@ fn print_unchecked_duration_subtraction_sugg(
 ) {
     let mut applicability = Applicability::MachineApplicable;
 
-    let left_expr =
-        source::snippet_with_applicability(cx, left_expr.span, "std::time::Instant::now()", &mut applicability);
-    let right_expr = source::snippet_with_applicability(
-        cx,
-        right_expr.span,
-        "std::time::Duration::from_secs(1)",
-        &mut applicability,
-    );
+    let ctxt = expr.span.ctxt();
+    let left_expr = snippet_with_context(cx, left_expr.span, ctxt, "<instant>", &mut applicability).0;
+    let right_expr = snippet_with_context(cx, right_expr.span, ctxt, "<duration>", &mut applicability).0;
 
     diagnostics::span_lint_and_sugg(
         cx,

@@ -1,13 +1,12 @@
 fn main() {}
 
-#[cfg(FALSE)] fn e() { let _ = box #![attr] 0; }
-//~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = [#[attr]]; }
 //~^ ERROR expected expression, found `]`
 #[cfg(FALSE)] fn e() { let _ = foo#[attr](); }
 //~^ ERROR expected one of
 #[cfg(FALSE)] fn e() { let _ = foo(#![attr]); }
 //~^ ERROR an inner attribute is not permitted in this context
+//~| ERROR an inner attribute is not permitted in this context
 //~| ERROR expected expression, found `)`
 #[cfg(FALSE)] fn e() { let _ = x.foo(#![attr]); }
 //~^ ERROR an inner attribute is not permitted in this context

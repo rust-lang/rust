@@ -205,3 +205,11 @@ fn bar() {
     let mut b = vec![2]; //~ ERROR: variable does not need to be mutable
 
 }
+
+struct Arg(i32);
+
+// Regression test for https://github.com/rust-lang/rust/issues/110849
+fn write_through_reference(mut arg: &mut Arg) {
+    //~^ WARN: variable does not need to be mutable
+    arg.0 = 1
+}

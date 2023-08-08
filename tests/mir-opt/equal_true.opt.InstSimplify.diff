@@ -1,0 +1,35 @@
+- // MIR for `opt` before InstSimplify
++ // MIR for `opt` after InstSimplify
+  
+  fn opt(_1: bool) -> i32 {
+      debug x => _1;
+      let mut _0: i32;
+      let mut _2: bool;
+      let mut _3: bool;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = _1;
+-         _2 = Eq(move _3, const true);
++         _2 = move _3;
+          StorageDead(_3);
+          switchInt(move _2) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const 0_i32;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          _0 = const 1_i32;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

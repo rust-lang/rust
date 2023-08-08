@@ -1,12 +1,10 @@
-error: type ascription cannot be followed by a function call
-  --> $DIR/issue-54516.rs:5:20
+error: path separator must be a double colon
+  --> $DIR/issue-54516.rs:5:28
    |
 LL |     println!("{}", std::mem:size_of::<BTreeMap<u32, u32>>());
-   |                    ^^^^^^^^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                            |
-   |                            help: maybe write a path separator here: `::`
+   |                            ^ help: use a double colon instead: `::`
    |
-   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
+   = note: if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: aborting due to previous error
 

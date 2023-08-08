@@ -13,5 +13,3 @@ pub use self::wake::{Context, RawWaker, RawWakerVTable, Waker};
 mod ready;
 #[stable(feature = "ready_macro", since = "1.64.0")]
 pub use ready::ready;
-#[unstable(feature = "poll_ready", issue = "89780")]
-pub use ready::Ready;

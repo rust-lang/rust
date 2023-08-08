@@ -1,5 +1,7 @@
 // build-pass
-// only-x86-windows
+// only-x86
+// only-windows
+// ignore-gnu - vectorcall is not supported by GCC: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89485
 #![crate_type = "cdylib"]
 #![feature(abi_vectorcall)]
 

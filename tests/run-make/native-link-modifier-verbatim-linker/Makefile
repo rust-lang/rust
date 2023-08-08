@@ -1,7 +1,7 @@
 # ignore-cross-compile
 # ignore-macos
 
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 all:
 	# Verbatim allows specify precise name.

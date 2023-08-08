@@ -19,12 +19,6 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
 LL | const S: &'static mut str = &mut " hello ";
    |                             ^^^^^^^^^^^^^^ cannot borrow as mutable
 
-note: erroneous constant used
-  --> $DIR/issue-76510.rs:11:70
-   |
-LL |         let s = transmute::<(*const u8, usize), &ManuallyDrop<str>>((S.as_ptr(), 3));
-   |                                                                      ^
-
 error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0596, E0658, E0764.

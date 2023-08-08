@@ -1,9 +1,12 @@
-thread 'main' panicked at 'panicking from libstd', $DIR/panic1.rs:LL:CC
+thread 'main' panicked at $DIR/panic1.rs:LL:CC:
+panicking from libstd
 stack backtrace:
-   0: std::rt::begin_panic
+   0: std::panicking::begin_panic_handler
  at RUSTLIB/std/src/panicking.rs:LL:CC
-   1: main
+   1: std::rt::panic_fmt
+ at RUSTLIB/core/src/panicking.rs:LL:CC
+   2: main
  at $DIR/panic1.rs:LL:CC
-   2: <fn() as std::ops::FnOnce<()>>::call_once - shim(fn())
+   3: <fn() as std::ops::FnOnce<()>>::call_once - shim(fn())
  at RUSTLIB/core/src/ops/function.rs:LL:CC
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.

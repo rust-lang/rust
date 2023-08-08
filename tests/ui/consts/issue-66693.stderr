@@ -22,17 +22,5 @@ LL |     panic!(&1);
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-note: erroneous constant used
-  --> $DIR/issue-66693.rs:11:12
-   |
-LL |     panic!(&1);
-   |            ^^
-
-note: erroneous constant used
-  --> $DIR/issue-66693.rs:11:12
-   |
-LL |     panic!(&1);
-   |            ^^
-
 error: aborting due to 3 previous errors
 

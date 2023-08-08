@@ -1,0 +1,37 @@
+warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-110963-early.rs:6:12
+   |
+LL | #![feature(return_type_notation)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: higher-ranked lifetime error
+  --> $DIR/issue-110963-early.rs:17:5
+   |
+LL | /     spawn(async move {
+LL | |         let mut hc = hc;
+LL | |         if !hc.check().await {
+LL | |             log_health_check_failure().await;
+LL | |         }
+LL | |     });
+   | |______^
+   |
+   = note: could not prove `[async block@$DIR/issue-110963-early.rs:17:11: 22:6]: Send`
+
+error: higher-ranked lifetime error
+  --> $DIR/issue-110963-early.rs:17:5
+   |
+LL | /     spawn(async move {
+LL | |         let mut hc = hc;
+LL | |         if !hc.check().await {
+LL | |             log_health_check_failure().await;
+LL | |         }
+LL | |     });
+   | |______^
+   |
+   = note: could not prove `[async block@$DIR/issue-110963-early.rs:17:11: 22:6]: Send`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

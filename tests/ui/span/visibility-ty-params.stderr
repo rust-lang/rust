@@ -4,11 +4,11 @@ error: unexpected generic arguments in path
 LL | m!{ S<u8> }
    |      ^^^^
 
-error[E0577]: expected module, found struct `S`
+error[E0433]: failed to resolve: `S` is a struct, not a module
   --> $DIR/visibility-ty-params.rs:6:5
    |
 LL | m!{ S<u8> }
-   |     ^^^^^ not a module
+   |     ^ `S` is a struct, not a module
 
 error: unexpected generic arguments in path
   --> $DIR/visibility-ty-params.rs:10:10
@@ -18,4 +18,4 @@ LL |     m!{ m<> }
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0577`.
+For more information about this error, try `rustc --explain E0433`.

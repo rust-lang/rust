@@ -42,7 +42,7 @@ declare_lint_pass!(EnumIntrinsicsNonEnums => [ENUM_INTRINSICS_NON_ENUMS]);
 /// Returns `true` if we know for sure that the given type is not an enum. Note that for cases where
 /// the type is generic, we can't be certain if it will be an enum so we have to assume that it is.
 fn is_non_enum(t: Ty<'_>) -> bool {
-    !t.is_enum() && !t.needs_subst()
+    !t.is_enum() && !t.has_param()
 }
 
 fn enforce_mem_discriminant(
@@ -51,7 +51,7 @@ fn enforce_mem_discriminant(
     expr_span: Span,
     args_span: Span,
 ) {
-    let ty_param = cx.typeck_results().node_substs(func_expr.hir_id).type_at(0);
+    let ty_param = cx.typeck_results().node_args(func_expr.hir_id).type_at(0);
     if is_non_enum(ty_param) {
         cx.emit_spanned_lint(
             ENUM_INTRINSICS_NON_ENUMS,
@@ -62,7 +62,7 @@ fn enforce_mem_discriminant(
 }
 
 fn enforce_mem_variant_count(cx: &LateContext<'_>, func_expr: &hir::Expr<'_>, span: Span) {
-    let ty_param = cx.typeck_results().node_substs(func_expr.hir_id).type_at(0);
+    let ty_param = cx.typeck_results().node_args(func_expr.hir_id).type_at(0);
     if is_non_enum(ty_param) {
         cx.emit_spanned_lint(
             ENUM_INTRINSICS_NON_ENUMS,

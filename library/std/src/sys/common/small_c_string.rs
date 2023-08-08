@@ -19,7 +19,7 @@ pub fn run_path_with_cstr<T, F>(path: &Path, f: F) -> io::Result<T>
 where
     F: FnOnce(&CStr) -> io::Result<T>,
 {
-    run_with_cstr(path.as_os_str().bytes(), f)
+    run_with_cstr(path.as_os_str().as_os_str_bytes(), f)
 }
 
 #[inline]

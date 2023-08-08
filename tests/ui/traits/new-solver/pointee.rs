@@ -7,17 +7,15 @@ use std::ptr::{DynMetadata, Pointee};
 trait Trait<U> {}
 struct MyDst<T: ?Sized>(T);
 
-fn works<T>() {
-    let _: <T as Pointee>::Metadata = ();
-    let _: <[T] as Pointee>::Metadata = 1_usize;
-    let _: <str as Pointee>::Metadata = 1_usize;
-    let _: <dyn Trait<T> as Pointee>::Metadata = give::<DynMetadata<dyn Trait<T>>>();
-    let _: <MyDst<T> as Pointee>::Metadata = ();
-    let _: <((((([u8],),),),),) as Pointee>::Metadata = 1_usize;
-}
+fn meta_is<T: Pointee<Metadata = U> + ?Sized, U>() {}
 
-fn give<U>() -> U {
-    loop {}
+fn works<T>() {
+    meta_is::<T, ()>();
+    meta_is::<[T], usize>();
+    meta_is::<str, usize>();
+    meta_is::<dyn Trait<T>, DynMetadata<dyn Trait<T>>>();
+    meta_is::<MyDst<T>, ()>();
+    meta_is::<((((([u8],),),),),), usize>();
 }
 
 fn main() {}

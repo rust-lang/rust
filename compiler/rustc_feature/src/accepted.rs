@@ -53,6 +53,8 @@ declare_features! (
     /// Allows the sysV64 ABI to be specified on all platforms
     /// instead of just the platforms on which it is the C ABI.
     (accepted, abi_sysv64, "1.24.0", Some(36167), None),
+    /// Allows using the `thiscall` ABI.
+    (accepted, abi_thiscall, "1.19.0", None, None),
     /// Allows using ADX intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, adx_target_feature, "1.61.0", Some(44839), None),
     /// Allows explicit discriminants on non-unit enum variants.
@@ -90,8 +92,8 @@ declare_features! (
     (accepted, clone_closures, "1.26.0", Some(44490), None),
     /// Allows coercing non capturing closures to function pointers.
     (accepted, closure_to_fn_coercion, "1.19.0", Some(39817), None),
-    /// Allows using `cmpxchg16b` from `core::arch::x86_64`.
-    (accepted, cmpxchg16b_target_feature, "CURRENT_RUSTC_VERSION", Some(44839), None),
+    /// Allows using the CMPXCHG16B target feature.
+    (accepted, cmpxchg16b_target_feature, "1.69.0", Some(44839), None),
     /// Allows usage of the `compile_error!` macro.
     (accepted, compile_error, "1.20.0", Some(40872), None),
     /// Allows `impl Trait` in function return types.
@@ -130,6 +132,8 @@ declare_features! (
     (accepted, copy_closures, "1.26.0", Some(44490), None),
     /// Allows `crate` in paths.
     (accepted, crate_in_paths, "1.30.0", Some(45477), None),
+    /// Allows using `#[debugger_visualizer]` attribute.
+    (accepted, debugger_visualizer, "1.71.0", Some(95939), None),
     /// Allows rustc to inject a default alloc_error_handler
     (accepted, default_alloc_error_handler, "1.68.0", Some(66741), None),
     /// Allows using assigning a default type to type parameters in algebraic data type definitions.
@@ -238,6 +242,8 @@ declare_features! (
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607), None),
     /// Allows using `Self` and associated types in struct expressions and patterns.
     (accepted, more_struct_aliases, "1.16.0", Some(37544), None),
+    /// Allows using the MOVBE target feature.
+    (accepted, movbe_target_feature, "1.70.0", Some(44839), None),
     /// Allows patterns with concurrent by-move and by-ref bindings.
     /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
     (accepted, move_ref_pattern, "1.49.0", Some(68354), None),
@@ -276,6 +282,8 @@ declare_features! (
     (accepted, pub_restricted, "1.18.0", Some(32409), None),
     /// Allows use of the postfix `?` operator in expressions.
     (accepted, question_mark, "1.13.0", Some(31436), None),
+    /// Allows the use of raw-dylibs (RFC 2627).
+    (accepted, raw_dylib, "1.71.0", Some(58713), None),
     /// Allows keywords to be escaped for use as identifiers.
     (accepted, raw_identifiers, "1.30.0", Some(48589), None),
     /// Allows relaxing the coherence rules such that

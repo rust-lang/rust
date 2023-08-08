@@ -94,7 +94,7 @@ pub extern "C" fn test() {
 
 // Validate that we can codegen transmutes between data ptrs and fn ptrs.
 
-// CHECK: define{{.+}}{{void \(\) addrspace\(1\)\*|ptr addrspace\(1\)}} @transmute_data_ptr_to_fn({{\{\}\*|ptr}}{{.*}} %x)
+// CHECK: define{{.+}}ptr addrspace(1) @transmute_data_ptr_to_fn(ptr{{.*}} %x)
 #[no_mangle]
 pub unsafe fn transmute_data_ptr_to_fn(x: *const ()) -> fn() {
     // It doesn't matter precisely how this is codegenned (through memory or an addrspacecast),
@@ -102,7 +102,7 @@ pub unsafe fn transmute_data_ptr_to_fn(x: *const ()) -> fn() {
     transmute(x)
 }
 
-// CHECK: define{{.+}}{{\{\}\*|ptr}} @transmute_fn_ptr_to_data({{void \(\) addrspace\(1\)\*|ptr addrspace\(1\)}}{{.*}} %x)
+// CHECK: define{{.+}}ptr @transmute_fn_ptr_to_data(ptr addrspace(1){{.*}} %x)
 #[no_mangle]
 pub unsafe fn transmute_fn_ptr_to_data(x: fn()) -> *const () {
     // It doesn't matter precisely how this is codegenned (through memory or an addrspacecast),
@@ -116,7 +116,7 @@ pub enum Either<T, U> { A(T), B(U) }
 // with the `ptr` field representing both `&i32` and `fn()` depending on the variant.
 // This is incorrect, because `fn()` should be `ptr addrspace(1)`, not `ptr`.
 
-// CHECK: define{{.+}}void @should_not_combine_addrspace({{.+\*|ptr}}{{.+}}sret{{.+}}%0, {{.+\*|ptr}}{{.+}}%x)
+// CHECK: define{{.+}}void @should_not_combine_addrspace(ptr{{.+}}sret{{.+}}%_0, ptr{{.+}}%x)
 #[no_mangle]
 #[inline(never)]
 pub fn should_not_combine_addrspace(x: Either<&i32, fn()>) -> Either<&i32, fn()> {

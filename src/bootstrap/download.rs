@@ -2,23 +2,30 @@ use std::{
     env,
     ffi::{OsStr, OsString},
     fs::{self, File},
-    io::{BufRead, BufReader, ErrorKind},
+    io::{BufRead, BufReader, BufWriter, ErrorKind, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
+use build_helper::ci::CiEnv;
 use once_cell::sync::OnceCell;
 use xz2::bufread::XzDecoder;
 
 use crate::{
     config::RustfmtMetadata,
-    native::detect_llvm_sha,
+    llvm::detect_llvm_sha,
     t,
-    util::{check_run, exe, program_out_of_date, try_run},
+    util::{check_run, exe, program_out_of_date},
     Config,
 };
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceCell<bool> = OnceCell::new();
+
+/// `Config::try_run` wrapper for this module to avoid warnings on `try_run`, since we don't have access to a `builder` yet.
+fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
+    #[allow(deprecated)]
+    config.try_run(cmd)
+}
 
 /// Generic helpers that are useful anywhere in bootstrap.
 impl Config {
@@ -51,24 +58,13 @@ impl Config {
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
-    /// Exits if the command failed to execute at all, otherwise returns its
-    /// `status.success()`.
-    pub(crate) fn try_run(&self, cmd: &mut Command) -> bool {
-        if self.dry_run() {
-            return true;
-        }
-        self.verbose(&format!("running: {:?}", cmd));
-        try_run(cmd, self.is_verbose())
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
     /// Returns false if do not execute at all, otherwise returns its
     /// `status.success()`.
     pub(crate) fn check_run(&self, cmd: &mut Command) -> bool {
         if self.dry_run() {
             return true;
         }
-        self.verbose(&format!("running: {:?}", cmd));
+        self.verbose(&format!("running: {cmd:?}"));
         check_run(cmd, self.is_verbose())
     }
 
@@ -112,7 +108,7 @@ impl Config {
             is_nixos && !Path::new("/lib").exists()
         });
         if val {
-            println!("info: You seem to be using Nix.");
+            eprintln!("info: You seem to be using Nix.");
         }
         val
     }
@@ -123,7 +119,7 @@ impl Config {
     /// This is only required on NixOS and uses the PatchELF utility to
     /// change the interpreter/RPATH of ELF executables.
     ///
-    /// Please see https://nixos.org/patchelf.html for more information
+    /// Please see <https://nixos.org/patchelf.html> for more information
     fn fix_bin_or_dylib(&self, fname: &Path) {
         assert_eq!(SHOULD_FIX_BINS_AND_DYLIBS.get(), Some(&true));
         println!("attempting to patch {}", fname.display());
@@ -155,12 +151,16 @@ impl Config {
                 ];
             }
             ";
-            nix_build_succeeded = self.try_run(Command::new("nix-build").args(&[
-                Path::new("-E"),
-                Path::new(NIX_EXPR),
-                Path::new("-o"),
-                &nix_deps_dir,
-            ]));
+            nix_build_succeeded = try_run(
+                self,
+                Command::new("nix-build").args(&[
+                    Path::new("-E"),
+                    Path::new(NIX_EXPR),
+                    Path::new("-o"),
+                    &nix_deps_dir,
+                ]),
+            )
+            .is_ok();
             nix_deps_dir
         });
         if !nix_build_succeeded {
@@ -185,7 +185,7 @@ impl Config {
             patchelf.args(&["--set-interpreter", dynamic_linker.trim_end()]);
         }
 
-        self.try_run(patchelf.arg(fname));
+        let _ = try_run(self, patchelf.arg(fname));
     }
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
@@ -206,11 +206,10 @@ impl Config {
     }
 
     fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
-        println!("downloading {}", url);
+        println!("downloading {url}");
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
         let mut curl = Command::new("curl");
         curl.args(&[
-            "-#",
             "-y",
             "30",
             "-Y",
@@ -219,16 +218,22 @@ impl Config {
             "30", // timeout if cannot connect within 30 seconds
             "--retry",
             "3",
-            "-Sf",
+            "-SRf",
         ]);
+        // Don't print progress in CI; the \r wrapping looks bad and downloads don't take long enough for progress to be useful.
+        if CiEnv::is_ci() {
+            curl.arg("-s");
+        } else {
+            curl.arg("--progress-bar");
+        }
         curl.arg(url);
         let f = File::create(tempfile).unwrap();
         curl.stdout(Stdio::from(f));
         if !self.check_run(&mut curl) {
             if self.build.contains("windows-msvc") {
-                println!("Fallback to PowerShell");
+                eprintln!("Fallback to PowerShell");
                 for _ in 0..3 {
-                    if self.try_run(Command::new("PowerShell.exe").args(&[
+                    if try_run(self, Command::new("PowerShell.exe").args(&[
                         "/nologo",
                         "-Command",
                         "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
@@ -236,21 +241,21 @@ impl Config {
                             "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
                             url, tempfile.to_str().expect("invalid UTF-8 not supported with powershell downloads"),
                         ),
-                    ])) {
+                    ])).is_err() {
                         return;
                     }
-                    println!("\nspurious failure, trying again");
+                    eprintln!("\nspurious failure, trying again");
                 }
             }
             if !help_on_error.is_empty() {
-                eprintln!("{}", help_on_error);
+                eprintln!("{help_on_error}");
             }
-            crate::detail_exit(1);
+            crate::exit!(1);
         }
     }
 
     fn unpack(&self, tarball: &Path, dst: &Path, pattern: &str) {
-        println!("extracting {} to {}", tarball.display(), dst.display());
+        eprintln!("extracting {} to {}", tarball.display(), dst.display());
         if !dst.exists() {
             t!(fs::create_dir_all(dst));
         }
@@ -262,10 +267,17 @@ impl Config {
         let directory_prefix = Path::new(Path::new(uncompressed_filename).file_stem().unwrap());
 
         // decompress the file
-        let data = t!(File::open(tarball));
+        let data = t!(File::open(tarball), format!("file {} not found", tarball.display()));
         let decompressor = XzDecoder::new(BufReader::new(data));
 
         let mut tar = tar::Archive::new(decompressor);
+
+        // `compile::Sysroot` needs to know the contents of the `rustc-dev` tarball to avoid adding
+        // it to the sysroot unless it was explicitly requested. But parsing the 100 MB tarball is slow.
+        // Cache the entries when we extract it so we only have to read it once.
+        let mut recorded_entries =
+            if dst.ends_with("ci-rustc") { recorded_entries(dst, pattern) } else { None };
+
         for member in t!(tar.entries()) {
             let mut member = t!(member);
             let original_path = t!(member.path()).into_owned();
@@ -283,13 +295,19 @@ impl Config {
             if !t!(member.unpack_in(dst)) {
                 panic!("path traversal attack ??");
             }
+            if let Some(record) = &mut recorded_entries {
+                t!(writeln!(record, "{}", short_path.to_str().unwrap()));
+            }
             let src_path = dst.join(original_path);
             if src_path.is_dir() && dst_path.exists() {
                 continue;
             }
             t!(fs::rename(src_path, dst_path));
         }
-        t!(fs::remove_dir_all(dst.join(directory_prefix)));
+        let dst_dir = dst.join(directory_prefix);
+        if dst_dir.exists() {
+            t!(fs::remove_dir_all(&dst_dir), format!("failed to remove {}", dst_dir.display()));
+        }
     }
 
     /// Returns whether the SHA256 checksum of `path` matches `expected`.
@@ -313,6 +331,17 @@ impl Config {
         }
         return verified;
     }
+}
+
+fn recorded_entries(dst: &Path, pattern: &str) -> Option<BufWriter<File>> {
+    let name = if pattern == "rustc-dev" {
+        ".rustc-dev-contents"
+    } else if pattern.starts_with("rust-std") {
+        ".rust-std-contents"
+    } else {
+        return None;
+    };
+    Some(BufWriter::new(t!(File::create(dst.join(name)))))
 }
 
 enum DownloadSource {
@@ -365,28 +394,91 @@ impl Config {
         Some(rustfmt_path)
     }
 
+    pub(crate) fn ci_rust_std_contents(&self) -> Vec<String> {
+        self.ci_component_contents(".rust-std-contents")
+    }
+
+    pub(crate) fn ci_rustc_dev_contents(&self) -> Vec<String> {
+        self.ci_component_contents(".rustc-dev-contents")
+    }
+
+    fn ci_component_contents(&self, stamp_file: &str) -> Vec<String> {
+        assert!(self.download_rustc());
+        if self.dry_run() {
+            return vec![];
+        }
+
+        let ci_rustc_dir = self.ci_rustc_dir();
+        let stamp_file = ci_rustc_dir.join(stamp_file);
+        let contents_file = t!(File::open(&stamp_file), stamp_file.display().to_string());
+        t!(BufReader::new(contents_file).lines().collect())
+    }
+
     pub(crate) fn download_ci_rustc(&self, commit: &str) {
         self.verbose(&format!("using downloaded stage2 artifacts from CI (commit {commit})"));
+
         let version = self.artifact_version_part(commit);
+        // download-rustc doesn't need its own cargo, it can just use beta's. But it does need the
+        // `rustc_private` crates for tools.
+        let extra_components = ["rustc-dev"];
+
+        self.download_toolchain(
+            &version,
+            "ci-rustc",
+            &format!("{commit}-{}", self.llvm_assertions),
+            &extra_components,
+            Self::download_ci_component,
+        );
+    }
+
+    pub(crate) fn download_beta_toolchain(&self) {
+        self.verbose(&format!("downloading stage0 beta artifacts"));
+
+        let date = &self.stage0_metadata.compiler.date;
+        let version = &self.stage0_metadata.compiler.version;
+        let extra_components = ["cargo"];
+
+        let download_beta_component = |config: &Config, filename, prefix: &_, date: &_| {
+            config.download_component(DownloadSource::Dist, filename, prefix, date, "stage0")
+        };
+
+        self.download_toolchain(
+            version,
+            "stage0",
+            date,
+            &extra_components,
+            download_beta_component,
+        );
+    }
+
+    fn download_toolchain(
+        &self,
+        version: &str,
+        sysroot: &str,
+        stamp_key: &str,
+        extra_components: &[&str],
+        download_component: fn(&Config, String, &str, &str),
+    ) {
         let host = self.build.triple;
-        let bin_root = self.out.join(host).join("ci-rustc");
+        let bin_root = self.out.join(host).join(sysroot);
         let rustc_stamp = bin_root.join(".rustc-stamp");
 
-        if !bin_root.join("bin").join("rustc").exists() || program_out_of_date(&rustc_stamp, commit)
+        if !bin_root.join("bin").join(exe("rustc", self.build)).exists()
+            || program_out_of_date(&rustc_stamp, stamp_key)
         {
             if bin_root.exists() {
                 t!(fs::remove_dir_all(&bin_root));
             }
             let filename = format!("rust-std-{version}-{host}.tar.xz");
             let pattern = format!("rust-std-{host}");
-            self.download_ci_component(filename, &pattern, commit);
+            download_component(self, filename, &pattern, stamp_key);
             let filename = format!("rustc-{version}-{host}.tar.xz");
-            self.download_ci_component(filename, "rustc", commit);
-            // download-rustc doesn't need its own cargo, it can just use beta's.
-            let filename = format!("rustc-dev-{version}-{host}.tar.xz");
-            self.download_ci_component(filename, "rustc-dev", commit);
-            let filename = format!("rust-src-{version}.tar.xz");
-            self.download_ci_component(filename, "rust-src", commit);
+            download_component(self, filename, "rustc", stamp_key);
+
+            for component in extra_components {
+                let filename = format!("{component}-{version}-{host}.tar.xz");
+                download_component(self, filename, component, stamp_key);
+            }
 
             if self.should_fix_bins_and_dylibs() {
                 self.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
@@ -403,14 +495,21 @@ impl Config {
                 }
             }
 
-            t!(fs::write(rustc_stamp, commit));
+            t!(fs::write(rustc_stamp, stamp_key));
         }
     }
 
     /// Download a single component of a CI-built toolchain (not necessarily a published nightly).
     // NOTE: intentionally takes an owned string to avoid downloading multiple times by accident
-    fn download_ci_component(&self, filename: String, prefix: &str, commit: &str) {
-        Self::download_component(self, DownloadSource::CI, filename, prefix, commit, "ci-rustc")
+    fn download_ci_component(&self, filename: String, prefix: &str, commit_with_assertions: &str) {
+        Self::download_component(
+            self,
+            DownloadSource::CI,
+            filename,
+            prefix,
+            commit_with_assertions,
+            "ci-rustc",
+        )
     }
 
     fn download_component(
@@ -430,11 +529,18 @@ impl Config {
         let bin_root = self.out.join(self.build.triple).join(destination);
         let tarball = cache_dir.join(&filename);
         let (base_url, url, should_verify) = match mode {
-            DownloadSource::CI => (
-                self.stage0_metadata.config.artifacts_server.clone(),
-                format!("{key}/{filename}"),
-                false,
-            ),
+            DownloadSource::CI => {
+                let dist_server = if self.llvm_assertions {
+                    self.stage0_metadata.config.artifacts_with_llvm_assertions_server.clone()
+                } else {
+                    self.stage0_metadata.config.artifacts_server.clone()
+                };
+                let url = format!(
+                    "{}/{filename}",
+                    key.strip_suffix(&format!("-{}", self.llvm_assertions)).unwrap()
+                );
+                (dist_server, url, false)
+            }
             DownloadSource::Dist => {
                 let dist_server = env::var("RUSTUP_DIST_SERVER")
                     .unwrap_or(self.stage0_metadata.config.dist_server.to_string());
@@ -474,7 +580,18 @@ impl Config {
             None
         };
 
-        self.download_file(&format!("{base_url}/{url}"), &tarball, "");
+        let mut help_on_error = "";
+        if destination == "ci-rustc" {
+            help_on_error = "error: failed to download pre-built rustc from CI
+
+note: old builds get deleted after a certain time
+help: if trying to compile an old commit of rustc, disable `download-rustc` in config.toml:
+
+[rust]
+download-rustc = false
+";
+        }
+        self.download_file(&format!("{base_url}/{url}"), &tarball, help_on_error);
         if let Some(sha256) = checksum {
             if !self.verify(&tarball, sha256) {
                 panic!("failed to verify {}", tarball.display());
@@ -529,7 +646,7 @@ impl Config {
     fn download_ci_llvm(&self, llvm_sha: &str) {
         let llvm_assertions = self.llvm_assertions;
 
-        let cache_prefix = format!("llvm-{}-{}", llvm_sha, llvm_assertions);
+        let cache_prefix = format!("llvm-{llvm_sha}-{llvm_assertions}");
         let cache_dst = self.out.join("cache");
         let rustc_cache = cache_dst.join(cache_prefix);
         if !rustc_cache.exists() {

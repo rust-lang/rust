@@ -1,33 +1,25 @@
 // ignore-order
 
-const QUERY = [
-    'Aaaaaaa -> i32',
-    'Aaaaaaa -> Aaaaaaa',
-    'Aaaaaaa -> usize',
-    '-> Aaaaaaa',
-    'Aaaaaaa',
-];
-
 const EXPECTED = [
     {
-        // Aaaaaaa -> i32
+        'query': 'Aaaaaaa -> i32',
         'others': [
             { 'path': 'raw_pointer::Ccccccc', 'name': 'eeeeeee' },
         ],
     },
     {
-        // Aaaaaaa -> Aaaaaaa
+        'query': 'Aaaaaaa -> Aaaaaaa',
         'others': [
             { 'path': 'raw_pointer::Ccccccc', 'name': 'fffffff' },
             { 'path': 'raw_pointer::Ccccccc', 'name': 'ggggggg' },
         ],
     },
     {
-        // Aaaaaaa -> usize
+        'query': 'Aaaaaaa -> usize',
         'others': [],
     },
     {
-        // -> Aaaaaaa
+        'query': '-> Aaaaaaa',
         'others': [
             { 'path': 'raw_pointer::Ccccccc', 'name': 'fffffff' },
             { 'path': 'raw_pointer::Ccccccc', 'name': 'ggggggg' },
@@ -36,7 +28,7 @@ const EXPECTED = [
         ],
     },
     {
-        // Aaaaaaa
+        'query': 'Aaaaaaa',
         'others': [
             { 'path': 'raw_pointer', 'name': 'Aaaaaaa' },
         ],

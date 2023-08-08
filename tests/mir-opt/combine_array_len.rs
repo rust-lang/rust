@@ -1,5 +1,6 @@
-// unit-test: InstCombine
-// EMIT_MIR combine_array_len.norm2.InstCombine.diff
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
+// unit-test: InstSimplify
+// EMIT_MIR combine_array_len.norm2.InstSimplify.diff
 
 fn norm2(x: [f32; 2]) -> f32 {
     let a = x[0];

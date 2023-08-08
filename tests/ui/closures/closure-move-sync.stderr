@@ -20,24 +20,6 @@ LL |     let t = thread::spawn(|| {
 note: required by a bound in `spawn`
   --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
 
-error[E0277]: `Sender<()>` cannot be shared between threads safely
-  --> $DIR/closure-move-sync.rs:18:19
-   |
-LL |     thread::spawn(|| tx.send(()).unwrap());
-   |     ------------- ^^^^^^^^^^^^^^^^^^^^^^^ `Sender<()>` cannot be shared between threads safely
-   |     |
-   |     required by a bound introduced by this call
-   |
-   = help: the trait `Sync` is not implemented for `Sender<()>`
-   = note: required for `&Sender<()>` to implement `Send`
-note: required because it's used within this closure
-  --> $DIR/closure-move-sync.rs:18:19
-   |
-LL |     thread::spawn(|| tx.send(()).unwrap());
-   |                   ^^
-note: required by a bound in `spawn`
-  --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0277`.
