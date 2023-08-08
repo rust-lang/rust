@@ -2096,14 +2096,6 @@ impl SelfParam {
             .unwrap_or(Access::Owned)
     }
 
-    pub fn display(self, db: &dyn HirDatabase) -> &'static str {
-        match self.access(db) {
-            Access::Shared => "&self",
-            Access::Exclusive => "&mut self",
-            Access::Owned => "self",
-        }
-    }
-
     pub fn source(&self, db: &dyn HirDatabase) -> Option<InFile<ast::SelfParam>> {
         let InFile { file_id, value } = Function::from(self.func).source(db)?;
         value
