@@ -31,6 +31,7 @@ use crate::util::get_clang_cl_resource_dir;
 use crate::util::{exe, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date};
 use crate::LLVM_TOOLS;
 use crate::{CLang, Compiler, DependencyType, GitRepo, Mode};
+use filetime::FileTime;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Std {
@@ -904,19 +905,12 @@ impl Step for Rustc {
         // our LLVM wrapper. Unless we're explicitly requesting `librustc_driver` to be built with
         // debuginfo (via the debuginfo level of the executables using it): strip this debuginfo
         // away after the fact.
-        // FIXME: to make things simpler for now, limit this to the host and target where we know
-        // `strip -g` is both available and will fix the issue, i.e. on a x64 linux host that is not
-        // cross-compiling. Expand this to other appropriate targets in the future.
         if builder.config.rust_debuginfo_level_rustc == DebuginfoLevel::None
             && builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None
-            && target == "x86_64-unknown-linux-gnu"
-            && target == builder.config.build
         {
             let target_root_dir = stamp.parent().unwrap();
             let rustc_driver = target_root_dir.join("librustc_driver.so");
-            if rustc_driver.exists() {
-                output(Command::new("strip").arg("--strip-debug").arg(rustc_driver));
-            }
+            strip_debug(builder, target, &rustc_driver);
         }
 
         builder.ensure(RustcLink::from_rustc(
@@ -1973,4 +1967,31 @@ pub enum CargoMessage<'a> {
     BuildFinished {
         success: bool,
     },
+}
+
+pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) {
+    // FIXME: to make things simpler for now, limit this to the host and target where we know
+    // `strip -g` is both available and will fix the issue, i.e. on a x64 linux host that is not
+    // cross-compiling. Expand this to other appropriate targets in the future.
+    if target != "x86_64-unknown-linux-gnu" || target != builder.config.build || !path.exists() {
+        return;
+    }
+
+    let previous_mtime = FileTime::from_last_modification_time(&path.metadata().unwrap());
+    // Note: `output` will propagate any errors here.
+    output(Command::new("strip").arg("--strip-debug").arg(path));
+
+    // After running `strip`, we have to set the file modification time to what it was before,
+    // otherwise we risk Cargo invalidating its fingerprint and rebuilding the world next time
+    // bootstrap is invoked.
+    //
+    // An example of this is if we run this on librustc_driver.so. In the first invocation:
+    // - Cargo will build librustc_driver.so (mtime of 1)
+    // - Cargo will build rustc-main (mtime of 2)
+    // - Bootstrap will strip librustc_driver.so (changing the mtime to 3).
+    //
+    // In the second invocation of bootstrap, Cargo will see that the mtime of librustc_driver.so
+    // is greater than the mtime of rustc-main, and will rebuild rustc-main. That will then cause
+    // everything else (standard library, future stages...) to be rebuilt.
+    t!(filetime::set_file_mtime(path, previous_mtime));
 }
