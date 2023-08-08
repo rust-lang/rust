@@ -76,8 +76,8 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       echo "Loading images into docker"
       # docker load sometimes hangs in the CI, so time out after 10 minutes with TERM,
       # KILL after 12 minutes
-      loaded_images=$(/usr/bin/timeout -k 720 600 docker load -i /tmp/rustci_docker_cache \
-        | sed 's/.* sha/sha/')
+      # FIXME: why can't parse output here?
+      loaded_images=$(docker load -i /tmp/rustci_docker_cache)
       set -e
       printf "Downloaded containers:\n$loaded_images\n"
     fi
