@@ -161,14 +161,14 @@ following attributes:
   - `code = "..."` (_Optional_)
     - Specifies the error code.
 - `#[note]` or `#[note(slug)]` (_Optional_)
-  - _Applied to struct or `Span`/`()` fields._
+  - _Applied to struct or struct fields of type `Span`, `Option<()>` or `()`._
   - Adds a note subdiagnostic.
   - Value is a path to an item in `rustc_errors::fluent` for the note's
     message.
     - Defaults to equivalent of `.note`.
   - If applied to a `Span` field, creates a spanned note.
 - `#[help]` or `#[help(slug)]` (_Optional_)
-  - _Applied to struct or `Span`/`()` fields._
+  - _Applied to struct or struct fields of type `Span`, `Option<()>` or `()`._
   - Adds a help subdiagnostic.
   - Value is a path to an item in `rustc_errors::fluent` for the note's
     message.
@@ -181,7 +181,7 @@ following attributes:
     message.
     - Defaults to equivalent of `.label`.
 - `#[warning]` or `#[warning(slug)]` (_Optional_)
-  - _Applied to struct or `Span`/`()` fields._
+  - _Applied to struct or struct fields of type `Span`, `Option<()>` or `()`._
   - Adds a warning subdiagnostic.
   - Value is a path to an item in `rustc_errors::fluent` for the note's
     message.
