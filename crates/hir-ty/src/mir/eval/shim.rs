@@ -136,7 +136,10 @@ impl Evaluator<'_> {
                     not_supported!("wrong generic arg kind for clone");
                 };
                 // Clone has special impls for tuples and function pointers
-                if matches!(self_ty.kind(Interner), TyKind::Function(_) | TyKind::Tuple(..)) {
+                if matches!(
+                    self_ty.kind(Interner),
+                    TyKind::Function(_) | TyKind::Tuple(..) | TyKind::Closure(..)
+                ) {
                     self.exec_clone(def, args, self_ty.clone(), locals, destination, span)?;
                     return Ok(true);
                 }
@@ -167,32 +170,26 @@ impl Evaluator<'_> {
                 return destination
                     .write_from_interval(self, Interval { addr, size: destination.size });
             }
+            TyKind::Closure(id, subst) => {
+                let [arg] = args else {
+                    not_supported!("wrong arg count for clone");
+                };
+                let addr = Address::from_bytes(arg.get(self)?)?;
+                let (closure_owner, _) = self.db.lookup_intern_closure((*id).into());
+                let infer = self.db.infer(closure_owner);
+                let (captures, _) = infer.closure_info(id);
+                let layout = self.layout(&self_ty)?;
+                let ty_iter = captures.iter().map(|c| c.ty(subst));
+                self.exec_clone_for_fields(ty_iter, layout, addr, def, locals, destination, span)?;
+            }
             TyKind::Tuple(_, subst) => {
                 let [arg] = args else {
                     not_supported!("wrong arg count for clone");
                 };
                 let addr = Address::from_bytes(arg.get(self)?)?;
                 let layout = self.layout(&self_ty)?;
-                for (i, ty) in subst.iter(Interner).enumerate() {
-                    let ty = ty.assert_ty_ref(Interner);
-                    let size = self.layout(ty)?.size.bytes_usize();
-                    let tmp = self.heap_allocate(self.ptr_size(), self.ptr_size())?;
-                    let arg = IntervalAndTy {
-                        interval: Interval { addr: tmp, size: self.ptr_size() },
-                        ty: TyKind::Ref(Mutability::Not, static_lifetime(), ty.clone())
-                            .intern(Interner),
-                    };
-                    let offset = layout.fields.offset(i).bytes_usize();
-                    self.write_memory(tmp, &addr.offset(offset).to_bytes())?;
-                    self.exec_clone(
-                        def,
-                        &[arg],
-                        ty.clone(),
-                        locals,
-                        destination.slice(offset..offset + size),
-                        span,
-                    )?;
-                }
+                let ty_iter = subst.iter(Interner).map(|ga| ga.assert_ty_ref(Interner).clone());
+                self.exec_clone_for_fields(ty_iter, layout, addr, def, locals, destination, span)?;
             }
             _ => {
                 self.exec_fn_with_args(
@@ -205,6 +202,37 @@ impl Evaluator<'_> {
                     span,
                 )?;
             }
+        }
+        Ok(())
+    }
+
+    fn exec_clone_for_fields(
+        &mut self,
+        ty_iter: impl Iterator<Item = Ty>,
+        layout: Arc<Layout>,
+        addr: Address,
+        def: FunctionId,
+        locals: &Locals,
+        destination: Interval,
+        span: MirSpan,
+    ) -> Result<()> {
+        for (i, ty) in ty_iter.enumerate() {
+            let size = self.layout(&ty)?.size.bytes_usize();
+            let tmp = self.heap_allocate(self.ptr_size(), self.ptr_size())?;
+            let arg = IntervalAndTy {
+                interval: Interval { addr: tmp, size: self.ptr_size() },
+                ty: TyKind::Ref(Mutability::Not, static_lifetime(), ty.clone()).intern(Interner),
+            };
+            let offset = layout.fields.offset(i).bytes_usize();
+            self.write_memory(tmp, &addr.offset(offset).to_bytes())?;
+            self.exec_clone(
+                def,
+                &[arg],
+                ty,
+                locals,
+                destination.slice(offset..offset + size),
+                span,
+            )?;
         }
         Ok(())
     }
@@ -471,6 +499,38 @@ impl Evaluator<'_> {
                 self.write_memory(set, &[1])?;
                 // return 0 as success
                 self.write_memory_using_ref(destination.addr, destination.size)?.fill(0);
+                Ok(())
+            }
+            "getenv" => {
+                let [name] = args else {
+                    return Err(MirEvalError::TypeError("libc::write args are not provided"));
+                };
+                let mut name_buf = vec![];
+                let name = {
+                    let mut index = Address::from_bytes(name.get(self)?)?;
+                    loop {
+                        let byte = self.read_memory(index, 1)?[0];
+                        index = index.offset(1);
+                        if byte == 0 {
+                            break;
+                        }
+                        name_buf.push(byte);
+                    }
+                    String::from_utf8_lossy(&name_buf)
+                };
+                let value = self.db.crate_graph()[self.crate_id].env.get(&name);
+                match value {
+                    None => {
+                        // Write null as fail
+                        self.write_memory_using_ref(destination.addr, destination.size)?.fill(0);
+                    }
+                    Some(mut value) => {
+                        value.push('\0');
+                        let addr = self.heap_allocate(value.len(), 1)?;
+                        self.write_memory(addr, value.as_bytes())?;
+                        self.write_memory(destination.addr, &addr.to_bytes())?;
+                    }
+                }
                 Ok(())
             }
             _ => not_supported!("unknown external function {as_str}"),
