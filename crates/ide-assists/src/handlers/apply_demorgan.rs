@@ -87,24 +87,26 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         }
     }
 
-    let paren_expr = bin_expr.syntax().parent().and_then(ast::ParenExpr::cast);
-    let neg_expr = paren_expr
-        .clone()
-        .and_then(|paren_expr| paren_expr.syntax().parent())
-        .and_then(ast::PrefixExpr::cast)
-        .and_then(|prefix_expr| {
-            if prefix_expr.op_kind().unwrap() == ast::UnaryOp::Not {
-                Some(prefix_expr)
-            } else {
-                None
-            }
-        });
+    let dm_lhs = demorganed.lhs()?;
 
     acc.add(
         AssistId("apply_demorgan", AssistKind::RefactorRewrite),
         "Apply De Morgan's law",
         op_range,
         |edit| {
+            let paren_expr = bin_expr.syntax().parent().and_then(ast::ParenExpr::cast);
+            let neg_expr = paren_expr
+                .clone()
+                .and_then(|paren_expr| paren_expr.syntax().parent())
+                .and_then(ast::PrefixExpr::cast)
+                .and_then(|prefix_expr| {
+                    if prefix_expr.op_kind()? == ast::UnaryOp::Not {
+                        Some(prefix_expr)
+                    } else {
+                        None
+                    }
+                });
+
             if let Some(paren_expr) = paren_expr {
                 if let Some(neg_expr) = neg_expr {
                     cov_mark::hit!(demorgan_double_negation);
@@ -112,7 +114,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                 } else {
                     cov_mark::hit!(demorgan_double_parens);
                     ted::insert_all_raw(
-                        Position::before(demorganed.lhs().unwrap().syntax()),
+                        Position::before(dm_lhs.syntax()),
                         vec![
                             syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::BANG)),
                             syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::L_PAREN)),
@@ -128,7 +130,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                 }
             } else {
                 ted::insert_all_raw(
-                    Position::before(demorganed.lhs().unwrap().syntax()),
+                    Position::before(dm_lhs.syntax()),
                     vec![
                         syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::BANG)),
                         syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::L_PAREN)),
