@@ -2,16 +2,16 @@ use crate::astconv::{AstConv, OnlySelfBounds, PredicateFilter};
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
-use hir::{HirId, Lifetime, Node};
+use hir::{HirId, Node};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{GenericPredicates, Generics, ImplTraitInTraitData, ToPredicate};
+use rustc_middle::ty::{GenericPredicates, ImplTraitInTraitData, ToPredicate};
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `predicates_defined_on`, plus
@@ -55,17 +55,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     use rustc_hir::*;
 
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
-        Some(ImplTraitInTraitData::Trait { opaque_def_id, fn_def_id }) => {
-            let opaque_ty_id = tcx.hir().local_def_id_to_hir_id(opaque_def_id.expect_local());
-            let opaque_ty_node = tcx.hir().get(opaque_ty_id);
-            let Node::Item(&Item {
-                kind: ItemKind::OpaqueTy(OpaqueTy { lifetime_mapping: Some(lifetime_mapping), .. }),
-                ..
-            }) = opaque_ty_node
-            else {
-                bug!("unexpected {opaque_ty_node:?}")
-            };
-
+        Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) => {
             let mut predicates = Vec::new();
 
             // RPITITs should inherit the predicates of their parent. This is
@@ -78,13 +68,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
             // We also install bidirectional outlives predicates for the RPITIT
             // to keep the duplicates lifetimes from opaque lowering in sync.
+            // We only need to compute bidirectional outlives for the duplicated
+            // opaque lifetimes, which explains the slicing below.
             compute_bidirectional_outlives_predicates(
                 tcx,
-                def_id,
-                lifetime_mapping.iter().map(|(lifetime, def_id)| {
-                    (**lifetime, (*def_id, lifetime.ident.name, lifetime.ident.span))
-                }),
-                tcx.generics_of(def_id.to_def_id()),
+                &tcx.generics_of(def_id.to_def_id()).params
+                    [tcx.generics_of(fn_def_id).params.len()..],
                 &mut predicates,
             );
 
@@ -351,21 +340,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         };
         debug!(?lifetimes);
 
-        let lifetime_mapping = std::iter::zip(lifetimes, ast_generics.params)
-            .map(|(arg, dup)| {
-                let hir::GenericArg::Lifetime(arg) = arg else { bug!() };
-                (**arg, dup)
-            })
-            .filter(|(_, dup)| matches!(dup.kind, hir::GenericParamKind::Lifetime { .. }))
-            .map(|(lifetime, dup)| (lifetime, (dup.def_id, dup.name.ident().name, dup.span)));
-
-        compute_bidirectional_outlives_predicates(
-            tcx,
-            def_id,
-            lifetime_mapping,
-            generics,
-            &mut predicates,
-        );
+        compute_bidirectional_outlives_predicates(tcx, &generics.params, &mut predicates);
         debug!(?predicates);
     }
 
@@ -379,41 +354,28 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 /// enforce that these lifetimes stay in sync.
 fn compute_bidirectional_outlives_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item_def_id: LocalDefId,
-    lifetime_mapping: impl Iterator<Item = (Lifetime, (LocalDefId, Symbol, Span))>,
-    generics: &Generics,
+    opaque_own_params: &[ty::GenericParamDef],
     predicates: &mut Vec<(ty::Clause<'tcx>, Span)>,
 ) {
-    let icx = ItemCtxt::new(tcx, item_def_id);
-
-    for (arg, (dup_def, name, span)) in lifetime_mapping {
-        let orig_region = icx.astconv().ast_region_to_region(&arg, None);
-        if !matches!(orig_region.kind(), ty::ReEarlyBound(..)) {
-            // There is no late-bound lifetime to actually match up here, since the lifetime doesn't
-            // show up in the opaque's parent's args.
-            continue;
+    for param in opaque_own_params {
+        let orig_lifetime = tcx.map_rpit_lifetime_to_fn_lifetime(param.def_id.expect_local());
+        if let ty::ReEarlyBound(..) = *orig_lifetime {
+            let dup_lifetime = ty::Region::new_early_bound(
+                tcx,
+                ty::EarlyBoundRegion { def_id: param.def_id, index: param.index, name: param.name },
+            );
+            let span = tcx.def_span(param.def_id);
+            predicates.push((
+                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(orig_lifetime, dup_lifetime))
+                    .to_predicate(tcx),
+                span,
+            ));
+            predicates.push((
+                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(dup_lifetime, orig_lifetime))
+                    .to_predicate(tcx),
+                span,
+            ));
         }
-
-        let Some(dup_index) = generics.param_def_id_to_index(icx.tcx, dup_def.to_def_id()) else {
-            bug!()
-        };
-
-        let dup_region = ty::Region::new_early_bound(
-            tcx,
-            ty::EarlyBoundRegion { def_id: dup_def.to_def_id(), index: dup_index, name },
-        );
-
-        predicates.push((
-            ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(orig_region, dup_region))
-                .to_predicate(tcx),
-            span,
-        ));
-
-        predicates.push((
-            ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(dup_region, orig_region))
-                .to_predicate(tcx),
-            span,
-        ));
     }
 }
 

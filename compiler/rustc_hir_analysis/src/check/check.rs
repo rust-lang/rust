@@ -407,7 +407,17 @@ fn check_opaque_meets_bounds<'tcx>(
         .build();
     let ocx = ObligationCtxt::new(&infcx);
 
-    let args = GenericArgs::identity_for_item(tcx, def_id.to_def_id());
+    let args = match *origin {
+        hir::OpaqueTyOrigin::FnReturn(parent) | hir::OpaqueTyOrigin::AsyncFn(parent) => {
+            GenericArgs::identity_for_item(tcx, parent).extend_to(
+                tcx,
+                def_id.to_def_id(),
+                |param, _| tcx.map_rpit_lifetime_to_fn_lifetime(param.def_id.expect_local()).into(),
+            )
+        }
+        hir::OpaqueTyOrigin::TyAlias { .. } => GenericArgs::identity_for_item(tcx, def_id),
+    };
+
     let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
 
     // `ReErased` regions appear in the "parent_args" of closures/generators.
@@ -468,9 +478,10 @@ fn check_opaque_meets_bounds<'tcx>(
         }
     }
     // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
-    for (key, mut ty) in infcx.take_opaque_types() {
+    for (mut key, mut ty) in infcx.take_opaque_types() {
         ty.hidden_type.ty = infcx.resolve_vars_if_possible(ty.hidden_type.ty);
-        sanity_check_found_hidden_type(tcx, key, ty.hidden_type, defining_use_anchor, origin)?;
+        key = infcx.resolve_vars_if_possible(key);
+        sanity_check_found_hidden_type(tcx, key, ty.hidden_type)?;
     }
     Ok(())
 }
@@ -479,8 +490,6 @@ fn sanity_check_found_hidden_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::OpaqueTypeKey<'tcx>,
     mut ty: ty::OpaqueHiddenType<'tcx>,
-    defining_use_anchor: LocalDefId,
-    origin: &hir::OpaqueTyOrigin,
 ) -> Result<(), ErrorGuaranteed> {
     if ty.ty.is_ty_var() {
         // Nothing was actually constrained.
@@ -493,29 +502,23 @@ fn sanity_check_found_hidden_type<'tcx>(
             return Ok(());
         }
     }
+    let strip_vars = |ty: Ty<'tcx>| {
+        ty.fold_with(&mut BottomUpFolder {
+            tcx,
+            ty_op: |t| t,
+            ct_op: |c| c,
+            lt_op: |l| match l.kind() {
+                RegionKind::ReVar(_) => tcx.lifetimes.re_erased,
+                _ => l,
+            },
+        })
+    };
     // Closures frequently end up containing erased lifetimes in their final representation.
     // These correspond to lifetime variables that never got resolved, so we patch this up here.
-    ty.ty = ty.ty.fold_with(&mut BottomUpFolder {
-        tcx,
-        ty_op: |t| t,
-        ct_op: |c| c,
-        lt_op: |l| match l.kind() {
-            RegionKind::ReVar(_) => tcx.lifetimes.re_erased,
-            _ => l,
-        },
-    });
+    ty.ty = strip_vars(ty.ty);
     // Get the hidden type.
-    let mut hidden_ty = tcx.type_of(key.def_id).instantiate(tcx, key.args);
-    if let hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) = origin {
-        if hidden_ty != ty.ty {
-            hidden_ty = find_and_apply_rpit_args(
-                tcx,
-                hidden_ty,
-                defining_use_anchor.to_def_id(),
-                key.def_id.to_def_id(),
-            )?;
-        }
-    }
+    let hidden_ty = tcx.type_of(key.def_id).instantiate(tcx, key.args);
+    let hidden_ty = strip_vars(hidden_ty);
 
     // If the hidden types differ, emit a type mismatch diagnostic.
     if hidden_ty == ty.ty {
@@ -525,105 +528,6 @@ fn sanity_check_found_hidden_type<'tcx>(
         let other = ty::OpaqueHiddenType { ty: hidden_ty, span };
         Err(ty.report_mismatch(&other, key.def_id, tcx).emit())
     }
-}
-
-/// In case it is in a nested opaque type, find that opaque type's
-/// usage in the function signature and use the generic arguments from the usage site.
-/// We need to do because RPITs ignore the lifetimes of the function,
-/// as they have their own copies of all the lifetimes they capture.
-/// So the only way to get the lifetimes represented in terms of the function,
-/// is to look how they are used in the function signature (or do some other fancy
-/// recording of this mapping at ast -> hir lowering time).
-///
-/// As an example:
-/// ```text
-/// trait Id {
-///     type Assoc;
-/// }
-/// impl<'a> Id for &'a () {
-///     type Assoc = &'a ();
-/// }
-/// fn func<'a>(x: &'a ()) -> impl Id<Assoc = impl Sized + 'a> { x }
-/// // desugared to
-/// fn func<'a>(x: &'a () -> Outer<'a> where <Outer<'a> as Id>::Assoc = Inner<'a> {
-///     // Note that in contrast to other nested items, RPIT type aliases can
-///     // access their parents' generics.
-///
-///     // hidden type is `&'aDupOuter ()`
-///     // During wfcheck the hidden type of `Inner<'aDupOuter>` is `&'a ()`, but
-///     // `typeof(Inner<'aDupOuter>) = &'aDupOuter ()`.
-///     // So we walk the signature of `func` to find the use of `Inner<'a>`
-///     // and then use that to replace the lifetimes in the hidden type, obtaining
-///     // `&'a ()`.
-///     type Outer<'aDupOuter> = impl Id<Assoc = Inner<'aDupOuter>>;
-///
-///     // hidden type is `&'aDupInner ()`
-///     type Inner<'aDupInner> = impl Sized + 'aDupInner;
-///
-///     x
-/// }
-/// ```
-fn find_and_apply_rpit_args<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    mut hidden_ty: Ty<'tcx>,
-    function: DefId,
-    opaque: DefId,
-) -> Result<Ty<'tcx>, ErrorGuaranteed> {
-    // Find use of the RPIT in the function signature and thus find the right args to
-    // convert it into the parameter space of the function signature. This is needed,
-    // because that's what `type_of` returns, against which we compare later.
-    let ret = tcx.fn_sig(function).instantiate_identity().output();
-    struct Visitor<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        opaque: DefId,
-        seen: FxHashSet<DefId>,
-    }
-    impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for Visitor<'tcx> {
-        type BreakTy = GenericArgsRef<'tcx>;
-
-        #[instrument(level = "trace", skip(self), ret)]
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-            trace!("{:#?}", t.kind());
-            match t.kind() {
-                ty::Alias(ty::Opaque, alias) => {
-                    trace!(?alias.def_id);
-                    if alias.def_id == self.opaque {
-                        return ControlFlow::Break(alias.args);
-                    } else if self.seen.insert(alias.def_id) {
-                        for clause in self
-                            .tcx
-                            .explicit_item_bounds(alias.def_id)
-                            .iter_instantiated_copied(self.tcx, alias.args)
-                        {
-                            trace!(?clause);
-                            clause.visit_with(self)?;
-                        }
-                    }
-                }
-                ty::Alias(ty::Weak, alias) => {
-                    self.tcx
-                        .type_of(alias.def_id)
-                        .instantiate(self.tcx, alias.args)
-                        .visit_with(self)?;
-                }
-                _ => (),
-            }
-
-            t.super_visit_with(self)
-        }
-    }
-    if let ControlFlow::Break(args) =
-        ret.visit_with(&mut Visitor { tcx, opaque, seen: Default::default() })
-    {
-        trace!(?args);
-        trace!("expected: {hidden_ty:#?}");
-        hidden_ty = ty::EarlyBinder::bind(hidden_ty).instantiate(tcx, args);
-        trace!("expected: {hidden_ty:#?}");
-    } else {
-        tcx.sess
-            .delay_span_bug(tcx.def_span(function), format!("{ret:?} does not contain {opaque:?}"));
-    }
-    Ok(hidden_ty)
 }
 
 fn is_enum_of_nonnullable_ptr<'tcx>(

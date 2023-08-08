@@ -1663,11 +1663,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             );
             debug!("lower_async_fn_ret_ty: generic_params={:#?}", generic_params);
 
-            let lifetime_mapping = if in_trait {
-                Some(&*self.arena.alloc_slice(&synthesized_lifetime_args))
-            } else {
-                None
-            };
+            let lifetime_mapping = self.arena.alloc_slice(&synthesized_lifetime_args);
 
             let opaque_ty_item = hir::OpaqueTy {
                 generics: this.arena.alloc(hir::Generics {
