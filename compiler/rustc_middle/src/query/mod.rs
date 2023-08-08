@@ -231,7 +231,7 @@ rustc_queries! {
             action = {
                 use rustc_hir::def::DefKind;
                 match tcx.def_kind(key) {
-                    DefKind::TyAlias => "expanding type alias",
+                    DefKind::TyAlias { .. } => "expanding type alias",
                     DefKind::TraitAlias => "expanding trait alias",
                     _ => "computing type of",
                 }

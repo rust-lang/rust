@@ -78,9 +78,8 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
                 }
             }
             DefKind::Fn | DefKind::AssocFn => constraint_cx.build_constraints_for_item(def_id),
-            DefKind::TyAlias
-                if tcx.features().lazy_type_alias
-                    || tcx.type_of(def_id).instantiate_identity().has_opaque_types() =>
+            DefKind::TyAlias { lazy }
+                if lazy || tcx.type_of(def_id).instantiate_identity().has_opaque_types() =>
             {
                 constraint_cx.build_constraints_for_item(def_id)
             }
@@ -111,8 +110,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         // The type as returned by `type_of` is the underlying type and generally not a weak projection.
         // Therefore we need to check the `DefKind` first.
-        if let DefKind::TyAlias = tcx.def_kind(def_id)
-            && (tcx.features().lazy_type_alias || ty.has_opaque_types())
+        if let DefKind::TyAlias { lazy } = tcx.def_kind(def_id)
+            && (lazy || ty.has_opaque_types())
         {
             self.add_constraints_from_ty(current_item, ty, self.covariant);
             return;

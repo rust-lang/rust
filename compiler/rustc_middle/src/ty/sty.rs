@@ -1223,7 +1223,7 @@ impl<'tcx> AliasTy<'tcx> {
             DefKind::AssocTy if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(self.def_id)) => ty::Inherent,
             DefKind::AssocTy => ty::Projection,
             DefKind::OpaqueTy => ty::Opaque,
-            DefKind::TyAlias => ty::Weak,
+            DefKind::TyAlias { .. } => ty::Weak,
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
         }
     }
@@ -1945,7 +1945,7 @@ impl<'tcx> Ty<'tcx> {
             (kind, tcx.def_kind(alias_ty.def_id)),
             (ty::Opaque, DefKind::OpaqueTy)
                 | (ty::Projection | ty::Inherent, DefKind::AssocTy)
-                | (ty::Weak, DefKind::TyAlias)
+                | (ty::Weak, DefKind::TyAlias { .. })
         );
         Ty::new(tcx, Alias(kind, alias_ty))
     }

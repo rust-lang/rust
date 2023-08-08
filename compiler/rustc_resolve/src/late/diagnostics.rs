@@ -1419,7 +1419,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
                 err.span_label(span, fallback_label.to_string());
             }
-            (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
+            (Res::Def(DefKind::TyAlias { .. }, def_id), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
                 if self.r.tcx.sess.is_nightly_build() {
                     let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
@@ -1588,7 +1588,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 err.span_label(span, fallback_label.to_string());
                 err.note("can't use `Self` as a constructor, you must use the implemented struct");
             }
-            (Res::Def(DefKind::TyAlias | DefKind::AssocTy, _), _) if ns == ValueNS => {
+            (Res::Def(DefKind::TyAlias { .. } | DefKind::AssocTy, _), _) if ns == ValueNS => {
                 err.note("can't use a type alias as a constructor");
             }
             _ => return false,
