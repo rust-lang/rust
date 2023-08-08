@@ -393,15 +393,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ));
             assert_eq!(dest_offset, None);
             // Allocate enough memory to hold `src`.
-            let Some((size, align)) = self.size_and_align_of_mplace(&src)? else {
-                span_bug!(
-                    self.cur_span(),
-                    "unsized fn arg with `extern` type tail should not be allowed"
-                )
-            };
-            let ptr = self.allocate_ptr(size, align, MemoryKind::Stack)?;
-            let dest_place =
-                MPlaceTy::from_aligned_ptr_with_meta(ptr.into(), callee_arg.layout, src.meta);
+            let dest_place = self.allocate_dyn(src.layout, MemoryKind::Stack, src.meta)?;
             // Update the local to be that new place.
             *M::access_local_mut(self, dest_frame, dest_local)? = Operand::Indirect(*dest_place);
         }
