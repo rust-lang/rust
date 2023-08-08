@@ -90,6 +90,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         context="$script_dir"
     fi
     echo "::group::Building docker image for $image"
+    docker images
     retry docker \
       build \
       --rm \
@@ -97,6 +98,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       -f "$dockerfile" \
       "$context"
     echo "::endgroup::"
+    docker images
 
     if [ "$CI" != "" ]; then
       s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
