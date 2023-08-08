@@ -303,8 +303,6 @@ const_eval_remainder_overflow =
     overflow in signed remainder (dividing MIN by -1)
 const_eval_scalar_size_mismatch =
     scalar size mismatch: expected {$target_size} bytes but got {$data_size} bytes instead
-const_eval_size_of_unsized =
-    size_of called on unsized type `{$ty}`
 const_eval_size_overflow =
     overflow computing total size of `{$name}`
 
