@@ -130,7 +130,7 @@ pub struct Parser<'a> {
     pub sess: &'a ParseSess,
     /// The current token.
     pub token: Token,
-    /// The spacing for the current token
+    /// The spacing for the current token.
     pub token_spacing: Spacing,
     /// The previous token.
     pub prev_token: Token,
@@ -268,6 +268,8 @@ impl TokenCursor {
                         let trees = tts.clone().into_trees();
                         self.stack.push((mem::replace(&mut self.tree_cursor, trees), delim, sp));
                         if delim != Delimiter::Invisible {
+                            // FIXME: add two `Spacing` fields to `TokenTree::Delimited`
+                            // and use the open delim one here.
                             return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);
                         }
                         // No open delimiter to return; continue on to the next iteration.
@@ -277,11 +279,15 @@ impl TokenCursor {
                 // We have exhausted this token stream. Move back to its parent token stream.
                 self.tree_cursor = tree_cursor;
                 if delim != Delimiter::Invisible {
+                    // FIXME: add two `Spacing` fields to `TokenTree::Delimited` and
+                    // use the close delim one here.
                     return (Token::new(token::CloseDelim(delim), span.close), Spacing::Alone);
                 }
                 // No close delimiter to return; continue on to the next iteration.
             } else {
-                // We have exhausted the outermost token stream.
+                // We have exhausted the outermost token stream. The use of
+                // `Spacing::Alone` is arbitrary and immaterial, because the
+                // `Eof` token's spacing is never used.
                 return (Token::new(token::Eof, DUMMY_SP), Spacing::Alone);
             }
         }
@@ -699,8 +705,8 @@ impl<'a> Parser<'a> {
                 // is not needed (we'll capture the entire 'glued' token),
                 // and `bump` will set this field to `None`
                 self.break_last_token = true;
-                // Use the spacing of the glued token as the spacing
-                // of the unglued second token.
+                // Use the spacing of the glued token as the spacing of the
+                // unglued second token.
                 self.bump_with((Token::new(second, second_span), self.token_spacing));
                 true
             }
@@ -1312,8 +1318,9 @@ impl<'a> Parser<'a> {
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
+                let prev_spacing = self.token_spacing;
                 self.bump();
-                TokenTree::Token(self.prev_token.clone(), Spacing::Alone)
+                TokenTree::Token(self.prev_token.clone(), prev_spacing)
             }
         }
     }

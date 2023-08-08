@@ -5,7 +5,7 @@ use pm::bridge::{
 use pm::{Delimiter, Level};
 use rustc_ast as ast;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{self, Spacing::*, TokenStream};
+use rustc_ast::tokenstream::{self, Spacing, TokenStream};
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -111,7 +111,22 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }));
                     continue;
                 }
-                tokenstream::TokenTree::Token(token, spacing) => (token, spacing == Joint),
+                tokenstream::TokenTree::Token(token, spacing) => {
+                    // Do not be tempted to check here that the `spacing`
+                    // values are "correct" w.r.t. the token stream (e.g. that
+                    // `Spacing::Joint` is actually followed by a `Punct` token
+                    // tree). Because the problem in #76399 was introduced that
+                    // way.
+                    //
+                    // This is where the `Hidden` in `JointHidden` applies,
+                    // because the jointness is effectively hidden from proc
+                    // macros.
+                    let joint = match spacing {
+                        Spacing::Alone | Spacing::JointHidden => false,
+                        Spacing::Joint => true,
+                    };
+                    (token, joint)
+                }
             };
 
             // Split the operator into one or more `Punct`s, one per character.
@@ -133,7 +148,8 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     } else {
                         span
                     };
-                    TokenTree::Punct(Punct { ch, joint: if is_final { joint } else { true }, span })
+                    let joint = if is_final { joint } else { true };
+                    TokenTree::Punct(Punct { ch, joint, span })
                 }));
             };
 
@@ -268,6 +284,10 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
     fn to_internal(self) -> SmallVec<[tokenstream::TokenTree; 2]> {
         use rustc_ast::token::*;
 
+        // The code below is conservative and uses `token_alone` in most
+        // places. When the resulting code is pretty-printed by `print_tts` it
+        // ends up with spaces between most tokens, which is safe but ugly.
+        // It's hard in general to do better when working at the token level.
         let (tree, rustc) = self;
         match tree {
             TokenTree::Punct(Punct { ch, joint, span }) => {
@@ -296,6 +316,11 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                     b'\'' => SingleQuote,
                     _ => unreachable!(),
                 };
+                // We never produce `token::Spacing::JointHidden` here, which
+                // means the pretty-printing of code produced by proc macros is
+                // ugly, with lots of whitespace between tokens. This is
+                // unavoidable because `proc_macro::Spacing` only applies to
+                // `Punct` token trees.
                 smallvec![if joint {
                     tokenstream::TokenTree::token_joint(kind, span)
                 } else {
@@ -322,7 +347,7 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let integer = TokenKind::lit(token::Integer, symbol, suffix);
-                let a = tokenstream::TokenTree::token_alone(minus, span);
+                let a = tokenstream::TokenTree::token_joint_hidden(minus, span);
                 let b = tokenstream::TokenTree::token_alone(integer, span);
                 smallvec![a, b]
             }
@@ -335,7 +360,7 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let float = TokenKind::lit(token::Float, symbol, suffix);
-                let a = tokenstream::TokenTree::token_alone(minus, span);
+                let a = tokenstream::TokenTree::token_joint_hidden(minus, span);
                 let b = tokenstream::TokenTree::token_alone(float, span);
                 smallvec![a, b]
             }
@@ -546,7 +571,10 @@ impl server::TokenStream for Rustc<'_, '_> {
                         Ok(Self::TokenStream::from_iter([
                             // FIXME: The span of the `-` token is lost when
                             // parsing, so we cannot faithfully recover it here.
-                            tokenstream::TokenTree::token_alone(token::BinOp(token::Minus), e.span),
+                            tokenstream::TokenTree::token_joint_hidden(
+                                token::BinOp(token::Minus),
+                                e.span,
+                            ),
                             tokenstream::TokenTree::token_alone(token::Literal(*token_lit), e.span),
                         ]))
                     }

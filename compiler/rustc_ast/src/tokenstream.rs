@@ -99,6 +99,11 @@ impl TokenTree {
         TokenTree::Token(Token::new(kind, span), Spacing::Joint)
     }
 
+    /// Create a `TokenTree::Token` with joint-hidden spacing.
+    pub fn token_joint_hidden(kind: TokenKind, span: Span) -> TokenTree {
+        TokenTree::Token(Token::new(kind, span), Spacing::JointHidden)
+    }
+
     pub fn uninterpolate(&self) -> Cow<'_, TokenTree> {
         match self {
             TokenTree::Token(token, spacing) => match token.uninterpolate() {
@@ -303,21 +308,64 @@ pub struct AttributesData {
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
 
-/// Similar to `proc_macro::Spacing`, but for tokens.
-///
-/// Note that all `ast::TokenTree::Token` instances have a `Spacing`, but when
-/// we convert to `proc_macro::TokenTree` for proc macros only `Punct`
-/// `TokenTree`s have a `proc_macro::Spacing`.
+/// Indicates whether a token can join with the following token to form a
+/// compound token. Used for conversions to `proc_macro::Spacing`. Also used to
+/// guide pretty-printing, which is where the `JointHidden` value (which isn't
+/// part of `proc_macro::Spacing`) comes in useful.
 #[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum Spacing {
-    /// The token is not immediately followed by an operator token (as
-    /// determined by `Token::is_op`). E.g. a `+` token is `Alone` in `+ =`,
-    /// `+/*foo*/=`, `+ident`, and `+()`.
+    /// The token cannot join with the following token to form a compound
+    /// token.
+    ///
+    /// In token streams parsed from source code, the compiler will use `Alone`
+    /// for any token immediately followed by whitespace, a non-doc comment, or
+    /// EOF.
+    ///
+    /// When constructing token streams within the compiler, use this for each
+    /// token that (a) should be pretty-printed with a space after it, or (b)
+    /// is the last token in the stream. (In the latter case the choice of
+    /// spacing doesn't matter because it is never used for the last token. We
+    /// arbitrarily use `Alone`.)
+    ///
+    /// Converts to `proc_macro::Spacing::Alone`, and
+    /// `proc_macro::Spacing::Alone` converts back to this.
     Alone,
 
-    /// The token is immediately followed by an operator token. E.g. a `+`
-    /// token is `Joint` in `+=` and `++`.
+    /// The token can join with the following token to form a compound token.
+    ///
+    /// In token streams parsed from source code, the compiler will use `Joint`
+    /// for any token immediately followed by punctuation (as determined by
+    /// `Token::is_punct`).
+    ///
+    /// When constructing token streams within the compiler, use this for each
+    /// token that (a) should be pretty-printed without a space after it, and
+    /// (b) is followed by a punctuation token.
+    ///
+    /// Converts to `proc_macro::Spacing::Joint`, and
+    /// `proc_macro::Spacing::Joint` converts back to this.
     Joint,
+
+    /// The token can join with the following token to form a compound token,
+    /// but this will not be visible at the proc macro level. (This is what the
+    /// `Hidden` means; see below.)
+    ///
+    /// In token streams parsed from source code, the compiler will use
+    /// `JointHidden` for any token immediately followed by anything not
+    /// covered by the `Alone` and `Joint` cases: an identifier, lifetime,
+    /// literal, delimiter, doc comment.
+    ///
+    /// When constructing token streams, use this for each token that (a)
+    /// should be pretty-printed without a space after it, and (b) is followed
+    /// by a non-punctuation token.
+    ///
+    /// Converts to `proc_macro::Spacing::Alone`, but
+    /// `proc_macro::Spacing::Alone` converts back to `token::Spacing::Alone`.
+    /// Because of that, pretty-printing of `TokenStream`s produced by proc
+    /// macros is unavoidably uglier (with more whitespace between tokens) than
+    /// pretty-printing of `TokenStream`'s produced by other means (i.e. parsed
+    /// source code, internally constructed token streams, and token streams
+    /// produced by declarative macros).
+    JointHidden,
 }
 
 impl TokenStream {
@@ -421,14 +469,12 @@ impl TokenStream {
         self
     }
 
-    /// Create a token stream containing a single token with alone spacing.
+    /// Create a token stream containing a single token with alone spacing. The
+    /// spacing used for the final token in a constructed stream doesn't matter
+    /// because it's never used. In practice we arbitrarily use
+    /// `Spacing::Alone`.
     pub fn token_alone(kind: TokenKind, span: Span) -> TokenStream {
         TokenStream::new(vec![TokenTree::token_alone(kind, span)])
-    }
-
-    /// Create a token stream containing a single token with joint spacing.
-    pub fn token_joint(kind: TokenKind, span: Span) -> TokenStream {
-        TokenStream::new(vec![TokenTree::token_joint(kind, span)])
     }
 
     /// Create a token stream containing a single `Delimited`.
@@ -517,7 +563,7 @@ impl TokenStream {
     // If `vec` is not empty, try to glue `tt` onto its last token. The return
     // value indicates if gluing took place.
     fn try_glue_to_last(vec: &mut Vec<TokenTree>, tt: &TokenTree) -> bool {
-        if let Some(TokenTree::Token(last_tok, Spacing::Joint)) = vec.last()
+        if let Some(TokenTree::Token(last_tok, Spacing::Joint | Spacing::JointHidden)) = vec.last()
             && let TokenTree::Token(tok, spacing) = tt
             && let Some(glued_tok) = last_tok.glue(tok)
         {
@@ -641,7 +687,7 @@ impl TokenStream {
 
             if attr_style == AttrStyle::Inner {
                 vec![
-                    TokenTree::token_alone(token::Pound, span),
+                    TokenTree::token_joint(token::Pound, span),
                     TokenTree::token_alone(token::Not, span),
                     body,
                 ]

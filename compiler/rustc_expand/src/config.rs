@@ -372,16 +372,6 @@ impl<'a> StripUnconfigured<'a> {
         };
         let pound_span = pound_token.span;
 
-        let mut trees = vec![AttrTokenTree::Token(pound_token, Spacing::Alone)];
-        if attr.style == AttrStyle::Inner {
-            // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
-            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) =
-                orig_trees.next().unwrap().clone()
-            else {
-                panic!("Bad tokens for attribute {attr:?}");
-            };
-            trees.push(AttrTokenTree::Token(bang_token, Spacing::Alone));
-        }
         // We don't really have a good span to use for the synthesized `[]`
         // in `#[attr]`, so just use the span of the `#` token.
         let bracket_group = AttrTokenTree::Delimited(
@@ -392,7 +382,21 @@ impl<'a> StripUnconfigured<'a> {
                 .unwrap_or_else(|| panic!("Missing tokens for {item:?}"))
                 .to_attr_token_stream(),
         );
-        trees.push(bracket_group);
+        let trees = if attr.style == AttrStyle::Inner {
+            // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
+            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) =
+                orig_trees.next().unwrap().clone()
+            else {
+                panic!("Bad tokens for attribute {attr:?}");
+            };
+            vec![
+                AttrTokenTree::Token(pound_token, Spacing::Joint),
+                AttrTokenTree::Token(bang_token, Spacing::JointHidden),
+                bracket_group,
+            ]
+        } else {
+            vec![AttrTokenTree::Token(pound_token, Spacing::JointHidden), bracket_group]
+        };
         let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
         let attr = attr::mk_attr_from_item(
             &self.sess.parse_sess.attr_id_generator,

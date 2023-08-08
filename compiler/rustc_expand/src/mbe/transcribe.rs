@@ -240,7 +240,7 @@ pub(super) fn transcribe<'a>(
                     // with modified syntax context. (I believe this supports nested macros).
                     marker.visit_span(&mut sp);
                     marker.visit_ident(&mut original_ident);
-                    result.push(TokenTree::token_alone(token::Dollar, sp));
+                    result.push(TokenTree::token_joint_hidden(token::Dollar, sp));
                     result.push(TokenTree::Token(
                         Token::from_ast_ident(original_ident),
                         Spacing::Alone,
