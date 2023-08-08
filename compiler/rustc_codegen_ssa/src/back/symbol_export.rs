@@ -2,6 +2,7 @@ use crate::base::allocator_kind_for_codegen;
 
 use std::collections::hash_map::Entry::*;
 
+use object::BinaryFormat;
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
@@ -263,6 +264,15 @@ fn exported_symbols_provider_local(
         }
         if tcx.sess.opts.unstable_opts.sanitizer_memory_track_origins != 0 {
             externally_injected_weak_symbols.push("__msan_track_origins");
+        }
+    }
+    if tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::ADDRESS) {
+        // Similar to profiling, preserve weak asan symbols during LTO.
+        match tcx.sess.target.binary_format() {
+            BinaryFormat::Elf | BinaryFormat::MachO => {
+                externally_injected_weak_symbols.push("___asan_globals_registered")
+            }
+            _ => (),
         }
     }
     symbols.extend(externally_injected_weak_symbols.into_iter().map(|sym| {

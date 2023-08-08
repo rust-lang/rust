@@ -39,6 +39,7 @@ use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors
 use crate::json::{Json, ToJson};
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
+use object::BinaryFormat;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_fs_util::try_canonicalize;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -2053,6 +2054,19 @@ fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'stati
 }
 
 impl TargetOptions {
+    /// Binary format (e.g. ELF) implied by the `TargetOptions`.
+    pub fn binary_format(&self) -> BinaryFormat {
+        if self.is_like_osx {
+            BinaryFormat::MachO
+        } else if self.is_like_windows {
+            BinaryFormat::Coff
+        } else if self.is_like_aix {
+            BinaryFormat::Xcoff
+        } else {
+            BinaryFormat::Elf
+        }
+    }
+
     fn link_args(flavor: LinkerFlavor, args: &[&'static str]) -> LinkArgs {
         let mut link_args = LinkArgs::new();
         add_link_args(&mut link_args, flavor, args);
