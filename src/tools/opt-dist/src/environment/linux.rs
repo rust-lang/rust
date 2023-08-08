@@ -14,7 +14,7 @@ impl Environment for LinuxEnvironment {
         Utf8PathBuf::from("/checkout")
     }
 
-    fn downloaded_llvm_dir(&self) -> Utf8PathBuf {
+    fn host_llvm_dir(&self) -> Utf8PathBuf {
         Utf8PathBuf::from("/rustroot")
     }
 

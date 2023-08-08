@@ -15,8 +15,8 @@ pub trait Environment {
     /// The rustc checkout, where the compiler source is located.
     fn checkout_path(&self) -> Utf8PathBuf;
 
-    /// Path to the downloaded host LLVM.
-    fn downloaded_llvm_dir(&self) -> Utf8PathBuf;
+    /// Path to the host LLVM used to compile LLVM in `src/llvm-project`.
+    fn host_llvm_dir(&self) -> Utf8PathBuf;
 
     /// Directory where the optimization artifacts (PGO/BOLT profiles, etc.)
     /// will be stored.

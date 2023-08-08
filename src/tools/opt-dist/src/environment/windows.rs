@@ -24,7 +24,7 @@ impl Environment for WindowsEnvironment {
         self.checkout_dir.clone()
     }
 
-    fn downloaded_llvm_dir(&self) -> Utf8PathBuf {
+    fn host_llvm_dir(&self) -> Utf8PathBuf {
         self.checkout_path().join("citools").join("clang-rust")
     }
 
