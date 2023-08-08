@@ -1,5 +1,5 @@
 // compile-flags: -Ztrait-solver=next
-// known-bug: #95863
+// check-pass
 
 pub trait With {
     type F;
