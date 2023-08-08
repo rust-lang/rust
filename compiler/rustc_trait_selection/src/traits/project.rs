@@ -1230,12 +1230,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             };
 
             let mut deduped: SsoHashSet<_> = Default::default();
-            result.obligations.retain(|projected_obligation| {
-                if !deduped.insert(projected_obligation.clone()) {
-                    return false;
-                }
-                true
-            });
+            result.obligations.retain(|obligation| deduped.insert(obligation.clone()));
 
             if use_cache {
                 infcx.inner.borrow_mut().projection_cache().insert_term(cache_key, result.clone());
