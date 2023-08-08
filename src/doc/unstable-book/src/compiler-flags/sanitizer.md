@@ -1,8 +1,8 @@
 # `sanitizer`
 
-Sanitizers are tools that help detect and prevent various types of bugs and vulnerabilities in software. 
-They are available in compilers and work by instrumenting the code to add additional runtime checks. 
-While they provide powerful tools for identifying bugs or security issues, it's important to note that using sanitizers can introduce runtime overhead and might not catch all possible issues. 
+Sanitizers are tools that help detect and prevent various types of bugs and vulnerabilities in software.
+They are available in compilers and work by instrumenting the code to add additional runtime checks.
+While they provide powerful tools for identifying bugs or security issues, it's important to note that using sanitizers can introduce runtime overhead and might not catch all possible issues.
 Therefore, they are typically used alongside other best practices in software development, such as testing and fuzzing, to ensure the highest level of software quality and security.
 
 The tracking issues for this feature are:
