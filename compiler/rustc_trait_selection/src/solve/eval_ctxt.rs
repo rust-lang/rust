@@ -388,42 +388,58 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             && is_normalizes_to_hack == IsNormalizesToHack::No
             && !self.search_graph.in_cycle()
         {
-            debug!("rerunning goal to check result is stable");
-            self.search_graph.reset_encountered_overflow(encountered_overflow);
-            let (_orig_values, canonical_goal) = self.canonicalize_goal(goal);
-            let Ok(new_canonical_response) = EvalCtxt::evaluate_canonical_goal(
-                self.tcx(),
-                self.search_graph,
-                canonical_goal,
-                // FIXME(-Ztrait-solver=next): we do not track what happens in `evaluate_canonical_goal`
-                &mut ProofTreeBuilder::new_noop(),
-            ) else {
-                bug!(
-                    "goal went from {certainty:?} to error: re-canonicalized goal={canonical_goal:#?} \
-                    first_response={canonical_response:#?},
-                    second response was error"
-                );
-            };
-            // We only check for modulo regions as we convert all regions in
-            // the input to new existentials, even if they're expected to be
-            // `'static` or a placeholder region.
-            if !new_canonical_response.value.var_values.is_identity_modulo_regions() {
-                bug!(
-                    "unstable result: re-canonicalized goal={canonical_goal:#?} \
-                    first_response={canonical_response:#?} \
-                    second_response={new_canonical_response:#?}"
-                );
-            }
-            if certainty != new_canonical_response.value.certainty {
-                bug!(
-                    "unstable certainty: {certainty:#?} re-canonicalized goal={canonical_goal:#?} \
-                     first_response={canonical_response:#?} \
-                     second_response={new_canonical_response:#?}"
-                );
-            }
+            // The nested evaluation has to happen with the original state
+            // of `encountered_overflow`.
+            let from_original_evaluation =
+                self.search_graph.reset_encountered_overflow(encountered_overflow);
+            self.check_evaluate_goal_stable_result(goal, canonical_goal, canonical_response);
+            // In case the evaluation was unstable, we manually make sure that this
+            // debug check does not influence the result of the parent goal.
+            self.search_graph.reset_encountered_overflow(from_original_evaluation);
         }
 
         Ok((has_changed, certainty, nested_goals))
+    }
+
+    fn check_evaluate_goal_stable_result(
+        &mut self,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+        original_input: CanonicalInput<'tcx>,
+        original_result: CanonicalResponse<'tcx>,
+    ) {
+        let (_orig_values, canonical_goal) = self.canonicalize_goal(goal);
+        let result = EvalCtxt::evaluate_canonical_goal(
+            self.tcx(),
+            self.search_graph,
+            canonical_goal,
+            // FIXME(-Ztrait-solver=next): we do not track what happens in `evaluate_canonical_goal`
+            &mut ProofTreeBuilder::new_noop(),
+        );
+
+        macro_rules! fail {
+            ($msg:expr) => {{
+                let msg = $msg;
+                warn!(
+                    "unstable result: {msg}\n\
+                    original goal: {original_input:?},\n\
+                    original result: {original_result:?}\n\
+                    re-canonicalized goal: {canonical_goal:?}\n\
+                    second response: {result:?}"
+                );
+                return;
+            }};
+        }
+
+        let Ok(new_canonical_response) = result else { fail!("second response was error") };
+        // We only check for modulo regions as we convert all regions in
+        // the input to new existentials, even if they're expected to be
+        // `'static` or a placeholder region.
+        if !new_canonical_response.value.var_values.is_identity_modulo_regions() {
+            fail!("additional constraints from second response")
+        }
+        if original_result.value.certainty != new_canonical_response.value.certainty {
+            fail!("unstable certainty")
+        }
     }
 
     fn compute_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) -> QueryResult<'tcx> {
