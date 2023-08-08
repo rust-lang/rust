@@ -320,6 +320,7 @@ impl<'a> DiagnosticHandlers<'a> {
             })
             .and_then(|dir| dir.to_str().and_then(|p| CString::new(p).ok()));
 
+        let pgo_available = cgcx.opts.cg.profile_use.is_some();
         let data = Box::into_raw(Box::new((cgcx, handler)));
         unsafe {
             let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
@@ -333,6 +334,7 @@ impl<'a> DiagnosticHandlers<'a> {
                 // The `as_ref()` is important here, otherwise the `CString` will be dropped
                 // too soon!
                 remark_file.as_ref().map(|dir| dir.as_ptr()).unwrap_or(std::ptr::null()),
+                pgo_available,
             );
             DiagnosticHandlers { data, llcx, old_handler }
         }

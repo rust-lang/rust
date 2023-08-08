@@ -2332,6 +2332,7 @@ extern "C" {
         remark_passes: *const *const c_char,
         remark_passes_len: usize,
         remark_file: *const c_char,
+        pgo_available: bool,
     );
 
     #[allow(improper_ctypes)]
