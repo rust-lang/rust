@@ -21,11 +21,11 @@ use crate::{
     path::{ModPath, Path, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, AssocItemId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId,
-    EnumVariantId, ExternBlockId, ExternCrateId, FunctionId, GenericDefId, GenericParamId,
-    HasModule, ImplId, ItemContainerId, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId,
-    MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId,
-    TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
+    AdtId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId,
+    ExternBlockId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId,
+    ItemContainerId, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId, MacroRulesId,
+    ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId,
+    TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
 };
 
 #[derive(Debug, Clone)]
@@ -146,34 +146,6 @@ impl Resolver {
 
     pub fn resolve_module_path_in_items(&self, db: &dyn DefDatabase, path: &ModPath) -> PerNs {
         self.resolve_module_path(db, path, BuiltinShadowMode::Module)
-    }
-
-    // FIXME: This shouldn't exist
-    pub fn resolve_module_path_in_trait_assoc_items(
-        &self,
-        db: &dyn DefDatabase,
-        path: &ModPath,
-    ) -> Option<PerNs> {
-        let (item_map, module) = self.item_scope();
-        let (module_res, idx) =
-            item_map.resolve_path(db, module, path, BuiltinShadowMode::Module, None);
-        match module_res.take_types()? {
-            ModuleDefId::TraitId(it) => {
-                let idx = idx?;
-                let unresolved = &path.segments()[idx..];
-                let assoc = match unresolved {
-                    [it] => it,
-                    _ => return None,
-                };
-                let &(_, assoc) = db.trait_data(it).items.iter().find(|(n, _)| n == assoc)?;
-                Some(match assoc {
-                    AssocItemId::FunctionId(it) => PerNs::values(it.into(), Visibility::Public),
-                    AssocItemId::ConstId(it) => PerNs::values(it.into(), Visibility::Public),
-                    AssocItemId::TypeAliasId(it) => PerNs::types(it.into(), Visibility::Public),
-                })
-            }
-            _ => None,
-        }
     }
 
     pub fn resolve_path_in_type_ns(

@@ -518,6 +518,62 @@ fn function();
 }
 
 #[test]
+fn doc_links_field() {
+    check_doc_links(
+        r#"
+/// [`S::f`]
+/// [`S2::f`]
+/// [`T::0`]
+/// [`U::a`]
+/// [`E::A::f`]
+/// [`E::B::0`]
+struct S$0 {
+    f: i32,
+  //^ S::f
+  //^ S2::f
+}
+type S2 = S;
+struct T(i32);
+       //^^^ T::0
+union U {
+    a: i32,
+  //^ U::a
+}
+enum E {
+    A { f: i32 },
+      //^ E::A::f
+    B(i32),
+    //^^^ E::B::0
+}
+"#,
+    );
+}
+
+#[test]
+fn doc_links_field_via_self() {
+    check_doc_links(
+        r#"
+/// [`Self::f`]
+struct S$0 {
+    f: i32,
+  //^ Self::f
+}
+"#,
+    );
+}
+
+#[test]
+fn doc_links_tuple_field_via_self() {
+    check_doc_links(
+        r#"
+/// [`Self::0`]
+struct S$0(i32);
+       //^^^ Self::0
+"#,
+    );
+}
+
+#[test]
 fn rewrite_html_root_url() {
     check_rewrite(
         r#"
