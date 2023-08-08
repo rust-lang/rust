@@ -862,7 +862,6 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             InvalidProgramInfo::FnAbiAdjustForForeignAbi(_) => {
                 rustc_middle::error::middle_adjust_for_foreign_abi_error
             }
-            InvalidProgramInfo::SizeOfUnsizedType(_) => const_eval_size_of_unsized,
             InvalidProgramInfo::ConstPropNonsense => {
                 panic!("We had const-prop nonsense, this should never be printed")
             }
@@ -889,9 +888,6 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             ) => {
                 builder.set_arg("arch", arch);
                 builder.set_arg("abi", abi.name());
-            }
-            InvalidProgramInfo::SizeOfUnsizedType(ty) => {
-                builder.set_arg("ty", ty);
             }
         }
     }
