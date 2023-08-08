@@ -5,7 +5,7 @@ use either::Either;
 use hir::{AsAssocItem, HirDisplay, SemanticsScope};
 use rustc_hash::FxHashMap;
 use syntax::{
-    ast::{self, AstNode},
+    ast::{self, make, AstNode},
     ted, SyntaxNode,
 };
 
@@ -139,7 +139,7 @@ impl<'a> PathTransform<'a> {
                         if let Some(default) =
                             &default.display_source_code(db, source_module.into(), false).ok()
                         {
-                            type_substs.insert(k, ast::make::ty(default).clone_for_update());
+                            type_substs.insert(k, make::ty(default).clone_for_update());
                             defaulted_params.push(Either::Left(k));
                         }
                     }
@@ -162,7 +162,7 @@ impl<'a> PathTransform<'a> {
                 }
                 (Either::Left(k), None) => {
                     if let Some(default) = k.default(db) {
-                        if let Some(default) = ast::make::expr_const_value(&default).expr() {
+                        if let Some(default) = default.expr() {
                             const_substs.insert(k, default.syntax().clone_for_update());
                             defaulted_params.push(Either::Right(k));
                         }
@@ -278,15 +278,14 @@ impl Ctx<'_> {
                                 hir::ModuleDef::Trait(trait_ref),
                                 false,
                             )?;
-                            match ast::make::ty_path(mod_path_to_ast(&found_path)) {
+                            match make::ty_path(mod_path_to_ast(&found_path)) {
                                 ast::Type::PathType(path_ty) => Some(path_ty),
                                 _ => None,
                             }
                         });
 
-                        let segment = ast::make::path_segment_ty(subst.clone(), trait_ref);
-                        let qualified =
-                            ast::make::path_from_segments(std::iter::once(segment), false);
+                        let segment = make::path_segment_ty(subst.clone(), trait_ref);
+                        let qualified = make::path_from_segments(std::iter::once(segment), false);
                         ted::replace(path.syntax(), qualified.clone_for_update().syntax());
                     } else if let Some(path_ty) = ast::PathType::cast(parent) {
                         ted::replace(

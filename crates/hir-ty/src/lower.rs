@@ -1606,21 +1606,25 @@ pub(crate) fn generic_defaults_query(
                         // Type variable default referring to parameter coming
                         // after it is forbidden (FIXME: report diagnostic)
                         ty = fallback_bound_vars(ty, idx, parent_start_idx);
-                        return crate::make_binders(db, &generic_params, ty.cast(Interner));
+                        crate::make_binders(db, &generic_params, ty.cast(Interner))
                     }
                     TypeOrConstParamData::ConstParamData(p) => {
-                        let unknown = unknown_const_as_generic(
-                            db.const_param_ty(ConstParamId::from_unchecked(id)),
+                        let mut val = p.default.as_ref().map_or_else(
+                            || {
+                                unknown_const_as_generic(
+                                    db.const_param_ty(ConstParamId::from_unchecked(id)),
+                                )
+                            },
+                            |c| {
+                                let c = ctx.lower_const(c, ctx.lower_ty(&p.ty));
+                                c.cast(Interner)
+                            },
                         );
-                        let mut val = p.default.as_ref().map_or(unknown, |c| {
-                            let c = ctx.lower_const(c, ctx.lower_ty(&p.ty));
-                            chalk_ir::GenericArg::new(Interner, GenericArgData::Const(c))
-                        });
                         // Each default can only refer to previous parameters, see above.
                         val = fallback_bound_vars(val, idx, parent_start_idx);
-                        return make_binders(db, &generic_params, val);
+                        make_binders(db, &generic_params, val)
                     }
-                };
+                }
             })
             // FIXME: use `Arc::from_iter` when it becomes available
             .collect::<Vec<_>>(),
