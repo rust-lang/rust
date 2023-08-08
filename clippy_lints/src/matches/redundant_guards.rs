@@ -161,6 +161,11 @@ fn emit_redundant_guards<'tcx>(
 }
 
 /// Checks if the given `Expr` can also be represented as a `Pat`.
+///
+/// All literals generally also work as patterns, however float literals are special.
+/// They are currently (as of 2023/08/08) still allowed in patterns, but that will become
+/// an error in the future, and rustc already actively warns against this (see rust#41620),
+/// so we don't consider those as usable within patterns for linting purposes.
 fn expr_can_be_pat(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     for_each_expr(expr, |expr| {
         if match expr.kind {
