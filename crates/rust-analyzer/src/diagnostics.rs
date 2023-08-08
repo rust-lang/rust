@@ -6,6 +6,7 @@ use std::mem;
 use ide::FileId;
 use ide_db::FxHashMap;
 use nohash_hasher::{IntMap, IntSet};
+use rustc_hash::FxHashSet;
 use triomphe::Arc;
 
 use crate::lsp_ext;
@@ -17,6 +18,7 @@ pub struct DiagnosticsMapConfig {
     pub remap_prefix: FxHashMap<String, String>,
     pub warnings_as_info: Vec<String>,
     pub warnings_as_hint: Vec<String>,
+    pub check_ignore: FxHashSet<String>,
 }
 
 #[derive(Debug, Default, Clone)]

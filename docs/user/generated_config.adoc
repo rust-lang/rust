@@ -161,6 +161,13 @@ List of features to activate. Defaults to
 
 Set to `"all"` to pass `--all-features` to Cargo.
 --
+[[rust-analyzer.check.ignore]]rust-analyzer.check.ignore (default: `[]`)::
++
+--
+List of `cargo check` (or other command specified in `check.command`) diagnostics to ignore.
+
+For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`,...
+--
 [[rust-analyzer.check.invocationLocation]]rust-analyzer.check.invocationLocation (default: `"workspace"`)::
 +
 --
