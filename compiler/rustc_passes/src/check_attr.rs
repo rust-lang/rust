@@ -2133,6 +2133,20 @@ impl CheckAttrVisitor<'_> {
                     );
                 }
             }
+        } else {
+            // special case when `#[macro_export]` is applied to a macro 2.0
+            let (macro_definition, _) =
+                self.tcx.hir().find(hir_id).unwrap().expect_item().expect_macro();
+            let is_decl_macro = !macro_definition.macro_rules;
+
+            if is_decl_macro {
+                self.tcx.emit_spanned_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span,
+                    errors::MacroExport::OnDeclMacro,
+                );
+            }
         }
     }
 
