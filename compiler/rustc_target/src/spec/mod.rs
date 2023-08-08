@@ -83,6 +83,7 @@ mod openbsd_base;
 mod redox_base;
 mod solaris_base;
 mod solid_base;
+mod teeos_base;
 mod thumb_base;
 mod uefi_msvc_base;
 mod unikraft_linux_musl_base;
@@ -1493,6 +1494,8 @@ supported_targets! {
     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
 
     ("x86_64-unknown-none", x86_64_unknown_none),
+
+    ("aarch64-unknown-teeos", aarch64_unknown_teeos),
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 
