@@ -15,6 +15,13 @@ struct B {
 
 struct C(u32, u32);
 
+fn issue11304() {
+    match 0.1 {
+        x if x == 0.0 => todo!(),
+        _ => todo!(),
+    }
+}
+
 fn main() {
     let c = C(1, 2);
     match c {

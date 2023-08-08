@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::path_to_local;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::visitors::{for_each_expr, is_local_used};
+use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, Guard, MatchSource, Node, Pat, PatKind};
@@ -177,8 +178,8 @@ fn expr_can_be_pat(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             ExprKind::AddrOf(..)
             | ExprKind::Array(..)
             | ExprKind::Tup(..)
-            | ExprKind::Struct(..)
-            | ExprKind::Lit(..) => true,
+            | ExprKind::Struct(..) => true,
+            ExprKind::Lit(lit) if !matches!(lit.node, LitKind::Float(..)) => true,
             _ => false,
         } {
             return ControlFlow::Continue(());

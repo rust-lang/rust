@@ -1,5 +1,5 @@
 error: redundant guard
-  --> $DIR/redundant_guards.rs:21:20
+  --> $DIR/redundant_guards.rs:28:20
    |
 LL |         C(x, y) if let 1 = y => ..,
    |                    ^^^^^^^^^
@@ -12,7 +12,7 @@ LL +         C(x, 1) => ..,
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:27:20
+  --> $DIR/redundant_guards.rs:34:20
    |
 LL |         Some(x) if matches!(x, Some(1) if true) => ..,
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |         Some(Some(1)) if true => ..,
    |              ~~~~~~~  ~~~~~~~
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:28:20
+  --> $DIR/redundant_guards.rs:35:20
    |
 LL |         Some(x) if matches!(x, Some(1)) => {
    |                    ^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL +         Some(Some(1)) => {
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:32:20
+  --> $DIR/redundant_guards.rs:39:20
    |
 LL |         Some(x) if let Some(1) = x => ..,
    |                    ^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL +         Some(Some(1)) => ..,
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:33:20
+  --> $DIR/redundant_guards.rs:40:20
    |
 LL |         Some(x) if x == Some(2) => ..,
    |                    ^^^^^^^^^^^^
@@ -59,7 +59,7 @@ LL +         Some(Some(2)) => ..,
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:56:20
+  --> $DIR/redundant_guards.rs:63:20
    |
 LL |         B { e } if matches!(e, Some(A(2))) => ..,
    |                    ^^^^^^^^^^^^^^^^^^^^^^^
@@ -71,7 +71,7 @@ LL +         B { e: Some(A(2)) } => ..,
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:93:20
+  --> $DIR/redundant_guards.rs:100:20
    |
 LL |         E::A(y) if y == "not from an or pattern" => {},
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -83,7 +83,7 @@ LL +         E::A("not from an or pattern") => {},
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:100:14
+  --> $DIR/redundant_guards.rs:107:14
    |
 LL |         x if matches!(x, Some(0)) => ..,
    |              ^^^^^^^^^^^^^^^^^^^^
