@@ -169,19 +169,15 @@ pub(crate) enum TypeLocation {
 
 impl TypeLocation {
     pub(crate) fn complete_lifetimes(&self) -> bool {
-        match self {
-            TypeLocation::GenericArg(Some((_, _, Some(param)))) => {
-                matches!(param, ast::GenericParam::LifetimeParam(_))
-            }
-            _ => false,
-        }
+        matches!(
+            self,
+            TypeLocation::GenericArg(Some((_, _, Some(ast::GenericParam::LifetimeParam(_)))))
+        )
     }
 
     pub(crate) fn complete_consts(&self) -> bool {
         match self {
-            TypeLocation::GenericArg(Some((_, _, Some(param)))) => {
-                matches!(param, ast::GenericParam::ConstParam(_))
-            }
+            TypeLocation::GenericArg(Some((_, _, Some(ast::GenericParam::ConstParam(_))))) => true,
             TypeLocation::AssocConstEq => true,
             _ => false,
         }
