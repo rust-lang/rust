@@ -234,13 +234,13 @@ impl<'tcx> Queries<'tcx> {
             debug_assert_eq!(_id, CRATE_DEF_ID);
             let untracked = Untracked { cstore, source_span, definitions };
 
-            // FIXME: Move these fields from session to tcx and make them immutable.
-            sess.stable_crate_id.set(stable_crate_id).expect("not yet initialized");
+            // FIXME: Move features from session to tcx and make them immutable.
             sess.init_features(rustc_expand::config::features(sess, &pre_configured_attrs));
 
             let qcx = passes::create_global_ctxt(
                 self.compiler,
                 crate_types,
+                stable_crate_id,
                 lint_store,
                 self.dep_graph(dep_graph_future),
                 untracked,

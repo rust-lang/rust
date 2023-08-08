@@ -527,6 +527,12 @@ pub struct GlobalCtxt<'tcx> {
 
     pub sess: &'tcx Session,
     crate_types: Vec<CrateType>,
+    /// The `stable_crate_id` is constructed out of the crate name and all the
+    /// `-C metadata` arguments passed to the compiler. Its value forms a unique
+    /// global identifier for the crate. It is used to allow multiple crates
+    /// with the same name to coexist. See the
+    /// `rustc_symbol_mangling` crate for more information.
+    stable_crate_id: StableCrateId,
 
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
     ///
@@ -688,6 +694,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn create_global_ctxt(
         s: &'tcx Session,
         crate_types: Vec<CrateType>,
+        stable_crate_id: StableCrateId,
         lint_store: Lrc<dyn Any + sync::DynSend + sync::DynSync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
@@ -707,6 +714,7 @@ impl<'tcx> TyCtxt<'tcx> {
         GlobalCtxt {
             sess: s,
             crate_types,
+            stable_crate_id,
             lint_store,
             arena,
             hir_arena,
@@ -842,7 +850,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn stable_crate_id(self, crate_num: CrateNum) -> StableCrateId {
         if crate_num == LOCAL_CRATE {
-            self.sess.local_stable_crate_id()
+            self.stable_crate_id
         } else {
             self.cstore_untracked().stable_crate_id(crate_num)
         }
@@ -852,7 +860,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// that the crate in question has already been loaded by the CrateStore.
     #[inline]
     pub fn stable_crate_id_to_crate_num(self, stable_crate_id: StableCrateId) -> CrateNum {
-        if stable_crate_id == self.sess.local_stable_crate_id() {
+        if stable_crate_id == self.stable_crate_id(LOCAL_CRATE) {
             LOCAL_CRATE
         } else {
             self.cstore_untracked().stable_crate_id_to_crate_num(stable_crate_id)
@@ -869,7 +877,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // If this is a DefPathHash from the local crate, we can look up the
         // DefId in the tcx's `Definitions`.
-        if stable_crate_id == self.sess.local_stable_crate_id() {
+        if stable_crate_id == self.stable_crate_id(LOCAL_CRATE) {
             self.untracked.definitions.read().local_def_path_hash_to_def_id(hash, err).to_def_id()
         } else {
             // If this is a DefPathHash from an upstream crate, let the CrateStore map
@@ -886,7 +894,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // statements within the query system and we'd run into endless
         // recursion otherwise.
         let (crate_name, stable_crate_id) = if def_id.is_local() {
-            (self.crate_name(LOCAL_CRATE), self.sess.local_stable_crate_id())
+            (self.crate_name(LOCAL_CRATE), self.stable_crate_id(LOCAL_CRATE))
         } else {
             let cstore = &*self.cstore_untracked();
             (cstore.crate_name(def_id.krate), cstore.stable_crate_id(def_id.krate))

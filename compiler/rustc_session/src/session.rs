@@ -152,13 +152,6 @@ pub struct Session {
     /// Input, input file path and output file path to this compilation process.
     pub io: CompilerIO,
 
-    /// The `stable_crate_id` is constructed out of the crate name and all the
-    /// `-C metadata` arguments passed to the compiler. Its value forms a unique
-    /// global identifier for the crate. It is used to allow multiple crates
-    /// with the same name to coexist. See the
-    /// `rustc_symbol_mangling` crate for more information.
-    pub stable_crate_id: OnceCell<StableCrateId>,
-
     features: OnceCell<rustc_feature::Features>,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
@@ -307,10 +300,6 @@ impl Session {
             return;
         }
         self.parse_sess.span_diagnostic.emit_future_breakage_report(diags);
-    }
-
-    pub fn local_stable_crate_id(&self) -> StableCrateId {
-        self.stable_crate_id.get().copied().unwrap()
     }
 
     /// Returns true if the crate is a testing one.
@@ -1475,7 +1464,6 @@ pub fn build_session(
         parse_sess,
         sysroot,
         io,
-        stable_crate_id: OnceCell::new(),
         features: OnceCell::new(),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,

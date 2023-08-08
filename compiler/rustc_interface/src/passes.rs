@@ -12,7 +12,7 @@ use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::PResult;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
@@ -666,6 +666,7 @@ pub static DEFAULT_EXTERN_QUERY_PROVIDERS: LazyLock<ExternProviders> = LazyLock:
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     crate_types: Vec<CrateType>,
+    stable_crate_id: StableCrateId,
     lint_store: Lrc<LintStore>,
     dep_graph: DepGraph,
     untracked: Untracked,
@@ -699,6 +700,7 @@ pub fn create_global_ctxt<'tcx>(
             TyCtxt::create_global_ctxt(
                 sess,
                 crate_types,
+                stable_crate_id,
                 lint_store,
                 arena,
                 hir_arena,
