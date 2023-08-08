@@ -813,6 +813,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_insignificant_dtor, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_strict_coherence, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_variance, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(TEST, rustc_variance_of_opaques, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
     rustc_attr!(TEST, rustc_abi, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
     rustc_attr!(TEST, rustc_regions, Normal, template!(Word), WarnFollowing),
