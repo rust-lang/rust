@@ -779,18 +779,13 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
 impl CrateInfo {
     pub fn new(tcx: TyCtxt<'_>, target_cpu: String) -> CrateInfo {
-        let exported_symbols = tcx
-            .sess
-            .crate_types()
+        let crate_types = tcx.crate_types().to_vec();
+        let exported_symbols = crate_types
             .iter()
             .map(|&c| (c, crate::back::linker::exported_symbols(tcx, c)))
             .collect();
-        let linked_symbols = tcx
-            .sess
-            .crate_types()
-            .iter()
-            .map(|&c| (c, crate::back::linker::linked_symbols(tcx, c)))
-            .collect();
+        let linked_symbols =
+            crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
         let subsystem = attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
@@ -829,6 +824,7 @@ impl CrateInfo {
 
         let mut info = CrateInfo {
             target_cpu,
+            crate_types,
             exported_symbols,
             linked_symbols,
             local_crate_name,
@@ -916,7 +912,7 @@ impl CrateInfo {
                 });
         }
 
-        let embed_visualizers = tcx.sess.crate_types().iter().any(|&crate_type| match crate_type {
+        let embed_visualizers = tcx.crate_types().iter().any(|&crate_type| match crate_type {
             CrateType::Executable | CrateType::Dylib | CrateType::Cdylib => {
                 // These are crate types for which we invoke the linker and can embed
                 // NatVis visualizers.
@@ -1013,7 +1009,7 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
         match compute_per_cgu_lto_type(
             &tcx.sess.lto(),
             &tcx.sess.opts,
-            &tcx.sess.crate_types(),
+            tcx.crate_types(),
             ModuleKind::Regular,
         ) {
             ComputedLtoType::No => CguReuse::PostLto,

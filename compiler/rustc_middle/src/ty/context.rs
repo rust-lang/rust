@@ -59,8 +59,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
-use rustc_session::Limit;
-use rustc_session::Session;
+use rustc_session::{Limit, MetadataKind, Session};
 use rustc_span::def_id::{DefPathHash, StableCrateId};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -527,6 +526,7 @@ pub struct GlobalCtxt<'tcx> {
     interners: CtxtInterners<'tcx>,
 
     pub sess: &'tcx Session,
+    crate_types: Vec<CrateType>,
 
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
     ///
@@ -687,6 +687,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// has a valid reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
+        crate_types: Vec<CrateType>,
         lint_store: Lrc<dyn Any + sync::DynSend + sync::DynSync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
@@ -705,6 +706,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         GlobalCtxt {
             sess: s,
+            crate_types,
             lint_store,
             arena,
             hir_arena,
@@ -798,6 +800,43 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             self.cstore_untracked().def_path_hash(def_id)
         }
+    }
+
+    #[inline]
+    pub fn crate_types(self) -> &'tcx [CrateType] {
+        &self.crate_types
+    }
+
+    pub fn metadata_kind(self) -> MetadataKind {
+        self.crate_types()
+            .iter()
+            .map(|ty| match *ty {
+                CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => {
+                    MetadataKind::None
+                }
+                CrateType::Rlib => MetadataKind::Uncompressed,
+                CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
+            })
+            .max()
+            .unwrap_or(MetadataKind::None)
+    }
+
+    pub fn needs_metadata(self) -> bool {
+        self.metadata_kind() != MetadataKind::None
+    }
+
+    pub fn needs_crate_hash(self) -> bool {
+        // Why is the crate hash needed for these configurations?
+        // - debug_assertions: for the "fingerprint the result" check in
+        //   `rustc_query_system::query::plumbing::execute_job`.
+        // - incremental: for query lookups.
+        // - needs_metadata: for putting into crate metadata.
+        // - instrument_coverage: for putting into coverage data (see
+        //   `hash_mir_source`).
+        cfg!(debug_assertions)
+            || self.sess.opts.incremental.is_some()
+            || self.needs_metadata()
+            || self.sess.instrument_coverage()
     }
 
     #[inline]
@@ -986,7 +1025,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn local_crate_exports_generics(self) -> bool {
         debug_assert!(self.sess.opts.share_generics());
 
-        self.sess.crate_types().iter().any(|crate_type| {
+        self.crate_types().iter().any(|crate_type| {
             match crate_type {
                 CrateType::Executable
                 | CrateType::Staticlib
