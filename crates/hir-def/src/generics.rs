@@ -307,7 +307,7 @@ impl GenericParams {
                     let param = ConstParamData {
                         name,
                         ty: Interned::new(ty),
-                        default: ConstRef::from_const_param(lower_ctx, const_param),
+                        default: ConstRef::from_const_param(lower_ctx, &const_param),
                     };
                     let idx = self.type_or_consts.alloc(param.into());
                     add_param_attrs(idx.into(), ast::GenericParam::ConstParam(const_param));

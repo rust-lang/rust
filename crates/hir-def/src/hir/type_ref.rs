@@ -395,7 +395,7 @@ impl ConstRef {
 
     pub(crate) fn from_const_param(
         lower_ctx: &LowerCtx<'_>,
-        param: ast::ConstParam,
+        param: &ast::ConstParam,
     ) -> Option<Self> {
         let default = param.default_val();
         match default {
