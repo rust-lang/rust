@@ -2,6 +2,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Nonterminal::*, NonterminalKind, Token};
 use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::IntoDiagnostic;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
@@ -197,7 +198,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        Ok(ParseNtResult::Nt(nt))
+        Ok(ParseNtResult::Nt(Lrc::new(nt)))
     }
 }
 

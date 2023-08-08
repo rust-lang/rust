@@ -75,10 +75,9 @@ pub(crate) use ParseResult::*;
 
 use crate::mbe::{macro_rules::Tracker, KleeneOp, TokenTree};
 
-use rustc_ast::token::{self, DocComment, Nonterminal, NonterminalKind, Token};
+use rustc_ast::token::{self, DocComment, NonterminalKind, Token};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
 use rustc_parse::parser::{ParseNtResult, Parser};
@@ -392,12 +391,7 @@ pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
 #[derive(Debug, Clone)]
 pub(crate) enum NamedMatch {
     MatchedSeq(Vec<NamedMatch>),
-
-    // A metavar match of type `tt`.
-    MatchedTokenTree(rustc_ast::tokenstream::TokenTree),
-
-    // A metavar match of any type other than `tt`.
-    MatchedNonterminal(Lrc<Nonterminal>),
+    MatchedSingle(ParseNtResult),
 }
 
 /// Performs a token equality check, ignoring syntax context (that is, an unhygienic comparison)
@@ -691,11 +685,7 @@ impl TtParser {
                             }
                             Ok(nt) => nt,
                         };
-                        let m = match nt {
-                            ParseNtResult::Nt(nt) => MatchedNonterminal(Lrc::new(nt)),
-                            ParseNtResult::Tt(tt) => MatchedTokenTree(tt),
-                        };
-                        mp.push_match(next_metavar, seq_depth, m);
+                        mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
                         mp.idx += 1;
                     } else {
                         unreachable!()

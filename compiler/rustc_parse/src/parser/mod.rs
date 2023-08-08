@@ -29,6 +29,7 @@ use rustc_ast::{Async, AttrArgs, AttrArgsEq, Expr, ExprKind, Mutability, StrLit}
 use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_errors::{
     Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, IntoDiagnostic, MultiSpan,
@@ -1506,8 +1507,14 @@ pub enum FlatToken {
     Empty,
 }
 
-#[derive(Debug)]
+// Metavar captures of various kinds.
+//
+// njn: I'm worried about the `Clone` here when new variants are added for all
+// the metavar kinds... do they need to be Lrc<> instead of P<>? Or should
+// `MatchedSingle` wrap its `ParseNtResult` in Lrc?
+#[derive(Clone, Debug)]
 pub enum ParseNtResult {
-    Nt(Nonterminal),
     Tt(TokenTree),
+
+    Nt(Lrc<Nonterminal>),
 }
