@@ -1273,7 +1273,7 @@ impl Adt {
             .fill(|x| {
                 let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
                 match x {
-                    ParamKind::Type => GenericArgData::Ty(r).intern(Interner),
+                    ParamKind::Type => r.cast(Interner),
                     ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
                 }
             })
@@ -3716,7 +3716,7 @@ impl Type {
             .fill(|x| {
                 let r = it.next().unwrap();
                 match x {
-                    ParamKind::Type => GenericArgData::Ty(r).intern(Interner),
+                    ParamKind::Type => r.cast(Interner),
                     ParamKind::Const(ty) => {
                         // FIXME: this code is not covered in tests.
                         unknown_const_as_generic(ty.clone())
@@ -3749,9 +3749,7 @@ impl Type {
             .fill(|it| {
                 // FIXME: this code is not covered in tests.
                 match it {
-                    ParamKind::Type => {
-                        GenericArgData::Ty(args.next().unwrap().ty.clone()).intern(Interner)
-                    }
+                    ParamKind::Type => args.next().unwrap().ty.clone().cast(Interner),
                     ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
                 }
             })
