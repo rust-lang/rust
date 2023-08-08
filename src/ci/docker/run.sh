@@ -108,6 +108,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       if ! grep -q "$digest" <(echo "$loaded_images"); then
         echo "Uploading finished image to $url"
         set +e
+        docker history rust-ci
         docker history -q rust-ci | \
           grep -v missing | \
           xargs docker save | \
