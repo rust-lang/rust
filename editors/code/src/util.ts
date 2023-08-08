@@ -151,6 +151,7 @@ export function execute(command: string, options: ExecOptions): Promise<string> 
 }
 
 export function executeDiscoverProject(command: string, options: ExecOptions): Promise<string> {
+    options = Object.assign({ maxBuffer: 10 * 1024 * 1024 }, options);
     log.info(`running command: ${command}`);
     return new Promise((resolve, reject) => {
         exec(command, options, (err, stdout, _) => {
