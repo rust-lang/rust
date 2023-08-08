@@ -20,7 +20,6 @@ use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate};
 use rustc_session::lint;
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
-use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -262,9 +261,9 @@ impl CStore {
         }
     }
 
-    pub fn new(sess: &Session) -> CStore {
+    pub fn new(local_stable_crate_id: StableCrateId) -> CStore {
         let mut stable_crate_ids = StableCrateIdMap::default();
-        stable_crate_ids.insert(sess.local_stable_crate_id(), LOCAL_CRATE);
+        stable_crate_ids.insert(local_stable_crate_id, LOCAL_CRATE);
         CStore {
             // We add an empty entry for LOCAL_CRATE (which maps to zero) in
             // order to make array indices in `metas` match with the
@@ -544,6 +543,9 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 self.sess,
                 &**metadata_loader,
                 name,
+                // The all loop is because `--crate-type=rlib --crate-type=rlib` is
+                // legal and produces both inside this type.
+                self.sess.crate_types().iter().all(|c| *c == CrateType::Rlib),
                 hash,
                 extra_filename,
                 false, // is_host

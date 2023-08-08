@@ -1,6 +1,6 @@
 use crate::errors::{FailedWritingFile, RustcErrorFatal, RustcErrorUnexpectedAnnotation};
 use crate::interface::{Compiler, Result};
-use crate::passes;
+use crate::{passes, util};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -9,15 +9,14 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, Lrc, OnceCell, RwLock, WorkerLocal};
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::DepGraphFuture;
-use rustc_lint::LintStore;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{GlobalCtxt, TyCtxt};
-use rustc_session::config::{self, OutputFilenames, OutputType};
+use rustc_session::config::{self, CrateType, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::{output::find_crate_name, Session};
 use rustc_span::symbol::sym;
@@ -85,12 +84,11 @@ pub struct Queries<'tcx> {
     arena: WorkerLocal<Arena<'tcx>>,
     hir_arena: WorkerLocal<rustc_hir::Arena<'tcx>>,
 
-    dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
     pre_configure: Query<(ast::Crate, ast::AttrVec)>,
     crate_name: Query<Symbol>,
-    register_plugins: Query<(ast::Crate, ast::AttrVec, Lrc<LintStore>)>,
-    dep_graph: Query<DepGraph>,
+    crate_types: Query<Vec<CrateType>>,
+    stable_crate_id: Query<StableCrateId>,
     // This just points to what's in `gcx_cell`.
     gcx: Query<&'tcx GlobalCtxt<'tcx>>,
 }
@@ -102,12 +100,11 @@ impl<'tcx> Queries<'tcx> {
             gcx_cell: OnceCell::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
-            dep_graph_future: Default::default(),
             parse: Default::default(),
             pre_configure: Default::default(),
             crate_name: Default::default(),
-            register_plugins: Default::default(),
-            dep_graph: Default::default(),
+            crate_types: Default::default(),
+            stable_crate_id: Default::default(),
             gcx: Default::default(),
         }
     }
@@ -117,13 +114,6 @@ impl<'tcx> Queries<'tcx> {
     }
     fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
         self.compiler.codegen_backend()
-    }
-
-    fn dep_graph_future(&self) -> Result<QueryResult<'_, Option<DepGraphFuture>>> {
-        self.dep_graph_future.compute(|| {
-            let sess = self.session();
-            Ok(sess.opts.build_dep_graph().then(|| rustc_incremental::load_dep_graph(sess)))
-        })
     }
 
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
@@ -148,84 +138,111 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn register_plugins(
-        &self,
-    ) -> Result<QueryResult<'_, (ast::Crate, ast::AttrVec, Lrc<LintStore>)>> {
-        self.register_plugins.compute(|| {
-            let crate_name = *self.crate_name()?.borrow();
-            let (krate, pre_configured_attrs) = self.pre_configure()?.steal();
-
-            let empty: &(dyn Fn(&Session, &mut LintStore) + Sync + Send) = &|_, _| {};
-            let lint_store = passes::register_plugins(
-                self.session(),
-                &*self.codegen_backend().metadata_loader(),
-                self.compiler.register_lints.as_deref().unwrap_or_else(|| empty),
-                &pre_configured_attrs,
-                crate_name,
-            )?;
-
-            // Compute the dependency graph (in the background). We want to do
-            // this as early as possible, to give the DepGraph maximum time to
-            // load before dep_graph() is called, but it also can't happen
-            // until after rustc_incremental::prepare_session_directory() is
-            // called, which happens within passes::register_plugins().
-            self.dep_graph_future().ok();
-
-            Ok((krate, pre_configured_attrs, Lrc::new(lint_store)))
-        })
-    }
-
     fn crate_name(&self) -> Result<QueryResult<'_, Symbol>> {
         self.crate_name.compute(|| {
-            Ok({
-                let pre_configure_result = self.pre_configure()?;
-                let (_, pre_configured_attrs) = &*pre_configure_result.borrow();
-                // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
-                find_crate_name(self.session(), pre_configured_attrs)
-            })
+            let pre_configure_result = self.pre_configure()?;
+            let (_, pre_configured_attrs) = &*pre_configure_result.borrow();
+            // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
+            Ok(find_crate_name(self.session(), pre_configured_attrs))
         })
     }
 
-    fn dep_graph(&self) -> Result<QueryResult<'_, DepGraph>> {
-        self.dep_graph.compute(|| {
-            let sess = self.session();
-            let future_opt = self.dep_graph_future()?.steal();
-            let dep_graph = future_opt
-                .and_then(|future| {
-                    let (prev_graph, mut prev_work_products) =
-                        sess.time("blocked_on_dep_graph_loading", || future.open().open(sess));
-                    // Convert from UnordMap to FxIndexMap by sorting
-                    let prev_work_product_ids =
-                        prev_work_products.items().map(|x| *x.0).into_sorted_stable_ord();
-                    let prev_work_products = prev_work_product_ids
-                        .into_iter()
-                        .map(|x| (x, prev_work_products.remove(&x).unwrap()))
-                        .collect::<FxIndexMap<_, _>>();
-                    rustc_incremental::build_dep_graph(sess, prev_graph, prev_work_products)
-                })
-                .unwrap_or_else(DepGraph::new_disabled);
-            Ok(dep_graph)
+    fn crate_types(&self) -> Result<QueryResult<'_, Vec<CrateType>>> {
+        self.crate_types.compute(|| {
+            let pre_configure_result = self.pre_configure()?;
+            let (_, pre_configured_attrs) = &*pre_configure_result.borrow();
+            Ok(util::collect_crate_types(&self.session(), &pre_configured_attrs))
         })
+    }
+
+    fn stable_crate_id(&self) -> Result<QueryResult<'_, StableCrateId>> {
+        self.stable_crate_id.compute(|| {
+            let sess = self.session();
+            Ok(StableCrateId::new(
+                *self.crate_name()?.borrow(),
+                self.crate_types()?.borrow().contains(&CrateType::Executable),
+                sess.opts.cg.metadata.clone(),
+                sess.cfg_version,
+            ))
+        })
+    }
+
+    fn dep_graph_future(&self) -> Result<Option<DepGraphFuture>> {
+        let sess = self.session();
+        let crate_name = *self.crate_name()?.borrow();
+        let stable_crate_id = *self.stable_crate_id()?.borrow();
+
+        // `load_dep_graph` can only be called after `prepare_session_directory`.
+        rustc_incremental::prepare_session_directory(sess, crate_name, stable_crate_id)?;
+        let res = sess.opts.build_dep_graph().then(|| rustc_incremental::load_dep_graph(sess));
+
+        if sess.opts.incremental.is_some() {
+            sess.time("incr_comp_garbage_collect_session_directories", || {
+                if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
+                    warn!(
+                        "Error while trying to garbage collect incremental \
+                         compilation cache directory: {}",
+                        e
+                    );
+                }
+            });
+        }
+
+        Ok(res)
+    }
+
+    fn dep_graph(&self, dep_graph_future: Option<DepGraphFuture>) -> DepGraph {
+        dep_graph_future
+            .and_then(|future| {
+                let sess = self.session();
+                let (prev_graph, mut prev_work_products) =
+                    sess.time("blocked_on_dep_graph_loading", || future.open().open(sess));
+                // Convert from UnordMap to FxIndexMap by sorting
+                let prev_work_product_ids =
+                    prev_work_products.items().map(|x| *x.0).into_sorted_stable_ord();
+                let prev_work_products = prev_work_product_ids
+                    .into_iter()
+                    .map(|x| (x, prev_work_products.remove(&x).unwrap()))
+                    .collect::<FxIndexMap<_, _>>();
+                rustc_incremental::build_dep_graph(sess, prev_graph, prev_work_products)
+            })
+            .unwrap_or_else(DepGraph::new_disabled)
     }
 
     pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
         self.gcx.compute(|| {
-            let crate_name = *self.crate_name()?.borrow();
-            let (krate, pre_configured_attrs, lint_store) = self.register_plugins()?.steal();
+            // Compute the dependency graph (in the background). We want to do this as early as
+            // possible, to give the DepGraph maximum time to load before `dep_graph` is called.
+            let dep_graph_future = self.dep_graph_future()?;
+
+            let crate_name = self.crate_name()?.steal();
+            let crate_types = self.crate_types()?.steal();
+            let stable_crate_id = self.stable_crate_id()?.steal();
+            let (krate, pre_configured_attrs) = self.pre_configure()?.steal();
 
             let sess = self.session();
-
-            let cstore = RwLock::new(Box::new(CStore::new(sess)) as _);
-            let definitions = RwLock::new(Definitions::new(sess.local_stable_crate_id()));
+            let lint_store = Lrc::new(passes::create_lint_store(
+                sess,
+                &*self.codegen_backend().metadata_loader(),
+                self.compiler.register_lints.as_deref(),
+                &pre_configured_attrs,
+            ));
+            let cstore = RwLock::new(Box::new(CStore::new(stable_crate_id)) as _);
+            let definitions = RwLock::new(Definitions::new(stable_crate_id));
             let source_span = AppendOnlyIndexVec::new();
             let _id = source_span.push(krate.spans.inner_span);
             debug_assert_eq!(_id, CRATE_DEF_ID);
             let untracked = Untracked { cstore, source_span, definitions };
 
+            // FIXME: Move these fields from session to tcx and make them immutable.
+            sess.init_crate_types(crate_types);
+            sess.stable_crate_id.set(stable_crate_id).expect("not yet initialized");
+            sess.init_features(rustc_expand::config::features(sess, &pre_configured_attrs));
+
             let qcx = passes::create_global_ctxt(
                 self.compiler,
                 lint_store,
-                self.dep_graph()?.steal(),
+                self.dep_graph(dep_graph_future),
                 untracked,
                 &self.gcx_cell,
                 &self.arena,

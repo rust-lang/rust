@@ -12,7 +12,7 @@ use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::PResult;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
@@ -72,43 +72,16 @@ fn count_nodes(krate: &ast::Crate) -> usize {
     counter.count
 }
 
-pub fn register_plugins<'a>(
-    sess: &'a Session,
-    metadata_loader: &'a dyn MetadataLoader,
-    register_lints: impl Fn(&Session, &mut LintStore),
+pub(crate) fn create_lint_store(
+    sess: &Session,
+    metadata_loader: &dyn MetadataLoader,
+    register_lints: Option<impl Fn(&Session, &mut LintStore)>,
     pre_configured_attrs: &[ast::Attribute],
-    crate_name: Symbol,
-) -> Result<LintStore> {
-    // these need to be set "early" so that expansion sees `quote` if enabled.
-    let features = rustc_expand::config::features(sess, pre_configured_attrs);
-    sess.init_features(features);
-
-    let crate_types = util::collect_crate_types(sess, pre_configured_attrs);
-    sess.init_crate_types(crate_types);
-
-    let stable_crate_id = StableCrateId::new(
-        crate_name,
-        sess.crate_types().contains(&CrateType::Executable),
-        sess.opts.cg.metadata.clone(),
-        sess.cfg_version,
-    );
-    sess.stable_crate_id.set(stable_crate_id).expect("not yet initialized");
-    rustc_incremental::prepare_session_directory(sess, crate_name, stable_crate_id)?;
-
-    if sess.opts.incremental.is_some() {
-        sess.time("incr_comp_garbage_collect_session_directories", || {
-            if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
-                warn!(
-                    "Error while trying to garbage collect incremental \
-                     compilation cache directory: {}",
-                    e
-                );
-            }
-        });
-    }
-
+) -> LintStore {
     let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
-    register_lints(sess, &mut lint_store);
+    if let Some(register_lints) = register_lints {
+        register_lints(sess, &mut lint_store);
+    }
 
     let registrars = sess.time("plugin_loading", || {
         plugin::load::load_plugins(sess, metadata_loader, pre_configured_attrs)
@@ -120,7 +93,7 @@ pub fn register_plugins<'a>(
         }
     });
 
-    Ok(lint_store)
+    lint_store
 }
 
 fn pre_expansion_lint<'a>(
