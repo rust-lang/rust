@@ -39,8 +39,8 @@ fn codegen_inner(
     if kind == AllocatorKind::Default {
         for method in ALLOCATOR_METHODS {
             let mut arg_tys = Vec::with_capacity(method.inputs.len());
-            for ty in method.inputs.iter() {
-                match *ty {
+            for input in method.inputs.iter() {
+                match input.ty {
                     AllocatorTy::Layout => {
                         arg_tys.push(usize_ty); // size
                         arg_tys.push(usize_ty); // align
