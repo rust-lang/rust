@@ -2441,14 +2441,14 @@ fn const_loop() {
 fn const_transfer_memory() {
     check_number(
         r#"
-    //- minicore: slice, index, coerce_unsized
+    //- minicore: slice, index, coerce_unsized, option
     const A1: &i32 = &1;
     const A2: &i32 = &10;
     const A3: [&i32; 3] = [&1, &2, &100];
-    const A4: (i32, &i32) = (1, &1000);
-    const GOAL: i32 = *A1 + *A2 + *A3[2] + *A4.1;
+    const A4: (i32, &i32, Option<&i32>) = (1, &1000, Some(&10000));
+    const GOAL: i32 = *A1 + *A2 + *A3[2] + *A4.1 + *A4.2.unwrap_or(&5);
     "#,
-        1111,
+        11111,
     );
 }
 

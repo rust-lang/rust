@@ -2007,7 +2007,28 @@ impl Evaluator<'_> {
                     }
                 }
                 AdtId::UnionId(_) => (),
-                AdtId::EnumId(_) => (),
+                AdtId::EnumId(e) => {
+                    if let Some((variant, layout)) = detect_variant_from_bytes(
+                        &layout,
+                        self.db,
+                        self.trait_env.clone(),
+                        self.read_memory(addr, layout.size.bytes_usize())?,
+                        e,
+                    ) {
+                        let ev = EnumVariantId { parent: e, local_id: variant };
+                        for (i, (_, ty)) in self.db.field_types(ev.into()).iter().enumerate() {
+                            let offset = layout.fields.offset(i).bytes_usize();
+                            let ty = ty.clone().substitute(Interner, subst);
+                            self.patch_addresses(
+                                patch_map,
+                                old_vtable,
+                                addr.offset(offset),
+                                &ty,
+                                locals,
+                            )?;
+                        }
+                    }
+                }
             },
             TyKind::Tuple(_, subst) => {
                 for (id, ty) in subst.iter(Interner).enumerate() {
