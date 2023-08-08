@@ -16,6 +16,36 @@ extern crate std;
 #[macro_use]
 extern crate test_macros;
 
+// Note: the expected output contains this sequence:
+// ```
+// Punct {
+//     ch: '<',
+//     spacing: Joint,
+//     span: $DIR/issue-75930-derive-cfg.rs:25:11: 25:12 (#0),
+// },
+// Ident {
+//     ident: "B",
+//     span: $DIR/issue-75930-derive-cfg.rs:25:29: 25:30 (#0),
+// },
+// ```
+// It's surprising to see a `Joint` token tree followed by an `Ident` token
+// tree, because `Joint` is supposed to only be used if the following token is
+// `Punct`.
+//
+// It is because of this code from below:
+// ```
+// struct Foo<#[cfg(FALSE)] A, B>
+// ```
+// When the token stream is formed during parsing, `<` is followed immediately
+// by `#`, which is punctuation, so it is marked `Joint`. But before being
+// passed to the proc macro it is rewritten to this:
+// ```
+// struct Foo<B>
+// ```
+// But the `Joint` marker on the `<` is not updated. Perhaps it should be
+// corrected before being passed to the proc macro? But a prior attempt to do
+// that kind of correction caused the problem seen in #76399, so maybe not.
+
 #[print_helper(a)] //~ WARN derive helper attribute is used before it is introduced
                    //~| WARN this was previously accepted
 #[cfg_attr(not(FALSE), allow(dead_code))]
