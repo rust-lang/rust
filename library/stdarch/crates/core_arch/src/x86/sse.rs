@@ -1365,6 +1365,15 @@ pub unsafe fn _mm_sfence() {
 
 /// Gets the unsigned 32-bit value of the MXCSR control and status register.
 ///
+/// Note that Rust makes no guarantees whatsoever about the contents of this regiser: Rust
+/// floating-point operations may or may not result in this register getting updated with exception
+/// state, and the register can change between two invocations of this function even when no
+/// floating-point operations appear in the source code (since floating-point operations appearing
+/// earlier or later can be reordered).
+///
+/// If you need to perform some floating-point operations and check whether they raised an
+/// exception, use an inline assembly block for the entire sequence of operations.
+///
 /// For more info see [`_mm_setcsr`](fn._mm_setcsr.html)
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_getcsr)
@@ -1400,6 +1409,16 @@ pub unsafe fn _mm_getcsr() -> u32 {
 ///
 /// * The *denormals-are-zero mode flag* turns all numbers which would be
 /// denormalized (exponent bits are all zeros) into zeros.
+///
+/// Note that modfying the masking flags, rounding mode, or denormals-are-zero mode flags leads to
+/// **immediate Undefined Behavior**: Rust assumes that these are always in their default state and
+/// will optimize accordingly. This even applies when the register is altered and later reset to its
+/// original value without any floating-point operations appearing in the source code between those
+/// operations (since floating-point operations appearing earlier or later can be reordered).
+///
+/// If you need to perform some floating-point operations under a different masking flags, rounding
+/// mode, or denormals-are-zero mode, use an inline assembly block and make sure to restore the
+/// original MXCSR register state before the end of the block.
 ///
 /// ## Exception Flags
 ///
