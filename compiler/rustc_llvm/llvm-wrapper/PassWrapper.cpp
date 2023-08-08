@@ -30,6 +30,7 @@
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
 #include "llvm/Transforms/IPO/Internalize.h"
+#include "llvm/Transforms/IPO/LowerTypeTests.h"
 #include "llvm/Transforms/IPO/ThinLTOBitcodeWriter.h"
 #include "llvm/Transforms/Utils/AddDiscriminators.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
@@ -609,6 +610,8 @@ enum class LLVMRustOptStage {
 struct LLVMRustSanitizerOptions {
   bool SanitizeAddress;
   bool SanitizeAddressRecover;
+  bool SanitizeCFI;
+  bool SanitizeKCFI;
   bool SanitizeMemory;
   bool SanitizeMemoryRecover;
   int  SanitizeMemoryTrackOrigins;
@@ -625,6 +628,7 @@ LLVMRustOptimize(
     LLVMTargetMachineRef TMRef,
     LLVMRustPassBuilderOptLevel OptLevelRust,
     LLVMRustOptStage OptStage,
+    bool IsLinkerPluginLTO,
     bool NoPrepopulatePasses, bool VerifyIR, bool UseThinLTOBuffers,
     bool MergeFunctions, bool UnrollLoops, bool SLPVectorize, bool LoopVectorize,
     bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
@@ -735,6 +739,18 @@ LLVMRustOptimize(
       PipelineStartEPCallbacks;
   std::vector<std::function<void(ModulePassManager &, OptimizationLevel)>>
       OptimizerLastEPCallbacks;
+
+  if (!IsLinkerPluginLTO
+      && SanitizerOptions && SanitizerOptions->SanitizeCFI
+      && !NoPrepopulatePasses) {
+    PipelineStartEPCallbacks.push_back(
+      [](ModulePassManager &MPM, OptimizationLevel Level) {
+        MPM.addPass(LowerTypeTestsPass(/*ExportSummary=*/nullptr,
+                                       /*ImportSummary=*/nullptr,
+                                       /*DropTypeTests=*/false));
+      }
+    );
+  }
 
   if (VerifyIR) {
     PipelineStartEPCallbacks.push_back(

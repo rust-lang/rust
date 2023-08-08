@@ -1619,11 +1619,17 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // LLVM CFI requires LTO.
     if sess.is_sanitizer_cfi_enabled()
-        && !(sess.lto() == config::Lto::Fat
-            || sess.lto() == config::Lto::Thin
-            || sess.opts.cg.linker_plugin_lto.enabled())
+        && !(sess.lto() == config::Lto::Fat || sess.opts.cg.linker_plugin_lto.enabled())
     {
         sess.emit_err(errors::SanitizerCfiRequiresLto);
+    }
+
+    // LLVM CFI using rustc LTO requires a single codegen unit.
+    if sess.is_sanitizer_cfi_enabled()
+        && sess.lto() == config::Lto::Fat
+        && !(sess.codegen_units().as_usize() == 1)
+    {
+        sess.emit_err(errors::SanitizerCfiRequiresSingleCodegenUnit);
     }
 
     // LLVM CFI is incompatible with LLVM KCFI.

@@ -89,7 +89,9 @@ session_sanitizer_cfi_generalize_pointers_requires_cfi = `-Zsanitizer-cfi-genera
 
 session_sanitizer_cfi_normalize_integers_requires_cfi = `-Zsanitizer-cfi-normalize-integers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`
 
-session_sanitizer_cfi_requires_lto = `-Zsanitizer=cfi` requires `-Clto`, `-Clto=thin`, or `-Clinker-plugin-lto`
+session_sanitizer_cfi_requires_lto = `-Zsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`
+
+session_sanitizer_cfi_requires_single_codegen_unit = `-Zsanitizer=cfi` with `-Clto` requires `-Ccodegen-units=1`
 
 session_sanitizer_not_supported = {$us} sanitizer is not supported for this target
 
