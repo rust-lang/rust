@@ -95,11 +95,11 @@ impl<const N: usize> EscapeIterInner<N> {
     }
 
     pub fn next(&mut self) -> Option<u8> {
-        self.alive.next().map(|i| self.data[usize::from(i)].as_u8())
+        self.alive.next().map(|i| self.data[usize::from(i)].to_u8())
     }
 
     pub fn next_back(&mut self) -> Option<u8> {
-        self.alive.next_back().map(|i| self.data[usize::from(i)].as_u8())
+        self.alive.next_back().map(|i| self.data[usize::from(i)].to_u8())
     }
 
     pub fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
