@@ -30,6 +30,8 @@ impl<'tcx> Match<'tcx> {
 }
 
 impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
+    const BINARY: bool = true;
+
     fn tag(&self) -> &'static str {
         "Match"
     }

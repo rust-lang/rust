@@ -31,6 +31,8 @@ impl<'combine, 'infcx, 'tcx> Sub<'combine, 'infcx, 'tcx> {
 }
 
 impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
+    const BINARY: bool = true;
+
     fn tag(&self) -> &'static str {
         "Sub"
     }

@@ -27,6 +27,8 @@ impl<'combine, 'infcx, 'tcx> Equate<'combine, 'infcx, 'tcx> {
 }
 
 impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
+    const BINARY: bool = true;
+
     fn tag(&self) -> &'static str {
         "Equate"
     }

@@ -20,6 +20,8 @@ pub enum Cause {
 }
 
 pub trait TypeRelation<'tcx>: Sized {
+    const BINARY: bool = false;
+
     fn tcx(&self) -> TyCtxt<'tcx>;
 
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
@@ -139,6 +141,13 @@ pub fn relate_args<'tcx, R: TypeRelation<'tcx>>(
     a_arg: GenericArgsRef<'tcx>,
     b_arg: GenericArgsRef<'tcx>,
 ) -> RelateResult<'tcx, GenericArgsRef<'tcx>> {
+    if R::BINARY {
+        for (a, b) in iter::zip(a_arg, b_arg) {
+            relation.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)?;
+        }
+        return Ok(a_arg);
+    }
+
     relation.tcx().mk_args_from_iter(iter::zip(a_arg, b_arg).map(|(a, b)| {
         relation.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)
     }))
@@ -155,6 +164,22 @@ pub fn relate_args_with_variances<'tcx, R: TypeRelation<'tcx>>(
     let tcx = relation.tcx();
 
     let mut cached_ty = None;
+
+    if R::BINARY {
+        for (i, (a, b)) in iter::zip(a_arg, b_arg).enumerate() {
+            let variance = variances[i];
+            let variance_info = if variance == ty::Invariant && fetch_ty_for_diag {
+                let ty = *cached_ty
+                    .get_or_insert_with(|| tcx.type_of(ty_def_id).instantiate(tcx, a_arg));
+                ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
+            } else {
+                ty::VarianceDiagInfo::default()
+            };
+            relation.relate_with_variance(variance, variance_info, a, b)?;
+        }
+        return Ok(a_arg);
+    }
+
     let params = iter::zip(a_arg, b_arg).enumerate().map(|(i, (a, b))| {
         let variance = variances[i];
         let variance_info = if variance == ty::Invariant && fetch_ty_for_diag {
@@ -398,6 +423,10 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
     a: Ty<'tcx>,
     b: Ty<'tcx>,
 ) -> RelateResult<'tcx, Ty<'tcx>> {
+    if R::BINARY {
+        return structurally_relate_tys_binary(relation, a, b);
+    }
+
     let tcx = relation.tcx();
     match (a.kind(), b.kind()) {
         (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
@@ -569,6 +598,189 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             let alias_ty = relation.relate(a_data, b_data)?;
             assert_eq!(a_kind, b_kind);
             Ok(Ty::new_alias(tcx, a_kind, alias_ty))
+        }
+
+        _ => Err(TypeError::Sorts(expected_found(relation, a, b))),
+    }
+}
+
+fn structurally_relate_tys_binary<'tcx, R: TypeRelation<'tcx>>(
+    relation: &mut R,
+    a: Ty<'tcx>,
+    b: Ty<'tcx>,
+) -> RelateResult<'tcx, Ty<'tcx>> {
+    let tcx = relation.tcx();
+    match (a.kind(), b.kind()) {
+        (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
+            // The caller should handle these cases!
+            bug!("var types encountered in structurally_relate_tys")
+        }
+
+        (ty::Bound(..), _) | (_, ty::Bound(..)) => {
+            bug!("bound types encountered in structurally_relate_tys")
+        }
+
+        (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(Ty::new_error(tcx, guar)),
+
+        (&ty::Never, _)
+        | (&ty::Char, _)
+        | (&ty::Bool, _)
+        | (&ty::Int(_), _)
+        | (&ty::Uint(_), _)
+        | (&ty::Float(_), _)
+        | (&ty::Str, _)
+            if a == b =>
+        {
+            Ok(a)
+        }
+
+        (ty::Param(a_p), ty::Param(b_p)) if a_p.index == b_p.index => Ok(a),
+
+        (ty::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => Ok(a),
+
+        (&ty::Adt(a_def, a_args), &ty::Adt(b_def, b_args)) if a_def == b_def => {
+            relation.relate_item_args(a_def.did(), a_args, b_args)?;
+            Ok(a)
+        }
+
+        (&ty::Foreign(a_id), &ty::Foreign(b_id)) if a_id == b_id => Ok(a),
+
+        (&ty::Dynamic(a_obj, a_region, a_repr), &ty::Dynamic(b_obj, b_region, b_repr))
+            if a_repr == b_repr =>
+        {
+            relation.with_cause(Cause::ExistentialRegionBound, |relation| {
+                relation.relate(a_region, b_region)
+            })?;
+            relation.relate(a_obj, b_obj)?;
+            Ok(a)
+        }
+
+        (&ty::Generator(a_id, a_args, _movability), &ty::Generator(b_id, b_args, _))
+            if a_id == b_id =>
+        {
+            // All Generator types with the same id represent
+            // the (anonymous) type of the same generator expression. So
+            // all of their regions should be equated.
+            relation.relate(a_args, b_args)?;
+            Ok(a)
+        }
+
+        (&ty::GeneratorWitness(a_types), &ty::GeneratorWitness(b_types)) => {
+            // Wrap our types with a temporary GeneratorWitness struct
+            // inside the binder so we can related them
+            let a_types = a_types.map_bound(GeneratorWitness);
+            let b_types = b_types.map_bound(GeneratorWitness);
+            // Then remove the GeneratorWitness for the result
+            relation.relate(a_types, b_types)?.map_bound(|witness| witness.0);
+            Ok(a)
+        }
+
+        (&ty::GeneratorWitnessMIR(a_id, a_args), &ty::GeneratorWitnessMIR(b_id, b_args))
+            if a_id == b_id =>
+        {
+            // All GeneratorWitness types with the same id represent
+            // the (anonymous) type of the same generator expression. So
+            // all of their regions should be equated.
+            relation.relate(a_args, b_args)?;
+            Ok(a)
+        }
+
+        (&ty::Closure(a_id, a_args), &ty::Closure(b_id, b_args)) if a_id == b_id => {
+            // All Closure types with the same id represent
+            // the (anonymous) type of the same closure expression. So
+            // all of their regions should be equated.
+            relation.relate(a_args, b_args)?;
+            Ok(a)
+        }
+
+        (&ty::RawPtr(a_mt), &ty::RawPtr(b_mt)) => {
+            relate_type_and_mut(relation, a_mt, b_mt, a)?;
+            Ok(a)
+        }
+
+        (&ty::Ref(a_r, a_ty, a_mutbl), &ty::Ref(b_r, b_ty, b_mutbl)) => {
+            relation.relate(a_r, b_r)?;
+            let a_mt = ty::TypeAndMut { ty: a_ty, mutbl: a_mutbl };
+            let b_mt = ty::TypeAndMut { ty: b_ty, mutbl: b_mutbl };
+            relate_type_and_mut(relation, a_mt, b_mt, a)?;
+            Ok(a)
+        }
+
+        (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) => {
+            relation.relate(a_t, b_t)?;
+            match relation.relate(sz_a, sz_b) {
+                Ok(_) => Ok(a),
+                Err(err) => {
+                    // Check whether the lengths are both concrete/known values,
+                    // but are unequal, for better diagnostics.
+                    //
+                    // It might seem dubious to eagerly evaluate these constants here,
+                    // we however cannot end up with errors in `Relate` during both
+                    // `type_of` and `predicates_of`. This means that evaluating the
+                    // constants should not cause cycle errors here.
+                    let sz_a = sz_a.try_eval_target_usize(tcx, relation.param_env());
+                    let sz_b = sz_b.try_eval_target_usize(tcx, relation.param_env());
+                    match (sz_a, sz_b) {
+                        (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => Err(
+                            TypeError::FixedArraySize(expected_found(relation, sz_a_val, sz_b_val)),
+                        ),
+                        _ => Err(err),
+                    }
+                }
+            }
+        }
+
+        (&ty::Slice(a_t), &ty::Slice(b_t)) => {
+            relation.relate(a_t, b_t)?;
+            Ok(a)
+        }
+
+        (&ty::Tuple(as_), &ty::Tuple(bs)) => {
+            if as_.len() == bs.len() {
+                for (a, b) in iter::zip(as_, bs) {
+                    relation.relate(a, b)?;
+                }
+                Ok(a)
+            } else if !(as_.is_empty() || bs.is_empty()) {
+                Err(TypeError::TupleSize(expected_found(relation, as_.len(), bs.len())))
+            } else {
+                Err(TypeError::Sorts(expected_found(relation, a, b)))
+            }
+        }
+
+        (&ty::FnDef(a_def_id, a_args), &ty::FnDef(b_def_id, b_args)) if a_def_id == b_def_id => {
+            relation.relate_item_args(a_def_id, a_args, b_args)?;
+            Ok(a)
+        }
+
+        (&ty::FnPtr(a_fty), &ty::FnPtr(b_fty)) => {
+            relation.relate(a_fty, b_fty)?;
+            Ok(a)
+        }
+
+        // The args of opaque types may not all be invariant, so we have
+        // to treat them separately from other aliases.
+        (
+            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, args: a_args, .. }),
+            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, args: b_args, .. }),
+        ) if a_def_id == b_def_id => {
+            let opt_variances = tcx.variances_of(a_def_id);
+            relate_args_with_variances(
+                relation,
+                a_def_id,
+                opt_variances,
+                a_args,
+                b_args,
+                false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
+            )?;
+            Ok(a)
+        }
+
+        // Alias tend to mostly already be handled downstream due to normalization.
+        (&ty::Alias(a_kind, a_data), &ty::Alias(b_kind, b_data)) => {
+            relation.relate(a_data, b_data)?;
+            assert_eq!(a_kind, b_kind);
+            Ok(a)
         }
 
         _ => Err(TypeError::Sorts(expected_found(relation, a, b))),

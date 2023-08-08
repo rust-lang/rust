@@ -424,6 +424,8 @@ impl<'tcx, D> TypeRelation<'tcx> for TypeRelating<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
+    const BINARY: bool = true;
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
