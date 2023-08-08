@@ -2404,7 +2404,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         should_continue = suggest(err, false, span, message, sugg);
                     }
                 }
-                LifetimeRibKind::Item => break,
+                LifetimeRibKind::Item | LifetimeRibKind::ConstParamTy => break,
                 _ => {}
             }
             if !should_continue {
@@ -2510,7 +2510,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             .lifetime_ribs
             .iter()
             .rev()
-            .take_while(|rib| !matches!(rib.kind, LifetimeRibKind::Item))
+            .take_while(|rib| {
+                !matches!(rib.kind, LifetimeRibKind::Item | LifetimeRibKind::ConstParamTy)
+            })
             .flat_map(|rib| rib.bindings.iter())
             .map(|(&ident, &res)| (ident, res))
             .filter(|(ident, _)| ident.name != kw::UnderscoreLifetime)
