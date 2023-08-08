@@ -82,7 +82,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 tcx,
                 def_id,
                 lifetime_mapping.iter().map(|(lifetime, def_id)| {
-                    (*lifetime, (*def_id, lifetime.ident.name, lifetime.ident.span))
+                    (**lifetime, (*def_id, lifetime.ident.name, lifetime.ident.span))
                 }),
                 tcx.generics_of(def_id.to_def_id()),
                 &mut predicates,

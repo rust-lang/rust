@@ -8,7 +8,7 @@ fi
 
 if [ "$NO_CHANGE_USER" = "" ]; then
   if [ "$LOCAL_USER_ID" != "" ]; then
-    useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
+    id -u user &>/dev/null || useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
     export HOME=/home/user
     unset LOCAL_USER_ID
 
@@ -154,13 +154,25 @@ fi
 # check for clock drifts. An HTTP URL is used instead of HTTPS since on Azure
 # Pipelines it happened that the certificates were marked as expired.
 datecheck() {
-  echo "::group::Clock drift check"
+  # If an error has happened, we do not want to start a new group, because that will collapse
+  # a previous group that might have contained the error log.
+  exit_code=$?
+
+  if [ $exit_code -eq 0 ]
+  then
+    echo "::group::Clock drift check"
+  fi
+
   echo -n "  local time: "
   date
   echo -n "  network time: "
   curl -fs --head http://ci-caches.rust-lang.org | grep ^Date: \
       | sed 's/Date: //g' || true
-  echo "::endgroup::"
+
+  if [ $exit_code -eq 0 ]
+  then
+    echo "::endgroup::"
+  fi
 }
 datecheck
 trap datecheck EXIT
@@ -170,6 +182,9 @@ trap datecheck EXIT
 # hasn't finished yet. Try to solve that problem by starting a very long-lived
 # sccache server at the start of the build, but no need to worry if this fails.
 SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
+
+# Our build may overwrite config.toml, so we remove it here
+rm -f config.toml
 
 $SRC/configure $RUST_CONFIGURE_ARGS
 

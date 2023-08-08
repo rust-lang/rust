@@ -3,11 +3,6 @@ error[E0106]: missing lifetime specifier
    |
 LL | fn d<const C: S>() {}
    |               ^ expected named lifetime parameter
-   |
-help: consider introducing a named lifetime parameter
-   |
-LL | fn d<'a, const C: S<'a>>() {}
-   |      +++           ++++
 
 error[E0770]: the type of const parameters must not depend on other generic parameters
   --> $DIR/unusual-rib-combinations.rs:29:22

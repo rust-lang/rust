@@ -470,7 +470,7 @@ impl<'a> PathSource<'a> {
                         | DefKind::Enum
                         | DefKind::Trait
                         | DefKind::TraitAlias
-                        | DefKind::TyAlias
+                        | DefKind::TyAlias { .. }
                         | DefKind::AssocTy
                         | DefKind::TyParam
                         | DefKind::OpaqueTy
@@ -509,7 +509,7 @@ impl<'a> PathSource<'a> {
                     DefKind::Struct
                         | DefKind::Union
                         | DefKind::Variant
-                        | DefKind::TyAlias
+                        | DefKind::TyAlias { .. }
                         | DefKind::AssocTy,
                     _,
                 ) | Res::SelfTyParam { .. }
@@ -904,9 +904,12 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                             sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
                             &sig.decl.output,
                         );
+
+                        if let Some((async_node_id, span)) = sig.header.asyncness.opt_return_id() {
+                            this.record_lifetime_params_for_impl_trait(async_node_id, span);
+                        }
                     },
                 );
-                self.record_lifetime_params_for_async(fn_id, sig.header.asyncness.opt_return_id());
                 return;
             }
             FnKind::Fn(..) => {
@@ -942,11 +945,13 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                                         .iter()
                                         .map(|Param { pat, ty, .. }| (Some(&**pat), &**ty)),
                                     &declaration.output,
-                                )
+                                );
+
+                                if let Some((async_node_id, span)) = async_node_id {
+                                    this.record_lifetime_params_for_impl_trait(async_node_id, span);
+                                }
                             },
                         );
-
-                        this.record_lifetime_params_for_async(fn_id, async_node_id);
 
                         if let Some(body) = body {
                             // Ignore errors in function bodies if this is rustdoc
@@ -1694,6 +1699,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         // Leave the responsibility to create the `LocalDefId` to lowering.
         let param = self.r.next_node_id();
         let res = LifetimeRes::Fresh { param, binder };
+        self.record_lifetime_param(param, res);
 
         // Record the created lifetime parameter so lowering can pick it up and add it to HIR.
         self.r
@@ -1734,7 +1740,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 Res::Def(DefKind::Struct, def_id)
                 | Res::Def(DefKind::Union, def_id)
                 | Res::Def(DefKind::Enum, def_id)
-                | Res::Def(DefKind::TyAlias, def_id)
+                | Res::Def(DefKind::TyAlias { .. }, def_id)
                 | Res::Def(DefKind::Trait, def_id)
                     if i + 1 == proj_start =>
                 {
@@ -3944,11 +3950,12 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
         if path.len() > 1
             && let Some(res) = result.full_res()
+            && let Some((&last_segment, prev_segs)) = path.split_last()
+            && prev_segs.iter().all(|seg| !seg.has_generic_args)
             && res != Res::Err
             && path[0].ident.name != kw::PathRoot
             && path[0].ident.name != kw::DollarCrate
         {
-            let last_segment = *path.last().unwrap();
             let unqualified_result = {
                 match self.resolve_path(&[last_segment], Some(ns), None) {
                     PathResult::NonModule(path_res) => path_res.expect_full_res(),
@@ -4325,39 +4332,32 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         )
     }
 
-    /// Construct the list of in-scope lifetime parameters for async lowering.
+    /// Construct the list of in-scope lifetime parameters for impl trait lowering.
     /// We include all lifetime parameters, either named or "Fresh".
     /// The order of those parameters does not matter, as long as it is
     /// deterministic.
-    fn record_lifetime_params_for_async(
-        &mut self,
-        fn_id: NodeId,
-        async_node_id: Option<(NodeId, Span)>,
-    ) {
-        if let Some((async_node_id, span)) = async_node_id {
-            let mut extra_lifetime_params =
-                self.r.extra_lifetime_params_map.get(&fn_id).cloned().unwrap_or_default();
-            for rib in self.lifetime_ribs.iter().rev() {
-                extra_lifetime_params.extend(
-                    rib.bindings.iter().map(|(&ident, &(node_id, res))| (ident, node_id, res)),
-                );
-                match rib.kind {
-                    LifetimeRibKind::Item => break,
-                    LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
-                        if let Some(earlier_fresh) = self.r.extra_lifetime_params_map.get(&binder) {
-                            extra_lifetime_params.extend(earlier_fresh);
-                        }
-                    }
-                    LifetimeRibKind::Generics { .. } => {}
-                    _ => {
-                        // We are in a function definition. We should only find `Generics`
-                        // and `AnonymousCreateParameter` inside the innermost `Item`.
-                        span_bug!(span, "unexpected rib kind: {:?}", rib.kind)
+    fn record_lifetime_params_for_impl_trait(&mut self, impl_trait_node_id: NodeId, span: Span) {
+        let mut extra_lifetime_params = vec![];
+
+        for rib in self.lifetime_ribs.iter().rev() {
+            extra_lifetime_params
+                .extend(rib.bindings.iter().map(|(&ident, &(node_id, res))| (ident, node_id, res)));
+            match rib.kind {
+                LifetimeRibKind::Item => break,
+                LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
+                    if let Some(earlier_fresh) = self.r.extra_lifetime_params_map.get(&binder) {
+                        extra_lifetime_params.extend(earlier_fresh);
                     }
                 }
+                LifetimeRibKind::Generics { .. } => {}
+                _ => {
+                    // We are in a function definition. We should only find `Generics`
+                    // and `AnonymousCreateParameter` inside the innermost `Item`.
+                    span_bug!(span, "unexpected rib kind: {:?}", rib.kind)
+                }
             }
-            self.r.extra_lifetime_params_map.insert(async_node_id, extra_lifetime_params);
         }
+        self.r.extra_lifetime_params_map.insert(impl_trait_node_id, extra_lifetime_params);
     }
 
     fn resolve_and_cache_rustdoc_path(&mut self, path_str: &str, ns: Namespace) -> Option<Res> {

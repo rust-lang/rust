@@ -66,20 +66,32 @@ fn init_compiler_benchmarks(
     .workdir(&env.rustc_perf_dir())
 }
 
+/// Describes which `llvm-profdata` binary should be used for merging PGO profiles.
+enum LlvmProfdata {
+    /// Use llvm-profdata from the host toolchain (i.e. from LLVM provided externally).
+    Host,
+    /// Use llvm-profdata from the target toolchain (i.e. from LLVM built from `src/llvm-project`).
+    Target,
+}
+
 fn merge_llvm_profiles(
     env: &dyn Environment,
     merged_path: &Utf8Path,
     profile_dir: &Utf8Path,
+    profdata: LlvmProfdata,
 ) -> anyhow::Result<()> {
-    cmd(&[
-        env.downloaded_llvm_dir().join("bin/llvm-profdata").as_str(),
-        "merge",
-        "-o",
-        merged_path.as_str(),
-        profile_dir.as_str(),
-    ])
-    .run()
-    .context("Cannot merge LLVM profiles")?;
+    let llvm_profdata = match profdata {
+        LlvmProfdata::Host => env.host_llvm_dir().join("bin/llvm-profdata"),
+        LlvmProfdata::Target => env
+            .build_artifacts()
+            .join("llvm")
+            .join("build")
+            .join(format!("bin/llvm-profdata{}", env.executable_extension())),
+    };
+
+    cmd(&[llvm_profdata.as_str(), "merge", "-o", merged_path.as_str(), profile_dir.as_str()])
+        .run()
+        .context("Cannot merge LLVM profiles")?;
     Ok(())
 }
 
@@ -118,7 +130,7 @@ pub fn gather_llvm_profiles(
     let merged_profile = env.opt_artifacts().join("llvm-pgo.profdata");
     log::info!("Merging LLVM PGO profiles to {merged_profile}");
 
-    merge_llvm_profiles(env, &merged_profile, profile_root)?;
+    merge_llvm_profiles(env, &merged_profile, profile_root, LlvmProfdata::Host)?;
     log_profile_stats("LLVM", &merged_profile, profile_root)?;
 
     // We don't need the individual .profraw files now that they have been merged
@@ -154,7 +166,7 @@ pub fn gather_rustc_profiles(
     let merged_profile = env.opt_artifacts().join("rustc-pgo.profdata");
     log::info!("Merging Rustc PGO profiles to {merged_profile}");
 
-    merge_llvm_profiles(env, &merged_profile, profile_root)?;
+    merge_llvm_profiles(env, &merged_profile, profile_root, LlvmProfdata::Target)?;
     log_profile_stats("Rustc", &merged_profile, profile_root)?;
 
     // We don't need the individual .profraw files now that they have been merged

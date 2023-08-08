@@ -252,6 +252,28 @@ fn wrapping_add() {
 }
 
 #[test]
+fn ptr_offset_from() {
+    check_number(
+        r#"
+        //- minicore: index, slice, coerce_unsized
+        extern "rust-intrinsic" {
+            pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
+            pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
+        }
+
+        const GOAL: isize = {
+            let x = [1, 2, 3, 4, 5i32];
+            let r1 = -ptr_offset_from(&x[0], &x[4]);
+            let r2 = ptr_offset_from(&x[3], &x[1]);
+            let r3 = ptr_offset_from_unsigned(&x[3], &x[0]) as isize;
+            r3 * 100 + r2 * 10 + r1
+        };
+        "#,
+        324,
+    );
+}
+
+#[test]
 fn saturating() {
     check_number(
         r#"
@@ -438,6 +460,8 @@ fn atomic() {
             pub fn atomic_nand_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
             pub fn atomic_or_release<T: Copy>(dst: *mut T, src: T) -> T;
             pub fn atomic_xor_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
+            pub fn atomic_fence_seqcst();
+            pub fn atomic_singlethreadfence_acqrel();
         }
 
         fn should_not_reach() {
@@ -452,6 +476,7 @@ fn atomic() {
             if (30, true) != atomic_cxchg_release_seqcst(&mut y, 30, 40) {
                 should_not_reach();
             }
+            atomic_fence_seqcst();
             if (40, false) != atomic_cxchg_release_seqcst(&mut y, 30, 50) {
                 should_not_reach();
             }
@@ -459,6 +484,7 @@ fn atomic() {
                 should_not_reach();
             }
             let mut z = atomic_xsub_seqcst(&mut x, -200);
+            atomic_singlethreadfence_acqrel();
             atomic_xor_seqcst(&mut x, 1024);
             atomic_load_seqcst(&x) + z * 3 + atomic_load_seqcst(&y) * 2
         };

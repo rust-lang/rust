@@ -76,7 +76,7 @@ fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
     let mut worklist: Vec<_> = Crate::all(db)
         .into_iter()
         .filter(|x| x.origin(db).is_local())
-        .map(|krate| krate.root_module(db))
+        .map(|krate| krate.root_module())
         .collect();
     let mut modules = Vec::new();
 

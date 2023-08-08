@@ -486,12 +486,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         );
                         Ok(Some(current))
                     }
-                    ValueNs::FunctionId(_) | ValueNs::StructId(_) => {
+                    ValueNs::FunctionId(_) | ValueNs::StructId(_) | ValueNs::ImplSelf(_) => {
                         // It's probably a unit struct or a zero sized function, so no action is needed.
                         Ok(Some(current))
-                    }
-                    it => {
-                        not_supported!("unknown name {it:?} in value name space");
                     }
                 }
             }
@@ -585,36 +582,6 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     Ok(())
                 })
             }
-            Expr::While { condition, body, label } => {
-                self.lower_loop(current, place, *label, expr_id.into(), |this, begin| {
-                    let scope = this.push_drop_scope();
-                    let Some((discr, to_switch)) =
-                        this.lower_expr_to_some_operand(*condition, begin)?
-                    else {
-                        return Ok(());
-                    };
-                    let fail_cond = this.new_basic_block();
-                    let after_cond = this.new_basic_block();
-                    this.set_terminator(
-                        to_switch,
-                        TerminatorKind::SwitchInt {
-                            discr,
-                            targets: SwitchTargets::static_if(1, after_cond, fail_cond),
-                        },
-                        expr_id.into(),
-                    );
-                    let fail_cond = this.drop_until_scope(this.drop_scopes.len() - 1, fail_cond);
-                    let end = this.current_loop_end()?;
-                    this.set_goto(fail_cond, end, expr_id.into());
-                    if let Some((_, block)) = this.lower_expr_as_place(after_cond, *body, true)? {
-                        let block = scope.pop_and_drop(this, block);
-                        this.set_goto(block, begin, expr_id.into());
-                    } else {
-                        scope.pop_assume_dropped(this);
-                    }
-                    Ok(())
-                })
-            }
             Expr::Call { callee, args, .. } => {
                 if let Some((func_id, generic_args)) = self.infer.method_resolution(expr_id) {
                     let ty = chalk_ir::TyKind::FnDef(
@@ -659,6 +626,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             self.is_uninhabited(expr_id),
                             expr_id.into(),
                         )
+                    }
+                    TyKind::Closure(_, _) => {
+                        not_supported!(
+                            "method resolution not emitted for closure (Are Fn traits available?)"
+                        );
                     }
                     TyKind::Error => {
                         return Err(MirLowerError::MissingFunctionDefinition(self.owner, expr_id))
@@ -1026,18 +998,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         self.push_assignment(current, lhs_place, r_value, expr_id.into());
                         return Ok(Some(current));
                     } else {
-                        let Some((lhs_place, current)) =
-                            self.lower_expr_as_place(current, *lhs, false)?
-                        else {
-                            return Ok(None);
-                        };
-                        let Some((rhs_op, current)) =
-                            self.lower_expr_to_some_operand(*rhs, current)?
-                        else {
-                            return Ok(None);
-                        };
-                        self.push_assignment(current, lhs_place, rhs_op.into(), expr_id.into());
-                        return Ok(Some(current));
+                        return self.lower_assignment(current, *lhs, *rhs, expr_id.into());
                     }
                 }
                 let Some((lhs_op, current)) = self.lower_expr_to_some_operand(*lhs, current)?
@@ -1281,6 +1242,30 @@ impl<'ctx> MirLowerCtx<'ctx> {
             }
             Expr::Underscore => not_supported!("underscore"),
         }
+    }
+
+    fn lower_assignment(
+        &mut self,
+        current: BasicBlockId,
+        lhs: ExprId,
+        rhs: ExprId,
+        span: MirSpan,
+    ) -> Result<Option<BasicBlockId>> {
+        let Some((rhs_op, current)) =
+            self.lower_expr_to_some_operand(rhs, current)?
+        else {
+            return Ok(None);
+        };
+        if matches!(&self.body.exprs[lhs], Expr::Underscore) {
+            return Ok(Some(current));
+        }
+        let Some((lhs_place, current)) =
+            self.lower_expr_as_place(current, lhs, false)?
+        else {
+            return Ok(None);
+        };
+        self.push_assignment(current, lhs_place, rhs_op.into(), span);
+        Ok(Some(current))
     }
 
     fn placeholder_subst(&mut self) -> Substitution {

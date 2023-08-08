@@ -1159,8 +1159,8 @@ impl Step for CrtBeginEnd {
             return out_dir;
         }
 
-        let crtbegin_src = builder.src.join("src/llvm-project/compiler-rt/lib/crt/crtbegin.c");
-        let crtend_src = builder.src.join("src/llvm-project/compiler-rt/lib/crt/crtend.c");
+        let crtbegin_src = builder.src.join("src/llvm-project/compiler-rt/lib/builtins/crtbegin.c");
+        let crtend_src = builder.src.join("src/llvm-project/compiler-rt/lib/builtins/crtend.c");
         if up_to_date(&crtbegin_src, &out_dir.join("crtbegin.o"))
             && up_to_date(&crtend_src, &out_dir.join("crtendS.o"))
         {

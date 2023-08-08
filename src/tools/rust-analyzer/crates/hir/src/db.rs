@@ -10,8 +10,3 @@ pub use hir_expand::db::{
     MacroExpandQuery, ParseMacroExpansionErrorQuery, ParseMacroExpansionQuery,
 };
 pub use hir_ty::db::*;
-
-#[test]
-fn hir_database_is_object_safe() {
-    fn _assert_object_safe(_: &dyn HirDatabase) {}
-}

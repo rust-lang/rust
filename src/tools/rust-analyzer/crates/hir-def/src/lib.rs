@@ -88,8 +88,8 @@ use crate::{
     builtin_type::BuiltinType,
     data::adt::VariantData,
     item_tree::{
-        Const, Enum, ExternCrate, Function, Impl, Import, ItemTreeId, ItemTreeNode, MacroDef,
-        MacroRules, Static, Struct, Trait, TraitAlias, TypeAlias, Union,
+        Const, Enum, ExternCrate, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules,
+        Static, Struct, Trait, TraitAlias, TypeAlias, Union, Use,
     },
 };
 
@@ -118,6 +118,12 @@ impl From<CrateRootModuleId> for ModuleId {
 impl From<CrateRootModuleId> for ModuleDefId {
     fn from(value: CrateRootModuleId) -> Self {
         ModuleDefId::ModuleId(value.into())
+    }
+}
+
+impl From<CrateId> for CrateRootModuleId {
+    fn from(krate: CrateId) -> Self {
+        CrateRootModuleId { krate }
     }
 }
 
@@ -318,9 +324,9 @@ type ImplLoc = ItemLoc<Impl>;
 impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct ImportId(salsa::InternId);
-type ImportLoc = ItemLoc<Import>;
-impl_intern!(ImportId, ImportLoc, intern_import, lookup_intern_import);
+pub struct UseId(salsa::InternId);
+type UseLoc = ItemLoc<Use>;
+impl_intern!(UseId, UseLoc, intern_use, lookup_intern_use);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ExternCrateId(salsa::InternId);
@@ -836,6 +842,7 @@ pub enum AttrDefId {
     GenericParamId(GenericParamId),
     ExternBlockId(ExternBlockId),
     ExternCrateId(ExternCrateId),
+    UseId(UseId),
 }
 
 impl_from!(
@@ -1073,6 +1080,7 @@ impl AttrDefId {
             }
             AttrDefId::MacroId(it) => it.module(db).krate,
             AttrDefId::ExternCrateId(it) => it.lookup(db).container.krate,
+            AttrDefId::UseId(it) => it.lookup(db).container.krate,
         }
     }
 }
@@ -1083,7 +1091,7 @@ pub trait AsMacroCall {
         &self,
         db: &dyn ExpandDatabase,
         krate: CrateId,
-        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+        resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
     ) -> Option<MacroCallId> {
         self.as_call_id_with_errors(db, krate, resolver).ok()?.value
     }
@@ -1092,7 +1100,7 @@ pub trait AsMacroCall {
         &self,
         db: &dyn ExpandDatabase,
         krate: CrateId,
-        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+        resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro>;
 }
 
@@ -1101,7 +1109,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         &self,
         db: &dyn ExpandDatabase,
         krate: CrateId,
-        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+        resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
         let expands_to = hir_expand::ExpandTo::from_call_site(self.value);
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
@@ -1112,11 +1120,12 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
             return Ok(ExpandResult::only_err(ExpandError::other("malformed macro invocation")));
         };
 
-        macro_call_as_call_id_(
+        macro_call_as_call_id_with_eager(
             db,
             &AstIdWithPath::new(ast_id.file_id, ast_id.value, path),
             expands_to,
             krate,
+            resolver,
             resolver,
         )
     }
@@ -1140,33 +1149,39 @@ fn macro_call_as_call_id(
     call: &AstIdWithPath<ast::MacroCall>,
     expand_to: ExpandTo,
     krate: CrateId,
-    resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+    resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
 ) -> Result<Option<MacroCallId>, UnresolvedMacro> {
-    macro_call_as_call_id_(db, call, expand_to, krate, resolver).map(|res| res.value)
+    macro_call_as_call_id_with_eager(db, call, expand_to, krate, resolver, resolver)
+        .map(|res| res.value)
 }
 
-fn macro_call_as_call_id_(
+fn macro_call_as_call_id_with_eager(
     db: &dyn ExpandDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
     expand_to: ExpandTo,
     krate: CrateId,
-    resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+    resolver: impl FnOnce(path::ModPath) -> Option<MacroDefId>,
+    eager_resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
 ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
     let def =
         resolver(call.path.clone()).ok_or_else(|| UnresolvedMacro { path: call.path.clone() })?;
 
-    let res = if let MacroDefKind::BuiltInEager(..) = def.kind {
-        let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db));
-        expand_eager_macro_input(db, krate, macro_call, def, &resolver)?
-    } else {
-        ExpandResult {
+    let res = match def.kind {
+        MacroDefKind::BuiltInEager(..) => {
+            let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db));
+            expand_eager_macro_input(db, krate, macro_call, def, &|path| {
+                eager_resolver(path).filter(MacroDefId::is_fn_like)
+            })
+        }
+        _ if def.is_fn_like() => ExpandResult {
             value: Some(def.as_lazy_macro(
                 db,
                 krate,
                 MacroCallKind::FnLike { ast_id: call.ast_id, expand_to },
             )),
             err: None,
-        }
+        },
+        _ => return Err(UnresolvedMacro { path: call.path.clone() }),
     };
     Ok(res)
 }
@@ -1251,6 +1266,7 @@ fn derive_macro_as_call_id(
     resolver: impl Fn(path::ModPath) -> Option<(MacroId, MacroDefId)>,
 ) -> Result<(MacroId, MacroDefId, MacroCallId), UnresolvedMacro> {
     let (macro_id, def_id) = resolver(item_attr.path.clone())
+        .filter(|(_, def_id)| def_id.is_derive())
         .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
     let call_id = def_id.as_lazy_macro(
         db.upcast(),

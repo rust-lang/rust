@@ -213,17 +213,17 @@ pub type Ty = ();
 
             for (_, res) in module_data.scope.resolutions() {
                 match res.values.or(res.types).unwrap().0 {
-                    ModuleDefId::FunctionId(f) => drop(db.function_data(f)),
+                    ModuleDefId::FunctionId(f) => _ = db.function_data(f),
                     ModuleDefId::AdtId(adt) => match adt {
-                        AdtId::StructId(it) => drop(db.struct_data(it)),
-                        AdtId::UnionId(it) => drop(db.union_data(it)),
-                        AdtId::EnumId(it) => drop(db.enum_data(it)),
+                        AdtId::StructId(it) => _ = db.struct_data(it),
+                        AdtId::UnionId(it) => _ = db.union_data(it),
+                        AdtId::EnumId(it) => _ = db.enum_data(it),
                     },
-                    ModuleDefId::ConstId(it) => drop(db.const_data(it)),
-                    ModuleDefId::StaticId(it) => drop(db.static_data(it)),
-                    ModuleDefId::TraitId(it) => drop(db.trait_data(it)),
-                    ModuleDefId::TraitAliasId(it) => drop(db.trait_alias_data(it)),
-                    ModuleDefId::TypeAliasId(it) => drop(db.type_alias_data(it)),
+                    ModuleDefId::ConstId(it) => _ = db.const_data(it),
+                    ModuleDefId::StaticId(it) => _ = db.static_data(it),
+                    ModuleDefId::TraitId(it) => _ = db.trait_data(it),
+                    ModuleDefId::TraitAliasId(it) => _ = db.trait_alias_data(it),
+                    ModuleDefId::TypeAliasId(it) => _ = db.type_alias_data(it),
                     ModuleDefId::EnumVariantId(_)
                     | ModuleDefId::ModuleId(_)
                     | ModuleDefId::MacroId(_)

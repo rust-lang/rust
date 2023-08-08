@@ -97,9 +97,8 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
                 }
             }
             DefKind::Fn | DefKind::AssocFn => terms_cx.add_inferreds_for_item(def_id),
-            DefKind::TyAlias
-                if tcx.features().lazy_type_alias
-                    || tcx.type_of(def_id).instantiate_identity().has_opaque_types() =>
+            DefKind::TyAlias { lazy }
+                if lazy || tcx.type_of(def_id).instantiate_identity().has_opaque_types() =>
             {
                 terms_cx.add_inferreds_for_item(def_id)
             }

@@ -391,13 +391,19 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             debug!("rerunning goal to check result is stable");
             self.search_graph.reset_encountered_overflow(encountered_overflow);
             let (_orig_values, canonical_goal) = self.canonicalize_goal(goal);
-            let new_canonical_response = EvalCtxt::evaluate_canonical_goal(
+            let Ok(new_canonical_response) = EvalCtxt::evaluate_canonical_goal(
                 self.tcx(),
                 self.search_graph,
                 canonical_goal,
                 // FIXME(-Ztrait-solver=next): we do not track what happens in `evaluate_canonical_goal`
                 &mut ProofTreeBuilder::new_noop(),
-            )?;
+            ) else {
+                bug!(
+                    "goal went from {certainty:?} to error: re-canonicalized goal={canonical_goal:#?} \
+                    first_response={canonical_response:#?},
+                    second response was error"
+                );
+            };
             // We only check for modulo regions as we convert all regions in
             // the input to new existentials, even if they're expected to be
             // `'static` or a placeholder region.

@@ -28,18 +28,18 @@ define-function: (
 
 call-function: ("check-color", {
     "theme": "ayu",
-    "toggle_line_color": "rgb(153, 153, 153)",
-    "toggle_line_hover_color": "rgb(197, 197, 197)",
+    "toggle_line_color": "#999",
+    "toggle_line_hover_color": "#c5c5c5",
 })
 call-function: ("check-color", {
     "theme": "dark",
-    "toggle_line_color": "rgb(153, 153, 153)",
-    "toggle_line_hover_color": "rgb(197, 197, 197)",
+    "toggle_line_color": "#999",
+    "toggle_line_hover_color": "#c5c5c5",
 })
 call-function: ("check-color", {
     "theme": "light",
-    "toggle_line_color": "rgb(204, 204, 204)",
-    "toggle_line_hover_color": "rgb(153, 153, 153)",
+    "toggle_line_color": "#ccc",
+    "toggle_line_hover_color": "#999",
 })
 
 // Toggling all docs will close additional examples

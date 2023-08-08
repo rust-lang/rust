@@ -428,6 +428,10 @@ passes_link_section =
 passes_macro_export =
     `#[macro_export]` only has an effect on macro definitions
 
+passes_macro_export_on_decl_macro =
+    `#[macro_export]` has no effect on declarative macro definitions
+    .note = declarative macros follow the same exporting rules as regular items
+
 passes_macro_use =
     `#[{$name}]` only has an effect on `extern crate` and modules
 

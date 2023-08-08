@@ -82,8 +82,9 @@ impl Definition {
     }
 
     /// Textual range of the identifier which will change when renaming this
-    /// `Definition`. Note that some definitions, like builtin types, can't be
-    /// renamed.
+    /// `Definition`. Note that builtin types can't be
+    /// renamed and extern crate names will report its range, though a rename will introduce
+    /// an alias instead.
     pub fn range_for_rename(self, sema: &Semantics<'_, RootDatabase>) -> Option<FileRange> {
         let res = match self {
             Definition::Macro(mac) => {
@@ -145,6 +146,16 @@ impl Definition {
                 let src = label.source(sema.db);
                 let lifetime = src.value.lifetime()?;
                 src.with_value(lifetime.syntax()).original_file_range_opt(sema.db)
+            }
+            Definition::ExternCrateDecl(it) => {
+                let src = it.source(sema.db)?;
+                if let Some(rename) = src.value.rename() {
+                    let name = rename.name()?;
+                    src.with_value(name.syntax()).original_file_range_opt(sema.db)
+                } else {
+                    let name = src.value.name_ref()?;
+                    src.with_value(name.syntax()).original_file_range_opt(sema.db)
+                }
             }
             Definition::BuiltinType(_) => return None,
             Definition::SelfType(_) => return None,
@@ -526,6 +537,9 @@ fn source_edit_from_def(
             TextRange::new(range.start() + syntax::TextSize::from(1), range.end()),
             new_name.strip_prefix('\'').unwrap_or(new_name).to_owned(),
         ),
+        Definition::ExternCrateDecl(decl) if decl.alias(sema.db).is_none() => {
+            (TextRange::empty(range.end()), format!(" as {new_name}"))
+        }
         _ => (range, new_name.to_owned()),
     };
     edit.replace(range, new_name);

@@ -37,11 +37,10 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let unexpanded = ctx.find_node_at_offset::<ast::MacroCall>()?;
     let expanded = insert_ws_into(ctx.sema.expand(&unexpanded)?.clone_for_update());
-
     let text_range = unexpanded.syntax().text_range();
 
     acc.add(
-        AssistId("inline_macro", AssistKind::RefactorRewrite),
+        AssistId("inline_macro", AssistKind::RefactorInline),
         format!("Inline macro"),
         text_range,
         |builder| builder.replace(text_range, expanded.to_string()),

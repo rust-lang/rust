@@ -2,7 +2,7 @@ use crate::util::check_builtin_macro_attribute;
 
 use crate::errors;
 use rustc_ast::expand::allocator::{
-    global_fn_name, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS,
+    global_fn_name, AllocatorMethod, AllocatorMethodInput, AllocatorTy, ALLOCATOR_METHODS,
 };
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, AttrVec, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
@@ -70,19 +70,13 @@ struct AllocFnFactory<'a, 'b> {
 impl AllocFnFactory<'_, '_> {
     fn allocator_fn(&self, method: &AllocatorMethod) -> Stmt {
         let mut abi_args = ThinVec::new();
-        let mut i = 0;
-        let mut mk = || {
-            let name = Ident::from_str_and_span(&format!("arg{i}"), self.span);
-            i += 1;
-            name
-        };
-        let args = method.inputs.iter().map(|ty| self.arg_ty(ty, &mut abi_args, &mut mk)).collect();
+        let args = method.inputs.iter().map(|input| self.arg_ty(input, &mut abi_args)).collect();
         let result = self.call_allocator(method.name, args);
-        let (output_ty, output_expr) = self.ret_ty(&method.output, result);
+        let output_ty = self.ret_ty(&method.output);
         let decl = self.cx.fn_decl(abi_args, ast::FnRetTy::Ty(output_ty));
         let header = FnHeader { unsafety: Unsafe::Yes(self.span), ..FnHeader::default() };
         let sig = FnSig { decl, header, span: self.span };
-        let body = Some(self.cx.block_expr(output_expr));
+        let body = Some(self.cx.block_expr(result));
         let kind = ItemKind::Fn(Box::new(Fn {
             defaultness: ast::Defaultness::Final,
             sig,
@@ -113,18 +107,19 @@ impl AllocFnFactory<'_, '_> {
         thin_vec![self.cx.attr_word(sym::rustc_std_internal_symbol, self.span)]
     }
 
-    fn arg_ty(
-        &self,
-        ty: &AllocatorTy,
-        args: &mut ThinVec<Param>,
-        ident: &mut dyn FnMut() -> Ident,
-    ) -> P<Expr> {
-        match *ty {
+    fn arg_ty(&self, input: &AllocatorMethodInput, args: &mut ThinVec<Param>) -> P<Expr> {
+        match input.ty {
             AllocatorTy::Layout => {
+                // If an allocator method is ever introduced having multiple
+                // Layout arguments, these argument names need to be
+                // disambiguated somehow. Currently the generated code would
+                // fail to compile with "identifier is bound more than once in
+                // this parameter list".
+                let size = Ident::from_str_and_span("size", self.span);
+                let align = Ident::from_str_and_span("align", self.span);
+
                 let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
                 let ty_usize = self.cx.ty_path(usize);
-                let size = ident();
-                let align = ident();
                 args.push(self.cx.param(self.span, size, ty_usize.clone()));
                 args.push(self.cx.param(self.span, align, ty_usize));
 
@@ -138,14 +133,13 @@ impl AllocFnFactory<'_, '_> {
             }
 
             AllocatorTy::Ptr => {
-                let ident = ident();
+                let ident = Ident::from_str_and_span(input.name, self.span);
                 args.push(self.cx.param(self.span, ident, self.ptr_u8()));
-                let arg = self.cx.expr_ident(self.span, ident);
-                self.cx.expr_cast(self.span, arg, self.ptr_u8())
+                self.cx.expr_ident(self.span, ident)
             }
 
             AllocatorTy::Usize => {
-                let ident = ident();
+                let ident = Ident::from_str_and_span(input.name, self.span);
                 args.push(self.cx.param(self.span, ident, self.usize()));
                 self.cx.expr_ident(self.span, ident)
             }
@@ -156,18 +150,11 @@ impl AllocFnFactory<'_, '_> {
         }
     }
 
-    fn ret_ty(&self, ty: &AllocatorTy, expr: P<Expr>) -> (P<Ty>, P<Expr>) {
+    fn ret_ty(&self, ty: &AllocatorTy) -> P<Ty> {
         match *ty {
-            AllocatorTy::ResultPtr => {
-                // We're creating:
-                //
-                //      #expr as *mut u8
+            AllocatorTy::ResultPtr => self.ptr_u8(),
 
-                let expr = self.cx.expr_cast(self.span, expr, self.ptr_u8());
-                (self.ptr_u8(), expr)
-            }
-
-            AllocatorTy::Unit => (self.cx.ty(self.span, TyKind::Tup(ThinVec::new())), expr),
+            AllocatorTy::Unit => self.cx.ty(self.span, TyKind::Tup(ThinVec::new())),
 
             AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
                 panic!("can't convert `AllocatorTy` to an output")

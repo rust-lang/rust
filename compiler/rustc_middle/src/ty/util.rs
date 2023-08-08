@@ -156,7 +156,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 | DefKind::Enum
                 | DefKind::Trait
                 | DefKind::OpaqueTy
-                | DefKind::TyAlias
+                | DefKind::TyAlias { .. }
                 | DefKind::ForeignTy
                 | DefKind::TraitAlias
                 | DefKind::AssocTy

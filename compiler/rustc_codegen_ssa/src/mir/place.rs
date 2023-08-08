@@ -441,7 +441,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::Place(place) => place,
             LocalRef::UnsizedPlace(place) => bx.load_operand(place).deref(cx),
             LocalRef::Operand(..) => {
-                if place_ref.has_deref() {
+                if place_ref.is_indirect_first_projection() {
                     base = 1;
                     let cg_base = self.codegen_consume(
                         bx,

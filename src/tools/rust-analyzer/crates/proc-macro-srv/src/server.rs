@@ -17,7 +17,10 @@ use token_stream::TokenStreamBuilder;
 mod symbol;
 pub use symbol::*;
 
-use std::ops::{Bound, Range};
+use std::{
+    iter,
+    ops::{Bound, Range},
+};
 
 use crate::tt;
 
@@ -80,9 +83,7 @@ impl server::TokenStream for RustAnalyzer {
         stream.is_empty()
     }
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        use std::str::FromStr;
-
-        Self::TokenStream::from_str(src).expect("cannot parse string")
+        src.parse().expect("cannot parse string")
     }
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()
@@ -101,7 +102,7 @@ impl server::TokenStream for RustAnalyzer {
                     },
                 };
                 let tree = TokenTree::from(group);
-                Self::TokenStream::from_iter(vec![tree])
+                Self::TokenStream::from_iter(iter::once(tree))
             }
 
             bridge::TokenTree::Ident(ident) => {
@@ -111,7 +112,7 @@ impl server::TokenStream for RustAnalyzer {
                 let ident: tt::Ident = tt::Ident { text, span: ident.span };
                 let leaf = tt::Leaf::from(ident);
                 let tree = TokenTree::from(leaf);
-                Self::TokenStream::from_iter(vec![tree])
+                Self::TokenStream::from_iter(iter::once(tree))
             }
 
             bridge::TokenTree::Literal(literal) => {
@@ -123,7 +124,7 @@ impl server::TokenStream for RustAnalyzer {
                 let literal = tt::Literal { text, span: literal.0.span };
                 let leaf = tt::Leaf::from(literal);
                 let tree = TokenTree::from(leaf);
-                Self::TokenStream::from_iter(vec![tree])
+                Self::TokenStream::from_iter(iter::once(tree))
             }
 
             bridge::TokenTree::Punct(p) => {
@@ -134,7 +135,7 @@ impl server::TokenStream for RustAnalyzer {
                 };
                 let leaf = tt::Leaf::from(punct);
                 let tree = TokenTree::from(leaf);
-                Self::TokenStream::from_iter(vec![tree])
+                Self::TokenStream::from_iter(iter::once(tree))
             }
         }
     }
@@ -355,12 +356,12 @@ impl server::Server for RustAnalyzer {
     }
 
     fn intern_symbol(ident: &str) -> Self::Symbol {
-        // FIXME: should be self.interner once the proc-macro api allows is
+        // FIXME: should be `self.interner` once the proc-macro api allows it.
         Symbol::intern(&SYMBOL_INTERNER, &::tt::SmolStr::from(ident))
     }
 
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
-        // FIXME: should be self.interner once the proc-macro api allows is
+        // FIXME: should be `self.interner` once the proc-macro api allows it.
         f(symbol.text(&SYMBOL_INTERNER).as_str())
     }
 }

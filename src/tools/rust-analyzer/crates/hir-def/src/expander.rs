@@ -164,18 +164,26 @@ impl Expander {
             return ExpandResult { value: None, err };
         };
 
-        Self::enter_expand_inner(db, call_id, err).map(|value| {
-            value.and_then(|InFile { file_id, value }| {
-                let parse = value.cast::<T>()?;
+        let res = Self::enter_expand_inner(db, call_id, err);
+        match res.err {
+            // If proc-macro is disabled or unresolved, we want to expand to a missing expression
+            // instead of an empty tree which might end up in an empty block.
+            Some(ExpandError::UnresolvedProcMacro(_)) => res.map(|_| None),
+            _ => res.map(|value| {
+                value.and_then(|InFile { file_id, value }| {
+                    let parse = value.cast::<T>()?;
 
-                self.recursion_depth += 1;
-                self.hygiene = Hygiene::new(db.upcast(), file_id);
-                let old_file_id = std::mem::replace(&mut self.current_file_id, file_id);
-                let mark =
-                    Mark { file_id: old_file_id, bomb: DropBomb::new("expansion mark dropped") };
-                Some((mark, parse))
-            })
-        })
+                    self.recursion_depth += 1;
+                    self.hygiene = Hygiene::new(db.upcast(), file_id);
+                    let old_file_id = std::mem::replace(&mut self.current_file_id, file_id);
+                    let mark = Mark {
+                        file_id: old_file_id,
+                        bomb: DropBomb::new("expansion mark dropped"),
+                    };
+                    Some((mark, parse))
+                })
+            }),
+        }
     }
 }
 

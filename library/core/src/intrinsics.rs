@@ -2385,6 +2385,25 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn raw_eq<T>(a: &T, b: &T) -> bool;
 
+    /// Lexicographically compare `[left, left + bytes)` and `[right, right + bytes)`
+    /// as unsigned bytes, returning negative if `left` is less, zero if all the
+    /// bytes match, or positive if `right` is greater.
+    ///
+    /// This underlies things like `<[u8]>::cmp`, and will usually lower to `memcmp`.
+    ///
+    /// # Safety
+    ///
+    /// `left` and `right` must each be [valid] for reads of `bytes` bytes.
+    ///
+    /// Note that this applies to the whole range, not just until the first byte
+    /// that differs.  That allows optimizations that can read in large chunks.
+    ///
+    /// [valid]: crate::ptr#safety
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_intrinsic_compare_bytes", issue = "none")]
+    #[rustc_nounwind]
+    pub fn compare_bytes(left: *const u8, right: *const u8, bytes: usize) -> i32;
+
     /// See documentation of [`std::hint::black_box`] for details.
     ///
     /// [`std::hint::black_box`]: crate::hint::black_box
@@ -2823,5 +2842,20 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
             [T](dst: *mut T) => is_aligned_and_not_null(dst)
         );
         write_bytes(dst, val, count)
+    }
+}
+
+/// Backfill for bootstrap
+#[cfg(bootstrap)]
+pub unsafe fn compare_bytes(left: *const u8, right: *const u8, bytes: usize) -> i32 {
+    extern "C" {
+        fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> crate::ffi::c_int;
+    }
+
+    if bytes != 0 {
+        // SAFETY: Since bytes is non-zero, the caller has met `memcmp`'s requirements.
+        unsafe { memcmp(left, right, bytes).into() }
+    } else {
+        0
     }
 }

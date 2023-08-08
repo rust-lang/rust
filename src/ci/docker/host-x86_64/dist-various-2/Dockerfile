@@ -135,8 +135,8 @@ ENV TARGETS=$TARGETS,x86_64-unknown-uefi
 # As per https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
 # we need asm in the search path for gcc-9 (for gnux32) but not in the search path of the
 # cross compilers.
-# Luckily one of the folders is /usr/local/include so symlink /usr/include/asm-generic there
-RUN ln -s /usr/include/asm-generic /usr/local/include/asm
+# Luckily one of the folders is /usr/local/include so symlink /usr/include/x86_64-linux-gnu/asm there
+RUN ln -s /usr/include/x86_64-linux-gnu/asm /usr/local/include/asm
 
 ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs \
   --set target.wasm32-wasi.wasi-root=/wasm32-wasi \

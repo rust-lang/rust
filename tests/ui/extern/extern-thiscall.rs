@@ -1,8 +1,6 @@
 // run-pass
 // only-x86
 
-#![feature(abi_thiscall)]
-
 trait A {
     extern "thiscall" fn test1(i: i32);
 }

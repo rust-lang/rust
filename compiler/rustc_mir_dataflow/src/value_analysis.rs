@@ -839,7 +839,7 @@ impl Map {
         tail_elem: Option<TrackElem>,
         f: &mut impl FnMut(ValueIndex),
     ) {
-        if place.has_deref() {
+        if place.is_indirect_first_projection() {
             // We do not track indirect places.
             return;
         }

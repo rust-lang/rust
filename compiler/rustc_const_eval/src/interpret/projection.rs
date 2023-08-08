@@ -101,7 +101,7 @@ where
         let (meta, offset) = if field_layout.is_unsized() {
             if base.layout().is_sized() {
                 // An unsized field of a sized type? Sure...
-                // But const-prop actually feeds us such nonsense MIR!
+                // But const-prop actually feeds us such nonsense MIR! (see test `const_prop/issue-86351.rs`)
                 throw_inval!(ConstPropNonsense);
             }
             let base_meta = base.meta(self)?;
