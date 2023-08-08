@@ -2801,7 +2801,13 @@ impl<'tcx> Ty<'tcx> {
     /// bound such as `[_]: Copy`. A function with such a bound obviously never
     /// can be called, but that doesn't mean it shouldn't typecheck. This is why
     /// this method doesn't return `Option<bool>`.
+    #[inline]
     pub fn is_trivially_sized(self, tcx: TyCtxt<'tcx>) -> bool {
+        #[inline(never)]
+        fn trivially_sized_cold_path<'tcx>(def: AdtDef<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
+            def.sized_constraint(tcx).skip_binder().is_empty()
+        }
+
         match self.kind() {
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Uint(_)
@@ -2825,7 +2831,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Tuple(tys) => tys.iter().all(|ty| ty.is_trivially_sized(tcx)),
 
-            ty::Adt(def, _args) => def.sized_constraint(tcx).skip_binder().is_empty(),
+            ty::Adt(def, _args) => trivially_sized_cold_path(*def, tcx),
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => false,
 
