@@ -3,7 +3,7 @@ use crate::errors::{
     CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
     NoSyntaxVarsExprRepeat, VarStillRepeating,
 };
-use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
+use crate::mbe::macro_parser::{NamedMatch, NamedMatch::*};
 use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -11,6 +11,7 @@ use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, PResult};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
+use rustc_parse::parser::ParseNtResult;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
@@ -217,12 +218,12 @@ pub(super) fn transcribe<'a>(
                 let ident = MacroRulesNormalizedIdent::new(original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
                     match cur_matched {
-                        MatchedTokenTree(tt) => {
+                        MatchedSingle(ParseNtResult::Tt(tt)) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
                             result.push(tt.clone());
                         }
-                        MatchedNonterminal(nt) => {
+                        MatchedSingle(ParseNtResult::Nt(nt)) => {
                             // Other variables are emitted into the output stream as groups with
                             // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
@@ -298,7 +299,7 @@ fn lookup_cur_matched<'a>(
     interpolations.get(&ident).map(|mut matched| {
         for &(idx, _) in repeats {
             match matched {
-                MatchedTokenTree(_) | MatchedNonterminal(_) => break,
+                MatchedSingle(_) => break,
                 MatchedSeq(ads) => matched = ads.get(idx).unwrap(),
             }
         }
@@ -388,7 +389,7 @@ fn lockstep_iter_size(
             let name = MacroRulesNormalizedIdent::new(*name);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
-                    MatchedTokenTree(_) | MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
+                    MatchedSingle(_) => LockstepIterSize::Unconstrained,
                     MatchedSeq(ads) => LockstepIterSize::Constraint(ads.len(), name),
                 },
                 _ => LockstepIterSize::Unconstrained,
@@ -437,7 +438,7 @@ fn count_repetitions<'a>(
         sp: &DelimSpan,
     ) -> PResult<'a, usize> {
         match matched {
-            MatchedTokenTree(_) | MatchedNonterminal(_) => {
+            MatchedSingle(_) => {
                 if declared_lhs_depth == 0 {
                     return Err(cx.create_err(CountRepetitionMisplaced { span: sp.entire() }));
                 }
