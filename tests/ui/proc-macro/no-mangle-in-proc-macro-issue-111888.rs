@@ -1,4 +1,6 @@
 // build-pass
+// force-host
+// no-prefer-dynamic
 // aux-build:exports_no_mangle.rs
 #![crate_type = "proc-macro"]
 
