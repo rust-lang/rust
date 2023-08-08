@@ -25,7 +25,6 @@
 #if LLVM_VERSION_GE(17, 0)
 #include "llvm/Support/VirtualFileSystem.h"
 #endif
-#include "llvm/Support/Host.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
