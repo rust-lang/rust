@@ -929,7 +929,7 @@ pub fn make_test_description<R: Read>(
         let ln = comment.comment_str();
         decision!(cfg::handle_ignore(config, ln));
         decision!(cfg::handle_only(config, ln));
-        decision!(needs::handle_needs(&cache.needs, config, ln));
+        decision!(needs::handle_needs(&cache.needs, config, comment));
         decision!(ignore_llvm(config, &comment));
         decision!(ignore_cdb(config, ln));
         decision!(ignore_gdb(config, ln));

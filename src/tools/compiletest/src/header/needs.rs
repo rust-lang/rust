@@ -1,3 +1,5 @@
+use test_common::{CommentKind, TestComment};
+
 use crate::common::{Config, Debugger};
 use crate::header::IgnoreDecision;
 use crate::util;
@@ -5,140 +7,166 @@ use crate::util;
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
     config: &Config,
-    ln: &str,
+    comment: TestComment<'_>,
 ) -> IgnoreDecision {
     // Note that we intentionally still put the needs- prefix here to make the file show up when
     // grepping for a directive name, even though we could technically strip that.
     let needs = &[
         Need {
-            names: &["needs-asm-support", "@needs-asm-support"],
+            compiletest_name: "needs-asm-support",
+            ui_test_name: Some("needs-asm-support"),
             condition: config.has_asm_support(),
             ignore_reason: "ignored on targets without inline assembly support",
         },
         Need {
-            names: &["needs-sanitizer-support"],
+            compiletest_name: "needs-sanitizer-support",
+            ui_test_name: None,
             condition: cache.sanitizer_support,
             ignore_reason: "ignored on targets without sanitizers support",
         },
         Need {
-            names: &["needs-sanitizer-address"],
+            compiletest_name: "needs-sanitizer-address",
+            ui_test_name: None,
             condition: cache.sanitizer_address,
             ignore_reason: "ignored on targets without address sanitizer",
         },
         Need {
-            names: &["needs-sanitizer-cfi"],
+            compiletest_name: "needs-sanitizer-cfi",
+            ui_test_name: None,
             condition: cache.sanitizer_cfi,
             ignore_reason: "ignored on targets without CFI sanitizer",
         },
         Need {
-            names: &["needs-sanitizer-kcfi"],
+            compiletest_name: "needs-sanitizer-kcfi",
+            ui_test_name: None,
             condition: cache.sanitizer_kcfi,
             ignore_reason: "ignored on targets without kernel CFI sanitizer",
         },
         Need {
-            names: &["needs-sanitizer-kasan"],
+            compiletest_name: "needs-sanitizer-kasan",
+            ui_test_name: None,
             condition: cache.sanitizer_kasan,
             ignore_reason: "ignored on targets without kernel address sanitizer",
         },
         Need {
-            names: &["needs-sanitizer-leak"],
+            compiletest_name: "needs-sanitizer-leak",
+            ui_test_name: None,
             condition: cache.sanitizer_leak,
             ignore_reason: "ignored on targets without leak sanitizer",
         },
         Need {
-            names: &["needs-sanitizer-memory"],
+            compiletest_name: "needs-sanitizer-memory",
+            ui_test_name: None,
             condition: cache.sanitizer_memory,
             ignore_reason: "ignored on targets without memory sanitizer",
         },
         Need {
-            names: &["needs-sanitizer-thread"],
+            compiletest_name: "needs-sanitizer-thread",
+            ui_test_name: None,
             condition: cache.sanitizer_thread,
             ignore_reason: "ignored on targets without thread sanitizer",
         },
         Need {
-            names: &["needs-sanitizer-hwaddress"],
+            compiletest_name: "needs-sanitizer-hwaddress",
+            ui_test_name: None,
             condition: cache.sanitizer_hwaddress,
             ignore_reason: "ignored on targets without hardware-assisted address sanitizer",
         },
         Need {
-            names: &["needs-sanitizer-memtag"],
+            compiletest_name: "needs-sanitizer-memtag",
+            ui_test_name: None,
             condition: cache.sanitizer_memtag,
             ignore_reason: "ignored on targets without memory tagging sanitizer",
         },
         Need {
-            names: &["needs-sanitizer-shadow-call-stack"],
+            compiletest_name: "needs-sanitizer-shadow-call-stack",
+            ui_test_name: None,
             condition: cache.sanitizer_shadow_call_stack,
             ignore_reason: "ignored on targets without shadow call stacks",
         },
         Need {
-            names: &["needs-sanitizer-safestack"],
+            compiletest_name: "needs-sanitizer-safestack",
+            ui_test_name: None,
             condition: cache.sanitizer_safestack,
             ignore_reason: "ignored on targets without SafeStack support",
         },
         Need {
-            names: &["needs-run-enabled"],
+            compiletest_name: "needs-run-enabled",
+            ui_test_name: None,
             condition: config.run_enabled(),
             ignore_reason: "ignored when running the resulting test binaries is disabled",
         },
         Need {
-            names: &["needs-unwind"],
+            compiletest_name: "needs-unwind",
+            ui_test_name: None,
             condition: config.can_unwind(),
             ignore_reason: "ignored on targets without unwinding support",
         },
         Need {
-            names: &["needs-profiler-support"],
+            compiletest_name: "needs-profiler-support",
+            ui_test_name: None,
             condition: cache.profiler_support,
             ignore_reason: "ignored when profiler support is disabled",
         },
         Need {
-            names: &["needs-matching-clang"],
+            compiletest_name: "needs-matching-clang",
+            ui_test_name: None,
             condition: config.run_clang_based_tests_with.is_some(),
             ignore_reason: "ignored when the used clang does not match the built LLVM",
         },
         Need {
-            names: &["needs-xray"],
+            compiletest_name: "needs-xray",
+            ui_test_name: None,
             condition: cache.xray,
             ignore_reason: "ignored on targets without xray tracing",
         },
         Need {
-            names: &["needs-rust-lld"],
+            compiletest_name: "needs-rust-lld",
+            ui_test_name: None,
             condition: cache.rust_lld,
             ignore_reason: "ignored on targets without Rust's LLD",
         },
         Need {
-            names: &["needs-rust-lldb"],
+            compiletest_name: "needs-rust-lldb",
+            ui_test_name: None,
             condition: config.debugger != Some(Debugger::Lldb) || config.lldb_native_rust,
             ignore_reason: "ignored on targets without Rust's LLDB",
         },
         Need {
-            names: &["needs-i686-dlltool"],
+            compiletest_name: "needs-i686-dlltool",
+            ui_test_name: None,
             condition: cache.i686_dlltool,
             ignore_reason: "ignored when dlltool for i686 is not present",
         },
         Need {
-            names: &["needs-x86_64-dlltool"],
+            compiletest_name: "needs-x86_64-dlltool",
+            ui_test_name: None,
             condition: cache.x86_64_dlltool,
             ignore_reason: "ignored when dlltool for x86_64 is not present",
         },
         Need {
-            names: &["needs-dlltool"],
+            compiletest_name: "needs-dlltool",
+            ui_test_name: None,
             condition: cache.dlltool,
             ignore_reason: "ignored when dlltool for the current architecture is not present",
         },
         Need {
-            names: &["needs-git-hash"],
+            compiletest_name: "needs-git-hash",
+            ui_test_name: None,
             condition: config.git_hash,
             ignore_reason: "ignored when git hashes have been omitted for building",
         },
         Need {
-            names: &["needs-dynamic-linking"],
+            compiletest_name: "needs-dynamic-linking",
+            ui_test_name: None,
             condition: config.target_cfg().dynamic_linking,
             ignore_reason: "ignored on targets without dynamic linking",
         },
     ];
 
-    let (name, comment) = match ln.split_once([':', ' ']) {
-        Some((name, comment)) => (name, Some(comment)),
+    let ln = comment.comment_str();
+    let (name, args) = match ln.split_once([':', ' ']) {
+        Some((name, args)) => (name, Some(args)),
         None => (ln, None),
     };
 
@@ -153,13 +181,13 @@ pub(super) fn handle_needs(
 
     let mut found_valid = false;
     for need in needs {
-        if need.names.contains(&name) {
+        if need.matches_comment(comment) {
             if need.condition {
                 found_valid = true;
                 break;
             } else {
                 return IgnoreDecision::Ignore {
-                    reason: if let Some(comment) = comment {
+                    reason: if let Some(comment) = args {
                         format!("{} ({comment})", need.ignore_reason)
                     } else {
                         need.ignore_reason.into()
@@ -176,10 +204,23 @@ pub(super) fn handle_needs(
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 struct Need {
-    names: &'static [&'static str],
+    compiletest_name: &'static str,
+    ui_test_name: Option<&'static str>,
     condition: bool,
     ignore_reason: &'static str,
+}
+
+impl Need {
+    fn matches_comment(&self, comment: TestComment<'_>) -> bool {
+        match comment.comment() {
+            CommentKind::Compiletest(line) => line.starts_with(self.compiletest_name),
+            CommentKind::UiTest(line) => {
+                self.ui_test_name.is_some_and(|ui_test_name| line.starts_with(ui_test_name))
+            }
+        }
+    }
 }
 
 pub(super) struct CachedNeedsConditions {
