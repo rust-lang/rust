@@ -202,7 +202,7 @@ fn signature_help_for_call(
     res.signature.push('(');
     {
         if let Some((self_param, _)) = callable.receiver_param(db) {
-            format_to!(res.signature, "{}", self_param)
+            format_to!(res.signature, "{}", self_param.display(db))
         }
         let mut buf = String::new();
         for (idx, (pat, ty)) in callable.params(db).into_iter().enumerate() {
@@ -1310,6 +1310,25 @@ id! {
 "#,
             expect![[r#"
                 fn foo()
+            "#]],
+        );
+    }
+
+    #[test]
+    fn fn_signature_for_method_call_defined_in_macro() {
+        check(
+            r#"
+macro_rules! id { ($($tt:tt)*) => { $($tt)* } }
+struct S;
+id! {
+    impl S {
+        fn foo<'a>(&'a mut self) {}
+    }
+}
+fn test() { S.foo($0); }
+"#,
+            expect![[r#"
+                fn foo(&'a mut self)
             "#]],
         );
     }
