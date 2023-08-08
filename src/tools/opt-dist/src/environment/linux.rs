@@ -38,7 +38,7 @@ impl Environment for LinuxEnvironment {
     }
 
     fn supports_bolt(&self) -> bool {
-        true
+        false
     }
 
     fn supports_shared_llvm(&self) -> bool {
