@@ -1365,7 +1365,7 @@ pub unsafe fn _mm_sfence() {
 
 /// Gets the unsigned 32-bit value of the MXCSR control and status register.
 ///
-/// Note that Rust makes no guarantees whatsoever about the contents of this regiser: Rust
+/// Note that Rust makes no guarantees whatsoever about the contents of this register: Rust
 /// floating-point operations may or may not result in this register getting updated with exception
 /// state, and the register can change between two invocations of this function even when no
 /// floating-point operations appear in the source code (since floating-point operations appearing
