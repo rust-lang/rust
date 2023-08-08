@@ -732,13 +732,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(hir::Impl {
-                of_trait: Some(ref t),
-                self_ty,
-                items,
-                constness,
-                ..
-            }) => {
+            hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref t), self_ty, items, .. }) => {
                 let features = self.tcx.features();
                 if features.staged_api {
                     let attrs = self.tcx.hir().attrs(item.hir_id());
@@ -769,7 +763,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     // `#![feature(const_trait_impl)]` is unstable, so any impl declared stable
                     // needs to have an error emitted.
                     if features.const_trait_impl
-                        && *constness == hir::Constness::Const
+                        && self.tcx.is_const_trait_impl_raw(item.owner_id.to_def_id())
                         && const_stab.is_some_and(|(stab, _)| stab.is_const_stable())
                     {
                         self.tcx.sess.emit_err(errors::TraitImplConstStable { span: item.span });

@@ -3110,27 +3110,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> UnsatisfiedConst {
         let unsatisfied_const = UnsatisfiedConst(false);
         // FIXME(effects)
-        /* if trait_predicate.is_const_if_const() {
-            let non_const_predicate = trait_ref.without_const();
-            let non_const_obligation = Obligation {
-                cause: obligation.cause.clone(),
-                param_env: obligation.param_env,
-                predicate: non_const_predicate.to_predicate(self.tcx),
-                recursion_depth: obligation.recursion_depth,
-            };
-            if self.predicate_may_hold(&non_const_obligation) {
-                unsatisfied_const = UnsatisfiedConst(true);
-                err.span_note(
-                    span,
-                    format!(
-                        "the trait `{}` is implemented for `{}`, \
-                        but that implementation is not `const`",
-                        non_const_predicate.print_modifiers_and_trait_path(),
-                        trait_ref.skip_binder().self_ty(),
-                    ),
-                );
-            }
-        } */
         unsatisfied_const
     }
 

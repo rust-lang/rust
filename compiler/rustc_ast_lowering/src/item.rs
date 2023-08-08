@@ -90,6 +90,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             allow_try_trait: Some([sym::try_trait_v2, sym::yeet_desugar_details][..].into()),
             allow_gen_future,
             generics_def_id_map: Default::default(),
+            host_param_id: None,
         };
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
@@ -144,8 +145,24 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             // This is used to track which lifetimes have already been defined,
             // and which need to be replicated when lowering an async fn.
 
-            if let hir::ItemKind::Impl(impl_) = parent_hir.node().expect_item().kind {
-                lctx.is_in_trait_impl = impl_.of_trait.is_some();
+            match parent_hir.node().expect_item().kind {
+                hir::ItemKind::Impl(impl_) => {
+                    lctx.is_in_trait_impl = impl_.of_trait.is_some();
+                }
+                hir::ItemKind::Trait(_, _, generics, _, _) if lctx.tcx.features().effects => {
+                    lctx.host_param_id = generics
+                        .params
+                        .iter()
+                        .find(|param| {
+                            parent_hir
+                                .attrs
+                                .get(param.hir_id.local_id)
+                                .iter()
+                                .any(|attr| attr.has_name(sym::rustc_host))
+                        })
+                        .map(|param| param.def_id);
+                }
+                _ => {}
             }
 
             match ctxt {
@@ -389,6 +406,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_generics(ast_generics, *constness, id, &itctx, |this| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(
+                                *constness,
                                 trait_ref,
                                 &ImplTraitContext::Disallowed(ImplTraitPosition::Trait),
                             )
@@ -419,7 +437,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     polarity,
                     defaultness,
                     defaultness_span,
-                    constness: self.lower_constness(*constness),
                     generics,
                     of_trait: trait_ref,
                     self_ty: lowered_ty,
@@ -1363,6 +1380,29 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         }
 
+        // Desugar `~const` bound in generics into an additional `const host: bool` param
+        // if the effects feature is enabled. This needs to be done before we lower where
+        // clauses since where clauses need to bind to the DefId of the host param
+        let host_param_parts = if let Const::Yes(span) = constness && self.tcx.features().effects {
+            if let Some(param) = generics.params.iter().find(|x| {
+                x.attrs.iter().any(|x| x.has_name(sym::rustc_host))
+            }) {
+                // user has manually specified a `rustc_host` param, in this case, we set
+                // the param id so that lowering logic can use that. But we don't create
+                // another host param, so this gives `None`.
+                self.host_param_id = Some(self.local_def_id(param.id));
+                None
+            } else {
+                let param_node_id = self.next_node_id();
+                let hir_id = self.next_id();
+                let def_id = self.create_def(self.local_def_id(parent_node_id), param_node_id, DefPathData::TypeNs(sym::host), span);
+                self.host_param_id = Some(def_id);
+                Some((span, hir_id, def_id))
+            }
+        } else {
+            None
+        };
+
         let mut predicates: SmallVec<[hir::WherePredicate<'hir>; 4]> = SmallVec::new();
         predicates.extend(generics.params.iter().filter_map(|param| {
             self.lower_generic_bound_predicate(
@@ -1410,22 +1450,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
         predicates.extend(impl_trait_bounds.into_iter());
 
-        // Desugar `~const` bound in generics into an additional `const host: bool` param
-        // if the effects feature is enabled.
-        if let Const::Yes(span) = constness && self.tcx.features().effects
-            // Do not add host param if it already has it (manually specified)
-            && !params.iter().any(|x| {
-                self.attrs.get(&x.hir_id.local_id).map_or(false, |attrs| {
-                    attrs.iter().any(|x| x.has_name(sym::rustc_host))
-                })
-            })
-        {
-            let param_node_id = self.next_node_id();
+        if let Some((span, hir_id, def_id)) = host_param_parts {
             let const_node_id = self.next_node_id();
-            let def_id = self.create_def(self.local_def_id(parent_node_id), param_node_id, DefPathData::TypeNs(sym::host), span);
-            let anon_const: LocalDefId = self.create_def(def_id, const_node_id, DefPathData::AnonConst, span);
+            let anon_const: LocalDefId =
+                self.create_def(def_id, const_node_id, DefPathData::AnonConst, span);
 
-            let hir_id = self.next_id();
             let const_id = self.next_id();
             let const_expr_id = self.next_id();
             let bool_id = self.next_id();
@@ -1435,14 +1464,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let attr_id = self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id();
 
-            let attrs = self.arena.alloc_from_iter([
-                Attribute {
-                    kind: AttrKind::Normal(P(NormalAttr::from_ident(Ident::new(sym::rustc_host, span)))),
+            let attrs = self.arena.alloc_from_iter([Attribute {
+                kind: AttrKind::Normal(P(NormalAttr::from_ident(Ident::new(
+                    sym::rustc_host,
                     span,
-                    id: attr_id,
-                    style: AttrStyle::Outer,
-                },
-            ]);
+                )))),
+                span,
+                id: attr_id,
+                style: AttrStyle::Outer,
+            }]);
             self.attrs.insert(hir_id.local_id, attrs);
 
             let const_body = self.lower_body(|this| {
@@ -1481,7 +1511,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             }),
                         )),
                     )),
-                    default: Some(hir::AnonConst { def_id: anon_const, hir_id: const_id, body: const_body }),
+                    default: Some(hir::AnonConst {
+                        def_id: anon_const,
+                        hir_id: const_id,
+                        body: const_body,
+                    }),
                 },
                 colon_span: None,
                 pure_wrt_drop: false,

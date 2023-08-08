@@ -1,4 +1,4 @@
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 #![feature(staged_api)]
 #![stable(feature = "rust1", since = "1.0.0")]
 

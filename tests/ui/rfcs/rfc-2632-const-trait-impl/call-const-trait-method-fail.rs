@@ -1,4 +1,4 @@
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 pub trait Plus {
@@ -23,7 +23,7 @@ pub const fn add_i32(a: i32, b: i32) -> i32 {
 
 pub const fn add_u32(a: u32, b: u32) -> u32 {
     a.plus(b)
-    //~^ ERROR cannot call
+    //~^ ERROR the trait bound
 }
 
 fn main() {}

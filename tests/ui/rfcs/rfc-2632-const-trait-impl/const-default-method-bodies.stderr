@@ -1,11 +1,11 @@
-error[E0015]: cannot call non-const fn `<NonConstImpl as ConstDefaultFn>::a` in constant functions
+error[E0277]: the trait bound `NonConstImpl: ~const ConstDefaultFn` is not satisfied
   --> $DIR/const-default-method-bodies.rs:24:18
    |
 LL |     NonConstImpl.a();
-   |                  ^^^
+   |                  ^ the trait `ConstDefaultFn` is not implemented for `NonConstImpl`
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = help: the trait `ConstDefaultFn` is implemented for `NonConstImpl`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0277`.
