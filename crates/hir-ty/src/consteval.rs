@@ -1,7 +1,7 @@
 //! Constant evaluation details
 
 use base_db::CrateId;
-use chalk_ir::{BoundVar, DebruijnIndex, GenericArgData};
+use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
 use hir_def::{
     hir::Expr,
     path::Path,
@@ -120,7 +120,7 @@ pub fn unknown_const(ty: Ty) -> Const {
 }
 
 pub fn unknown_const_as_generic(ty: Ty) -> GenericArg {
-    GenericArgData::Const(unknown_const(ty)).intern(Interner)
+    unknown_const(ty).cast(Interner)
 }
 
 /// Interns a constant scalar with the given type

@@ -5,9 +5,7 @@ use std::{
     mem,
 };
 
-use chalk_ir::{
-    cast::Cast, fold::Shift, DebruijnIndex, GenericArgData, Mutability, TyVariableKind,
-};
+use chalk_ir::{cast::Cast, fold::Shift, DebruijnIndex, Mutability, TyVariableKind};
 use hir_def::{
     generics::TypeOrConstParamData,
     hir::{
@@ -750,7 +748,7 @@ impl InferenceContext<'_> {
                     self.resolve_associated_type_with_params(
                         self_ty,
                         self.resolve_ops_index_output(),
-                        &[GenericArgData::Ty(index_ty).intern(Interner)],
+                        &[index_ty.cast(Interner)],
                     )
                 } else {
                     self.err_ty()
@@ -1721,16 +1719,13 @@ impl InferenceContext<'_> {
         for (id, data) in def_generics.iter().skip(substs.len()) {
             match data {
                 TypeOrConstParamData::TypeParamData(_) => {
-                    substs.push(GenericArgData::Ty(self.table.new_type_var()).intern(Interner))
+                    substs.push(self.table.new_type_var().cast(Interner))
                 }
-                TypeOrConstParamData::ConstParamData(_) => {
-                    substs.push(
-                        GenericArgData::Const(self.table.new_const_var(
-                            self.db.const_param_ty(ConstParamId::from_unchecked(id)),
-                        ))
-                        .intern(Interner),
-                    )
-                }
+                TypeOrConstParamData::ConstParamData(_) => substs.push(
+                    self.table
+                        .new_const_var(self.db.const_param_ty(ConstParamId::from_unchecked(id)))
+                        .cast(Interner),
+                ),
             }
         }
         assert_eq!(substs.len(), total_len);

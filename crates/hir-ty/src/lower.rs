@@ -58,10 +58,9 @@ use crate::{
         InTypeConstIdMetadata,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, Const, ConstScalar, DebruijnIndex, DynTy,
-    FnPointer, FnSig, FnSubst, GenericArgData, ImplTraitId, Interner, ParamKind, PolyFnSig,
-    ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses, ReturnTypeImplTrait,
-    ReturnTypeImplTraits, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder,
-    TyKind, WhereClause,
+    FnPointer, FnSig, FnSubst, ImplTraitId, Interner, ParamKind, PolyFnSig, ProjectionTy,
+    QuantifiedWhereClause, QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits,
+    Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
 };
 
 #[derive(Debug)]
@@ -1643,9 +1642,7 @@ pub(crate) fn generic_defaults_recover(
             .iter_id()
             .map(|id| {
                 let val = match id {
-                    Either::Left(_) => {
-                        GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
-                    }
+                    Either::Left(_) => TyKind::Error.intern(Interner).cast(Interner),
                     Either::Right(id) => unknown_const_as_generic(db.const_param_ty(id)),
                 };
                 crate::make_binders(db, &generic_params, val)
@@ -1991,16 +1988,9 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
         }
     };
     Some(match (arg, kind) {
-        (GenericArg::Type(type_ref), ParamKind::Type) => {
-            let ty = for_type(this, type_ref);
-            GenericArgData::Ty(ty).intern(Interner)
-        }
-        (GenericArg::Const(c), ParamKind::Const(c_ty)) => {
-            GenericArgData::Const(for_const(this, c, c_ty)).intern(Interner)
-        }
-        (GenericArg::Const(_), ParamKind::Type) => {
-            GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
-        }
+        (GenericArg::Type(type_ref), ParamKind::Type) => for_type(this, type_ref).cast(Interner),
+        (GenericArg::Const(c), ParamKind::Const(c_ty)) => for_const(this, c, c_ty).cast(Interner),
+        (GenericArg::Const(_), ParamKind::Type) => TyKind::Error.intern(Interner).cast(Interner),
         (GenericArg::Type(t), ParamKind::Const(c_ty)) => {
             // We want to recover simple idents, which parser detects them
             // as types. Maybe here is not the best place to do it, but
@@ -2010,9 +2000,7 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
                 if p.kind == PathKind::Plain {
                     if let [n] = p.segments() {
                         let c = ConstRef::Path(n.clone());
-                        return Some(
-                            GenericArgData::Const(for_const(this, &c, c_ty)).intern(Interner),
-                        );
+                        return Some(for_const(this, &c, c_ty).cast(Interner));
                     }
                 }
             }
