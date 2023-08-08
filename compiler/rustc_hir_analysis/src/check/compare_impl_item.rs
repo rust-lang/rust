@@ -831,14 +831,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // of the `impl Sized`. Insert that here, so we don't ICE later.
     for assoc_item in tcx.associated_types_for_impl_traits_in_associated_fn(trait_m.def_id) {
         if !remapped_types.contains_key(assoc_item) {
-            remapped_types.insert(
-                *assoc_item,
-                ty::EarlyBinder::bind(Ty::new_error_with_message(
-                    tcx,
-                    return_span,
-                    "missing synthetic item for RPITIT",
-                )),
-            );
+            return Err(tcx.sess.delay_span_bug(return_span, "missing synthetic item for RPITIT"));
         }
     }
 

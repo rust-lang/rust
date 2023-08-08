@@ -12,6 +12,20 @@ help: copy the `where` clause predicates from the trait
 LL |     where Self: 'b;
    |     ~~~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: impl method signature does not match trait method signature
+  --> $DIR/bad-item-bound-within-rpitit.rs:19:23
+   |
+LL |     fn iter(&self) -> impl '_ + Iterator<Item = Self::Item<'_>>;
+   |                       ----------------------------------------- return type from trait method defined here
+...
+LL |     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace the return type so that it matches the trait
+   |
+LL |     fn iter(&self) -> impl Iterator<Item = <&'a I as Iterable>::Item<'_>> + '_ {
+   |                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0276`.

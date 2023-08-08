@@ -1,4 +1,4 @@
-#![feature(return_position_impl_trait_in_trait)]
+#![feature(return_position_impl_trait_in_trait, refine)]
 
 pub trait Trait {
     fn create() -> impl Iterator<Item = u64> {
@@ -15,6 +15,7 @@ impl Trait for Basic {
 }
 
 impl Trait for Intermediate {
+    #[refine]
     fn create() -> std::ops::Range<u64> { // concrete return type
         0..1
     }
