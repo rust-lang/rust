@@ -27,8 +27,8 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
     if kind == AllocatorKind::Default {
         for method in ALLOCATOR_METHODS {
             let mut types = Vec::with_capacity(method.inputs.len());
-            for ty in method.inputs.iter() {
-                match *ty {
+            for input in method.inputs.iter() {
+                match input.ty {
                     AllocatorTy::Layout => {
                         types.push(usize);
                         types.push(usize);

@@ -273,6 +273,10 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 ],
                 Ty::new_unit(tcx),
             ),
+            sym::compare_bytes => {
+                let byte_ptr = Ty::new_imm_ptr(tcx, tcx.types.u8);
+                (0, vec![byte_ptr, byte_ptr, tcx.types.usize], tcx.types.i32)
+            }
             sym::write_bytes | sym::volatile_set_memory => (
                 1,
                 vec![

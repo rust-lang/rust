@@ -132,8 +132,13 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
             .filter(|it| !it.source_file_edits.is_empty() || !it.file_system_edits.is_empty())
             .expect("Assist did not contain any source changes");
         let mut actual = before;
-        if let Some(source_file_edit) = source_change.get_source_edit(file_id) {
+        if let Some((source_file_edit, snippet_edit)) =
+            source_change.get_source_and_snippet_edit(file_id)
+        {
             source_file_edit.apply(&mut actual);
+            if let Some(snippet_edit) = snippet_edit {
+                snippet_edit.apply(&mut actual);
+            }
         }
         actual
     };
@@ -191,9 +196,12 @@ fn check_with_config(
                 && source_change.file_system_edits.len() == 0;
 
             let mut buf = String::new();
-            for (file_id, edit) in source_change.source_file_edits {
+            for (file_id, (edit, snippet_edit)) in source_change.source_file_edits {
                 let mut text = db.file_text(file_id).as_ref().to_owned();
                 edit.apply(&mut text);
+                if let Some(snippet_edit) = snippet_edit {
+                    snippet_edit.apply(&mut text);
+                }
                 if !skip_header {
                     let sr = db.file_source_root(file_id);
                     let sr = db.source_root(sr);
@@ -485,18 +493,21 @@ pub fn test_some_range(a: int) -> bool {
                         source_file_edits: {
                             FileId(
                                 0,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "let $0var_name = 5;\n    ",
-                                        delete: 45..45,
-                                    },
-                                    Indel {
-                                        insert: "var_name",
-                                        delete: 59..60,
-                                    },
-                                ],
-                            },
+                            ): (
+                                TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "let $0var_name = 5;\n    ",
+                                            delete: 45..45,
+                                        },
+                                        Indel {
+                                            insert: "var_name",
+                                            delete: 59..60,
+                                        },
+                                    ],
+                                },
+                                None,
+                            ),
                         },
                         file_system_edits: [],
                         is_snippet: true,
@@ -544,18 +555,21 @@ pub fn test_some_range(a: int) -> bool {
                         source_file_edits: {
                             FileId(
                                 0,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "let $0var_name = 5;\n    ",
-                                        delete: 45..45,
-                                    },
-                                    Indel {
-                                        insert: "var_name",
-                                        delete: 59..60,
-                                    },
-                                ],
-                            },
+                            ): (
+                                TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "let $0var_name = 5;\n    ",
+                                            delete: 45..45,
+                                        },
+                                        Indel {
+                                            insert: "var_name",
+                                            delete: 59..60,
+                                        },
+                                    ],
+                                },
+                                None,
+                            ),
                         },
                         file_system_edits: [],
                         is_snippet: true,
@@ -581,18 +595,21 @@ pub fn test_some_range(a: int) -> bool {
                         source_file_edits: {
                             FileId(
                                 0,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "fun_name()",
-                                        delete: 59..60,
-                                    },
-                                    Indel {
-                                        insert: "\n\nfn $0fun_name() -> i32 {\n    5\n}",
-                                        delete: 110..110,
-                                    },
-                                ],
-                            },
+                            ): (
+                                TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "fun_name()",
+                                            delete: 59..60,
+                                        },
+                                        Indel {
+                                            insert: "\n\nfn $0fun_name() -> i32 {\n    5\n}",
+                                            delete: 110..110,
+                                        },
+                                    ],
+                                },
+                                None,
+                            ),
                         },
                         file_system_edits: [],
                         is_snippet: true,

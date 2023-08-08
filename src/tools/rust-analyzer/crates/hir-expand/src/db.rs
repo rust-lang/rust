@@ -430,14 +430,13 @@ fn macro_arg_node(
     let loc = db.lookup_intern_macro_call(id);
     let arg = if let MacroDefKind::BuiltInEager(..) = loc.def.kind {
         let res = if let Some(EagerCallInfo { arg, .. }) = loc.eager.as_deref() {
-            Some(mbe::token_tree_to_syntax_node(&arg.0, mbe::TopEntryPoint::Expr).0)
+            Some(mbe::token_tree_to_syntax_node(&arg.0, mbe::TopEntryPoint::MacroEagerInput).0)
         } else {
             loc.kind
                 .arg(db)
                 .and_then(|arg| ast::TokenTree::cast(arg.value))
-                .map(|tt| tt.reparse_as_expr().to_syntax())
+                .map(|tt| tt.reparse_as_comma_separated_expr().to_syntax())
         };
-
         match res {
             Some(res) if res.errors().is_empty() => res.syntax_node(),
             Some(res) => {

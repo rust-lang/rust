@@ -29,7 +29,6 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("aclass", Some(sym::arm_target_feature)),
     ("aes", Some(sym::arm_target_feature)),
     ("crc", Some(sym::arm_target_feature)),
-    ("crypto", Some(sym::arm_target_feature)),
     ("d32", Some(sym::arm_target_feature)),
     ("dotprod", Some(sym::arm_target_feature)),
     ("dsp", Some(sym::arm_target_feature)),

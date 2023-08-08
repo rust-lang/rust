@@ -41,6 +41,21 @@ impl<'tcx> Context for Tables<'tcx> {
     fn entry_fn(&mut self) -> Option<stable_mir::CrateItem> {
         Some(self.crate_item(self.tcx.entry_fn(())?.0))
     }
+
+    fn all_trait_decls(&mut self) -> stable_mir::TraitDecls {
+        self.tcx
+            .traits(LOCAL_CRATE)
+            .iter()
+            .map(|trait_def_id| self.trait_def(*trait_def_id))
+            .collect()
+    }
+
+    fn trait_decl(&mut self, trait_def: &stable_mir::ty::TraitDef) -> stable_mir::ty::TraitDecl {
+        let def_id = self.trait_def_id(trait_def);
+        let trait_def = self.tcx.trait_def(def_id);
+        trait_def.stable(self)
+    }
+
     fn mir_body(&mut self, item: &stable_mir::CrateItem) -> stable_mir::mir::Body {
         let def_id = self.item_def_id(item);
         let mir = self.tcx.optimized_mir(def_id);
@@ -515,7 +530,7 @@ impl<'tcx> Stable<'tcx> for mir::RetagKind {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_middle::ty::UserTypeAnnotationIndex {
+impl<'tcx> Stable<'tcx> for ty::UserTypeAnnotationIndex {
     type T = usize;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         self.as_usize()
@@ -826,7 +841,7 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
     type T = stable_mir::ty::FnSig;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use rustc_target::spec::abi;
-        use stable_mir::ty::{Abi, FnSig, Unsafety};
+        use stable_mir::ty::{Abi, FnSig};
 
         FnSig {
             inputs_and_output: self
@@ -835,10 +850,7 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
                 .map(|ty| tables.intern_ty(ty))
                 .collect(),
             c_variadic: self.c_variadic,
-            unsafety: match self.unsafety {
-                hir::Unsafety::Normal => Unsafety::Normal,
-                hir::Unsafety::Unsafe => Unsafety::Unsafe,
-            },
+            unsafety: self.unsafety.stable(tables),
             abi: match self.abi {
                 abi::Abi::Rust => Abi::Rust,
                 abi::Abi::C { unwind } => Abi::C { unwind },
@@ -1048,7 +1060,7 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_middle::ty::ParamTy {
+impl<'tcx> Stable<'tcx> for ty::ParamTy {
     type T = stable_mir::ty::ParamTy;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::ParamTy;
@@ -1056,10 +1068,80 @@ impl<'tcx> Stable<'tcx> for rustc_middle::ty::ParamTy {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_middle::ty::BoundTy {
+impl<'tcx> Stable<'tcx> for ty::BoundTy {
     type T = stable_mir::ty::BoundTy;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::BoundTy;
         BoundTy { var: self.var.as_usize(), kind: self.kind.stable(tables) }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
+    type T = stable_mir::ty::Allocation;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let size = self.size();
+        let mut bytes: Vec<Option<u8>> = self
+            .inspect_with_uninit_and_ptr_outside_interpreter(0..size.bytes_usize())
+            .iter()
+            .copied()
+            .map(Some)
+            .collect();
+        for (i, b) in bytes.iter_mut().enumerate() {
+            if !self.init_mask().get(rustc_target::abi::Size::from_bytes(i)) {
+                *b = None;
+            }
+        }
+        stable_mir::ty::Allocation {
+            bytes: bytes,
+            provenance: {
+                let mut ptrs = Vec::new();
+                for (size, prov) in self.provenance().ptrs().iter() {
+                    ptrs.push((size.bytes_usize(), opaque(prov)));
+                }
+                stable_mir::ty::ProvenanceMap { ptrs }
+            },
+            align: self.align.bytes(),
+            mutability: self.mutability.stable(tables),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::trait_def::TraitSpecializationKind {
+    type T = stable_mir::ty::TraitSpecializationKind;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::TraitSpecializationKind;
+
+        match self {
+            ty::trait_def::TraitSpecializationKind::None => TraitSpecializationKind::None,
+            ty::trait_def::TraitSpecializationKind::Marker => TraitSpecializationKind::Marker,
+            ty::trait_def::TraitSpecializationKind::AlwaysApplicable => {
+                TraitSpecializationKind::AlwaysApplicable
+            }
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::TraitDef {
+    type T = stable_mir::ty::TraitDecl;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::TraitDecl;
+
+        TraitDecl {
+            def_id: rustc_internal::trait_def(self.def_id),
+            unsafety: self.unsafety.stable(tables),
+            paren_sugar: self.paren_sugar,
+            has_auto_impl: self.has_auto_impl,
+            is_marker: self.is_marker,
+            is_coinductive: self.is_coinductive,
+            skip_array_during_method_dispatch: self.skip_array_during_method_dispatch,
+            specialization_kind: self.specialization_kind.stable(tables),
+            must_implement_one_of: self
+                .must_implement_one_of
+                .as_ref()
+                .map(|idents| idents.iter().map(|ident| opaque(ident)).collect()),
+            implement_via_object: self.implement_via_object,
+            deny_explicit_impl: self.deny_explicit_impl,
+        }
     }
 }

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-100605.rs:4:18
+  --> $DIR/option-ref-advice.rs:6:18
    |
 LL |     takes_option(&None);
    |     ------------ ^^^^^ expected `Option<&String>`, found `&Option<_>`
@@ -9,7 +9,7 @@ LL |     takes_option(&None);
    = note:   expected enum `Option<&String>`
            found reference `&Option<_>`
 note: function defined here
-  --> $DIR/issue-100605.rs:1:4
+  --> $DIR/option-ref-advice.rs:3:4
    |
 LL | fn takes_option(_arg: Option<&String>) {}
    |    ^^^^^^^^^^^^ ---------------------
@@ -20,7 +20,7 @@ LL +     takes_option(None);
    |
 
 error[E0308]: mismatched types
-  --> $DIR/issue-100605.rs:8:18
+  --> $DIR/option-ref-advice.rs:10:18
    |
 LL |     takes_option(&res);
    |     ------------ ^^^^ expected `Option<&String>`, found `&Option<String>`
@@ -30,7 +30,7 @@ LL |     takes_option(&res);
    = note:   expected enum `Option<&String>`
            found reference `&Option<String>`
 note: function defined here
-  --> $DIR/issue-100605.rs:1:4
+  --> $DIR/option-ref-advice.rs:3:4
    |
 LL | fn takes_option(_arg: Option<&String>) {}
    |    ^^^^^^^^^^^^ ---------------------

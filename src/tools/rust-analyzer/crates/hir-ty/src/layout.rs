@@ -14,7 +14,7 @@ use triomphe::Arc;
 
 use crate::{
     consteval::try_const_usize, db::HirDatabase, infer::normalize, layout::adt::struct_variant_idx,
-    utils::ClosureSubst, Interner, Substitution, TraitEnvironment, Ty,
+    utils::ClosureSubst, Interner, ProjectionTy, Substitution, TraitEnvironment, Ty,
 };
 
 pub use self::{
@@ -279,7 +279,15 @@ pub fn layout_of_ty_query(
             //     return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
             // }
 
-            let unsized_part = struct_tail_erasing_lifetimes(db, pointee.clone());
+            let mut unsized_part = struct_tail_erasing_lifetimes(db, pointee.clone());
+            if let TyKind::AssociatedType(id, subst) = unsized_part.kind(Interner) {
+                unsized_part = TyKind::Alias(chalk_ir::AliasTy::Projection(ProjectionTy {
+                    associated_ty_id: *id,
+                    substitution: subst.clone(),
+                }))
+                .intern(Interner);
+            }
+            unsized_part = normalize(db, trait_env.clone(), unsized_part);
             let metadata = match unsized_part.kind(Interner) {
                 TyKind::Slice(_) | TyKind::Str => {
                     scalar_unit(dl, Primitive::Int(dl.ptr_sized_integer(), false))
@@ -362,8 +370,16 @@ pub fn layout_of_ty_query(
             return Err(LayoutError::NotImplemented)
         }
         TyKind::Error => return Err(LayoutError::HasErrorType),
-        TyKind::AssociatedType(_, _)
-        | TyKind::Alias(_)
+        TyKind::AssociatedType(id, subst) => {
+            // Try again with `TyKind::Alias` to normalize the associated type.
+            let ty = TyKind::Alias(chalk_ir::AliasTy::Projection(ProjectionTy {
+                associated_ty_id: *id,
+                substitution: subst.clone(),
+            }))
+            .intern(Interner);
+            return db.layout_of_ty(ty, trait_env);
+        }
+        TyKind::Alias(_)
         | TyKind::Placeholder(_)
         | TyKind::BoundVar(_)
         | TyKind::InferenceVar(_, _) => return Err(LayoutError::HasPlaceholder),

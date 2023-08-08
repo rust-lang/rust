@@ -178,14 +178,6 @@ impl Printer<'_> {
                 w!(self, "loop ");
                 self.print_expr(*body);
             }
-            Expr::While { condition, body, label } => {
-                if let Some(lbl) = label {
-                    w!(self, "{}: ", self.body[*lbl].name.display(self.db));
-                }
-                w!(self, "while ");
-                self.print_expr(*condition);
-                self.print_expr(*body);
-            }
             Expr::Call { callee, args, is_assignee_expr: _ } => {
                 self.print_expr(*callee);
                 w!(self, "(");

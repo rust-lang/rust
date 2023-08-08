@@ -504,8 +504,22 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
 
     let (kind, did) = match res {
         Res::Def(
-            kind @ (AssocTy | AssocFn | AssocConst | Variant | Fn | TyAlias | Enum | Trait | Struct
-            | Union | Mod | ForeignTy | Const | Static(_) | Macro(..) | TraitAlias),
+            kind @ (AssocTy
+            | AssocFn
+            | AssocConst
+            | Variant
+            | Fn
+            | TyAlias { .. }
+            | Enum
+            | Trait
+            | Struct
+            | Union
+            | Mod
+            | ForeignTy
+            | Const
+            | Static(_)
+            | Macro(..)
+            | TraitAlias),
             did,
         ) => (kind.into(), did),
 

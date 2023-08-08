@@ -388,8 +388,6 @@ pub struct String {
 ///
 /// # Examples
 ///
-/// Basic usage:
-///
 /// ```
 /// // some invalid bytes, in a vector
 /// let bytes = vec![0, 159];
@@ -412,9 +410,8 @@ pub struct FromUtf8Error {
 /// This type is the error type for the [`from_utf16`] method on [`String`].
 ///
 /// [`from_utf16`]: String::from_utf16
-/// # Examples
 ///
-/// Basic usage:
+/// # Examples
 ///
 /// ```
 /// // 𝄞mu<invalid>ic
@@ -440,8 +437,6 @@ impl String {
     /// [`with_capacity`]: String::with_capacity
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let s = String::new();
@@ -471,8 +466,6 @@ impl String {
     /// [`new`]: String::new
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let mut s = String::with_capacity(10);
@@ -661,8 +654,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// // 𝄞music
     /// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075,
@@ -703,8 +694,6 @@ impl String {
     /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// // 𝄞mus<invalid>ic<invalid>
@@ -784,8 +773,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::mem;
     ///
@@ -827,8 +814,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// // some bytes, in a vector
     /// let sparkle_heart = vec![240, 159, 146, 150];
@@ -852,8 +837,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s = String::from("hello");
     /// let bytes = s.into_bytes();
@@ -871,8 +854,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s = String::from("foo");
     ///
@@ -888,8 +869,6 @@ impl String {
     /// Converts a `String` into a mutable string slice.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let mut s = String::from("foobar");
@@ -909,8 +888,6 @@ impl String {
     /// Appends a given string slice onto the end of this `String`.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let mut s = String::from("foo");
@@ -965,8 +942,6 @@ impl String {
     /// Returns this `String`'s capacity, in bytes.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let s = String::with_capacity(10);
@@ -1157,8 +1132,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let mut s = String::from("foo");
     ///
@@ -1206,8 +1179,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let mut s = String::from("abc");
     ///
@@ -1235,8 +1206,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s = String::from("hello");
     ///
@@ -1263,8 +1232,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let mut s = String::from("hello");
     ///
@@ -1286,8 +1253,6 @@ impl String {
     /// Returns [`None`] if this `String` is empty.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let mut s = String::from("abč");
@@ -1320,8 +1285,6 @@ impl String {
     /// or if it does not lie on a [`char`] boundary.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let mut s = String::from("abç");
@@ -1514,8 +1477,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let mut s = String::with_capacity(3);
     ///
@@ -1563,8 +1524,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let mut s = String::from("bar");
     ///
@@ -1595,8 +1554,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let mut s = String::from("hello");
     ///
@@ -1620,8 +1577,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = String::from("foo");
     /// assert_eq!(a.len(), 3);
@@ -1640,8 +1595,6 @@ impl String {
     /// Returns `true` if this `String` has a length of zero, and `false` otherwise.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let mut v = String::new();
@@ -1697,8 +1650,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let mut s = String::from("foo");
     ///
@@ -1733,8 +1684,6 @@ impl String {
     /// including characters outside the range.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let mut s = String::from("α is alpha, β is beta");
@@ -1784,8 +1733,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let mut s = String::from("α is alpha, β is beta");
     /// let beta_offset = s.find('β').unwrap_or(s.len());
@@ -1834,8 +1781,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s = String::from("hello");
     ///
@@ -1866,8 +1811,6 @@ impl String {
     ///
     /// # Examples
     ///
-    /// Simple usage:
-    ///
     /// ```
     /// let x = String::from("bucket");
     /// let static_ref: &'static mut str = x.leak();
@@ -1885,8 +1828,6 @@ impl FromUtf8Error {
     /// Returns a slice of [`u8`]s bytes that were attempted to convert to a `String`.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// // some invalid bytes, in a vector
@@ -1909,8 +1850,6 @@ impl FromUtf8Error {
     /// does not need to be made.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// // some invalid bytes, in a vector
@@ -1937,8 +1876,6 @@ impl FromUtf8Error {
     /// [`&str`]: prim@str "&str"
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// // some invalid bytes, in a vector
@@ -2490,8 +2427,6 @@ pub trait ToString {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let i = 5;
     /// let five = String::from("5");
@@ -2711,8 +2646,6 @@ impl From<Box<str>> for String {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s1: String = String::from("hello world");
     /// let s2: Box<str> = s1.into_boxed_str();
@@ -2731,8 +2664,6 @@ impl From<String> for Box<str> {
     /// Converts the given [`String`] to a boxed `str` slice that is owned.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let s1: String = String::from("hello world");
@@ -2865,8 +2796,6 @@ impl From<String> for Vec<u8> {
     /// Converts the given [`String`] to a vector [`Vec`] that holds values of type [`u8`].
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let s1 = String::from("hello world");

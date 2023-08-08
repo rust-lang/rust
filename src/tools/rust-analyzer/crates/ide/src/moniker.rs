@@ -177,6 +177,17 @@ pub(crate) fn def_to_moniker(
         });
     }
 
+    // Qualify locals/parameters by their parent definition name.
+    if let Definition::Local(it) = def {
+        let parent_name = it.parent(db).name(db);
+        if let Some(name) = parent_name {
+            description.push(MonikerDescriptor {
+                name: name.display(db).to_string(),
+                desc: MonikerDescriptorKind::Method,
+            });
+        }
+    }
+
     let name_desc = match def {
         // These are handled by top-level guard (for performance).
         Definition::GenericParam(_)
@@ -246,6 +257,10 @@ pub(crate) fn def_to_moniker(
         Definition::Static(s) => MonikerDescriptor {
             name: s.name(db).display(db).to_string(),
             desc: MonikerDescriptorKind::Meta,
+        },
+        Definition::ExternCrateDecl(m) => MonikerDescriptor {
+            name: m.name(db).display(db).to_string(),
+            desc: MonikerDescriptorKind::Namespace,
         },
     };
 

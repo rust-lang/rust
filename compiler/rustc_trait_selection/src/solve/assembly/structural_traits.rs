@@ -3,6 +3,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{def_id::DefId, Movability, Mutability};
 use rustc_infer::traits::query::NoSolution;
+use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
@@ -345,7 +346,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     object_bound: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-) -> Vec<ty::Clause<'tcx>> {
+) -> Vec<Goal<'tcx, ty::Predicate<'tcx>>> {
     let tcx = ecx.tcx();
     let mut requirements = vec![];
     requirements.extend(
@@ -376,17 +377,22 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
         }
     }
 
-    requirements.fold_with(&mut ReplaceProjectionWith {
-        ecx,
-        param_env,
-        mapping: replace_projection_with,
-    })
+    let mut folder =
+        ReplaceProjectionWith { ecx, param_env, mapping: replace_projection_with, nested: vec![] };
+    let folded_requirements = requirements.fold_with(&mut folder);
+
+    folder
+        .nested
+        .into_iter()
+        .chain(folded_requirements.into_iter().map(|clause| Goal::new(tcx, param_env, clause)))
+        .collect()
 }
 
 struct ReplaceProjectionWith<'a, 'tcx> {
     ecx: &'a EvalCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     mapping: FxHashMap<DefId, ty::PolyProjectionPredicate<'tcx>>,
+    nested: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
@@ -402,13 +408,12 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
             // but the where clauses we instantiated are not. We can solve this by instantiating
             // the binder at the usage site.
             let proj = self.ecx.instantiate_binder_with_infer(*replacement);
-            // FIXME: Technically this folder could be fallible?
-            let nested = self
-                .ecx
-                .eq_and_get_goals(self.param_env, alias_ty, proj.projection_ty)
-                .expect("expected to be able to unify goal projection with dyn's projection");
-            // FIXME: Technically we could register these too..
-            assert!(nested.is_empty(), "did not expect unification to have any nested goals");
+            // FIXME: Technically this equate could be fallible...
+            self.nested.extend(
+                self.ecx
+                    .eq_and_get_goals(self.param_env, alias_ty, proj.projection_ty)
+                    .expect("expected to be able to unify goal projection with dyn's projection"),
+            );
             proj.term.ty().unwrap()
         } else {
             ty.super_fold_with(self)

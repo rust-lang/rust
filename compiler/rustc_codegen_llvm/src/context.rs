@@ -145,6 +145,17 @@ pub unsafe fn create_module<'ll>(
             target_data_layout = target_data_layout.replace("-n32:64-", "-n64-");
         }
     }
+    if llvm_version < (17, 0, 0) {
+        if sess.target.arch.starts_with("powerpc") {
+            // LLVM 17 specifies function pointer alignment for ppc:
+            // https://reviews.llvm.org/D147016
+            target_data_layout = target_data_layout
+                .replace("-Fn32", "")
+                .replace("-Fi32", "")
+                .replace("-Fn64", "")
+                .replace("-Fi64", "");
+        }
+    }
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.is_builtin {
@@ -891,7 +902,8 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.prefetch", fn(ptr, t_i32, t_i32, t_i32) -> void);
 
         // This isn't an "LLVM intrinsic", but LLVM's optimization passes
-        // recognize it like one and we assume it exists in `core::slice::cmp`
+        // recognize it like one (including turning it into `bcmp` sometimes)
+        // and we use it to implement intrinsics like `raw_eq` and `compare_bytes`
         match self.sess().target.arch.as_ref() {
             "avr" | "msp430" => ifn!("memcmp", fn(ptr, ptr, t_isize) -> t_i16),
             _ => ifn!("memcmp", fn(ptr, ptr, t_isize) -> t_i32),

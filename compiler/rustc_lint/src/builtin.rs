@@ -24,10 +24,9 @@ use crate::fluent_generated as fluent;
 use crate::{
     errors::BuiltinEllipsisInclusiveRangePatterns,
     lints::{
-        BuiltinAnonymousParams, BuiltinBoxPointers, BuiltinClashingExtern,
-        BuiltinClashingExternSub, BuiltinConstNoMangle, BuiltinDeprecatedAttrLink,
-        BuiltinDeprecatedAttrLinkSuggestion, BuiltinDeprecatedAttrUsed, BuiltinDerefNullptr,
-        BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
+        BuiltinAnonymousParams, BuiltinBoxPointers, BuiltinConstNoMangle,
+        BuiltinDeprecatedAttrLink, BuiltinDeprecatedAttrLinkSuggestion, BuiltinDeprecatedAttrUsed,
+        BuiltinDerefNullptr, BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
         BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
         BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
         BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
@@ -40,8 +39,7 @@ use crate::{
         BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
         BuiltinWhileTrue, SuggestChangingAssocTypes,
     },
-    types::{transparent_newtype_field, CItemKind},
-    EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
+    EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
 };
 use hir::IsAsync;
 use rustc_ast::attr;
@@ -49,29 +47,29 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, DecorateLint, MultiSpan};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{Body, FnDecl, ForeignItemKind, GenericParamKind, Node, PatKind, PredicateOrigin};
+use rustc_hir::{Body, FnDecl, GenericParamKind, Node, PatKind, PredicateOrigin};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::layout::{LayoutError, LayoutOf};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::GenericArgKind;
+use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, VariantDef};
+use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
-use rustc_target::abi::{Abi, FIRST_VARIANT};
+use rustc_target::abi::Abi;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, misc::type_allowed_to_implement_copy};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
@@ -461,10 +459,7 @@ declare_lint! {
     report_in_external_macro
 }
 
-pub struct MissingDoc {
-    /// Stack of whether `#[doc(hidden)]` is set at each level which has lint attributes.
-    doc_hidden_stack: Vec<bool>,
-}
+pub struct MissingDoc;
 
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
@@ -493,14 +488,6 @@ fn has_doc(attr: &ast::Attribute) -> bool {
 }
 
 impl MissingDoc {
-    pub fn new() -> MissingDoc {
-        MissingDoc { doc_hidden_stack: vec![false] }
-    }
-
-    fn doc_hidden(&self) -> bool {
-        *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
-    }
-
     fn check_missing_docs_attrs(
         &self,
         cx: &LateContext<'_>,
@@ -511,11 +498,6 @@ impl MissingDoc {
         // If we're building a test harness, then warning about
         // documentation is probably not really relevant right now.
         if cx.sess().opts.test {
-            return;
-        }
-
-        // `#[doc(hidden)]` disables missing_docs check.
-        if self.doc_hidden() {
             return;
         }
 
@@ -541,23 +523,6 @@ impl MissingDoc {
 }
 
 impl<'tcx> LateLintPass<'tcx> for MissingDoc {
-    #[inline]
-    fn enter_lint_attrs(&mut self, _cx: &LateContext<'_>, attrs: &[ast::Attribute]) {
-        let doc_hidden = self.doc_hidden()
-            || attrs.iter().any(|attr| {
-                attr.has_name(sym::doc)
-                    && match attr.meta_item_list() {
-                        None => false,
-                        Some(l) => attr::list_contains_name(&l, sym::hidden),
-                    }
-            });
-        self.doc_hidden_stack.push(doc_hidden);
-    }
-
-    fn exit_lint_attrs(&mut self, _: &LateContext<'_>, _attrs: &[ast::Attribute]) {
-        self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
-    }
-
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         self.check_missing_docs_attrs(cx, CRATE_DEF_ID, "the", "crate");
     }
@@ -710,6 +675,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         if ty.is_copy_modulo_regions(cx.tcx, param_env) {
             return;
         }
+        if type_implements_negative_copy_modulo_regions(cx.tcx, ty, param_env) {
+            return;
+        }
 
         // We shouldn't recommend implementing `Copy` on stateful things,
         // such as iterators.
@@ -745,6 +713,24 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
     }
 }
 
+/// Check whether a `ty` has a negative `Copy` implementation, ignoring outlives constraints.
+fn type_implements_negative_copy_modulo_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> bool {
+    let trait_ref = ty::TraitRef::new(tcx, tcx.require_lang_item(hir::LangItem::Copy, None), [ty]);
+    let pred = ty::TraitPredicate { trait_ref, polarity: ty::ImplPolarity::Negative };
+    let obligation = traits::Obligation {
+        cause: traits::ObligationCause::dummy(),
+        param_env,
+        recursion_depth: 0,
+        predicate: ty::Binder::dummy(pred).to_predicate(tcx),
+    };
+
+    tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)
+}
+
 declare_lint! {
     /// The `missing_debug_implementations` lint detects missing
     /// implementations of [`fmt::Debug`] for public types.
@@ -778,9 +764,7 @@ declare_lint! {
 }
 
 #[derive(Default)]
-pub struct MissingDebugImplementations {
-    impling_types: Option<LocalDefIdSet>,
-}
+pub(crate) struct MissingDebugImplementations;
 
 impl_lint_pass!(MissingDebugImplementations => [MISSING_DEBUG_IMPLEMENTATIONS]);
 
@@ -795,23 +779,20 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             _ => return,
         }
 
-        let Some(debug) = cx.tcx.get_diagnostic_item(sym::Debug) else { return };
-
-        if self.impling_types.is_none() {
-            let mut impls = LocalDefIdSet::default();
-            cx.tcx.for_each_impl(debug, |d| {
-                if let Some(ty_def) = cx.tcx.type_of(d).instantiate_identity().ty_adt_def() {
-                    if let Some(def_id) = ty_def.did().as_local() {
-                        impls.insert(def_id);
-                    }
-                }
-            });
-
-            self.impling_types = Some(impls);
-            debug!("{:?}", self.impling_types);
+        // Avoid listing trait impls if the trait is allowed.
+        let (level, _) = cx.tcx.lint_level_at_node(MISSING_DEBUG_IMPLEMENTATIONS, item.hir_id());
+        if level == Level::Allow {
+            return;
         }
 
-        if !self.impling_types.as_ref().unwrap().contains(&item.owner_id.def_id) {
+        let Some(debug) = cx.tcx.get_diagnostic_item(sym::Debug) else { return };
+
+        let has_impl = cx
+            .tcx
+            .non_blanket_impls_for_ty(debug, cx.tcx.type_of(item.owner_id).instantiate_identity())
+            .next()
+            .is_some();
+        if !has_impl {
             cx.emit_spanned_lint(
                 MISSING_DEBUG_IMPLEMENTATIONS,
                 item.span,
@@ -2607,381 +2588,6 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         tcx: cx.tcx,
                     },
                 );
-            }
-        }
-    }
-}
-
-declare_lint! {
-    /// The `clashing_extern_declarations` lint detects when an `extern fn`
-    /// has been declared with the same name but different types.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// mod m {
-    ///     extern "C" {
-    ///         fn foo();
-    ///     }
-    /// }
-    ///
-    /// extern "C" {
-    ///     fn foo(_: u32);
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Because two symbols of the same name cannot be resolved to two
-    /// different functions at link time, and one function cannot possibly
-    /// have two types, a clashing extern declaration is almost certainly a
-    /// mistake. Check to make sure that the `extern` definitions are correct
-    /// and equivalent, and possibly consider unifying them in one location.
-    ///
-    /// This lint does not run between crates because a project may have
-    /// dependencies which both rely on the same extern function, but declare
-    /// it in a different (but valid) way. For example, they may both declare
-    /// an opaque type for one or more of the arguments (which would end up
-    /// distinct types), or use types that are valid conversions in the
-    /// language the `extern fn` is defined in. In these cases, the compiler
-    /// can't say that the clashing declaration is incorrect.
-    pub CLASHING_EXTERN_DECLARATIONS,
-    Warn,
-    "detects when an extern fn has been declared with the same name but different types"
-}
-
-pub struct ClashingExternDeclarations {
-    /// Map of function symbol name to the first-seen hir id for that symbol name.. If seen_decls
-    /// contains an entry for key K, it means a symbol with name K has been seen by this lint and
-    /// the symbol should be reported as a clashing declaration.
-    // FIXME: Technically, we could just store a &'tcx str here without issue; however, the
-    // `impl_lint_pass` macro doesn't currently support lints parametric over a lifetime.
-    seen_decls: FxHashMap<Symbol, hir::OwnerId>,
-}
-
-/// Differentiate between whether the name for an extern decl came from the link_name attribute or
-/// just from declaration itself. This is important because we don't want to report clashes on
-/// symbol name if they don't actually clash because one or the other links against a symbol with a
-/// different name.
-enum SymbolName {
-    /// The name of the symbol + the span of the annotation which introduced the link name.
-    Link(Symbol, Span),
-    /// No link name, so just the name of the symbol.
-    Normal(Symbol),
-}
-
-impl SymbolName {
-    fn get_name(&self) -> Symbol {
-        match self {
-            SymbolName::Link(s, _) | SymbolName::Normal(s) => *s,
-        }
-    }
-}
-
-impl ClashingExternDeclarations {
-    pub(crate) fn new() -> Self {
-        ClashingExternDeclarations { seen_decls: FxHashMap::default() }
-    }
-
-    /// Insert a new foreign item into the seen set. If a symbol with the same name already exists
-    /// for the item, return its HirId without updating the set.
-    fn insert(&mut self, tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> Option<hir::OwnerId> {
-        let did = fi.owner_id.to_def_id();
-        let instance = Instance::new(did, ty::List::identity_for_item(tcx, did));
-        let name = Symbol::intern(tcx.symbol_name(instance).name);
-        if let Some(&existing_id) = self.seen_decls.get(&name) {
-            // Avoid updating the map with the new entry when we do find a collision. We want to
-            // make sure we're always pointing to the first definition as the previous declaration.
-            // This lets us avoid emitting "knock-on" diagnostics.
-            Some(existing_id)
-        } else {
-            self.seen_decls.insert(name, fi.owner_id)
-        }
-    }
-
-    /// Get the name of the symbol that's linked against for a given extern declaration. That is,
-    /// the name specified in a #[link_name = ...] attribute if one was specified, else, just the
-    /// symbol's name.
-    fn name_of_extern_decl(tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> SymbolName {
-        if let Some((overridden_link_name, overridden_link_name_span)) =
-            tcx.codegen_fn_attrs(fi.owner_id).link_name.map(|overridden_link_name| {
-                // FIXME: Instead of searching through the attributes again to get span
-                // information, we could have codegen_fn_attrs also give span information back for
-                // where the attribute was defined. However, until this is found to be a
-                // bottleneck, this does just fine.
-                (overridden_link_name, tcx.get_attr(fi.owner_id, sym::link_name).unwrap().span)
-            })
-        {
-            SymbolName::Link(overridden_link_name, overridden_link_name_span)
-        } else {
-            SymbolName::Normal(fi.ident.name)
-        }
-    }
-
-    /// Checks whether two types are structurally the same enough that the declarations shouldn't
-    /// clash. We need this so we don't emit a lint when two modules both declare an extern struct,
-    /// with the same members (as the declarations shouldn't clash).
-    fn structurally_same_type<'tcx>(
-        cx: &LateContext<'tcx>,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        ckind: CItemKind,
-    ) -> bool {
-        fn structurally_same_type_impl<'tcx>(
-            seen_types: &mut FxHashSet<(Ty<'tcx>, Ty<'tcx>)>,
-            cx: &LateContext<'tcx>,
-            a: Ty<'tcx>,
-            b: Ty<'tcx>,
-            ckind: CItemKind,
-        ) -> bool {
-            debug!("structurally_same_type_impl(cx, a = {:?}, b = {:?})", a, b);
-            let tcx = cx.tcx;
-
-            // Given a transparent newtype, reach through and grab the inner
-            // type unless the newtype makes the type non-null.
-            let non_transparent_ty = |mut ty: Ty<'tcx>| -> Ty<'tcx> {
-                loop {
-                    if let ty::Adt(def, args) = *ty.kind() {
-                        let is_transparent = def.repr().transparent();
-                        let is_non_null = crate::types::nonnull_optimization_guaranteed(tcx, def);
-                        debug!(
-                            "non_transparent_ty({:?}) -- type is transparent? {}, type is non-null? {}",
-                            ty, is_transparent, is_non_null
-                        );
-                        if is_transparent && !is_non_null {
-                            debug_assert_eq!(def.variants().len(), 1);
-                            let v = &def.variant(FIRST_VARIANT);
-                            // continue with `ty`'s non-ZST field,
-                            // otherwise `ty` is a ZST and we can return
-                            if let Some(field) = transparent_newtype_field(tcx, v) {
-                                ty = field.ty(tcx, args);
-                                continue;
-                            }
-                        }
-                    }
-                    debug!("non_transparent_ty -> {:?}", ty);
-                    return ty;
-                }
-            };
-
-            let a = non_transparent_ty(a);
-            let b = non_transparent_ty(b);
-
-            if !seen_types.insert((a, b)) {
-                // We've encountered a cycle. There's no point going any further -- the types are
-                // structurally the same.
-                true
-            } else if a == b {
-                // All nominally-same types are structurally same, too.
-                true
-            } else {
-                // Do a full, depth-first comparison between the two.
-                use rustc_type_ir::sty::TyKind::*;
-                let a_kind = a.kind();
-                let b_kind = b.kind();
-
-                let compare_layouts = |a, b| -> Result<bool, LayoutError<'tcx>> {
-                    debug!("compare_layouts({:?}, {:?})", a, b);
-                    let a_layout = &cx.layout_of(a)?.layout.abi();
-                    let b_layout = &cx.layout_of(b)?.layout.abi();
-                    debug!(
-                        "comparing layouts: {:?} == {:?} = {}",
-                        a_layout,
-                        b_layout,
-                        a_layout == b_layout
-                    );
-                    Ok(a_layout == b_layout)
-                };
-
-                #[allow(rustc::usage_of_ty_tykind)]
-                let is_primitive_or_pointer = |kind: &ty::TyKind<'_>| {
-                    kind.is_primitive() || matches!(kind, RawPtr(..) | Ref(..))
-                };
-
-                ensure_sufficient_stack(|| {
-                    match (a_kind, b_kind) {
-                        (Adt(a_def, _), Adt(b_def, _)) => {
-                            // We can immediately rule out these types as structurally same if
-                            // their layouts differ.
-                            match compare_layouts(a, b) {
-                                Ok(false) => return false,
-                                _ => (), // otherwise, continue onto the full, fields comparison
-                            }
-
-                            // Grab a flattened representation of all fields.
-                            let a_fields = a_def.variants().iter().flat_map(|v| v.fields.iter());
-                            let b_fields = b_def.variants().iter().flat_map(|v| v.fields.iter());
-
-                            // Perform a structural comparison for each field.
-                            a_fields.eq_by(
-                                b_fields,
-                                |&ty::FieldDef { did: a_did, .. },
-                                 &ty::FieldDef { did: b_did, .. }| {
-                                    structurally_same_type_impl(
-                                        seen_types,
-                                        cx,
-                                        tcx.type_of(a_did).instantiate_identity(),
-                                        tcx.type_of(b_did).instantiate_identity(),
-                                        ckind,
-                                    )
-                                },
-                            )
-                        }
-                        (Array(a_ty, a_const), Array(b_ty, b_const)) => {
-                            // For arrays, we also check the constness of the type.
-                            a_const.kind() == b_const.kind()
-                                && structurally_same_type_impl(seen_types, cx, *a_ty, *b_ty, ckind)
-                        }
-                        (Slice(a_ty), Slice(b_ty)) => {
-                            structurally_same_type_impl(seen_types, cx, *a_ty, *b_ty, ckind)
-                        }
-                        (RawPtr(a_tymut), RawPtr(b_tymut)) => {
-                            a_tymut.mutbl == b_tymut.mutbl
-                                && structurally_same_type_impl(
-                                    seen_types, cx, a_tymut.ty, b_tymut.ty, ckind,
-                                )
-                        }
-                        (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
-                            // For structural sameness, we don't need the region to be same.
-                            a_mut == b_mut
-                                && structurally_same_type_impl(seen_types, cx, *a_ty, *b_ty, ckind)
-                        }
-                        (FnDef(..), FnDef(..)) => {
-                            let a_poly_sig = a.fn_sig(tcx);
-                            let b_poly_sig = b.fn_sig(tcx);
-
-                            // We don't compare regions, but leaving bound regions around ICEs, so
-                            // we erase them.
-                            let a_sig = tcx.erase_late_bound_regions(a_poly_sig);
-                            let b_sig = tcx.erase_late_bound_regions(b_poly_sig);
-
-                            (a_sig.abi, a_sig.unsafety, a_sig.c_variadic)
-                                == (b_sig.abi, b_sig.unsafety, b_sig.c_variadic)
-                                && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
-                                    structurally_same_type_impl(seen_types, cx, *a, *b, ckind)
-                                })
-                                && structurally_same_type_impl(
-                                    seen_types,
-                                    cx,
-                                    a_sig.output(),
-                                    b_sig.output(),
-                                    ckind,
-                                )
-                        }
-                        (Tuple(a_args), Tuple(b_args)) => {
-                            a_args.iter().eq_by(b_args.iter(), |a_ty, b_ty| {
-                                structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
-                            })
-                        }
-                        // For these, it's not quite as easy to define structural-sameness quite so easily.
-                        // For the purposes of this lint, take the conservative approach and mark them as
-                        // not structurally same.
-                        (Dynamic(..), Dynamic(..))
-                        | (Error(..), Error(..))
-                        | (Closure(..), Closure(..))
-                        | (Generator(..), Generator(..))
-                        | (GeneratorWitness(..), GeneratorWitness(..))
-                        | (Alias(ty::Projection, ..), Alias(ty::Projection, ..))
-                        | (Alias(ty::Inherent, ..), Alias(ty::Inherent, ..))
-                        | (Alias(ty::Opaque, ..), Alias(ty::Opaque, ..)) => false,
-
-                        // These definitely should have been caught above.
-                        (Bool, Bool) | (Char, Char) | (Never, Never) | (Str, Str) => unreachable!(),
-
-                        // An Adt and a primitive or pointer type. This can be FFI-safe if non-null
-                        // enum layout optimisation is being applied.
-                        (Adt(..), other_kind) | (other_kind, Adt(..))
-                            if is_primitive_or_pointer(other_kind) =>
-                        {
-                            let (primitive, adt) =
-                                if is_primitive_or_pointer(a.kind()) { (a, b) } else { (b, a) };
-                            if let Some(ty) = crate::types::repr_nullable_ptr(cx, adt, ckind) {
-                                ty == primitive
-                            } else {
-                                compare_layouts(a, b).unwrap_or(false)
-                            }
-                        }
-                        // Otherwise, just compare the layouts. This may fail to lint for some
-                        // incompatible types, but at the very least, will stop reads into
-                        // uninitialised memory.
-                        _ => compare_layouts(a, b).unwrap_or(false),
-                    }
-                })
-            }
-        }
-        let mut seen_types = FxHashSet::default();
-        structurally_same_type_impl(&mut seen_types, cx, a, b, ckind)
-    }
-}
-
-impl_lint_pass!(ClashingExternDeclarations => [CLASHING_EXTERN_DECLARATIONS]);
-
-impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
-    #[instrument(level = "trace", skip(self, cx))]
-    fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, this_fi: &hir::ForeignItem<'_>) {
-        if let ForeignItemKind::Fn(..) = this_fi.kind {
-            let tcx = cx.tcx;
-            if let Some(existing_did) = self.insert(tcx, this_fi) {
-                let existing_decl_ty = tcx.type_of(existing_did).skip_binder();
-                let this_decl_ty = tcx.type_of(this_fi.owner_id).instantiate_identity();
-                debug!(
-                    "ClashingExternDeclarations: Comparing existing {:?}: {:?} to this {:?}: {:?}",
-                    existing_did, existing_decl_ty, this_fi.owner_id, this_decl_ty
-                );
-                // Check that the declarations match.
-                if !Self::structurally_same_type(
-                    cx,
-                    existing_decl_ty,
-                    this_decl_ty,
-                    CItemKind::Declaration,
-                ) {
-                    let orig_fi = tcx.hir().expect_foreign_item(existing_did);
-                    let orig = Self::name_of_extern_decl(tcx, orig_fi);
-
-                    // We want to ensure that we use spans for both decls that include where the
-                    // name was defined, whether that was from the link_name attribute or not.
-                    let get_relevant_span =
-                        |fi: &hir::ForeignItem<'_>| match Self::name_of_extern_decl(tcx, fi) {
-                            SymbolName::Normal(_) => fi.span,
-                            SymbolName::Link(_, annot_span) => fi.span.to(annot_span),
-                        };
-
-                    // Finally, emit the diagnostic.
-                    let this = this_fi.ident.name;
-                    let orig = orig.get_name();
-                    let previous_decl_label = get_relevant_span(orig_fi);
-                    let mismatch_label = get_relevant_span(this_fi);
-                    let sub = BuiltinClashingExternSub {
-                        tcx,
-                        expected: existing_decl_ty,
-                        found: this_decl_ty,
-                    };
-                    let decorator = if orig == this {
-                        BuiltinClashingExtern::SameName {
-                            this,
-                            orig,
-                            previous_decl_label,
-                            mismatch_label,
-                            sub,
-                        }
-                    } else {
-                        BuiltinClashingExtern::DiffName {
-                            this,
-                            orig,
-                            previous_decl_label,
-                            mismatch_label,
-                            sub,
-                        }
-                    };
-                    tcx.emit_spanned_lint(
-                        CLASHING_EXTERN_DECLARATIONS,
-                        this_fi.hir_id(),
-                        get_relevant_span(this_fi),
-                        decorator,
-                    );
-                }
             }
         }
     }

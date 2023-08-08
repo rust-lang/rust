@@ -247,7 +247,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             AddressOf(_, place) => {
                 // Figure out whether this is an addr_of of an already raw place.
-                let place_base_raw = if place.has_deref() {
+                let place_base_raw = if place.is_indirect_first_projection() {
                     let ty = self.frame().body.local_decls[place.local].ty;
                     ty.is_unsafe_ptr()
                 } else {
@@ -269,7 +269,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ty = self.subst_from_current_frame_and_normalize_erasing_regions(ty)?;
                 let layout = self.layout_of(ty)?;
                 if let mir::NullOp::SizeOf | mir::NullOp::AlignOf = null_op && layout.is_unsized() {
-                    // FIXME: This should be a span_bug (#80742)
+                    // FIXME: This should be a span_bug, but const generics can run MIR
+                    // that is not properly type-checked yet (#97477).
                     self.tcx.sess.delay_span_bug(
                         self.frame().current_span(),
                         format!("{null_op:?} MIR operator called for unsized type {ty}"),

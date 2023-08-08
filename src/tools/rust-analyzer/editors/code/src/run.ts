@@ -5,7 +5,7 @@ import * as tasks from "./tasks";
 
 import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
-import type { Config, RunnableEnvCfg } from "./config";
+import type { Config, RunnableEnvCfg, RunnableEnvCfgItem } from "./config";
 import { unwrapUndefinable } from "./undefinable";
 
 const quickPickButtons = [
@@ -112,11 +112,21 @@ export function prepareEnv(
     }
 
     Object.assign(env, process.env as { [key: string]: string });
+    const platform = process.platform;
+
+    const checkPlatform = (it: RunnableEnvCfgItem) => {
+        if (it.platform) {
+            const platforms = Array.isArray(it.platform) ? it.platform : [it.platform];
+            return platforms.indexOf(platform) >= 0;
+        }
+        return true;
+    };
 
     if (runnableEnvCfg) {
         if (Array.isArray(runnableEnvCfg)) {
             for (const it of runnableEnvCfg) {
-                if (!it.mask || new RegExp(it.mask).test(runnable.label)) {
+                const masked = !it.mask || new RegExp(it.mask).test(runnable.label);
+                if (masked && checkPlatform(it)) {
                     Object.assign(env, it.env);
                 }
             }

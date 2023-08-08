@@ -1187,6 +1187,25 @@ fn pattern_matching_ergonomics() {
 }
 
 #[test]
+fn destructing_assignment() {
+    check_number(
+        r#"
+    //- minicore: add
+    const fn f(i: &mut u8) -> &mut u8 {
+        *i += 1;
+        i
+    }
+    const GOAL: u8 = {
+        let mut i = 4;
+        _ = f(&mut i);
+        i
+    };
+        "#,
+        5,
+    );
+}
+
+#[test]
 fn let_else() {
     check_number(
         r#"
@@ -1428,14 +1447,14 @@ fn builtin_derive_macro() {
     #[derive(Clone)]
     struct Y {
         field1: i32,
-        field2: u8,
+        field2: ((i32, u8), i64),
     }
 
     const GOAL: u8 = {
-        let x = X(2, Z::Foo(Y { field1: 4, field2: 5 }), 8);
+        let x = X(2, Z::Foo(Y { field1: 4, field2: ((32, 5), 12) }), 8);
         let x = x.clone();
         let Z::Foo(t) = x.1;
-        t.field2
+        t.field2.0 .1
     };
     "#,
         5,
@@ -1633,6 +1652,34 @@ const GOAL: i32 = {
 }
 
 #[test]
+fn closure_capture_unsized_type() {
+    check_number(
+        r#"
+    //- minicore: fn, copy, slice, index, coerce_unsized
+    fn f<T: A>(x: &<T as A>::Ty) -> &<T as A>::Ty {
+        let c = || &*x;
+        c()
+    }
+
+    trait A {
+        type Ty;
+    }
+
+    impl A for i32 {
+        type Ty = [u8];
+    }
+
+    const GOAL: u8 = {
+        let k: &[u8] = &[1, 2, 3];
+        let k = f::<i32>(k);
+        k[0] + k[1] + k[2]
+    }
+    "#,
+        6,
+    );
+}
+
+#[test]
 fn closure_and_impl_fn() {
     check_number(
         r#"
@@ -1712,6 +1759,24 @@ fn function_pointer_in_constants() {
         x + 2
     }
     const GOAL: u8 = (FOO.f)(3);
+        "#,
+        5,
+    );
+}
+
+#[test]
+fn function_pointer_and_niche_optimization() {
+    check_number(
+        r#"
+    //- minicore: option
+    const GOAL: i32 = {
+        let f: fn(i32) -> i32 = |x| x + 2;
+        let init = Some(f);
+        match init {
+            Some(t) => t(3),
+            None => 222,
+        }
+    };
         "#,
         5,
     );
@@ -2331,11 +2396,14 @@ fn const_loop() {
 fn const_transfer_memory() {
     check_number(
         r#"
-    const A1: &i32 = &2;
-    const A2: &i32 = &5;
-    const GOAL: i32 = *A1 + *A2;
+    //- minicore: slice, index, coerce_unsized
+    const A1: &i32 = &1;
+    const A2: &i32 = &10;
+    const A3: [&i32; 3] = [&1, &2, &100];
+    const A4: (i32, &i32) = (1, &1000);
+    const GOAL: i32 = *A1 + *A2 + *A3[2] + *A4.1;
     "#,
-        7,
+        1111,
     );
 }
 
@@ -2521,12 +2589,16 @@ fn const_trait_assoc() {
     );
     check_number(
         r#"
-    //- minicore: size_of
+    //- minicore: size_of, fn
     //- /a/lib.rs crate:a
     use core::mem::size_of;
     pub struct S<T>(T);
     impl<T> S<T> {
-        pub const X: usize = core::mem::size_of::<T>();
+        pub const X: usize = {
+            let k: T;
+            let f = || core::mem::size_of::<T>();
+            f()
+        };
     }
     //- /main.rs crate:main deps:a
     use a::{S};
@@ -2602,9 +2674,9 @@ fn exec_limits() {
         }
         sum
     }
-    const GOAL: i32 = f(10000);
+    const GOAL: i32 = f(1000);
     "#,
-        10000 * 10000,
+        1000 * 1000,
     );
 }
 
@@ -2651,7 +2723,7 @@ fn unsized_field() {
     //- minicore: coerce_unsized, index, slice, transmute
     use core::mem::transmute;
 
-    struct Slice([u8]);
+    struct Slice([usize]);
     struct Slice2(Slice);
 
     impl Slice2 {
@@ -2659,19 +2731,19 @@ fn unsized_field() {
             &self.0
         }
 
-        fn as_bytes(&self) -> &[u8] {
+        fn as_bytes(&self) -> &[usize] {
             &self.as_inner().0
         }
     }
 
-    const GOAL: u8 = unsafe {
-        let x: &[u8] = &[1, 2, 3];
+    const GOAL: usize = unsafe {
+        let x: &[usize] = &[1, 2, 3];
         let x: &Slice2 = transmute(x);
         let x = x.as_bytes();
-        x[0] + x[1] + x[2]
+        x[0] + x[1] + x[2] + x.len() * 100
     };
         "#,
-        6,
+        306,
     );
 }
 

@@ -167,7 +167,7 @@ impl FamousDefs<'_, '_> {
             lang_crate => lang_crate,
         };
         let std_crate = self.find_lang_crate(lang_crate)?;
-        let mut module = std_crate.root_module(db);
+        let mut module = std_crate.root_module();
         for segment in path {
             module = module.children(db).find_map(|child| {
                 let name = child.name(db)?;

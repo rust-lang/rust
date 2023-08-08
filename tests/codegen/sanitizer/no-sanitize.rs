@@ -7,7 +7,7 @@
 #![crate_type="lib"]
 #![feature(no_sanitize)]
 
-// CHECK-LABEL: ; sanitizer_no_sanitize::unsanitized
+// CHECK-LABEL: ; no_sanitize::unsanitized
 // CHECK-NEXT:  ; Function Attrs:
 // CHECK-NOT:   sanitize_address
 // CHECK:       start:
@@ -18,7 +18,7 @@ pub fn unsanitized(b: &mut u8) -> u8 {
     *b
 }
 
-// CHECK-LABEL: ; sanitizer_no_sanitize::sanitized
+// CHECK-LABEL: ; no_sanitize::sanitized
 // CHECK-NEXT:  ; Function Attrs:
 // CHECK:       sanitize_address
 // CHECK:       start:

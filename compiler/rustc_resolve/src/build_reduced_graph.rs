@@ -278,7 +278,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 };
                 match self.r.resolve_path(
                     &segments,
-                    Some(TypeNS),
+                    None,
                     parent_scope,
                     finalize.then(|| Finalize::new(id, path.span)),
                     None,
@@ -700,7 +700,10 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
             // These items live in the type namespace.
             ItemKind::TyAlias(..) => {
-                let res = Res::Def(DefKind::TyAlias, def_id);
+                let res = Res::Def(
+                    DefKind::TyAlias { lazy: self.r.tcx.features().lazy_type_alias },
+                    def_id,
+                );
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
@@ -948,7 +951,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 DefKind::Struct
                 | DefKind::Union
                 | DefKind::Variant
-                | DefKind::TyAlias
+                | DefKind::TyAlias { .. }
                 | DefKind::ForeignTy
                 | DefKind::OpaqueTy
                 | DefKind::TraitAlias

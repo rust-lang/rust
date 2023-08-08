@@ -196,7 +196,9 @@ impl<'hir> Map<'hir> {
                 ItemKind::Macro(_, macro_kind) => DefKind::Macro(macro_kind),
                 ItemKind::Mod(..) => DefKind::Mod,
                 ItemKind::OpaqueTy(..) => DefKind::OpaqueTy,
-                ItemKind::TyAlias(..) => DefKind::TyAlias,
+                ItemKind::TyAlias(..) => {
+                    DefKind::TyAlias { lazy: self.tcx.features().lazy_type_alias }
+                }
                 ItemKind::Enum(..) => DefKind::Enum,
                 ItemKind::Struct(..) => DefKind::Struct,
                 ItemKind::Union(..) => DefKind::Union,
@@ -733,17 +735,6 @@ impl<'hir> Map<'hir> {
         } else {
             CRATE_OWNER_ID
         }
-    }
-
-    /// Returns the `OwnerId` of `id`'s nearest module parent, or `id` itself if no
-    /// module parent is in this map.
-    pub(super) fn get_module_parent_node(self, hir_id: HirId) -> OwnerId {
-        for (def_id, node) in self.parent_owner_iter(hir_id) {
-            if let OwnerNode::Item(&Item { kind: ItemKind::Mod(_), .. }) = node {
-                return def_id;
-            }
-        }
-        CRATE_OWNER_ID
     }
 
     /// When on an if expression, a match arm tail expression or a match arm, give back

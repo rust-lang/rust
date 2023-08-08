@@ -7,17 +7,6 @@ use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
-#[cfg(any(
-    target_os = "android",
-    target_os = "linux",
-    target_os = "solaris",
-    target_os = "fuchsia",
-    target_os = "redox",
-    target_os = "illumos",
-    target_os = "nto",
-    target_os = "vita",
-))]
-use crate::mem::MaybeUninit;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
@@ -712,22 +701,10 @@ impl Iterator for ReadDir {
                 // requires the full extent of *entry_ptr to be in bounds of the same
                 // allocation, which is not necessarily the case here.
                 //
-                // Absent any other way to obtain a pointer to `(*entry_ptr).d_name`
-                // legally in Rust analogously to how it would be done in C, we instead
-                // need to make our own non-libc allocation that conforms to the weird
-                // imaginary definition of dirent64, and use that for a field offset
-                // computation.
+                // Instead we must access fields individually through their offsets.
                 macro_rules! offset_ptr {
                     ($entry_ptr:expr, $field:ident) => {{
-                        const OFFSET: isize = {
-                            let delusion = MaybeUninit::<dirent64>::uninit();
-                            let entry_ptr = delusion.as_ptr();
-                            unsafe {
-                                ptr::addr_of!((*entry_ptr).$field)
-                                    .cast::<u8>()
-                                    .offset_from(entry_ptr.cast::<u8>())
-                            }
-                        };
+                        const OFFSET: isize = mem::offset_of!(dirent64, $field) as isize;
                         if true {
                             // Cast to the same type determined by the else branch.
                             $entry_ptr.byte_offset(OFFSET).cast::<_>()

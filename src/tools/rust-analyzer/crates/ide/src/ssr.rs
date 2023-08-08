@@ -126,14 +126,17 @@ mod tests {
                         source_file_edits: {
                             FileId(
                                 0,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "3",
-                                        delete: 33..34,
-                                    },
-                                ],
-                            },
+                            ): (
+                                TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "3",
+                                            delete: 33..34,
+                                        },
+                                    ],
+                                },
+                                None,
+                            ),
                         },
                         file_system_edits: [],
                         is_snippet: false,
@@ -163,24 +166,30 @@ mod tests {
                         source_file_edits: {
                             FileId(
                                 0,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "3",
-                                        delete: 33..34,
-                                    },
-                                ],
-                            },
+                            ): (
+                                TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "3",
+                                            delete: 33..34,
+                                        },
+                                    ],
+                                },
+                                None,
+                            ),
                             FileId(
                                 1,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "3",
-                                        delete: 11..12,
-                                    },
-                                ],
-                            },
+                            ): (
+                                TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "3",
+                                            delete: 11..12,
+                                        },
+                                    ],
+                                },
+                                None,
+                            ),
                         },
                         file_system_edits: [],
                         is_snippet: false,

@@ -68,6 +68,10 @@ impl<'tcx> Tables<'tcx> {
         self.def_ids[item.0]
     }
 
+    pub fn trait_def_id(&self, trait_def: &stable_mir::ty::TraitDef) -> DefId {
+        self.def_ids[trait_def.0]
+    }
+
     pub fn crate_item(&mut self, did: DefId) -> stable_mir::CrateItem {
         stable_mir::CrateItem(self.create_def_id(did))
     }

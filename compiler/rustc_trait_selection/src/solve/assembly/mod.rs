@@ -152,16 +152,12 @@ pub(super) trait GoalKind<'tcx>:
             let ty::Dynamic(bounds, _, _) = *goal.predicate.self_ty().kind() else {
                 bug!("expected object type in `consider_object_bound_candidate`");
             };
-            ecx.add_goals(
-                structural_traits::predicates_for_object_candidate(
-                    &ecx,
-                    goal.param_env,
-                    goal.predicate.trait_ref(tcx),
-                    bounds,
-                )
-                .into_iter()
-                .map(|pred| goal.with(tcx, pred)),
-            );
+            ecx.add_goals(structural_traits::predicates_for_object_candidate(
+                &ecx,
+                goal.param_env,
+                goal.predicate.trait_ref(tcx),
+                bounds,
+            ));
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }

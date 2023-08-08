@@ -572,32 +572,36 @@ fn lint_nan<'tcx>(
     }
 
     fn eq_ne(
+        cx: &LateContext<'_>,
         e: &hir::Expr<'_>,
         l: &hir::Expr<'_>,
         r: &hir::Expr<'_>,
         f: impl FnOnce(Span, Span) -> InvalidNanComparisonsSuggestion,
     ) -> InvalidNanComparisons {
-        let suggestion =
+        // FIXME(#72505): This suggestion can be restored if `f{32,64}::is_nan` is made const.
+        let suggestion = (!cx.tcx.hir().is_inside_const_context(e.hir_id)).then(|| {
             if let Some(l_span) = l.span.find_ancestor_inside(e.span) &&
-                let Some(r_span) = r.span.find_ancestor_inside(e.span) {
+                let Some(r_span) = r.span.find_ancestor_inside(e.span)
+            {
                 f(l_span, r_span)
             } else {
                 InvalidNanComparisonsSuggestion::Spanless
-            };
+            }
+        });
 
         InvalidNanComparisons::EqNe { suggestion }
     }
 
     let lint = match binop.node {
         hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, l) => {
-            eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
+            eq_ne(cx, e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
                 nan_plus_binop: l_span.until(r_span),
                 float: r_span.shrink_to_hi(),
                 neg: (binop.node == hir::BinOpKind::Ne).then(|| r_span.shrink_to_lo()),
             })
         }
         hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, r) => {
-            eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
+            eq_ne(cx, e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
                 nan_plus_binop: l_span.shrink_to_hi().to(r_span),
                 float: l_span.shrink_to_hi(),
                 neg: (binop.node == hir::BinOpKind::Ne).then(|| l_span.shrink_to_lo()),
@@ -815,8 +819,7 @@ pub fn transparent_newtype_field<'a, 'tcx>(
 }
 
 /// Is type known to be non-null?
-fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
-    let tcx = cx.tcx;
+fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
     match ty.kind() {
         ty::FnPtr(_) => true,
         ty::Ref(..) => true,
@@ -835,8 +838,8 @@ fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKi
 
             def.variants()
                 .iter()
-                .filter_map(|variant| transparent_newtype_field(cx.tcx, variant))
-                .any(|field| ty_is_known_nonnull(cx, field.ty(tcx, args), mode))
+                .filter_map(|variant| transparent_newtype_field(tcx, variant))
+                .any(|field| ty_is_known_nonnull(tcx, field.ty(tcx, args), mode))
         }
         _ => false,
     }
@@ -844,15 +847,12 @@ fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKi
 
 /// Given a non-null scalar (or transparent) type `ty`, return the nullable version of that type.
 /// If the type passed in was not scalar, returns None.
-fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    let tcx = cx.tcx;
+fn get_nullable_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     Some(match *ty.kind() {
         ty::Adt(field_def, field_args) => {
             let inner_field_ty = {
-                let mut first_non_zst_ty = field_def
-                    .variants()
-                    .iter()
-                    .filter_map(|v| transparent_newtype_field(cx.tcx, v));
+                let mut first_non_zst_ty =
+                    field_def.variants().iter().filter_map(|v| transparent_newtype_field(tcx, v));
                 debug_assert_eq!(
                     first_non_zst_ty.clone().count(),
                     1,
@@ -863,7 +863,7 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
                     .expect("No non-zst fields in transparent type.")
                     .ty(tcx, field_args)
             };
-            return get_nullable_type(cx, inner_field_ty);
+            return get_nullable_type(tcx, inner_field_ty);
         }
         ty::Int(ty) => Ty::new_int(tcx, ty),
         ty::Uint(ty) => Ty::new_uint(tcx, ty),
@@ -895,43 +895,44 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
 /// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
 /// FIXME: This duplicates code in codegen.
 pub(crate) fn repr_nullable_ptr<'tcx>(
-    cx: &LateContext<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     ckind: CItemKind,
 ) -> Option<Ty<'tcx>> {
-    debug!("is_repr_nullable_ptr(cx, ty = {:?})", ty);
+    debug!("is_repr_nullable_ptr(tcx, ty = {:?})", ty);
     if let ty::Adt(ty_def, args) = ty.kind() {
         let field_ty = match &ty_def.variants().raw[..] {
             [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
-                ([], [field]) | ([field], []) => field.ty(cx.tcx, args),
+                ([], [field]) | ([field], []) => field.ty(tcx, args),
                 _ => return None,
             },
             _ => return None,
         };
 
-        if !ty_is_known_nonnull(cx, field_ty, ckind) {
+        if !ty_is_known_nonnull(tcx, field_ty, ckind) {
             return None;
         }
 
         // At this point, the field's type is known to be nonnull and the parent enum is Option-like.
         // If the computed size for the field and the enum are different, the nonnull optimization isn't
         // being applied (and we've got a problem somewhere).
-        let compute_size_skeleton = |t| SizeSkeleton::compute(t, cx.tcx, cx.param_env).unwrap();
+        let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, param_env).unwrap();
         if !compute_size_skeleton(ty).same_size(compute_size_skeleton(field_ty)) {
             bug!("improper_ctypes: Option nonnull optimization not applied?");
         }
 
         // Return the nullable type this Option-like enum can be safely represented with.
-        let field_ty_abi = &cx.layout_of(field_ty).unwrap().abi;
+        let field_ty_abi = &tcx.layout_of(param_env.and(field_ty)).unwrap().abi;
         if let Abi::Scalar(field_ty_scalar) = field_ty_abi {
-            match field_ty_scalar.valid_range(cx) {
+            match field_ty_scalar.valid_range(&tcx) {
                 WrappingRange { start: 0, end }
-                    if end == field_ty_scalar.size(&cx.tcx).unsigned_int_max() - 1 =>
+                    if end == field_ty_scalar.size(&tcx).unsigned_int_max() - 1 =>
                 {
-                    return Some(get_nullable_type(cx, field_ty).unwrap());
+                    return Some(get_nullable_type(tcx, field_ty).unwrap());
                 }
                 WrappingRange { start: 1, .. } => {
-                    return Some(get_nullable_type(cx, field_ty).unwrap());
+                    return Some(get_nullable_type(tcx, field_ty).unwrap());
                 }
                 WrappingRange { start, end } => {
                     unreachable!("Unhandled start and end range: ({}, {})", start, end)
@@ -1116,7 +1117,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
                         {
                             // Special-case types like `Option<extern fn()>`.
-                            if repr_nullable_ptr(self.cx, ty, self.mode).is_none() {
+                            if repr_nullable_ptr(self.cx.tcx, self.cx.param_env, ty, self.mode)
+                                .is_none()
+                            {
                                 return FfiUnsafe {
                                     ty,
                                     reason: fluent::lint_improper_ctypes_enum_repr_reason,

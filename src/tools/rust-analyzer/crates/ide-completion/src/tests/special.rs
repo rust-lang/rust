@@ -1280,3 +1280,26 @@ fn here_we_go() {
         "#]],
     );
 }
+
+#[test]
+fn completion_filtering_excludes_non_identifier_doc_aliases() {
+    check_edit(
+        "PartialOrdcmporder",
+        r#"
+#[doc(alias = ">")]
+#[doc(alias = "cmp")]
+#[doc(alias = "order")]
+trait PartialOrd {}
+
+struct Foo<T: Partial$0
+"#,
+        r#"
+#[doc(alias = ">")]
+#[doc(alias = "cmp")]
+#[doc(alias = "order")]
+trait PartialOrd {}
+
+struct Foo<T: PartialOrd
+"#,
+    );
+}
