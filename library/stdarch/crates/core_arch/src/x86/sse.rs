@@ -1410,7 +1410,7 @@ pub unsafe fn _mm_getcsr() -> u32 {
 /// * The *denormals-are-zero mode flag* turns all numbers which would be
 /// denormalized (exponent bits are all zeros) into zeros.
 ///
-/// Note that modfying the masking flags, rounding mode, or denormals-are-zero mode flags leads to
+/// Note that modifying the masking flags, rounding mode, or denormals-are-zero mode flags leads to
 /// **immediate Undefined Behavior**: Rust assumes that these are always in their default state and
 /// will optimize accordingly. This even applies when the register is altered and later reset to its
 /// original value without any floating-point operations appearing in the source code between those
