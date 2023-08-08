@@ -909,3 +909,30 @@ macro_rules! with_std {
 "##]],
     )
 }
+
+#[test]
+fn eager_regression_15403() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! format_args {}
+
+fn main() {
+    format_args /* +errors */ !("{}", line.1.);
+}
+
+"#,
+        expect![[r##"
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! format_args {}
+
+fn main() {
+    /* error: expected field name or number *//* parse error: expected field name or number */
+::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::ArgumentV1::new(&(line.1.), ::core::fmt::Display::fmt), ]);
+}
+
+"##]],
+    );
+}
