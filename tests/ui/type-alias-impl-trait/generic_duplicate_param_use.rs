@@ -14,11 +14,7 @@ fn main() {}
 // test that unused generic parameters are ok
 type TwoTys<T, U> = impl Debug;
 
-pub trait Captures<'a> {}
-
-impl<'a, T: ?Sized> Captures<'a> for T {}
-
-type TwoLifetimes<'a, 'b> = impl Debug + Captures<'a> + Captures<'b>;
+type TwoLifetimes<'a, 'b> = impl Debug;
 
 type TwoConsts<const X: usize, const Y: usize> = impl Debug;
 

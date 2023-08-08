@@ -1,7 +1,7 @@
 #![feature(type_alias_impl_trait)]
 
 mod test_lifetime_param {
-    type Ty<'a> = impl Sized + 'a;
+    type Ty<'a> = impl Sized;
     fn defining(a: &str) -> Ty<'_> { a }
     fn assert_static<'a: 'static>() {}
     fn test<'a>() where Ty<'a>: 'static { assert_static::<'a>() }
@@ -9,7 +9,7 @@ mod test_lifetime_param {
 }
 
 mod test_higher_kinded_lifetime_param {
-    type Ty<'a> = impl Sized + 'a;
+    type Ty<'a> = impl Sized;
     fn defining(a: &str) -> Ty<'_> { a }
     fn assert_static<'a: 'static>() {}
     fn test<'a>() where for<'b> Ty<'b>: 'a { assert_static::<'a>() }

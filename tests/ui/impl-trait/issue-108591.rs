@@ -13,7 +13,8 @@ impl MyTy<'_> {
     }
 }
 
-type Opaque<'a> = impl Sized;
+type Opaque2 = impl Sized;
+type Opaque<'a> = Opaque2;
 fn define<'a>() -> Opaque<'a> {}
 
 fn test<'a>() {
