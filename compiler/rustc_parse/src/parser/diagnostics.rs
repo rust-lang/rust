@@ -1717,8 +1717,7 @@ impl<'a> Parser<'a> {
             self.recover_await_prefix(await_sp)?
         };
         let sp = self.error_on_incorrect_await(lo, hi, &expr, is_question);
-        let kind = ExprKind::Err;
-        let expr = self.mk_expr(lo.to(sp), kind);
+        let expr = self.mk_expr(lo.to(sp), ExprKind::Err);
         self.maybe_recover_from_bad_qpath(expr)
     }
 
