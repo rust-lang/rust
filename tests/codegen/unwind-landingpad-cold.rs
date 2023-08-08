@@ -1,4 +1,5 @@
 // compile-flags: -Cno-prepopulate-passes
+// needs-unwind
 #![crate_type = "lib"]
 
 // This test checks that drop calls in unwind landing pads
