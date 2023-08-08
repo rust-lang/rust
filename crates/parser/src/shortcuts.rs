@@ -46,12 +46,16 @@ impl LexedStr<'_> {
                     // Tag the token as joint if it is float with a fractional part
                     // we use this jointness to inform the parser about what token split
                     // event to emit when we encounter a float literal in a field access
-                    if kind == SyntaxKind::FLOAT_NUMBER && !self.text(i).ends_with('.') {
-                        res.was_joint();
+                    if kind == SyntaxKind::FLOAT_NUMBER {
+                        if !self.text(i).ends_with('.') {
+                            res.was_joint();
+                        } else {
+                            was_joint = false;
+                        }
+                    } else {
+                        was_joint = true;
                     }
                 }
-
-                was_joint = true;
             }
         }
         res
@@ -204,6 +208,7 @@ impl Builder<'_, '_> {
                     assert!(right.is_empty(), "{left}.{right}");
                     self.state = State::Normal;
                 } else {
+                    assert!(!right.is_empty(), "{left}.{right}");
                     (self.sink)(StrStep::Enter { kind: SyntaxKind::NAME_REF });
                     (self.sink)(StrStep::Token { kind: SyntaxKind::INT_NUMBER, text: right });
                     (self.sink)(StrStep::Exit);
