@@ -283,6 +283,37 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         Ok(self.make_ambiguous_response_no_constraints(maybe_cause))
     }
+
+    /// Normalize a type when it is structually matched on.
+    ///
+    /// For self types this is generally already handled through
+    /// `assemble_candidates_after_normalizing_self_ty`, so anything happening
+    /// in [`EvalCtxt::assemble_candidates_via_self_ty`] does not have to normalize
+    /// the self type. It is required when structurally matching on any other
+    /// arguments of a trait goal, e.g. when assembling builtin unsize candidates.
+    fn try_normalize_ty(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        mut ty: Ty<'tcx>,
+    ) -> Result<Option<Ty<'tcx>>, NoSolution> {
+        for _ in 0..self.local_overflow_limit() {
+            let ty::Alias(_, projection_ty) = *ty.kind() else {
+                return Ok(Some(ty));
+            };
+
+            let normalized_ty = self.next_ty_infer();
+            let normalizes_to_goal = Goal::new(
+                self.tcx(),
+                param_env,
+                ty::ProjectionPredicate { projection_ty, term: normalized_ty.into() },
+            );
+            self.add_goal(normalizes_to_goal);
+            self.try_evaluate_added_goals()?;
+            ty = self.resolve_vars_if_possible(normalized_ty);
+        }
+
+        Ok(None)
+    }
 }
 
 fn response_no_constraints_raw<'tcx>(
