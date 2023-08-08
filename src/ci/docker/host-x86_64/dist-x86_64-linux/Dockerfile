@@ -61,7 +61,7 @@ ENV CC=clang CXX=clang++
 # Should also be changed in the opt-dist tool for other environments.
 ENV PERF_COMMIT 8b2ac3042e1ff2c0074455a0a3618adef97156b1
 RUN curl -LS -o perf.zip https://github.com/rust-lang/rustc-perf/archive/$PERF_COMMIT.zip && \
-    unzip perf.zip && \
+    unzip -q perf.zip && \
     mv rustc-perf-$PERF_COMMIT rustc-perf && \
     rm perf.zip
 
