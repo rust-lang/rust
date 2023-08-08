@@ -1645,7 +1645,7 @@ impl<'test> TestCx<'test> {
         if self.props.known_bug {
             if !expected_errors.is_empty() {
                 self.fatal_proc_rec(
-                    "`known_bug` tests should not have an expected errors",
+                    "`known_bug` tests should not have an expected error",
                     proc_res,
                 );
             }
