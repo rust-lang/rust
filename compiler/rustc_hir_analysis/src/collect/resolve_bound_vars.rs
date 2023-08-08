@@ -1480,7 +1480,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 DefKind::Struct
                 | DefKind::Union
                 | DefKind::Enum
-                | DefKind::TyAlias
+                | DefKind::TyAlias { .. }
                 | DefKind::Trait,
                 def_id,
             ) if depth == 0 => Some(def_id),
@@ -1990,7 +1990,7 @@ fn is_late_bound_map(
 
                 hir::TyKind::Path(hir::QPath::Resolved(
                     None,
-                    hir::Path { res: Res::Def(DefKind::TyAlias, alias_def), segments, span },
+                    hir::Path { res: Res::Def(DefKind::TyAlias { .. }, alias_def), segments, span },
                 )) => {
                     // See comments on `ConstrainedCollectorPostAstConv` for why this arm does not just consider
                     // args to be unconstrained.

@@ -592,7 +592,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         .unwrap_or(Vec::new())
                 }
             }
-            Res::Def(DefKind::TyAlias, did) => {
+            Res::Def(DefKind::TyAlias { .. }, did) => {
                 // Resolve the link on the type the alias points to.
                 // FIXME: if the associated item is defined directly on the type alias,
                 // it will show up on its documentation page, we should link there instead.
@@ -1865,7 +1865,12 @@ fn resolution_failure(
                                 }
                                 return;
                             }
-                            Trait | TyAlias | ForeignTy | OpaqueTy | TraitAlias | TyParam
+                            Trait
+                            | TyAlias { .. }
+                            | ForeignTy
+                            | OpaqueTy
+                            | TraitAlias
+                            | TyParam
                             | Static(_) => "associated item",
                             Impl { .. } | GlobalAsm => unreachable!("not a path"),
                         }

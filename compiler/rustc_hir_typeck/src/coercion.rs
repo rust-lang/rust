@@ -1012,6 +1012,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: Option<ObligationCause<'tcx>>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         let source = self.try_structurally_resolve_type(expr.span, expr_ty);
+        let target = self.try_structurally_resolve_type(
+            cause.as_ref().map_or(expr.span, |cause| cause.span),
+            target,
+        );
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
         let cause =
@@ -1097,8 +1101,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         E: AsCoercionSite,
     {
-        let prev_ty = self.resolve_vars_with_obligations(prev_ty);
-        let new_ty = self.resolve_vars_with_obligations(new_ty);
+        let prev_ty = self.try_structurally_resolve_type(cause.span, prev_ty);
+        let new_ty = self.try_structurally_resolve_type(new.span, new_ty);
         debug!(
             "coercion::try_find_coercion_lub({:?}, {:?}, exprs={:?} exprs)",
             prev_ty,

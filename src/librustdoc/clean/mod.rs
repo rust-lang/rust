@@ -1706,7 +1706,7 @@ fn maybe_expand_private_type_alias<'tcx>(
     cx: &mut DocContext<'tcx>,
     path: &hir::Path<'tcx>,
 ) -> Option<Type> {
-    let Res::Def(DefKind::TyAlias, def_id) = path.res else { return None };
+    let Res::Def(DefKind::TyAlias { .. }, def_id) = path.res else { return None };
     // Substitute private type aliases
     let def_id = def_id.as_local()?;
     let alias = if !cx.cache.effective_visibilities.is_exported(cx.tcx, def_id.to_def_id())
@@ -1970,7 +1970,7 @@ impl<'tcx> ContainerTy<'tcx> {
                 let (DefKind::Struct
                 | DefKind::Union
                 | DefKind::Enum
-                | DefKind::TyAlias
+                | DefKind::TyAlias { .. }
                 | DefKind::Trait
                 | DefKind::AssocTy
                 | DefKind::Variant) = tcx.def_kind(container)
@@ -2709,7 +2709,7 @@ fn clean_impl<'tcx>(
     let for_ = clean_ty(impl_.self_ty, cx);
     let type_alias =
         for_.def_id(&cx.cache).and_then(|alias_def_id: DefId| match tcx.def_kind(alias_def_id) {
-            DefKind::TyAlias => Some(clean_middle_ty(
+            DefKind::TyAlias { .. } => Some(clean_middle_ty(
                 ty::Binder::dummy(tcx.type_of(def_id).instantiate_identity()),
                 cx,
                 Some(def_id.to_def_id()),

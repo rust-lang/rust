@@ -592,7 +592,10 @@ pub(crate) fn report_cycle<'a, D: DepKind>(
         });
     }
 
-    let alias = if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TyAlias)) {
+    let alias = if stack
+        .iter()
+        .all(|entry| matches!(entry.query.def_kind, Some(DefKind::TyAlias { .. })))
+    {
         Some(crate::error::Alias::Ty)
     } else if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TraitAlias)) {
         Some(crate::error::Alias::Trait)

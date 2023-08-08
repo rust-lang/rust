@@ -439,7 +439,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 DefKind::Struct
                 | DefKind::Ctor(CtorOf::Struct, ..)
                 | DefKind::Union
-                | DefKind::TyAlias
+                | DefKind::TyAlias { .. }
                 | DefKind::AssocTy,
                 _,
             )

@@ -470,7 +470,7 @@ impl<'a> PathSource<'a> {
                         | DefKind::Enum
                         | DefKind::Trait
                         | DefKind::TraitAlias
-                        | DefKind::TyAlias
+                        | DefKind::TyAlias { .. }
                         | DefKind::AssocTy
                         | DefKind::TyParam
                         | DefKind::OpaqueTy
@@ -509,7 +509,7 @@ impl<'a> PathSource<'a> {
                     DefKind::Struct
                         | DefKind::Union
                         | DefKind::Variant
-                        | DefKind::TyAlias
+                        | DefKind::TyAlias { .. }
                         | DefKind::AssocTy,
                     _,
                 ) | Res::SelfTyParam { .. }
@@ -1740,7 +1740,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 Res::Def(DefKind::Struct, def_id)
                 | Res::Def(DefKind::Union, def_id)
                 | Res::Def(DefKind::Enum, def_id)
-                | Res::Def(DefKind::TyAlias, def_id)
+                | Res::Def(DefKind::TyAlias { .. }, def_id)
                 | Res::Def(DefKind::Trait, def_id)
                     if i + 1 == proj_start =>
                 {

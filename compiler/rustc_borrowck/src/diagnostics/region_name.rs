@@ -516,7 +516,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         // be the same as those of the ADT.
                         // FIXME: We should be able to do something similar to
                         // match_adt_and_segment in this case.
-                        Res::Def(DefKind::TyAlias, _) => (),
+                        Res::Def(DefKind::TyAlias { .. }, _) => (),
                         _ => {
                             if let Some(last_segment) = path.segments.last() {
                                 if let Some(highlight) = self.match_adt_and_segment(
