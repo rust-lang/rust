@@ -265,6 +265,10 @@ fn exported_symbols_provider_local(
             externally_injected_weak_symbols.push("__msan_track_origins");
         }
     }
+    if tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::ADDRESS) {
+        // Similar to profiling, preserve weak asan symbols during LTO.
+        externally_injected_weak_symbols.push("___asan_globals_registered");
+    }
     symbols.extend(externally_injected_weak_symbols.into_iter().map(|sym| {
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
         (
