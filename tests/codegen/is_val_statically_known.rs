@@ -9,39 +9,39 @@ pub enum B {
 }
 
 #[inline]
-pub fn tuple_struct(a: A) -> i32 {
+pub fn _u32(a: u32) -> i32 {
     if unsafe { is_val_statically_known(a) } { 1 } else { 0 }
 }
 
-// CHECK-LABEL: @tuple_struct_true(
+// CHECK-LABEL: @_u32_true(
 #[no_mangle]
-pub fn tuple_struct_true() -> i32 {
+pub fn _u32_true() -> i32 {
     // CHECK: ret i32 1
-    tuple_struct(A(1))
+    _u32(1)
 }
 
-// CHECK-LABEL: @tuple_struct_false(
+// CHECK-LABEL: @_u32_false(
 #[no_mangle]
-pub fn tuple_struct_false(a: A) -> i32 {
+pub fn _u32_false(a: u32) -> i32 {
     // CHECK: ret i32 0
-    tuple_struct(a)
+    _u32(a)
 }
 
 #[inline]
-pub fn r#enum(b: B) -> i32 {
+pub fn _bool(b: bool) -> i32 {
     if unsafe { is_val_statically_known(b) } { 3 } else { 2 }
 }
 
-// CHECK-LABEL: @enum_true(
+// CHECK-LABEL: @_bool_true(
 #[no_mangle]
-pub fn enum_true() -> i32 {
+pub fn _bool_true() -> i32 {
     // CHECK: ret i32 3
-    r#enum(B::Ye(2))
+    _bool(true)
 }
 
-// CHECK-LABEL: @enum_false(
+// CHECK-LABEL: @_bool_false(
 #[no_mangle]
-pub fn enum_false(b: B) -> i32 {
+pub fn _bool_false(b: bool) -> i32 {
     // CHECK: ret i32 2
-    r#enum(b)
+    _bool(b)
 }

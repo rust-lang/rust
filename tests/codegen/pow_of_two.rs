@@ -1,6 +1,5 @@
 // compile-flags: --crate-type=lib
 
-// CHECK: @b = unnamed_addr alias i64 (i32), ptr @a
 // CHECK-LABEL: @a(
 #[no_mangle]
 pub fn a(exp: u32) -> u64 {
@@ -11,6 +10,7 @@ pub fn a(exp: u32) -> u64 {
     2u64.pow(exp)
 }
 
+// This is sometimes an alias to `a`, but this isn't guaranteed
 #[no_mangle]
 pub fn b(exp: u32) -> i64 {
     2i64.pow(exp)

@@ -542,11 +542,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     )?;
                 }
             }
-            // The name of this intrinsic is actually misleading. It actually
-            // represents whether the value is known to the optimizer (LLVM).
-            // The value of `arg`, while known to the machine, should be
-            // considered unknown to the optimizer as we haven't gotten to the
-            // codegen stage or ran any sort of optimizations yet.
+            // The intrinsic represents whether the value is known to the optimizer (LLVM).
+            // We're not doing any optimizations here, so there is no optimizer that could know the value.
+            // (We know the value here in the machine of course, but this is the runtime of that code,
+            // not the optimization stage.)
             sym::is_val_statically_known => ecx.write_scalar(Scalar::from_bool(false), dest)?,
             _ => {
                 throw_unsup_format!(
