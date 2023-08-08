@@ -916,21 +916,34 @@ impl !Send for Punct {}
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl !Sync for Punct {}
 
-/// Describes whether a `Punct` is followed immediately by another `Punct` ([`Spacing::Joint`]) or
-/// by a different token or whitespace ([`Spacing::Alone`]).
+/// Indicates whether a `Punct` token can join with the following token
+/// to form a multi-character operator.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub enum Spacing {
-    /// A `Punct` is not immediately followed by another `Punct`.
-    /// E.g. `+` is `Alone` in `+ =`, `+ident` and `+()`.
-    #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-    Alone,
-    /// A `Punct` is immediately followed by another `Punct`.
-    /// E.g. `+` is `Joint` in `+=` and `++`.
+    /// A `Punct` token can join with the following token to form a multi-character operator.
     ///
-    /// Additionally, single quote `'` can join with identifiers to form lifetimes: `'ident`.
+    /// In token streams constructed using proc macro interfaces `Joint` punctuation tokens can be
+    /// followed by any other tokens. \
+    /// However, in token streams parsed from source code compiler will only set spacing to `Joint`
+    /// in the following cases:
+    /// - A `Punct` is immediately followed by another `Punct` without a whitespace. \
+    ///   E.g. `+` is `Joint` in `+=` and `++`.
+    /// - A single quote `'` is immediately followed by an identifier without a whitespace. \
+    ///   E.g. `'` is `Joint` in `'lifetime`.
+    ///
+    /// This list may be extended in the future to enable more token combinations.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Joint,
+    /// A `Punct` token cannot join with the following token to form a multi-character operator.
+    ///
+    /// `Alone` punctuation tokens can be followed by any other tokens. \
+    /// In token streams parsed from source code compiler will set spacing to `Alone` in all cases
+    /// not covered by the conditions for `Joint` above. \
+    /// E.g. `+` is `Alone` in `+ =`, `+ident` and `+()`.
+    /// In particular, token not followed by anything  will also be marked as `Alone`.
+    #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
+    Alone,
 }
 
 impl Punct {
@@ -962,10 +975,9 @@ impl Punct {
         self.0.ch as char
     }
 
-    /// Returns the spacing of this punctuation character, indicating whether it's immediately
-    /// followed by another `Punct` in the token stream, so they can potentially be combined into
-    /// a multi-character operator (`Joint`), or it's followed by some other token or whitespace
-    /// (`Alone`) so the operator has certainly ended.
+    /// Returns the spacing of this punctuation character, indicating whether it can be potentially
+    /// combined into a multi-character operator with the following token (`Joint`), or the operator
+    /// has certainly ended (`Alone`).
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn spacing(&self) -> Spacing {
         if self.0.joint { Spacing::Joint } else { Spacing::Alone }
