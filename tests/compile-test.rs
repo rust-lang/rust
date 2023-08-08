@@ -201,9 +201,10 @@ fn run_ui() {
     let quiet = args.quiet;
 
     compiletest::run_tests_generic(
-        config,
+        vec![config],
+        std::thread::available_parallelism().unwrap(),
         args,
-        move |path, args| compiletest::default_file_filter(path, args) && test_filter(path),
+        move |path, args, config| compiletest::default_file_filter(path, args, config) && test_filter(path),
         compiletest::default_per_file_config,
         if quiet {
             status_emitter::Text::quiet()
@@ -227,9 +228,10 @@ fn run_internal_tests() {
     let quiet = args.quiet;
 
     compiletest::run_tests_generic(
-        config,
+        vec![config],
+        std::thread::available_parallelism().unwrap(),
         args,
-        move |path, args| compiletest::default_file_filter(path, args) && test_filter(path),
+        move |path, args, config| compiletest::default_file_filter(path, args, config) && test_filter(path),
         compiletest::default_per_file_config,
         if quiet {
             status_emitter::Text::quiet()
@@ -259,16 +261,15 @@ fn run_ui_toml() {
     let quiet = args.quiet;
 
     ui_test::run_tests_generic(
-        config,
+        vec![config],
+        std::thread::available_parallelism().unwrap(),
         args,
-        |path, args| compiletest::default_file_filter(path, args) && test_filter(path),
-        |config, path| {
-            let mut config = config.clone();
+        |path, args, config| compiletest::default_file_filter(path, args, config) && test_filter(path),
+        |config, path, _file_contents| {
             config
                 .program
                 .envs
                 .push(("CLIPPY_CONF_DIR".into(), Some(path.parent().unwrap().into())));
-            Some(config)
         },
         if quiet {
             status_emitter::Text::quiet()
@@ -318,11 +319,11 @@ fn run_ui_cargo() {
     let quiet = args.quiet;
 
     ui_test::run_tests_generic(
-        config,
+        vec![config],
+        std::thread::available_parallelism().unwrap(),
         args,
-        |path, _args| test_filter(path) && path.ends_with("Cargo.toml"),
-        |config, path| {
-            let mut config = config.clone();
+        |path, _args, _config| test_filter(path) && path.ends_with("Cargo.toml"),
+        |config, path, _file_contents| {
             config.out_dir = canonicalize(
                 std::env::current_dir()
                     .unwrap()
@@ -330,7 +331,6 @@ fn run_ui_cargo() {
                     .join("ui_test_cargo/")
                     .join(path.parent().unwrap()),
             );
-            Some(config)
         },
         if quiet {
             status_emitter::Text::quiet()
