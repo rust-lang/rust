@@ -1557,6 +1557,49 @@ fn test_hover_function_show_types() {
 }
 
 #[test]
+fn test_hover_function_associated_type_params() {
+    check(
+        r#"
+trait Foo { type Bar; }
+impl Foo for i32 { type Bar = i64; }
+fn foo(arg: <i32 as Foo>::Bar) {}
+fn main() { foo$0; }
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn foo(arg: <i32 as Foo>::Bar)
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+trait Foo<T> { type Bar<U>; }
+impl Foo<i64> for i32 { type Bar<U> = i32; }
+fn foo(arg: <<i32 as Foo<i64>>::Bar<i8> as Foo<i64>>::Bar<i8>) {}
+fn main() { foo$0; }
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn foo(arg: <<i32 as Foo<i64>>::Bar<i8> as Foo<i64>>::Bar<i8>)
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_function_pointer_show_identifiers() {
     check(
         r#"type foo$0 = fn(a: i32, b: i32) -> i32;"#,
