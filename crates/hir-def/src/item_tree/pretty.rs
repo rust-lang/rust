@@ -16,7 +16,7 @@ pub(super) fn print_item_tree(db: &dyn ExpandDatabase, tree: &ItemTree) -> Strin
     let mut p = Printer { db, tree, buf: String::new(), indent_level: 0, needs_indent: true };
 
     if let Some(attrs) = tree.attrs.get(&AttrOwner::TopLevel) {
-        p.print_attrs(attrs, true);
+        p.print_attrs(attrs, true, "\n");
     }
     p.blank();
 
@@ -84,22 +84,23 @@ impl Printer<'_> {
         }
     }
 
-    fn print_attrs(&mut self, attrs: &RawAttrs, inner: bool) {
+    fn print_attrs(&mut self, attrs: &RawAttrs, inner: bool, separated_by: &str) {
         let inner = if inner { "!" } else { "" };
         for attr in &**attrs {
-            wln!(
+            w!(
                 self,
-                "#{}[{}{}]",
+                "#{}[{}{}]{}",
                 inner,
                 attr.path.display(self.db),
                 attr.input.as_ref().map(|it| it.to_string()).unwrap_or_default(),
+                separated_by,
             );
         }
     }
 
-    fn print_attrs_of(&mut self, of: impl Into<AttrOwner>) {
+    fn print_attrs_of(&mut self, of: impl Into<AttrOwner>, separated_by: &str) {
         if let Some(attrs) = self.tree.attrs.get(&of.into()) {
-            self.print_attrs(attrs, false);
+            self.print_attrs(attrs, false, separated_by);
         }
     }
 
@@ -118,7 +119,7 @@ impl Printer<'_> {
                 self.indented(|this| {
                     for field in fields.clone() {
                         let Field { visibility, name, type_ref, ast_id: _ } = &this.tree[field];
-                        this.print_attrs_of(field);
+                        this.print_attrs_of(field, "\n");
                         this.print_visibility(*visibility);
                         w!(this, "{}: ", name.display(self.db));
                         this.print_type_ref(type_ref);
@@ -132,7 +133,7 @@ impl Printer<'_> {
                 self.indented(|this| {
                     for field in fields.clone() {
                         let Field { visibility, name, type_ref, ast_id: _ } = &this.tree[field];
-                        this.print_attrs_of(field);
+                        this.print_attrs_of(field, "\n");
                         this.print_visibility(*visibility);
                         w!(this, "{}: ", name.display(self.db));
                         this.print_type_ref(type_ref);
@@ -195,7 +196,7 @@ impl Printer<'_> {
     }
 
     fn print_mod_item(&mut self, item: ModItem) {
-        self.print_attrs_of(item);
+        self.print_attrs_of(item, "\n");
 
         match item {
             ModItem::Use(it) => {
@@ -261,7 +262,7 @@ impl Printer<'_> {
                 if !params.is_empty() {
                     self.indented(|this| {
                         for param in params.clone() {
-                            this.print_attrs_of(param);
+                            this.print_attrs_of(param, "\n");
                             match &this.tree[param] {
                                 Param::Normal(ty) => {
                                     if flags.contains(FnFlags::HAS_SELF_PARAM) {
@@ -319,7 +320,7 @@ impl Printer<'_> {
                 self.indented(|this| {
                     for variant in variants.clone() {
                         let Variant { name, fields, ast_id: _ } = &this.tree[variant];
-                        this.print_attrs_of(variant);
+                        this.print_attrs_of(variant, "\n");
                         w!(this, "{}", name.display(self.db));
                         this.print_fields(fields);
                         wln!(this, ",");
@@ -484,11 +485,12 @@ impl Printer<'_> {
 
         w!(self, "<");
         let mut first = true;
-        for (_, lt) in params.lifetimes.iter() {
+        for (idx, lt) in params.lifetimes.iter() {
             if !first {
                 w!(self, ", ");
             }
             first = false;
+            self.print_attrs_of(idx, " ");
             w!(self, "{}", lt.name.display(self.db));
         }
         for (idx, x) in params.type_or_consts.iter() {
@@ -496,6 +498,7 @@ impl Printer<'_> {
                 w!(self, ", ");
             }
             first = false;
+            self.print_attrs_of(idx, " ");
             match x {
                 TypeOrConstParamData::TypeParamData(ty) => match &ty.name {
                     Some(name) => w!(self, "{}", name.display(self.db)),

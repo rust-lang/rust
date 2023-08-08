@@ -358,3 +358,15 @@ trait Tr<'a, T: 'a>: Super where Self: for<'a> Tr<'a, T> {}
         "#]],
     )
 }
+
+#[test]
+fn generics_with_attributes() {
+    check(
+        r#"
+struct S<#[cfg(never)] T>;
+        "#,
+        expect![[r#"
+            pub(self) struct S<#[cfg(never)] T>;
+        "#]],
+    )
+}

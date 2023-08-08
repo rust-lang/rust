@@ -6469,3 +6469,22 @@ fn test() {
         "#]],
     );
 }
+
+#[test]
+fn generic_params_disabled_by_cfg() {
+    check(
+        r#"
+struct S<#[cfg(never)] T>;
+fn test() {
+    let s$0: S = S;
+}
+"#,
+        expect![[r#"
+            *s*
+
+            ```rust
+            let s: S // size = 0, align = 1
+            ```
+        "#]],
+    );
+}
