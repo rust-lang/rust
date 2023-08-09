@@ -794,7 +794,7 @@ impl UseTree {
     fn expand_impl(
         &self,
         prefix: Option<ModPath>,
-        cb: &mut dyn FnMut(Idx<ast::UseTree>, ModPath, ImportKind, Option<ImportAlias>),
+        cb: &mut impl FnMut(Idx<ast::UseTree>, ModPath, ImportKind, Option<ImportAlias>),
     ) {
         fn concat_mod_paths(
             prefix: Option<ModPath>,
