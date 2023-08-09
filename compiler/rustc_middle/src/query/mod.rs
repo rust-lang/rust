@@ -194,7 +194,6 @@ rustc_queries! {
     }
 
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
-        no_hash
         desc { "getting the resolver outputs" }
     }
 
