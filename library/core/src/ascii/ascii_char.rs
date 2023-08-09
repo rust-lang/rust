@@ -518,14 +518,14 @@ impl AsciiChar {
     /// Gets this ASCII character as a byte.
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
-    pub const fn as_u8(self) -> u8 {
+    pub const fn to_u8(self) -> u8 {
         self as u8
     }
 
     /// Gets this ASCII character as a `char` Unicode Scalar Value.
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
-    pub const fn as_char(self) -> char {
+    pub const fn to_char(self) -> char {
         self as u8 as char
     }
 
