@@ -156,7 +156,14 @@ pub(crate) enum TypeLocation {
     TupleField,
     TypeAscription(TypeAscriptionTarget),
     /// Generic argument position e.g. `Foo<$0>`
-    GenericArg(Option<(ast::GenericArgList, Option<hir::Trait>, Option<ast::GenericParam>)>),
+    GenericArg {
+        /// The generic argument list containing the generic arg
+        args: Option<ast::GenericArgList>,
+        /// `Some(trait_)` if `trait_` is being instantiated with `args`
+        of_trait: Option<hir::Trait>,
+        /// The generic parameter being filled in by the generic arg
+        corresponding_param: Option<ast::GenericParam>,
+    },
     /// Associated type equality constraint e.g. `Foo<Bar = $0>`
     AssocTypeEq,
     /// Associated constant equality constraint e.g. `Foo<X = $0>`
@@ -171,13 +178,19 @@ impl TypeLocation {
     pub(crate) fn complete_lifetimes(&self) -> bool {
         matches!(
             self,
-            TypeLocation::GenericArg(Some((_, _, Some(ast::GenericParam::LifetimeParam(_)))))
+            TypeLocation::GenericArg {
+                corresponding_param: Some(ast::GenericParam::LifetimeParam(_)),
+                ..
+            }
         )
     }
 
     pub(crate) fn complete_consts(&self) -> bool {
         match self {
-            TypeLocation::GenericArg(Some((_, _, Some(ast::GenericParam::ConstParam(_))))) => true,
+            TypeLocation::GenericArg {
+                corresponding_param: Some(ast::GenericParam::ConstParam(_)),
+                ..
+            } => true,
             TypeLocation::AssocConstEq => true,
             _ => false,
         }
@@ -185,7 +198,7 @@ impl TypeLocation {
 
     pub(crate) fn complete_types(&self) -> bool {
         match self {
-            TypeLocation::GenericArg(Some((_, _, Some(param)))) => {
+            TypeLocation::GenericArg { corresponding_param: Some(param), .. } => {
                 matches!(param, ast::GenericParam::TypeParam(_))
             }
             TypeLocation::AssocConstEq => false,

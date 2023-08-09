@@ -838,7 +838,15 @@ fn classify_name_ref(
             })();
             (args, in_trait, param)
         });
-        override_location.unwrap_or(TypeLocation::GenericArg(location))
+        let (arg_list, of_trait, corresponding_param) = match location {
+            Some((arg_list, of_trait, param)) => (Some(arg_list), of_trait, param),
+            _ => (None, None, None),
+        };
+        override_location.unwrap_or(TypeLocation::GenericArg {
+            args: arg_list,
+            of_trait,
+            corresponding_param,
+        })
     };
 
     let type_location = |node: &SyntaxNode| {
@@ -899,9 +907,8 @@ fn classify_name_ref(
                 ast::GenericArg(it) => generic_arg_location(it),
                 // is this case needed?
                 ast::GenericArgList(it) => {
-                    let location = find_opt_node_in_file_compensated(sema, original_file, Some(it))
-                        .map(|node| (node, None, None));
-                    TypeLocation::GenericArg(location)
+                    let args = find_opt_node_in_file_compensated(sema, original_file, Some(it));
+                    TypeLocation::GenericArg { args, of_trait: None, corresponding_param: None }
                 },
                 ast::TupleField(_) => TypeLocation::TupleField,
                 _ => return None,
