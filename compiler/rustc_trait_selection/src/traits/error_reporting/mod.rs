@@ -7,6 +7,7 @@ use super::{
     ObligationCauseCode, ObligationCtxt, OutputTypeParameterMismatch, Overflow,
     PredicateObligation, SelectionError, TraitNotObjectSafe,
 };
+use crate::errors::{ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch};
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt};
@@ -3121,24 +3122,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         kind: ty::ClosureKind,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let closure_span = self.tcx.def_span(closure_def_id);
-        let mut err = struct_span_err!(
-            self.tcx.sess,
-            closure_span,
-            E0525,
-            "expected a closure that implements the `{}` trait, \
-                but this closure only implements `{}`",
-            kind,
-            found_kind
-        );
 
-        err.span_label(
+        let mut err = ClosureKindMismatch {
             closure_span,
-            format!("this closure implements `{found_kind}`, not `{kind}`"),
-        );
-        err.span_label(
-            obligation.cause.span,
-            format!("the requirement to implement `{kind}` derives from here"),
-        );
+            expected: kind,
+            found: found_kind,
+            cause_span: obligation.cause.span,
+            fn_once_label: None,
+            fn_mut_label: None,
+        };
 
         // Additional context information explaining why the closure only implements
         // a particular trait.
@@ -3146,30 +3138,22 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local());
             match (found_kind, typeck_results.closure_kind_origins().get(hir_id)) {
                 (ty::ClosureKind::FnOnce, Some((span, place))) => {
-                    err.span_label(
-                        *span,
-                        format!(
-                            "closure is `FnOnce` because it moves the \
-                            variable `{}` out of its environment",
-                            ty::place_to_string_for_capture(self.tcx, place)
-                        ),
-                    );
+                    err.fn_once_label = Some(ClosureFnOnceLabel {
+                        span: *span,
+                        place: ty::place_to_string_for_capture(self.tcx, &place),
+                    })
                 }
                 (ty::ClosureKind::FnMut, Some((span, place))) => {
-                    err.span_label(
-                        *span,
-                        format!(
-                            "closure is `FnMut` because it mutates the \
-                            variable `{}` here",
-                            ty::place_to_string_for_capture(self.tcx, place)
-                        ),
-                    );
+                    err.fn_mut_label = Some(ClosureFnMutLabel {
+                        span: *span,
+                        place: ty::place_to_string_for_capture(self.tcx, &place),
+                    })
                 }
                 _ => {}
             }
         }
 
-        err
+        self.tcx.sess.create_err(err)
     }
 
     fn report_type_parameter_mismatch_cyclic_type_error(

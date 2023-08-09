@@ -4,7 +4,7 @@ use rustc_errors::{
     SubdiagnosticMessage,
 };
 use rustc_macros::Diagnostic;
-use rustc_middle::ty::{self, PolyTraitRef, Ty};
+use rustc_middle::ty::{self, ClosureKind, PolyTraitRef, Ty};
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -130,4 +130,38 @@ impl AddToDiagnostic for AdjustSignatureBorrow {
             }
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(trait_selection_closure_kind_mismatch, code = "E0525")]
+pub struct ClosureKindMismatch {
+    #[primary_span]
+    #[label]
+    pub closure_span: Span,
+    pub expected: ClosureKind,
+    pub found: ClosureKind,
+    #[label(trait_selection_closure_kind_requirement)]
+    pub cause_span: Span,
+
+    #[subdiagnostic]
+    pub fn_once_label: Option<ClosureFnOnceLabel>,
+
+    #[subdiagnostic]
+    pub fn_mut_label: Option<ClosureFnMutLabel>,
+}
+
+#[derive(Subdiagnostic)]
+#[label(trait_selection_closure_fn_once_label)]
+pub struct ClosureFnOnceLabel {
+    #[primary_span]
+    pub span: Span,
+    pub place: String,
+}
+
+#[derive(Subdiagnostic)]
+#[label(trait_selection_closure_fn_mut_label)]
+pub struct ClosureFnMutLabel {
+    #[primary_span]
+    pub span: Span,
+    pub place: String,
 }
