@@ -3176,6 +3176,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
         self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
     }
+
+    pub fn metadata_dep_node(self) -> crate::dep_graph::DepNode {
+        crate::dep_graph::make_metadata(self)
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead
