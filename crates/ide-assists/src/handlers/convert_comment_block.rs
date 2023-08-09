@@ -86,11 +86,10 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
     // contents of each line comment when they're put into the block comment.
     let indentation = IndentLevel::from_token(comment.syntax());
 
-    let mut cms: Vec<String> = Vec::new();
-    for cm in comments {
-        let lcm = line_comment_text(indentation, cm)?;
-        cms.push(lcm);
-    }
+    let cms = comments
+        .into_iter()
+        .map(|c| line_comment_text(indentation, c))
+        .collect::<Option<Vec<String>>>()?;
 
     acc.add(
         AssistId("line_to_block", AssistKind::RefactorRewrite),

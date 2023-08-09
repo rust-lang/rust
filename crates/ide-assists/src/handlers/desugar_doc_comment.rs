@@ -50,7 +50,7 @@ pub(crate) fn desugar_doc_comment(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             (
                 TextRange::new(
                     comments[0].syntax().text_range().start(),
-                    comments.last().unwrap().syntax().text_range().end(),
+                    comments.last()?.syntax().text_range().end(),
                 ),
                 Either::Right(comments),
             )
@@ -66,14 +66,11 @@ pub(crate) fn desugar_doc_comment(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 .map(|l| l.strip_prefix(&indentation).unwrap_or(l))
                 .join("\n")
         }
-        Either::Right(comments) => {
-            let mut cms: Vec<String> = Vec::new();
-            for cm in comments {
-                let lcm = line_comment_text(IndentLevel(0), cm)?;
-                cms.push(lcm);
-            }
-            cms.into_iter().join("\n")
-        }
+        Either::Right(comments) => comments
+            .into_iter()
+            .map(|cm| line_comment_text(IndentLevel(0), cm))
+            .collect::<Option<Vec<_>>>()?
+            .join("\n"),
     };
 
     acc.add(
