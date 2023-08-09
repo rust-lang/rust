@@ -244,7 +244,7 @@ pub trait AsFd {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-impl<T: AsFd> AsFd for &T {
+impl<T: AsFd + ?Sized> AsFd for &T {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         T::as_fd(self)
@@ -252,7 +252,7 @@ impl<T: AsFd> AsFd for &T {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-impl<T: AsFd> AsFd for &mut T {
+impl<T: AsFd + ?Sized> AsFd for &mut T {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         T::as_fd(self)
@@ -396,7 +396,7 @@ impl From<OwnedFd> for crate::net::UdpSocket {
 /// impl MyTrait for Box<UdpSocket> {}
 /// # }
 /// ```
-impl<T: AsFd> AsFd for crate::sync::Arc<T> {
+impl<T: AsFd + ?Sized> AsFd for crate::sync::Arc<T> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         (**self).as_fd()
@@ -404,7 +404,7 @@ impl<T: AsFd> AsFd for crate::sync::Arc<T> {
 }
 
 #[stable(feature = "asfd_rc", since = "1.69.0")]
-impl<T: AsFd> AsFd for crate::rc::Rc<T> {
+impl<T: AsFd + ?Sized> AsFd for crate::rc::Rc<T> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         (**self).as_fd()
@@ -412,7 +412,7 @@ impl<T: AsFd> AsFd for crate::rc::Rc<T> {
 }
 
 #[stable(feature = "asfd_ptrs", since = "1.64.0")]
-impl<T: AsFd> AsFd for Box<T> {
+impl<T: AsFd + ?Sized> AsFd for Box<T> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         (**self).as_fd()
