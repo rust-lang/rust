@@ -2307,6 +2307,8 @@ pub struct EncodedMetadata {
     // This is an optional stub metadata containing only the crate header.
     // The header should be very small, so we load it directly into memory.
     stub_metadata: Option<Vec<u8>>,
+    // The path containing the metadata, to record as work product.
+    path: Option<Box<Path>>,
     // We need to carry MaybeTempDir to avoid deleting the temporary
     // directory while accessing the Mmap.
     _temp_dir: Option<MaybeTempDir>,
@@ -2322,14 +2324,24 @@ impl EncodedMetadata {
         let file = std::fs::File::open(&path)?;
         let file_metadata = file.metadata()?;
         if file_metadata.len() == 0 {
-            return Ok(Self { full_metadata: None, stub_metadata: None, _temp_dir: None });
+            return Ok(Self {
+                full_metadata: None,
+                stub_metadata: None,
+                path: None,
+                _temp_dir: None,
+            });
         }
         let full_mmap = unsafe { Some(Mmap::map(file)?) };
 
         let stub =
             if let Some(stub_path) = stub_path { Some(std::fs::read(stub_path)?) } else { None };
 
-        Ok(Self { full_metadata: full_mmap, stub_metadata: stub, _temp_dir: temp_dir })
+        Ok(Self {
+            full_metadata: full_mmap,
+            stub_metadata: stub,
+            path: Some(path.into()),
+            _temp_dir: temp_dir,
+        })
     }
 
     #[inline]
@@ -2340,6 +2352,11 @@ impl EncodedMetadata {
     #[inline]
     pub fn stub_or_full(&self) -> &[u8] {
         self.stub_metadata.as_deref().unwrap_or(self.full())
+    }
+
+    #[inline]
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
     }
 }
 
@@ -2365,7 +2382,7 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
             None
         };
 
-        Self { full_metadata, stub_metadata: stub, _temp_dir: None }
+        Self { full_metadata, stub_metadata: stub, path: None, _temp_dir: None }
     }
 }
 
