@@ -77,8 +77,8 @@ use crate::{
     path::ModPath,
     per_ns::PerNs,
     visibility::Visibility,
-    AstId, BlockId, BlockLoc, CrateRootModuleId, FunctionId, LocalModuleId, Lookup, MacroExpander,
-    MacroId, ModuleId, ProcMacroId,
+    AstId, BlockId, BlockLoc, CrateRootModuleId, ExternCrateId, FunctionId, LocalModuleId, Lookup,
+    MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
 
 /// Contains the results of (early) name resolution.
@@ -105,10 +105,10 @@ pub struct DefMap {
     /// The prelude is empty for non-block DefMaps (unless `#[prelude_import]` was used,
     /// but that attribute is nightly and when used in a block, it affects resolution globally
     /// so we aren't handling this correctly anyways).
-    prelude: Option<ModuleId>,
+    prelude: Option<(ModuleId, Option<UseId>)>,
     /// `macro_use` prelude that contains macros from `#[macro_use]`'d external crates. Note that
     /// this contains all kinds of macro, not just `macro_rules!` macro.
-    macro_use_prelude: FxHashMap<Name, MacroId>,
+    macro_use_prelude: FxHashMap<Name, (MacroId, Option<ExternCrateId>)>,
 
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
@@ -125,7 +125,7 @@ pub struct DefMap {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct DefMapCrateData {
     /// The extern prelude which contains all root modules of external crates that are in scope.
-    extern_prelude: FxHashMap<Name, CrateRootModuleId>,
+    extern_prelude: FxHashMap<Name, (CrateRootModuleId, Option<ExternCrateId>)>,
 
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
@@ -427,15 +427,19 @@ impl DefMap {
         self.block.map(|block| block.block)
     }
 
-    pub(crate) fn prelude(&self) -> Option<ModuleId> {
+    pub(crate) fn prelude(&self) -> Option<(ModuleId, Option<UseId>)> {
         self.prelude
     }
 
-    pub(crate) fn extern_prelude(&self) -> impl Iterator<Item = (&Name, ModuleId)> + '_ {
-        self.data.extern_prelude.iter().map(|(name, &def)| (name, def.into()))
+    pub(crate) fn extern_prelude(
+        &self,
+    ) -> impl Iterator<Item = (&Name, (CrateRootModuleId, Option<ExternCrateId>))> + '_ {
+        self.data.extern_prelude.iter().map(|(name, &def)| (name, def))
     }
 
-    pub(crate) fn macro_use_prelude(&self) -> impl Iterator<Item = (&Name, MacroId)> + '_ {
+    pub(crate) fn macro_use_prelude(
+        &self,
+    ) -> impl Iterator<Item = (&Name, (MacroId, Option<ExternCrateId>))> + '_ {
         self.macro_use_prelude.iter().map(|(name, &def)| (name, def))
     }
 

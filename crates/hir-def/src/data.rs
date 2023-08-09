@@ -487,7 +487,7 @@ impl ExternCrateDeclData {
             db.crate_def_map(loc.container.krate())
                 .extern_prelude()
                 .find(|&(prelude_name, ..)| *prelude_name == name)
-                .map(|(_, root)| root.krate())
+                .map(|(_, (root, _))| root.krate())
         };
 
         Arc::new(Self {
