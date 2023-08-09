@@ -653,6 +653,38 @@ fn test_atanh() {
 }
 
 #[test]
+fn test_gamma() {
+    // precision can differ between platforms
+    assert_approx_eq!(1.0f32.gamma(), 1.0f32);
+    assert_approx_eq!(2.0f32.gamma(), 1.0f32);
+    assert_approx_eq!(3.0f32.gamma(), 2.0f32);
+    assert_approx_eq!(4.0f32.gamma(), 6.0f32);
+    assert_approx_eq!(5.0f32.gamma(), 24.0f32);
+    assert_approx_eq!(0.5f32.gamma(), consts::PI.sqrt());
+    assert_approx_eq!((-0.5f32).gamma(), -2.0 * consts::PI.sqrt());
+    assert_eq!(0.0f32.gamma(), f32::INFINITY);
+    assert_eq!((-0.0f32).gamma(), f32::NEG_INFINITY);
+    assert!((-1.0f32).gamma().is_nan());
+    assert!((-2.0f32).gamma().is_nan());
+    assert!(f32::NAN.gamma().is_nan());
+    assert!(f32::NEG_INFINITY.gamma().is_nan());
+    assert_eq!(f32::INFINITY.gamma(), f32::INFINITY);
+    assert_eq!(171.71f32.gamma(), f32::INFINITY);
+}
+
+#[test]
+fn test_ln_gamma() {
+    assert_approx_eq!(1.0f32.ln_gamma().0, 0.0f32);
+    assert_eq!(1.0f32.ln_gamma().1, 1);
+    assert_approx_eq!(2.0f32.ln_gamma().0, 0.0f32);
+    assert_eq!(2.0f32.ln_gamma().1, 1);
+    assert_approx_eq!(3.0f32.ln_gamma().0, 2.0f32.ln());
+    assert_eq!(3.0f32.ln_gamma().1, 1);
+    assert_approx_eq!((-0.5f32).ln_gamma().0, (2.0 * consts::PI.sqrt()).ln());
+    assert_eq!((-0.5f32).ln_gamma().1, -1);
+}
+
+#[test]
 fn test_real_consts() {
     use super::consts;
 
