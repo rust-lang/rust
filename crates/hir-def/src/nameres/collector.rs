@@ -144,19 +144,10 @@ impl PartialResolvedImport {
     }
 }
 
-// FIXME: `item_tree_id` can be derived from `id`, look into deduplicating this
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum ImportSource {
-    Use {
-        item_tree_id: ItemTreeId<item_tree::Use>,
-        use_tree: Idx<ast::UseTree>,
-        id: UseId,
-        is_prelude: bool,
-    },
-    ExternCrate {
-        item_tree_id: ItemTreeId<item_tree::ExternCrate>,
-        id: ExternCrateId,
-    },
+    Use { use_tree: Idx<ast::UseTree>, id: UseId, is_prelude: bool },
+    ExternCrate { id: ExternCrateId },
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -184,7 +175,7 @@ impl Import {
                 alias,
                 visibility: visibility.clone(),
                 kind,
-                source: ImportSource::Use { item_tree_id, use_tree: idx, id, is_prelude },
+                source: ImportSource::Use { use_tree: idx, id, is_prelude },
             });
         });
     }
@@ -201,7 +192,7 @@ impl Import {
             alias: it.alias.clone(),
             visibility: visibility.clone(),
             kind: ImportKind::Plain,
-            source: ImportSource::ExternCrate { item_tree_id, id },
+            source: ImportSource::ExternCrate { id },
         }
     }
 }
@@ -1469,7 +1460,8 @@ impl DefCollector<'_> {
         // heuristic, but it works in practice.
         let mut diagnosed_extern_crates = FxHashSet::default();
         for directive in &self.unresolved_imports {
-            if let ImportSource::ExternCrate { item_tree_id, id: _ } = directive.import.source {
+            if let ImportSource::ExternCrate { id } = directive.import.source {
+                let item_tree_id = self.db.lookup_intern_extern_crate(id).id;
                 let item_tree = item_tree_id.item_tree(self.db);
                 let extern_crate = &item_tree[item_tree_id.value];
 
@@ -1483,16 +1475,14 @@ impl DefCollector<'_> {
         }
 
         for directive in &self.unresolved_imports {
-            if let ImportSource::Use { item_tree_id, use_tree, id: _, is_prelude: _ } =
-                directive.import.source
-            {
+            if let ImportSource::Use { use_tree, id, is_prelude: _ } = directive.import.source {
                 if matches!(
                     (directive.import.path.segments().first(), &directive.import.path.kind),
                     (Some(krate), PathKind::Plain | PathKind::Abs) if diagnosed_extern_crates.contains(krate)
                 ) {
                     continue;
                 }
-
+                let item_tree_id = self.db.lookup_intern_use(id).id;
                 self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
                     directive.module_id,
                     item_tree_id,
