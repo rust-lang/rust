@@ -50,6 +50,15 @@ use rustc_hir::intravisit::Visitor;
 use std::cmp::{self, Ordering};
 use std::iter;
 
+/// After identifying that `full_expr` is a method call, we use this type to keep the expression's
+/// components readily available to us to point at the right place in diagnostics.
+#[derive(Debug, Clone, Copy)]
+pub struct MethodCallComponents<'tcx> {
+    pub receiver: &'tcx hir::Expr<'tcx>,
+    pub args: &'tcx [hir::Expr<'tcx>],
+    pub full_expr: &'tcx hir::Expr<'tcx>,
+}
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let tcx = self.tcx;
@@ -115,7 +124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: Ident,
         source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
-        args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], &'tcx hir::Expr<'tcx>)>,
+        args: Option<MethodCallComponents<'tcx>>,
         expected: Expectation<'tcx>,
         trait_missing_method: bool,
     ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
@@ -257,18 +266,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_missing_writer(
         &self,
         rcvr_ty: Ty<'tcx>,
-        args: (&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], &'tcx hir::Expr<'tcx>),
+        args: MethodCallComponents<'tcx>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let (ty_str, _ty_file) = self.tcx.short_ty_string(rcvr_ty);
-        let mut err =
-            struct_span_err!(self.tcx.sess, args.0.span, E0599, "cannot write into `{}`", ty_str);
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            args.receiver.span,
+            E0599,
+            "cannot write into `{}`",
+            ty_str
+        );
         err.span_note(
-            args.0.span,
+            args.receiver.span,
             "must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method",
         );
-        if let ExprKind::Lit(_) = args.0.kind {
+        if let ExprKind::Lit(_) = args.receiver.kind {
             err.span_help(
-                args.0.span.shrink_to_lo(),
+                args.receiver.span.shrink_to_lo(),
                 "a writer is needed before this format string",
             );
         };
@@ -282,7 +296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
         source: SelfSource<'tcx>,
-        args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], &'tcx hir::Expr<'tcx>)>,
+        args: Option<MethodCallComponents<'tcx>>,
         sugg_span: Span,
         no_match_data: &mut NoMatchData<'tcx>,
         expected: Expectation<'tcx>,
@@ -953,7 +967,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 unsatisfied_bounds = true;
             }
-        } else if let ty::Adt(def, targs) = rcvr_ty.kind() && let Some((rcvr, _, expr)) = args {
+        } else if let ty::Adt(def, targs) = rcvr_ty.kind() && let Some(args) = args {
             // This is useful for methods on arbitrary self types that might have a simple
             // mutability difference, like calling a method on `Pin<&mut Self>` that is on
             // `Pin<&Self>`.
@@ -972,7 +986,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             })
                     );
                     let rcvr_ty = Ty::new_adt(tcx, *def, new_args);
-                    if let Ok(method) = self.lookup_method_for_diagnostic(rcvr_ty, &item_segment, span, expr, rcvr) {
+                    if let Ok(method) = self.lookup_method_for_diagnostic(
+                        rcvr_ty,
+                        &item_segment,
+                        span,
+                        args.full_expr,
+                        args.receiver,
+                    ) {
                         err.span_note(
                             tcx.def_span(method.def_id),
                             format!("{item_kind} is available for `{rcvr_ty}`"),
@@ -1138,7 +1158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span,
                 rcvr_ty,
                 item_name,
-                args.map(|(_, args, _)| args.len() + 1),
+                args.map(|MethodCallComponents { args, .. }| args.len() + 1),
                 source,
                 no_match_data.out_of_scope_traits.clone(),
                 &unsatisfied_predicates,
@@ -1219,7 +1239,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
-        args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], &'tcx hir::Expr<'tcx>)>,
+        args: Option<MethodCallComponents<'tcx>>,
         span: Span,
         err: &mut Diagnostic,
         sources: &mut Vec<CandidateSource>,
@@ -1370,7 +1390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_ty: Ty<'tcx>,
         source: SelfSource<'tcx>,
         item_name: Ident,
-        args: Option<(&hir::Expr<'tcx>, &[hir::Expr<'tcx>], &'tcx hir::Expr<'tcx>)>,
+        args: Option<MethodCallComponents<'tcx>>,
         sugg_span: Span,
     ) {
         let mut has_unsuggestable_args = false;
@@ -1442,7 +1462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None
             };
             let mut applicability = Applicability::MachineApplicable;
-            let args = if let Some((receiver, args, _)) = args {
+            let args = if let Some(MethodCallComponents { receiver, args, .. }) = args {
                 // The first arg is the same kind as the receiver
                 let explicit_args = if first_arg.is_some() {
                     std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>()
@@ -3022,7 +3042,7 @@ pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
 
 fn print_disambiguation_help<'tcx>(
     item_name: Ident,
-    args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], &'tcx hir::Expr<'tcx>)>,
+    args: Option<MethodCallComponents<'tcx>>,
     err: &mut Diagnostic,
     trait_name: String,
     rcvr_ty: Ty<'_>,
@@ -3034,7 +3054,11 @@ fn print_disambiguation_help<'tcx>(
     fn_has_self_parameter: bool,
 ) {
     let mut applicability = Applicability::MachineApplicable;
-    let (span, sugg) = if let (ty::AssocKind::Fn, Some((receiver, args, _))) = (kind, args) {
+    let (span, sugg) = if let (
+        ty::AssocKind::Fn,
+        Some(MethodCallComponents { receiver, args, .. }),
+    ) = (kind, args)
+    {
         let args = format!(
             "({}{})",
             rcvr_ty.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()),
