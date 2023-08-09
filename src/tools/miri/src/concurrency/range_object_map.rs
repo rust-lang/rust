@@ -45,6 +45,7 @@ impl<T> RangeObjectMap<T> {
         self.v.binary_search_by(|elem| -> std::cmp::Ordering {
             if offset < elem.range.start {
                 // We are too far right (offset is further left).
+                // (`Greater` means that `elem` is greater than the desired target.)
                 std::cmp::Ordering::Greater
             } else if offset >= elem.range.end() {
                 // We are too far left (offset is further right).
