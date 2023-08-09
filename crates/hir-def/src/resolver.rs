@@ -433,16 +433,16 @@ impl Resolver {
                 res.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(mac)));
             })
         });
-        def_map.macro_use_prelude().for_each(|(name, def)| {
+        def_map.macro_use_prelude().for_each(|(name, (def, _extern_crate))| {
             res.add(name, ScopeDef::ModuleDef(def.into()));
         });
-        def_map.extern_prelude().for_each(|(name, def)| {
-            res.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def)));
+        def_map.extern_prelude().for_each(|(name, (def, _extern_crate))| {
+            res.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def.into())));
         });
         BUILTIN_SCOPE.iter().for_each(|(name, &def)| {
             res.add_per_ns(name, def);
         });
-        if let Some(prelude) = def_map.prelude() {
+        if let Some((prelude, _use)) = def_map.prelude() {
             let prelude_def_map = prelude.def_map(db);
             for (name, def) in prelude_def_map[prelude.local_id].scope.entries() {
                 res.add_per_ns(name, def)
@@ -473,7 +473,7 @@ impl Resolver {
         }
 
         // Fill in the prelude traits
-        if let Some(prelude) = self.module_scope.def_map.prelude() {
+        if let Some((prelude, _use)) = self.module_scope.def_map.prelude() {
             let prelude_def_map = prelude.def_map(db);
             traits.extend(prelude_def_map[prelude.local_id].scope.traits());
         }

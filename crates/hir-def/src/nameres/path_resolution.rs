@@ -299,7 +299,7 @@ impl DefMap {
                     Some((_, segment)) => segment,
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
-                if let Some(&def) = self.data.extern_prelude.get(segment) {
+                if let Some(&(def, _extern_crate)) = self.data.extern_prelude.get(segment) {
                     tracing::debug!("absolute path {:?} resolved to crate {:?}", path, def);
                     PerNs::types(def.into(), Visibility::Public)
                 } else {
@@ -452,15 +452,14 @@ impl DefMap {
                 // Don't resolve extern prelude in block `DefMap`s.
                 return PerNs::none();
             }
-            self.data
-                .extern_prelude
-                .get(name)
-                .map_or(PerNs::none(), |&it| PerNs::types(it.into(), Visibility::Public))
+            self.data.extern_prelude.get(name).map_or(PerNs::none(), |&(it, _extern_crate)| {
+                PerNs::types(it.into(), Visibility::Public)
+            })
         };
         let macro_use_prelude = || {
-            self.macro_use_prelude
-                .get(name)
-                .map_or(PerNs::none(), |&it| PerNs::macros(it.into(), Visibility::Public))
+            self.macro_use_prelude.get(name).map_or(PerNs::none(), |&(it, _extern_crate)| {
+                PerNs::macros(it.into(), Visibility::Public)
+            })
         };
         let prelude = || self.resolve_in_prelude(db, name);
 
@@ -492,14 +491,16 @@ impl DefMap {
                 .extern_prelude
                 .get(name)
                 .copied()
-                .map_or(PerNs::none(), |it| PerNs::types(it.into(), Visibility::Public))
+                .map_or(PerNs::none(), |(it, _extern_crate)| {
+                    PerNs::types(it.into(), Visibility::Public)
+                })
         };
 
         from_crate_root.or_else(from_extern_prelude)
     }
 
     fn resolve_in_prelude(&self, db: &dyn DefDatabase, name: &Name) -> PerNs {
-        if let Some(prelude) = self.prelude {
+        if let Some((prelude, _use)) = self.prelude {
             let keep;
             let def_map = if prelude.krate == self.krate {
                 self

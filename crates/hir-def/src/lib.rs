@@ -109,6 +109,17 @@ impl CrateRootModuleId {
     }
 }
 
+impl PartialEq<ModuleId> for CrateRootModuleId {
+    fn eq(&self, other: &ModuleId) -> bool {
+        other.block.is_none() && other.local_id == DefMap::ROOT && self.krate == other.krate
+    }
+}
+impl PartialEq<CrateRootModuleId> for ModuleId {
+    fn eq(&self, other: &CrateRootModuleId) -> bool {
+        other == self
+    }
+}
+
 impl From<CrateRootModuleId> for ModuleId {
     fn from(CrateRootModuleId { krate }: CrateRootModuleId) -> Self {
         ModuleId { krate, block: None, local_id: DefMap::ROOT }
