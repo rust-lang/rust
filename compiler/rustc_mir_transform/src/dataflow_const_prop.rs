@@ -46,6 +46,12 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
             return;
         }
 
+        // Avoid computing layout inside coroutines, since their `optimized_mir` is used for layout
+        // computation, which can create a cycle.
+        if body.coroutine.is_some() {
+            return;
+        }
+
         // We want to have a somewhat linear runtime w.r.t. the number of statements/terminators.
         // Let's call this number `n`. Dataflow analysis has `O(h*n)` transfer function
         // applications, where `h` is the height of the lattice. Because the height of our lattice
@@ -237,9 +243,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             TerminatorKind::Drop { place, .. } => {
                 state.flood_with(place.as_ref(), &self.map, FlatSet::<Scalar>::BOTTOM);
             }
-            TerminatorKind::Yield { .. } => {
-                // They would have an effect, but are not allowed in this phase.
-                bug!("encountered disallowed terminator");
+            TerminatorKind::Yield { resume_arg, .. } => {
+                state.flood_with(resume_arg.as_ref(), &self.map, FlatSet::<Scalar>::BOTTOM);
             }
             TerminatorKind::SwitchInt { discr, targets } => {
                 return self.handle_switch_int(discr, targets, state);
