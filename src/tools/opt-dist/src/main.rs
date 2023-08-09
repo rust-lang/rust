@@ -13,10 +13,11 @@ use crate::exec::{cmd, Bootstrap};
 use crate::tests::run_tests;
 use crate::timer::Timer;
 use crate::training::{gather_llvm_bolt_profiles, gather_llvm_profiles, gather_rustc_profiles};
+use crate::utils::artifact_size::print_binary_sizes;
 use crate::utils::io::{copy_directory, move_directory, reset_directory};
 use crate::utils::{
-    clear_llvm_files, format_env_variables, print_binary_sizes, print_free_disk_space,
-    retry_action, with_log_group,
+    clear_llvm_files, format_env_variables, print_free_disk_space, retry_action, with_log_group,
+    write_timer_to_summary,
 };
 
 mod bolt;
@@ -358,6 +359,10 @@ fn main() -> anyhow::Result<()> {
 
     let result = execute_pipeline(&env, &mut timer, build_args);
     log::info!("Timer results\n{}", timer.format_stats());
+
+    if let Ok(summary_path) = std::env::var("GITHUB_STEP_SUMMARY") {
+        write_timer_to_summary(&summary_path, &timer)?;
+    }
 
     print_free_disk_space()?;
     result.context("Optimized build pipeline has failed")?;
