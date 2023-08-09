@@ -637,6 +637,31 @@ fn f(t: impl MyTrait<Item1 = $0
     check(
         r#"
 trait MyTrait {
+    type Item1;
+    type Item2;
+};
+
+fn f(t: impl MyTrait<Item1 = u8, Item2 = $0
+"#,
+        expect![[r#"
+            en Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            st Record
+            st Tuple
+            st Unit
+            tt MyTrait
+            tt Trait
+            un Union
+            bt u32
+            kw crate::
+            kw self::
+        "#]],
+    );
+
+    check(
+        r#"
+trait MyTrait {
     const C: usize;
 };
 
