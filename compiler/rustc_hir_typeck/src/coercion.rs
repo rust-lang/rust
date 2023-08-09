@@ -1007,15 +1007,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
-        target: Ty<'tcx>,
+        mut target: Ty<'tcx>,
         allow_two_phase: AllowTwoPhase,
         cause: Option<ObligationCause<'tcx>>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         let source = self.try_structurally_resolve_type(expr.span, expr_ty);
-        let target = self.try_structurally_resolve_type(
-            cause.as_ref().map_or(expr.span, |cause| cause.span),
-            target,
-        );
+        if self.next_trait_solver() {
+            target = self.try_structurally_resolve_type(
+                cause.as_ref().map_or(expr.span, |cause| cause.span),
+                target,
+            );
+        }
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
         let cause =
