@@ -853,7 +853,6 @@ pub enum Nonterminal {
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::AttrItem>),
     NtPath(P<ast::Path>),
-    NtVis(P<ast::Visibility>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
@@ -946,7 +945,6 @@ impl Nonterminal {
             NtIdent(ident, _) | NtLifetime(ident) => ident.span,
             NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
-            NtVis(vis) => vis.span,
         }
     }
 }
@@ -980,7 +978,6 @@ impl fmt::Debug for Nonterminal {
             NtLiteral(..) => f.pad("NtLiteral(..)"),
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
-            NtVis(..) => f.pad("NtVis(..)"),
             NtLifetime(..) => f.pad("NtLifetime(..)"),
         }
     }

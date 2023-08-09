@@ -816,7 +816,6 @@ pub fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T
             visit_lazy_tts(tokens, vis);
         }
         token::NtPath(path) => vis.visit_path(path),
-        token::NtVis(visib) => vis.visit_vis(visib),
     }
 }
 
