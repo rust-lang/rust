@@ -562,6 +562,13 @@ pub struct UnknownArchiveKind<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_expected_coverage_symbol)]
+pub struct ExpectedCoverageSymbol {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_expected_used_symbol)]
 pub struct ExpectedUsedSymbol {
     #[primary_span]

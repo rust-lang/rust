@@ -34,7 +34,7 @@ pub fn expand_deriving_eq(
             attributes: thin_vec![
                 cx.attr_word(sym::inline, span),
                 cx.attr_nested_word(sym::doc, sym::hidden, span),
-                cx.attr_word(sym::no_coverage, span)
+                cx.attr_nested_word(sym::coverage, sym::off, span)
             ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
