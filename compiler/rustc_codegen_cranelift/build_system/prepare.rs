@@ -3,18 +3,18 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::build_sysroot::STDLIB_SRC;
-use super::path::{Dirs, RelPath};
-use super::rustc_info::get_default_sysroot;
-use super::utils::{
+use crate::build_sysroot::STDLIB_SRC;
+use crate::path::{Dirs, RelPath};
+use crate::rustc_info::get_default_sysroot;
+use crate::utils::{
     copy_dir_recursively, git_command, remove_dir_if_exists, retry_spawn_and_wait, spawn_and_wait,
 };
 
 pub(crate) fn prepare(dirs: &Dirs) {
     RelPath::DOWNLOAD.ensure_exists(dirs);
-    super::tests::RAND_REPO.fetch(dirs);
-    super::tests::REGEX_REPO.fetch(dirs);
-    super::tests::PORTABLE_SIMD_REPO.fetch(dirs);
+    crate::tests::RAND_REPO.fetch(dirs);
+    crate::tests::REGEX_REPO.fetch(dirs);
+    crate::tests::PORTABLE_SIMD_REPO.fetch(dirs);
 }
 
 pub(crate) fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {

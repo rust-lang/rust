@@ -260,6 +260,13 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn isa::Tar
     flags_builder.set("enable_verifier", enable_verifier).unwrap();
     flags_builder.set("regalloc_checker", enable_verifier).unwrap();
 
+    let preserve_frame_pointer = sess.target.options.frame_pointer
+        != rustc_target::spec::FramePointer::MayOmit
+        || matches!(sess.opts.cg.force_frame_pointers, Some(true));
+    if preserve_frame_pointer {
+        flags_builder.set("preserve_frame_pointers", "true").unwrap();
+    }
+
     let tls_model = match target_triple.binary_format {
         BinaryFormat::Elf => "elf_gd",
         BinaryFormat::Macho => "macho",

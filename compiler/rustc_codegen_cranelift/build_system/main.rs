@@ -16,6 +16,7 @@ mod config;
 mod path;
 mod prepare;
 mod rustc_info;
+mod shared_utils;
 mod tests;
 mod utils;
 
@@ -169,8 +170,8 @@ fn main() {
             cargo,
             rustc,
             rustdoc,
-            rustflags: String::new(),
-            rustdocflags: String::new(),
+            rustflags: vec![],
+            rustdocflags: vec![],
             triple,
             runner: vec![],
         }

@@ -2,13 +2,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::path::{Dirs, RelPath};
-use super::rustc_info::get_file_name;
-use super::utils::{
+use crate::path::{Dirs, RelPath};
+use crate::rustc_info::get_file_name;
+use crate::utils::{
     maybe_incremental, remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler,
     LogGroup,
 };
-use super::{CodegenBackend, SysrootKind};
+use crate::{config, CodegenBackend, SysrootKind};
 
 static DIST_DIR: RelPath = RelPath::DIST;
 static BIN_DIR: RelPath = RelPath::DIST.join("bin");
@@ -128,8 +128,8 @@ pub(crate) fn build_sysroot(
             cargo: bootstrap_host_compiler.cargo.clone(),
             rustc: rustc_clif.clone(),
             rustdoc: rustdoc_clif.clone(),
-            rustflags: String::new(),
-            rustdocflags: String::new(),
+            rustflags: vec![],
+            rustdocflags: vec![],
             triple: target_triple,
             runner: vec![],
         }
@@ -185,7 +185,7 @@ fn build_sysroot_for_triple(
 
 #[must_use]
 fn build_llvm_sysroot_for_triple(compiler: Compiler) -> SysrootTarget {
-    let default_sysroot = super::rustc_info::get_default_sysroot(&compiler.rustc);
+    let default_sysroot = crate::rustc_info::get_default_sysroot(&compiler.rustc);
 
     let mut target_libs = SysrootTarget { triple: compiler.triple, libs: vec![] };
 
@@ -234,32 +234,32 @@ fn build_clif_sysroot_for_triple(
 
     let build_dir = STANDARD_LIBRARY.target_dir(dirs).join(&compiler.triple).join(channel);
 
-    if !super::config::get_bool("keep_sysroot") {
+    if !config::get_bool("keep_sysroot") {
         // Cleanup the deps dir, but keep build scripts and the incremental cache for faster
         // recompilation as they are not affected by changes in cg_clif.
         remove_dir_if_exists(&build_dir.join("deps"));
     }
 
     // Build sysroot
-    let mut rustflags = " -Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
+    let mut rustflags = vec!["-Zforce-unstable-if-unmarked".to_owned(), "-Cpanic=abort".to_owned()];
     match cg_clif_dylib_path {
         CodegenBackend::Local(path) => {
-            rustflags.push_str(&format!(" -Zcodegen-backend={}", path.to_str().unwrap()));
+            rustflags.push(format!("-Zcodegen-backend={}", path.to_str().unwrap()));
         }
         CodegenBackend::Builtin(name) => {
-            rustflags.push_str(&format!(" -Zcodegen-backend={name}"));
+            rustflags.push(format!("-Zcodegen-backend={name}"));
         }
     };
     // Necessary for MinGW to find rsbegin.o and rsend.o
-    rustflags
-        .push_str(&format!(" --sysroot {}", RTSTARTUP_SYSROOT.to_path(dirs).to_str().unwrap()));
+    rustflags.push("--sysroot".to_owned());
+    rustflags.push(RTSTARTUP_SYSROOT.to_path(dirs).to_str().unwrap().to_owned());
     if channel == "release" {
         // Incremental compilation by default disables mir inlining. This leads to both a decent
         // compile perf and a significant runtime perf regression. As such forcefully enable mir
         // inlining.
-        rustflags.push_str(" -Zinline-mir");
+        rustflags.push("-Zinline-mir".to_owned());
     }
-    compiler.rustflags += &rustflags;
+    compiler.rustflags.extend(rustflags);
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
     maybe_incremental(&mut build_cmd);
     if channel == "release" {
@@ -289,8 +289,8 @@ fn build_clif_sysroot_for_triple(
 }
 
 fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
-    if !super::config::get_bool("keep_sysroot") {
-        super::prepare::prepare_stdlib(dirs, &compiler.rustc);
+    if !config::get_bool("keep_sysroot") {
+        crate::prepare::prepare_stdlib(dirs, &compiler.rustc);
     }
 
     if !compiler.triple.ends_with("windows-gnu") {
@@ -306,6 +306,7 @@ fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
         let obj = RTSTARTUP_SYSROOT.to_path(dirs).join(format!("{file}.o"));
         let mut build_rtstartup_cmd = Command::new(&compiler.rustc);
         build_rtstartup_cmd
+            .arg("-Ainternal_features") // Missing #[allow(internal_features)]
             .arg("--target")
             .arg(&compiler.triple)
             .arg("--emit=obj")
