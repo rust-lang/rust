@@ -164,6 +164,7 @@
 #![feature(const_waker)]
 #![feature(core_panic)]
 #![feature(duration_consts_float)]
+#![feature(generic_const_exprs)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
 #![feature(ip_bits)]

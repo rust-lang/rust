@@ -10,6 +10,7 @@ use crate::convert::{Infallible, TryFrom};
 use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
+use crate::intrinsics;
 use crate::iter::UncheckedIterator;
 use crate::mem::{self, MaybeUninit};
 use crate::ops::{
@@ -450,6 +451,36 @@ macro_rules! array_impl_default {
 }
 
 array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+
+impl<T, const N: usize, const M: usize> [[T; N]; M] {
+    /// Converts from `[[T; N]; M]` to `[T; N * M]`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_flattening)]
+    ///
+    /// let x: [[i32; 3]; 3] = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+    /// assert_eq!(x.flatten(), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    /// ```
+    ///
+    /// Flattening only removes one level of nesting at a time:
+    ///
+    /// ```
+    /// #![feature(array_flattening)]
+    ///
+    /// let x: [[[i32; 2]; 2]; 2] = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
+    /// assert_eq!(x.flatten(), [[1, 2], [3, 4], [5, 6], [7, 8]]);
+    /// assert_eq!(x.flatten().flatten(), [1, 2, 3, 4, 5, 6, 7, 8]);
+    /// ```
+    #[inline]
+    #[unstable(feature = "array_flattening", issue = "none")]
+    #[rustc_const_unstable(feature = "const_array_flattening", issue = "none")]
+    pub const fn flatten(self) -> [T; N * M] {
+        // SAFETY: `[[T; N]; M]` and `[T; N * M]` have the same layout.
+        unsafe { intrinsics::transmute_unchecked(self) }
+    }
+}
 
 impl<T, const N: usize> [T; N] {
     /// Returns an array of the same size as `self`, with function `f` applied to each element
