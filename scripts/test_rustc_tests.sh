@@ -49,6 +49,8 @@ rm tests/ui/proc-macro/allowed-signatures.rs
 # vendor intrinsics
 rm tests/ui/sse2.rs # cpuid not supported, so sse2 not detected
 rm tests/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
+rm tests/ui/simd/intrinsic/generic-bswap-byte.rs # simd_bswap not yet implemented
+rm tests/ui/simd/intrinsic/generic-arithmetic-pass.rs # many missing simd intrinsics
 
 # exotic linkages
 rm tests/ui/issues/issue-33992.rs # unsupported linkages
@@ -124,6 +126,8 @@ rm tests/ui/typeck/issue-46112.rs # same
 rm tests/ui/consts/const_cmp_type_id.rs # same
 rm tests/ui/consts/issue-73976-monomorphic.rs # same
 rm tests/ui/rfcs/rfc-3348-c-string-literals/non-ascii.rs # same
+rm tests/ui/consts/const-eval/nonnull_as_ref_ub.rs # same
+rm tests/ui/consts/issue-94675.rs # same
 
 # rustdoc-clif passes extra args, suppressing the help message when no args are passed
 rm -r tests/run-make/issue-88756-default-output
@@ -158,8 +162,6 @@ rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
-rm tests/ui/panic-handler/weak-lang-item-2.rs # Will be fixed by #113568
-
 cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
 
 # prevent $(RUSTDOC) from picking up the sysroot built by x.py. It conflicts with the one used by
@@ -172,7 +174,7 @@ index ea06b620c4c..b969d0009c6 100644
 @@ -9,7 +9,7 @@ RUSTC_ORIGINAL := \$(RUSTC)
  BARE_RUSTC := \$(HOST_RPATH_ENV) '\$(RUSTC)'
  BARE_RUSTDOC := \$(HOST_RPATH_ENV) '\$(RUSTDOC)'
- RUSTC := \$(BARE_RUSTC) --out-dir \$(TMPDIR) -L \$(TMPDIR) \$(RUSTFLAGS)
+ RUSTC := \$(BARE_RUSTC) --out-dir \$(TMPDIR) -L \$(TMPDIR) \$(RUSTFLAGS) -Ainternal_features
 -RUSTDOC := \$(BARE_RUSTDOC) -L \$(TARGET_RPATH_DIR)
 +RUSTDOC := \$(BARE_RUSTDOC)
  ifdef RUSTC_LINKER
