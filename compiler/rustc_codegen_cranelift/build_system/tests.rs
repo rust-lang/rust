@@ -1,15 +1,16 @@
-use super::build_sysroot;
-use super::config;
-use super::path::{Dirs, RelPath};
-use super::prepare::{apply_patches, GitRepo};
-use super::rustc_info::get_default_sysroot;
-use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler, LogGroup};
-use super::{CodegenBackend, SysrootKind};
-use std::env;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+
+use crate::build_sysroot;
+use crate::config;
+use crate::path::{Dirs, RelPath};
+use crate::prepare::{apply_patches, GitRepo};
+use crate::rustc_info::get_default_sysroot;
+use crate::shared_utils::rustflags_from_env;
+use crate::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler, LogGroup};
+use crate::{CodegenBackend, SysrootKind};
 
 static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::BUILD.join("example");
 
@@ -306,7 +307,7 @@ pub(crate) fn run_tests(
         );
         // Rust's build system denies a couple of lints that trigger on several of the test
         // projects. Changing the code to fix them is not worth it, so just silence all lints.
-        target_compiler.rustflags += " --cap-lints=allow";
+        target_compiler.rustflags.push("--cap-lints=allow".to_owned());
 
         let runner = TestRunner::new(
             dirs.clone(),
@@ -350,18 +351,15 @@ impl<'a> TestRunner<'a> {
         is_native: bool,
         stdlib_source: PathBuf,
     ) -> Self {
-        if let Ok(rustflags) = env::var("RUSTFLAGS") {
-            target_compiler.rustflags.push(' ');
-            target_compiler.rustflags.push_str(&rustflags);
-        }
-        if let Ok(rustdocflags) = env::var("RUSTDOCFLAGS") {
-            target_compiler.rustdocflags.push(' ');
-            target_compiler.rustdocflags.push_str(&rustdocflags);
-        }
+        target_compiler.rustflags.extend(rustflags_from_env("RUSTFLAGS"));
+        target_compiler.rustdocflags.extend(rustflags_from_env("RUSTDOCFLAGS"));
 
         // FIXME fix `#[linkage = "extern_weak"]` without this
         if target_compiler.triple.contains("darwin") {
-            target_compiler.rustflags.push_str(" -Clink-arg=-undefined -Clink-arg=dynamic_lookup");
+            target_compiler.rustflags.extend([
+                "-Clink-arg=-undefined".to_owned(),
+                "-Clink-arg=dynamic_lookup".to_owned(),
+            ]);
         }
 
         let jit_supported = use_unstable_features
@@ -470,7 +468,7 @@ impl<'a> TestRunner<'a> {
         S: AsRef<OsStr>,
     {
         let mut cmd = Command::new(&self.target_compiler.rustc);
-        cmd.args(self.target_compiler.rustflags.split_whitespace());
+        cmd.args(&self.target_compiler.rustflags);
         cmd.arg("-L");
         cmd.arg(format!("crate={}", BUILD_EXAMPLE_OUT_DIR.to_path(&self.dirs).display()));
         cmd.arg("--out-dir");

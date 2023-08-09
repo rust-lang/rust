@@ -1,8 +1,8 @@
-use super::build_sysroot;
-use super::path::Dirs;
-use super::prepare::GitRepo;
-use super::utils::{spawn_and_wait, CargoProject, Compiler};
-use super::{CodegenBackend, SysrootKind};
+use crate::build_sysroot;
+use crate::path::Dirs;
+use crate::prepare::GitRepo;
+use crate::utils::{spawn_and_wait, CargoProject, Compiler};
+use crate::{CodegenBackend, SysrootKind};
 
 static ABI_CAFE_REPO: GitRepo = GitRepo::github(
     "Gankra",
