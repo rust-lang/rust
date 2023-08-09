@@ -1,8 +1,8 @@
-use rustc_middle::mir::interpret::{alloc_range, ConstValue, Pointer};
+use rustc_middle::mir::interpret::{alloc_range, AllocRange, ConstValue, Pointer};
 
 use super::{mir::Mutability, mir::Safety, with, DefId};
 use crate::{
-    rustc_internal::Opaque,
+    rustc_internal::{opaque, Opaque},
     rustc_smir::{Stable, Tables},
 };
 
@@ -353,14 +353,47 @@ pub fn new_allocation<'tcx>(
                 .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(const_kind.ty()))
                 .unwrap()
                 .size;
-            let bytes = alloc.0.get_bytes_unchecked(alloc_range(offset, ty_size));
-            let offset_allocation = rustc_middle::mir::interpret::Allocation::from_bytes(
-                bytes,
-                alloc.0.align,
-                alloc.0.mutability,
-            );
-            offset_allocation.stable(tables)
+            allocation_filter(&alloc.0, alloc_range(offset, ty_size), tables)
         }
+    }
+}
+
+/// Creates an `Allocation` only from information within the `AllocRange`.
+pub fn allocation_filter<'tcx>(
+    alloc: &rustc_middle::mir::interpret::Allocation,
+    alloc_range: AllocRange,
+    tables: &mut Tables<'tcx>,
+) -> Allocation {
+    let mut bytes: Vec<Option<u8>> = alloc
+        .inspect_with_uninit_and_ptr_outside_interpreter(
+            alloc_range.start.bytes_usize()..alloc_range.end().bytes_usize(),
+        )
+        .iter()
+        .copied()
+        .map(Some)
+        .collect();
+    for (i, b) in bytes.iter_mut().enumerate() {
+        if !alloc
+            .init_mask()
+            .get(rustc_target::abi::Size::from_bytes(i + alloc_range.start.bytes_usize()))
+        {
+            *b = None;
+        }
+    }
+    let mut ptrs = Vec::new();
+    for (offset, prov) in alloc
+        .provenance()
+        .ptrs()
+        .iter()
+        .filter(|a| a.0 >= alloc_range.start && a.0 <= alloc_range.end())
+    {
+        ptrs.push((offset.bytes_usize() - alloc_range.start.bytes_usize(), opaque(prov)));
+    }
+    Allocation {
+        bytes: bytes,
+        provenance: ProvenanceMap { ptrs },
+        align: alloc.align.bytes(),
+        mutability: alloc.mutability.stable(tables),
     }
 }
 

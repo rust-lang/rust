@@ -9,10 +9,13 @@
 
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
-use crate::stable_mir::ty::{new_allocation, FloatTy, IntTy, Movability, RigidTy, TyKind, UintTy};
+use crate::stable_mir::ty::{
+    allocation_filter, new_allocation, FloatTy, IntTy, Movability, RigidTy, TyKind, UintTy,
+};
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
 use rustc_middle::mir::coverage::CodeRegion;
+use rustc_middle::mir::interpret::alloc_range;
 use rustc_middle::mir::{self, ConstantKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -1080,30 +1083,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
     type T = stable_mir::ty::Allocation;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        let size = self.size();
-        let mut bytes: Vec<Option<u8>> = self
-            .inspect_with_uninit_and_ptr_outside_interpreter(0..size.bytes_usize())
-            .iter()
-            .copied()
-            .map(Some)
-            .collect();
-        for (i, b) in bytes.iter_mut().enumerate() {
-            if !self.init_mask().get(rustc_target::abi::Size::from_bytes(i)) {
-                *b = None;
-            }
-        }
-        stable_mir::ty::Allocation {
-            bytes: bytes,
-            provenance: {
-                let mut ptrs = Vec::new();
-                for (size, prov) in self.provenance().ptrs().iter() {
-                    ptrs.push((size.bytes_usize(), opaque(prov)));
-                }
-                stable_mir::ty::ProvenanceMap { ptrs }
-            },
-            align: self.align.bytes(),
-            mutability: self.mutability.stable(tables),
-        }
+        allocation_filter(self, alloc_range(rustc_target::abi::Size::ZERO, self.size()), tables)
     }
 }
 
