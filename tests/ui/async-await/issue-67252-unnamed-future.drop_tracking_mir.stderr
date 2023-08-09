@@ -5,6 +5,7 @@ LL |     spawn(async {
    |     ^^^^^ future created by async block is not `Send`
    |
    = help: within `[async block@$DIR/issue-67252-unnamed-future.rs:21:11: 25:6]`, the trait `Send` is not implemented for `*mut ()`
+   = note: consider using `std::sync::Arc<*mut ()>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-67252-unnamed-future.rs:23:17
    |

@@ -2743,6 +2743,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::BindingObligation(item_def_id, span)
             | ObligationCauseCode::ExprBindingObligation(item_def_id, span, ..) => {
+                if self.tcx.is_diagnostic_item(sym::Send, item_def_id)
+                    || self.tcx.lang_items().sync_trait() == Some(item_def_id)
+                {
+                    return;
+                }
+
                 let item_name = tcx.def_path_str(item_def_id);
                 let short_item_name = with_forced_trimmed_paths!(tcx.def_path_str(item_def_id));
                 let mut multispan = MultiSpan::from(span);

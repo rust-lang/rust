@@ -14,6 +14,7 @@ LL | |     );
    | |_____- in this macro invocation
    |
    = help: within `[generator@$DIR/parent-expression.rs:21:21: 21:28]`, the trait `Send` is not implemented for `derived_drop::Client`
+   = note: consider using `std::sync::Arc<derived_drop::Client>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/parent-expression.rs:25:22
    |
@@ -56,6 +57,7 @@ LL | |     );
    | |_____- in this macro invocation
    |
    = help: within `[generator@$DIR/parent-expression.rs:21:21: 21:28]`, the trait `Send` is not implemented for `significant_drop::Client`
+   = note: consider using `std::sync::Arc<significant_drop::Client>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/parent-expression.rs:25:22
    |
@@ -98,6 +100,7 @@ LL | |     );
    | |_____- in this macro invocation
    |
    = help: within `[generator@$DIR/parent-expression.rs:21:21: 21:28]`, the trait `Send` is not implemented for `insignificant_dtor::Client`
+   = note: consider using `std::sync::Arc<insignificant_dtor::Client>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/parent-expression.rs:25:22
    |

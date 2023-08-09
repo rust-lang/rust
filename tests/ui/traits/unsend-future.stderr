@@ -5,6 +5,7 @@ LL |     require_handler(handler)
    |                     ^^^^^^^ future returned by `handler` is not `Send`
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `*const i32`
+   = note: consider using `std::sync::Arc<*const i32>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: future is not `Send` as this value is used across an await
   --> $DIR/unsend-future.rs:15:14
    |

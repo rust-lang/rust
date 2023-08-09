@@ -5,6 +5,7 @@ LL | static BAR: Foo = Foo;
    |             ^^^ `Foo` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `Foo`
+   = note: consider using `std::sync::Arc<Foo>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
    = note: shared static variables must have a type that implements `Sync`
 
 error: aborting due to previous error
