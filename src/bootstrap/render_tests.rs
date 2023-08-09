@@ -7,10 +7,15 @@
 //! to reimplement all the rendering logic in this module because of that.
 
 use crate::builder::Builder;
+use serde_derive::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{ChildStdout, Command, Stdio};
 use std::time::Duration;
 use termcolor::{Color, ColorSpec, WriteColor};
+
+type Tracker = HashMap<String, TestState>;
 
 const TERSE_TESTS_PER_LINE: usize = 88;
 
@@ -77,6 +82,7 @@ struct Renderer<'a> {
     tests_count: Option<usize>,
     executed_tests: usize,
     terse_tests_in_line: usize,
+    tracker: Option<Tracker>,
 }
 
 impl<'a> Renderer<'a> {
@@ -89,6 +95,7 @@ impl<'a> Renderer<'a> {
             tests_count: None,
             executed_tests: 0,
             terse_tests_in_line: 0,
+            tracker: None,
         }
     }
 
@@ -272,6 +279,7 @@ impl<'a> Renderer<'a> {
                 self.benches.push(outcome);
             }
             Message::Test(TestMessage::Ok(outcome)) => {
+                self.init_tracking();
                 self.render_test_outcome(Outcome::Ok, &outcome);
             }
             Message::Test(TestMessage::Ignored(outcome)) => {
@@ -288,6 +296,43 @@ impl<'a> Renderer<'a> {
                 println!("test {name} has been running for a long time");
             }
             Message::Test(TestMessage::Started) => {} // Not useful
+        }
+    }
+
+    /// Initialises the tracking by reading the last state from a file and storing it
+    fn init_tracking(&mut self) {
+        let mut contents = String::new();
+        {
+            let mut file = OpenOptions::new()
+                .create(true)
+                .read(true)
+                .write(true)
+                .open("./src/bootstrap/test.tracker")
+                .unwrap();
+            file.read_to_string(&mut contents).unwrap();
+        }
+
+        if !contents.is_empty() {
+            self.tracker = Some(serde_json::from_str(&contents).unwrap());
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+/// Represents the possible states of tests
+enum TestState {
+    Ok,
+    Ignored,
+    Failed,
+}
+
+impl From<Outcome<'_>> for TestState {
+    fn from(value: Outcome<'_>) -> Self {
+        match value {
+            Outcome::Ok => Self::Ok,
+            Outcome::BenchOk => Self::Ok,
+            Outcome::Failed => Self::Failed,
+            Outcome::Ignored { reason: _ } => Self::Ignored,
         }
     }
 }
