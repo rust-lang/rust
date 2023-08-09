@@ -2164,6 +2164,8 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
 pub struct EncodedMetadata {
     // The declaration order matters because `mmap` should be dropped before `_temp_dir`.
     mmap: Option<Mmap>,
+    // The path containing the metadata, to record as work product.
+    path: Option<Box<Path>>,
     // We need to carry MaybeTempDir to avoid deleting the temporary
     // directory while accessing the Mmap.
     _temp_dir: Option<MaybeTempDir>,
@@ -2175,15 +2177,20 @@ impl EncodedMetadata {
         let file = std::fs::File::open(&path)?;
         let file_metadata = file.metadata()?;
         if file_metadata.len() == 0 {
-            return Ok(Self { mmap: None, _temp_dir: None });
+            return Ok(Self { mmap: None, path: None, _temp_dir: None });
         }
         let mmap = unsafe { Some(Mmap::map(file)?) };
-        Ok(Self { mmap, _temp_dir: temp_dir })
+        Ok(Self { mmap, path: Some(path.into()), _temp_dir: temp_dir })
     }
 
     #[inline]
     pub fn raw_data(&self) -> &[u8] {
         self.mmap.as_deref().unwrap_or_default()
+    }
+
+    #[inline]
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
     }
 }
 
@@ -2208,7 +2215,7 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
             None
         };
 
-        Self { mmap, _temp_dir: None }
+        Self { mmap, path: None, _temp_dir: None }
     }
 }
 
