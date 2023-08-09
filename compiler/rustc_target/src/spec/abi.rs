@@ -38,6 +38,7 @@ pub enum Abi {
     PlatformIntrinsic,
     Unadjusted,
     RustCold,
+    Crabi,
 }
 
 impl Abi {
@@ -107,6 +108,7 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::PlatformIntrinsic, name: "platform-intrinsic" },
     AbiData { abi: Abi::Unadjusted, name: "unadjusted" },
     AbiData { abi: Abi::RustCold, name: "rust-cold" },
+    AbiData { abi: Abi::Crabi, name: "crabi" },
 ];
 
 /// Returns the ABI with the given name (if any).
@@ -208,6 +210,10 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
             feature: sym::wasm_abi,
             explain: "wasm ABI is experimental and subject to change",
         }),
+        "crabi" => Err(AbiDisabled::Unstable {
+            feature: sym::crabi,
+            explain: "crABI is experimental and subject to change",
+        }),
         _ => Err(AbiDisabled::Unrecognized),
     }
 }
@@ -260,6 +266,7 @@ impl Abi {
             PlatformIntrinsic => 32,
             Unadjusted => 33,
             RustCold => 34,
+            Crabi => 35,
         };
         debug_assert!(
             AbiDatas

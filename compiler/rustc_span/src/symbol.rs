@@ -566,6 +566,7 @@ symbols! {
         cosf64,
         count,
         cr,
+        crabi,
         crate_id,
         crate_in_paths,
         crate_local,

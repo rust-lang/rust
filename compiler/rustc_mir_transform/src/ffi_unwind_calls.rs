@@ -34,6 +34,7 @@ fn abi_can_unwind(abi: Abi) -> bool {
         | Wasm
         | RustIntrinsic
         | PlatformIntrinsic
+        | Crabi
         | Unadjusted => false,
         Rust | RustCall | RustCold => true,
     }

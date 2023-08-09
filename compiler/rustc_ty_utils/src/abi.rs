@@ -194,6 +194,7 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
         AvrInterrupt => Conv::AvrInterrupt,
         AvrNonBlockingInterrupt => Conv::AvrNonBlockingInterrupt,
         Wasm => Conv::C,
+        Crabi => bug!("crABI is not yet implemented"),
 
         // These API constants ought to be more specific...
         Cdecl { .. } => Conv::C,
