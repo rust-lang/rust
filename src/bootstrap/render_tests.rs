@@ -7,19 +7,16 @@
 //! to reimplement all the rendering logic in this module because of that.
 
 use crate::builder::Builder;
-use serde_derive::{Deserialize, Serialize};
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{ChildStdout, Command, Stdio};
 use std::time::Duration;
 use termcolor::{Color, ColorSpec, WriteColor};
 
-type Tracker = HashMap<String, TestState>;
-
 const TERSE_TESTS_PER_LINE: usize = 88;
+#[allow(unused)] // FIXME unused warning even though it is
 const TRACKER_FILE: &'static str = "./src/bootstrap/test.tracker";
-const TOTAL_TESTS: usize = 16_000;
 
 pub(crate) fn add_flags_and_try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if cmd.get_args().position(|arg| arg == "--").is_none() {
@@ -84,12 +81,12 @@ struct Renderer<'a> {
     tests_count: Option<usize>,
     executed_tests: usize,
     terse_tests_in_line: usize,
-    tracker: Tracker,
+    tracker: HashSet<String>,
 }
 
 impl<'a> Renderer<'a> {
     fn new(stdout: ChildStdout, builder: &'a Builder<'a>) -> Self {
-        Self {
+        let mut renderer = Self {
             stdout: BufReader::new(stdout),
             benches: Vec::new(),
             failures: Vec::new(),
@@ -97,8 +94,10 @@ impl<'a> Renderer<'a> {
             tests_count: None,
             executed_tests: 0,
             terse_tests_in_line: 0,
-            tracker: HashMap::with_capacity(TOTAL_TESTS),
-        }
+            tracker: HashSet::with_capacity(256),
+        };
+        renderer.init_tracking();
+        renderer
     }
 
     fn render_all(mut self) {
@@ -191,7 +190,7 @@ impl<'a> Renderer<'a> {
         let _ = std::io::stdout().flush();
     }
 
-    fn render_suite_outcome(&self, outcome: Outcome<'_>, suite: &SuiteOutcome) {
+    fn render_suite_outcome(&mut self, outcome: Outcome<'_>, suite: &SuiteOutcome) {
         // The terse output doesn't end with a newline, so we need to add it ourselves.
         if !self.builder.config.verbose_tests {
             println!();
@@ -213,7 +212,7 @@ impl<'a> Renderer<'a> {
 
             println!("\nfailures:");
             for failure in &self.failures {
-                println!("    {}", failure.name);
+                println!("    {}", &failure.name);
             }
         }
 
@@ -249,6 +248,7 @@ impl<'a> Renderer<'a> {
             suite.filtered_out,
             Duration::from_secs_f64(suite.exec_time)
         );
+        self.end_tracking();
     }
 
     fn render_message(&mut self, message: Message) {
@@ -281,7 +281,6 @@ impl<'a> Renderer<'a> {
                 self.benches.push(outcome);
             }
             Message::Test(TestMessage::Ok(outcome)) => {
-                self.init_tracking();
                 self.render_test_outcome(Outcome::Ok, &outcome);
             }
             Message::Test(TestMessage::Ignored(outcome)) => {
@@ -292,6 +291,7 @@ impl<'a> Renderer<'a> {
             }
             Message::Test(TestMessage::Failed(outcome)) => {
                 self.render_test_outcome(Outcome::Failed, &outcome);
+                self.track_failure(&outcome.name);
                 self.failures.push(outcome);
             }
             Message::Test(TestMessage::Timeout { name }) => {
@@ -315,13 +315,10 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    fn update_state(&mut self, name: &str, state: TestState) {
-        match self.tracker.entry(String::from(name)) {
-            Entry::Occupied(mut o) => *o.get_mut() = state,
-            Entry::Vacant(v) => {
-                v.insert(state);
-            }
-        }
+    /// Add a test that failed to the list
+    #[inline]
+    fn track_failure(&mut self, name: &str) {
+        self.tracker.insert(String::from(name));
     }
 
     /// Store the state of the tracker into file for retrieval on next run
@@ -329,25 +326,6 @@ impl<'a> Renderer<'a> {
         let mut file = OpenOptions::new().write(true).open(TRACKER_FILE).unwrap();
         file.write_all(serde_json::to_string(&self.tracker).unwrap().as_bytes())
             .expect("failed to write to tracking file");
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-/// Represents the possible states of tests
-enum TestState {
-    Ok,
-    Ignored,
-    Failed,
-}
-
-impl From<Outcome<'_>> for TestState {
-    fn from(value: Outcome<'_>) -> Self {
-        match value {
-            Outcome::Ok => Self::Ok,
-            Outcome::BenchOk => Self::Ok,
-            Outcome::Failed => Self::Failed,
-            Outcome::Ignored { reason: _ } => Self::Ignored,
-        }
     }
 }
 
