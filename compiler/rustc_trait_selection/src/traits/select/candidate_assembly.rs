@@ -767,7 +767,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if auto_traits_compatible {
                     let principal_def_id_a = a_data.principal_def_id();
                     let principal_def_id_b = b_data.principal_def_id();
-                    if principal_def_id_a == principal_def_id_b {
+                    if principal_def_id_a == principal_def_id_b || principal_def_id_b.is_none() {
                         // no cyclic
                         candidates.vec.push(BuiltinUnsizeCandidate);
                     } else if principal_def_id_a.is_some() && principal_def_id_b.is_some() {

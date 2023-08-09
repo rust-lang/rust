@@ -537,7 +537,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let mut responses = vec![];
         // If the principal def ids match (or are both none), then we're not doing
         // trait upcasting. We're just removing auto traits (or shortening the lifetime).
-        if a_data.principal_def_id() == b_data.principal_def_id() {
+        if a_data.principal_def_id() == b_data.principal_def_id() || b_data.principal().is_none() {
             if let Ok(resp) = self.consider_builtin_upcast_to_principal(
                 goal,
                 a_data,

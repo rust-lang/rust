@@ -154,7 +154,9 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         ) if src_dyn_kind == target_dyn_kind => {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
-            if data_a.principal_def_id() == data_b.principal_def_id() {
+            if data_a.principal_def_id() == data_b.principal_def_id()
+                || data_b.principal().is_none()
+            {
                 // A NOP cast that doesn't actually change anything, should be allowed even with invalid vtables.
                 return old_info;
             }

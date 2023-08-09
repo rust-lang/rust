@@ -954,6 +954,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
                 let iter = data_a
                     .principal()
+                    .filter(|_| {
+                        // optionally drop the principal, if we're unsizing to no principal
+                        data_b.principal().is_some()
+                    })
                     .map(|b| b.map_bound(ty::ExistentialPredicate::Trait))
                     .into_iter()
                     .chain(
