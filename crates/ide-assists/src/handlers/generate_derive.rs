@@ -27,33 +27,45 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     let cap = ctx.config.snippet_cap?;
     let nominal = ctx.find_node_at_offset::<ast::Adt>()?;
     let target = nominal.syntax().text_range();
+    let derive_attr = nominal
+        .attrs()
+        .filter_map(|x| x.as_simple_call())
+        .filter(|(name, _arg)| name == "derive")
+        .map(|(_name, arg)| arg)
+        .next();
+
+    let (derive, delimiter) = match &derive_attr {
+        None => {
+            let derive = make::attr_outer(make::meta_token_tree(
+                make::ext::ident_path("derive"),
+                make::token_tree(T!['('], vec![]).clone_for_update(),
+            ))
+            .clone_for_update();
+            let delimiter = derive.meta()?.token_tree()?.r_paren_token()?;
+            (derive, delimiter)
+        }
+        Some(tt) => {
+            // Create an outer attribute just so that we avoid using
+            // unwrap in edit closure.
+            let _derive = make::attr_outer(make::meta_token_tree(
+                make::ext::ident_path("derive"),
+                make::token_tree(T!['('], vec![]),
+            ));
+            (_derive, tt.right_delimiter_token()?)
+        }
+    };
+
     acc.add(AssistId("generate_derive", AssistKind::Generate), "Add `#[derive]`", target, |edit| {
-        let derive_attr = nominal
-            .attrs()
-            .filter_map(|x| x.as_simple_call())
-            .filter(|(name, _arg)| name == "derive")
-            .map(|(_name, arg)| arg)
-            .next();
         match derive_attr {
             None => {
-                let derive = make::attr_outer(make::meta_token_tree(
-                    make::ext::ident_path("derive"),
-                    make::token_tree(T!['('], vec![]).clone_for_update(),
-                ))
-                .clone_for_update();
-
                 let nominal = edit.make_mut(nominal);
                 nominal.add_attr(derive.clone());
 
-                edit.add_tabstop_before_token(
-                    cap,
-                    derive.meta().unwrap().token_tree().unwrap().r_paren_token().unwrap(),
-                );
+                edit.add_tabstop_before_token(cap, delimiter);
             }
-            Some(tt) => {
+            Some(_) => {
                 // Just move the cursor.
-                let tt = edit.make_mut(tt);
-                edit.add_tabstop_before_token(cap, tt.right_delimiter_token().unwrap());
+                edit.add_tabstop_before_token(cap, delimiter);
             }
         };
     })
