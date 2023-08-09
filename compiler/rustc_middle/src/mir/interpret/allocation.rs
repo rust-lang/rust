@@ -329,6 +329,9 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
 
     /// Try to create an Allocation of `size` bytes, panics if there is not enough memory
     /// available to the compiler to do so.
+    ///
+    /// Example use case: To obtain an Allocation filled with specific data,
+    /// first call this function and then call write_scalar to fill in the right data.
     pub fn uninit(size: Size, align: Align) -> Self {
         match Self::uninit_inner(size, align, || {
             panic!("Allocation::uninit called with panic_on_fail had allocation failure");

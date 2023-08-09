@@ -112,6 +112,10 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::TraitDef(self.create_def_id(did))
     }
 
+    pub fn const_def(&mut self, did: DefId) -> stable_mir::ty::ConstDef {
+        stable_mir::ty::ConstDef(self.create_def_id(did))
+    }
+
     fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
         // FIXME: this becomes inefficient when we have too many ids
         for (i, &d) in self.def_ids.iter().enumerate() {
