@@ -1,4 +1,4 @@
-use super::errors::{InvalidAbi, InvalidAbiSuggestion, MisplacedRelaxTraitBound};
+use super::errors::{InvalidAbi, InvalidAbiReason, InvalidAbiSuggestion, MisplacedRelaxTraitBound};
 use super::ResolverAstLoweringExt;
 use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
 use super::{FnDeclKind, LoweringContext, ParamMode};
@@ -1271,8 +1271,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn lower_abi(&mut self, abi: StrLit) -> abi::Abi {
-        abi::lookup(abi.symbol_unescaped.as_str()).unwrap_or_else(|| {
-            self.error_on_invalid_abi(abi);
+        abi::lookup(abi.symbol_unescaped.as_str()).unwrap_or_else(|err| {
+            self.error_on_invalid_abi(abi, err);
             abi::Abi::Rust
         })
     }
@@ -1285,7 +1285,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn error_on_invalid_abi(&self, abi: StrLit) {
+    fn error_on_invalid_abi(&self, abi: StrLit, err: abi::AbiUnsupported) {
         let abi_names = abi::enabled_names(self.tcx.features(), abi.span)
             .iter()
             .map(|s| Symbol::intern(s))
@@ -1294,6 +1294,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.tcx.sess.emit_err(InvalidAbi {
             abi: abi.symbol_unescaped,
             span: abi.span,
+            explain: match err {
+                abi::AbiUnsupported::Reason { explain } => Some(InvalidAbiReason(explain)),
+                _ => None,
+            },
             suggestion: suggested_name.map(|suggested_name| InvalidAbiSuggestion {
                 span: abi.span,
                 suggestion: format!("\"{suggested_name}\""),

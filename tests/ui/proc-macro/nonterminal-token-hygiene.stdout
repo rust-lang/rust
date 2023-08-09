@@ -6,19 +6,19 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         stream: TokenStream [
             Ident {
                 ident: "struct",
-                span: $DIR/nonterminal-token-hygiene.rs:31:5: 31:11 (#4),
+                span: $DIR/nonterminal-token-hygiene.rs:32:5: 32:11 (#4),
             },
             Ident {
                 ident: "S",
-                span: $DIR/nonterminal-token-hygiene.rs:31:12: 31:13 (#4),
+                span: $DIR/nonterminal-token-hygiene.rs:32:12: 32:13 (#4),
             },
             Punct {
                 ch: ';',
                 spacing: Alone,
-                span: $DIR/nonterminal-token-hygiene.rs:31:13: 31:14 (#4),
+                span: $DIR/nonterminal-token-hygiene.rs:32:13: 32:14 (#4),
             },
         ],
-        span: $DIR/nonterminal-token-hygiene.rs:21:27: 21:32 (#5),
+        span: $DIR/nonterminal-token-hygiene.rs:22:27: 22:32 (#5),
     },
 ]
 #![feature /* 0#0 */(prelude_import)]
@@ -28,18 +28,19 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
 // check-pass
 // compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
 // compile-flags: -Z trim-diagnostic-paths=no
+// ignore-tidy-linelength
 // normalize-stdout-test "\d+#" -> "0#"
 // normalize-stdout-test "expn\d{3,}" -> "expnNNN"
+// normalize-stdout-test "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
 // aux-build:test-macros.rs
 
 #![feature /* 0#0 */(decl_macro)]
-
 #![no_std /* 0#0 */]
 #[prelude_import /* 0#1 */]
 use ::core /* 0#1 */::prelude /* 0#1 */::rust_2015 /* 0#1 */::*;
 #[macro_use /* 0#1 */]
 extern crate core /* 0#2 */;
-extern crate compiler_builtins /* 445 */ as _ /* 0#2 */;
+extern crate compiler_builtins /* NNN */ as _ /* 0#2 */;
 // Don't load unnecessary hygiene information from std
 extern crate std /* 0#0 */;
 

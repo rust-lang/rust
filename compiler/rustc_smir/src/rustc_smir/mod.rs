@@ -877,6 +877,8 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
                 abi::Abi::PlatformIntrinsic => Abi::PlatformIntrinsic,
                 abi::Abi::Unadjusted => Abi::Unadjusted,
                 abi::Abi::RustCold => Abi::RustCold,
+                abi::Abi::RiscvInterruptM => Abi::RiscvInterruptM,
+                abi::Abi::RiscvInterruptS => Abi::RiscvInterruptS,
             },
         }
     }

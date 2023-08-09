@@ -603,6 +603,25 @@ pub enum Conv {
     AmdGpuKernel,
     AvrInterrupt,
     AvrNonBlockingInterrupt,
+
+    RiscvInterrupt {
+        kind: RiscvInterruptKind,
+    },
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+pub enum RiscvInterruptKind {
+    Machine,
+    Supervisor,
+}
+
+impl RiscvInterruptKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Machine => "machine",
+            Self::Supervisor => "supervisor",
+        }
+    }
 }
 
 /// Metadata describing how the arguments to a native function
@@ -753,6 +772,12 @@ impl FromStr for Conv {
             "AmdGpuKernel" => Ok(Conv::AmdGpuKernel),
             "AvrInterrupt" => Ok(Conv::AvrInterrupt),
             "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
+            "RiscvInterrupt(machine)" => {
+                Ok(Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine })
+            }
+            "RiscvInterrupt(supervisor)" => {
+                Ok(Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor })
+            }
             _ => Err(format!("'{s}' is not a valid value for entry function call convention.")),
         }
     }
