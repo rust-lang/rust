@@ -147,8 +147,16 @@ impl PartialResolvedImport {
 // FIXME: `item_tree_id` can be derived from `id`, look into deduplicating this
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum ImportSource {
-    Use { item_tree_id: ItemTreeId<item_tree::Use>, use_tree: Idx<ast::UseTree>, id: UseId },
-    ExternCrate { item_tree_id: ItemTreeId<item_tree::ExternCrate>, id: ExternCrateId },
+    Use {
+        item_tree_id: ItemTreeId<item_tree::Use>,
+        use_tree: Idx<ast::UseTree>,
+        id: UseId,
+        is_prelude: bool,
+    },
+    ExternCrate {
+        item_tree_id: ItemTreeId<item_tree::ExternCrate>,
+        id: ExternCrateId,
+    },
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -158,53 +166,41 @@ struct Import {
     visibility: RawVisibility,
     kind: ImportKind,
     source: ImportSource,
-    is_prelude: bool,
-    is_macro_use: bool,
 }
 
 impl Import {
     fn from_use(
-        db: &dyn DefDatabase,
-        krate: CrateId,
         tree: &ItemTree,
         item_tree_id: ItemTreeId<item_tree::Use>,
         id: UseId,
+        is_prelude: bool,
         mut cb: impl FnMut(Self),
     ) {
         let it = &tree[item_tree_id.value];
-        let attrs = &tree.attrs(db, krate, ModItem::from(item_tree_id.value).into());
         let visibility = &tree[it.visibility];
-        let is_prelude = attrs.by_key("prelude_import").exists();
         it.use_tree.expand(|idx, path, kind, alias| {
             cb(Self {
                 path,
                 alias,
                 visibility: visibility.clone(),
                 kind,
-                is_prelude,
-                is_macro_use: false,
-                source: ImportSource::Use { item_tree_id, use_tree: idx, id },
+                source: ImportSource::Use { item_tree_id, use_tree: idx, id, is_prelude },
             });
         });
     }
 
     fn from_extern_crate(
-        db: &dyn DefDatabase,
-        krate: CrateId,
         tree: &ItemTree,
         item_tree_id: ItemTreeId<item_tree::ExternCrate>,
         id: ExternCrateId,
     ) -> Self {
         let it = &tree[item_tree_id.value];
-        let attrs = &tree.attrs(db, krate, ModItem::from(item_tree_id.value).into());
         let visibility = &tree[it.visibility];
         Self {
             path: ModPath::from_segments(PathKind::Plain, iter::once(it.name.clone())),
             alias: it.alias.clone(),
             visibility: visibility.clone(),
             kind: ImportKind::Plain,
-            is_prelude: false,
-            is_macro_use: attrs.by_key("macro_use").exists(),
             source: ImportSource::ExternCrate { item_tree_id, id },
         }
     }
@@ -893,17 +889,11 @@ impl DefCollector<'_> {
                 tracing::debug!("glob import: {:?}", import);
                 match def.take_types() {
                     Some(ModuleDefId::ModuleId(m)) => {
-                        if import.is_prelude {
+                        if let ImportSource::Use { id, is_prelude: true, .. } = import.source {
                             // Note: This dodgily overrides the injected prelude. The rustc
                             // implementation seems to work the same though.
                             cov_mark::hit!(std_prelude);
-                            self.def_map.prelude = Some((
-                                m,
-                                match import.source {
-                                    ImportSource::Use { id, .. } => Some(id),
-                                    ImportSource::ExternCrate { .. } => None,
-                                },
-                            ));
+                            self.def_map.prelude = Some((m, Some(id)));
                         } else if m.krate != self.def_map.krate {
                             cov_mark::hit!(glob_across_crates);
                             // glob import from other crate => we can just import everything once
@@ -1493,7 +1483,9 @@ impl DefCollector<'_> {
         }
 
         for directive in &self.unresolved_imports {
-            if let ImportSource::Use { item_tree_id, use_tree, id: _ } = directive.import.source {
+            if let ImportSource::Use { item_tree_id, use_tree, id: _, is_prelude: _ } =
+                directive.import.source
+            {
                 if matches!(
                     (directive.import.path.segments().first(), &directive.import.path.kind),
                     (Some(krate), PathKind::Plain | PathKind::Abs) if diagnosed_extern_crates.contains(krate)
@@ -1592,12 +1584,12 @@ impl ModCollector<'_, '_> {
                         id: ItemTreeId::new(self.tree_id, item_tree_id),
                     }
                     .intern(db);
+                    let is_prelude = attrs.by_key("prelude_import").exists();
                     Import::from_use(
-                        db,
-                        krate,
                         self.item_tree,
                         ItemTreeId::new(self.tree_id, item_tree_id),
                         id,
+                        is_prelude,
                         |import| {
                             self.def_collector.unresolved_imports.push(ImportDirective {
                                 module_id: self.module_id,
@@ -1614,7 +1606,11 @@ impl ModCollector<'_, '_> {
                     }
                     .intern(db);
                     if is_crate_root {
-                        self.process_macro_use_extern_crate(item_tree_id, id);
+                        self.process_macro_use_extern_crate(
+                            item_tree_id,
+                            id,
+                            attrs.by_key("macro_use").attrs(),
+                        );
                     }
 
                     self.def_collector.def_map.modules[self.module_id]
@@ -1623,8 +1619,6 @@ impl ModCollector<'_, '_> {
                     self.def_collector.unresolved_imports.push(ImportDirective {
                         module_id: self.module_id,
                         import: Import::from_extern_crate(
-                            db,
-                            krate,
                             self.item_tree,
                             ItemTreeId::new(self.tree_id, item_tree_id),
                             id,
@@ -1807,22 +1801,13 @@ impl ModCollector<'_, '_> {
         }
     }
 
-    fn process_macro_use_extern_crate(
+    fn process_macro_use_extern_crate<'a>(
         &mut self,
         extern_crate: FileItemTreeId<ExternCrate>,
         extern_crate_id: ExternCrateId,
+        macro_use_attrs: impl Iterator<Item = &'a Attr>,
     ) {
         let db = self.def_collector.db;
-        let attrs = self.item_tree.attrs(
-            db,
-            self.def_collector.def_map.krate,
-            ModItem::from(extern_crate).into(),
-        );
-        if let Some(cfg) = attrs.cfg() {
-            if !self.is_cfg_enabled(&cfg) {
-                return;
-            }
-        }
 
         let target_crate =
             match self.def_collector.resolve_extern_crate(&self.item_tree[extern_crate].name) {
@@ -1838,7 +1823,7 @@ impl ModCollector<'_, '_> {
 
         let mut single_imports = Vec::new();
         let hygiene = Hygiene::new_unhygienic();
-        for attr in attrs.by_key("macro_use").attrs() {
+        for attr in macro_use_attrs {
             let Some(paths) = attr.parse_path_comma_token_tree(db.upcast(), &hygiene) else {
                 // `#[macro_use]` (without any paths) found, forget collected names and just import
                 // all visible macros.
