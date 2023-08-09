@@ -103,49 +103,48 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
     let scope = ImportScope::find_insert_use_container(&node, &ctx.sema)?;
 
+    let outliving_locals: Vec<_> = ret_values.collect();
+    if stdx::never!(!outliving_locals.is_empty() && !ret_ty.is_unit()) {
+        // We should not have variables that outlive body if we have expression block
+        return None;
+    }
+
+    let params = body.extracted_function_params(ctx, &container_info, locals_used.iter().copied());
+
+    let name = make_function_name(&semantics_scope);
+
+    let has_impl_wrapper =
+        insert_after.ancestors().any(|a| a.kind() == SyntaxKind::IMPL && a != insert_after);
+
+    let fun = Function {
+        name,
+        self_param,
+        params,
+        control_flow,
+        ret_ty,
+        body,
+        outliving_locals,
+        contains_tail_expr,
+        mods: container_info,
+    };
+
+    let new_indent = IndentLevel::from_node(&insert_after);
+    let old_indent = fun.body.indent_level();
+
+    let fn_def = match fun.self_param_adt(ctx) {
+        Some(adt) if anchor == Anchor::Method && !has_impl_wrapper => {
+            let fn_def = format_function(ctx, module, &fun, old_indent, new_indent + 1)?;
+            generate_impl_text(&adt, &fn_def).replace("{\n\n", "{")
+        }
+        _ => format_function(ctx, module, &fun, old_indent, new_indent)?,
+    };
+
     acc.add(
         AssistId("extract_function", crate::AssistKind::RefactorExtract),
         "Extract into function",
         target_range,
         move |builder| {
-            let outliving_locals: Vec<_> = ret_values.collect();
-            if stdx::never!(!outliving_locals.is_empty() && !ret_ty.is_unit()) {
-                // We should not have variables that outlive body if we have expression block
-                return;
-            }
-
-            let params =
-                body.extracted_function_params(ctx, &container_info, locals_used.iter().copied());
-
-            let name = make_function_name(&semantics_scope);
-
-            let fun = Function {
-                name,
-                self_param,
-                params,
-                control_flow,
-                ret_ty,
-                body,
-                outliving_locals,
-                contains_tail_expr,
-                mods: container_info,
-            };
-
-            let new_indent = IndentLevel::from_node(&insert_after);
-            let old_indent = fun.body.indent_level();
-
             builder.replace(target_range, make_call(ctx, &fun, old_indent));
-
-            let has_impl_wrapper =
-                insert_after.ancestors().any(|a| a.kind() == SyntaxKind::IMPL && a != insert_after);
-
-            let fn_def = match fun.self_param_adt(ctx) {
-                Some(adt) if anchor == Anchor::Method && !has_impl_wrapper => {
-                    let fn_def = format_function(ctx, module, &fun, old_indent, new_indent + 1);
-                    generate_impl_text(&adt, &fn_def).replace("{\n\n", "{")
-                }
-                _ => format_function(ctx, module, &fun, old_indent, new_indent),
-            };
 
             if fn_def.contains("ControlFlow") {
                 let scope = match scope {
@@ -1501,13 +1500,13 @@ fn format_function(
     fun: &Function,
     old_indent: IndentLevel,
     new_indent: IndentLevel,
-) -> String {
+) -> Option<String> {
     let mut fn_def = String::new();
 
     let fun_name = &fun.name;
     let params = fun.make_param_list(ctx, module);
     let ret_ty = fun.make_ret_ty(ctx, module);
-    let body = make_body(ctx, old_indent, new_indent, fun);
+    let body = make_body(ctx, old_indent, new_indent, fun)?;
     let const_kw = if fun.mods.is_const { "const " } else { "" };
     let async_kw = if fun.control_flow.is_async { "async " } else { "" };
     let unsafe_kw = if fun.control_flow.is_unsafe { "unsafe " } else { "" };
@@ -1535,7 +1534,7 @@ fn format_function(
 
     format_to!(fn_def, " {body}");
 
-    fn_def
+    Some(fn_def)
 }
 
 fn make_generic_params_and_where_clause(
@@ -1721,14 +1720,14 @@ fn make_body(
     old_indent: IndentLevel,
     new_indent: IndentLevel,
     fun: &Function,
-) -> ast::BlockExpr {
+) -> Option<ast::BlockExpr> {
     let ret_ty = fun.return_type(ctx);
     let handler = FlowHandler::from_ret_ty(fun, &ret_ty);
 
     let block = match &fun.body {
         FunctionBody::Expr(expr) => {
-            let expr = rewrite_body_segment(ctx, &fun.params, &handler, expr.syntax());
-            let expr = ast::Expr::cast(expr).unwrap();
+            let expr = rewrite_body_segment(ctx, &fun.params, &handler, expr.syntax())?;
+            let expr = ast::Expr::cast(expr)?;
             match expr {
                 ast::Expr::BlockExpr(block) => {
                     // If the extracted expression is itself a block, there is no need to wrap it inside another block.
@@ -1749,12 +1748,16 @@ fn make_body(
                 .children_with_tokens()
                 .filter(|it| text_range.contains_range(it.text_range()))
                 .map(|it| match &it {
-                    syntax::NodeOrToken::Node(n) => syntax::NodeOrToken::Node(
-                        rewrite_body_segment(ctx, &fun.params, &handler, n),
-                    ),
-                    _ => it,
+                    syntax::NodeOrToken::Node(n) => {
+                        let bs = rewrite_body_segment(ctx, &fun.params, &handler, n);
+                        match bs {
+                            Some(n) => Some(syntax::NodeOrToken::Node(n)),
+                            None => None,
+                        }
+                    }
+                    _ => Some(it),
                 })
-                .collect();
+                .collect::<Option<_>>()?;
 
             let mut tail_expr = match &elements.last() {
                 Some(syntax::NodeOrToken::Node(node)) if ast::Expr::can_cast(node.kind()) => {
@@ -1838,7 +1841,7 @@ fn make_body(
         }),
     };
 
-    block.indent(new_indent)
+    Some(block.indent(new_indent))
 }
 
 fn map_tail_expr(block: ast::BlockExpr, f: impl FnOnce(ast::Expr) -> ast::Expr) -> ast::BlockExpr {
@@ -1896,14 +1899,18 @@ fn rewrite_body_segment(
     params: &[Param],
     handler: &FlowHandler,
     syntax: &SyntaxNode,
-) -> SyntaxNode {
-    let syntax = fix_param_usages(ctx, params, syntax);
+) -> Option<SyntaxNode> {
+    let syntax = fix_param_usages(ctx, params, syntax)?;
     update_external_control_flow(handler, &syntax);
-    syntax
+    Some(syntax)
 }
 
 /// change all usages to account for added `&`/`&mut` for some params
-fn fix_param_usages(ctx: &AssistContext<'_>, params: &[Param], syntax: &SyntaxNode) -> SyntaxNode {
+fn fix_param_usages(
+    ctx: &AssistContext<'_>,
+    params: &[Param],
+    syntax: &SyntaxNode,
+) -> Option<SyntaxNode> {
     let mut usages_for_param: Vec<(&Param, Vec<ast::Expr>)> = Vec::new();
 
     let tm = TreeMutator::new(syntax);
@@ -1934,12 +1941,12 @@ fn fix_param_usages(ctx: &AssistContext<'_>, params: &[Param], syntax: &SyntaxNo
                 Some(ast::Expr::RefExpr(node))
                     if param.kind() == ParamKind::MutRef && node.mut_token().is_some() =>
                 {
-                    ted::replace(node.syntax(), node.expr().unwrap().syntax());
+                    ted::replace(node.syntax(), node.expr()?.syntax());
                 }
                 Some(ast::Expr::RefExpr(node))
                     if param.kind() == ParamKind::SharedRef && node.mut_token().is_none() =>
                 {
-                    ted::replace(node.syntax(), node.expr().unwrap().syntax());
+                    ted::replace(node.syntax(), node.expr()?.syntax());
                 }
                 Some(_) | None => {
                     let p = &make::expr_prefix(T![*], usage.clone()).clone_for_update();
@@ -1949,7 +1956,7 @@ fn fix_param_usages(ctx: &AssistContext<'_>, params: &[Param], syntax: &SyntaxNo
         }
     }
 
-    res
+    Some(res)
 }
 
 fn update_external_control_flow(handler: &FlowHandler, syntax: &SyntaxNode) {
