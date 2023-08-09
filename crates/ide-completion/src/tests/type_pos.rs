@@ -753,6 +753,9 @@ fn completes_const_and_type_generics_separately() {
                 kw self::
             "#]],
     );
+    // FIXME: This should probably also suggest completions for types, at least those that have
+    // associated constants usable in this position. For example, a user could be typing
+    // `foo::<_, { usize::MAX }>()`, but we currently don't suggest `usize` in constant position.
     check(
         r#"
     struct Foo;
