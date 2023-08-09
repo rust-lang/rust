@@ -2875,11 +2875,7 @@ define_print_and_forward_display! {
     }
 
     ty::ClosureKind {
-        match *self {
-            ty::ClosureKind::Fn => p!("Fn"),
-            ty::ClosureKind::FnMut => p!("FnMut"),
-            ty::ClosureKind::FnOnce => p!("FnOnce"),
-        }
+        p!(write("{}", self.as_str()))
     }
 
     ty::Predicate<'tcx> {

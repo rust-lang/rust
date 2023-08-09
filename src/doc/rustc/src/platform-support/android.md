@@ -39,6 +39,8 @@ edition of the [Android NDK].  Supported Android targets are:
 * thumbv7neon-linux-androideabi
 * x86_64-linux-android
 
+The riscv64-linux-android target is supported as a Tier 3 target.
+
 [Android NDK]: https://developer.android.com/ndk/downloads
 
 A list of all supported targets can be found
