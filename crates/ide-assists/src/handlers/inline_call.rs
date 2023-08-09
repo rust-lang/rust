@@ -116,7 +116,8 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                     .into_iter()
                     .map(|(call_info, mut_node)| {
                         let replacement =
-                            inline(&ctx.sema, def_file, function, &func_body, &params, &call_info);
+                            inline(&ctx.sema, def_file, function, &func_body, &params, &call_info)
+                                .unwrap();
                         ted::replace(mut_node, replacement.syntax());
                     })
                     .count();
@@ -218,13 +219,12 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     }
 
     let syntax = call_info.node.syntax().clone();
+    let replacement = inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info)?;
     acc.add(
         AssistId("inline_call", AssistKind::RefactorInline),
         label,
         syntax.text_range(),
         |builder| {
-            let replacement = inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info);
-
             builder.replace_ast(
                 match call_info.node {
                     ast::CallableExpr::Call(it) => ast::Expr::CallExpr(it),
@@ -305,7 +305,7 @@ fn inline(
     fn_body: &ast::BlockExpr,
     params: &[(ast::Pat, Option<ast::Type>, hir::Param)],
     CallInfo { node, arguments, generic_arg_list }: &CallInfo,
-) -> ast::Expr {
+) -> Option<ast::Expr> {
     let mut body = if sema.hir_file_for(fn_body.syntax()).is_macro() {
         cov_mark::hit!(inline_call_defined_in_macro);
         if let Some(body) = ast::BlockExpr::cast(insert_ws_into(fn_body.syntax().clone())) {
@@ -363,16 +363,17 @@ fn inline(
         .collect();
 
     if function.self_param(sema.db).is_some() {
-        let this = || make::name_ref("this").syntax().clone_for_update().first_token().unwrap();
+        let this = || make::name_ref("this").syntax().clone_for_update().first_token();
         if let Some(self_local) = params[0].2.as_local(sema.db) {
-            usages_for_locals(self_local)
-                .filter_map(|FileReference { name, range, .. }| match name {
+            let usages = usages_for_locals(self_local).filter_map(
+                |FileReference { name, range, .. }| match name {
                     ast::NameLike::NameRef(_) => Some(body.syntax().covering_element(range)),
                     _ => None,
-                })
-                .for_each(|it| {
-                    ted::replace(it, &this());
-                })
+                },
+            );
+            for usage in usages {
+                ted::replace(usage, &this()?);
+            }
         }
     }
 
@@ -470,7 +471,7 @@ fn inline(
         }
     } else if let Some(stmt_list) = body.stmt_list() {
         ted::insert_all(
-            ted::Position::after(stmt_list.l_curly_token().unwrap()),
+            ted::Position::after(stmt_list.l_curly_token()?),
             let_stmts.into_iter().map(|stmt| stmt.syntax().clone().into()).collect(),
         );
     }
@@ -481,7 +482,7 @@ fn inline(
     };
     body.reindent_to(original_indentation);
 
-    match body.tail_expr() {
+    Some(match body.tail_expr() {
         Some(expr) if !is_async_fn && body.statements().next().is_none() => expr,
         _ => match node
             .syntax()
@@ -494,7 +495,7 @@ fn inline(
             }
             _ => ast::Expr::BlockExpr(body),
         },
-    }
+    })
 }
 
 fn path_expr_as_record_field(usage: &PathExpr) -> Option<ast::RecordExprField> {
