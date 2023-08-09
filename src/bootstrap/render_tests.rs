@@ -18,6 +18,7 @@ use termcolor::{Color, ColorSpec, WriteColor};
 type Tracker = HashMap<String, TestState>;
 
 const TERSE_TESTS_PER_LINE: usize = 88;
+const TRACKER_FILE: &'static str = "./src/bootstrap/test.tracker";
 
 pub(crate) fn add_flags_and_try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if cmd.get_args().position(|arg| arg == "--").is_none() {
@@ -303,18 +304,25 @@ impl<'a> Renderer<'a> {
     fn init_tracking(&mut self) {
         let mut contents = String::new();
         {
-            let mut file = OpenOptions::new()
-                .create(true)
-                .read(true)
-                .write(true)
-                .open("./src/bootstrap/test.tracker")
-                .unwrap();
+            let mut file =
+                OpenOptions::new().create(true).read(true).write(true).open(TRACKER_FILE).unwrap();
             file.read_to_string(&mut contents).unwrap();
         }
 
         if !contents.is_empty() {
             self.tracker = Some(serde_json::from_str(&contents).unwrap());
         }
+    }
+
+    fn end_tracking(&mut self) {
+        {
+            let mut file = OpenOptions::new().write(true).open(TRACKER_FILE).unwrap();
+            file.write_all(
+                serde_json::to_string(self.tracker.as_ref().unwrap()).unwrap().as_bytes(),
+            )
+            .expect("failed to write to tracking file");
+        }
+        self.tracker = None;
     }
 }
 
