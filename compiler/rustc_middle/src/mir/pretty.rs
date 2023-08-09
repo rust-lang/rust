@@ -352,7 +352,7 @@ where
     for statement in &data.statements {
         extra_data(PassWhere::BeforeLocation(current_location), w)?;
         let indented_body = format!("{INDENT}{INDENT}{statement:?};");
-        if tcx.sess.opts.unstable_opts.mir_include_spans {
+        if tcx.sess.opts.unstable_opts.mir_include_extra_comments {
             writeln!(
                 w,
                 "{:A$} // {}{}",
@@ -377,7 +377,7 @@ where
     // Terminator at the bottom.
     extra_data(PassWhere::BeforeLocation(current_location), w)?;
     let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
-    if tcx.sess.opts.unstable_opts.mir_include_spans {
+    if tcx.sess.opts.unstable_opts.mir_include_extra_comments {
         writeln!(
             w,
             "{:A$} // {}{}",
@@ -407,7 +407,7 @@ fn write_extra<'tcx, F>(tcx: TyCtxt<'tcx>, write: &mut dyn Write, mut visit_op: 
 where
     F: FnMut(&mut ExtraComments<'tcx>),
 {
-    if tcx.sess.opts.unstable_opts.mir_include_spans {
+    if tcx.sess.opts.unstable_opts.mir_include_extra_comments {
         let mut extra_comments = ExtraComments { tcx, comments: vec![] };
         visit_op(&mut extra_comments);
         for comment in extra_comments.comments {
@@ -564,7 +564,7 @@ fn write_scope_tree(
             var_debug_info.value,
         );
 
-        if tcx.sess.opts.unstable_opts.mir_include_spans {
+        if tcx.sess.opts.unstable_opts.mir_include_extra_comments {
             writeln!(
                 w,
                 "{0:1$} // in {2}",
@@ -602,7 +602,7 @@ fn write_scope_tree(
 
         let local_name = if local == RETURN_PLACE { " return place" } else { "" };
 
-        if tcx.sess.opts.unstable_opts.mir_include_spans {
+        if tcx.sess.opts.unstable_opts.mir_include_extra_comments {
             writeln!(
                 w,
                 "{0:1$} //{2} in {3}",
@@ -639,7 +639,7 @@ fn write_scope_tree(
 
         let indented_header = format!("{0:1$}scope {2}{3} {{", "", indent, child.index(), special);
 
-        if tcx.sess.opts.unstable_opts.mir_include_spans {
+        if tcx.sess.opts.unstable_opts.mir_include_extra_comments {
             if let Some(span) = span {
                 writeln!(
                     w,
