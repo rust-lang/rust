@@ -8,7 +8,6 @@ use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
 use crate::infer::canonical::CanonicalVarInfo;
 use crate::lint::struct_lint_level;
-use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_bound_vars;
 use crate::middle::stability;
@@ -2137,19 +2136,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.opt_rpitit_info(def_id).is_some()
     }
 
-    /// Named module children from all kinds of items, including imports.
-    /// In addition to regular items this list also includes struct and variant constructors, and
-    /// items inside `extern {}` blocks because all of them introduce names into parent module.
-    ///
-    /// Module here is understood in name resolution sense - it can be a `mod` item,
-    /// or a crate root, or an enum, or a trait.
-    ///
-    /// This is not a query, making it a query causes perf regressions
-    /// (probably due to hashing spans in `ModChild`ren).
-    pub fn module_children_local(self, def_id: LocalDefId) -> &'tcx [ModChild] {
-        self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
-    }
-
     pub fn metadata_dep_node(self) -> crate::dep_graph::DepNode {
         crate::dep_graph::make_metadata(self)
     }
@@ -2171,6 +2157,8 @@ pub struct DeducedParamAttrs {
 }
 
 pub fn provide(providers: &mut Providers) {
+    providers.module_children_local =
+        |tcx, def_id| tcx.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..]);
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.names_imported_by_glob_use = |tcx, id| {
