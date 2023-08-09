@@ -6,14 +6,12 @@ LL | struct Sleep;
 ...
 LL |         self.sleep.poll(cx)
    |                    ^^^^ method not found in `Sleep`
-  --> $SRC_DIR/core/src/future/future.rs:LL:COL
    |
-   = note: the method is available for `Pin<&mut Sleep>` here
+help: consider pinning the expression
    |
-help: consider wrapping the receiver expression with the appropriate type
+LL ~         let mut pinned = std::pin::pin!(self.sleep);
+LL ~         pinned.as_mut().poll(cx)
    |
-LL |         Pin::new(&mut self.sleep).poll(cx)
-   |         +++++++++++++           +
 
 error: aborting due to previous error
 
