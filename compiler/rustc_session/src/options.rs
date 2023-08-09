@@ -1599,9 +1599,9 @@ options! {
         "use like `-Zmir-enable-passes=+DestinationPropagation,-InstSimplify`. Forces the specified passes to be \
         enabled, overriding all other checks. Passes that are not specified are enabled or \
         disabled by other flags as usual."),
-    mir_include_spans: bool = (false, parse_bool, [UNTRACKED],
+    mir_include_spans: bool = (true, parse_bool, [UNTRACKED],
         "include extra comments in mir pretty printing, like line numbers and statement indices, \
-         details about types, etc. (default: no)"),
+         details about types, etc. (default: yes)"),
     mir_keep_place_mention: bool = (false, parse_bool, [TRACKED],
         "keep place mention MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
