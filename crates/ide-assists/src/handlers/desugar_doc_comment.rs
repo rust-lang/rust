@@ -57,25 +57,30 @@ pub(crate) fn desugar_doc_comment(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         }
     };
 
+    let text = match comments {
+        Either::Left(comment) => {
+            let text = comment.text();
+            text[comment.prefix().len()..(text.len() - "*/".len())]
+                .trim()
+                .lines()
+                .map(|l| l.strip_prefix(&indentation).unwrap_or(l))
+                .join("\n")
+        }
+        Either::Right(comments) => {
+            let mut cms: Vec<String> = Vec::new();
+            for cm in comments {
+                let lcm = line_comment_text(IndentLevel(0), cm)?;
+                cms.push(lcm);
+            }
+            cms.into_iter().join("\n")
+        }
+    };
+
     acc.add(
         AssistId("desugar_doc_comment", AssistKind::RefactorRewrite),
         "Desugar doc-comment to attribute macro",
         target,
         |edit| {
-            let text = match comments {
-                Either::Left(comment) => {
-                    let text = comment.text();
-                    text[comment.prefix().len()..(text.len() - "*/".len())]
-                        .trim()
-                        .lines()
-                        .map(|l| l.strip_prefix(&indentation).unwrap_or(l))
-                        .join("\n")
-                }
-                Either::Right(comments) => {
-                    comments.into_iter().map(|c| line_comment_text(IndentLevel(0), c)).join("\n")
-                }
-            };
-
             let hashes = "#".repeat(required_hashes(&text));
 
             let prefix = match placement {

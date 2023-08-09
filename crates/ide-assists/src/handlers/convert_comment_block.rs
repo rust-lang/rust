@@ -78,21 +78,26 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
     // Establish the target of our edit based on the comments we found
     let target = TextRange::new(
         comments[0].syntax().text_range().start(),
-        comments.last().unwrap().syntax().text_range().end(),
+        comments.last()?.syntax().text_range().end(),
     );
+
+    // We pick a single indentation level for the whole block comment based on the
+    // comment where the assist was invoked. This will be prepended to the
+    // contents of each line comment when they're put into the block comment.
+    let indentation = IndentLevel::from_token(comment.syntax());
+
+    let mut cms: Vec<String> = Vec::new();
+    for cm in comments {
+        let lcm = line_comment_text(indentation, cm)?;
+        cms.push(lcm);
+    }
 
     acc.add(
         AssistId("line_to_block", AssistKind::RefactorRewrite),
         "Replace line comments with a single block comment",
         target,
         |edit| {
-            // We pick a single indentation level for the whole block comment based on the
-            // comment where the assist was invoked. This will be prepended to the
-            // contents of each line comment when they're put into the block comment.
-            let indentation = IndentLevel::from_token(comment.syntax());
-
-            let block_comment_body =
-                comments.into_iter().map(|c| line_comment_text(indentation, c)).join("\n");
+            let block_comment_body = cms.into_iter().join("\n");
 
             let block_prefix =
                 CommentKind { shape: CommentShape::Block, ..comment.kind() }.prefix();
@@ -159,15 +164,15 @@ pub(crate) fn relevant_line_comments(comment: &ast::Comment) -> Vec<Comment> {
 //              */
 //
 // But since such comments aren't idiomatic we're okay with this.
-pub(crate) fn line_comment_text(indentation: IndentLevel, comm: ast::Comment) -> String {
-    let contents_without_prefix = comm.text().strip_prefix(comm.prefix()).unwrap();
+pub(crate) fn line_comment_text(indentation: IndentLevel, comm: ast::Comment) -> Option<String> {
+    let contents_without_prefix = comm.text().strip_prefix(comm.prefix())?;
     let contents = contents_without_prefix.strip_prefix(' ').unwrap_or(contents_without_prefix);
 
     // Don't add the indentation if the line is empty
     if contents.is_empty() {
-        contents.to_owned()
+        Some(contents.to_owned())
     } else {
-        indentation.to_string() + contents
+        Some(indentation.to_string() + contents)
     }
 }
 
