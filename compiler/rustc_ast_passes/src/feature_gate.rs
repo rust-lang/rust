@@ -514,10 +514,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 }
 
-pub fn check_crate(krate: &ast::Crate, sess: &Session) {
-    maybe_stage_features(sess, krate);
-    check_incompatible_features(sess);
-    let mut visitor = PostExpansionVisitor { sess, features: &sess.features_untracked() };
+pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
+    maybe_stage_features(sess, features, krate);
+    check_incompatible_features(sess, features);
+    let mut visitor = PostExpansionVisitor { sess, features };
 
     let spans = sess.parse_sess.gated_spans.spans.borrow();
     macro_rules! gate_all {
@@ -600,12 +600,12 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     visit::walk_crate(&mut visitor, krate);
 }
 
-fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
+fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate) {
     // checks if `#![feature]` has been used to enable any lang feature
     // does not check the same for lib features unless there's at least one
     // declared lang feature
     if !sess.opts.unstable_features.is_nightly_build() {
-        let lang_features = &sess.features_untracked().declared_lang_features;
+        let lang_features = &features.declared_lang_features;
         if lang_features.len() == 0 {
             return;
         }
@@ -640,9 +640,7 @@ fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
     }
 }
 
-fn check_incompatible_features(sess: &Session) {
-    let features = sess.features_untracked();
-
+fn check_incompatible_features(sess: &Session, features: &Features) {
     let declared_features = features
         .declared_lang_features
         .iter()

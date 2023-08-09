@@ -171,7 +171,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             return macro_data.clone();
         }
 
-        let load_macro_untracked = self.cstore().load_macro_untracked(def_id, &self.tcx.sess);
+        let load_macro_untracked = self.cstore().load_macro_untracked(def_id, self.tcx);
         let (ext, macro_rules) = match load_macro_untracked {
             LoadedMacro::MacroDef(item, edition) => (
                 Lrc::new(self.compile_macro(&item, edition).0),

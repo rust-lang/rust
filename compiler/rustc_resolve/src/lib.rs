@@ -1282,7 +1282,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let registered_tools = tcx.registered_tools(());
 
-        let features = tcx.sess.features_untracked();
+        let features = tcx.features();
 
         let mut resolver = Resolver {
             tcx,

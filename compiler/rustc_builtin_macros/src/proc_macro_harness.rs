@@ -5,6 +5,7 @@ use rustc_ast::{self as ast, attr, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{parse_macro_name_and_helper_attrs, ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
+use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_span::hygiene::AstPass;
 use rustc_span::source_map::SourceMap;
@@ -46,13 +47,14 @@ struct CollectProcMacros<'a> {
 pub fn inject(
     krate: &mut ast::Crate,
     sess: &Session,
+    features: &Features,
     resolver: &mut dyn ResolverExpand,
     is_proc_macro_crate: bool,
     has_proc_macro_decls: bool,
     is_test_crate: bool,
     handler: &rustc_errors::Handler,
 ) {
-    let ecfg = ExpansionConfig::default("proc_macro".to_string());
+    let ecfg = ExpansionConfig::default("proc_macro".to_string(), features);
     let mut cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
     let mut collect = CollectProcMacros {

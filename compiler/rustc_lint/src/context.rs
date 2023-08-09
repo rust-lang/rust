@@ -27,6 +27,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_errors::{add_elided_lifetime_in_path_suggestion, DiagnosticBuilder, DiagnosticMessage};
 use rustc_errors::{Applicability, DecorateLint, MultiSpan, SuggestionStyle};
+use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -1071,6 +1072,7 @@ pub trait LintContext: Sized {
 impl<'a> EarlyContext<'a> {
     pub(crate) fn new(
         sess: &'a Session,
+        features: &'a Features,
         warn_about_weird_lints: bool,
         lint_store: &'a LintStore,
         registered_tools: &'a RegisteredTools,
@@ -1079,6 +1081,7 @@ impl<'a> EarlyContext<'a> {
         EarlyContext {
             builder: LintLevelsBuilder::new(
                 sess,
+                features,
                 warn_about_weird_lints,
                 lint_store,
                 registered_tools,

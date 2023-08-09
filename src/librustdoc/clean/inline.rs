@@ -200,7 +200,7 @@ pub(crate) fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemT
     let fqn = if let ItemType::Macro = kind {
         // Check to see if it is a macro 2.0 or built-in macro
         if matches!(
-            CStore::from_tcx(cx.tcx).load_macro_untracked(did, cx.sess()),
+            CStore::from_tcx(cx.tcx).load_macro_untracked(did, cx.tcx),
             LoadedMacro::MacroDef(def, _)
                 if matches!(&def.kind, ast::ItemKind::MacroDef(ast_def)
                     if !ast_def.macro_rules)
@@ -680,7 +680,7 @@ fn build_macro(
     import_def_id: Option<DefId>,
     macro_kind: MacroKind,
 ) -> clean::ItemKind {
-    match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.sess()) {
+    match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.tcx) {
         LoadedMacro::MacroDef(item_def, _) => match macro_kind {
             MacroKind::Bang => {
                 if let ast::ItemKind::MacroDef(ref def) = item_def.kind {

@@ -41,7 +41,12 @@ struct TestCtxt<'a> {
 
 /// Traverse the crate, collecting all the test functions, eliding any
 /// existing main functions, and synthesizing a main test harness
-pub fn inject(krate: &mut ast::Crate, sess: &Session, resolver: &mut dyn ResolverExpand) {
+pub fn inject(
+    krate: &mut ast::Crate,
+    sess: &Session,
+    features: &Features,
+    resolver: &mut dyn ResolverExpand,
+) {
     let span_diagnostic = sess.diagnostic();
     let panic_strategy = sess.panic_strategy();
     let platform_panic_strategy = sess.target.panic_strategy;
@@ -76,7 +81,7 @@ pub fn inject(krate: &mut ast::Crate, sess: &Session, resolver: &mut dyn Resolve
             resolver,
             reexport_test_harness_main,
             krate,
-            &sess.features_untracked(),
+            features,
             panic_strategy,
             test_runner,
         )
@@ -243,9 +248,7 @@ fn generate_test_harness(
     panic_strategy: PanicStrategy,
     test_runner: Option<ast::Path>,
 ) {
-    let mut econfig = ExpansionConfig::default("test".to_string());
-    econfig.features = Some(features);
-
+    let econfig = ExpansionConfig::default("test".to_string(), features);
     let ext_cx = ExtCtxt::new(sess, econfig, resolver, None);
 
     let expn_id = ext_cx.resolver.expansion_for_ast_pass(
