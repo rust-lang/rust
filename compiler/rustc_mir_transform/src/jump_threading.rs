@@ -612,9 +612,9 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             | TerminatorKind::Unreachable
             | TerminatorKind::CoroutineDrop => bug!("{term:?} has no terminators"),
             // Disallowed during optimizations.
-            TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::Yield { .. } => bug!("{term:?} invalid"),
+            TerminatorKind::FalseEdge { .. } | TerminatorKind::FalseUnwind { .. } => {
+                bug!("{term:?} invalid")
+            }
             // Cannot reason about inline asm.
             TerminatorKind::InlineAsm { .. } => return,
             // `SwitchInt` is handled specially.
@@ -623,6 +623,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             TerminatorKind::Goto { .. } => None,
             // Flood the overwritten place, and progress through.
             TerminatorKind::Drop { place: destination, .. }
+            | TerminatorKind::Yield { resume_arg: destination, .. }
             | TerminatorKind::Call { destination, .. } => Some(destination),
             // Ignore, as this can be a no-op at codegen time.
             TerminatorKind::Assert { .. } => None,

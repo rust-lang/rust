@@ -639,6 +639,10 @@ impl WriteInfo {
                     self.add_operand(&arg.node);
                 }
             }
+            TerminatorKind::Yield { resume_arg, value, .. } => {
+                self.add_place(*resume_arg);
+                self.add_operand(value);
+            }
             TerminatorKind::InlineAsm { operands, .. } => {
                 for asm_operand in operands {
                     match asm_operand {
@@ -669,14 +673,12 @@ impl WriteInfo {
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::Unreachable { .. } => (),
             TerminatorKind::Drop { .. } => {
                 // `Drop`s create a `&mut` and so are not considered
             }
-            TerminatorKind::Yield { .. }
-            | TerminatorKind::CoroutineDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. } => {
+            TerminatorKind::FalseEdge { .. } | TerminatorKind::FalseUnwind { .. } => {
                 bug!("{:?} not found in this MIR phase", terminator)
             }
         }
