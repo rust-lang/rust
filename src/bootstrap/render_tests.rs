@@ -8,7 +8,7 @@
 
 use crate::builder::Builder;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{ChildStdout, Command, Stdio};
@@ -19,6 +19,7 @@ type Tracker = HashMap<String, TestState>;
 
 const TERSE_TESTS_PER_LINE: usize = 88;
 const TRACKER_FILE: &'static str = "./src/bootstrap/test.tracker";
+const TOTAL_TESTS: usize = 16_000;
 
 pub(crate) fn add_flags_and_try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if cmd.get_args().position(|arg| arg == "--").is_none() {
@@ -83,7 +84,7 @@ struct Renderer<'a> {
     tests_count: Option<usize>,
     executed_tests: usize,
     terse_tests_in_line: usize,
-    tracker: Option<Tracker>,
+    tracker: Tracker,
 }
 
 impl<'a> Renderer<'a> {
@@ -96,7 +97,7 @@ impl<'a> Renderer<'a> {
             tests_count: None,
             executed_tests: 0,
             terse_tests_in_line: 0,
-            tracker: None,
+            tracker: HashMap::with_capacity(TOTAL_TESTS),
         }
     }
 
@@ -310,19 +311,24 @@ impl<'a> Renderer<'a> {
         }
 
         if !contents.is_empty() {
-            self.tracker = Some(serde_json::from_str(&contents).unwrap());
+            self.tracker = serde_json::from_str(&contents).unwrap();
         }
     }
 
-    fn end_tracking(&mut self) {
-        {
-            let mut file = OpenOptions::new().write(true).open(TRACKER_FILE).unwrap();
-            file.write_all(
-                serde_json::to_string(self.tracker.as_ref().unwrap()).unwrap().as_bytes(),
-            )
-            .expect("failed to write to tracking file");
+    fn update_state(&mut self, name: &str, state: TestState) {
+        match self.tracker.entry(String::from(name)) {
+            Entry::Occupied(mut o) => *o.get_mut() = state,
+            Entry::Vacant(v) => {
+                v.insert(state);
+            }
         }
-        self.tracker = None;
+    }
+
+    /// Store the state of the tracker into file for retrieval on next run
+    fn end_tracking(&mut self) {
+        let mut file = OpenOptions::new().write(true).open(TRACKER_FILE).unwrap();
+        file.write_all(serde_json::to_string(&self.tracker).unwrap().as_bytes())
+            .expect("failed to write to tracking file");
     }
 }
 
