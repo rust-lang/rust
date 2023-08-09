@@ -624,9 +624,9 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         let term = self.body.basic_blocks[bb].terminator();
         let place_to_flood = match term.kind {
             // Disallowed during optimizations.
-            TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::Yield { .. } => bug!("{term:?} invalid"),
+            TerminatorKind::FalseEdge { .. } | TerminatorKind::FalseUnwind { .. } => {
+                bug!("{term:?} invalid")
+            }
             // Cannot reason about inline asm.
             TerminatorKind::InlineAsm { .. } => {
                 state.active.clear();
@@ -647,6 +647,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             | TerminatorKind::Goto { .. } => None,
             // Flood the overwritten place, and progress through.
             TerminatorKind::Drop { place: destination, .. }
+            | TerminatorKind::Yield { resume_arg: destination, .. }
             | TerminatorKind::Call { destination, .. } => Some(destination),
             TerminatorKind::TailCall { .. } => Some(RETURN_PLACE.into()),
         };
