@@ -1600,7 +1600,8 @@ options! {
         enabled, overriding all other checks. Passes that are not specified are enabled or \
         disabled by other flags as usual."),
     mir_include_spans: bool = (false, parse_bool, [UNTRACKED],
-        "use line numbers relative to the function in mir pretty printing"),
+        "include extra comments in mir pretty printing, like line numbers and statement indices, \
+         details about types, etc. (default: no)"),
     mir_keep_place_mention: bool = (false, parse_bool, [TRACKED],
         "keep place mention MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
