@@ -167,7 +167,8 @@ impl ProjectWorkspace {
                 cmd.envs(&config.extra_env);
                 cmd.arg("--version").current_dir(current_dir);
                 cmd
-            })?;
+            })
+            .with_context(|| format!("Failed to query rust toolchain version at {current_dir}, is your toolchain setup correctly?"))?;
             anyhow::Ok(
                 cargo_version
                     .get(prefix.len()..)
