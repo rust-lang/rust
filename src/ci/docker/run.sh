@@ -93,7 +93,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     docker images
     retry docker \
       build \
-      --rm \
+      --rm=false \
       -t rust-ci \
       -f "$dockerfile" \
       "$context"
