@@ -107,6 +107,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     }
                 }
             }
+            TerminatorKind::Yield { .. } => self.penalty += CALL_PENALTY,
             TerminatorKind::Call { func, unwind, .. } => {
                 self.penalty += if let Some((def_id, ..)) = func.const_fn_def()
                     && self.tcx.intrinsic(def_id).is_some()
@@ -163,12 +164,11 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             TerminatorKind::Unreachable => {
                 self.bonus += INSTR_COST;
             }
-            TerminatorKind::Goto { .. } | TerminatorKind::Return => {}
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::Return
+            | TerminatorKind::CoroutineDrop => {}
             TerminatorKind::UnwindTerminate(..) => {}
-            kind @ (TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::Yield { .. }
-            | TerminatorKind::CoroutineDrop) => {
+            kind @ (TerminatorKind::FalseUnwind { .. } | TerminatorKind::FalseEdge { .. }) => {
                 bug!("{kind:?} should not be in runtime MIR");
             }
         }
