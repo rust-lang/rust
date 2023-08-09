@@ -2181,7 +2181,28 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
     }
 }
 
+#[instrument(level = "trace", skip(tcx))]
 pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
+    let dep_node = tcx.metadata_dep_node();
+
+    if tcx.dep_graph.is_fully_enabled()
+        && let work_product_id = &rustc_middle::dep_graph::WorkProductId::from_cgu_name("metadata")
+        && let Some(work_product) = tcx.dep_graph.previous_work_product(work_product_id)
+        && tcx.try_mark_green(&dep_node)
+    {
+        let saved_path = &work_product.saved_files["rmeta"];
+        let incr_comp_session_dir = tcx.sess.incr_comp_session_dir_opt().unwrap();
+        let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, saved_path);
+        debug!("copying preexisting metadata from {source_file:?} to {path:?}");
+        match rustc_fs_util::link_or_copy(&source_file, path) {
+            Ok(_) => {}
+            Err(err) => {
+                tcx.sess.emit_fatal(FailCreateFileEncoder { err });
+            }
+        };
+        return;
+    };
+
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
     // Since encoding metadata is not in a query, and nothing is cached,
@@ -2189,7 +2210,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     tcx.dep_graph.assert_ignored();
 
     join(
-        || encode_metadata_impl(tcx, path),
+        || tcx.dep_graph.with_task(dep_node, tcx, path, encode_metadata_impl, None),
         || {
             if tcx.sess.threads() == 1 {
                 return;

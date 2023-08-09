@@ -2149,6 +2149,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn module_children_local(self, def_id: LocalDefId) -> &'tcx [ModChild] {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
     }
+
+    pub fn metadata_dep_node(self) -> crate::dep_graph::DepNode {
+        crate::dep_graph::make_metadata(self)
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead

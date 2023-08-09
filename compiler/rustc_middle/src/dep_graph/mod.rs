@@ -14,7 +14,7 @@ pub use rustc_query_system::dep_graph::{
 };
 
 pub use dep_node::{dep_kinds, label_strs, DepKind, DepNode, DepNodeExt};
-pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
+pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item, make_metadata};
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepsType>;
 
