@@ -20,7 +20,7 @@ declare_clippy_lint! {
     /// These structures are non-idiomatic and less efficient than simply using
     /// `vec![0; len]`.
     ///
-    /// More specifically, for `vec![0; len]`, the compiler can use a more specialized type of allocation
+    /// Specifically, for `vec![0; len]`, the compiler can use a specialized type of allocation
     /// that also zero-initializes the allocated memory in the same call
     /// (see: [alloc_zeroed](https://doc.rust-lang.org/stable/std/alloc/trait.GlobalAlloc.html#method.alloc_zeroed)).
     ///
