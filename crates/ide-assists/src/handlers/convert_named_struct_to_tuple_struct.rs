@@ -161,9 +161,9 @@ fn process_struct_name_reference(
     let path_segment = name_ref.syntax().parent().and_then(ast::PathSegment::cast)?;
     // A `PathSegment` always belongs to a `Path`, so there's at least one `Path` at this point.
     let full_path =
-        path_segment.syntax().parent()?.ancestors().map_while(ast::Path::cast).last().unwrap();
+        path_segment.syntax().parent()?.ancestors().map_while(ast::Path::cast).last()?;
 
-    if full_path.segment().unwrap().name_ref()? != *name_ref {
+    if full_path.segment()?.name_ref()? != *name_ref {
         // `name_ref` isn't the last segment of the path, so `full_path` doesn't point to the
         // struct we want to edit.
         return None;
