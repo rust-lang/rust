@@ -2386,7 +2386,43 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
     }
 }
 
+#[instrument(level = "trace", skip(tcx))]
 pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
+    if let Some(ref_path) = ref_path {
+        let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
+
+        with_encode_metadata_header(tcx, ref_path, |ecx| {
+            let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
+                name: tcx.crate_name(LOCAL_CRATE),
+                triple: tcx.sess.opts.target_triple.clone(),
+                hash: tcx.crate_hash(LOCAL_CRATE),
+                is_proc_macro_crate: false,
+                is_stub: true,
+            });
+            header.position.get()
+        });
+    }
+
+    let dep_node = tcx.metadata_dep_node();
+
+    if tcx.dep_graph.is_fully_enabled()
+        && let work_product_id = &rustc_middle::dep_graph::WorkProductId::from_cgu_name("metadata")
+        && let Some(work_product) = tcx.dep_graph.previous_work_product(work_product_id)
+        && tcx.try_mark_green(&dep_node)
+    {
+        let saved_path = &work_product.saved_files["rmeta"];
+        let incr_comp_session_dir = tcx.sess.incr_comp_session_dir_opt().unwrap();
+        let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, saved_path);
+        debug!("copying preexisting metadata from {source_file:?} to {path:?}");
+        match rustc_fs_util::link_or_copy(&source_file, path) {
+            Ok(_) => {}
+            Err(err) => {
+                tcx.dcx().emit_fatal(FailCreateFileEncoder { err });
+            }
+        };
+        return;
+    };
+
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
     // Since encoding metadata is not in a query, and nothing is cached,
@@ -2406,35 +2442,30 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         );
     }
 
-    with_encode_metadata_header(tcx, path, |ecx| {
-        // Encode all the entries and extra information in the crate,
-        // culminating in the `CrateRoot` which points to all of it.
-        let root = ecx.encode_crate_root();
+    tcx.dep_graph.with_task(
+        dep_node,
+        tcx,
+        path,
+        |tcx, path| {
+            with_encode_metadata_header(tcx, path, |ecx| {
+                // Encode all the entries and extra information in the crate,
+                // culminating in the `CrateRoot` which points to all of it.
+                let root = ecx.encode_crate_root();
 
-        // Flush buffer to ensure backing file has the correct size.
-        ecx.opaque.flush();
-        // Record metadata size for self-profiling
-        tcx.prof.artifact_size(
-            "crate_metadata",
-            "crate_metadata",
-            ecx.opaque.file().metadata().unwrap().len(),
-        );
+                // Flush buffer to ensure backing file has the correct size.
+                ecx.opaque.flush();
+                // Record metadata size for self-profiling
+                tcx.prof.artifact_size(
+                    "crate_metadata",
+                    "crate_metadata",
+                    ecx.opaque.file().metadata().unwrap().len(),
+                );
 
-        root.position.get()
-    });
-
-    if let Some(ref_path) = ref_path {
-        with_encode_metadata_header(tcx, ref_path, |ecx| {
-            let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
-                name: tcx.crate_name(LOCAL_CRATE),
-                triple: tcx.sess.opts.target_triple.clone(),
-                hash: tcx.crate_hash(LOCAL_CRATE),
-                is_proc_macro_crate: false,
-                is_stub: true,
+                root.position.get()
             });
-            header.position.get()
-        });
-    }
+        },
+        None,
+    );
 }
 
 fn with_encode_metadata_header(

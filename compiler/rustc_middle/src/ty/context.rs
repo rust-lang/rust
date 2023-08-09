@@ -3364,6 +3364,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolver_for_lowering_raw(()).0
     }
 
+    pub fn metadata_dep_node(self) -> crate::dep_graph::DepNode {
+        crate::dep_graph::make_metadata(self)
+    }
+
     /// Given an `impl_id`, return the trait it implements.
     /// Return `None` if this is an inherent impl.
     pub fn impl_trait_ref(
