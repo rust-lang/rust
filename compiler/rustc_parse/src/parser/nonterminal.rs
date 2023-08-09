@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
             }
 
             NonterminalKind::Ty => token::NtTy(
-                self.collect_tokens_no_attrs(|this| this.parse_no_question_mark_recover())?,
+                self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?,
             ),
 
             // this could be handled like a token, since it is one
