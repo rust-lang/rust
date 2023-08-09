@@ -1912,14 +1912,18 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
-        if let Terminator { kind: TerminatorKind::Call { destination, .. }, .. } = terminator {
-            if let Some(local) = destination.as_local()
-                && self.ssa.is_ssa(local)
-            {
-                let ty = self.local_decls[local].ty;
-                let opaque = self.new_opaque(ty);
-                self.assign(local, opaque);
-            }
+        let destination = match terminator.kind {
+            TerminatorKind::Call { destination, .. } => Some(destination),
+            TerminatorKind::Yield { resume_arg, .. } => Some(resume_arg),
+            _ => None,
+        };
+        if let Some(destination) = destination
+            && let Some(local) = destination.as_local()
+            && self.ssa.is_ssa(local)
+        {
+            let ty = self.local_decls[local].ty;
+            let opaque = self.new_opaque(ty);
+            self.assign(local, opaque);
         }
         // Terminators that can write to memory may invalidate (nested) derefs.
         if terminator.kind.can_write_to_memory() {
