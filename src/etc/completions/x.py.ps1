@@ -335,6 +335,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--set', 'set', [CompletionResultType]::ParameterName, 'override options in config.toml')
             [CompletionResult]::new('--no-fail-fast', 'no-fail-fast', [CompletionResultType]::ParameterName, 'run all tests regardless of failure')
             [CompletionResult]::new('--no-doc', 'no-doc', [CompletionResultType]::ParameterName, 'do not run doc tests')
+            [CompletionResult]::new('--failed', 'failed', [CompletionResultType]::ParameterName, 'rerun failed tests')
             [CompletionResult]::new('--doc', 'doc', [CompletionResultType]::ParameterName, 'only run doc tests')
             [CompletionResult]::new('--bless', 'bless', [CompletionResultType]::ParameterName, 'whether to automatically update stderr/stdout files')
             [CompletionResult]::new('--force-rerun', 'force-rerun', [CompletionResultType]::ParameterName, 'rerun tests even if the inputs are unchanged')

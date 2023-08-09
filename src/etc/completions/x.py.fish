@@ -262,6 +262,7 @@ complete -c x.py -n "__fish_seen_subcommand_from test" -l reproducible-artifact 
 complete -c x.py -n "__fish_seen_subcommand_from test" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from test" -l no-fail-fast -d 'run all tests regardless of failure'
 complete -c x.py -n "__fish_seen_subcommand_from test" -l no-doc -d 'do not run doc tests'
+complete -c x.py -n "__fish_seen_subcommand_from test" -l failed -d 'rerun failed tests'
 complete -c x.py -n "__fish_seen_subcommand_from test" -l doc -d 'only run doc tests'
 complete -c x.py -n "__fish_seen_subcommand_from test" -l bless -d 'whether to automatically update stderr/stdout files'
 complete -c x.py -n "__fish_seen_subcommand_from test" -l force-rerun -d 'rerun tests even if the inputs are unchanged'

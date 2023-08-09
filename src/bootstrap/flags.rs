@@ -333,6 +333,9 @@ pub enum Subcommand {
         /// do not run doc tests
         no_doc: bool,
         #[arg(long)]
+        /// rerun failed tests
+        failed: bool,
+        #[arg(long)]
         /// only run doc tests
         doc: bool,
         #[arg(long)]
@@ -454,6 +457,13 @@ impl Subcommand {
     pub fn fail_fast(&self) -> bool {
         match *self {
             Subcommand::Test { no_fail_fast, .. } => !no_fail_fast,
+            _ => false,
+        }
+    }
+
+    pub fn failed(&self) -> bool {
+        match *self {
+            Subcommand::Test { failed, .. } => !failed,
             _ => false,
         }
     }
