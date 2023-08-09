@@ -65,8 +65,13 @@ pub fn bolt_optimize(path: &Utf8Path, profile: &LlvmBoltProfile) -> anyhow::Resu
         .arg("-jump-tables=move")
         // Fold functions with identical code
         .arg("-icf=1")
+        // The following flag saves about 50 MiB of libLLVM.so size.
+        // However, it succeeds very non-deterministically. To avoid frequent artifact size swings,
+        // it is kept disabled for now.
+        // FIXME(kobzol): try to re-enable this once BOLT in-place rewriting is merged or after
+        // we bump LLVM.
         // Try to reuse old text segments to reduce binary size
-        .arg("--use-old-text")
+        // .arg("--use-old-text")
         // Update DWARF debug info in the final binary
         .arg("-update-debug-sections")
         // Print optimization statistics
