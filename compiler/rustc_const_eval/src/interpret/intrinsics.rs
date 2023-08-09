@@ -6,7 +6,8 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
     interpret::{
-        Allocation, ConstAllocation, ConstValue, GlobalId, InterpResult, PointerArithmetic, Scalar,
+        Allocation, ConstAllocation, ConstAllocationDebugHint, ConstValue, GlobalId, InterpResult,
+        PointerArithmetic, Scalar,
     },
     BinOp, NonDivergingIntrinsic,
 };
@@ -47,7 +48,7 @@ fn numeric_intrinsic<Prov>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<
 pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAllocation<'tcx> {
     let path = crate::util::type_name(tcx, ty);
     let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes());
-    tcx.mk_const_alloc(alloc)
+    tcx.mk_const_alloc(alloc, Some(ConstAllocationDebugHint::TypeName))
 }
 
 /// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated

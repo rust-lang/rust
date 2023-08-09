@@ -1948,6 +1948,21 @@ extern "C" {
         AlignInBits: u32,
     ) -> &'a DIGlobalVariableExpression;
 
+    pub fn LLVMRustDIBuilderCreateConstStr<'a>(
+        Builder: &DIBuilder<'a>,
+        Name: *const c_char,
+        NameLen: size_t,
+        Ty: &'a DIType,
+        Val: &'a Value,
+    ) -> &'a DIGlobalVariableExpression;
+
+    pub fn LLVMRustDIBuilderCreateOpaquePointerStaticVariable<'a>(
+        Builder: &DIBuilder<'a>,
+        Name: *const c_char,
+        NameLen: size_t,
+        Val: &'a Value,
+    ) -> &'a DIGlobalVariableExpression;
+
     pub fn LLVMRustDIBuilderCreateVariable<'a>(
         Builder: &DIBuilder<'a>,
         Tag: c_uint,

@@ -12,7 +12,7 @@ use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_bound_vars;
 use crate::middle::stability;
-use crate::mir::interpret::{self, Allocation, ConstAllocation};
+use crate::mir::interpret::{self, Allocation, ConstAllocation, ConstAllocationDebugHint};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::query::plumbing::QuerySystem;
 use crate::query::LocalCrate;
@@ -646,7 +646,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn allocate_bytes(self, bytes: &[u8]) -> interpret::AllocId {
         // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes);
-        let alloc = self.mk_const_alloc(alloc);
+        let alloc = self.mk_const_alloc(alloc, Some(ConstAllocationDebugHint::StrLiteral));
         self.create_memory_alloc(alloc)
     }
 
@@ -1456,7 +1456,7 @@ impl<'tcx, T: Hash> Hash for InternedInSet<'tcx, List<T>> {
 }
 
 macro_rules! direct_interners {
-    ($($name:ident: $vis:vis $method:ident($ty:ty): $ret_ctor:ident -> $ret_ty:ty,)+) => {
+    ($($name:ident: $vis:vis $method:ident($ty:ty $(, $v_extra:ident: $ty_extra:ty)*): $ret_ctor:ident -> $ret_ty:ty,)+) => {
         $(impl<'tcx> Borrow<$ty> for InternedInSet<'tcx, $ty> {
             fn borrow<'a>(&'a self) -> &'a $ty {
                 &self.0
@@ -1482,10 +1482,10 @@ macro_rules! direct_interners {
         }
 
         impl<'tcx> TyCtxt<'tcx> {
-            $vis fn $method(self, v: $ty) -> $ret_ty {
+            $vis fn $method(self, v: $ty $(, $v_extra: $ty_extra)*) -> $ret_ty {
                 $ret_ctor(Interned::new_unchecked(self.interners.$name.intern(v, |v| {
                     InternedInSet(self.interners.arena.alloc(v))
-                }).0))
+                }).0) $(, $v_extra)*)
             }
         })+
     }
@@ -1497,7 +1497,7 @@ macro_rules! direct_interners {
 direct_interners! {
     region: pub(crate) intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: intern_const(ConstData<'tcx>): Const -> Const<'tcx>,
-    const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
+    const_allocation: pub mk_const_alloc(Allocation, kind: Option<ConstAllocationDebugHint>): ConstAllocation -> ConstAllocation<'tcx>,
     layout: pub mk_layout(LayoutS): Layout -> Layout<'tcx>,
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<'tcx>):

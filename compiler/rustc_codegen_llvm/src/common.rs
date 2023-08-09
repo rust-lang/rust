@@ -2,6 +2,9 @@
 
 use crate::consts::const_alloc_to_llvm;
 pub use crate::context::CodegenCx;
+use crate::debuginfo::metadata::{
+    build_const_str_di_node, build_opaque_pointer_global_var_di_node,
+};
 use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
 use crate::type_::Type;
 use crate::value::Value;
@@ -11,7 +14,9 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
+use rustc_middle::mir::interpret::{
+    ConstAllocation, ConstAllocationDebugHint, GlobalAlloc, Scalar,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::{DllCallingConvention, DllImport, PeImportNameType};
 use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer};
@@ -19,6 +24,8 @@ use rustc_target::spec::Target;
 
 use libc::{c_char, c_uint};
 use std::fmt::Write;
+
+const RUST_VERSION: &str = env!("CFG_RELEASE_NUM");
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
@@ -196,15 +203,23 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             .from_key(s)
             .or_insert_with(|| {
                 let sc = self.const_bytes(s.as_bytes());
-                let sym = self.generate_local_symbol_name("str");
+                let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
+                    let mut hasher = StableHasher::new();
+                    s.hash_stable(&mut hcx, &mut hasher);
+                    hasher.finish::<Hash128>()
+                });
+                let sym = format!("__rust_{RUST_VERSION}_conststr_{hash:032x}");
                 let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
                     bug!("symbol `{}` is already defined", sym);
                 });
                 unsafe {
                     llvm::LLVMSetInitializer(g, sc);
                     llvm::LLVMSetGlobalConstant(g, True);
-                    llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
+                    llvm::LLVMRustSetLinkage(g, llvm::Linkage::LinkOnceODRLinkage);
+                    llvm::SetUniqueComdat(self.llmod, g);
+                    llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
                 }
+                build_const_str_di_node(self, &sym, g);
                 (s.to_owned(), g)
             })
             .1;
@@ -249,18 +264,38 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let (base_addr, base_addr_space) = match self.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
                         let init = const_alloc_to_llvm(self, alloc);
+                        let debug_hint = alloc.1;
                         let alloc = alloc.inner();
                         let value = match alloc.mutability {
                             Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
-                            _ => self.static_addr_of(init, alloc.align, None),
+                            _ => {
+                                let value = self.static_addr_of(init, alloc.align, None);
+                                llvm::set_linkage(value, llvm::Linkage::LinkOnceODRLinkage);
+                                llvm::set_visibility(value, llvm::Visibility::Hidden);
+                                value
+                            }
                         };
-                        if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty() {
+
+                        if llvm::get_value_name(value).is_empty() {
+                            let name_prefix = match debug_hint {
+                                Some(ConstAllocationDebugHint::StrLiteral) => "str",
+                                Some(ConstAllocationDebugHint::CallerLocation) => "callerloc",
+                                Some(ConstAllocationDebugHint::TypeName) => "typename",
+                                Some(ConstAllocationDebugHint::VTable) => "vtable",
+                                None => "alloc",
+                            };
+
                             let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
                                 let mut hasher = StableHasher::new();
                                 alloc.hash_stable(&mut hcx, &mut hasher);
                                 hasher.finish::<Hash128>()
                             });
-                            llvm::set_value_name(value, format!("alloc_{hash:032x}").as_bytes());
+                            let name = format!("__rust_{RUST_VERSION}_{name_prefix}_{hash:032x}");
+                            llvm::set_value_name(value, name.as_bytes());
+                            build_opaque_pointer_global_var_di_node(self, &name, value);
+                            if alloc.mutability == Mutability::Not {
+                                llvm::SetUniqueComdat(self.llmod, value);
+                            }
                         }
                         (value, AddressSpace::DATA)
                     }

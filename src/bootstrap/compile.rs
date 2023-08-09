@@ -943,7 +943,8 @@ pub fn rustc_cargo_env(
     cargo
         .env("CFG_RELEASE", builder.rust_release())
         .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
-        .env("CFG_VERSION", builder.rust_version());
+        .env("CFG_VERSION", builder.rust_version())
+        .env("CFG_RELEASE_NUM", &builder.version);
 
     if let Some(backend) = builder.config.default_codegen_backend() {
         cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend);

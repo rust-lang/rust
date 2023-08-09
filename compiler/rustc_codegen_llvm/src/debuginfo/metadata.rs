@@ -1252,6 +1252,62 @@ pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, glo
     }
 }
 
+/// Creates debug information for the given constant string.
+///
+/// Adds the created debuginfo nodes directly to the crate's IR.
+pub fn build_const_str_di_node<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    var_name: &str,
+    const_str: &'ll Value,
+) {
+    if cx.dbg_cx.is_none() {
+        return;
+    }
+
+    // Only create type information if full debuginfo is enabled
+    if cx.sess().opts.debuginfo != DebugInfo::Full {
+        return;
+    }
+
+    unsafe {
+        llvm::LLVMRustDIBuilderCreateConstStr(
+            DIB(cx),
+            var_name.as_ptr().cast(),
+            var_name.len(),
+            type_di_node(cx, cx.tcx.types.str_),
+            const_str,
+        );
+    }
+}
+
+/// Creates debug information for the given global variable which is a pointer to an
+/// unknown or opaque type.
+///
+/// Adds the created debuginfo nodes directly to the crate's IR.
+pub fn build_opaque_pointer_global_var_di_node<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    var_name: &str,
+    global: &'ll Value,
+) {
+    if cx.dbg_cx.is_none() {
+        return;
+    }
+
+    // Only create type information if full debuginfo is enabled
+    if cx.sess().opts.debuginfo != DebugInfo::Full {
+        return;
+    }
+
+    unsafe {
+        llvm::LLVMRustDIBuilderCreateOpaquePointerStaticVariable(
+            DIB(cx),
+            var_name.as_ptr().cast(),
+            var_name.len(),
+            global,
+        );
+    }
+}
+
 /// Generates LLVM debuginfo for a vtable.
 ///
 /// The vtable type looks like a struct with a field for each function pointer and super-trait

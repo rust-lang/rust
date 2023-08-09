@@ -148,6 +148,7 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Const<'tcx> {
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ConstAllocation<'tcx> {
     fn encode(&self, e: &mut E) {
+        self.1.encode(e);
         self.inner().encode(e)
     }
 }
@@ -356,7 +357,8 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for [ty::ValTre
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ConstAllocation<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        decoder.interner().mk_const_alloc(Decodable::decode(decoder))
+        let debug_hint = Decodable::decode(decoder);
+        decoder.interner().mk_const_alloc(Decodable::decode(decoder), debug_hint)
     }
 }
 

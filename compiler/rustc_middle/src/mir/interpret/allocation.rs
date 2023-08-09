@@ -150,7 +150,10 @@ impl hash::Hash for Allocation {
 /// (`ConstAllocation`) are used quite a bit.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
-pub struct ConstAllocation<'tcx>(pub Interned<'tcx, Allocation>);
+pub struct ConstAllocation<'tcx>(
+    pub Interned<'tcx, Allocation>,
+    pub Option<ConstAllocationDebugHint>,
+);
 
 impl<'tcx> fmt::Debug for ConstAllocation<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -164,6 +167,20 @@ impl<'tcx> ConstAllocation<'tcx> {
     pub fn inner(self) -> &'tcx Allocation {
         self.0.0
     }
+}
+
+/// Hint used to tag the name of a `ConstAllocation` in debug information so
+/// that data in the final binary can be attributed back to the allocator.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable, Encodable, Decodable)]
+pub enum ConstAllocationDebugHint {
+    /// A string literal.
+    StrLiteral,
+    /// Caller infromation (e.g., for panics).
+    CallerLocation,
+    /// The name of a type.
+    TypeName,
+    /// A vtable.
+    VTable,
 }
 
 /// We have our own error type that does not know about the `AllocId`; that information

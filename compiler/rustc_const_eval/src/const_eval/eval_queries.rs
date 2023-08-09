@@ -177,9 +177,10 @@ pub(super) fn op_to_const<'tcx>(
                         (ecx.tcx.global_alloc(alloc_id).unwrap_memory(), offset.bytes())
                     }
                     (None, _offset) => (
-                        ecx.tcx.mk_const_alloc(Allocation::from_bytes_byte_aligned_immutable(
-                            b"" as &[u8],
-                        )),
+                        ecx.tcx.mk_const_alloc(
+                            Allocation::from_bytes_byte_aligned_immutable(b"" as &[u8]),
+                            None,
+                        ),
                         0,
                     ),
                 };

@@ -1035,6 +1035,50 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
   return wrap(VarExpr);
 }
 
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateConstStr(
+    LLVMRustDIBuilderRef Builder,
+    const char *Name, size_t NameLen,
+    LLVMMetadataRef Ty, LLVMValueRef V) {
+  llvm::GlobalVariable *InitVal = cast<llvm::GlobalVariable>(unwrap(V));
+
+  llvm::DIGlobalVariableExpression *VarExpr = Builder->createGlobalVariableExpression(
+      /* context */ nullptr, StringRef(Name, NameLen),
+      /* linkageName */ StringRef(),
+      nullptr, 0, unwrapDI<DIType>(Ty), /* isLocalToUnit */ false,
+      /* isDefined */ true,
+      /* expr */ nullptr, /* decl */ nullptr,
+      /* templateParams */ nullptr,
+      /* alignInBits */ 0);
+
+  InitVal->setMetadata("dbg", VarExpr);
+
+  return wrap(VarExpr);
+}
+
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateOpaquePointerStaticVariable(
+    LLVMRustDIBuilderRef Builder,
+    const char *Name, size_t NameLen,
+    LLVMValueRef V) {
+  llvm::GlobalVariable *InitVal = cast<llvm::GlobalVariable>(unwrap(V));
+
+  DataLayout Layout = InitVal->getParent()->getDataLayout();
+  DIType *DebugType = Builder->createPointerType(nullptr, Layout.getTypeSizeInBits(
+    InitVal->getValueType()));
+
+  llvm::DIGlobalVariableExpression *VarExpr = Builder->createGlobalVariableExpression(
+      /* context */ nullptr, StringRef(Name, NameLen),
+      /* linkageName */ StringRef(),
+      nullptr, 0, DebugType, /* isLocalToUnit */ false,
+      /* isDefined */ true,
+      /* expr */ nullptr, /* decl */ nullptr,
+      /* templateParams */ nullptr,
+      /* alignInBits */ 0);
+
+  InitVal->setMetadata("dbg", VarExpr);
+
+  return wrap(VarExpr);
+}
+
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
     LLVMRustDIBuilderRef Builder, unsigned Tag, LLVMMetadataRef Scope,
     const char *Name, size_t NameLen,

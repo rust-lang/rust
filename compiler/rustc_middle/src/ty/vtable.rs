@@ -1,6 +1,8 @@
 use std::fmt;
 
-use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar};
+use crate::mir::interpret::{
+    alloc_range, AllocId, Allocation, ConstAllocationDebugHint, Pointer, Scalar,
+};
 use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
 use rustc_ast::Mutability;
 
@@ -112,5 +114,5 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     }
 
     vtable.mutability = Mutability::Not;
-    tcx.create_memory_alloc(tcx.mk_const_alloc(vtable))
+    tcx.create_memory_alloc(tcx.mk_const_alloc(vtable, Some(ConstAllocationDebugHint::VTable)))
 }

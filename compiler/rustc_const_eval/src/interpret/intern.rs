@@ -18,7 +18,7 @@ use super::validity::RefTracking;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_middle::mir::interpret::InterpResult;
+use rustc_middle::mir::interpret::{ConstAllocationDebugHint, InterpResult};
 use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
 
 use rustc_ast::Mutability;
@@ -104,11 +104,11 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
     };
     // This match is just a canary for future changes to `MemoryKind`, which most likely need
     // changes in this function.
-    match kind {
-        MemoryKind::Stack
-        | MemoryKind::Machine(const_eval::MemoryKind::Heap)
-        | MemoryKind::CallerLocation => {}
-    }
+    let const_allocation_kind = match kind {
+        MemoryKind::Stack | MemoryKind::Machine(const_eval::MemoryKind::Heap) => None,
+        MemoryKind::CallerLocation => Some(ConstAllocationDebugHint::CallerLocation),
+    };
+
     // Set allocation mutability as appropriate. This is used by LLVM to put things into
     // read-only memory, and also by Miri when evaluating other globals that
     // access this one.
@@ -136,7 +136,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
     };
     // link the alloc id to the actual allocation
     leftover_allocations.extend(alloc.provenance().ptrs().iter().map(|&(_, alloc_id)| alloc_id));
-    let alloc = tcx.mk_const_alloc(alloc);
+    let alloc = tcx.mk_const_alloc(alloc, const_allocation_kind);
     tcx.set_alloc_id_memory(alloc_id, alloc);
     None
 }
@@ -428,7 +428,7 @@ pub fn intern_const_alloc_recursive<
                     alloc.mutability = Mutability::Not;
                 }
             }
-            let alloc = tcx.mk_const_alloc(alloc);
+            let alloc = tcx.mk_const_alloc(alloc, None);
             tcx.set_alloc_id_memory(alloc_id, alloc);
             for &(_, alloc_id) in alloc.inner().provenance().ptrs().iter() {
                 if leftover_allocations.insert(alloc_id) {
@@ -467,6 +467,6 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
         f(self, &dest.clone().into())?;
         let mut alloc = self.memory.alloc_map.remove(&dest.ptr.provenance.unwrap()).unwrap().1;
         alloc.mutability = Mutability::Not;
-        Ok(self.tcx.mk_const_alloc(alloc))
+        Ok(self.tcx.mk_const_alloc(alloc, None))
     }
 }
