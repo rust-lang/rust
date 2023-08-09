@@ -29,26 +29,18 @@ declare_clippy_lint! {
     /// it involves two operations for allocating and initializing.
     /// The `resize` call first allocates memory (since `Vec::new()` did not), and only *then* zero-initializes it.
     ///
-    /// Writing `Vec::with_capacity(size)` followed by `vec.resize(len, 0)` is similar.
-    /// The allocation shifts from `resize` to `with_capacity`,
-    /// but the zero-initialization still happens separately,
-    /// when it could be done in one call with `vec![0; len]` (`alloc_zeroed`).
-    ///
     /// ### Example
     /// ```rust
     /// # use core::iter::repeat;
     /// # let len = 4;
-    /// let mut vec1 = Vec::with_capacity(len);
+    /// let mut vec1 = Vec::new();
     /// vec1.resize(len, 0);
     ///
-    /// let mut vec1 = Vec::with_capacity(len);
-    /// vec1.resize(vec1.capacity(), 0);
-    ///
     /// let mut vec2 = Vec::with_capacity(len);
-    /// vec2.extend(repeat(0).take(len));
+    /// vec2.resize(len, 0);
     ///
-    /// let mut vec3 = Vec::new();
-    /// vec3.resize(len, 0);
+    /// let mut vec3 = Vec::with_capacity(len);
+    /// vec3.extend(repeat(0).take(len));
     /// ```
     ///
     /// Use instead:
