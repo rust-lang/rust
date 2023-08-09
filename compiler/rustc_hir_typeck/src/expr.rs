@@ -13,7 +13,7 @@ use crate::errors::{
     YieldExprOutsideOfGenerator,
 };
 use crate::fatally_break_rust;
-use crate::method::SelfSource;
+use crate::method::{MethodCallComponents, SelfSource};
 use crate::type_error_struct;
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
 use crate::{
@@ -1281,7 +1281,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         segment.ident,
                         SelfSource::MethodCall(rcvr),
                         error,
-                        Some((rcvr, args)),
+                        Some(MethodCallComponents { receiver: rcvr, args, full_expr: expr }),
                         expected,
                         false,
                     ) {

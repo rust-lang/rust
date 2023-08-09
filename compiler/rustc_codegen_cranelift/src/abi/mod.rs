@@ -48,7 +48,9 @@ pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: Call
             default_call_conv
         }
 
-        Conv::X86Intr => sess.fatal("x86-interrupt call conv not yet implemented"),
+        Conv::X86Intr | Conv::RiscvInterrupt { .. } => {
+            sess.fatal(format!("interrupt call conv {c:?} not yet implemented"))
+        }
 
         Conv::ArmAapcs => sess.fatal("aapcs call conv not yet implemented"),
         Conv::CCmseNonSecureCall => {

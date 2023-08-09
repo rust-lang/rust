@@ -1,0 +1,20 @@
+error[E0599]: no method named `x` found for struct `S` in the current scope
+  --> $DIR/arbitrary_self_types_needing_mut_pin.rs:11:7
+   |
+LL | struct S;
+   | -------- method `x` not found for this struct
+...
+LL |     fn x(self: Pin<&mut Self>) {
+   |        - the method is available for `Pin<&mut S>` here
+...
+LL |     S.x();
+   |       ^ method not found in `S`
+   |
+help: consider wrapping the receiver expression with the appropriate type
+   |
+LL |     Pin::new(&mut S).x();
+   |     +++++++++++++  +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

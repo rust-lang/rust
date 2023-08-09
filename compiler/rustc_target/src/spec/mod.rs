@@ -2270,6 +2270,7 @@ impl Target {
             PtxKernel => self.arch == "nvptx64",
             Msp430Interrupt => self.arch == "msp430",
             AmdGpuKernel => self.arch == "amdgcn",
+            RiscvInterruptM | RiscvInterruptS => ["riscv32", "riscv64"].contains(&&self.arch[..]),
             AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr",
             Wasm => ["wasm32", "wasm64"].contains(&&self.arch[..]),
             Thiscall { .. } => self.arch == "x86",
@@ -2701,7 +2702,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
                     match lookup_abi(s) {
-                        Some(abi) => base.$key_name = Some(abi),
+                        Ok(abi) => base.$key_name = Some(abi),
                         _ => return Some(Err(format!("'{}' is not a valid value for abi", s))),
                     }
                     Some(Ok(()))

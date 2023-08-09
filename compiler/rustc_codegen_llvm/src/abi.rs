@@ -383,12 +383,15 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 
     fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value) {
-        let mut func_attrs = SmallVec::<[_; 2]>::new();
+        let mut func_attrs = SmallVec::<[_; 3]>::new();
         if self.ret.layout.abi.is_uninhabited() {
             func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(cx.llcx));
         }
         if !self.can_unwind {
             func_attrs.push(llvm::AttributeKind::NoUnwind.create_attr(cx.llcx));
+        }
+        if let Conv::RiscvInterrupt { kind } = self.conv {
+            func_attrs.push(llvm::CreateAttrStringValue(cx.llcx, "interrupt", kind.as_str()));
         }
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &{ func_attrs });
 
@@ -565,7 +568,9 @@ impl<'tcx> AbiBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
 impl From<Conv> for llvm::CallConv {
     fn from(conv: Conv) -> Self {
         match conv {
-            Conv::C | Conv::Rust | Conv::CCmseNonSecureCall => llvm::CCallConv,
+            Conv::C | Conv::Rust | Conv::CCmseNonSecureCall | Conv::RiscvInterrupt { .. } => {
+                llvm::CCallConv
+            }
             Conv::RustCold => llvm::ColdCallConv,
             Conv::AmdGpuKernel => llvm::AmdGpuKernel,
             Conv::AvrInterrupt => llvm::AvrInterrupt,

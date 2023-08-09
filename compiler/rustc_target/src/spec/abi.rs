@@ -38,6 +38,8 @@ pub enum Abi {
     PlatformIntrinsic,
     Unadjusted,
     RustCold,
+    RiscvInterruptM,
+    RiscvInterruptS,
 }
 
 impl Abi {
@@ -107,11 +109,29 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::PlatformIntrinsic, name: "platform-intrinsic" },
     AbiData { abi: Abi::Unadjusted, name: "unadjusted" },
     AbiData { abi: Abi::RustCold, name: "rust-cold" },
+    AbiData { abi: Abi::RiscvInterruptM, name: "riscv-interrupt-m" },
+    AbiData { abi: Abi::RiscvInterruptS, name: "riscv-interrupt-s" },
 ];
 
+#[derive(Copy, Clone, Debug)]
+pub enum AbiUnsupported {
+    Unrecognized,
+    Reason { explain: &'static str },
+}
+
 /// Returns the ABI with the given name (if any).
-pub fn lookup(name: &str) -> Option<Abi> {
-    AbiDatas.iter().find(|abi_data| name == abi_data.name).map(|&x| x.abi)
+pub fn lookup(name: &str) -> Result<Abi, AbiUnsupported> {
+    AbiDatas.iter().find(|abi_data| name == abi_data.name).map(|&x| x.abi).ok_or_else(|| match name {
+        "riscv-interrupt" => AbiUnsupported::Reason {
+            explain: "please use one of riscv-interrupt-m or riscv-interrupt-s for machine- or supervisor-level interrupts, respectively",
+        },
+        "riscv-interrupt-u" => AbiUnsupported::Reason {
+            explain: "user-mode interrupt handlers have been removed from LLVM pending standardization, see: https://reviews.llvm.org/D149314",
+        },
+
+        _ => AbiUnsupported::Unrecognized,
+
+    })
 }
 
 pub fn all_names() -> Vec<&'static str> {
@@ -200,6 +220,10 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
             feature: sym::abi_avr_interrupt,
             explain: "avr-interrupt and avr-non-blocking-interrupt ABIs are experimental and subject to change",
         }),
+        "riscv-interrupt-m" | "riscv-interrupt-s" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_riscv_interrupt,
+            explain: "riscv-interrupt ABIs are experimental and subject to change",
+        }),
         "C-cmse-nonsecure-call" => Err(AbiDisabled::Unstable {
             feature: sym::abi_c_cmse_nonsecure_call,
             explain: "C-cmse-nonsecure-call ABI is experimental and subject to change",
@@ -260,6 +284,8 @@ impl Abi {
             PlatformIntrinsic => 32,
             Unadjusted => 33,
             RustCold => 34,
+            RiscvInterruptM => 35,
+            RiscvInterruptS => 36,
         };
         debug_assert!(
             AbiDatas
