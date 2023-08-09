@@ -6,7 +6,7 @@ use crate::errors::{
 use crate::mbe::macro_parser::{NamedMatch, NamedMatch::*};
 use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleSource, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, PResult};
@@ -211,31 +211,42 @@ pub(super) fn transcribe<'a>(
                 }
             }
 
-            // Replace the meta-var with the matched token tree from the invocation.
             mbe::TokenTree::MetaVar(mut sp, mut original_ident) => {
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
                 let ident = MacroRulesNormalizedIdent::new(original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
-                    match cur_matched {
+                    let mut mk_delimited = |nt_kind, stream| {
+                        // Emit as a token stream within `Delimiter::Invisible` to maintain parsing
+                        // priorities.
+                        marker.visit_span(&mut sp);
+                        TokenTree::Delimited(
+                            DelimSpan::from_single(sp),
+                            Delimiter::Invisible(InvisibleSource::MetaVar(nt_kind)),
+                            stream,
+                        )
+                    };
+                    let tt = match cur_matched {
                         MatchedSingle(ParseNtResult::Tt(tt)) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            result.push(tt.clone());
+                            tt.clone()
+                        }
+                        MatchedSingle(ParseNtResult::Vis(ref vis)) => {
+                            mk_delimited(NonterminalKind::Vis, TokenStream::from_ast(vis))
                         }
                         MatchedSingle(ParseNtResult::Nt(nt)) => {
-                            // Other variables are emitted into the output stream as groups with
-                            // `Delimiter::Invisible` to maintain parsing priorities.
-                            // `Interpolated` is currently used for such groups in rustc parser.
+                            // `Interpolated` is currently used to maintain parsing priorities for
+                            // these cases, but will eventually be removed.
                             marker.visit_span(&mut sp);
-                            result
-                                .push(TokenTree::token_alone(token::Interpolated(nt.clone()), sp));
+                            TokenTree::token_alone(token::Interpolated(nt.clone()), sp)
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
                             return Err(cx.create_err(VarStillRepeating { span: sp, ident }));
                         }
-                    }
+                    };
+                    result.push(tt);
                 } else {
                     // If we aren't able to match the meta-var, we push it back into the result but
                     // with modified syntax context. (I believe this supports nested macros).

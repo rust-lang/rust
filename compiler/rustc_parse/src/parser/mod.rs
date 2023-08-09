@@ -18,7 +18,7 @@ pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, Nonterminal, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{AttributesData, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
@@ -96,6 +96,41 @@ macro_rules! maybe_whole {
                 $p.bump();
                 return Ok($e);
             }
+        }
+    };
+}
+
+/// Reparses an invisible-delimited sequence produced by expansion of a
+/// declarative macro metavariable. Will panic if called with a `self.token`
+/// that is not an `InvisibleSource::Metavar` invisible open delimiter.
+#[macro_export]
+macro_rules! reparse_metavar_seq {
+    ($p:expr, $nt_kind:expr, $nt_res:pat, $ret:expr) => {{
+        let delim = token::Delimiter::Invisible(token::InvisibleSource::MetaVar($nt_kind));
+        $p.expect(&token::OpenDelim(delim)).expect("no open delim when reparsing");
+        // njn: parse_nonterminal collects token. Should this reparsing call
+        // not do that?
+        let Ok($nt_res) = $p.parse_nonterminal($nt_kind) else {
+            panic!("failed to reparse");
+        };
+        $p.expect(&token::CloseDelim(delim)).expect("no close delim when reparsing");
+        $ret
+    }};
+}
+
+/// Reparses an an invisible-delimited sequence produced by expansion of a
+/// declarative macro metavariable, if present.
+///
+/// `$nt_kind_pat` and `$nt_kind` are always syntactically identical in
+/// practice, but must be specified separately because one is a pattern and one
+/// is an expression. Which is annoying but hard to avoid.
+#[macro_export]
+macro_rules! maybe_reparse_metavar_seq {
+    ($p:expr, $nt_kind_pat:pat, $nt_kind:expr, $nt_res:pat, $ret:expr) => {
+        if let Some($nt_kind_pat) = $p.token.is_metavar_seq() {
+            Some(crate::reparse_metavar_seq!($p, $nt_kind, $nt_res, $ret))
+        } else {
+            None
         }
     };
 }
@@ -1330,7 +1365,15 @@ impl<'a> Parser<'a> {
     /// so emit a proper diagnostic.
     // Public for rustfmt usage.
     pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
-        maybe_whole!(self, NtVis, |x| x.into_inner());
+        if let Some(vis) = maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::Vis,
+            NonterminalKind::Vis,
+            ParseNtResult::Vis(vis),
+            vis
+        ) {
+            return Ok(vis.into_inner());
+        }
 
         if !self.eat_keyword(kw::Pub) {
             // We need a span for our `Spanned<VisibilityKind>`, but there's inherently no
@@ -1515,6 +1558,8 @@ pub enum FlatToken {
 #[derive(Clone, Debug)]
 pub enum ParseNtResult {
     Tt(TokenTree),
+    Vis(P<ast::Visibility>),
 
+    /// This case will eventually be removed, along with `Token::Interpolate`.
     Nt(Lrc<Nonterminal>),
 }

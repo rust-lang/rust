@@ -56,7 +56,6 @@ impl<'a> Parser<'a> {
 
                 NtItem(_)
                 | NtBlock(_)
-                | NtVis(_)
                 | NtLifetime(_) => false,
             }
         }
@@ -84,8 +83,7 @@ impl<'a> Parser<'a> {
                 token::OpenDelim(Delimiter::Brace) => true,
                 token::Interpolated(nt) => match **nt {
                     NtBlock(_) | NtLifetime(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
-                    NtItem(_) | NtPat(_) | NtTy(_) | NtIdent(..) | NtMeta(_) | NtPath(_)
-                    | NtVis(_) => false,
+                    NtItem(_) | NtPat(_) | NtTy(_) | NtIdent(..) | NtMeta(_) | NtPath(_) => false,
                 },
                 token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(k))) => match k {
                     NonterminalKind::Block
@@ -224,9 +222,9 @@ impl<'a> Parser<'a> {
                 P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?),
             ),
             NonterminalKind::Meta => NtMeta(P(self.parse_attr_item(true)?)),
-            NonterminalKind::Vis => NtVis(
+            NonterminalKind::Vis => return Ok(ParseNtResult::Vis(
                 P(self.collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?),
-            ),
+            )),
             NonterminalKind::Lifetime => {
                 if self.check_lifetime() {
                     NtLifetime(self.expect_lifetime().ident)
