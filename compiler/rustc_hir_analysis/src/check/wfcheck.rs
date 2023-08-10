@@ -850,9 +850,10 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
         // Const parameters are well formed if their type is structural match.
         hir::GenericParamKind::Const { ty: hir_ty, default: _ } => {
             let ty = tcx.type_of(param.def_id).instantiate_identity();
+            enter_wf_checking_ctxt(tcx, hir_ty.span, param.def_id, |wfcx| {
+                let ty = wfcx.normalize(hir_ty.span, Some(WellFormedLoc::Ty(param.def_id)), ty);
 
-            if tcx.features().adt_const_params {
-                enter_wf_checking_ctxt(tcx, hir_ty.span, param.def_id, |wfcx| {
+                if tcx.features().adt_const_params {
                     let trait_def_id =
                         tcx.require_lang_item(LangItem::ConstParamTy, Some(hir_ty.span));
                     wfcx.register_bound(
@@ -865,47 +866,47 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                         ty,
                         trait_def_id,
                     );
-                });
-            } else {
-                let err_ty_str;
-                let mut is_ptr = true;
+                } else {
+                    let err_ty_str;
+                    let mut is_ptr = true;
 
-                let err = match ty.kind() {
-                    ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
-                    ty::FnPtr(_) => Some("function pointers"),
-                    ty::RawPtr(_) => Some("raw pointers"),
-                    _ => {
-                        is_ptr = false;
-                        err_ty_str = format!("`{ty}`");
-                        Some(err_ty_str.as_str())
-                    }
-                };
-
-                if let Some(unsupported_type) = err {
-                    if is_ptr {
-                        tcx.sess.span_err(
-                            hir_ty.span,
-                            format!(
-                                "using {unsupported_type} as const generic parameters is forbidden",
-                            ),
-                        );
-                    } else {
-                        let mut err = tcx.sess.struct_span_err(
-                            hir_ty.span,
-                            format!(
-                                "{unsupported_type} is forbidden as the type of a const generic parameter",
-                            ),
-                        );
-                        err.note("the only supported types are integers, `bool` and `char`");
-                        if tcx.sess.is_nightly_build() {
-                            err.help(
-                            "more complex types are supported with `#![feature(adt_const_params)]`",
-                        );
+                    let err = match ty.kind() {
+                        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
+                        ty::FnPtr(_) => Some("function pointers"),
+                        ty::RawPtr(_) => Some("raw pointers"),
+                        _ => {
+                            is_ptr = false;
+                            err_ty_str = format!("`{ty}`");
+                            Some(err_ty_str.as_str())
                         }
-                        err.emit();
+                    };
+
+                    if let Some(unsupported_type) = err {
+                        if is_ptr {
+                            tcx.sess.span_err(
+                                hir_ty.span,
+                                format!(
+                                    "using {unsupported_type} as const generic parameters is forbidden",
+                                ),
+                            );
+                        } else {
+                            let mut err = tcx.sess.struct_span_err(
+                                hir_ty.span,
+                                format!(
+                                    "{unsupported_type} is forbidden as the type of a const generic parameter",
+                                ),
+                            );
+                            err.note("the only supported types are integers, `bool` and `char`");
+                            if tcx.sess.is_nightly_build() {
+                                err.help(
+                                "more complex types are supported with `#![feature(adt_const_params)]`",
+                            );
+                            }
+                            err.emit();
+                        }
                     }
                 }
-            }
+            });
         }
     }
 }
