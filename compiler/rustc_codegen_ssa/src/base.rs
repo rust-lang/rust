@@ -885,9 +885,7 @@ impl CrateInfo {
         // If global LTO is enabled then almost everything (*) is glued into a single object file,
         // so this logic is not necessary and can cause issues on some targets (due to weak lang
         // item symbols being "privatized" to that object file), so we disable it.
-        // (*) Native libs, and `#[compiler_builtins]` and `#[no_builtins]` crates are not glued,
-        // and we assume that they cannot define weak lang items. This is not currently enforced
-        // by the compiler, but that's ok because all this stuff is unstable anyway.
+        // (*) Native libs are not glued, and we assume that they cannot define weak lang items.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
             let missing_weak_lang_items: FxHashSet<Symbol> = info

@@ -1,0 +1,17 @@
+CHECK: define{{.*}} void @bar
+CHECK-NEXT: call void @no_builtins
+CHECK-NEXT: call void @llvm.memcpy
+
+CHECK: define{{.*}} i32 @main
+CHECK: call void @bar
+
+CHECK: define{{.*}} void @foo
+CHECK-NEXT: call void @llvm.memcpy
+
+CHECK: define{{.*}} void @no_builtins
+CHECK-SAME: #[[ATTR:[0-9]+]] {
+CHECK: call void @foo
+CHECK-NEXT: call{{.*}} @memcpy
+
+CHECK: attributes #[[ATTR]]
+CHECK-SAME: no-builtins
