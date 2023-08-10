@@ -34,7 +34,7 @@ pub mod interpret;
 pub mod transform;
 pub mod util;
 
-pub use errors::InterpErrorExt;
+pub use errors::InterpErrorExt2;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;

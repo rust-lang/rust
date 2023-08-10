@@ -10,7 +10,7 @@ use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use super::InterpCx;
 use crate::errors::{self, FrameNote};
 use crate::interpret::{ErrorHandled, InterpError, InterpErrorInfo, Machine, MachineStopType};
-use crate::InterpErrorExt;
+use crate::InterpErrorExt2;
 
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
@@ -126,7 +126,7 @@ pub(super) fn report<'tcx, C, F, E>(
     error: InterpError<'tcx>,
     span: Option<Span>,
     get_span_and_frames: C,
-    _mk: F,
+    mk: F,
 ) -> ErrorHandled
 where
     C: FnOnce() -> (Span, Vec<FrameNote>),
@@ -166,13 +166,12 @@ where
             // Report as hard error.
             let (our_span, frames) = get_span_and_frames();
             let span = span.unwrap_or(our_span);
+            let err = mk(span, frames);
+            let interp_err = InterpErrorExt2 { err: error, span, tcx };
 
-            let handler = &tcx.sess.parse_sess.span_diagnostic;
-            let mut err = handler.create_err(Spanned { span, node: InterpErrorExt(error) });
+            let mut err = tcx.sess.create_err(err);
 
-            for frame in frames {
-                err.eager_subdiagnostic(handler, frame);
-            }
+            err.subdiagnostic(interp_err);
 
             // Use *our* span to label the interp error
             ErrorHandled::Reported(err.emit().into())
