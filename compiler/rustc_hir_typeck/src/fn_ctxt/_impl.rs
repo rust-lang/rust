@@ -85,16 +85,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// to get more type information.
     // FIXME(-Ztrait-solver=next): A lot of the calls to this method should
     // probably be `try_structurally_resolve_type` or `structurally_resolve_type` instead.
-    pub(in super::super) fn resolve_vars_with_obligations(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.resolve_vars_with_obligations_and_mutate_fulfillment(ty, |_| {})
-    }
-
-    #[instrument(skip(self, mutate_fulfillment_errors), level = "debug", ret)]
-    pub(in super::super) fn resolve_vars_with_obligations_and_mutate_fulfillment(
-        &self,
-        mut ty: Ty<'tcx>,
-        mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
-    ) -> Ty<'tcx> {
+    #[instrument(skip(self), level = "debug", ret)]
+    pub(in super::super) fn resolve_vars_with_obligations(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
         // No Infer()? Nothing needs doing.
         if !ty.has_non_region_infer() {
             debug!("no inference var, nothing needs doing");
@@ -112,7 +104,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // possible. This can help substantially when there are
         // indirect dependencies that don't seem worth tracking
         // precisely.
-        self.select_obligations_where_possible(mutate_fulfillment_errors);
+        self.select_obligations_where_possible(|_| {});
         self.resolve_vars_if_possible(ty)
     }
 
