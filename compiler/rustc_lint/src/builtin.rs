@@ -2215,7 +2215,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust
     /// #![feature(rustc_attrs)]
     /// ```
     ///
@@ -2226,7 +2226,7 @@ declare_lint! {
     /// These features are an implementation detail of the compiler and standard
     /// library and are not supposed to be used in user code.
     pub INTERNAL_FEATURES,
-    Deny,
+    Warn,
     "internal features are not supposed to be used"
 }
 
