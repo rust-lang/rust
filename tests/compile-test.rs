@@ -117,7 +117,7 @@ fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
 }
 
 fn base_config(test_dir: &str) -> (compiletest::Config, Args) {
-    let args = Args::test();
+    let args = Args::test().unwrap();
     let mut config = compiletest::Config {
         mode: TestMode::Yolo { rustfix: true },
         stderr_filters: vec![],
@@ -202,7 +202,6 @@ fn run_ui() {
 
     compiletest::run_tests_generic(
         vec![config],
-        std::thread::available_parallelism().unwrap(),
         args,
         move |path, args, config| compiletest::default_file_filter(path, args, config) && test_filter(path),
         compiletest::default_per_file_config,
@@ -229,7 +228,6 @@ fn run_internal_tests() {
 
     compiletest::run_tests_generic(
         vec![config],
-        std::thread::available_parallelism().unwrap(),
         args,
         move |path, args, config| compiletest::default_file_filter(path, args, config) && test_filter(path),
         compiletest::default_per_file_config,
@@ -262,7 +260,6 @@ fn run_ui_toml() {
 
     ui_test::run_tests_generic(
         vec![config],
-        std::thread::available_parallelism().unwrap(),
         args,
         |path, args, config| compiletest::default_file_filter(path, args, config) && test_filter(path),
         |config, path, _file_contents| {
@@ -320,7 +317,6 @@ fn run_ui_cargo() {
 
     ui_test::run_tests_generic(
         vec![config],
-        std::thread::available_parallelism().unwrap(),
         args,
         |path, _args, _config| test_filter(path) && path.ends_with("Cargo.toml"),
         |config, path, _file_contents| {
