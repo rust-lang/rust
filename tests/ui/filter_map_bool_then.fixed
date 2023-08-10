@@ -33,11 +33,15 @@ fn main() {
     // Despite this is non-copy, `is_copy` still returns true (at least now) because it's `&NonCopy`,
     // and any `&` is `Copy`. So since we can dereference it in `filter` (since it's then `&&NonCopy`),
     // we can lint this and still get the same input type.
+    // See: <https://doc.rust-lang.org/std/primitive.reference.html#trait-implementations-1>
     let v = vec![NonCopy, NonCopy];
     v.clone().iter().filter(|&i| (i == &NonCopy)).map(|i| i);
     // Do not lint
     let v = vec![NonCopy, NonCopy];
     v.clone().into_iter().filter_map(|i| (i == NonCopy).then(|| i));
+    // `&mut` is `!Copy`.
+    let v = vec![NonCopy, NonCopy];
+    v.clone().iter_mut().filter_map(|i| (i == &mut NonCopy).then(|| i));
     external! {
         let v = vec![1, 2, 3, 4, 5, 6];
         v.clone().into_iter().filter_map(|i| (i % 2 == 0).then(|| i + 1));
