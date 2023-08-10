@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, NonterminalKind, Token};
+use rustc_ast::token::{self, Delimiter, Nonterminal::*, NonterminalKind, Token};
 use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
 use rustc_errors::IntoDiagnostic;
@@ -20,10 +20,7 @@ impl<'a> Parser<'a> {
     pub fn nonterminal_may_begin_with(kind: NonterminalKind, token: &Token) -> bool {
         /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
         fn may_be_ident(nt: &token::Nonterminal) -> bool {
-            !matches!(
-                *nt,
-                token::NtItem(_) | token::NtBlock(_) | token::NtVis(_) | token::NtLifetime(_)
-            )
+            !matches!(*nt, NtItem(_) | NtBlock(_) | NtVis(_) | NtLifetime(_))
         }
 
         match kind {
@@ -46,20 +43,14 @@ impl<'a> Parser<'a> {
                 token::OpenDelim(Delimiter::Brace) => true,
                 token::Interpolated(nt) => !matches!(
                     **nt,
-                    token::NtItem(_)
-                        | token::NtPat(_)
-                        | token::NtTy(_)
-                        | token::NtIdent(..)
-                        | token::NtMeta(_)
-                        | token::NtPath(_)
-                        | token::NtVis(_)
+                    NtItem(_) | NtPat(_) | NtTy(_) | NtIdent(..) | NtMeta(_) | NtPath(_) | NtVis(_)
                 ),
                 _ => false,
             },
             NonterminalKind::Path | NonterminalKind::Meta => match &token.kind {
                 token::ModSep | token::Ident(..) => true,
                 token::Interpolated(nt) => match **nt {
-                    token::NtPath(_) | token::NtMeta(_) => true,
+                    NtPath(_) | NtMeta(_) => true,
                     _ => may_be_ident(&nt),
                 },
                 _ => false,
@@ -87,7 +78,7 @@ impl<'a> Parser<'a> {
             NonterminalKind::Lifetime => match &token.kind {
                 token::Lifetime(_) => true,
                 token::Interpolated(nt) => {
-                    matches!(**nt, token::NtLifetime(_))
+                    matches!(**nt, NtLifetime(_))
                 }
                 _ => false,
             },
@@ -109,7 +100,7 @@ impl<'a> Parser<'a> {
             // Note that TT is treated differently to all the others.
             NonterminalKind::TT => return Ok(NtOrTt::Tt(self.parse_token_tree())),
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
-                Some(item) => token::NtItem(item),
+                Some(item) => NtItem(item),
                 None => {
                     return Err(UnexpectedNonterminal::Item(self.token.span)
                                .into_diagnostic(&self.sess.span_diagnostic));
@@ -118,17 +109,17 @@ impl<'a> Parser<'a> {
             NonterminalKind::Block => {
                 // While a block *expression* may have attributes (e.g. `#[my_attr] { ... }`),
                 // the ':block' matcher does not support them
-                token::NtBlock(self.collect_tokens_no_attrs(|this| this.parse_block())?)
+                NtBlock(self.collect_tokens_no_attrs(|this| this.parse_block())?)
             }
             NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
-                Some(s) => token::NtStmt(P(s)),
+                Some(s) => NtStmt(P(s)),
                 None => {
                     return Err(UnexpectedNonterminal::Statement(self.token.span)
                                .into_diagnostic(&self.sess.span_diagnostic));
                 }
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => {
-                token::NtPat(self.collect_tokens_no_attrs(|this| match kind {
+                NtPat(self.collect_tokens_no_attrs(|this| match kind {
                     NonterminalKind::PatParam { .. } => this.parse_pat_no_top_alt(None, None),
                     NonterminalKind::PatWithOr => this.parse_pat_allow_top_alt(
                         None,
@@ -140,15 +131,15 @@ impl<'a> Parser<'a> {
                 })?)
             }
 
-            NonterminalKind::Expr => token::NtExpr(self.parse_expr_force_collect()?),
+            NonterminalKind::Expr => NtExpr(self.parse_expr_force_collect()?),
             NonterminalKind::Literal => {
                 // The `:literal` matcher does not support attributes
-                token::NtLiteral(
+                NtLiteral(
                     self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?,
                 )
             }
 
-            NonterminalKind::Ty => token::NtTy(
+            NonterminalKind::Ty => NtTy(
                 self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?,
             ),
 
@@ -157,7 +148,7 @@ impl<'a> Parser<'a> {
                 if let Some((ident, is_raw)) = get_macro_ident(&self.token) =>
             {
                 self.bump();
-                token::NtIdent(ident, is_raw)
+                NtIdent(ident, is_raw)
             }
             NonterminalKind::Ident => {
                 return Err(UnexpectedNonterminal::Ident {
@@ -165,16 +156,16 @@ impl<'a> Parser<'a> {
                     token: self.token.clone(),
                 }.into_diagnostic(&self.sess.span_diagnostic));
             }
-            NonterminalKind::Path => token::NtPath(
+            NonterminalKind::Path => NtPath(
                 P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?),
             ),
-            NonterminalKind::Meta => token::NtMeta(P(self.parse_attr_item(true)?)),
-            NonterminalKind::Vis => token::NtVis(
+            NonterminalKind::Meta => NtMeta(P(self.parse_attr_item(true)?)),
+            NonterminalKind::Vis => NtVis(
                 P(self.collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?),
             ),
             NonterminalKind::Lifetime => {
                 if self.check_lifetime() {
-                    token::NtLifetime(self.expect_lifetime().ident)
+                    NtLifetime(self.expect_lifetime().ident)
                 } else {
                     return Err(UnexpectedNonterminal::Lifetime {
                         span: self.token.span,
