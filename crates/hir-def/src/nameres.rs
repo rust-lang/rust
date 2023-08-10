@@ -227,6 +227,7 @@ pub enum ModuleOrigin {
     },
     /// Pseudo-module introduced by a block scope (contains only inner items).
     BlockExpr {
+        id: BlockId,
         block: AstId<ast::BlockExpr>,
     },
 }
@@ -269,7 +270,7 @@ impl ModuleOrigin {
                 definition.file_id,
                 ModuleSource::Module(definition.to_node(db.upcast())),
             ),
-            ModuleOrigin::BlockExpr { block } => {
+            ModuleOrigin::BlockExpr { block, .. } => {
                 InFile::new(block.file_id, ModuleSource::BlockExpr(block.to_node(db.upcast())))
             }
         }
@@ -325,8 +326,10 @@ impl DefMap {
         // modules declared by blocks with items. At the moment, we don't use
         // this visibility for anything outside IDE, so that's probably OK.
         let visibility = Visibility::Module(ModuleId { krate, local_id, block: None });
-        let module_data =
-            ModuleData::new(ModuleOrigin::BlockExpr { block: block.ast_id }, visibility);
+        let module_data = ModuleData::new(
+            ModuleOrigin::BlockExpr { block: block.ast_id, id: block_id },
+            visibility,
+        );
 
         let mut def_map = DefMap::empty(krate, parent_map.data.edition, module_data);
         def_map.data = parent_map.data.clone();
@@ -643,7 +646,7 @@ impl ModuleData {
                 definition.into()
             }
             ModuleOrigin::Inline { definition, .. } => definition.file_id,
-            ModuleOrigin::BlockExpr { block } => block.file_id,
+            ModuleOrigin::BlockExpr { block, .. } => block.file_id,
         }
     }
 

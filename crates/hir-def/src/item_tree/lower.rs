@@ -77,6 +77,9 @@ impl<'a> Ctx<'a> {
     }
 
     pub(super) fn lower_block(mut self, block: &ast::BlockExpr) -> ItemTree {
+        self.tree
+            .attrs
+            .insert(AttrOwner::TopLevel, RawAttrs::new(self.db.upcast(), block, self.hygiene()));
         self.tree.top_level = block
             .statements()
             .filter_map(|stmt| match stmt {

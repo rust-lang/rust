@@ -342,14 +342,7 @@ fn inner_attributes(
             ast::Impl(it) => it.assoc_item_list()?.syntax().clone(),
             ast::Module(it) => it.item_list()?.syntax().clone(),
             ast::BlockExpr(it) => {
-                use syntax::SyntaxKind::{BLOCK_EXPR , EXPR_STMT};
-                // Block expressions accept outer and inner attributes, but only when they are the outer
-                // expression of an expression statement or the final expression of another block expression.
-                let may_carry_attributes = matches!(
-                    it.syntax().parent().map(|it| it.kind()),
-                     Some(BLOCK_EXPR | EXPR_STMT)
-                );
-                if !may_carry_attributes {
+                if !it.may_carry_attributes() {
                     return None
                 }
                 syntax.clone()
