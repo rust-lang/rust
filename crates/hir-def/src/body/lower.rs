@@ -1100,7 +1100,9 @@ impl ExprCollector<'_> {
                 ast::Stmt::ExprStmt(es) => matches!(es.expr(), Some(ast::Expr::MacroExpr(_))),
                 _ => false,
             });
-            statement_has_item || matches!(block.tail_expr(), Some(ast::Expr::MacroExpr(_)))
+            statement_has_item
+                || matches!(block.tail_expr(), Some(ast::Expr::MacroExpr(_)))
+                || (block.may_carry_attributes() && block.attrs().next().is_some())
         };
 
         let block_id = if block_has_items {

@@ -719,20 +719,18 @@ fn emit_def_diagnostic_(
 ) {
     match diag {
         DefDiagnosticKind::UnresolvedModule { ast: declaration, candidates } => {
-            let decl = declaration.to_node(db.upcast());
+            let decl = declaration.to_ptr(db.upcast());
             acc.push(
                 UnresolvedModule {
-                    decl: InFile::new(declaration.file_id, AstPtr::new(&decl)),
+                    decl: InFile::new(declaration.file_id, decl),
                     candidates: candidates.clone(),
                 }
                 .into(),
             )
         }
         DefDiagnosticKind::UnresolvedExternCrate { ast } => {
-            let item = ast.to_node(db.upcast());
-            acc.push(
-                UnresolvedExternCrate { decl: InFile::new(ast.file_id, AstPtr::new(&item)) }.into(),
-            );
+            let item = ast.to_ptr(db.upcast());
+            acc.push(UnresolvedExternCrate { decl: InFile::new(ast.file_id, item) }.into());
         }
 
         DefDiagnosticKind::UnresolvedImport { id, index } => {
@@ -747,14 +745,10 @@ fn emit_def_diagnostic_(
         }
 
         DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
-            let item = ast.to_node(db.upcast());
+            let item = ast.to_ptr(db.upcast());
             acc.push(
-                InactiveCode {
-                    node: ast.with_value(SyntaxNodePtr::new(&item).into()),
-                    cfg: cfg.clone(),
-                    opts: opts.clone(),
-                }
-                .into(),
+                InactiveCode { node: ast.with_value(item), cfg: cfg.clone(), opts: opts.clone() }
+                    .into(),
             );
         }
         DefDiagnosticKind::UnresolvedProcMacro { ast, krate } => {

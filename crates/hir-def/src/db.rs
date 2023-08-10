@@ -82,6 +82,9 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     #[salsa::invoke(ItemTree::file_item_tree_query)]
     fn file_item_tree(&self, file_id: HirFileId) -> Arc<ItemTree>;
 
+    #[salsa::invoke(ItemTree::block_item_tree_query)]
+    fn block_item_tree_query(&self, block_id: BlockId) -> Arc<ItemTree>;
+
     #[salsa::invoke(crate_def_map_wait)]
     #[salsa::transparent]
     fn crate_def_map(&self, krate: CrateId) -> Arc<DefMap>;

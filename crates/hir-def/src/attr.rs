@@ -431,12 +431,10 @@ impl AttrsWithOwner {
                         .item_tree(db)
                         .raw_attrs(AttrOwner::ModItem(definition_tree_id.value.into()))
                         .clone(),
-                    ModuleOrigin::BlockExpr { block } => RawAttrs::from_attrs_owner(
-                        db.upcast(),
-                        InFile::new(block.file_id, block.to_node(db.upcast()))
-                            .as_ref()
-                            .map(|it| it as &dyn ast::HasAttrs),
-                    ),
+                    ModuleOrigin::BlockExpr { id, .. } => {
+                        let tree = db.block_item_tree_query(id);
+                        tree.raw_attrs(AttrOwner::TopLevel).clone()
+                    }
                 }
             }
             AttrDefId::FieldId(it) => {

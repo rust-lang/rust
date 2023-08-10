@@ -68,7 +68,7 @@ use crate::{
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
-    BlockId,
+    BlockId, Lookup,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -143,6 +143,16 @@ impl ItemTree {
         Arc::new(item_tree)
     }
 
+    pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
+        let loc = block.lookup(db);
+        let block = loc.ast_id.to_node(db.upcast());
+
+        let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
+        let mut item_tree = ctx.lower_block(&block);
+        item_tree.shrink_to_fit();
+        Arc::new(item_tree)
+    }
+
     /// Returns an iterator over all items located at the top level of the `HirFileId` this
     /// `ItemTree` was created from.
     pub fn top_level_items(&self) -> &[ModItem] {
@@ -176,13 +186,6 @@ impl ItemTree {
 
     fn data_mut(&mut self) -> &mut ItemTreeData {
         self.data.get_or_insert_with(Box::default)
-    }
-
-    fn block_item_tree(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
-        let loc = db.lookup_intern_block(block);
-        let block = loc.ast_id.to_node(db.upcast());
-        let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
-        Arc::new(ctx.lower_block(&block))
     }
 
     fn shrink_to_fit(&mut self) {
@@ -382,7 +385,7 @@ impl TreeId {
 
     pub(crate) fn item_tree(&self, db: &dyn DefDatabase) -> Arc<ItemTree> {
         match self.block {
-            Some(block) => ItemTree::block_item_tree(db, block),
+            Some(block) => db.block_item_tree_query(block),
             None => db.file_item_tree(self.file),
         }
     }

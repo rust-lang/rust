@@ -544,7 +544,7 @@ impl MacroCallKind {
         };
 
         let range = match kind {
-            MacroCallKind::FnLike { ast_id, .. } => ast_id.to_node(db).syntax().text_range(),
+            MacroCallKind::FnLike { ast_id, .. } => ast_id.to_ptr(db).text_range(),
             MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
                 // FIXME: should be the range of the macro name, not the whole derive
                 // FIXME: handle `cfg_attr`
@@ -840,9 +840,6 @@ impl<N: AstIdNode> AstId<N> {
 pub type ErasedAstId = InFile<ErasedFileAstId>;
 
 impl ErasedAstId {
-    pub fn to_node(&self, db: &dyn db::ExpandDatabase) -> SyntaxNode {
-        self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
-    }
     pub fn to_ptr(&self, db: &dyn db::ExpandDatabase) -> SyntaxNodePtr {
         db.ast_id_map(self.file_id).get_raw(self.value)
     }

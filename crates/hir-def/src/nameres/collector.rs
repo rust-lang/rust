@@ -53,9 +53,9 @@ use crate::{
     visibility::{RawVisibility, Visibility},
     AdtId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, EnumVariantId,
     ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc, ImplLoc, Intern,
-    ItemContainerId, LocalModuleId, Macro2Id, Macro2Loc, MacroExpander, MacroId, MacroRulesId,
-    MacroRulesLoc, ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc, StructLoc,
-    TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId, UseLoc,
+    ItemContainerId, LocalModuleId, Lookup, Macro2Id, Macro2Loc, MacroExpander, MacroId,
+    MacroRulesId, MacroRulesLoc, ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc,
+    StructLoc, TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId, UseLoc,
 };
 
 static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
@@ -1461,7 +1461,7 @@ impl DefCollector<'_> {
         let mut diagnosed_extern_crates = FxHashSet::default();
         for directive in &self.unresolved_imports {
             if let ImportSource::ExternCrate { id } = directive.import.source {
-                let item_tree_id = self.db.lookup_intern_extern_crate(id).id;
+                let item_tree_id = id.lookup(self.db).id;
                 let item_tree = item_tree_id.item_tree(self.db);
                 let extern_crate = &item_tree[item_tree_id.value];
 
@@ -1482,7 +1482,7 @@ impl DefCollector<'_> {
                 ) {
                     continue;
                 }
-                let item_tree_id = self.db.lookup_intern_use(id).id;
+                let item_tree_id = id.lookup(self.db).id;
                 self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
                     directive.module_id,
                     item_tree_id,
@@ -1843,7 +1843,7 @@ impl ModCollector<'_, '_> {
             ModKind::Inline { items } => {
                 let module_id = self.push_child_module(
                     module.name.clone(),
-                    AstId::new(self.file_id(), module.ast_id),
+                    module.ast_id,
                     None,
                     &self.item_tree[module.visibility],
                     module_id,
@@ -1881,7 +1881,7 @@ impl ModCollector<'_, '_> {
                         if is_enabled {
                             let module_id = self.push_child_module(
                                 module.name.clone(),
-                                ast_id,
+                                ast_id.value,
                                 Some((file_id, is_mod_rs)),
                                 &self.item_tree[module.visibility],
                                 module_id,
@@ -1908,7 +1908,7 @@ impl ModCollector<'_, '_> {
                     Err(candidates) => {
                         self.push_child_module(
                             module.name.clone(),
-                            ast_id,
+                            ast_id.value,
                             None,
                             &self.item_tree[module.visibility],
                             module_id,
@@ -1925,7 +1925,7 @@ impl ModCollector<'_, '_> {
     fn push_child_module(
         &mut self,
         name: Name,
-        declaration: AstId<ast::Module>,
+        declaration: FileAstId<ast::Module>,
         definition: Option<(FileId, bool)>,
         visibility: &crate::visibility::RawVisibility,
         mod_tree_id: FileItemTreeId<Mod>,

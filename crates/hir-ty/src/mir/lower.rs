@@ -15,7 +15,7 @@ use hir_def::{
     path::Path,
     resolver::{resolver_for_expr, HasResolver, ResolveValueResult, ValueNs},
     AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, HasModule, ItemContainerId, LocalFieldId,
-    TraitId, TypeOrConstParamId,
+    Lookup, TraitId, TypeOrConstParamId,
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -372,7 +372,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
         match &self.body.exprs[expr_id] {
             Expr::Missing => {
                 if let DefWithBodyId::FunctionId(f) = self.owner {
-                    let assoc = self.db.lookup_intern_function(f);
+                    let assoc = f.lookup(self.db.upcast());
                     if let ItemContainerId::TraitId(t) = assoc.container {
                         let name = &self.db.function_data(f).name;
                         return Err(MirLowerError::TraitFunctionDefinition(t, name.clone()));
