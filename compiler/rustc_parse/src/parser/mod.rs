@@ -1581,6 +1581,8 @@ pub enum FlatToken {
 #[derive(Clone, Debug)]
 pub enum ParseNtResult {
     Tt(TokenTree),
+    PatParam(P<ast::Pat>, /* inferred */ bool),
+    PatWithOr(P<ast::Pat>),
     Ty(P<ast::Ty>),
     Vis(P<ast::Visibility>),
 

@@ -477,12 +477,12 @@ impl Token {
         }
     }
 
-    /// Returns `true` if the token can appear at the start of an pattern.
+    /// Returns `true` if the token can appear at the start of a pattern.
     ///
     /// Shamelessly borrowed from `can_begin_expr`, only used for diagnostics right now.
     pub fn can_begin_pattern(&self) -> bool {
         match self.uninterpolate().kind {
-            Ident(name, is_raw)              =>
+            Ident(name, is_raw) =>
                 ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
             | OpenDelim(Delimiter::Bracket | Delimiter::Parenthesis)  // tuple or array
             | Literal(..)                        // literal
@@ -492,11 +492,11 @@ impl Token {
             // DotDotDot is no longer supported
             | DotDot | DotDotDot | DotDotEq      // ranges
             | Lt | BinOp(Shl)                    // associated path
-            | ModSep                    => true, // global path
-            Interpolated(ref nt) => matches!(**nt, NtLiteral(..) |
-                NtPat(..)     |
-                NtBlock(..)   |
-                NtPath(..)),
+            | ModSep => true,                    // global path
+            Interpolated(ref nt) => matches!(**nt, NtLiteral(..) | NtBlock(..) | NtPath(..)),
+            | OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
+                NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr
+            ))) => true,
             _ => false,
         }
     }
@@ -845,7 +845,6 @@ pub enum Nonterminal {
     NtItem(P<ast::Item>),
     NtBlock(P<ast::Block>),
     NtStmt(P<ast::Stmt>),
-    NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtIdent(Ident, /* is_raw */ bool),
     NtLifetime(Ident),
@@ -939,7 +938,6 @@ impl Nonterminal {
             NtItem(item) => item.span,
             NtBlock(block) => block.span,
             NtStmt(stmt) => stmt.span,
-            NtPat(pat) => pat.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
             NtIdent(ident, _) | NtLifetime(ident) => ident.span,
             NtMeta(attr_item) => attr_item.span(),
@@ -970,7 +968,6 @@ impl fmt::Debug for Nonterminal {
             NtItem(..) => f.pad("NtItem(..)"),
             NtBlock(..) => f.pad("NtBlock(..)"),
             NtStmt(..) => f.pad("NtStmt(..)"),
-            NtPat(..) => f.pad("NtPat(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtIdent(..) => f.pad("NtIdent(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),

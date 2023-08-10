@@ -668,38 +668,38 @@ fn test_pat() {
 
     // PatKind::Struct
     assert_eq!(stringify_pat!(Struct {}), "Struct {}");
-    assert_eq!(stringify_pat!(Struct::<u8> {}), "Struct::<u8> {}");
-    assert_eq!(stringify_pat!(Struct::<'static> {}), "Struct::<'static> {}");
+    assert_eq!(stringify_pat!(Struct::<u8> {}), "Struct :: < u8 > {}");
+    assert_eq!(stringify_pat!(Struct::<'static> {}), "Struct :: < 'static > {}");
     assert_eq!(stringify_pat!(Struct { x }), "Struct { x }");
-    assert_eq!(stringify_pat!(Struct { x: _x }), "Struct { x: _x }");
+    assert_eq!(stringify_pat!(Struct { x: _x }), "Struct { x : _x }");
     assert_eq!(stringify_pat!(Struct { .. }), "Struct { .. }");
     assert_eq!(stringify_pat!(Struct { x, .. }), "Struct { x, .. }");
-    assert_eq!(stringify_pat!(Struct { x: _x, .. }), "Struct { x: _x, .. }");
+    assert_eq!(stringify_pat!(Struct { x: _x, .. }), "Struct { x : _x, .. }");
     #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5151
     assert_eq!(
         stringify_pat!(<Struct as Trait>::Type {}),
-        "<Struct as Trait>::Type {}",
+        "< Struct as Trait > :: Type {}",
     );
 
     // PatKind::TupleStruct
     assert_eq!(stringify_pat!(Tuple()), "Tuple()");
-    assert_eq!(stringify_pat!(Tuple::<u8>()), "Tuple::<u8>()");
-    assert_eq!(stringify_pat!(Tuple::<'static>()), "Tuple::<'static>()");
+    assert_eq!(stringify_pat!(Tuple::<u8>()), "Tuple :: < u8 > ()");
+    assert_eq!(stringify_pat!(Tuple::<'static>()), "Tuple :: < 'static > ()");
     assert_eq!(stringify_pat!(Tuple(x)), "Tuple(x)");
     assert_eq!(stringify_pat!(Tuple(..)), "Tuple(..)");
     assert_eq!(stringify_pat!(Tuple(x, ..)), "Tuple(x, ..)");
-    assert_eq!(stringify_pat!(<Struct as Trait>::Type()), "<Struct as Trait>::Type()");
+    assert_eq!(stringify_pat!(<Struct as Trait>::Type()), "< Struct as Trait > :: Type()");
 
     // PatKind::Or
     assert_eq!(stringify_pat!(true | false), "true | false");
-    assert_eq!(stringify_pat!(| true), "true");
-    assert_eq!(stringify_pat!(|true| false), "true | false");
+    assert_eq!(stringify_pat!(| true), "| true");
+    assert_eq!(stringify_pat!(|true| false), "| true | false");
 
     // PatKind::Path
-    assert_eq!(stringify_pat!(crate::Path), "crate::Path");
-    assert_eq!(stringify_pat!(Path::<u8>), "Path::<u8>");
-    assert_eq!(stringify_pat!(Path::<'static>), "Path::<'static>");
-    assert_eq!(stringify_pat!(<Struct as Trait>::Type), "<Struct as Trait>::Type");
+    assert_eq!(stringify_pat!(crate::Path), "crate :: Path");
+    assert_eq!(stringify_pat!(Path::<u8>), "Path :: < u8 >");
+    assert_eq!(stringify_pat!(Path::<'static>), "Path :: < 'static >");
+    assert_eq!(stringify_pat!(<Struct as Trait>::Type), "< Struct as Trait > :: Type");
 
     // PatKind::Tuple
     assert_eq!(stringify_pat!(()), "()");
@@ -710,23 +710,23 @@ fn test_pat() {
     assert_eq!(stringify_pat!(box pat), "box pat");
 
     // PatKind::Ref
-    assert_eq!(stringify_pat!(&pat), "&pat");
-    assert_eq!(stringify_pat!(&mut pat), "&mut pat");
+    assert_eq!(stringify_pat!(&pat), "& pat");
+    assert_eq!(stringify_pat!(&mut pat), "& mut pat");
 
     // PatKind::Lit
     assert_eq!(stringify_pat!(1_000_i8), "1_000_i8");
 
     // PatKind::Range
-    assert_eq!(stringify_pat!(..1), "..1");
-    assert_eq!(stringify_pat!(0..), "0..");
-    assert_eq!(stringify_pat!(0..1), "0..1");
-    assert_eq!(stringify_pat!(0..=1), "0..=1");
-    assert_eq!(stringify_pat!(-2..=-1), "-2..=-1");
+    assert_eq!(stringify_pat!(..1), ".. 1");
+    assert_eq!(stringify_pat!(0..), "0 ..");
+    assert_eq!(stringify_pat!(0..1), "0 .. 1");
+    assert_eq!(stringify_pat!(0..=1), "0 ..= 1");
+    assert_eq!(stringify_pat!(-2..=-1), "- 2 ..= - 1");
 
     // PatKind::Slice
     assert_eq!(stringify_pat!([]), "[]");
     assert_eq!(stringify_pat!([true]), "[true]");
-    assert_eq!(stringify_pat!([true,]), "[true]");
+    assert_eq!(stringify_pat!([true,]), "[true,]");
     assert_eq!(stringify_pat!([true, false]), "[true, false]");
 
     // PatKind::Rest
@@ -736,8 +736,8 @@ fn test_pat() {
     assert_eq!(stringify_pat!((pat)), "(pat)");
 
     // PatKind::MacCall
-    assert_eq!(stringify_pat!(mac!(...)), "mac!(...)");
-    assert_eq!(stringify_pat!(mac![...]), "mac![...]");
+    assert_eq!(stringify_pat!(mac!(...)), "mac! (...)");
+    assert_eq!(stringify_pat!(mac![...]), "mac! [...]");
     assert_eq!(stringify_pat!(mac! { ... }), "mac! { ... }");
 }
 
