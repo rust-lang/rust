@@ -196,6 +196,31 @@ mod foo {
     //~| NOTE: this is cfg-gated and may require further changes
 }
 
+// Should not warn.
+async fn inner_async(x: &mut i32, y: &mut u32) {
+    async {
+        *y += 1;
+        *x += 1;
+    }
+    .await;
+}
+
+async fn inner_async2(x: &mut i32, y: &mut u32) {
+    //~^ ERROR: this argument is a mutable reference, but not used mutably
+    async {
+        *x += 1;
+    }
+    .await;
+}
+
+async fn inner_async3(x: &mut i32, y: &mut u32) {
+    //~^ ERROR: this argument is a mutable reference, but not used mutably
+    async {
+        *y += 1;
+    }
+    .await;
+}
+
 fn main() {
     let mut u = 0;
     let mut v = vec![0];
