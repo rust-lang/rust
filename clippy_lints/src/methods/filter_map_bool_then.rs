@@ -1,3 +1,4 @@
+use super::FILTER_MAP_BOOL_THEN;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::paths::BOOL_THEN;
 use clippy_utils::source::snippet_opt;
@@ -7,9 +8,8 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::Binder;
 use rustc_span::{sym, Span};
-
-use super::FILTER_MAP_BOOL_THEN;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &Expr<'_>, call_span: Span) {
     if !in_external_macro(cx.sess(), expr.span)
@@ -21,7 +21,15 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
         // `inputs` and `params` here as we need both the type and the span
         && let param_ty = closure.fn_decl.inputs[0]
         && let param = body.params[0]
-        && is_copy(cx, cx.typeck_results().node_type(param_ty.hir_id).peel_refs())
+        // Issue #11309
+        && let param_ty = cx.tcx.liberate_late_bound_regions(
+            closure.def_id.to_def_id(),
+            Binder::bind_with_vars(
+                cx.typeck_results().node_type(param_ty.hir_id),
+                cx.tcx.late_bound_vars(cx.tcx.hir().local_def_id_to_hir_id(closure.def_id)),
+            ),
+        )
+        && is_copy(cx, param_ty)
         && let ExprKind::MethodCall(_, recv, [then_arg], _) = value.kind
         && let ExprKind::Closure(then_closure) = then_arg.kind
         && let then_body = peel_blocks(cx.tcx.hir().body(then_closure.body).value)

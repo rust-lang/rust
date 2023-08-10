@@ -1,5 +1,5 @@
 error: usage of `bool::then` in `filter_map`
-  --> $DIR/filter_map_bool_then.rs:19:22
+  --> $DIR/filter_map_bool_then.rs:20:22
    |
 LL |     v.clone().iter().filter_map(|i| (i % 2 == 0).then(|| i + 1));
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i % 2 == 0)).map(|i| i + 1)`
@@ -7,28 +7,34 @@ LL |     v.clone().iter().filter_map(|i| (i % 2 == 0).then(|| i + 1));
    = note: `-D clippy::filter-map-bool-then` implied by `-D warnings`
 
 error: usage of `bool::then` in `filter_map`
-  --> $DIR/filter_map_bool_then.rs:20:27
+  --> $DIR/filter_map_bool_then.rs:21:27
    |
 LL |     v.clone().into_iter().filter_map(|i| (i % 2 == 0).then(|| i + 1));
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i % 2 == 0)).map(|i| i + 1)`
 
 error: usage of `bool::then` in `filter_map`
-  --> $DIR/filter_map_bool_then.rs:23:10
+  --> $DIR/filter_map_bool_then.rs:24:10
    |
 LL |         .filter_map(|i| -> Option<_> { (i % 2 == 0).then(|| i + 1) });
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i % 2 == 0)).map(|i| i + 1)`
 
 error: usage of `bool::then` in `filter_map`
-  --> $DIR/filter_map_bool_then.rs:27:10
+  --> $DIR/filter_map_bool_then.rs:28:10
    |
 LL |         .filter_map(|i| (i % 2 == 0).then(|| i + 1));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i % 2 == 0)).map(|i| i + 1)`
 
 error: usage of `bool::then` in `filter_map`
-  --> $DIR/filter_map_bool_then.rs:31:10
+  --> $DIR/filter_map_bool_then.rs:32:10
    |
 LL |         .filter_map(|i| (i.clone() % 2 == 0).then(|| i + 1));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i.clone() % 2 == 0)).map(|i| i + 1)`
 
-error: aborting due to 5 previous errors
+error: usage of `bool::then` in `filter_map`
+  --> $DIR/filter_map_bool_then.rs:37:22
+   |
+LL |     v.clone().iter().filter_map(|i| (i == &NonCopy).then(|| i));
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i == &NonCopy)).map(|i| i)`
+
+error: aborting due to 6 previous errors
 
