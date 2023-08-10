@@ -138,7 +138,7 @@ h1, h2, h3, h4 {
 	margin-top: 0;
 }
 .main-heading h1 {
-	margin: 9px 0 0 0;
+	margin: 0;
 	padding: 0;
 	flex-grow: 1;
 	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
@@ -151,7 +151,7 @@ h1, h2, h3, h4 {
 .main-heading {
 	display: flex;
 	flex-wrap: wrap;
-	padding-bottom: 6px;
+	padding: 9px 0 6px 0;
 	margin-bottom: 15px;
 }
 /* The only headings that get underlines are:
@@ -577,6 +577,11 @@ ul.block, .block li {
 	margin-bottom: 1rem;
 }
 
+.version {
+	/* same font style used in `.since` */
+	font-variant-numeric: oldstyle-nums;
+}
+
 .mobile-topbar {
 	display: none;
 }
@@ -668,7 +673,10 @@ ul.block, .block li {
 
 .out-of-band {
 	flex-grow: 0;
-	font-size: 1.125rem;
+	font-size: 1.25rem;
+	align-items: center;
+	display: flex;
+	gap: 0.25em;
 }
 
 .docblock code, .docblock-short code,
@@ -1120,6 +1128,8 @@ so that we can apply CSS-filters to change the arrow color in themes */
 .since {
 	font-weight: normal;
 	font-size: initial;
+	/* align with the word "source" in all lowercase */
+	font-variant-numeric: oldstyle-nums;
 }
 
 .rightside {
@@ -1596,7 +1606,7 @@ details.toggle > summary::before {
 	/* toggle plus */
 	background: url('data:image/svg+xml,<svg width="19" height="19" stroke="black" fill="none" \
 xmlns="http://www.w3.org/2000/svg"><path d="M2.5 2.5h14v14h-14v-14.5" \
-shape-rendering="crispEdges"/><path d="M6 9.5h7M9.5 13.5V5.5"/></svg>') no-repeat top left;
+shape-rendering="crispEdges" stroke="grey"/><path d="M6 9.5h7M9.5 13.5V5.5"/></svg>') no-repeat top left;
 	content: "";
 	cursor: pointer;
 	width: 18px;
@@ -1675,9 +1685,8 @@ details.toggle[open] > summary.hideme > span {
 
 details.toggle[open] > summary::before {
 	/* toggle minus */
-	background: url('data:image/svg+xml,<svg width="19" height="19" \
-shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
-d="M2.5 2.5h14v14h-14v-14.5"/><path d="M6 9.5h7"/></svg>') no-repeat top left;
+	background: url('data:image/svg+xml,<svg width="15" height="15" stroke="black" fill="none" \
+xmlns="http://www.w3.org/2000/svg"><path d="M3 6.5h7"/></svg>') no-repeat top left;
 }
 
 details.toggle[open] > summary::after {
@@ -1743,6 +1752,7 @@ in src-script.js
 		text-align: left;
 		margin-left: initial;
 		padding: initial;
+		display: block;
 	}
 
 	.out-of-band .since::before {
