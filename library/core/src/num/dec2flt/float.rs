@@ -139,6 +139,7 @@ impl RawFloat for f16 {
         f16::from_bits((v & 0xFFFF) as u16)
     }
 
+    #[inline]
     fn pow10_fast_path(exponent: usize) -> Self {
         #[allow(clippy::use_self)]
         const TABLE: [f16; 8] = [1e0, 1e1, 1e2, 1e3, 1e4, 0.0, 0.0, 0.];
@@ -146,6 +147,7 @@ impl RawFloat for f16 {
     }
 
     /// Returns the mantissa, exponent and sign as integers.
+    #[inline]
     fn integer_decode(self) -> (u64, i16, i8) {
         let bits = self.to_bits();
         let sign: i8 = if bits >> 15 == 0 { 1 } else { -1 };
@@ -160,6 +162,7 @@ impl RawFloat for f16 {
         (mantissa.into(), exponent, sign)
     }
 
+    #[inline]
     fn classify(self) -> FpCategory {
         self.classify()
     }

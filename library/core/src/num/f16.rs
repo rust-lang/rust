@@ -334,6 +334,7 @@ impl f16 {
     /// assert_eq!(num.classify(), FpCategory::Normal);
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
+    #[inline]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn classify(self) -> FpCategory {
@@ -370,6 +371,7 @@ impl f16 {
     // This doesn't actually return a right answer for NaN on purpose,
     // seeing as how it cannot correctly discern between a floating point NaN,
     // and some normal floating point numbers truncated from an x87 FPU.
+    #[inline]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     const unsafe fn partial_classify(self) -> FpCategory {
         // SAFETY: The caller is not asking questions for which this will tell lies.
@@ -385,6 +387,7 @@ impl f16 {
     // This operates on bits, and only bits, so it can ignore concerns about weird FPUs.
     // FIXME(jubilee): In a just world, this would be the entire impl for classify,
     // plus a transmute. We do not live in a just world, but we can make it more so.
+    #[inline]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     const fn classify_bits(b: u16) -> FpCategory {
         match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
@@ -493,6 +496,7 @@ impl f16 {
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
+    #[inline]
     #[unstable(feature = "float_next_up_down", issue = "91399")]
     #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_up(self) -> Self {
@@ -542,6 +546,7 @@ impl f16 {
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
+    #[inline]
     #[unstable(feature = "float_next_up_down", issue = "91399")]
     #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_down(self) -> Self {
@@ -753,6 +758,7 @@ impl f16 {
     /// assert_eq!(1f16.midpoint(4.0), 2.5);
     /// assert_eq!((-5.5f16).midpoint(8.0), 1.25);
     /// ```
+    #[inline]
     #[unstable(feature = "num_midpoint", issue = "110840")]
     pub fn midpoint(self, other: f16) -> f16 {
         const LO: f16 = f16::MIN_POSITIVE * 2.;
@@ -839,6 +845,7 @@ impl f16 {
         // ...sorta.
         //
         // See the SAFETY comment in f16::from_bits for more.
+        #[inline]
         #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
         const fn ct_f16_to_u16(ct: f16) -> u16 {
             match ct.classify() {
@@ -938,6 +945,7 @@ impl f16 {
         //
         // In order to preserve, at least for the moment, const-to-runtime equivalence,
         // reject any of these possible situations from happening.
+        #[inline]
         #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
         const fn ct_u16_to_f16(ct: u16) -> f16 {
             match f16::classify_bits(ct) {

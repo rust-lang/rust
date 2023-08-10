@@ -354,8 +354,10 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Uint(UintTy::U64) => "y",
             ty::Uint(UintTy::U128) => "o",
             ty::Uint(UintTy::Usize) => "j",
+            ty::Float(FloatTy::F16) => "k",
             ty::Float(FloatTy::F32) => "f",
             ty::Float(FloatTy::F64) => "d",
+            ty::Float(FloatTy::F128) => "q",
             ty::Never => "z",
 
             // Placeholders (should be demangled as `_`).

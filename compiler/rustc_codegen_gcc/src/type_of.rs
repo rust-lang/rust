@@ -257,10 +257,10 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         match scalar.primitive() {
             Int(i, true) => cx.type_from_integer(i),
             Int(i, false) => cx.type_from_unsigned_integer(i),
-            F16 => unimplemented!("f16 is not yet implemented"),
+            F16 => cx.type_f16(),
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
-            F128 => unimplemented!("f128 is not yet implemented"),
+            F128 => cx.type_f128(),
             Pointer(address_space) => {
                 // If we know the alignment, pick something better than i8.
                 let pointee =

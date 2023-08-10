@@ -164,14 +164,27 @@ macro_rules! from_str_float_impl {
 from_str_float_impl!(f32);
 from_str_float_impl!(f64);
 
+// #[cfg(not(bootstrap))]
+// from_str_float_impl!(f16);
+
+// FIXME:f16_f128: just use the macro for this once cg_clif and cg_gcc
+// don't need inlines just to build
 #[cfg(not(bootstrap))]
-from_str_float_impl!(f16);
+impl FromStr for f16 {
+    type Err = ParseFloatError;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        dec2flt(s)
+    }
+}
 
 // FIXME:f16_f128: when we have better dec2flt, use that
 #[cfg(not(bootstrap))]
 impl FromStr for f128 {
     type Err = <f64 as FromStr>::Err;
 
+    #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         f64::from_str(s).map(Into::into)
     }

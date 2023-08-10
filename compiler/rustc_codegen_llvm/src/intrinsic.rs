@@ -32,7 +32,7 @@ fn get_simple_intrinsic<'ll>(
         sym::sqrtf32 => "llvm.sqrt.f32",
         sym::sqrtf64 => "llvm.sqrt.f64",
         sym::sqrtf128 => "llvm.sqrt.f128",
-        sym::powif16 => "llvm.powi.f16",
+        sym::powif16 => "llvm.powi.f16.i32",
         sym::powif32 => "llvm.powi.f32",
         sym::powif64 => "llvm.powi.f64",
         sym::powif128 => "llvm.powi.f128",
@@ -199,9 +199,10 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                 emit_va_arg(self, args[0], ret_ty)
                             }
                             // `va_arg` should never be used with the return type f32.
+                            Primitive::F16 => bug!("the va_arg intrinsic does not work with `f16`"),
                             Primitive::F32 => bug!("the va_arg intrinsic does not work with `f32`"),
-                            Primitive::F16 | Primitive::F128 => {
-                                todo!("does this work with these types? probably not")
+                            Primitive::F128 => {
+                                bug!("the va_arg intrinsic does not work with `f128`")
                             }
                         }
                     }

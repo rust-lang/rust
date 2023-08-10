@@ -31,10 +31,16 @@ pub enum Constant<'tcx> {
     Char(char),
     /// An integer's bit representation.
     Int(u128),
+    /// An `f16`
+    #[cfg(not(bootstrap))]
+    F16(f16),
     /// An `f32`.
     F32(f32),
     /// An `f64`.
     F64(f64),
+    /// An `f128`
+    #[cfg(not(bootstrap))]
+    F128(f128),
     /// `true` or `false`.
     Bool(bool),
     /// An array of constants.
@@ -159,11 +165,20 @@ impl<'tcx> Hash for Constant<'tcx> {
             Self::Int(i) => {
                 i.hash(state);
             },
+            #[cfg(not(bootstrap))]
+            Self::F16(f) => {
+                f64::from(f).to_bits().hash(state);
+            },
             Self::F32(f) => {
                 f64::from(f).to_bits().hash(state);
             },
             Self::F64(f) => {
                 f.to_bits().hash(state);
+            },
+            #[cfg(not(bootstrap))]
+            Self::F128(f) => {
+                // FIXME:f16_f128: this is lossy, can it be improved?
+                (f as f64).to_bits().hash(state);
             },
             Self::Bool(b) => {
                 b.hash(state);
@@ -277,10 +292,14 @@ pub fn lit_to_mir_constant<'tcx>(lit: &LitKind, ty: Option<Ty<'tcx>>) -> Constan
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n),
         LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
-            ast::FloatTy::F16 => todo!(),
+            #[cfg(bootstrap)]
+            ast::FloatTy::F16 | ast::FloatTy::F128 => unimplemented!(),
+            #[cfg(not(bootstrap))]
+            ast::FloatTy::F16 => Constant::F16(is.as_str().parse().unwrap()),
             ast::FloatTy::F32 => Constant::F32(is.as_str().parse().unwrap()),
             ast::FloatTy::F64 => Constant::F64(is.as_str().parse().unwrap()),
-            ast::FloatTy::F128 => todo!(),
+            #[cfg(not(bootstrap))]
+            ast::FloatTy::F128 => Constant::F128(is.as_str().parse().unwrap()),
         },
         LitKind::Float(ref is, LitFloatType::Unsuffixed) => match ty.expect("type of float is known").kind() {
             ty::Float(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),

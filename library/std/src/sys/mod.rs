@@ -107,9 +107,9 @@ pub fn log2f128(n: f128) -> f128 {
 // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
 // because of their non-standard behavior (e.g., log(-n) returns -Inf instead
 // of expected NaN).
+#[inline]
 #[cfg(not(test))]
 #[cfg(any(target_os = "solaris", target_os = "illumos"))]
-#[inline]
 pub fn log_wrapper<F: Fn(f64) -> f64>(n: f64, log_fn: F) -> f64 {
     if n.is_finite() {
         if n > 0.0 {
@@ -128,9 +128,9 @@ pub fn log_wrapper<F: Fn(f64) -> f64>(n: f64, log_fn: F) -> f64 {
     }
 }
 
+#[inline]
 #[cfg(not(test))]
 #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
-#[inline]
 pub fn log_wrapper<F: Fn(f64) -> f64>(n: f64, log_fn: F) -> f64 {
     log_fn(n)
 }

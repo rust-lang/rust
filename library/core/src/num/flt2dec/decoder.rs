@@ -47,6 +47,7 @@ pub trait DecodableFloat: RawFloat + Copy {
 
 #[cfg(not(bootstrap))]
 impl DecodableFloat for f16 {
+    #[inline]
     fn min_pos_norm_value() -> Self {
         f16::MIN_POSITIVE
     }
@@ -73,6 +74,7 @@ impl DecodableFloat for f64 {
 
 /// Returns a sign (true when negative) and `FullDecoded` value
 /// from given floating point number.
+#[inline]
 pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
     let (mant, exp, sign) = v.integer_decode();
     let even = (mant & 1) == 0;

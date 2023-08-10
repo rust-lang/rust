@@ -1007,18 +1007,17 @@ fn parse_float_into_constval<'tcx>(
 }
 
 #[cfg(not(bootstrap))]
-fn parse_check_f16(_num: &str, _f: Half) -> Option<()> {
-    // todo: reenable this once our f16 FromStr doesn't just use f32
-    // let Ok(rust_f) = num.parse::<f16>() else { return None };
+fn parse_check_f16(num: &str, f: Half) -> Option<()> {
+    let Ok(rust_f) = num.parse::<f16>() else { return None };
 
-    // assert!(
-    //     u128::from(rust_f.to_bits()) == f.to_bits(),
-    //     "apfloat::ieee::Half gave a different result for `{num}`: \
-    //      {f} ({:#x}) vs Rust's {} ({:#x})",
-    //     f.to_bits(),
-    //     Single::from_bits(rust_f.to_bits().into()),
-    //     rust_f.to_bits()
-    // );
+    assert!(
+        u128::from(rust_f.to_bits()) == f.to_bits(),
+        "apfloat::ieee::Half gave a different result for `{num}`: \
+         {f} ({:#x}) vs Rust's {} ({:#x})",
+        f.to_bits(),
+        Single::from_bits(rust_f.to_bits().into()),
+        rust_f.to_bits()
+    );
 
     Some(())
 }

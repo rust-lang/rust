@@ -10,6 +10,8 @@
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
+#![cfg_attr(not(bootstrap), feature(f16))]
+#![cfg_attr(not(bootstrap), feature(f128))]
 #![allow(clippy::missing_docs_in_private_items, clippy::must_use_candidate)]
 #![warn(trivial_casts, trivial_numeric_casts)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap

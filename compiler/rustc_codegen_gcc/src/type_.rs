@@ -83,10 +83,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
     pub fn type_float_from_ty(&self, t: ty::FloatTy) -> Type<'gcc> {
         match t {
-            ty::FloatTy::F16 => unimplemented!("f16 is not yet supported"),
+            ty::FloatTy::F16 => self.type_f16(),
             ty::FloatTy::F32 => self.type_f32(),
             ty::FloatTy::F64 => self.type_f64(),
-            ty::FloatTy::F128 => unimplemented!("f128 is not yet supported"),
+            ty::FloatTy::F128 => self.type_f128(),
         }
     }
 }

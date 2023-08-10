@@ -83,21 +83,30 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                 LitFloatType::Unsuffixed => None,
             };
             let (is_whole, is_inf, mut float_str) = match fty {
+                #[cfg(bootstrap)]
+                FloatTy::F16 | FloatTy::F128 => unimplemented!(),
+                #[cfg(not(bootstrap))]
                 FloatTy::F16 => {
                     let value = sym_str.parse::<f16>().unwrap();
 
                     (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
-                },
+                }
                 FloatTy::F32 => {
                     let value = sym_str.parse::<f32>().unwrap();
 
                     (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
-                },
+                }
+                FloatTy::F32 => {
+                    let value = sym_str.parse::<f32>().unwrap();
+
+                    (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
+                }
                 FloatTy::F64 => {
                     let value = sym_str.parse::<f64>().unwrap();
 
                     (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
-                },
+                }
+                #[cfg(not(bootstrap))]
                 FloatTy::F128 => {
                     let value = sym_str.parse::<f128>().unwrap();
 
@@ -147,9 +156,13 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
 #[must_use]
 fn max_digits(fty: FloatTy) -> u32 {
     match fty {
+        #[cfg(bootstrap)]
+        FloatTy::F16 | FloatTy::F128 => unimplemented!(),
+        #[cfg(not(bootstrap))]
         FloatTy::F16 => f16::DIGITS,
         FloatTy::F32 => f32::DIGITS,
         FloatTy::F64 => f64::DIGITS,
+        #[cfg(not(bootstrap))]
         FloatTy::F128 => f128::DIGITS,
     }
 }

@@ -473,10 +473,12 @@ fn encode_ty<'tcx>(
         //
         // (See https://rust-lang.github.io/unsafe-code-guidelines/layout/scalars.html#fixed-width-floating-point-types.)
         ty::Float(float_ty) => {
-            typeid.push(match float_ty {
-                FloatTy::F32 => 'f',
-                FloatTy::F64 => 'd',
-            });
+            match float_ty {
+                FloatTy::F16 => typeid.push_str("Dh"),
+                FloatTy::F32 => typeid.push('f'),
+                FloatTy::F64 => typeid.push('d'),
+                FloatTy::F128 => typeid.push('g'),
+            };
         }
 
         ty::Char => {
