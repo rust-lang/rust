@@ -13,7 +13,7 @@
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, TyCtxt};
 use thin_vec::ThinVec;
 
 use crate::clean;
@@ -68,6 +68,7 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> ThinVec<WP
     clauses
 }
 
+// NOTE(fmease): This basically does the same bound cleaning as `clean_middle_opaque_bounds`.
 pub(crate) fn merge_bounds(
     cx: &clean::DocContext<'_>,
     bounds: &mut Vec<clean::GenericBound>,
@@ -76,9 +77,8 @@ pub(crate) fn merge_bounds(
     rhs: &clean::Term,
 ) -> bool {
     !bounds.iter_mut().any(|b| {
-        let trait_ref = match *b {
-            clean::GenericBound::TraitBound(ref mut tr, _) => tr,
-            clean::GenericBound::Outlives(..) => return false,
+        let clean::GenericBound::TraitBound(trait_ref, _) = b else {
+            return false;
         };
         // If this QPath's trait `trait_did` is the same as, or a supertrait
         // of, the bound's trait `did` then we can keep going, otherwise
@@ -108,7 +108,21 @@ pub(crate) fn merge_bounds(
     })
 }
 
-fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId) -> bool {
+// FIXME(fmease): This doesn't take into account the generic args of traits.
+//
+//                Get rid of this in favor of `trait_is_same_or_supertrait2`.
+//
+//                This is soft-blocked on `merge_bounds` and `where_clauses`
+//                operating on `rustc_middle` types directly instead of cleaned
+//                types (part of refactoring #115379).
+//                I suppose it's possible to not do that and to instead clean
+//                `ty::TraitRef`s in `trait_is_same_or_supertrait` as we go
+//                but that seems fragile and bad for perf.
+pub(crate) fn trait_is_same_or_supertrait(
+    cx: &DocContext<'_>,
+    child: DefId,
+    trait_: DefId,
+) -> bool {
     if child == trait_ {
         return true;
     }
@@ -126,6 +140,34 @@ fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId)
             }
         })
         .any(|did| trait_is_same_or_supertrait(cx, did, trait_))
+}
+
+// FIXME(fmease): Add docs clarifying why we need to check the generics args for equality.
+// FIXME(fmease): Drop the `2` from the name.
+pub(crate) fn trait_is_same_or_supertrait2<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    child: ty::TraitRef<'tcx>,
+    trait_: ty::TraitRef<'tcx>,
+) -> bool {
+    if child == trait_ {
+        return true;
+    }
+    let predicates = tcx.super_predicates_of(child.def_id);
+    debug_assert!(tcx.generics_of(child.def_id).has_self);
+    predicates
+        .predicates
+        .iter()
+        .filter_map(|(pred, _)| {
+            let ty::ClauseKind::Trait(pred) = pred.kind().skip_binder() else {
+                return None;
+            };
+            if pred.trait_ref.self_ty() != tcx.types.self_param {
+                return None;
+            }
+
+            Some(ty::EarlyBinder::bind(pred.trait_ref).instantiate(tcx, child.args))
+        })
+        .any(|child| trait_is_same_or_supertrait2(tcx, child, trait_))
 }
 
 /// Move bounds that are (likely) directly attached to generic parameters from the where-clause to

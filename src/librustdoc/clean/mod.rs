@@ -2316,23 +2316,26 @@ fn clean_middle_opaque_bounds<'tcx>(
             let bindings: ThinVec<_> = bounds
                 .iter()
                 .filter_map(|bound| {
-                    if let ty::ClauseKind::Projection(proj) = bound.kind().skip_binder() {
-                        if proj.projection_ty.trait_ref(cx.tcx) == trait_ref.skip_binder() {
-                            Some(TypeBinding {
-                                assoc: projection_to_path_segment(
-                                    bound.kind().rebind(proj.projection_ty),
-                                    cx,
-                                ),
-                                kind: TypeBindingKind::Equality {
-                                    term: clean_middle_term(bound.kind().rebind(proj.term), cx),
-                                },
-                            })
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
+                    let ty::ClauseKind::Projection(proj) = bound.kind().skip_binder() else {
+                        return None;
+                    };
+                    if !simplify::trait_is_same_or_supertrait2(
+                        cx.tcx,
+                        trait_ref.skip_binder(),
+                        proj.projection_ty.trait_ref(cx.tcx),
+                    ) {
+                        return None;
                     }
+
+                    Some(TypeBinding {
+                        assoc: projection_to_path_segment(
+                            bound.kind().rebind(proj.projection_ty),
+                            cx,
+                        ),
+                        kind: TypeBindingKind::Equality {
+                            term: clean_middle_term(bound.kind().rebind(proj.term), cx),
+                        },
+                    })
                 })
                 .collect();
 

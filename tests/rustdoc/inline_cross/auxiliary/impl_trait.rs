@@ -1,5 +1,3 @@
-// edition:2018
-
 use std::ops::Deref;
 
 pub fn func<'a>(_x: impl Clone + Into<Vec<u8>> + 'a) {}
@@ -26,10 +24,22 @@ pub trait Auxiliary<'arena> {
     type Item<'input>;
 }
 
-pub async fn async_fn() {}
-
 pub struct Foo;
 
 impl Foo {
     pub fn method<'a>(_x: impl Clone + Into<Vec<u8>> + 'a) {}
 }
+
+// Regression test for issue #113015, subitem (1) / bevyengine/bevy#8898.
+// Check that we pick up on the return type of cross-crate opaque `Fn`s and
+// `FnMut`s (`FnOnce` already used to work fine).
+pub fn rpit_fn() -> impl Fn() -> bool {
+    || false
+}
+
+pub fn rpit_fn_mut() -> impl for<'a> FnMut(&'a str) -> &'a str {
+    |source| source
+}
+
+// FIXME(fmease): Add more tests that demonstrate the importance of checking the
+// generic args of supertrait bounds.
