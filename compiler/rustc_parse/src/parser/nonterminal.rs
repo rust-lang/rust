@@ -20,7 +20,21 @@ impl<'a> Parser<'a> {
     pub fn nonterminal_may_begin_with(kind: NonterminalKind, token: &Token) -> bool {
         /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
         fn may_be_ident(nt: &token::Nonterminal) -> bool {
-            !matches!(*nt, NtItem(_) | NtBlock(_) | NtVis(_) | NtLifetime(_))
+            match nt {
+                NtStmt(_)
+                | NtPat(_)
+                | NtExpr(_)
+                | NtTy(_)
+                | NtIdent(..)
+                | NtLiteral(_) // `true`, `false`
+                | NtMeta(_)
+                | NtPath(_) => true,
+
+                NtItem(_)
+                | NtBlock(_)
+                | NtVis(_)
+                | NtLifetime(_) => false,
+            }
         }
 
         match kind {
@@ -41,10 +55,11 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::Block => match &token.kind {
                 token::OpenDelim(Delimiter::Brace) => true,
-                token::Interpolated(nt) => !matches!(
-                    **nt,
-                    NtItem(_) | NtPat(_) | NtTy(_) | NtIdent(..) | NtMeta(_) | NtPath(_) | NtVis(_)
-                ),
+                token::Interpolated(nt) => match **nt {
+                    NtBlock(_) | NtLifetime(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
+                    NtItem(_) | NtPat(_) | NtTy(_) | NtIdent(..) | NtMeta(_) | NtPath(_)
+                    | NtVis(_) => false,
+                },
                 _ => false,
             },
             NonterminalKind::Path | NonterminalKind::Meta => match &token.kind {
