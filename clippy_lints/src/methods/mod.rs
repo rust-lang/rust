@@ -21,7 +21,6 @@ mod expect_used;
 mod extend_with_drain;
 mod filetype_is_file;
 mod filter_map;
-mod filter_map_bool_then;
 mod filter_map_identity;
 mod filter_map_next;
 mod filter_next;
@@ -3479,37 +3478,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `bool::then` in `Iterator::filter_map`.
-    ///
-    /// ### Why is this bad?
-    /// This can be written with `filter` then `map` instead, which would reduce nesting and
-    /// separates the filtering from the transformation phase. This comes with no cost to
-    /// performance and is just cleaner.
-    ///
-    /// ### Limitations
-    /// Does not lint `bool::then_some`, as it eagerly evaluates its arguments rather than lazily.
-    /// This can create differing behavior, so better safe than sorry.
-    ///
-    /// ### Example
-    /// ```rust
-    /// # fn really_expensive_fn(i: i32) -> i32 { i }
-    /// # let v = vec![];
-    /// _ = v.into_iter().filter_map(|i| (i % 2 == 0).then(|| really_expensive_fn(i)));
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// # fn really_expensive_fn(i: i32) -> i32 { i }
-    /// # let v = vec![];
-    /// _ = v.into_iter().filter(|i| i % 2 == 0).map(|i| really_expensive_fn(i));
-    /// ```
-    #[clippy::version = "1.72.0"]
-    pub FILTER_MAP_BOOL_THEN,
-    style,
-    "checks for usage of `bool::then` in `Iterator::filter_map`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Looks for calls to `RwLock::write` where the lock is only used for reading.
     ///
     /// ### Why is this bad?
@@ -3676,7 +3644,6 @@ impl_lint_pass!(Methods => [
     FORMAT_COLLECT,
     STRING_LIT_CHARS_ANY,
     ITER_SKIP_ZERO,
-    FILTER_MAP_BOOL_THEN,
     READONLY_WRITE_LOCK
 ]);
 
@@ -3955,7 +3922,6 @@ impl Methods {
                 },
                 ("filter_map", [arg]) => {
                     unnecessary_filter_map::check(cx, expr, arg, name);
-                    filter_map_bool_then::check(cx, expr, arg, call_span);
                     filter_map_identity::check(cx, expr, arg, span);
                 },
                 ("find_map", [arg]) => {
