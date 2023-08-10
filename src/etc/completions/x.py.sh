@@ -1625,7 +1625,7 @@ _x.py() {
             return 0
             ;;
         x.py__test)
-            opts="-v -i -j -h --no-fail-fast --skip --test-args --rustc-args --no-doc --doc --bless --force-rerun --only-modified --compare-mode --pass --run --rustfix-coverage --verbose --incremental --config --build-dir --build --host --target --exclude --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --no-fail-fast --skip --test-args --rustc-args --no-doc --doc --bless --extra-checks --force-rerun --only-modified --compare-mode --pass --run --rustfix-coverage --verbose --incremental --config --build-dir --build --host --target --exclude --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1640,6 +1640,10 @@ _x.py() {
                     return 0
                     ;;
                 --rustc-args)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --extra-checks)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;

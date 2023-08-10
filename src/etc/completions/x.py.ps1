@@ -306,6 +306,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--skip', 'skip', [CompletionResultType]::ParameterName, 'skips tests matching SUBSTRING, if supported by test tool. May be passed multiple times')
             [CompletionResult]::new('--test-args', 'test-args', [CompletionResultType]::ParameterName, 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)')
             [CompletionResult]::new('--rustc-args', 'rustc-args', [CompletionResultType]::ParameterName, 'extra options to pass the compiler when running tests')
+            [CompletionResult]::new('--extra-checks', 'extra-checks', [CompletionResultType]::ParameterName, 'comma-separated list of other files types to check (accepts py, py:lint, py:fmt, shell)')
             [CompletionResult]::new('--compare-mode', 'compare-mode', [CompletionResultType]::ParameterName, 'mode describing what file the actual ui output will be compared to')
             [CompletionResult]::new('--pass', 'pass', [CompletionResultType]::ParameterName, 'force {check,build,run}-pass tests to this mode')
             [CompletionResult]::new('--run', 'run', [CompletionResultType]::ParameterName, 'whether to execute run-* tests')

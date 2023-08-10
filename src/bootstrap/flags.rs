@@ -339,6 +339,10 @@ pub enum Subcommand {
         /// whether to automatically update stderr/stdout files
         bless: bool,
         #[arg(long)]
+        /// comma-separated list of other files types to check (accepts py, py:lint,
+        /// py:fmt, shell)
+        extra_checks: Option<String>,
+        #[arg(long)]
         /// rerun tests even if the inputs are unchanged
         force_rerun: bool,
         #[arg(long)]
@@ -473,6 +477,13 @@ impl Subcommand {
         match *self {
             Subcommand::Test { bless, .. } => bless,
             _ => false,
+        }
+    }
+
+    pub fn extra_checks(&self) -> Option<&str> {
+        match *self {
+            Subcommand::Test { ref extra_checks, .. } => extra_checks.as_ref().map(String::as_str),
+            _ => None,
         }
     }
 
