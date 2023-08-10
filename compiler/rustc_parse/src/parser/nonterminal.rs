@@ -46,7 +46,6 @@ impl<'a> Parser<'a> {
         fn nt_may_be_ident(nt: &token::Nonterminal) -> bool {
             match nt {
                 NtStmt(_)
-                | NtPat(_)
                 | NtExpr(_)
                 | NtIdent(..)
                 | NtLiteral(_) // `true`, `false`
@@ -82,7 +81,7 @@ impl<'a> Parser<'a> {
                 token::OpenDelim(Delimiter::Brace) => true,
                 token::Interpolated(nt) => match **nt {
                     NtBlock(_) | NtLifetime(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
-                    NtItem(_) | NtPat(_) | NtIdent(..) | NtMeta(_) | NtPath(_) => false,
+                    NtItem(_) | NtIdent(..) | NtMeta(_) | NtPath(_) => false,
                 },
                 token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(k))) => match k {
                     NonterminalKind::Block
@@ -110,8 +109,7 @@ impl<'a> Parser<'a> {
                 }
                 _ => false,
             },
-            NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => {
-                match &token.kind {
+            NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => match &token.kind {
                 token::Ident(..) |                          // box, ref, mut, and other identifiers (can stricten)
                 token::OpenDelim(Delimiter::Parenthesis) |  // tuple pattern
                 token::OpenDelim(Delimiter::Bracket) |      // slice pattern
@@ -131,8 +129,7 @@ impl<'a> Parser<'a> {
                     may_be_ident(*kind)
                 }
                 _ => false,
-            }
-            }
+            },
             NonterminalKind::Lifetime => match &token.kind {
                 token::Lifetime(_) => true,
                 token::Interpolated(nt) => {
@@ -179,19 +176,21 @@ impl<'a> Parser<'a> {
                                .into_diagnostic(&self.sess.span_diagnostic));
                 }
             },
-            NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => {
-                NtPat(self.collect_tokens_no_attrs(|this| match kind {
-                    NonterminalKind::PatParam { .. } => this.parse_pat_no_top_alt(None, None),
-                    NonterminalKind::PatWithOr => this.parse_pat_allow_top_alt(
+            NonterminalKind::PatParam { inferred } => {
+                return Ok(ParseNtResult::PatParam(self.collect_tokens_no_attrs(|this|
+                    this.parse_pat_no_top_alt(None, None)
+                )?, inferred))
+            }
+            NonterminalKind::PatWithOr => {
+                return Ok(ParseNtResult::PatWithOr(self.collect_tokens_no_attrs(|this|
+                    this.parse_pat_allow_top_alt(
                         None,
                         RecoverComma::No,
                         RecoverColon::No,
                         CommaRecoveryMode::EitherTupleOrPipe,
-                    ),
-                    _ => unreachable!(),
-                })?)
+                    )
+                )?))
             }
-
             NonterminalKind::Expr => NtExpr(self.parse_expr_force_collect()?),
             NonterminalKind::Literal => {
                 // The `:literal` matcher does not support attributes

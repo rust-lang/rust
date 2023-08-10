@@ -232,6 +232,13 @@ pub(super) fn transcribe<'a>(
                             // without wrapping them into groups.
                             tt.clone()
                         }
+                        MatchedSingle(ParseNtResult::PatParam(ref pat, inferred)) => mk_delimited(
+                            NonterminalKind::PatParam { inferred: *inferred },
+                            TokenStream::from_ast(pat),
+                        ),
+                        MatchedSingle(ParseNtResult::PatWithOr(ref pat)) => {
+                            mk_delimited(NonterminalKind::PatWithOr, TokenStream::from_ast(pat))
+                        }
                         MatchedSingle(ParseNtResult::Ty(ref ty)) => {
                             mk_delimited(NonterminalKind::Ty, TokenStream::from_ast(ty))
                         }

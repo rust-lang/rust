@@ -6,7 +6,7 @@ use crate::fluent_generated as fluent;
 use ast::StaticItem;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleSource, NonterminalKind, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast::MacCall;
@@ -2680,8 +2680,10 @@ impl<'a> Parser<'a> {
 
     fn is_named_param(&self) -> bool {
         let offset = match &self.token.kind {
-            token::Interpolated(nt) => match **nt {
-                token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
+            token::OpenDelim(Delimiter::Invisible(source)) => match source {
+                InvisibleSource::MetaVar(
+                    NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr,
+                ) => return self.check_noexpect_past_close_delim(&token::Colon),
                 _ => 0,
             },
             token::BinOp(token::And) | token::AndAnd => 1,

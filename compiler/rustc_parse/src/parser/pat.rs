@@ -1,4 +1,4 @@
-use super::{ForceCollect, Parser, PathStyle, TrailingToken};
+use super::{ForceCollect, ParseNtResult, Parser, PathStyle, TrailingToken};
 use crate::errors::{
     self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
     DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
@@ -9,10 +9,10 @@ use crate::errors::{
     UnexpectedLifetimeInPattern, UnexpectedVertVertBeforeFunctionParam,
     UnexpectedVertVertInPattern,
 };
-use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
+use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_reparse_metavar_seq};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter};
+use rustc_ast::token::{self, Delimiter, NonterminalKind};
 use rustc_ast::{
     self as ast, AttrVec, BindingAnnotation, ByRef, Expr, ExprKind, MacCall, Mutability, Pat,
     PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
@@ -334,7 +334,26 @@ impl<'a> Parser<'a> {
         syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, P<Pat>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
-        maybe_whole!(self, NtPat, |x| x);
+
+        // Need to try both kinds of pattern nonterminals.
+        if let Some(pat) = maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::PatParam { inferred },
+            NonterminalKind::PatParam { inferred },
+            ParseNtResult::PatParam(pat, _),
+            pat
+        ) {
+            return Ok(pat);
+        }
+        if let Some(pat) = maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::PatWithOr,
+            NonterminalKind::PatWithOr,
+            ParseNtResult::PatWithOr(pat),
+            pat
+        ) {
+            return Ok(pat);
+        }
 
         let mut lo = self.token.span;
 
@@ -589,11 +608,10 @@ impl<'a> Parser<'a> {
 
         self.recover_additional_muts();
 
-        // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
-        if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtPat(_) = **nt {
-                self.expected_ident_found_err().emit();
-            }
+        if let Some(NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr) =
+            self.token.is_metavar_seq()
+        {
+            self.expected_ident_found_err().emit();
         }
 
         // Parse the pattern we hope to be an identifier.

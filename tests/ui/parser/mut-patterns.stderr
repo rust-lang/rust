@@ -99,7 +99,7 @@ LL |     let mut W(mut a, W(b, W(ref c, W(d, B { box f }))))
    |
    = note: `mut` may be followed by `variable` and `variable @ pattern`
 
-error: expected identifier, found `x`
+error: expected identifier, found invisible open delimiter
   --> $DIR/mut-patterns.rs:44:21
    |
 LL |             let mut $p = 0;
