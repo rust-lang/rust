@@ -63,7 +63,7 @@ prepare:
 ci-msvc-py:
 	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 tidy
 ci-msvc-ps1:
-	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 --exclude tidy
+	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 --skip tidy
 ci-msvc: ci-msvc-py ci-msvc-ps1
 
 ## MingW native builders
@@ -72,7 +72,7 @@ ci-msvc: ci-msvc-py ci-msvc-ps1
 ci-mingw-x:
 	$(Q)$(CFG_SRC_DIR)/x test --stage 2 tidy
 ci-mingw-bootstrap:
-	$(Q)$(BOOTSTRAP) test --stage 2 --exclude tidy
+	$(Q)$(BOOTSTRAP) test --stage 2 --skip tidy
 ci-mingw: ci-mingw-x ci-mingw-bootstrap
 
 .PHONY: dist

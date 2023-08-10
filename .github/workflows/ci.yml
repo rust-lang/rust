@@ -336,7 +336,7 @@ jobs:
             os: macos-13
           - name: x86_64-apple-1
             env:
-              SCRIPT: "./x.py --stage 2 test --exclude tests/ui --exclude tests/rustdoc --exclude tests/run-make-fulldeps"
+              SCRIPT: "./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps"
               RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.8

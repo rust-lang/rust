@@ -14,7 +14,6 @@
 # step CI will fail.
 
 ---
-
 ###############################
 #   YAML Anchors Definition   #
 ###############################
@@ -30,7 +29,6 @@
 # The expand-yaml-anchors tool will automatically remove this block from the
 # output YAML file.
 x--expand-yaml-anchors--remove:
-
   - &shared-ci-variables
     CI_JOB_NAME: ${{ matrix.name }}
     CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
@@ -520,7 +518,7 @@ jobs:
 
           - name: x86_64-apple-1
             env: &env-x86_64-apple-tests
-              SCRIPT: ./x.py --stage 2 test --exclude tests/ui --exclude tests/rustdoc --exclude tests/run-make-fulldeps
+              SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
               RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.8

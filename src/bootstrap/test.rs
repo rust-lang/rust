@@ -122,7 +122,7 @@ impl Step for Linkcheck {
         if (hosts != targets) && !hosts.is_empty() && !targets.is_empty() {
             panic!(
                 "Linkcheck currently does not support builds with different hosts and targets.
-You can skip linkcheck with --exclude src/tools/linkchecker"
+You can skip linkcheck with --skip src/tools/linkchecker"
             );
         }
 
@@ -1104,7 +1104,7 @@ impl Step for Tidy {
 error: no `rustfmt` binary found in {PATH}
 info: `rust.channel` is currently set to \"{CHAN}\"
 help: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `config.toml` file
-help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` to `x.py test`",
+help: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to `x.py test`",
                     PATH = inferred_rustfmt_dir.display(),
                     CHAN = builder.config.channel,
                 );
@@ -1650,7 +1650,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--run-clang-based-tests-with").arg(clang_exe);
         }
 
-        for exclude in &builder.config.exclude {
+        for exclude in &builder.config.skip {
             cmd.arg("--skip");
             cmd.arg(&exclude);
         }
