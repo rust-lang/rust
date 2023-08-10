@@ -5,14 +5,16 @@ use clippy_utils::{get_parent_node, inherits_cfg, is_from_proc_macro, is_self};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_qpath, FnKind, Visitor};
-use rustc_hir::{Body, ExprKind, FnDecl, HirId, HirIdMap, HirIdSet, Impl, ItemKind, Mutability, Node, PatKind, QPath};
+use rustc_hir::{
+    Body, Closure, Expr, ExprKind, FnDecl, HirId, HirIdMap, HirIdSet, Impl, ItemKind, Mutability, Node, PatKind, QPath,
+};
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::associated_body;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, Ty, UpvarId, UpvarPath};
+use rustc_middle::ty::{self, Ty, TyCtxt, UpvarId, UpvarPath};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
@@ -147,22 +149,36 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
         // Collect variables mutably used and spans which will need dereferencings from the
         // function body.
         let MutablyUsedVariablesCtxt { mutably_used_vars, .. } = {
-            let mut ctx = MutablyUsedVariablesCtxt::default();
+            let mut ctx = MutablyUsedVariablesCtxt {
+                mutably_used_vars: HirIdSet::default(),
+                prev_bind: None,
+                prev_move_to_closure: HirIdSet::default(),
+                aliases: HirIdMap::default(),
+                async_closures: FxHashSet::default(),
+                tcx: cx.tcx,
+            };
             let infcx = cx.tcx.infer_ctxt().build();
             euv::ExprUseVisitor::new(&mut ctx, &infcx, fn_def_id, cx.param_env, cx.typeck_results()).consume_body(body);
             if is_async {
-                let closures = ctx.async_closures.clone();
-                let hir = cx.tcx.hir();
-                for closure in closures {
-                    ctx.prev_bind = None;
-                    ctx.prev_move_to_closure.clear();
-                    if let Some(body) = hir
-                        .find_by_def_id(closure)
-                        .and_then(associated_body)
-                        .map(|(_, body_id)| hir.body(body_id))
-                    {
-                        euv::ExprUseVisitor::new(&mut ctx, &infcx, closure, cx.param_env, cx.typeck_results())
-                            .consume_body(body);
+                let mut checked_closures = FxHashSet::default();
+                while !ctx.async_closures.is_empty() {
+                    let closures = ctx.async_closures.clone();
+                    ctx.async_closures.clear();
+                    let hir = cx.tcx.hir();
+                    for closure in closures {
+                        if !checked_closures.insert(closure) {
+                            continue;
+                        }
+                        ctx.prev_bind = None;
+                        ctx.prev_move_to_closure.clear();
+                        if let Some(body) = hir
+                            .find_by_def_id(closure)
+                            .and_then(associated_body)
+                            .map(|(_, body_id)| hir.body(body_id))
+                        {
+                            euv::ExprUseVisitor::new(&mut ctx, &infcx, closure, cx.param_env, cx.typeck_results())
+                                .consume_body(body);
+                        }
                     }
                 }
             }
@@ -225,16 +241,16 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
     }
 }
 
-#[derive(Default)]
-struct MutablyUsedVariablesCtxt {
+struct MutablyUsedVariablesCtxt<'tcx> {
     mutably_used_vars: HirIdSet,
     prev_bind: Option<HirId>,
     prev_move_to_closure: HirIdSet,
     aliases: HirIdMap<HirId>,
     async_closures: FxHashSet<LocalDefId>,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl MutablyUsedVariablesCtxt {
+impl<'tcx> MutablyUsedVariablesCtxt<'tcx> {
     fn add_mutably_used_var(&mut self, mut used_id: HirId) {
         while let Some(id) = self.aliases.get(&used_id) {
             self.mutably_used_vars.insert(used_id);
@@ -242,9 +258,27 @@ impl MutablyUsedVariablesCtxt {
         }
         self.mutably_used_vars.insert(used_id);
     }
+
+    fn would_be_alias_cycle(&self, alias: HirId, mut target: HirId) -> bool {
+        while let Some(id) = self.aliases.get(&target) {
+            if *id == alias {
+                return true;
+            }
+            target = *id;
+        }
+        false
+    }
+
+    fn add_alias(&mut self, alias: HirId, target: HirId) {
+        // This is to prevent alias loop.
+        if alias == target || self.would_be_alias_cycle(alias, target) {
+            return;
+        }
+        self.aliases.insert(alias, target);
+    }
 }
 
-impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt {
+impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
     fn consume(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, _id: HirId) {
         if let euv::Place {
             base:
@@ -259,7 +293,7 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt {
         {
             if let Some(bind_id) = self.prev_bind.take() {
                 if bind_id != *vid {
-                    self.aliases.insert(bind_id, *vid);
+                    self.add_alias(bind_id, *vid);
                 }
             } else if !self.prev_move_to_closure.contains(vid)
                 && matches!(base_ty.ref_mutability(), Some(Mutability::Mut))
@@ -271,7 +305,7 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt {
         }
     }
 
-    fn borrow(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, _id: HirId, borrow: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, id: HirId, borrow: ty::BorrowKind) {
         self.prev_bind = None;
         if let euv::Place {
             base: euv::PlaceBase::Local(vid),
@@ -289,6 +323,25 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt {
             {
                 self.add_mutably_used_var(*vid);
             }
+        } else if borrow == ty::ImmBorrow {
+            // If there is an `async block`, it'll contain a call to a closure which we need to
+            // go into to ensure all "mutate" checks are found.
+            if let Node::Expr(Expr {
+                kind:
+                    ExprKind::Call(
+                        _,
+                        [
+                            Expr {
+                                kind: ExprKind::Closure(Closure { def_id, .. }),
+                                ..
+                            },
+                        ],
+                    ),
+                ..
+            }) = self.tcx.hir().get(id)
+            {
+                self.async_closures.insert(*def_id);
+            }
         }
     }
 
@@ -296,7 +349,12 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt {
         self.prev_bind = None;
         if let euv::Place {
             projections,
-            base: euv::PlaceBase::Local(vid),
+            base:
+                euv::PlaceBase::Local(vid)
+                | euv::PlaceBase::Upvar(UpvarId {
+                    var_path: UpvarPath { hir_id: vid },
+                    ..
+                }),
             ..
         } = &cmt.place
         {
@@ -329,8 +387,9 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt {
                 // Seems like we are inside an async function. We need to store the closure `DefId`
                 // to go through it afterwards.
                 self.async_closures.insert(inner);
-                self.aliases.insert(cmt.hir_id, *vid);
+                self.add_alias(cmt.hir_id, *vid);
                 self.prev_move_to_closure.insert(*vid);
+                self.prev_bind = None;
             }
         }
     }
