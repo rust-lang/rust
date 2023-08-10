@@ -1037,6 +1037,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns false if the coercion creates any obligations that result in
     /// errors.
     pub fn can_coerce(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> bool {
+        // FIXME(-Ztrait-solver=next): We need to structurally resolve both types here.
         let source = self.resolve_vars_with_obligations(expr_ty);
         debug!("coercion::can_with_predicates({:?} -> {:?})", source, target);
 
