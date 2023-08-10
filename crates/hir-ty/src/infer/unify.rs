@@ -143,6 +143,9 @@ pub(crate) struct InferenceTable<'a> {
     var_unification_table: ChalkInferenceTable,
     type_variable_table: Vec<TypeVariableFlags>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
+    /// Double buffer used in [`Self::resolve_obligations_as_possible`] to cut down on
+    /// temporary allocations.
+    resolve_obligations_buffer: Vec<Canonicalized<InEnvironment<Goal>>>,
 }
 
 pub(crate) struct InferenceTableSnapshot {
@@ -159,6 +162,7 @@ impl<'a> InferenceTable<'a> {
             var_unification_table: ChalkInferenceTable::new(),
             type_variable_table: Vec::new(),
             pending_obligations: Vec::new(),
+            resolve_obligations_buffer: Vec::new(),
         }
     }
 
@@ -510,10 +514,10 @@ impl<'a> InferenceTable<'a> {
     pub(crate) fn resolve_obligations_as_possible(&mut self) {
         let _span = profile::span("resolve_obligations_as_possible");
         let mut changed = true;
-        let mut obligations = Vec::new();
-        while changed {
-            changed = false;
+        let mut obligations = mem::take(&mut self.resolve_obligations_buffer);
+        while mem::take(&mut changed) {
             mem::swap(&mut self.pending_obligations, &mut obligations);
+
             for canonicalized in obligations.drain(..) {
                 if !self.check_changed(&canonicalized) {
                     self.pending_obligations.push(canonicalized);
@@ -528,6 +532,8 @@ impl<'a> InferenceTable<'a> {
                 self.register_obligation_in_env(uncanonical);
             }
         }
+        self.resolve_obligations_buffer = obligations;
+        self.resolve_obligations_buffer.clear();
     }
 
     pub(crate) fn fudge_inference<T: TypeFoldable<Interner>>(
