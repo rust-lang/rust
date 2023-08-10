@@ -30,6 +30,7 @@ fn main() {
         || target.contains("-none")
         || target.contains("nvptx")
         || target.contains("uefi")
+        || target.contains("xous")
     {
         println!("cargo:rustc-cfg=feature=\"mem\"");
     }
