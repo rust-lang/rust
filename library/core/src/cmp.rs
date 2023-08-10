@@ -1406,6 +1406,20 @@ mod impls {
                 _ => unsafe { unreachable_unchecked() },
             }
         }
+
+        #[inline]
+        fn min(self, other: bool) -> bool {
+            // The default implementation is not optimized well,
+            // see <https://github.com/rust-lang/rust/issues/114653>.
+            self & other
+        }
+
+        #[inline]
+        fn max(self, other: bool) -> bool {
+            // The default implementation is not optimized well,
+            // see <https://github.com/rust-lang/rust/issues/114653>.
+            self | other
+        }
     }
 
     ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
