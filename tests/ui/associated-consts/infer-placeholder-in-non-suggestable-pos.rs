@@ -5,6 +5,7 @@ trait Trait {
 impl Trait for () {
     const ASSOC: &dyn Fn(_) = 1i32;
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated constants
+    //~| ERROR `&` without an explicit lifetime name cannot be used here
 }
 
 fn main() {}

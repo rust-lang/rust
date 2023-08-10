@@ -1,9 +1,16 @@
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/infer-placeholder-in-non-suggestable-pos.rs:6:18
+   |
+LL |     const ASSOC: &dyn Fn(_) = 1i32;
+   |                  ^ explicit lifetime name needed here
+
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
   --> $DIR/infer-placeholder-in-non-suggestable-pos.rs:6:26
    |
 LL |     const ASSOC: &dyn Fn(_) = 1i32;
    |                          ^ not allowed in type signatures
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0121`.
+Some errors have detailed explanations: E0121, E0637.
+For more information about an error, try `rustc --explain E0121`.

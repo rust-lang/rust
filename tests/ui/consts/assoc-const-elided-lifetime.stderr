@@ -1,0 +1,9 @@
+error[E0637]: `'_` cannot be used here
+  --> $DIR/assoc-const-elided-lifetime.rs:8:20
+   |
+LL |     const FOO: Foo<'_> = Foo { x: PhantomData::<&'a ()> };
+   |                    ^^ `'_` is a reserved lifetime name
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0637`.

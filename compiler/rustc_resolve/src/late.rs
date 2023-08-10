@@ -2727,19 +2727,21 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                             kind: LifetimeBinderKind::ConstItem,
                         },
                         |this| {
-                            this.visit_generics(generics);
-                            this.visit_ty(ty);
+                            this.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
+                                this.visit_generics(generics);
+                                this.visit_ty(ty);
 
-                            // Only impose the restrictions of `ConstRibKind` for an
-                            // actual constant expression in a provided default.
-                            if let Some(expr) = expr {
-                                // We allow arbitrary const expressions inside of associated consts,
-                                // even if they are potentially not const evaluatable.
-                                //
-                                // Type parameters can already be used and as associated consts are
-                                // not used as part of the type system, this is far less surprising.
-                                this.resolve_const_body(expr, None);
-                            }
+                                // Only impose the restrictions of `ConstRibKind` for an
+                                // actual constant expression in a provided default.
+                                if let Some(expr) = expr {
+                                    // We allow arbitrary const expressions inside of associated consts,
+                                    // even if they are potentially not const evaluatable.
+                                    //
+                                    // Type parameters can already be used and as associated consts are
+                                    // not used as part of the type system, this is far less surprising.
+                                    this.resolve_const_body(expr, None);
+                                }
+                            });
                         },
                     );
                 }
@@ -2898,7 +2900,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         match &item.kind {
             AssocItemKind::Const(box ast::ConstItem { generics, ty, expr, .. }) => {
                 debug!("resolve_implementation AssocItemKind::Const");
-
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::AssocItem,
@@ -2908,28 +2909,30 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         kind: LifetimeBinderKind::ConstItem,
                     },
                     |this| {
-                        // If this is a trait impl, ensure the const
-                        // exists in trait
-                        this.check_trait_item(
-                            item.id,
-                            item.ident,
-                            &item.kind,
-                            ValueNS,
-                            item.span,
-                            seen_trait_items,
-                            |i, s, c| ConstNotMemberOfTrait(i, s, c),
-                        );
+                        this.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
+                            // If this is a trait impl, ensure the const
+                            // exists in trait
+                            this.check_trait_item(
+                                item.id,
+                                item.ident,
+                                &item.kind,
+                                ValueNS,
+                                item.span,
+                                seen_trait_items,
+                                |i, s, c| ConstNotMemberOfTrait(i, s, c),
+                            );
 
-                        this.visit_generics(generics);
-                        this.visit_ty(ty);
-                        if let Some(expr) = expr {
-                            // We allow arbitrary const expressions inside of associated consts,
-                            // even if they are potentially not const evaluatable.
-                            //
-                            // Type parameters can already be used and as associated consts are
-                            // not used as part of the type system, this is far less surprising.
-                            this.resolve_const_body(expr, None);
-                        }
+                            this.visit_generics(generics);
+                            this.visit_ty(ty);
+                            if let Some(expr) = expr {
+                                // We allow arbitrary const expressions inside of associated consts,
+                                // even if they are potentially not const evaluatable.
+                                //
+                                // Type parameters can already be used and as associated consts are
+                                // not used as part of the type system, this is far less surprising.
+                                this.resolve_const_body(expr, None);
+                            }
+                        });
                     },
                 );
             }
