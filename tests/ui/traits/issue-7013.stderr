@@ -5,6 +5,7 @@ LL |     let a = A {v: Box::new(B{v: None}) as Box<dyn Foo + Send>};
    |                   ^^^^^^^^^^^^^^^^^^^^ `Rc<RefCell<A>>` cannot be sent between threads safely
    |
    = help: within `B`, the trait `Send` is not implemented for `Rc<RefCell<A>>`
+   = note: use `std::sync::Arc` instead of `std::rc::Rc`
 note: required because it appears within the type `Option<Rc<RefCell<A>>>`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 note: required because it appears within the type `B`

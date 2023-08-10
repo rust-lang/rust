@@ -197,7 +197,7 @@ fn main() -> anyhow::Result<()> {
             "miri",
             "rustfmt",
         ] {
-            build_args.extend(["--exclude".to_string(), target.to_string()]);
+            build_args.extend(["--skip".to_string(), target.to_string()]);
         }
     }
 

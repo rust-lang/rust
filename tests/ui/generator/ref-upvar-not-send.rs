@@ -15,6 +15,7 @@ fn main() {
     assert_send(move || {
         //~^ ERROR generator cannot be sent between threads safely
         //~| NOTE generator is not `Send`
+        //~| NOTE consider using `std::sync::Arc
         yield;
         let _x = x;
     });
@@ -23,6 +24,7 @@ fn main() {
     assert_send(move || {
         //~^ ERROR generator cannot be sent between threads safely
         //~| NOTE generator is not `Send`
+        //~| NOTE consider using `std::sync::Arc
         yield;
         let _y = y;
     });

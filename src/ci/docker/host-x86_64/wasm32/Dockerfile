@@ -59,4 +59,4 @@ RUN chown 10719 -R /emsdk-portable/
 
 # Exclude library/alloc due to OOM in benches.
 ENV SCRIPT python3 ../x.py test --stage 2 --host='' --target $TARGETS \
-    --exclude library/alloc
+    --skip library/alloc

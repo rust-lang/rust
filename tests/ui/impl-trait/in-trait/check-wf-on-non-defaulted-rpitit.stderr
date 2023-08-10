@@ -5,6 +5,7 @@ LL |     fn bar() -> Wrapper<impl Sized>;
    |                 ^^^^^^^^^^^^^^^^^^^ `impl Sized` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `impl Sized`
+   = note: consider using `std::sync::Arc<impl Sized>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required by a bound in `Wrapper`
   --> $DIR/check-wf-on-non-defaulted-rpitit.rs:3:19
    |

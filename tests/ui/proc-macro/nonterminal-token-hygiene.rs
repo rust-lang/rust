@@ -3,12 +3,13 @@
 // check-pass
 // compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
 // compile-flags: -Z trim-diagnostic-paths=no
+// ignore-tidy-linelength
 // normalize-stdout-test "\d+#" -> "0#"
 // normalize-stdout-test "expn\d{3,}" -> "expnNNN"
+// normalize-stdout-test "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
 // aux-build:test-macros.rs
 
 #![feature(decl_macro)]
-
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;
 

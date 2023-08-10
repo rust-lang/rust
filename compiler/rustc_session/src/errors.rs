@@ -115,6 +115,10 @@ pub struct CannotEnableCrtStaticLinux;
 pub struct SanitizerCfiRequiresLto;
 
 #[derive(Diagnostic)]
+#[diag(session_sanitizer_cfi_requires_single_codegen_unit)]
+pub struct SanitizerCfiRequiresSingleCodegenUnit;
+
+#[derive(Diagnostic)]
 #[diag(session_sanitizer_cfi_canonical_jump_tables_requires_cfi)]
 pub struct SanitizerCfiCanonicalJumpTablesRequiresCfi;
 

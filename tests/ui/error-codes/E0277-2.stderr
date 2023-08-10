@@ -5,6 +5,7 @@ LL |     is_send::<Foo>();
    |               ^^^ `*const u8` cannot be sent between threads safely
    |
    = help: within `Foo`, the trait `Send` is not implemented for `*const u8`
+   = note: consider using `std::sync::Arc<*const u8>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required because it appears within the type `Baz`
   --> $DIR/E0277-2.rs:9:8
    |

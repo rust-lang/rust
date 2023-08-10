@@ -7,6 +7,7 @@ LL |     Outer(TestType);
    |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `dummy::TestType`
+   = note: consider using `std::sync::Arc<dummy::TestType>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required by a bound in `Outer`
   --> $DIR/negated-auto-traits-error.rs:10:17
    |
@@ -20,6 +21,7 @@ LL |     Outer(TestType);
    |     ^^^^^^^^^^^^^^^ `dummy::TestType` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `dummy::TestType`
+   = note: consider using `std::sync::Arc<dummy::TestType>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required by a bound in `Outer`
   --> $DIR/negated-auto-traits-error.rs:10:17
    |
@@ -35,6 +37,7 @@ LL |     is_send(TestType);
    |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `dummy1b::TestType`
+   = note: consider using `std::sync::Arc<dummy1b::TestType>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required by a bound in `is_send`
   --> $DIR/negated-auto-traits-error.rs:16:15
    |
@@ -50,6 +53,7 @@ LL |     is_send((8, TestType));
    |     required by a bound introduced by this call
    |
    = help: within `({integer}, dummy1c::TestType)`, the trait `Send` is not implemented for `dummy1c::TestType`
+   = note: consider using `std::sync::Arc<dummy1c::TestType>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
    = note: required because it appears within the type `({integer}, TestType)`
 note: required by a bound in `is_send`
   --> $DIR/negated-auto-traits-error.rs:16:15
@@ -88,6 +92,7 @@ LL |     is_send(Box::new(Outer2(TestType)));
    |     required by a bound introduced by this call
    |
    = help: within `Outer2<dummy3::TestType>`, the trait `Send` is not implemented for `dummy3::TestType`
+   = note: consider using `std::sync::Arc<dummy3::TestType>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required because it appears within the type `Outer2<TestType>`
   --> $DIR/negated-auto-traits-error.rs:12:8
    |
@@ -111,6 +116,7 @@ LL |     is_sync(Outer2(TestType));
    |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `main::TestType`
+   = note: consider using `std::sync::Arc<main::TestType>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required for `Outer2<main::TestType>` to implement `Sync`
   --> $DIR/negated-auto-traits-error.rs:14:22
    |

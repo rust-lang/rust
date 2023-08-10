@@ -472,7 +472,9 @@ class FakeArgs:
 
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
-    def __init__(self, config_toml="", args=FakeArgs()):
+    def __init__(self, config_toml="", args=None):
+        if args is None:
+            args = FakeArgs()
         self.git_version = None
         self.nix_deps_dir = None
         self._should_fix_bins_and_dylibs = None

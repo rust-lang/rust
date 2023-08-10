@@ -68,7 +68,10 @@ pub struct Flags {
 
     #[arg(global(true), long, value_name = "PATH")]
     /// build paths to exclude
-    pub exclude: Vec<PathBuf>,
+    pub exclude: Vec<PathBuf>, // keeping for client backward compatibility
+    #[arg(global(true), long, value_name = "PATH")]
+    /// build paths to skip
+    pub skip: Vec<PathBuf>,
     #[arg(global(true), long)]
     /// include default paths in addition to the provided ones
     pub include_default_paths: bool,
@@ -318,7 +321,7 @@ pub enum Subcommand {
         no_fail_fast: bool,
         #[arg(long, value_name = "SUBSTRING")]
         /// skips tests matching SUBSTRING, if supported by test tool. May be passed multiple times
-        skip: Vec<String>,
+        skip: Vec<PathBuf>,
         #[arg(long, value_name = "ARGS", allow_hyphen_values(true))]
         /// extra arguments to be passed for the test tool being used
         /// (e.g. libtest, compiletest or rustdoc)
@@ -335,6 +338,10 @@ pub enum Subcommand {
         #[arg(long)]
         /// whether to automatically update stderr/stdout files
         bless: bool,
+        #[arg(long)]
+        /// comma-separated list of other files types to check (accepts py, py:lint,
+        /// py:fmt, shell)
+        extra_checks: Option<String>,
         #[arg(long)]
         /// rerun tests even if the inputs are unchanged
         force_rerun: bool,
@@ -470,6 +477,13 @@ impl Subcommand {
         match *self {
             Subcommand::Test { bless, .. } => bless,
             _ => false,
+        }
+    }
+
+    pub fn extra_checks(&self) -> Option<&str> {
+        match *self {
+            Subcommand::Test { ref extra_checks, .. } => extra_checks.as_ref().map(String::as_str),
+            _ => None,
         }
     }
 

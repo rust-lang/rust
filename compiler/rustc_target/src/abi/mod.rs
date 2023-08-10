@@ -39,7 +39,7 @@ impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
 
 /// Trait that needs to be implemented by the higher-level type representation
 /// (e.g. `rustc_middle::ty::Ty`), to provide `rustc_target::abi` functionality.
-pub trait TyAbiInterface<'a, C>: Sized {
+pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug {
     fn ty_and_layout_for_variant(
         this: TyAndLayout<'a, Self>,
         cx: &C,
@@ -135,6 +135,11 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         for index in indices {
             offset += layout.fields.offset(index);
             layout = layout.field(cx, index);
+            assert!(
+                layout.is_sized(),
+                "offset of unsized field (type {:?}) cannot be computed statically",
+                layout.ty
+            );
         }
 
         offset

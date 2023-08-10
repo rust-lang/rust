@@ -1359,38 +1359,60 @@ fn impl_trait_ref(
         .as_ref()
         .map(|ast_trait_ref| {
             let selfty = tcx.type_of(def_id).instantiate_identity();
-            icx.astconv().instantiate_mono_trait_ref(
-                ast_trait_ref,
-                selfty,
-                check_impl_constness(tcx, impl_.constness, ast_trait_ref),
-            )
+
+            if let Some(ErrorGuaranteed { .. }) = check_impl_constness(
+                tcx,
+                tcx.is_const_trait_impl_raw(def_id.to_def_id()),
+                &ast_trait_ref,
+            ) {
+                // we have a const impl, but for a trait without `#[const_trait]`, so
+                // without the host param. If we continue with the HIR trait ref, we get
+                // ICEs for generic arg count mismatch. We do a little HIR editing to
+                // make astconv happy.
+                let mut path_segments = ast_trait_ref.path.segments.to_vec();
+                let last_segment = path_segments.len() - 1;
+                let mut args = path_segments[last_segment].args().clone();
+                let last_arg = args.args.len() - 1;
+                assert!(matches!(args.args[last_arg], hir::GenericArg::Const(anon_const) if tcx.has_attr(anon_const.value.def_id, sym::rustc_host)));
+                args.args = &args.args[..args.args.len() - 1];
+                path_segments[last_segment].args = Some(&args);
+                let path = hir::Path {
+                    span: ast_trait_ref.path.span,
+                    res: ast_trait_ref.path.res,
+                    segments: &path_segments,
+                };
+                let trait_ref = hir::TraitRef { path: &path, hir_ref_id: ast_trait_ref.hir_ref_id };
+                icx.astconv().instantiate_mono_trait_ref(&trait_ref, selfty)
+            } else {
+                icx.astconv().instantiate_mono_trait_ref(&ast_trait_ref, selfty)
+            }
         })
         .map(ty::EarlyBinder::bind)
 }
 
 fn check_impl_constness(
     tcx: TyCtxt<'_>,
-    constness: hir::Constness,
+    is_const: bool,
     ast_trait_ref: &hir::TraitRef<'_>,
-) -> ty::BoundConstness {
-    match constness {
-        hir::Constness::Const => {
-            if let Some(trait_def_id) = ast_trait_ref.trait_def_id() && !tcx.has_attr(trait_def_id, sym::const_trait) {
-                let trait_name = tcx.item_name(trait_def_id).to_string();
-                tcx.sess.emit_err(errors::ConstImplForNonConstTrait {
-                    trait_ref_span: ast_trait_ref.path.span,
-                    trait_name,
-                    local_trait_span: trait_def_id.as_local().map(|_| tcx.def_span(trait_def_id).shrink_to_lo()),
-                    marking: (),
-                    adding: (),
-                });
-                ty::BoundConstness::NotConst
-            } else {
-                ty::BoundConstness::ConstIfConst
-            }
-        },
-        hir::Constness::NotConst => ty::BoundConstness::NotConst,
+) -> Option<ErrorGuaranteed> {
+    if !is_const {
+        return None;
     }
+
+    let trait_def_id = ast_trait_ref.trait_def_id()?;
+    if tcx.has_attr(trait_def_id, sym::const_trait) {
+        return None;
+    }
+
+    let trait_name = tcx.item_name(trait_def_id).to_string();
+    Some(tcx.sess.emit_err(errors::ConstImplForNonConstTrait {
+        trait_ref_span: ast_trait_ref.path.span,
+        trait_name,
+        local_trait_span:
+            trait_def_id.as_local().map(|_| tcx.def_span(trait_def_id).shrink_to_lo()),
+        marking: (),
+        adding: (),
+    }))
 }
 
 fn impl_polarity(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplPolarity {

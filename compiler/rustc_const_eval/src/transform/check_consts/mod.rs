@@ -127,15 +127,8 @@ fn is_parent_const_stable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let hir_id = tcx.local_def_id_to_hir_id(local_def_id);
 
     let Some(parent) = tcx.hir().opt_parent_id(hir_id) else { return false };
-    let parent_def = tcx.hir().get(parent);
 
-    if !matches!(
-        parent_def,
-        hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Impl(hir::Impl { constness: hir::Constness::Const, .. }),
-            ..
-        })
-    ) {
+    if !tcx.is_const_trait_impl_raw(parent.owner.def_id.to_def_id()) {
         return false;
     }
 

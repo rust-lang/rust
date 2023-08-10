@@ -4,6 +4,7 @@ complete -c x.py -n "__fish_use_subcommand" -l build -d 'build target of the sta
 complete -c x.py -n "__fish_use_subcommand" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_use_subcommand" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_use_subcommand" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_use_subcommand" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_use_subcommand" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_use_subcommand" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_use_subcommand" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
@@ -47,6 +48,7 @@ complete -c x.py -n "__fish_seen_subcommand_from build" -l build -d 'build targe
 complete -c x.py -n "__fish_seen_subcommand_from build" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from build" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from build" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from build" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from build" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from build" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from build" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
@@ -76,6 +78,7 @@ complete -c x.py -n "__fish_seen_subcommand_from check" -l build -d 'build targe
 complete -c x.py -n "__fish_seen_subcommand_from check" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from check" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from check" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from check" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from check" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from check" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from check" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
@@ -110,6 +113,7 @@ complete -c x.py -n "__fish_seen_subcommand_from clippy" -l build -d 'build targ
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from clippy" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
@@ -140,6 +144,7 @@ complete -c x.py -n "__fish_seen_subcommand_from fix" -l build -d 'build target 
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from fix" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
@@ -169,6 +174,7 @@ complete -c x.py -n "__fish_seen_subcommand_from fmt" -l build -d 'build target 
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from fmt" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
@@ -199,6 +205,7 @@ complete -c x.py -n "__fish_seen_subcommand_from doc" -l build -d 'build target 
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from doc" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
@@ -224,9 +231,10 @@ complete -c x.py -n "__fish_seen_subcommand_from doc" -l dry-run -d 'dry run; do
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -s h -l help -d 'Print help (see more with \'--help\')'
-complete -c x.py -n "__fish_seen_subcommand_from test" -l skip -d 'skips tests matching SUBSTRING, if supported by test tool. May be passed multiple times' -r
+complete -c x.py -n "__fish_seen_subcommand_from test" -l skip -d 'skips tests matching SUBSTRING, if supported by test tool. May be passed multiple times' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from test" -l test-args -d 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l rustc-args -d 'extra options to pass the compiler when running tests' -r
+complete -c x.py -n "__fish_seen_subcommand_from test" -l extra-checks -d 'comma-separated list of other files types to check (accepts py, py:lint, py:fmt, shell)' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l compare-mode -d 'mode describing what file the actual ui output will be compared to' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l pass -d 'force {check,build,run}-pass tests to this mode' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l run -d 'whether to execute run-* tests' -r
@@ -273,6 +281,7 @@ complete -c x.py -n "__fish_seen_subcommand_from bench" -l build -d 'build targe
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from bench" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
@@ -303,6 +312,7 @@ complete -c x.py -n "__fish_seen_subcommand_from clean" -l build -d 'build targe
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from clean" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
@@ -332,6 +342,7 @@ complete -c x.py -n "__fish_seen_subcommand_from dist" -l build -d 'build target
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from dist" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
@@ -361,6 +372,7 @@ complete -c x.py -n "__fish_seen_subcommand_from install" -l build -d 'build tar
 complete -c x.py -n "__fish_seen_subcommand_from install" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from install" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from install" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from install" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from install" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from install" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from install" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
@@ -391,6 +403,7 @@ complete -c x.py -n "__fish_seen_subcommand_from run" -l build -d 'build target 
 complete -c x.py -n "__fish_seen_subcommand_from run" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from run" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from run" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from run" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from run" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from run" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from run" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
@@ -420,6 +433,7 @@ complete -c x.py -n "__fish_seen_subcommand_from setup" -l build -d 'build targe
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from setup" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
@@ -449,6 +463,7 @@ complete -c x.py -n "__fish_seen_subcommand_from suggest" -l build -d 'build tar
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from suggest" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f

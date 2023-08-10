@@ -1349,7 +1349,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     GenericParamDefKind::Const { has_default } => {
-                        if !infer_args && has_default {
+                        if !infer_args
+                            && has_default
+                            && !tcx.has_attr(param.def_id, sym::rustc_host)
+                        {
                             tcx.const_param_default(param.def_id)
                                 .instantiate(tcx, args.unwrap())
                                 .into()

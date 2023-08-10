@@ -5,6 +5,7 @@ LL | fn foo(x: NotSync) -> impl Future + Send {
    |                       ^^^^^^^^^^^^^^^^^^ `*mut ()` cannot be shared between threads safely
    |
    = help: within `NotSync`, the trait `Sync` is not implemented for `*mut ()`
+   = note: consider using `std::sync::Arc<*mut ()>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required because it appears within the type `PhantomData<*mut ()>`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
 note: required because it appears within the type `NotSync`

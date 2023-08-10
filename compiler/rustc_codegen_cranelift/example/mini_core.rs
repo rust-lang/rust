@@ -11,7 +11,7 @@
     thread_local
 )]
 #![no_core]
-#![allow(dead_code)]
+#![allow(dead_code, internal_features)]
 
 #[lang = "sized"]
 pub trait Sized {}

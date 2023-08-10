@@ -1869,7 +1869,8 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
     LLVMContextRef C, LLVMDiagnosticHandlerTy DiagnosticHandlerCallback,
     void *DiagnosticHandlerContext, bool RemarkAllPasses,
     const char * const * RemarkPasses, size_t RemarkPassesLen,
-    const char * RemarkFilePath
+    const char * RemarkFilePath,
+    bool PGOAvailable
 ) {
 
   class RustDiagnosticHandler final : public DiagnosticHandler {
@@ -1967,6 +1968,11 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
   std::unique_ptr<LLVMRemarkStreamer> LlvmRemarkStreamer;
 
   if (RemarkFilePath != nullptr) {
+    if (PGOAvailable) {
+      // Enable PGO hotness data for remarks, if available
+      unwrap(C)->setDiagnosticsHotnessRequested(true);
+    }
+
     std::error_code EC;
     RemarkFile = std::make_unique<ToolOutputFile>(
       RemarkFilePath,
@@ -2026,4 +2032,15 @@ extern "C" int32_t LLVMRustGetElementTypeArgIndex(LLVMValueRef CallSite) {
 
 extern "C" bool LLVMRustIsBitcode(char *ptr, size_t len) {
   return identify_magic(StringRef(ptr, len)) == file_magic::bitcode;
+}
+
+extern "C" bool LLVMRustIsNonGVFunctionPointerTy(LLVMValueRef V) {
+  if (unwrap<Value>(V)->getType()->isPointerTy()) {
+    if (auto *GV = dyn_cast<GlobalValue>(unwrap<Value>(V))) {
+      if (GV->getValueType()->isFunctionTy())
+        return false;
+    }
+    return true;
+  }
+  return false;
 }

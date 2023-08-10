@@ -7,6 +7,7 @@ LL |     test(us);
    |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `UnsafeCell<MySync<{integer}>>`
+   = note: consider using `std::sync::Arc<UnsafeCell<MySync<{integer}>>>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required by a bound in `test`
   --> $DIR/typeck-unsafe-always-share.rs:15:12
    |
@@ -22,6 +23,7 @@ LL |     test(uns);
    |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `UnsafeCell<NoSync>`
+   = note: consider using `std::sync::Arc<UnsafeCell<NoSync>>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required by a bound in `test`
   --> $DIR/typeck-unsafe-always-share.rs:15:12
    |
@@ -37,6 +39,7 @@ LL |     test(ms);
    |     required by a bound introduced by this call
    |
    = help: within `MySync<NoSync>`, the trait `Sync` is not implemented for `UnsafeCell<NoSync>`
+   = note: consider using `std::sync::Arc<UnsafeCell<NoSync>>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required because it appears within the type `MySync<NoSync>`
   --> $DIR/typeck-unsafe-always-share.rs:8:8
    |
@@ -57,6 +60,7 @@ LL |     test(NoSync);
    |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `NoSync`
+   = note: consider using `std::sync::Arc<NoSync>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required by a bound in `test`
   --> $DIR/typeck-unsafe-always-share.rs:15:12
    |

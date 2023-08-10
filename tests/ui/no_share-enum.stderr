@@ -7,6 +7,7 @@ LL |     bar(x);
    |     required by a bound introduced by this call
    |
    = help: within `Foo`, the trait `Sync` is not implemented for `NoSync`
+   = note: consider using `std::sync::Arc<NoSync>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required because it appears within the type `Foo`
   --> $DIR/no_share-enum.rs:8:6
    |

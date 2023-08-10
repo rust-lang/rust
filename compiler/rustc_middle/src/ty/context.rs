@@ -1931,6 +1931,84 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+    /// Given the def-id of an early-bound lifetime on an RPIT corresponding to
+    /// a duplicated captured lifetime, map it back to the early- or late-bound
+    /// lifetime of the function from which it originally as captured. If it is
+    /// a late-bound lifetime, this will represent the liberated (`ReFree`) lifetime
+    /// of the signature.
+    // FIXME(RPITIT): if we ever synthesize new lifetimes for RPITITs and not just
+    // re-use the generics of the opaque, this function will need to be tweaked slightly.
+    pub fn map_rpit_lifetime_to_fn_lifetime(
+        self,
+        mut rpit_lifetime_param_def_id: LocalDefId,
+    ) -> ty::Region<'tcx> {
+        debug_assert!(
+            matches!(self.def_kind(rpit_lifetime_param_def_id), DefKind::LifetimeParam),
+            "{rpit_lifetime_param_def_id:?} is a {}",
+            self.def_descr(rpit_lifetime_param_def_id.to_def_id())
+        );
+
+        loop {
+            let parent = self.local_parent(rpit_lifetime_param_def_id);
+            let hir::OpaqueTy { lifetime_mapping, .. } =
+                self.hir().get_by_def_id(parent).expect_item().expect_opaque_ty();
+
+            let Some((lifetime, _)) = lifetime_mapping
+                .iter()
+                .find(|(_, duplicated_param)| *duplicated_param == rpit_lifetime_param_def_id)
+            else {
+                bug!("duplicated lifetime param should be present");
+            };
+
+            match self.named_bound_var(lifetime.hir_id) {
+                Some(resolve_bound_vars::ResolvedArg::EarlyBound(ebv)) => {
+                    let new_parent = self.parent(ebv);
+
+                    // If we map to another opaque, then it should be a parent
+                    // of the opaque we mapped from. Continue mapping.
+                    if matches!(self.def_kind(new_parent), DefKind::OpaqueTy) {
+                        debug_assert_eq!(self.parent(parent.to_def_id()), new_parent);
+                        rpit_lifetime_param_def_id = ebv.expect_local();
+                        continue;
+                    }
+
+                    let generics = self.generics_of(new_parent);
+                    return ty::Region::new_early_bound(
+                        self,
+                        ty::EarlyBoundRegion {
+                            def_id: ebv,
+                            index: generics
+                                .param_def_id_to_index(self, ebv)
+                                .expect("early-bound var should be present in fn generics"),
+                            name: self.hir().name(self.local_def_id_to_hir_id(ebv.expect_local())),
+                        },
+                    );
+                }
+                Some(resolve_bound_vars::ResolvedArg::LateBound(_, _, lbv)) => {
+                    let new_parent = self.parent(lbv);
+                    return ty::Region::new_free(
+                        self,
+                        new_parent,
+                        ty::BoundRegionKind::BrNamed(
+                            lbv,
+                            self.hir().name(self.local_def_id_to_hir_id(lbv.expect_local())),
+                        ),
+                    );
+                }
+                Some(resolve_bound_vars::ResolvedArg::Error(guar)) => {
+                    return ty::Region::new_error(self, guar);
+                }
+                _ => {
+                    return ty::Region::new_error_with_message(
+                        self,
+                        lifetime.ident.span,
+                        "cannot resolve lifetime",
+                    );
+                }
+            }
+        }
+    }
+
     /// Whether the `def_id` counts as const fn in the current crate, considering all active
     /// feature gates
     pub fn is_const_fn(self, def_id: DefId) -> bool {
@@ -1963,9 +2041,9 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(
             node,
             hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { constness: hir::Constness::Const, .. }),
+                kind: hir::ItemKind::Impl(hir::Impl { generics, .. }),
                 ..
-            })
+            }) if generics.params.iter().any(|p| self.has_attr(p.def_id, sym::rustc_host))
         )
     }
 

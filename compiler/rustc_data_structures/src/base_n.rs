@@ -30,7 +30,10 @@ pub fn push_str(mut n: u128, base: usize, output: &mut String) {
         }
     }
 
-    output.push_str(str::from_utf8(&s[index..]).unwrap());
+    output.push_str(unsafe {
+        // SAFETY: `s` is populated using only valid utf8 characters from `BASE_64`
+        str::from_utf8_unchecked(&s[index..])
+    });
 }
 
 #[inline]

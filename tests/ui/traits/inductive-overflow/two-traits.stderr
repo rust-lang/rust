@@ -4,6 +4,7 @@ error[E0277]: `T` cannot be shared between threads safely
 LL |     type X = Self;
    |              ^^^^ `T` cannot be shared between threads safely
    |
+   = note: consider using `std::sync::Arc<T>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required by a bound in `Magic::X`
   --> $DIR/two-traits.rs:8:13
    |

@@ -4,6 +4,7 @@ error[E0277]: `T` cannot be sent between threads safely
 LL |     let a = &t as &dyn Gettable<T>;
    |             ^^ `T` cannot be sent between threads safely
    |
+   = note: consider using `std::sync::Arc<T>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required for `S<T>` to implement `Gettable<T>`
   --> $DIR/kindck-impl-type-params.rs:12:32
    |
@@ -42,6 +43,7 @@ error[E0277]: `T` cannot be sent between threads safely
 LL |     let a: &dyn Gettable<T> = &t;
    |                               ^^ `T` cannot be sent between threads safely
    |
+   = note: consider using `std::sync::Arc<T>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required for `S<T>` to implement `Gettable<T>`
   --> $DIR/kindck-impl-type-params.rs:12:32
    |

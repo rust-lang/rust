@@ -269,13 +269,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ty = self.subst_from_current_frame_and_normalize_erasing_regions(ty)?;
                 let layout = self.layout_of(ty)?;
                 if let mir::NullOp::SizeOf | mir::NullOp::AlignOf = null_op && layout.is_unsized() {
-                    // FIXME: This should be a span_bug, but const generics can run MIR
-                    // that is not properly type-checked yet (#97477).
-                    self.tcx.sess.delay_span_bug(
+                    span_bug!(
                         self.frame().current_span(),
-                        format!("{null_op:?} MIR operator called for unsized type {ty}"),
+                        "{null_op:?} MIR operator called for unsized type {ty}",
                     );
-                    throw_inval!(SizeOfUnsizedType(ty));
                 }
                 let val = match null_op {
                     mir::NullOp::SizeOf => layout.size.bytes(),

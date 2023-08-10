@@ -9,11 +9,14 @@
 
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
-use crate::stable_mir::ty::{FloatTy, IntTy, Movability, RigidTy, TyKind, UintTy};
+use crate::stable_mir::ty::{
+    allocation_filter, new_allocation, FloatTy, IntTy, Movability, RigidTy, TyKind, UintTy,
+};
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
 use rustc_middle::mir::coverage::CodeRegion;
-use rustc_middle::mir::{self};
+use rustc_middle::mir::interpret::alloc_range;
+use rustc_middle::mir::{self, ConstantKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_target::abi::FieldIdx;
@@ -877,6 +880,8 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
                 abi::Abi::PlatformIntrinsic => Abi::PlatformIntrinsic,
                 abi::Abi::Unadjusted => Abi::Unadjusted,
                 abi::Abi::RustCold => Abi::RustCold,
+                abi::Abi::RiscvInterruptM => Abi::RiscvInterruptM,
+                abi::Abi::RiscvInterruptS => Abi::RiscvInterruptS,
             },
         }
     }
@@ -1080,30 +1085,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
     type T = stable_mir::ty::Allocation;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        let size = self.size();
-        let mut bytes: Vec<Option<u8>> = self
-            .inspect_with_uninit_and_ptr_outside_interpreter(0..size.bytes_usize())
-            .iter()
-            .copied()
-            .map(Some)
-            .collect();
-        for (i, b) in bytes.iter_mut().enumerate() {
-            if !self.init_mask().get(rustc_target::abi::Size::from_bytes(i)) {
-                *b = None;
-            }
-        }
-        stable_mir::ty::Allocation {
-            bytes: bytes,
-            provenance: {
-                let mut ptrs = Vec::new();
-                for (size, prov) in self.provenance().ptrs().iter() {
-                    ptrs.push((size.bytes_usize(), opaque(prov)));
-                }
-                stable_mir::ty::ProvenanceMap { ptrs }
-            },
-            align: self.align.bytes(),
-            mutability: self.mutability.stable(tables),
-        }
+        allocation_filter(self, alloc_range(rustc_target::abi::Size::ZERO, self.size()), tables)
     }
 }
 
@@ -1142,6 +1124,33 @@ impl<'tcx> Stable<'tcx> for ty::TraitDef {
                 .map(|idents| idents.iter().map(|ident| opaque(ident)).collect()),
             implement_via_object: self.implement_via_object,
             deny_explicit_impl: self.deny_explicit_impl,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
+    type T = stable_mir::ty::ConstantKind;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            ConstantKind::Ty(c) => match c.kind() {
+                ty::Value(val) => {
+                    let const_val = tables.tcx.valtree_to_const_val((c.ty(), val));
+                    stable_mir::ty::ConstantKind::Allocated(new_allocation(self, const_val, tables))
+                }
+                _ => todo!(),
+            },
+            ConstantKind::Unevaluated(unev_const, ty) => {
+                stable_mir::ty::ConstantKind::Unevaluated(stable_mir::ty::UnevaluatedConst {
+                    ty: tables.intern_ty(*ty),
+                    def: tables.const_def(unev_const.def),
+                    args: unev_const.args.stable(tables),
+                    promoted: unev_const.promoted.map(|u| u.as_u32()),
+                })
+            }
+            ConstantKind::Val(val, _) => {
+                stable_mir::ty::ConstantKind::Allocated(new_allocation(self, *val, tables))
+            }
         }
     }
 }
