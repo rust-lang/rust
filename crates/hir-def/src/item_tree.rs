@@ -148,7 +148,9 @@ impl ItemTree {
         let block = loc.ast_id.to_node(db.upcast());
 
         let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
-        Arc::new(ctx.lower_block(&block))
+        let mut item_tree = ctx.lower_block(&block);
+        item_tree.shrink_to_fit();
+        Arc::new(item_tree)
     }
 
     /// Returns an iterator over all items located at the top level of the `HirFileId` this
@@ -383,7 +385,7 @@ impl TreeId {
 
     pub(crate) fn item_tree(&self, db: &dyn DefDatabase) -> Arc<ItemTree> {
         match self.block {
-            Some(block) => ItemTree::block_item_tree_query(db, block),
+            Some(block) => db.block_item_tree_query(block),
             None => db.file_item_tree(self.file),
         }
     }
