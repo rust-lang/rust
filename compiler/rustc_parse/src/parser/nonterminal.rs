@@ -64,10 +64,7 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::Path | NonterminalKind::Meta => match &token.kind {
                 token::ModSep | token::Ident(..) => true,
-                token::Interpolated(nt) => match **nt {
-                    NtPath(_) | NtMeta(_) => true,
-                    _ => may_be_ident(&nt),
-                },
+                token::Interpolated(nt) => may_be_ident(nt),
                 _ => false,
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => {
