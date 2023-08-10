@@ -431,7 +431,7 @@ impl AttrsWithOwner {
                         .item_tree(db)
                         .raw_attrs(AttrOwner::ModItem(definition_tree_id.value.into()))
                         .clone(),
-                    ModuleOrigin::BlockExpr { id, block } => {
+                    ModuleOrigin::BlockExpr { id, .. } => {
                         let tree = db.block_item_tree_query(id);
                         tree.raw_attrs(AttrOwner::TopLevel).clone()
                     }

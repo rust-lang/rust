@@ -1843,7 +1843,7 @@ impl ModCollector<'_, '_> {
             ModKind::Inline { items } => {
                 let module_id = self.push_child_module(
                     module.name.clone(),
-                    AstId::new(self.file_id(), module.ast_id),
+                    module.ast_id,
                     None,
                     &self.item_tree[module.visibility],
                     module_id,
@@ -1881,7 +1881,7 @@ impl ModCollector<'_, '_> {
                         if is_enabled {
                             let module_id = self.push_child_module(
                                 module.name.clone(),
-                                ast_id,
+                                ast_id.value,
                                 Some((file_id, is_mod_rs)),
                                 &self.item_tree[module.visibility],
                                 module_id,
@@ -1908,7 +1908,7 @@ impl ModCollector<'_, '_> {
                     Err(candidates) => {
                         self.push_child_module(
                             module.name.clone(),
-                            ast_id,
+                            ast_id.value,
                             None,
                             &self.item_tree[module.visibility],
                             module_id,
@@ -1925,7 +1925,7 @@ impl ModCollector<'_, '_> {
     fn push_child_module(
         &mut self,
         name: Name,
-        declaration: AstId<ast::Module>,
+        declaration: FileAstId<ast::Module>,
         definition: Option<(FileId, bool)>,
         visibility: &crate::visibility::RawVisibility,
         mod_tree_id: FileItemTreeId<Mod>,

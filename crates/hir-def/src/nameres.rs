@@ -60,7 +60,7 @@ mod tests;
 use std::{cmp::Ord, ops::Deref};
 
 use base_db::{CrateId, Edition, FileId, ProcMacroKind};
-use hir_expand::{name::Name, HirFileId, InFile, MacroCallId, MacroDefId};
+use hir_expand::{ast_id_map::FileAstId, name::Name, HirFileId, InFile, MacroCallId, MacroDefId};
 use itertools::Itertools;
 use la_arena::Arena;
 use profile::Count;
@@ -217,13 +217,13 @@ pub enum ModuleOrigin {
     /// Note that non-inline modules, by definition, live inside non-macro file.
     File {
         is_mod_rs: bool,
-        declaration: AstId<ast::Module>,
+        declaration: FileAstId<ast::Module>,
         declaration_tree_id: ItemTreeId<Mod>,
         definition: FileId,
     },
     Inline {
         definition_tree_id: ItemTreeId<Mod>,
-        definition: AstId<ast::Module>,
+        definition: FileAstId<ast::Module>,
     },
     /// Pseudo-module introduced by a block scope (contains only inner items).
     BlockExpr {
@@ -235,8 +235,12 @@ pub enum ModuleOrigin {
 impl ModuleOrigin {
     pub fn declaration(&self) -> Option<AstId<ast::Module>> {
         match self {
-            ModuleOrigin::File { declaration: module, .. }
-            | ModuleOrigin::Inline { definition: module, .. } => Some(*module),
+            &ModuleOrigin::File { declaration, declaration_tree_id, .. } => {
+                Some(AstId::new(declaration_tree_id.file_id(), declaration))
+            }
+            &ModuleOrigin::Inline { definition, definition_tree_id } => {
+                Some(AstId::new(definition_tree_id.file_id(), definition))
+            }
             ModuleOrigin::CrateRoot { .. } | ModuleOrigin::BlockExpr { .. } => None,
         }
     }
@@ -261,14 +265,15 @@ impl ModuleOrigin {
     /// That is, a file or a `mod foo {}` with items.
     fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
         match self {
-            ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
-                let file_id = *definition;
-                let sf = db.parse(file_id).tree();
-                InFile::new(file_id.into(), ModuleSource::SourceFile(sf))
+            &ModuleOrigin::File { definition, .. } | &ModuleOrigin::CrateRoot { definition } => {
+                let sf = db.parse(definition).tree();
+                InFile::new(definition.into(), ModuleSource::SourceFile(sf))
             }
-            ModuleOrigin::Inline { definition, .. } => InFile::new(
-                definition.file_id,
-                ModuleSource::Module(definition.to_node(db.upcast())),
+            &ModuleOrigin::Inline { definition, definition_tree_id } => InFile::new(
+                definition_tree_id.file_id(),
+                ModuleSource::Module(
+                    AstId::new(definition_tree_id.file_id(), definition).to_node(db.upcast()),
+                ),
             ),
             ModuleOrigin::BlockExpr { block, .. } => {
                 InFile::new(block.file_id, ModuleSource::BlockExpr(block.to_node(db.upcast())))
@@ -645,7 +650,7 @@ impl ModuleData {
             ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
                 definition.into()
             }
-            ModuleOrigin::Inline { definition, .. } => definition.file_id,
+            ModuleOrigin::Inline { definition_tree_id, .. } => definition_tree_id.file_id(),
             ModuleOrigin::BlockExpr { block, .. } => block.file_id,
         }
     }
