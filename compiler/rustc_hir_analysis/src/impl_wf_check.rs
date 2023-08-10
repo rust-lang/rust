@@ -94,21 +94,21 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
         &mut input_parameters,
     );
 
-    // Disallow unconstrained lifetimes, but only if they appear in assoc types.
+    // Disallow unconstrained lifetimes, but only if they appear in assoc types or consts.
     let lifetimes_in_associated_types: FxHashSet<_> = tcx
         .associated_item_def_ids(impl_def_id)
         .iter()
         .flat_map(|def_id| {
             let item = tcx.associated_item(def_id);
             match item.kind {
-                ty::AssocKind::Type => {
+                ty::AssocKind::Type | ty::AssocKind::Const => {
                     if item.defaultness(tcx).has_value() {
                         cgp::parameters_for(&tcx.type_of(def_id).instantiate_identity(), true)
                     } else {
                         vec![]
                     }
                 }
-                ty::AssocKind::Fn | ty::AssocKind::Const => vec![],
+                ty::AssocKind::Fn => vec![],
             }
         })
         .collect();
