@@ -53,9 +53,9 @@ use crate::{
     visibility::{RawVisibility, Visibility},
     AdtId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, EnumVariantId,
     ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc, ImplLoc, Intern,
-    ItemContainerId, LocalModuleId, Macro2Id, Macro2Loc, MacroExpander, MacroId, MacroRulesId,
-    MacroRulesLoc, ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc, StructLoc,
-    TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId, UseLoc,
+    ItemContainerId, LocalModuleId, Lookup, Macro2Id, Macro2Loc, MacroExpander, MacroId,
+    MacroRulesId, MacroRulesLoc, ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc,
+    StructLoc, TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId, UseLoc,
 };
 
 static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
@@ -1461,7 +1461,7 @@ impl DefCollector<'_> {
         let mut diagnosed_extern_crates = FxHashSet::default();
         for directive in &self.unresolved_imports {
             if let ImportSource::ExternCrate { id } = directive.import.source {
-                let item_tree_id = self.db.lookup_intern_extern_crate(id).id;
+                let item_tree_id = id.lookup(self.db).id;
                 let item_tree = item_tree_id.item_tree(self.db);
                 let extern_crate = &item_tree[item_tree_id.value];
 
@@ -1482,7 +1482,7 @@ impl DefCollector<'_> {
                 ) {
                     continue;
                 }
-                let item_tree_id = self.db.lookup_intern_use(id).id;
+                let item_tree_id = id.lookup(self.db).id;
                 self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
                     directive.module_id,
                     item_tree_id,

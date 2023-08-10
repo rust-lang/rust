@@ -68,7 +68,7 @@ use crate::{
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
-    BlockId,
+    BlockId, Lookup,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -144,7 +144,7 @@ impl ItemTree {
     }
 
     pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
-        let loc = db.lookup_intern_block(block);
+        let loc = block.lookup(db);
         let block = loc.ast_id.to_node(db.upcast());
 
         let ctx = lower::Ctx::new(db, loc.ast_id.file_id);

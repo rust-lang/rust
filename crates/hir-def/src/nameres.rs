@@ -320,9 +320,7 @@ impl DefMap {
     }
 
     pub(crate) fn block_def_map_query(db: &dyn DefDatabase, block_id: BlockId) -> Arc<DefMap> {
-        let block: BlockLoc = db.lookup_intern_block(block_id);
-
-        let tree_id = TreeId::new(block.ast_id.file_id, Some(block_id));
+        let block: BlockLoc = block_id.lookup(db);
 
         let parent_map = block.module.def_map(db);
         let krate = block.module.krate;
@@ -346,7 +344,8 @@ impl DefMap {
             },
         });
 
-        let def_map = collector::collect_defs(db, def_map, tree_id);
+        let def_map =
+            collector::collect_defs(db, def_map, TreeId::new(block.ast_id.file_id, Some(block_id)));
         Arc::new(def_map)
     }
 
