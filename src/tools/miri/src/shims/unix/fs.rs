@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::convert::TryInto;
@@ -24,7 +25,7 @@ pub struct FileHandle {
     writable: bool,
 }
 
-pub trait FileDescriptor: std::fmt::Debug + helpers::AsAny {
+pub trait FileDescriptor: std::fmt::Debug + Any {
     fn name(&self) -> &'static str;
 
     fn read<'tcx>(
@@ -69,6 +70,18 @@ pub trait FileDescriptor: std::fmt::Debug + helpers::AsAny {
     #[cfg(unix)]
     fn as_unix_host_fd(&self) -> Option<i32> {
         None
+    }
+}
+
+impl dyn FileDescriptor {
+    #[inline(always)]
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        (self as &dyn Any).downcast_ref()
+    }
+
+    #[inline(always)]
+    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
+        (self as &mut dyn Any).downcast_mut()
     }
 }
 
@@ -689,7 +702,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
                 // FIXME: Support fullfsync for all FDs
                 let FileHandle { file, writable } =
-                    file_descriptor.as_any().downcast_ref::<FileHandle>().ok_or_else(|| {
+                    file_descriptor.downcast_ref::<FileHandle>().ok_or_else(|| {
                         err_unsup_format!(
                             "`F_FULLFSYNC` is only supported on file-backed file descriptors"
                         )
@@ -1522,7 +1535,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
                 // FIXME: Support ftruncate64 for all FDs
                 let FileHandle { file, writable } =
-                    file_descriptor.as_any().downcast_ref::<FileHandle>().ok_or_else(|| {
+                    file_descriptor.downcast_ref::<FileHandle>().ok_or_else(|| {
                         err_unsup_format!(
                             "`ftruncate64` is only supported on file-backed file descriptors"
                         )
@@ -1568,7 +1581,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support fsync for all FDs
             let FileHandle { file, writable } =
-                file_descriptor.as_any().downcast_ref::<FileHandle>().ok_or_else(|| {
+                file_descriptor.downcast_ref::<FileHandle>().ok_or_else(|| {
                     err_unsup_format!("`fsync` is only supported on file-backed file descriptors")
                 })?;
             let io_result = maybe_sync_file(file, *writable, File::sync_all);
@@ -1593,7 +1606,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support fdatasync for all FDs
             let FileHandle { file, writable } =
-                file_descriptor.as_any().downcast_ref::<FileHandle>().ok_or_else(|| {
+                file_descriptor.downcast_ref::<FileHandle>().ok_or_else(|| {
                     err_unsup_format!(
                         "`fdatasync` is only supported on file-backed file descriptors"
                     )
@@ -1643,7 +1656,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support sync_data_range for all FDs
             let FileHandle { file, writable } =
-                file_descriptor.as_any().downcast_ref::<FileHandle>().ok_or_else(|| {
+                file_descriptor.downcast_ref::<FileHandle>().ok_or_else(|| {
                     err_unsup_format!(
                         "`sync_data_range` is only supported on file-backed file descriptors"
                     )
@@ -1953,7 +1966,6 @@ impl FileMetadata {
         let file = match option {
             Some(file_descriptor) =>
                 &file_descriptor
-                    .as_any()
                     .downcast_ref::<FileHandle>()
                     .ok_or_else(|| {
                         err_unsup_format!(
