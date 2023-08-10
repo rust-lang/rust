@@ -1843,7 +1843,7 @@ impl Expr<'_> {
                 .iter()
                 .map(|field| field.expr)
                 .chain(init.into_iter())
-                .all(|e| e.can_have_side_effects()),
+                .any(|e| e.can_have_side_effects()),
 
             ExprKind::Array(args)
             | ExprKind::Tup(args)
@@ -1857,7 +1857,7 @@ impl Expr<'_> {
                     ..
                 },
                 args,
-            ) => args.iter().all(|arg| arg.can_have_side_effects()),
+            ) => args.iter().any(|arg| arg.can_have_side_effects()),
             ExprKind::If(..)
             | ExprKind::Match(..)
             | ExprKind::MethodCall(..)

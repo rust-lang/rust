@@ -950,7 +950,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !expected.is_unit() {
             return;
         }
-        let found = self.resolve_vars_with_obligations(found);
+        let found = self.resolve_vars_if_possible(found);
 
         let in_loop = self.is_loop(id)
             || self
