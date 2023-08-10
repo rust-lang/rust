@@ -682,18 +682,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
-    pub(in super::super) fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
-        let sized_did = self.tcx.lang_items().sized_trait();
-        self.obligations_for_self_ty(self_ty).any(|obligation| {
-            match obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
-                    Some(data.def_id()) == sized_did
-                }
-                _ => false,
-            }
-        })
-    }
-
     pub(in super::super) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
         let ty_error = Ty::new_misc_error(self.tcx);
         vec![ty_error; len]
