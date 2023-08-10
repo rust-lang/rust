@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use rustc_middle::ty::ScalarInt;
 
 use crate::*;
@@ -6,8 +8,6 @@ use event::Event;
 use socketpair::SocketPair;
 
 use shims::unix::fs::EvalContextExt as _;
-
-use std::cell::Cell;
 
 pub mod epoll;
 pub mod event;
@@ -81,7 +81,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
                 let epfd = epfd
-                    .as_any_mut()
                     .downcast_mut::<Epoll>()
                     .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
 
@@ -93,7 +92,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         } else if op == epoll_ctl_del {
             if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
                 let epfd = epfd
-                    .as_any_mut()
                     .downcast_mut::<Epoll>()
                     .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
 
@@ -154,7 +152,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
             let _epfd = epfd
-                .as_any_mut()
                 .downcast_mut::<Epoll>()
                 .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
 
