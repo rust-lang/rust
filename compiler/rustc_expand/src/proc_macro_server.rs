@@ -98,17 +98,32 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
 
         while let Some(tree) = cursor.next() {
             let (Token { kind, span }, joint) = match tree.clone() {
-                tokenstream::TokenTree::Delimited(span, delim, tts) => {
-                    let delimiter = pm::Delimiter::from_internal(delim);
-                    trees.push(TokenTree::Group(Group {
-                        delimiter,
-                        stream: Some(tts),
-                        span: DelimSpan {
-                            open: span.open,
-                            close: span.close,
-                            entire: span.entire(),
-                        },
-                    }));
+                tokenstream::TokenTree::Delimited(span, delim, stream) => {
+                    // A hack used to pass AST fragments to attribute and derive
+                    // macros as a single nonterminal token instead of a token
+                    // stream. Such token needs to be "unwrapped" and not
+                    // represented as a delimited group.
+                    // FIXME: It needs to be removed, but there are some
+                    // compatibility issues (see #73345).
+                    if let Delimiter::Invisible(InvisibleSource::MetaVar(kind)) = delim
+                        && crate::base::stream_pretty_printing_compatibility_hack(
+                            kind,
+                            &stream,
+                            rustc.sess()
+                        )
+                    {
+                        trees.extend(Self::from_internal((stream, rustc)));
+                    } else {
+                        trees.push(TokenTree::Group(Group {
+                            delimiter: pm::Delimiter::from_internal(delim),
+                            stream: Some(stream),
+                            span: DelimSpan {
+                                open: span.open,
+                                close: span.close,
+                                entire: span.entire(),
+                            },
+                        }));
+                    }
                     continue;
                 }
                 tokenstream::TokenTree::Token(token, spacing) => (token, spacing == Joint),
@@ -231,13 +246,8 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 }
 
                 Interpolated(nt) => {
+                    // See the "hack" comment above.
                     let stream = TokenStream::from_nonterminal_ast(&nt);
-                    // A hack used to pass AST fragments to attribute and derive
-                    // macros as a single nonterminal token instead of a token
-                    // stream. Such token needs to be "unwrapped" and not
-                    // represented as a delimited group.
-                    // FIXME: It needs to be removed, but there are some
-                    // compatibility issues (see #73345).
                     if crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.sess()) {
                         trees.extend(Self::from_internal((stream, rustc)));
                     } else {

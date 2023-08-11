@@ -348,13 +348,13 @@ fn test_item() {
         stringify_item!(
             extern crate std;
         ),
-        "extern crate std;",
+        "extern crate std ;",
     );
     assert_eq!(
         stringify_item!(
             pub extern crate self as std;
         ),
-        "pub extern crate self as std;",
+        "pub extern crate self as std ;",
     );
 
     // ItemKind::Use
@@ -362,7 +362,7 @@ fn test_item() {
         stringify_item!(
             pub use crate::{a, b::c};
         ),
-        "pub use crate::{a, b::c};",
+        "pub use crate :: { a, b :: c } ;",
     );
 
     // ItemKind::Static
@@ -370,25 +370,25 @@ fn test_item() {
         stringify_item!(
             pub static S: () = {};
         ),
-        "pub static S: () = {};",
+        "pub static S : () = {} ;",
     );
     assert_eq!(
         stringify_item!(
             static mut S: () = {};
         ),
-        "static mut S: () = {};",
+        "static mut S : () = {} ;",
     );
     assert_eq!(
         stringify_item!(
             static S: ();
         ),
-        "static S: ();",
+        "static S : () ;",
     );
     assert_eq!(
         stringify_item!(
             static mut S: ();
         ),
-        "static mut S: ();",
+        "static mut S : () ;",
     );
 
     // ItemKind::Const
@@ -396,13 +396,13 @@ fn test_item() {
         stringify_item!(
             pub const S: () = {};
         ),
-        "pub const S: () = {};",
+        "pub const S : () = {} ;",
     );
     assert_eq!(
         stringify_item!(
             const S: ();
         ),
-        "const S: ();",
+        "const S : () ;",
     );
 
     // ItemKind::Fn
@@ -418,7 +418,7 @@ fn test_item() {
         stringify_item!(
             pub mod m;
         ),
-        "pub mod m;",
+        "pub mod m ;",
     );
     assert_eq!(
         stringify_item!(
@@ -430,7 +430,7 @@ fn test_item() {
         stringify_item!(
             unsafe mod m;
         ),
-        "unsafe mod m;",
+        "unsafe mod m ;",
     );
     assert_eq!(
         stringify_item!(
@@ -451,7 +451,7 @@ fn test_item() {
         stringify_item!(
             pub extern "C" {}
         ),
-        "extern \"C\" {}",
+        "pub extern \"C\" {}", // njn: old result lacked the `pub`?!
     );
     assert_eq!(
         stringify_item!(
@@ -469,7 +469,7 @@ fn test_item() {
                 Self: 'a,
             = T;
         ),
-        "pub default type Type<'a>: Bound where Self: 'a = T;",
+        "pub default type Type < 'a > : Bound where Self : 'a, = T ;",
     );
 
     // ItemKind::Enum
@@ -500,13 +500,7 @@ fn test_item() {
                 Struct { t: T },
             }
         ),
-        "enum Enum<T> where T: 'a {\n\
-        \x20   Unit,\n\
-        \x20   Tuple(T),\n\
-        \x20   Struct {\n\
-        \x20       t: T,\n\
-        \x20   },\n\
-        }",
+        "enum Enum < T > where T : 'a, { Unit, Tuple(T), Struct { t : T }, }",
     );
 
     // ItemKind::Struct
@@ -514,19 +508,19 @@ fn test_item() {
         stringify_item!(
             pub struct Unit;
         ),
-        "pub struct Unit;",
+        "pub struct Unit ;",
     );
     assert_eq!(
         stringify_item!(
             struct Tuple();
         ),
-        "struct Tuple();",
+        "struct Tuple() ;",
     );
     assert_eq!(
         stringify_item!(
             struct Tuple(T);
         ),
-        "struct Tuple(T);",
+        "struct Tuple(T) ;",
     );
     assert_eq!(
         stringify_item!(
@@ -543,9 +537,7 @@ fn test_item() {
                 t: T,
             }
         ),
-        "struct Struct<T> where T: 'a {\n\
-        \x20   t: T,\n\
-        }",
+        "struct Struct < T > where T : 'a, { t : T, }",
     );
 
     // ItemKind::Union
@@ -561,9 +553,7 @@ fn test_item() {
                 t: T,
             }
         ),
-        "union Union<T> where T: 'a {\n\
-        \x20   t: T,\n\
-        }",
+        "union Union < T > where T : 'a { t : T, }",
     );
 
     // ItemKind::Trait
@@ -581,7 +571,7 @@ fn test_item() {
             {
             }
         ),
-        "trait Trait<'a>: Sized where Self: 'a {}",
+        "trait Trait < 'a > : Sized where Self : 'a, {}",
     );
 
     // ItemKind::TraitAlias
@@ -589,7 +579,7 @@ fn test_item() {
         stringify_item!(
             pub trait Trait<T> = Sized where T: 'a;
         ),
-        "pub trait Trait<T> = Sized where T: 'a;",
+        "pub trait Trait < T > = Sized where T : 'a ;",
     );
 
     // ItemKind::Impl
@@ -603,7 +593,7 @@ fn test_item() {
         stringify_item!(
             impl<T> Struct<T> {}
         ),
-        "impl<T> Struct<T> {}",
+        "impl < T > Struct < T > {}",
     );
     assert_eq!(
         stringify_item!(
@@ -615,18 +605,18 @@ fn test_item() {
         stringify_item!(
             impl<T> const Trait for T {}
         ),
-        "impl<T> const Trait for T {}",
+        "impl < T > const Trait for T {}",
     );
     assert_eq!(
         stringify_item!(
             impl ~const Struct {}
         ),
-        "impl ~const Struct {}",
+        "impl ~ const Struct {}",
     );
 
     // ItemKind::MacCall
-    assert_eq!(stringify_item!(mac!(...);), "mac!(...);");
-    assert_eq!(stringify_item!(mac![...];), "mac![...];");
+    assert_eq!(stringify_item!(mac!(...);), "mac! (...) ;");
+    assert_eq!(stringify_item!(mac![...];), "mac! [...] ;");
     assert_eq!(stringify_item!(mac! { ... }), "mac! { ... }");
 
     // ItemKind::MacroDef
@@ -642,7 +632,7 @@ fn test_item() {
         stringify_item!(
             pub macro stringify() {}
         ),
-        "pub macro stringify { () => {} }",
+        "pub macro stringify() {}", // njn: old result?!
     );
 }
 

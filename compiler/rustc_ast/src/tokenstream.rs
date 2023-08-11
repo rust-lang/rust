@@ -463,7 +463,6 @@ impl TokenStream {
             Nonterminal::NtLifetime(ident) => {
                 TokenStream::token_alone(token::Lifetime(ident.name), ident.span)
             }
-            Nonterminal::NtItem(item) => TokenStream::from_ast(item),
             Nonterminal::NtBlock(block) => TokenStream::from_ast(block),
             Nonterminal::NtStmt(stmt) if let StmtKind::Empty = stmt.kind => {
                 // FIXME: Properly collect tokens for empty statements.

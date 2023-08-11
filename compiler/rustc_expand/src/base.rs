@@ -7,7 +7,7 @@ use crate::module::DirOwnership;
 use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::mut_visit::DummyAstNode;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Nonterminal};
+use rustc_ast::token::{self, Nonterminal, NonterminalKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
@@ -1498,7 +1498,6 @@ pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &P
 
 pub(crate) fn nt_pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &ParseSess) -> bool {
     let item = match nt {
-        Nonterminal::NtItem(item) => item,
         Nonterminal::NtStmt(stmt) => match &stmt.kind {
             ast::StmtKind::Item(item) => item,
             _ => return false,
@@ -1506,4 +1505,22 @@ pub(crate) fn nt_pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &Par
         _ => return false,
     };
     pretty_printing_compatibility_hack(item, sess)
+}
+
+pub(crate) fn stream_pretty_printing_compatibility_hack(
+    kind: NonterminalKind,
+    stream: &TokenStream,
+    sess: &ParseSess,
+) -> bool {
+    let item = match kind {
+        NonterminalKind::Item => {
+            let mut parser = parser::Parser::new(sess, stream.clone(), None);
+            let Ok(parser::ParseNtResult::Item(item)) = parser.parse_nonterminal(kind) else {
+                panic!("failed to reparse");
+            };
+            item
+        }
+        _ => return false,
+    };
+    pretty_printing_compatibility_hack(&item, sess)
 }
