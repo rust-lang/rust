@@ -478,79 +478,69 @@ pub struct UndefinedBehaviorInfoExt2<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl AddToDiagnostic for UndefinedBehaviorInfoExt2<'_> {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+impl UndefinedBehaviorInfoExt2<'_> {
+    fn eagerly_translate(self) -> String {
         use crate::fluent_generated::*;
         use UndefinedBehaviorInfo::*;
 
         let handler = &self.tcx.sess.parse_sess.span_diagnostic;
 
-        // Allow untranslatable_diagnostic lint, since we
-        // eagerly translate our subdiagnostics by using the
-        // eagerly_translate_with_args!() macro.
-        #[allow(rustc::untranslatable_diagnostic)]
         match self.err {
             #[allow(rustc::untranslatable_diagnostic)]
             Ub(str) => {
-                diag.span_label(self.span, str.clone());
+                eagerly_translate_with_args!(handler, str.clone().into(),)
             }
             Unreachable => {
-                diag.span_label(self.span, const_eval_unreachable);
+                eagerly_translate_with_args!(handler, const_eval_unreachable,)
             }
             BoundsCheckFailed { len, index } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_bounds_check_failed,
                     "len",
                     len,
                     "index",
                     index,
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             DivisionByZero => {
-                diag.span_label(self.span, const_eval_division_by_zero);
+                eagerly_translate_with_args!(handler, const_eval_division_by_zero,)
             }
             RemainderByZero => {
-                diag.span_label(self.span, const_eval_remainder_by_zero);
+                eagerly_translate_with_args!(handler, const_eval_remainder_by_zero,)
             }
             DivisionOverflow => {
-                diag.span_label(self.span, const_eval_division_overflow);
+                eagerly_translate_with_args!(handler, const_eval_division_overflow,)
             }
             RemainderOverflow => {
-                diag.span_label(self.span, const_eval_remainder_overflow);
+                eagerly_translate_with_args!(handler, const_eval_remainder_overflow,)
             }
             PointerArithOverflow => {
-                diag.span_label(self.span, const_eval_pointer_arithmetic_overflow);
+                eagerly_translate_with_args!(handler, const_eval_pointer_arithmetic_overflow,)
             }
             InvalidMeta(InvalidMetaKind::SliceTooBig) => {
-                diag.span_label(self.span, const_eval_invalid_meta_slice);
+                eagerly_translate_with_args!(handler, const_eval_invalid_meta_slice,)
             }
             InvalidMeta(InvalidMetaKind::TooBig) => {
-                diag.span_label(self.span, const_eval_invalid_meta);
+                eagerly_translate_with_args!(handler, const_eval_invalid_meta,)
             }
             UnterminatedCString(ptr) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_unterminated_c_string,
                     "pointer",
                     ptr,
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             PointerUseAfterFree(alloc_id, msg) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_pointer_use_after_free,
                     "alloc_id",
                     alloc_id,
                     "bad_pointer_message",
                     bad_pointer_message(msg, handler)
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, ptr_size, msg } => {
                 let diagnostic_message = if ptr_size == Size::ZERO {
@@ -559,7 +549,7 @@ impl AddToDiagnostic for UndefinedBehaviorInfoExt2<'_> {
                     const_eval_pointer_out_of_bounds
                 };
 
-                let translated_msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     diagnostic_message,
                     "alloc_id",
@@ -572,8 +562,7 @@ impl AddToDiagnostic for UndefinedBehaviorInfoExt2<'_> {
                     ptr_size.bytes(),
                     "bad_pointer_message",
                     bad_pointer_message(msg, &self.tcx.sess.parse_sess.span_diagnostic),
-                );
-                diag.span_label(self.span, translated_msg);
+                )
             }
             DanglingIntPointer(ptr, msg) => {
                 let diagnostic_message = if ptr == 0 {
@@ -595,109 +584,98 @@ impl AddToDiagnostic for UndefinedBehaviorInfoExt2<'_> {
                     ));
                 }
 
-                let msg = handler.eagerly_translate_to_string(
+                handler.eagerly_translate_to_string(
                     diagnostic_message,
                     args.iter().map(|(a, b)| (a, b)),
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             AlignmentCheckFailed { required, has } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_alignment_check_failed,
                     "required",
                     required.bytes(),
                     "has",
                     has.bytes(),
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             WriteToReadOnly(alloc) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_write_to_read_only,
                     "allocation",
                     alloc,
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             DerefFunctionPointer(alloc) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_deref_function_pointer,
                     "allocation",
                     alloc,
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             DerefVTablePointer(alloc) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_deref_vtable_pointer,
                     "allocation",
                     alloc,
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidBool(b) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_invalid_bool,
                     "value",
                     format!("{b:02x}"),
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidChar(c) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_invalid_char,
                     "value",
                     format!("{c:08x}"),
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidTag(tag) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_invalid_tag,
-                    "value",
+                    "tag",
                     format!("{tag:x}"),
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidFunctionPointer(ptr) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_invalid_function_pointer,
                     "pointer",
                     ptr,
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidVTablePointer(ptr) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_invalid_vtable_pointer,
                     "pointer",
                     ptr,
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidStr(err) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_invalid_str,
                     "err",
                     format!("{err}"),
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidUninitBytes(None) => {
-                diag.span_label(self.span, const_eval_invalid_uninit_bytes_unknown);
+                eagerly_translate_with_args!(handler, const_eval_invalid_uninit_bytes_unknown,)
             }
             InvalidUninitBytes(Some((alloc, info))) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_invalid_uninit_bytes,
                     "alloc",
@@ -706,32 +684,29 @@ impl AddToDiagnostic for UndefinedBehaviorInfoExt2<'_> {
                     info.access,
                     "uninit",
                     info.bad,
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             DeadLocal => {
-                diag.span_label(self.span, const_eval_dead_local);
+                eagerly_translate_with_args!(handler, const_eval_dead_local,)
             }
             ScalarSizeMismatch(info) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_scalar_size_mismatch,
                     "target_size",
                     info.target_size,
                     "data_size",
                     info.data_size,
-                );
-                diag.span_label(self.span, msg);
+                )
             }
             UninhabitedEnumVariantWritten(_) => {
-                diag.span_label(self.span, const_eval_uninhabited_enum_variant_written);
+                eagerly_translate_with_args!(handler, const_eval_uninhabited_enum_variant_written,)
             }
             UninhabitedEnumVariantRead(_) => {
-                diag.span_label(self.span, const_eval_uninhabited_enum_variant_read);
+                eagerly_translate_with_args!(handler, const_eval_uninhabited_enum_variant_read,)
             }
             ValidationError(err) => {
-                ValidationErrorInfoExt2 { err, tcx: self.tcx, span: self.span }
-                    .add_to_diagnostic(diag);
+                ValidationErrorInfoExt2 { err, tcx: self.tcx, span: self.span }.eagerly_translate()
             }
             Custom(x) => {
                 let mut args = Vec::new();
@@ -740,12 +715,58 @@ impl AddToDiagnostic for UndefinedBehaviorInfoExt2<'_> {
                     args.push((name, value));
                 });
 
-                let msg = handler.eagerly_translate_to_string(
+                handler.eagerly_translate_to_string(
                     (x.msg.clone())(),
                     args.iter().map(|(a, b)| (a, b)),
-                );
+                )
+            }
+        }
+    }
+}
 
-                diag.span_label(self.span, msg);
+impl AddToDiagnostic for UndefinedBehaviorInfoExt2<'_> {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        use UndefinedBehaviorInfo::*;
+
+        match self.err {
+            Ub(_)
+            | Unreachable
+            | BoundsCheckFailed { .. }
+            | DivisionByZero
+            | RemainderByZero
+            | DivisionOverflow
+            | RemainderOverflow
+            | PointerArithOverflow
+            | InvalidMeta(_)
+            | UnterminatedCString(_)
+            | PointerUseAfterFree(_, _)
+            | PointerOutOfBounds { .. }
+            | DanglingIntPointer(_, _)
+            | AlignmentCheckFailed { .. }
+            | WriteToReadOnly(_)
+            | DerefFunctionPointer(_)
+            | DerefVTablePointer(_)
+            | InvalidBool(_)
+            | InvalidChar(_)
+            | InvalidTag(_)
+            | InvalidFunctionPointer(_)
+            | InvalidVTablePointer(_)
+            | InvalidStr(_)
+            | InvalidUninitBytes(_)
+            | DeadLocal
+            | ScalarSizeMismatch(_)
+            | UninhabitedEnumVariantWritten(_)
+            | UninhabitedEnumVariantRead(_)
+            | Custom(_) => {
+                #[allow(rustc::untranslatable_diagnostic)]
+                diag.span_label(self.span, self.eagerly_translate());
+            }
+            ValidationError(err) => {
+                ValidationErrorInfoExt2 { err, tcx: self.tcx, span: self.span }
+                    .add_to_diagnostic(diag);
             }
         }
     }
@@ -946,11 +967,8 @@ pub struct ValidationErrorInfoExt2<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl AddToDiagnostic for ValidationErrorInfoExt2<'_> {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+impl ValidationErrorInfoExt2<'_> {
+    fn eagerly_translate(self) -> String {
         use crate::fluent_generated::*;
         use crate::interpret::ValidationErrorKind::*;
 
@@ -995,81 +1013,60 @@ impl AddToDiagnostic for ValidationErrorInfoExt2<'_> {
             )
         };
 
-        // Allow untranslatable_diagnostic lint, since we
-        // eagerly translate our subdiagnostics by using the
-        // eagerly_translate_with_args!() macro.
-        #[allow(rustc::untranslatable_diagnostic)]
         match self.err.kind {
             PtrToUninhabited { ptr_kind: PointerKind::Box, ty } => {
-                // FIXME(victor-timofei): maybe it would be a good idea to add a
-                // span_label_eagerly_translated!() macro
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_box_to_uninhabited,
                     "ty",
                     ty.to_string(),
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             PtrToUninhabited { ptr_kind: PointerKind::Ref, ty } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_ref_to_uninhabited,
                     "ty",
                     ty.to_string(),
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             PtrToStatic { ptr_kind: PointerKind::Box, .. } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_box_to_static,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             PtrToStatic { ptr_kind: PointerKind::Ref, .. } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_ref_to_static,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             PtrToMut { ptr_kind: PointerKind::Box, .. } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_box_to_mut,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             PtrToMut { ptr_kind: PointerKind::Ref, .. } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_ref_to_mut,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             PointerAsInt { expected } => {
-                diag.help(const_eval_ptr_as_bytes_1);
-                diag.help(const_eval_ptr_as_bytes_2);
-
                 let expected = match expected {
                     ExpectedKind::Reference => fluent::const_eval_validation_expected_ref,
                     ExpectedKind::Box => fluent::const_eval_validation_expected_box,
@@ -1085,85 +1082,69 @@ impl AddToDiagnostic for ValidationErrorInfoExt2<'_> {
                 };
                 let expected = handler.eagerly_translate_to_string(expected, [].into_iter());
 
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_pointer_as_int,
                     "expected",
                     expected,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             PartialPointer => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_partial_pointer,
                     "front_matter",
                     front_matter,
-                );
-                diag.span_label(self.span, msg);
-
-                diag.help(const_eval_ptr_as_bytes_1);
-                diag.help(const_eval_ptr_as_bytes_2);
+                )
             }
             MutableRefInConst => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_mutable_ref_in_const,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             NullFnPtr => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_null_fn_ptr,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             NeverVal => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_never_val,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             NullablePtrOutOfRange { range, max_value } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_nullable_ptr_out_of_range,
                     "front_matter",
                     front_matter,
                     "in_range",
                     get_range_arg(range, max_value, &handler),
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             PtrOutOfRange { range, max_value } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_ptr_out_of_range,
                     "front_matter",
                     front_matter,
                     "in_range",
                     get_range_arg(range, max_value, &handler),
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             OutOfRange { range, max_value, value } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_out_of_range,
                     "front_matter",
@@ -1172,53 +1153,43 @@ impl AddToDiagnostic for ValidationErrorInfoExt2<'_> {
                     get_range_arg(range, max_value, &handler),
                     "value",
                     value,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             UnsafeCell => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_unsafe_cell,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             UninhabitedVal { ty } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_uninhabited_val,
                     "front_matter",
                     front_matter,
                     "ty",
                     ty.to_string(),
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidEnumTag { value } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_invalid_enum_tag,
                     "front_matter",
                     front_matter,
                     "value",
                     value,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             UninhabitedEnumVariant => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_uninhabited_enum_variant,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             Uninit { expected } => {
                 let expected = match expected {
@@ -1236,71 +1207,59 @@ impl AddToDiagnostic for ValidationErrorInfoExt2<'_> {
                 };
                 let expected = handler.eagerly_translate_to_string(expected, [].into_iter());
 
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_uninit,
                     "expected",
                     expected,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidVTablePtr { value } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_invalid_vtable_ptr,
                     "front_matter",
                     front_matter,
                     "value",
                     value,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Box } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_invalid_box_slice_meta,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Ref } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_invalid_ref_slice_meta,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidMetaTooLarge { ptr_kind: PointerKind::Box } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_invalid_box_meta,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidMetaTooLarge { ptr_kind: PointerKind::Ref } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_invalid_ref_meta,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             UnalignedPtr { ptr_kind: PointerKind::Ref, required_bytes, found_bytes } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_unaligned_ref,
                     "front_matter",
@@ -1309,12 +1268,10 @@ impl AddToDiagnostic for ValidationErrorInfoExt2<'_> {
                     required_bytes.to_string(),
                     "found_bytes",
                     found_bytes.to_string(),
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             UnalignedPtr { ptr_kind: PointerKind::Box, required_bytes, found_bytes } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_unaligned_box,
                     "front_matter",
@@ -1323,132 +1280,153 @@ impl AddToDiagnostic for ValidationErrorInfoExt2<'_> {
                     required_bytes.to_string(),
                     "found_bytes",
                     found_bytes.to_string(),
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
 
             NullPtr { ptr_kind: PointerKind::Box } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_null_box,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             NullPtr { ptr_kind: PointerKind::Ref } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_null_ref,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Box, pointer } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_dangling_box_no_provenance,
                     "front_matter",
                     front_matter,
                     "pointer",
                     pointer,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Ref, pointer } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_dangling_ref_no_provenance,
                     "front_matter",
                     front_matter,
                     "pointer",
                     pointer,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             DanglingPtrOutOfBounds { ptr_kind: PointerKind::Box } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_dangling_box_out_of_bounds,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             DanglingPtrOutOfBounds { ptr_kind: PointerKind::Ref } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_dangling_ref_out_of_bounds,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             DanglingPtrUseAfterFree { ptr_kind: PointerKind::Box } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_dangling_box_use_after_free,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_dangling_ref_use_after_free,
                     "front_matter",
                     front_matter,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidBool { value } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_invalid_bool,
                     "front_matter",
                     front_matter,
                     "value",
                     value,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidChar { value } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_invalid_char,
                     "front_matter",
                     front_matter,
                     "value",
                     value,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidFnPtr { value } => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     const_eval_validation_invalid_fn_ptr,
                     "front_matter",
                     front_matter,
                     "value",
                     value,
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
         }
+    }
+}
+
+impl AddToDiagnostic for ValidationErrorInfoExt2<'_> {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        use crate::fluent_generated::*;
+        use crate::interpret::ValidationErrorKind::*;
+
+        match self.err.kind {
+            PtrToUninhabited { .. }
+            | PtrToStatic { .. }
+            | PtrToMut { .. }
+            | MutableRefInConst
+            | NullFnPtr
+            | NeverVal
+            | NullablePtrOutOfRange { .. }
+            | PtrOutOfRange { .. }
+            | OutOfRange { .. }
+            | UnsafeCell
+            | UninhabitedVal { .. }
+            | InvalidEnumTag { .. }
+            | UninhabitedEnumVariant
+            | Uninit { .. }
+            | InvalidVTablePtr { .. }
+            | InvalidMetaSliceTooLarge { .. }
+            | InvalidMetaTooLarge { .. }
+            | UnalignedPtr { .. }
+            | NullPtr { .. }
+            | DanglingPtrNoProvenance { .. }
+            | DanglingPtrOutOfBounds { .. }
+            | DanglingPtrUseAfterFree { .. }
+            | InvalidBool { .. }
+            | InvalidChar { .. }
+            | InvalidFnPtr { .. } => {}
+            PointerAsInt { .. } | PartialPointer => {
+                diag.help(const_eval_ptr_as_bytes_1);
+                diag.help(const_eval_ptr_as_bytes_2);
+            }
+        }
+
+        #[allow(rustc::untranslatable_diagnostic)]
+        diag.span_label(self.span, self.eagerly_translate());
     }
 }
 
@@ -1793,6 +1771,57 @@ pub struct UnsupportedOpExt2<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
+impl UnsupportedOpExt2<'_> {
+    fn eagerly_translate(self) -> String {
+        use crate::fluent_generated::*;
+        use UnsupportedOpInfo::*;
+
+        let handler = &self.tcx.sess.parse_sess.span_diagnostic;
+
+        match self.err {
+            Unsupported(s) => {
+                eagerly_translate_with_args!(
+                    handler,
+                    <std::string::String as Into<DiagnosticMessage>>::into(s.clone()),
+                )
+            }
+            OverwritePartialPointer(ptr) => {
+                eagerly_translate_with_args!(
+                    handler,
+                    const_eval_partial_pointer_overwrite,
+                    "ptr",
+                    ptr,
+                )
+            }
+            ReadPartialPointer(ptr) => {
+                eagerly_translate_with_args!(handler, const_eval_partial_pointer_copy, "ptr", ptr,)
+            }
+            // `ReadPointerAsInt(Some(info))` is never printed anyway, it only serves as an error to
+            // be further processed by validity checking which then turns it into something nice to
+            // print. So it's not worth the effort of having diagnostics that can print the `info`.
+            ReadPointerAsInt(_) => {
+                eagerly_translate_with_args!(handler, const_eval_read_pointer_as_int,)
+            }
+            ThreadLocalStatic(did) => {
+                eagerly_translate_with_args!(
+                    handler,
+                    const_eval_thread_local_static,
+                    "did",
+                    format!("{did:?}"),
+                )
+            }
+            ReadExternStatic(did) => {
+                eagerly_translate_with_args!(
+                    handler,
+                    const_eval_read_extern_static,
+                    "did",
+                    format!("{did:?}"),
+                )
+            }
+        }
+    }
+}
+
 impl AddToDiagnostic for UnsupportedOpExt2<'_> {
     fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
     where
@@ -1801,71 +1830,16 @@ impl AddToDiagnostic for UnsupportedOpExt2<'_> {
         use crate::fluent_generated::*;
         use UnsupportedOpInfo::*;
 
-        let handler = &self.tcx.sess.parse_sess.span_diagnostic;
-
-        // Allow untranslatable_diagnostic lint, since we
-        // eagerly translate our subdiagnostics by using the
-        // eagerly_translate_with_args!() macro.
-        #[allow(rustc::untranslatable_diagnostic)]
         match self.err {
-            Unsupported(s) => {
-                diag.span_label(
-                    self.span,
-                    <std::string::String as Into<DiagnosticMessage>>::into(s.clone()),
-                );
-            }
-            OverwritePartialPointer(ptr) => {
-                let msg = eagerly_translate_with_args!(
-                    handler,
-                    const_eval_partial_pointer_overwrite,
-                    "ptr",
-                    ptr,
-                );
-                diag.span_label(self.span, msg);
-
+            Unsupported(_) | ThreadLocalStatic(_) | ReadExternStatic(_) => {}
+            OverwritePartialPointer(_) | ReadPartialPointer(_) | ReadPointerAsInt(_) => {
                 diag.help(const_eval_ptr_as_bytes_1);
                 diag.help(const_eval_ptr_as_bytes_2);
-            }
-            ReadPartialPointer(ptr) => {
-                let msg = eagerly_translate_with_args!(
-                    handler,
-                    const_eval_partial_pointer_copy,
-                    "ptr",
-                    ptr,
-                );
-                diag.span_label(self.span, msg);
-
-                diag.help(const_eval_ptr_as_bytes_1);
-                diag.help(const_eval_ptr_as_bytes_2);
-            }
-            // `ReadPointerAsInt(Some(info))` is never printed anyway, it only serves as an error to
-            // be further processed by validity checking which then turns it into something nice to
-            // print. So it's not worth the effort of having diagnostics that can print the `info`.
-            ReadPointerAsInt(_) => {
-                diag.span_label(self.span, const_eval_read_pointer_as_int);
-
-                diag.help(const_eval_ptr_as_bytes_1);
-                diag.help(const_eval_ptr_as_bytes_2);
-            }
-            ThreadLocalStatic(did) => {
-                let msg = eagerly_translate_with_args!(
-                    handler,
-                    const_eval_thread_local_static,
-                    "did",
-                    format!("{did:?}"),
-                );
-                diag.span_label(self.span, msg);
-            }
-            ReadExternStatic(did) => {
-                let msg = eagerly_translate_with_args!(
-                    handler,
-                    const_eval_read_extern_static,
-                    "did",
-                    format!("{did:?}"),
-                );
-                diag.span_label(self.span, msg);
             }
         }
+
+        #[allow(rustc::untranslatable_diagnostic)]
+        diag.span_label(self.span, self.eagerly_translate());
     }
 }
 
@@ -1894,19 +1868,43 @@ impl AddToDiagnostic for InterpErrorExt2<'_> {
                     .add_to_diagnostic(diag);
             }
             InterpError::ResourceExhaustion(e) => {
-                ResourceExhaustionExt2 { err: e, span: self.span }.add_to_diagnostic(diag);
+                ResourceExhaustionExt2 { err: e, span: self.span, tcx: self.tcx }
+                    .add_to_diagnostic(diag);
             }
             InterpError::MachineStop(e) => {
-                MachineStopExt2 { err: e, span: self.span }.add_to_diagnostic(diag);
+                MachineStopExt2 { err: e, span: self.span, tcx: self.tcx }.add_to_diagnostic(diag);
             }
         }
     }
 }
 
 impl InterpErrorExt2<'_> {
-    pub fn to_string(&self) -> String {
+    /// Translate InterpError to String.
+    ///
+    /// This should not be used for any user-facing diagnostics,
+    /// only for debug messages in the docs.
+    pub fn to_string(self) -> String {
         // FIXME(victor-timofei): implement this
-        todo!("InterpErrorExt2::to_string");
+        match self.err {
+            InterpError::UndefinedBehavior(ub) => {
+                UndefinedBehaviorInfoExt2 { err: ub, span: self.span, tcx: self.tcx }
+                    .eagerly_translate()
+            }
+            InterpError::Unsupported(e) => {
+                UnsupportedOpExt2 { err: e, span: self.span, tcx: self.tcx }.eagerly_translate()
+            }
+            InterpError::InvalidProgram(e) => {
+                InvalidProgramInfoExt2 { err: e, span: self.span, tcx: self.tcx }
+                    .eagerly_translate()
+            }
+            InterpError::ResourceExhaustion(e) => {
+                ResourceExhaustionExt2 { err: e, span: self.span, tcx: self.tcx }
+                    .eagerly_translate()
+            }
+            InterpError::MachineStop(e) => {
+                MachineStopExt2 { err: e, span: self.span, tcx: self.tcx }.eagerly_translate()
+            }
+        }
     }
 }
 
@@ -1945,21 +1943,33 @@ impl InterpErrorExt<'_> {
     }
 }
 
-pub struct MachineStopExt2 {
+pub struct MachineStopExt2<'tcx> {
     err: Box<dyn MachineStopType>,
     span: Span,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl AddToDiagnostic for MachineStopExt2 {
+impl MachineStopExt2<'_> {
+    fn eagerly_translate(self) -> String {
+        let mut args = Vec::new();
+        let msg = self.err.diagnostic_message().clone();
+        self.err.add_args(&mut |name, value| {
+            args.push((name, value));
+        });
+
+        let handler = &self.tcx.sess.parse_sess.span_diagnostic;
+
+        handler.eagerly_translate_to_string(msg, args.iter().map(|(a, b)| (a, b)))
+    }
+}
+
+impl AddToDiagnostic for MachineStopExt2<'_> {
     fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        diag.span_label(self.span, self.err.diagnostic_message().clone());
-
-        self.err.add_args(&mut |name, value| {
-            diag.set_arg(name, value);
-        });
+        #[allow(rustc::untranslatable_diagnostic)]
+        diag.span_label(self.span, self.eagerly_translate());
     }
 }
 
@@ -1982,55 +1992,64 @@ pub struct InvalidProgramInfoExt2<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl AddToDiagnostic for InvalidProgramInfoExt2<'_> {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+impl InvalidProgramInfoExt2<'_> {
+    fn eagerly_translate(self) -> String {
         use crate::fluent_generated::*;
         let handler = &self.tcx.sess.parse_sess.span_diagnostic;
 
-        // Allow untranslatable_diagnostic lint, since we
-        // eagerly translate our subdiagnostics by using the
-        // eagerly_translate_with_args!() macro.
-        #[allow(rustc::untranslatable_diagnostic)]
         match self.err {
             InvalidProgramInfo::TooGeneric => {
-                diag.span_label(self.span, const_eval_too_generic);
+                eagerly_translate_with_args!(handler, const_eval_too_generic,)
             }
             InvalidProgramInfo::AlreadyReported(_) => {
-                diag.span_label(self.span, const_eval_already_reported);
+                eagerly_translate_with_args!(handler, const_eval_already_reported,)
             }
             InvalidProgramInfo::Layout(e) => {
                 let builder: DiagnosticBuilder<'_, ()> =
                     e.into_diagnostic().into_diagnostic(handler);
-                for (name, val) in builder.args() {
-                    diag.set_arg(name.clone(), val.clone());
-                }
+
                 let msg =
                     handler.eagerly_translate_to_string(e.diagnostic_message(), builder.args());
                 builder.cancel();
 
-                diag.span_label(self.span, msg);
+                msg
             }
             InvalidProgramInfo::FnAbiAdjustForForeignAbi(
                 AdjustForForeignAbiError::Unsupported { arch, abi },
             ) => {
-                let msg = eagerly_translate_with_args!(
+                eagerly_translate_with_args!(
                     handler,
                     rustc_middle::error::middle_adjust_for_foreign_abi_error,
                     "arch",
                     arch.to_ident_string(),
                     "abi",
                     abi.name(),
-                );
-
-                diag.span_label(self.span, msg);
+                )
             }
             InvalidProgramInfo::ConstPropNonsense => {
                 panic!("We had const-prop nonsense, this should never be printed")
             }
         }
+    }
+}
+
+impl AddToDiagnostic for InvalidProgramInfoExt2<'_> {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        match self.err {
+            InvalidProgramInfo::TooGeneric
+            | InvalidProgramInfo::AlreadyReported(_)
+            | InvalidProgramInfo::Layout(_)
+            | InvalidProgramInfo::FnAbiAdjustForForeignAbi(_) => {}
+            InvalidProgramInfo::ConstPropNonsense => {
+                panic!("We had const-prop nonsense, this should never be printed")
+            }
+        }
+
+        #[allow(rustc::untranslatable_diagnostic)]
+        diag.span_label(self.span, self.eagerly_translate());
     }
 }
 
@@ -2073,23 +2092,34 @@ impl IntoDiagnostic<'_> for InvalidProgramInfoExt<'_> {
     }
 }
 
-pub struct ResourceExhaustionExt2 {
+pub struct ResourceExhaustionExt2<'tcx> {
     err: ResourceExhaustionInfo,
     span: Span,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl AddToDiagnostic for ResourceExhaustionExt2 {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+impl ResourceExhaustionExt2<'_> {
+    fn eagerly_translate(self) -> String {
+        let handler = &self.tcx.sess.parse_sess.span_diagnostic;
+
         use crate::fluent_generated::*;
         let msg = match self.err {
             ResourceExhaustionInfo::StackFrameLimitReached => const_eval_stack_frame_limit_reached,
             ResourceExhaustionInfo::MemoryExhausted => const_eval_memory_exhausted,
             ResourceExhaustionInfo::AddressSpaceFull => const_eval_address_space_full,
         };
-        diag.span_label(self.span, msg);
+
+        eagerly_translate_with_args!(handler, msg)
+    }
+}
+
+impl AddToDiagnostic for ResourceExhaustionExt2<'_> {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        #[allow(rustc::untranslatable_diagnostic)]
+        diag.span_label(self.span, self.eagerly_translate());
     }
 }
 
