@@ -15,7 +15,11 @@ impl Ty {
     }
 }
 
-pub(crate) type Const = Opaque;
+#[derive(Debug, Clone)]
+pub struct Const {
+    pub literal: ConstantKind,
+}
+
 type Ident = Opaque;
 pub(crate) type Region = Opaque;
 type Span = Opaque;
