@@ -2491,9 +2491,9 @@ impl<T, A: Allocator> From<Vec<T, A>> for Rc<[T], A> {
     ///
     /// ```
     /// # use std::rc::Rc;
-    /// let original: Box<Vec<i32>> = Box::new(vec![1, 2, 3]);
-    /// let shared: Rc<Vec<i32>> = Rc::from(original);
-    /// assert_eq!(vec![1, 2, 3], *shared);
+    /// let unique: Vec<i32> = vec![1, 2, 3];
+    /// let shared: Rc<[i32]> = Rc::from(unique);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
     /// ```
     #[inline]
     fn from(v: Vec<T, A>) -> Rc<[T], A> {
