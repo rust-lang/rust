@@ -377,7 +377,11 @@ fn main() {
             f();
             sum += start.elapsed().as_millis();
         }
-        println!("average {} time: {} millis.", speedtest.to_uppercase(), sum / 1000);
+        println!(
+            "average {} time: {} millis.",
+            speedtest.to_uppercase(),
+            sum / u128::from(iterations)
+        );
     } else {
         run_ui();
         run_ui_toml();
