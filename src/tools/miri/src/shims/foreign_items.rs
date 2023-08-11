@@ -942,6 +942,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
             }
 
+            // LLVM intrinsics
             "llvm.prefetch" => {
                 let [p, rw, loc, ty] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -968,8 +969,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     throw_unsup_format!("unsupported `llvm.prefetch` type argument: {}", ty);
                 }
             }
-
-            // Architecture-specific shims
             "llvm.x86.addcarry.64" if this.tcx.sess.target.arch == "x86_64" => {
                 // Computes u8+u64+u64, returning tuple (u8,u64) comprising the output carry and truncated sum.
                 let [c_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
