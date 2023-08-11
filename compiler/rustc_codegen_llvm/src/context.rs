@@ -209,7 +209,7 @@ pub unsafe fn create_module<'ll>(
         // PIE is potentially more effective than PIC, but can only be used in executables.
         // If all our outputs are executables, then we can relax PIC to PIE.
         if reloc_model == RelocModel::Pie
-            || sess.crate_types().iter().all(|ty| *ty == CrateType::Executable)
+            || tcx.crate_types().iter().all(|ty| *ty == CrateType::Executable)
         {
             llvm::LLVMRustSetModulePIELevel(llmod);
         }

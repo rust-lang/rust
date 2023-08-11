@@ -123,7 +123,7 @@ pub struct ModuleConfig {
 impl ModuleConfig {
     fn new(
         kind: ModuleKind,
-        sess: &Session,
+        tcx: TyCtxt<'_>,
         no_builtins: bool,
         is_compiler_builtins: bool,
     ) -> ModuleConfig {
@@ -135,6 +135,7 @@ impl ModuleConfig {
             };
         }
 
+        let sess = tcx.sess;
         let opt_level_and_size = if_regular!(Some(sess.opts.optimize), None);
 
         let save_temps = sess.opts.cg.save_temps;
@@ -166,7 +167,7 @@ impl ModuleConfig {
             // `#![no_builtins]` is assumed to not participate in LTO and
             // instead goes on to generate object code.
             EmitObj::Bitcode
-        } else if need_bitcode_in_object(sess) {
+        } else if need_bitcode_in_object(tcx) {
             EmitObj::ObjectCode(BitcodeSection::Full)
         } else {
             EmitObj::ObjectCode(BitcodeSection::None)
@@ -414,9 +415,10 @@ pub struct CompiledModules {
     pub allocator_module: Option<CompiledModule>,
 }
 
-fn need_bitcode_in_object(sess: &Session) -> bool {
+fn need_bitcode_in_object(tcx: TyCtxt<'_>) -> bool {
+    let sess = tcx.sess;
     let requested_for_rlib = sess.opts.cg.embed_bitcode
-        && sess.crate_types().contains(&CrateType::Rlib)
+        && tcx.crate_types().contains(&CrateType::Rlib)
         && sess.opts.output_types.contains_key(&OutputType::Exe);
     let forced_by_target = sess.target.forces_embed_bitcode;
     requested_for_rlib || forced_by_target
@@ -450,11 +452,11 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let crate_info = CrateInfo::new(tcx, target_cpu);
 
     let regular_config =
-        ModuleConfig::new(ModuleKind::Regular, sess, no_builtins, is_compiler_builtins);
+        ModuleConfig::new(ModuleKind::Regular, tcx, no_builtins, is_compiler_builtins);
     let metadata_config =
-        ModuleConfig::new(ModuleKind::Metadata, sess, no_builtins, is_compiler_builtins);
+        ModuleConfig::new(ModuleKind::Metadata, tcx, no_builtins, is_compiler_builtins);
     let allocator_config =
-        ModuleConfig::new(ModuleKind::Allocator, sess, no_builtins, is_compiler_builtins);
+        ModuleConfig::new(ModuleKind::Allocator, tcx, no_builtins, is_compiler_builtins);
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (codegen_worker_send, codegen_worker_receive) = channel();
@@ -1092,7 +1094,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     };
 
     let cgcx = CodegenContext::<B> {
-        crate_types: sess.crate_types().to_vec(),
+        crate_types: tcx.crate_types().to_vec(),
         each_linked_rlib_for_lto,
         lto: sess.lto(),
         fewer_names: sess.fewer_names(),
@@ -2063,7 +2065,7 @@ fn msvc_imps_needed(tcx: TyCtxt<'_>) -> bool {
     );
 
     tcx.sess.target.is_like_windows &&
-        tcx.sess.crate_types().iter().any(|ct| *ct == CrateType::Rlib) &&
+        tcx.crate_types().iter().any(|ct| *ct == CrateType::Rlib) &&
     // ThinLTO can't handle this workaround in all cases, so we don't
     // emit the `__imp_` symbols. Instead we make them unnecessary by disallowing
     // dynamic linking when linker plugin LTO is enabled.
