@@ -1,6 +1,9 @@
 hir_analysis_ambiguous_lifetime_bound =
     ambiguous lifetime bound, explicit lifetime bound required
 
+hir_analysis_assoc_bound_on_const = expected associated type, found {$descr}
+    .note = trait bounds not allowed on {$descr}
+
 hir_analysis_assoc_type_binding_not_allowed =
     associated type bindings are not allowed here
     .label = associated type not allowed here
