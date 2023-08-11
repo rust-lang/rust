@@ -201,12 +201,6 @@ struct FulfillProcessor<'a, 'tcx> {
     selcx: SelectionContext<'a, 'tcx>,
 }
 
-fn mk_pending(os: Vec<PredicateObligation<'_>>) -> Vec<PendingPredicateObligation<'_>> {
-    os.into_iter()
-        .map(|o| PendingPredicateObligation { obligation: o, stalled_on: vec![] })
-        .collect()
-}
-
 impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
     type Obligation = PendingPredicateObligation<'tcx>;
     type Error = FulfillmentErrorCode<'tcx>;
@@ -317,7 +311,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
             );
             if predicate != obligation.predicate {
                 obligations.push(obligation.with(infcx.tcx, predicate));
-                return ProcessResult::Changed(mk_pending(obligations));
+                return ProcessResult::Changed(self.mk_pending(obligations));
             }
         }
         let binder = obligation.predicate.kind();
@@ -356,7 +350,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 | ty::PredicateKind::ConstEquate(..) => {
                     let pred =
                         ty::Binder::dummy(infcx.instantiate_binder_with_placeholders(binder));
-                    ProcessResult::Changed(mk_pending(vec![obligation.with(infcx.tcx, pred)]))
+                    ProcessResult::Changed(self.mk_pending([obligation.with(infcx.tcx, pred)]))
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
                 ty::PredicateKind::AliasRelate(..) => {
@@ -437,7 +431,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 vec![TyOrConstInferVar::maybe_from_generic_arg(arg).unwrap()];
                             ProcessResult::Unchanged
                         }
-                        Some(os) => ProcessResult::Changed(mk_pending(os)),
+                        Some(os) => ProcessResult::Changed(self.mk_pending(os)),
                     }
                 }
 
@@ -453,7 +447,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 vec![TyOrConstInferVar::Ty(a), TyOrConstInferVar::Ty(b)];
                             ProcessResult::Unchanged
                         }
-                        Ok(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
+                        Ok(Ok(ok)) => ProcessResult::Changed(self.mk_pending(ok.obligations)),
                         Ok(Err(err)) => {
                             let expected_found =
                                 ExpectedFound::new(subtype.a_is_expected, subtype.a, subtype.b);
@@ -477,7 +471,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 vec![TyOrConstInferVar::Ty(a), TyOrConstInferVar::Ty(b)];
                             ProcessResult::Unchanged
                         }
-                        Ok(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
+                        Ok(Ok(ok)) => ProcessResult::Changed(self.mk_pending(ok.obligations)),
                         Ok(Err(err)) => {
                             let expected_found = ExpectedFound::new(false, coerce.a, coerce.b);
                             ProcessResult::Error(FulfillmentErrorCode::CodeSubtypeError(
@@ -538,9 +532,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     .trace(c1, c2)
                                     .eq(DefineOpaqueTypes::No, a.args, b.args)
                                 {
-                                    return ProcessResult::Changed(mk_pending(
-                                        new_obligations.into_obligations(),
-                                    ));
+                                    return ProcessResult::Changed(
+                                        self.mk_pending(new_obligations.into_obligations()),
+                                    );
                                 }
                             }
                             (_, Unevaluated(_)) | (Unevaluated(_), _) => (),
@@ -549,9 +543,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     .at(&obligation.cause, obligation.param_env)
                                     .eq(DefineOpaqueTypes::No, c1, c2)
                                 {
-                                    return ProcessResult::Changed(mk_pending(
-                                        new_obligations.into_obligations(),
-                                    ));
+                                    return ProcessResult::Changed(
+                                        self.mk_pending(new_obligations.into_obligations()),
+                                    );
                                 }
                             }
                         }
@@ -591,9 +585,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 c1,
                                 c2,
                             ) {
-                                Ok(inf_ok) => {
-                                    ProcessResult::Changed(mk_pending(inf_ok.into_obligations()))
-                                }
+                                Ok(inf_ok) => ProcessResult::Changed(
+                                    self.mk_pending(inf_ok.into_obligations()),
+                                ),
                                 Err(err) => ProcessResult::Error(
                                     FulfillmentErrorCode::CodeConstEquateError(
                                         ExpectedFound::new(true, c1, c2),
@@ -632,7 +626,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         ct.ty(),
                         ty,
                     ) {
-                        Ok(inf_ok) => ProcessResult::Changed(mk_pending(inf_ok.into_obligations())),
+                        Ok(inf_ok) => {
+                            ProcessResult::Changed(self.mk_pending(inf_ok.into_obligations()))
+                        }
                         Err(_) => ProcessResult::Error(FulfillmentErrorCode::CodeSelectionError(
                             SelectionError::Unimplemented,
                         )),
@@ -662,6 +658,16 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
+    fn mk_pending(
+        &self,
+        os: impl IntoIterator<Item = PredicateObligation<'tcx>>,
+    ) -> Vec<PendingPredicateObligation<'tcx>> {
+        os.into_iter()
+            .map(|o| self.selcx.infcx.resolve_vars_if_possible(o))
+            .map(|o| PendingPredicateObligation { obligation: o, stalled_on: vec![] })
+            .collect()
+    }
+
     #[instrument(level = "debug", skip(self, obligation, stalled_on))]
     fn process_trait_obligation(
         &mut self,
@@ -685,7 +691,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         match self.selcx.poly_select(&trait_obligation) {
             Ok(Some(impl_source)) => {
                 debug!("selecting trait at depth {} yielded Ok(Some)", obligation.recursion_depth);
-                ProcessResult::Changed(mk_pending(impl_source.nested_obligations()))
+                ProcessResult::Changed(self.mk_pending(impl_source.nested_obligations()))
             }
             Ok(None) => {
                 debug!("selecting trait at depth {} yielded Ok(None)", obligation.recursion_depth);
@@ -749,7 +755,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         }
 
         match project::poly_project_and_unify_type(&mut self.selcx, &project_obligation) {
-            ProjectAndUnifyResult::Holds(os) => ProcessResult::Changed(mk_pending(os)),
+            ProjectAndUnifyResult::Holds(os) => ProcessResult::Changed(self.mk_pending(os)),
             ProjectAndUnifyResult::FailedNormalization => {
                 stalled_on.clear();
                 stalled_on.extend(args_infer_vars(
@@ -759,9 +765,9 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
                 ProcessResult::Unchanged
             }
             // Let the caller handle the recursion
-            ProjectAndUnifyResult::Recursive => ProcessResult::Changed(mk_pending(vec![
-                project_obligation.with(tcx, project_obligation.predicate),
-            ])),
+            ProjectAndUnifyResult::Recursive => ProcessResult::Changed(
+                self.mk_pending([project_obligation.with(tcx, project_obligation.predicate)]),
+            ),
             ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                 ProcessResult::Error(CodeProjectionError(e))
             }
