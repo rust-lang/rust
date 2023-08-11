@@ -178,7 +178,9 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Yield(l), Yield(r)) | (Ret(l), Ret(r)) => eq_expr_opt(l, r),
         (Break(ll, le), Break(rl, re)) => eq_label(ll, rl) && eq_expr_opt(le, re),
         (Continue(ll), Continue(rl)) => eq_label(ll, rl),
-        (Assign(l1, l2, _), Assign(r1, r2, _)) | (Index(l1, l2), Index(r1, r2)) => eq_expr(l1, r1) && eq_expr(l2, r2),
+        (Assign(l1, l2, _), Assign(r1, r2, _)) | (Index(l1, l2, _), Index(r1, r2, _)) => {
+            eq_expr(l1, r1) && eq_expr(l2, r2)
+        },
         (AssignOp(lo, lp, lv), AssignOp(ro, rp, rv)) => lo.node == ro.node && eq_expr(lp, rp) && eq_expr(lv, rv),
         (Field(lp, lf), Field(rp, rf)) => eq_id(*lf, *rf) && eq_expr(lp, rp),
         (Match(ls, la), Match(rs, ra)) => eq_expr(ls, rs) && over(la, ra, eq_arm),
@@ -301,15 +303,17 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (
             Const(box ast::ConstItem {
                 defaultness: ld,
+                generics: lg,
                 ty: lt,
                 expr: le,
             }),
             Const(box ast::ConstItem {
                 defaultness: rd,
+                generics: rg,
                 ty: rt,
                 expr: re,
             }),
-        ) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        ) => eq_defaultness(*ld, *rd) && eq_generics(lg, rg) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,
@@ -476,15 +480,17 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
         (
             Const(box ast::ConstItem {
                 defaultness: ld,
+                generics: lg,
                 ty: lt,
                 expr: le,
             }),
             Const(box ast::ConstItem {
                 defaultness: rd,
+                generics: rg,
                 ty: rt,
                 expr: re,
             }),
-        ) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        ) => eq_defaultness(*ld, *rd) && eq_generics(lg, rg) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,

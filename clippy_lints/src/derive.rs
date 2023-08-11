@@ -6,15 +6,14 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
 use rustc_hir::{
-    self as hir, BlockCheckMode, BodyId, Constness, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, UnsafeSource,
-    Unsafety,
+    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, UnsafeSource, Unsafety,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, BoundConstness, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, ToPredicate,
-    TraitPredicate, Ty, TyCtxt,
+    self, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, ToPredicate, TraitPredicate, Ty,
+    TyCtxt,
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
@@ -346,9 +345,10 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
     if !is_copy(cx, ty) {
         if ty_subs.non_erasable_generics().next().is_some() {
             let has_copy_impl = cx.tcx.all_local_trait_impls(()).get(&copy_id).map_or(false, |impls| {
-                impls
-                    .iter()
-                    .any(|&id| matches!(cx.tcx.type_of(id).instantiate_identity().kind(), ty::Adt(adt, _) if ty_adt.did() == adt.did()))
+                impls.iter().any(|&id| {
+                    matches!(cx.tcx.type_of(id).instantiate_identity().kind(), ty::Adt(adt, _)
+                                        if ty_adt.did() == adt.did())
+                })
             });
             if !has_copy_impl {
                 return;
@@ -507,7 +507,6 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
         if let ClauseKind::Trait(p) = p.kind().skip_binder()
             && p.trait_ref.def_id == eq_trait_id
             && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
-            && p.constness == BoundConstness::NotConst
         {
             // Flag types which already have an `Eq` bound.
             params[self_ty.index as usize].1 = false;
@@ -519,13 +518,11 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
                 ClauseKind::Trait(TraitPredicate {
                     trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
-                    constness: BoundConstness::NotConst,
                     polarity: ImplPolarity::Positive,
                 })
                 .to_predicate(tcx)
             }),
         )),
         Reveal::UserFacing,
-        Constness::NotConst,
     )
 }

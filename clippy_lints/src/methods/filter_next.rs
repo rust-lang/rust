@@ -12,7 +12,7 @@ use super::FILTER_NEXT;
 fn path_to_local(expr: &hir::Expr<'_>) -> Option<hir::HirId> {
     match expr.kind {
         hir::ExprKind::Field(f, _) => path_to_local(f),
-        hir::ExprKind::Index(recv, _) => path_to_local(recv),
+        hir::ExprKind::Index(recv, _, _) => path_to_local(recv),
         hir::ExprKind::Path(hir::QPath::Resolved(
             _,
             hir::Path {

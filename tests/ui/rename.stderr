@@ -180,11 +180,11 @@ error: lint `clippy::zero_width_space` has been renamed to `clippy::invisible_ch
 LL | #![warn(clippy::zero_width_space)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::invisible_characters`
 
-error: lint `clippy::cast_ref_to_mut` has been renamed to `cast_ref_to_mut`
+error: lint `clippy::cast_ref_to_mut` has been renamed to `invalid_reference_casting`
   --> $DIR/rename.rs:84:9
    |
 LL | #![warn(clippy::cast_ref_to_mut)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `cast_ref_to_mut`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_reference_casting`
 
 error: lint `clippy::clone_double_ref` has been renamed to `suspicious_double_ref_op`
   --> $DIR/rename.rs:85:9
@@ -246,11 +246,11 @@ error: lint `clippy::forget_ref` has been renamed to `forgetting_references`
 LL | #![warn(clippy::forget_ref)]
    |         ^^^^^^^^^^^^^^^^^^ help: use the new name: `forgetting_references`
 
-error: lint `clippy::fn_null_check` has been renamed to `incorrect_fn_null_checks`
+error: lint `clippy::fn_null_check` has been renamed to `useless_ptr_null_checks`
   --> $DIR/rename.rs:95:9
    |
 LL | #![warn(clippy::fn_null_check)]
-   |         ^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `incorrect_fn_null_checks`
+   |         ^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `useless_ptr_null_checks`
 
 error: lint `clippy::into_iter_on_array` has been renamed to `array_into_iter`
   --> $DIR/rename.rs:96:9

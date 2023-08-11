@@ -267,7 +267,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         cause: ObligationCause::dummy(),
         param_env,
         recursion_depth: 0,
-        predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
+        predicate: ty::Binder::dummy(trait_ref).to_predicate(tcx),
     };
     infcx
         .evaluate_obligation(&obligation)

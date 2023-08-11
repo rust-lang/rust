@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
         if_chain! {
             if let ExprKind::AddrOf(BorrowKind::Ref, mutability, addressee) = expr.kind;
             if addressee.span.ctxt() == ctxt;
-            if let ExprKind::Index(indexed, range) = addressee.kind;
+            if let ExprKind::Index(indexed, range, _) = addressee.kind;
             if is_type_lang_item(cx, cx.typeck_results().expr_ty_adjusted(range), LangItem::RangeFull);
             then {
                 let (expr_ty, expr_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(expr));

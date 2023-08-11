@@ -394,7 +394,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     }
                 }
             },
-            ExprKind::Index(arr, index) => self.index(arr, index),
+            ExprKind::Index(arr, index, _) => self.index(arr, index),
             ExprKind::AddrOf(_, _, inner) => self.expr(inner).map(|r| Constant::Ref(Box::new(r))),
             ExprKind::Field(local_expr, ref field) => {
                 let result = self.expr(local_expr);
@@ -461,7 +461,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 // Check if this constant is based on `cfg!(..)`,
                 // which is NOT constant for our purposes.
                 if let Some(node) = self.lcx.tcx.hir().get_if_local(def_id)
-                    && let Node::Item(Item { kind: ItemKind::Const(_, body_id), .. }) = node
+                    && let Node::Item(Item { kind: ItemKind::Const(.., body_id), .. }) = node
                     && let Node::Expr(Expr { kind: ExprKind::Lit(_), span, .. }) = self.lcx
                         .tcx
                         .hir()

@@ -86,8 +86,8 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
     let mut applicability = Applicability::MachineApplicable;
 
     if !can_mut_borrow_both(cx, e1, e2) {
-        if let ExprKind::Index(lhs1, idx1) = e1.kind
-            && let ExprKind::Index(lhs2, idx2) = e2.kind
+        if let ExprKind::Index(lhs1, idx1, _) = e1.kind
+            && let ExprKind::Index(lhs2, idx2, _) = e2.kind
             && eq_expr_value(cx, lhs1, lhs2)
             && e1.span.ctxt() == ctxt
             && e2.span.ctxt() == ctxt

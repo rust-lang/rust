@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::{is_from_proc_macro, path_to_local};
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
+use rustc_hir::{BinOpKind, Constness, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -83,8 +83,10 @@ impl Variant {
 impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if !in_external_macro(cx.sess(), expr.span)
-            && (!cx.param_env.is_const() || cx.tcx.features().active(sym!(const_float_classify)))
-            && let ExprKind::Binary(kind, lhs, rhs) = expr.kind
+            && (
+                matches!(cx.tcx.constness(cx.tcx.hir().enclosing_body_owner(expr.hir_id)), Constness::NotConst)
+                    || cx.tcx.features().active(sym!(const_float_classify))
+            ) && let ExprKind::Binary(kind, lhs, rhs) = expr.kind
             && let ExprKind::Binary(lhs_kind, lhs_lhs, lhs_rhs) = lhs.kind
             && let ExprKind::Binary(rhs_kind, rhs_lhs, rhs_rhs) = rhs.kind
             // Checking all possible scenarios using a function would be a hopeless task, as we have
