@@ -283,7 +283,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 // interleaving, but wether UB happens can depend on whether a write occurs in the
                 // future...
                 let is_write = new_perm.initial_state.is_active()
-                    || (new_perm.initial_state.is_resrved() && new_perm.protector.is_some());
+                    || (new_perm.initial_state.is_reserved() && new_perm.protector.is_some());
                 if is_write {
                     // Need to get mutable access to alloc_extra.
                     // (Cannot always do this as we can do read-only reborrowing on read-only allocations.)
