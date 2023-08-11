@@ -1741,7 +1741,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_proc_macros(&mut self) -> Option<ProcMacroData> {
-        let is_proc_macro = self.tcx.sess.crate_types().contains(&CrateType::ProcMacro);
+        let is_proc_macro = self.tcx.crate_types().contains(&CrateType::ProcMacro);
         if is_proc_macro {
             let tcx = self.tcx;
             let hir = tcx.hir();
@@ -2204,7 +2204,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
         source_file_cache,
         interpret_allocs: Default::default(),
         required_source_files,
-        is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
+        is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
         symbol_table: Default::default(),
     };

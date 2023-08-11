@@ -510,9 +510,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         success(adjustments, ty, obligations)
     }
 
-    // &[T; n] or &mut [T; n] -> &[T]
-    // or &mut [T; n] -> &mut [T]
-    // or &Concrete -> &Trait, etc.
+    /// Performs [unsized coercion] by emulating a fulfillment loop on a
+    /// `CoerceUnsized` goal until all `CoerceUnsized` and `Unsize` goals
+    /// are successfully selected.
+    ///
+    /// [unsized coercion](https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions)
     #[instrument(skip(self), level = "debug")]
     fn coerce_unsized(&self, mut source: Ty<'tcx>, mut target: Ty<'tcx>) -> CoerceResult<'tcx> {
         source = self.shallow_resolve(source);

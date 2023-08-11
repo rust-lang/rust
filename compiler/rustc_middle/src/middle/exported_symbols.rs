@@ -72,6 +72,6 @@ pub fn metadata_symbol_name(tcx: TyCtxt<'_>) -> String {
     format!(
         "rust_metadata_{}_{:08x}",
         tcx.crate_name(LOCAL_CRATE),
-        tcx.sess.local_stable_crate_id(),
+        tcx.stable_crate_id(LOCAL_CRATE),
     )
 }

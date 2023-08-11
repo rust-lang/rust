@@ -2394,7 +2394,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             Ok(args) => args,
             Err(()) => {
                 // FIXME: A rematch may fail when a candidate cache hit occurs
-                // on thefreshened form of the trait predicate, but the match
+                // on the freshened form of the trait predicate, but the match
                 // fails for some reason that is not captured in the freshened
                 // cache key. For example, equating an impl trait ref against
                 // the placeholder trait ref may fail due the Generalizer relation

@@ -12,7 +12,7 @@ use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::PResult;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
@@ -248,7 +248,7 @@ fn configure_and_expand(
         rustc_ast_passes::ast_validation::check_crate(sess, &krate, resolver.lint_buffer())
     });
 
-    let crate_types = sess.crate_types();
+    let crate_types = tcx.crate_types();
     let is_executable_crate = crate_types.contains(&CrateType::Executable);
     let is_proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
 
@@ -340,11 +340,12 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
 
 // Returns all the paths that correspond to generated files.
 fn generated_output_paths(
-    sess: &Session,
+    tcx: TyCtxt<'_>,
     outputs: &OutputFilenames,
     exact_name: bool,
     crate_name: Symbol,
 ) -> Vec<PathBuf> {
+    let sess = tcx.sess;
     let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.keys() {
         let out_filename = outputs.path(*output_type);
@@ -353,7 +354,7 @@ fn generated_output_paths(
             // If the filename has been overridden using `-o`, it will not be modified
             // by appending `.rlib`, `.exe`, etc., so we can skip this transformation.
             OutputType::Exe if !exact_name => {
-                for crate_type in sess.crate_types().iter() {
+                for crate_type in tcx.crate_types().iter() {
                     let p = filename_for_input(sess, *crate_type, crate_name, outputs);
                     out_filenames.push(p.as_path().to_path_buf());
                 }
@@ -586,7 +587,7 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
     let outputs = util::build_output_filenames(&krate.attrs, sess);
 
     let output_paths =
-        generated_output_paths(sess, &outputs, sess.io.output_file.is_some(), crate_name);
+        generated_output_paths(tcx, &outputs, sess.io.output_file.is_some(), crate_name);
 
     // Ensure the source file isn't accidentally overwritten during compilation.
     if let Some(ref input_path) = sess.io.input.opt_path() {
@@ -664,6 +665,8 @@ pub static DEFAULT_EXTERN_QUERY_PROVIDERS: LazyLock<ExternProviders> = LazyLock:
 
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
+    crate_types: Vec<CrateType>,
+    stable_crate_id: StableCrateId,
     lint_store: Lrc<LintStore>,
     dep_graph: DepGraph,
     untracked: Untracked,
@@ -696,6 +699,8 @@ pub fn create_global_ctxt<'tcx>(
         gcx_cell.get_or_init(move || {
             TyCtxt::create_global_ctxt(
                 sess,
+                crate_types,
+                stable_crate_id,
                 lint_store,
                 arena,
                 hir_arena,

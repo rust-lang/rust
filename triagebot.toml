@@ -527,7 +527,6 @@ bootstrap = [
 ]
 infra-ci = [
     "@Mark-Simulacrum",
-    "@pietroalbini",
 ]
 rustdoc = [
     "@jsha",

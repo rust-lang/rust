@@ -13,7 +13,7 @@ use rustc_middle::traits::solve::CacheData;
 use rustc_middle::traits::solve::{CanonicalInput, Certainty, EvaluationCache, QueryResult};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Limit;
-use std::{collections::hash_map::Entry, mem};
+use std::collections::hash_map::Entry;
 
 rustc_index::newtype_index! {
     pub struct StackDepth {}
@@ -216,8 +216,8 @@ impl<'tcx> SearchGraph<'tcx> {
                     cycle_participants: Default::default(),
                 };
                 assert_eq!(self.stack.push(entry), depth);
-                let response = Self::response_no_constraints(tcx, input, Certainty::Yes);
-                let entry_index = cache.entries.push(ProvisionalEntry { response, depth, input });
+                let entry_index =
+                    cache.entries.push(ProvisionalEntry { response: None, depth, input });
                 v.insert(entry_index);
             }
             // We have a nested goal which relies on a goal `root` deeper in the stack.
@@ -243,23 +243,31 @@ impl<'tcx> SearchGraph<'tcx> {
                     root.cycle_participants.insert(e.input);
                 }
 
-                // NOTE: The goals on the stack aren't the only goals involved in this cycle.
-                // We can also depend on goals which aren't part of the stack but coinductively
-                // depend on the stack themselves. We already checked whether all the goals
-                // between these goals and their root on the stack. This means that as long as
-                // each goal in a cycle is checked for coinductivity by itself, simply checking
-                // the stack is enough.
-                if self.stack.raw[stack_depth.index()..]
-                    .iter()
-                    .all(|g| g.input.value.goal.predicate.is_coinductive(tcx))
-                {
-                    // If we're in a coinductive cycle, we have to retry proving the current goal
-                    // until we reach a fixpoint.
-                    self.stack[stack_depth].has_been_used = true;
-                    return cache.provisional_result(entry_index);
+                // If we're in a cycle, we have to retry proving the current goal
+                // until we reach a fixpoint.
+                self.stack[stack_depth].has_been_used = true;
+                return if let Some(result) = cache.provisional_result(entry_index) {
+                    result
                 } else {
-                    return Self::response_no_constraints(tcx, input, Certainty::OVERFLOW);
-                }
+                    // If we don't have a provisional result yet, the goal has to
+                    // still be on the stack.
+                    let mut goal_on_stack = false;
+                    let mut is_coinductive = true;
+                    for entry in self.stack.raw[stack_depth.index()..]
+                        .iter()
+                        .skip_while(|entry| entry.input != input)
+                    {
+                        goal_on_stack = true;
+                        is_coinductive &= entry.input.value.goal.predicate.is_coinductive(tcx);
+                    }
+                    debug_assert!(goal_on_stack);
+
+                    if is_coinductive {
+                        Self::response_no_constraints(tcx, input, Certainty::Yes)
+                    } else {
+                        Self::response_no_constraints(tcx, input, Certainty::OVERFLOW)
+                    }
+                };
             }
         }
 
@@ -288,15 +296,18 @@ impl<'tcx> SearchGraph<'tcx> {
                     let provisional_entry_index =
                         *cache.lookup_table.get(&stack_entry.input).unwrap();
                     let provisional_entry = &mut cache.entries[provisional_entry_index];
-                    let prev_response = mem::replace(&mut provisional_entry.response, response);
-                    if stack_entry.has_been_used && prev_response != response {
-                        // If so, remove all entries whose result depends on this goal
-                        // from the provisional cache...
+                    if stack_entry.has_been_used
+                        && provisional_entry.response.map_or(true, |r| r != response)
+                    {
+                        // If so, update the provisional result for this goal and remove
+                        // all entries whose result depends on this goal from the provisional
+                        // cache...
                         //
-                        // That's not completely correct, as a nested goal can also
+                        // That's not completely correct, as a nested goal can also only
                         // depend on a goal which is lower in the stack so it doesn't
                         // actually depend on the current goal. This should be fairly
                         // rare and is hopefully not relevant for performance.
+                        provisional_entry.response = Some(response);
                         #[allow(rustc::potential_query_instability)]
                         cache.lookup_table.retain(|_key, index| *index <= provisional_entry_index);
                         cache.entries.truncate(provisional_entry_index.index() + 1);
@@ -315,8 +326,8 @@ impl<'tcx> SearchGraph<'tcx> {
             });
 
         // We're now done with this goal. In case this goal is involved in a larger cycle
-        // do not remove it from the provisional cache and do not add it to the global
-        // cache.
+        // do not remove it from the provisional cache and update its provisional result.
+        // We only add the root of cycles to the global cache.
         //
         // It is not possible for any nested goal to depend on something deeper on the
         // stack, as this would have also updated the depth of the current goal.
@@ -348,6 +359,8 @@ impl<'tcx> SearchGraph<'tcx> {
                 dep_node,
                 result,
             )
+        } else {
+            provisional_entry.response = Some(result);
         }
 
         result

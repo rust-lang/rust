@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `MultipleCandidates: Trait` is not satisfied
+  --> $DIR/inductive-cycle-but-err.rs:46:19
+   |
+LL |     impls_trait::<MultipleCandidates>();
+   |                   ^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `MultipleCandidates`
+   |
+   = help: the trait `Trait` is implemented for `MultipleCandidates`
+note: required by a bound in `impls_trait`
+  --> $DIR/inductive-cycle-but-err.rs:43:19
+   |
+LL | fn impls_trait<T: Trait>() {}
+   |                   ^^^^^ required by this bound in `impls_trait`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
