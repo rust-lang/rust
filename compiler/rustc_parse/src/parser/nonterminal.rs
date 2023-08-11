@@ -52,8 +52,7 @@ impl<'a> Parser<'a> {
                 | NtMeta(_)
                 | NtPath(_) => true,
 
-                NtItem(_)
-                | NtBlock(_)
+                NtBlock(_)
                 | NtLifetime(_) => false,
             }
         }
@@ -81,7 +80,7 @@ impl<'a> Parser<'a> {
                 token::OpenDelim(Delimiter::Brace) => true,
                 token::Interpolated(nt) => match **nt {
                     NtBlock(_) | NtLifetime(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
-                    NtItem(_) | NtIdent(..) | NtMeta(_) | NtPath(_) => false,
+                    NtIdent(..) | NtMeta(_) | NtPath(_) => false,
                 },
                 token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(k))) => match k {
                     NonterminalKind::Block
@@ -158,7 +157,7 @@ impl<'a> Parser<'a> {
             // Note that TT is treated differently to all the others.
             NonterminalKind::TT => return Ok(ParseNtResult::Tt(self.parse_token_tree())),
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
-                Some(item) => NtItem(item),
+                Some(item) => return Ok(ParseNtResult::Item(item)),
                 None => {
                     return Err(UnexpectedNonterminal::Item(self.token.span)
                                .into_diagnostic(&self.sess.span_diagnostic));

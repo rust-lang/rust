@@ -1,8 +1,11 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
+use super::{
+    AttrWrapper, FollowedByType, ForceCollect, ParseNtResult, Parser, PathStyle, TrailingToken,
+};
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
+use crate::maybe_reparse_metavar_seq;
 use ast::StaticItem;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
@@ -116,15 +119,16 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
-        // Don't use `maybe_whole` so that we have precise control
-        // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind && let token::NtItem(item) = &**nt {
-            let mut item = item.clone();
-            self.bump();
-
+        if let Some(mut item) = maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::Item,
+            NonterminalKind::Item,
+            ParseNtResult::Item(item),
+            item
+        ) {
             attrs.prepend_to_nt_inner(&mut item.attrs);
             return Ok(Some(item.into_inner()));
-        };
+        }
 
         let item =
             self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {

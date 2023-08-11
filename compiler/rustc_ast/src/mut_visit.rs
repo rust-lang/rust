@@ -790,12 +790,6 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
 // multiple items there....
 pub fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
     match nt {
-        token::NtItem(item) => visit_clobber(item, |item| {
-            // This is probably okay, because the only visitors likely to
-            // peek inside interpolated nodes will be renamings/markings,
-            // which map single items to single items.
-            vis.flat_map_item(item).expect_one("expected visitor to produce exactly one item")
-        }),
         token::NtBlock(block) => vis.visit_block(block),
         token::NtStmt(stmt) => visit_clobber(stmt, |stmt| {
             // See reasoning above.

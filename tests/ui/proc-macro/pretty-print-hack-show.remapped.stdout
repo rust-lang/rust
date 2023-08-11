@@ -1,5 +1,4 @@
-PRINT-DERIVE INPUT (DISPLAY): enum ProceduralMasqueradeDummyType { Input, }
-PRINT-DERIVE RE-COLLECTED (DISPLAY): enum ProceduralMasqueradeDummyType { Input }
+PRINT-DERIVE INPUT (DISPLAY): enum ProceduralMasqueradeDummyType { Input }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "enum",
@@ -20,8 +19,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
         span: $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:36: 14:2 (#0),
     },
 ]
-PRINT-DERIVE INPUT (DISPLAY): enum ProceduralMasqueradeDummyType { Input, }
-PRINT-DERIVE RE-COLLECTED (DISPLAY): enum ProceduralMasqueradeDummyType { Input }
+PRINT-DERIVE INPUT (DISPLAY): enum ProceduralMasqueradeDummyType { Input }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "enum",

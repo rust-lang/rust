@@ -1,5 +1,4 @@
-PRINT-BANG INPUT (DISPLAY): struct S;
-PRINT-BANG RE-COLLECTED (DISPLAY): struct S ;
+PRINT-BANG INPUT (DISPLAY): struct S ;
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: None,
@@ -59,7 +58,7 @@ macro_rules! outer
 }
 
 struct S /* 0#0 */;
-macro inner /* 0#3 */ { () => { print_bang! { struct S; } } }
+macro inner /* 0#3 */ { () => { print_bang! { struct S ; } } }
 
 struct S /* 0#4 */;
 // OK, not a duplicate definition of `S`

@@ -5,7 +5,8 @@ use crate::proc_macro_server;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::token::{Delimiter, InvisibleSource, NonterminalKind};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
 use rustc_parse::parser::ForceCollect;
@@ -121,12 +122,18 @@ impl MultiItemModifier for DeriveProcMacro {
         let is_stmt = matches!(item, Annotatable::Stmt(..));
         let hack = crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess.parse_sess);
         let input = if hack {
-            let nt = match item {
-                Annotatable::Item(item) => token::NtItem(item),
-                Annotatable::Stmt(stmt) => token::NtStmt(stmt),
+            match item {
+                Annotatable::Item(item) => TokenStream::delimited(
+                    DelimSpan::from_single(DUMMY_SP),
+                    Delimiter::Invisible(InvisibleSource::MetaVar(NonterminalKind::Item)),
+                    TokenStream::from_ast(&item),
+                ),
+                Annotatable::Stmt(stmt) => {
+                    let nt = token::NtStmt(stmt);
+                    TokenStream::token_alone(token::Interpolated(Lrc::new(nt)), DUMMY_SP)
+                }
                 _ => unreachable!(),
-            };
-            TokenStream::token_alone(token::Interpolated(Lrc::new(nt)), DUMMY_SP)
+            }
         } else {
             item.to_tokens()
         };
