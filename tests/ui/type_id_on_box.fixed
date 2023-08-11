@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::type_id_on_box)]
 
 use std::any::{Any, TypeId};

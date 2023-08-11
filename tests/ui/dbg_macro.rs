@@ -1,3 +1,5 @@
+//@no-rustfix
+
 #![warn(clippy::dbg_macro)]
 
 fn foo(n: u32) -> u32 {

@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![warn(clippy::arc_with_non_send_sync)]
 #![allow(unused_variables)]
 

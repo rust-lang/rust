@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::manual_ok_or)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::disallowed_names)]

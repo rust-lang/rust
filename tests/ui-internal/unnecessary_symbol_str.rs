@@ -1,4 +1,3 @@
-//@run-rustfix
 #![feature(rustc_private)]
 #![deny(clippy::internal)]
 #![allow(

@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 // does not test any rustfixable lints
 
 #![warn(clippy::mixed_case_hex_literals)]

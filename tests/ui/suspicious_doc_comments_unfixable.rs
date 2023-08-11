@@ -1,6 +1,6 @@
 #![allow(unused)]
 #![warn(clippy::suspicious_doc_comments)]
-
+//@no-rustfix
 ///! a
 ///! b
 /// c

@@ -1,6 +1,6 @@
 #![warn(clippy::iter_skip_next)]
 #![allow(dead_code)]
-
+//@no-rustfix
 /// Checks implementation of `ITER_SKIP_NEXT` lint
 fn main() {
     // fix #8128

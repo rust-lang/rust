@@ -1,6 +1,6 @@
 //! This file tests for the `DOC_MARKDOWN` lint, specifically cases
 //! where ticks are unbalanced (see issue #6753).
-
+//@no-rustfix
 #![allow(dead_code)]
 #![warn(clippy::doc_markdown)]
 

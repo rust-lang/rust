@@ -1,4 +1,3 @@
-//@run-rustfix
 //@aux-build:non-exhaustive-enum.rs
 #![deny(clippy::wildcard_enum_match_arm)]
 #![allow(dead_code, unreachable_code, unused_variables)]

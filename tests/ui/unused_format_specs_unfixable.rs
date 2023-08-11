@@ -1,6 +1,6 @@
 #![warn(clippy::unused_format_specs)]
 #![allow(unused)]
-
+//@no-rustfix
 macro_rules! format_args_from_macro {
     () => {
         format_args!("from macro")

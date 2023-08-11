@@ -1,5 +1,5 @@
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:10:13
+  --> $DIR/redundant_slicing.rs:8:13
    |
 LL |     let _ = &slice[..]; // Redundant slice
    |             ^^^^^^^^^^ help: use the original value instead: `slice`
@@ -7,13 +7,13 @@ LL |     let _ = &slice[..]; // Redundant slice
    = note: `-D clippy::redundant-slicing` implied by `-D warnings`
 
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:14:13
+  --> $DIR/redundant_slicing.rs:12:13
    |
 LL |     let _ = &(&*v)[..]; // Outer borrow is redundant
    |             ^^^^^^^^^^ help: use the original value instead: `(&*v)`
 
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:31:13
+  --> $DIR/redundant_slicing.rs:29:13
    |
 LL |     let _ = &m!(slice)[..];
    |             ^^^^^^^^^^^^^^ help: use the original value instead: `slice`

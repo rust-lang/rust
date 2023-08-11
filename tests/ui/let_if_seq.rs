@@ -7,7 +7,7 @@
     clippy::needless_late_init
 )]
 #![warn(clippy::useless_let_if_seq)]
-
+//@no-rustfix
 fn f() -> bool {
     true
 }

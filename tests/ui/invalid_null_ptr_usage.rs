@@ -1,5 +1,3 @@
-//@run-rustfix
-
 fn main() {
     unsafe {
         let _slice: &[usize] = std::slice::from_raw_parts(std::ptr::null(), 0);

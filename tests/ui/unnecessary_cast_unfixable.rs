@@ -1,5 +1,5 @@
 #![warn(clippy::unnecessary_cast)]
-
+//@no-rustfix
 fn main() {
     let _ = std::ptr::null() as *const u8;
 }

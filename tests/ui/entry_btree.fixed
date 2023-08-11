@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::map_entry)]
 #![allow(dead_code)]
 

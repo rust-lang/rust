@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![feature(async_closure)]
 #![warn(clippy::redundant_closure_call)]
 #![allow(clippy::redundant_async_block)]

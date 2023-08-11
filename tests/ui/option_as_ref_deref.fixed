@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(unused, clippy::redundant_clone, clippy::useless_vec)]
 #![warn(clippy::option_as_ref_deref)]
 

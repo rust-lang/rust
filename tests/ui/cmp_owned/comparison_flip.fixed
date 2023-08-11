@@ -1,5 +1,3 @@
-//@run-rustfix
-
 use std::fmt::{self, Display};
 
 fn main() {

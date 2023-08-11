@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::manual_str_repeat)]
 
 use std::borrow::Cow;

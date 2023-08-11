@@ -1,6 +1,6 @@
 #![warn(clippy::single_component_path_imports)]
 #![allow(unused_imports)]
-
+//@no-rustfix
 use regex;
 
 use serde as edres;

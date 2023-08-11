@@ -7,7 +7,7 @@
     clippy::single_match,
     clippy::uninlined_format_args
 )]
-
+//@no-rustfix
 use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::convert::AsRef;

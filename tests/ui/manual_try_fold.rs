@@ -1,8 +1,8 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![allow(clippy::unnecessary_fold, unused)]
 #![warn(clippy::manual_try_fold)]
 #![feature(try_trait_v2)]
-
+//@no-rustfix
 use std::ops::{ControlFlow, FromResidual, Try};
 
 #[macro_use]

@@ -1,5 +1,5 @@
 #![warn(clippy::float_equality_without_abs)]
-
+//@no-rustfix
 pub fn is_roughly_equal(a: f32, b: f32) -> bool {
     (a - b) < f32::EPSILON
 }

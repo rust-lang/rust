@@ -1,5 +1,5 @@
 #![warn(clippy::manual_strip)]
-
+//@no-rustfix
 fn main() {
     let s = "abc";
 

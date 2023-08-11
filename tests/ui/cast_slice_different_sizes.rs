@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 #![allow(clippy::let_unit_value, clippy::unnecessary_cast)]
 
 fn main() {

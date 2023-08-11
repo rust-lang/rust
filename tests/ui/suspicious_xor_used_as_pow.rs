@@ -1,7 +1,7 @@
 #![allow(unused)]
 #![warn(clippy::suspicious_xor_used_as_pow)]
 #![allow(clippy::eq_op)]
-
+//@no-rustfix
 macro_rules! macro_test {
     () => {
         13

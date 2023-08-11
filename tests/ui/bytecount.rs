@@ -1,3 +1,5 @@
+//@no-rustfix
+
 #![allow(clippy::needless_borrow, clippy::useless_vec)]
 
 #[deny(clippy::naive_bytecount)]

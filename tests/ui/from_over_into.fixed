@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![feature(type_alias_impl_trait)]
 #![warn(clippy::from_over_into)]
 #![allow(unused)]

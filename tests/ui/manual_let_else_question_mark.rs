@@ -1,4 +1,3 @@
-//@run-rustfix
 #![allow(unused_braces, unused_variables, dead_code)]
 #![allow(
     clippy::collapsible_else_if,

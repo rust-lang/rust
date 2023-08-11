@@ -1,5 +1,5 @@
 #![warn(clippy::filter_next)]
-
+//@no-rustfix
 fn main() {
     issue10029();
 }

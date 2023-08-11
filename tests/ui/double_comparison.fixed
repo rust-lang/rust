@@ -1,4 +1,3 @@
-//@run-rustfix
 #![allow(clippy::needless_if)]
 
 fn main() {

@@ -1,4 +1,3 @@
-//@run-rustfix
 #![deny(clippy::inefficient_to_string)]
 
 use std::borrow::Cow;

@@ -1,4 +1,3 @@
-//@run-rustfix
 #![allow(unused)]
 #![warn(clippy::clear_with_drain)]
 

@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 #![warn(clippy::octal_escapes)]
 
 fn main() {

@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::redundant_field_names)]
 #![allow(clippy::extra_unused_type_parameters, clippy::no_effect, dead_code, unused_variables)]
 

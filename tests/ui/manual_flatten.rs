@@ -1,6 +1,6 @@
 #![warn(clippy::manual_flatten)]
 #![allow(clippy::useless_vec, clippy::uninlined_format_args)]
-
+//@no-rustfix
 fn main() {
     // Test for loop over implicitly adjusted `Iterator` with `if let` expression
     let x = vec![Some(1), Some(2), Some(3)];

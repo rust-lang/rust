@@ -5,6 +5,7 @@
     clippy::disallowed_names,
     clippy::needless_pass_by_ref_mut
 )]
+//@no-rustfix
 
 use std::fmt::Display;
 

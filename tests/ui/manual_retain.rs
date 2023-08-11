@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::manual_retain)]
 #![allow(unused, clippy::redundant_clone)]
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque};

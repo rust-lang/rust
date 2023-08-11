@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 #![warn(clippy::match_same_arms)]
 
 pub enum Abc {

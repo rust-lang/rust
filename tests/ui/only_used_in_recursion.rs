@@ -1,5 +1,5 @@
 #![warn(clippy::only_used_in_recursion)]
-
+//@no-rustfix
 fn _simple(x: u32) -> u32 {
     x
 }

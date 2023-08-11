@@ -1,6 +1,6 @@
 #![allow(unused)]
 #![warn(clippy::large_const_arrays, clippy::large_stack_arrays)]
-
+//@no-rustfix
 const ABOVE: [u8; 11] = [0; 11];
 const BELOW: [u8; 10] = [0; 10];
 

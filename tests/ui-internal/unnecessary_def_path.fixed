@@ -1,4 +1,3 @@
-//@run-rustfix
 //@aux-build:paths.rs
 #![deny(clippy::internal)]
 #![feature(rustc_private)]

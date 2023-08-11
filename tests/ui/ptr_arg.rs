@@ -7,7 +7,7 @@
     clippy::needless_pass_by_ref_mut
 )]
 #![warn(clippy::ptr_arg)]
-
+//@no-rustfix
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 

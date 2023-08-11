@@ -1,5 +1,5 @@
 error: found `.or(Some(…)).unwrap()`
-  --> $DIR/or_then_unwrap.rs:24:20
+  --> $DIR/or_then_unwrap.rs:22:20
    |
 LL |     let _ = option.or(Some("fallback")).unwrap(); // should trigger lint
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or("fallback")`
@@ -7,13 +7,13 @@ LL |     let _ = option.or(Some("fallback")).unwrap(); // should trigger lint
    = note: `-D clippy::or-then-unwrap` implied by `-D warnings`
 
 error: found `.or(Ok(…)).unwrap()`
-  --> $DIR/or_then_unwrap.rs:27:20
+  --> $DIR/or_then_unwrap.rs:25:20
    |
 LL |     let _ = result.or::<&str>(Ok("fallback")).unwrap(); // should trigger lint
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or("fallback")`
 
 error: found `.or(Some(…)).unwrap()`
-  --> $DIR/or_then_unwrap.rs:31:31
+  --> $DIR/or_then_unwrap.rs:29:31
    |
 LL |     let _ = option.map(|v| v).or(Some("fallback")).unwrap().to_string().chars(); // should trigger lint
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or("fallback")`

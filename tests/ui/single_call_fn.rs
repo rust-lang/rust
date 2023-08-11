@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![allow(clippy::redundant_closure_call, unused)]
 #![warn(clippy::single_call_fn)]
 #![no_main]

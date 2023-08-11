@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::explicit_deref_methods)]
 #![allow(unused_variables, unused_must_use)]
 #![allow(

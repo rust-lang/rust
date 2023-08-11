@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::unreadable_literal)]
 #![allow(unused_tuple_struct_fields)]
 

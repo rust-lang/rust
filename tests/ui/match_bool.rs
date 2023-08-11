@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 #![deny(clippy::match_bool)]
 
 fn match_bool() {

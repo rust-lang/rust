@@ -1,5 +1,5 @@
 error: needless use of `for_each`
-  --> $DIR/needless_for_each_unfixable.rs:7:5
+  --> $DIR/needless_for_each_unfixable.rs:8:5
    |
 LL | /     v.iter().for_each(|v| {
 LL | |         if *v == 10 {

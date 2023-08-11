@@ -6,7 +6,7 @@
     clippy::unnecessary_operation,
     clippy::cast_lossless
 )]
-
+//@no-rustfix
 use std::ops::Add;
 
 const ZERO: f32 = 0.0;

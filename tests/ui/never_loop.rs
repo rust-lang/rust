@@ -6,7 +6,7 @@
     unused_variables,
     clippy::while_immutable_condition
 )]
-
+//@no-rustfix
 fn test1() {
     let mut x = 0;
     loop {

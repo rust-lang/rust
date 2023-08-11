@@ -1,5 +1,4 @@
-//@run-rustfix
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 
 #![allow(clippy::return_self_not_must_use, clippy::useless_vec)]
 #![warn(clippy::deref_addrof)]

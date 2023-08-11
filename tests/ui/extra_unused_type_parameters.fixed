@@ -1,5 +1,4 @@
-//@run-rustfix
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 
 #![allow(unused, clippy::needless_lifetimes)]
 #![warn(clippy::extra_unused_type_parameters)]
