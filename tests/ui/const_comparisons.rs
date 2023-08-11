@@ -40,7 +40,8 @@ fn main() {
     let status_code = 500; // Value doesn't matter for the lint
     let status = Status { code: status_code };
 
-    status_code >= 400 && status_code < 500; // Correct
+    // Correct
+    status_code >= 400 && status_code < 500;
     status_code <= 400 && status_code > 500;
     //~^ ERROR: boolean expression will never evaluate to 'true'
     //~| NOTE: since `400` < `500`, the expression evaluates to false for any value of `st
@@ -80,22 +81,30 @@ fn main() {
     //~| NOTE: `status` cannot simultaneously be greater than and less than `STATUS_SERVER
 
     // Yoda conditions
-    500 <= status_code && 600 > status_code; // Correct
-    500 <= status_code && status_code <= 600; // Correct
-    500 >= status_code && 600 < status_code; // Incorrect
+    // Correct
+    500 <= status_code && 600 > status_code;
+    // Correct
+    500 <= status_code && status_code <= 600;
+    // Incorrect
+    500 >= status_code && 600 < status_code;
     //~^ ERROR: boolean expression will never evaluate to 'true'
     //~| NOTE: since `500` < `600`, the expression evaluates to false for any value of `st
-    500 >= status_code && status_code > 600; // Incorrect
+    // Incorrect
+    500 >= status_code && status_code > 600;
     //~^ ERROR: boolean expression will never evaluate to 'true'
     //~| NOTE: since `500` < `600`, the expression evaluates to false for any value of `st
 
     // Yoda conditions, comparing two different types
-    500 <= status && 600 > status; // Correct
-    500 <= status && status <= 600; // Correct
-    500 >= status && 600 < status; // Incorrect
+    // Correct
+    500 <= status && 600 > status;
+    // Correct
+    500 <= status && status <= 600;
+    // Incorrect
+    500 >= status && 600 < status;
     //~^ ERROR: boolean expression will never evaluate to 'true'
     //~| NOTE: since `500` < `600`, the expression evaluates to false for any value of `st
-    500 >= status && status > 600; // Incorrect
+    // Incorrect
+    500 >= status && status > 600;
     //~^ ERROR: boolean expression will never evaluate to 'true'
     //~| NOTE: since `500` < `600`, the expression evaluates to false for any value of `st
 
@@ -105,13 +114,17 @@ fn main() {
     status_code > 200 && status_code >= 299;
     //~^ ERROR: left-hand side of `&&` operator has no effect
 
-    status_code >= 500 && status_code > 500; // Useless left
+    // Useless left
+    status_code >= 500 && status_code > 500;
     //~^ ERROR: left-hand side of `&&` operator has no effect
-    status_code > 500 && status_code >= 500; // Useless right
+    // Useless right
+    status_code > 500 && status_code >= 500;
     //~^ ERROR: right-hand side of `&&` operator has no effect
-    status_code <= 500 && status_code < 500; // Useless left
+    // Useless left
+    status_code <= 500 && status_code < 500;
     //~^ ERROR: left-hand side of `&&` operator has no effect
-    status_code < 500 && status_code <= 500; // Useless right
+    // Useless right
+    status_code < 500 && status_code <= 500;
     //~^ ERROR: right-hand side of `&&` operator has no effect
 
     // Other types
