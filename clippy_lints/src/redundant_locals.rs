@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::ty::needs_ordered_drop;
+use rustc_ast::Mutability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingAnnotation, ByRef, Expr, ExprKind, HirId, Local, Node, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -60,6 +61,8 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
             if let Node::Pat(binding_pat) = cx.tcx.hir().get(binding_id);
             // the previous binding has the same mutability
             if find_binding(binding_pat, ident).unwrap().1 == mutability;
+            // the local does not change the effect of assignments to the binding. see #11290
+            if !affects_assignments(cx, mutability, binding_id, local.hir_id);
             // the local does not affect the code's drop behavior
             if !affects_drop_behavior(cx, binding_id, local.hir_id, expr);
             // the local is user-controlled
@@ -90,6 +93,14 @@ fn find_binding(pat: &Pat<'_>, name: Ident) -> Option<BindingAnnotation> {
     });
 
     ret
+}
+
+/// Check if a rebinding of a local changes the effect of assignments to the binding.
+fn affects_assignments(cx: &LateContext<'_>, mutability: Mutability, bind: HirId, rebind: HirId) -> bool {
+    let hir = cx.tcx.hir();
+
+    // the binding is mutable and the rebinding is in a different scope than the original binding
+    mutability == Mutability::Mut && hir.get_enclosing_scope(bind) != hir.get_enclosing_scope(rebind)
 }
 
 /// Check if a rebinding of a local affects the code's drop behavior.
