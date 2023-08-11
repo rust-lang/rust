@@ -301,7 +301,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // Third argument (`argv`): created from `config.args`.
     let argv = {
         // Put each argument in memory, collect pointers.
-        let mut argvs = Vec::<Immediate<Provenance>>::new();
+        let mut argvs = Vec::<Immediate<Provenance>>::with_capacity(config.args.len());
         for arg in config.args.iter() {
             // Make space for `0` terminator.
             let size = u64::try_from(arg.len()).unwrap().checked_add(1).unwrap();

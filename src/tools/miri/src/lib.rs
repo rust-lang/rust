@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![feature(float_gamma)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]
@@ -10,6 +11,7 @@
 #![feature(round_ties_even)]
 #![feature(os_str_bytes)]
 #![feature(lint_reasons)]
+#![feature(trait_upcasting)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -19,6 +21,7 @@
     clippy::enum_variant_names,
     clippy::field_reassign_with_default,
     clippy::manual_map,
+    clippy::neg_cmp_op_on_partial_ord,
     clippy::new_without_default,
     clippy::single_match,
     clippy::useless_format,

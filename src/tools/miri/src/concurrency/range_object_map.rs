@@ -42,30 +42,19 @@ impl<T> RangeObjectMap<T> {
     /// in an existing allocation, then returns Err containing the position
     /// where such allocation should be inserted
     fn find_offset(&self, offset: Size) -> Result<Position, Position> {
-        // We do a binary search.
-        let mut left = 0usize; // inclusive
-        let mut right = self.v.len(); // exclusive
-        loop {
-            if left == right {
-                // No element contains the given offset. But the
-                // position is where such element should be placed at.
-                return Err(left);
-            }
-            let candidate = left.checked_add(right).unwrap() / 2;
-            let elem = &self.v[candidate];
+        self.v.binary_search_by(|elem| -> std::cmp::Ordering {
             if offset < elem.range.start {
                 // We are too far right (offset is further left).
-                debug_assert!(candidate < right); // we are making progress
-                right = candidate;
+                // (`Greater` means that `elem` is greater than the desired target.)
+                std::cmp::Ordering::Greater
             } else if offset >= elem.range.end() {
                 // We are too far left (offset is further right).
-                debug_assert!(candidate >= left); // we are making progress
-                left = candidate + 1;
+                std::cmp::Ordering::Less
             } else {
                 // This is it!
-                return Ok(candidate);
+                std::cmp::Ordering::Equal
             }
-        }
+        })
     }
 
     /// Determines whether a given access on `range` overlaps with

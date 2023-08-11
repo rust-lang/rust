@@ -815,6 +815,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "atanf"
             | "log1pf"
             | "expm1f"
+            | "tgammaf"
             => {
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // FIXME: Using host floats.
@@ -830,6 +831,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "atanf" => f.atan(),
                     "log1pf" => f.ln_1p(),
                     "expm1f" => f.exp_m1(),
+                    "tgammaf" => f.gamma(),
                     _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
@@ -866,6 +868,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "atan"
             | "log1p"
             | "expm1"
+            | "tgamma"
             => {
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // FIXME: Using host floats.
@@ -881,6 +884,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "atan" => f.atan(),
                     "log1p" => f.ln_1p(),
                     "expm1" => f.exp_m1(),
+                    "tgamma" => f.gamma(),
                     _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
@@ -916,6 +920,53 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let res = x.scalbn(exp);
                 this.write_scalar(Scalar::from_f64(res), dest)?;
+            }
+            "lgammaf_r" => {
+                let [x, signp] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // FIXME: Using host floats.
+                let x = f32::from_bits(this.read_scalar(x)?.to_u32()?);
+                let signp = this.deref_pointer(signp)?;
+
+                let (res, sign) = x.ln_gamma();
+                this.write_int(sign, &signp)?;
+                this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
+            }
+            "lgamma_r" => {
+                let [x, signp] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // FIXME: Using host floats.
+                let x = f64::from_bits(this.read_scalar(x)?.to_u64()?);
+                let signp = this.deref_pointer(signp)?;
+
+                let (res, sign) = x.ln_gamma();
+                this.write_int(sign, &signp)?;
+                this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
+            }
+
+            "llvm.prefetch" => {
+                let [p, rw, loc, ty] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                let _ = this.read_pointer(p)?;
+                let rw = this.read_scalar(rw)?.to_i32()?;
+                let loc = this.read_scalar(loc)?.to_i32()?;
+                let ty = this.read_scalar(ty)?.to_i32()?;
+
+                if ty == 1 {
+                    // Data cache prefetch.
+                    // Notably, we do not have to check the pointer, this operation is never UB!
+
+                    if !matches!(rw, 0 | 1) {
+                        throw_unsup_format!("invalid `rw` value passed to `llvm.prefetch`: {}", rw);
+                    }
+                    if !matches!(loc, 0..=3) {
+                        throw_unsup_format!(
+                            "invalid `loc` value passed to `llvm.prefetch`: {}",
+                            loc
+                        );
+                    }
+                } else {
+                    throw_unsup_format!("unsupported `llvm.prefetch` type argument: {}", ty);
+                }
             }
 
             // Architecture-specific shims
@@ -968,6 +1019,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         throw_unsup_format!("unsupported llvm.arm.hint argument {}", arg);
                     }
                 }
+            }
+
+            name if name.starts_with("llvm.x86.sse.") => {
+                return shims::x86::sse::EvalContextExt::emulate_x86_sse_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
             }
 
             // Platform-specific shims
