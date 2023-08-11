@@ -60,6 +60,9 @@ pub enum Delimiter {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
 pub enum InvisibleSource {
+    // From the expansion of a metavariable in a declarative macro.
+    MetaVar(NonterminalKind),
+
     // Converted from `proc_macro::Delimiter` in
     // `proc_macro::Delimiter::to_internal`, i.e. returned by a proc macro.
     ProcMacro,
@@ -78,6 +81,7 @@ impl Delimiter {
         match self {
             Delimiter::Invisible(src) => match src {
                 InvisibleSource::FlattenToken | InvisibleSource::ProcMacro => true,
+                InvisibleSource::MetaVar(_) => false,
             },
             Delimiter::Parenthesis | Delimiter::Bracket | Delimiter::Brace => false,
         }
@@ -758,6 +762,15 @@ impl Token {
         }
     }
 
+    /// Is this an invisible open delimiter at the start of a token sequence
+    /// from an expanded metavar?
+    pub fn is_metavar_seq(&self) -> Option<NonterminalKind> {
+        match self.kind {
+            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(kind))) => Some(kind),
+            _ => None,
+        }
+    }
+
     pub fn glue(&self, joint: &Token) -> Option<Token> {
         let kind = match self.kind {
             Eq => match joint.kind {
@@ -843,7 +856,7 @@ pub enum Nonterminal {
     NtVis(P<ast::Visibility>),
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
 pub enum NonterminalKind {
     Item,
     Block,
