@@ -52,6 +52,7 @@ const EXCEPTION_PATHS: &[&str] = &[
     // FIXME: platform-specific code should be moved to `sys`
     "library/std/src/io/copy.rs",
     "library/std/src/io/stdio.rs",
+    "library/std/src/lib.rs", // for miniz_oxide leaking docs, which itself workaround
     "library/std/src/path.rs",
     "library/std/src/sys_common", // Should only contain abstractions over platforms
     "library/std/src/net/test.rs", // Utility helpers for tests
