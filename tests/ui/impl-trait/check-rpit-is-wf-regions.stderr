@@ -1,0 +1,16 @@
+error[E0491]: in type `&'static &'a ()`, reference has a longer lifetime than the data it references
+  --> $DIR/check-rpit-is-wf-regions.rs:13:33
+   |
+LL | fn boom<'a>(arg: Static<'_>) -> impl Extend<'a> {
+   |                                 ^^^^^^^^^^^^^^^
+   |
+   = note: the pointer is valid for the static lifetime
+note: but the referenced data is only valid for the lifetime `'a` as defined here
+  --> $DIR/check-rpit-is-wf-regions.rs:13:9
+   |
+LL | fn boom<'a>(arg: Static<'_>) -> impl Extend<'a> {
+   |         ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0491`.
