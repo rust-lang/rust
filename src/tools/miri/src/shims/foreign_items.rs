@@ -918,6 +918,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(Scalar::from_f64(res), dest)?;
             }
 
+            "llvm.prefetch" => {
+                let [p, rw, loc, ty] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                let _ = this.read_pointer(p)?;
+                let rw = this.read_scalar(rw)?.to_i32()?;
+                let loc = this.read_scalar(loc)?.to_i32()?;
+                let ty = this.read_scalar(ty)?.to_i32()?;
+
+                if ty == 1 {
+                    // Data cache prefetch.
+                    // Notably, we do not have to check the pointer, this operation is never UB!
+
+                    if !matches!(rw, 0 | 1) {
+                        throw_unsup_format!("invalid `rw` value passed to `llvm.prefetch`: {}", rw);
+                    }
+                    if !matches!(loc, 0..=3) {
+                        throw_unsup_format!(
+                            "invalid `loc` value passed to `llvm.prefetch`: {}",
+                            loc
+                        );
+                    }
+                } else {
+                    throw_unsup_format!("unsupported `llvm.prefetch` type argument: {}", ty);
+                }
+            }
+
             // Architecture-specific shims
             "llvm.x86.addcarry.64" if this.tcx.sess.target.arch == "x86_64" => {
                 // Computes u8+u64+u64, returning tuple (u8,u64) comprising the output carry and truncated sum.
@@ -968,6 +995,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         throw_unsup_format!("unsupported llvm.arm.hint argument {}", arg);
                     }
                 }
+            }
+
+            name if name.starts_with("llvm.x86.sse.") => {
+                return shims::x86::sse::EvalContextExt::emulate_x86_sse_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
             }
 
             // Platform-specific shims

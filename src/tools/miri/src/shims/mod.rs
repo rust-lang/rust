@@ -7,6 +7,7 @@ pub mod foreign_items;
 pub mod intrinsics;
 pub mod unix;
 pub mod windows;
+mod x86;
 
 pub mod dlsym;
 pub mod env;
