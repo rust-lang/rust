@@ -496,11 +496,37 @@ pub struct FieldlessUnion {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_where_after_type_alias)]
+#[diag(ast_passes_where_clause_after_type_alias)]
 #[note]
-pub struct WhereAfterTypeAlias {
+pub struct WhereClauseAfterTypeAlias {
     #[primary_span]
     pub span: Span,
+    #[help]
+    pub help: Option<()>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_where_clause_before_type_alias)]
+#[note]
+pub struct WhereClauseBeforeTypeAlias {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: WhereClauseBeforeTypeAliasSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    ast_passes_suggestion,
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+pub struct WhereClauseBeforeTypeAliasSugg {
+    #[suggestion_part(code = "")]
+    pub left: Span,
+    pub snippet: String,
+    #[suggestion_part(code = "{snippet}")]
+    pub right: Span,
 }
 
 #[derive(Diagnostic)]
