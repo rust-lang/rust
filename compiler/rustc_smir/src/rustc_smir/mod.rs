@@ -1165,7 +1165,9 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
                     let const_val = tables.tcx.valtree_to_const_val((c.ty(), val));
                     stable_mir::ty::ConstantKind::Allocated(new_allocation(self, const_val, tables))
                 }
-                _ => todo!(),
+                ty::ParamCt(param) => stable_mir::ty::ConstantKind::ParamCt(opaque(&param)),
+                ty::ErrorCt(_) => unreachable!(),
+                _ => unimplemented!(),
             },
             ConstantKind::Unevaluated(unev_const, ty) => {
                 stable_mir::ty::ConstantKind::Unevaluated(stable_mir::ty::UnevaluatedConst {
