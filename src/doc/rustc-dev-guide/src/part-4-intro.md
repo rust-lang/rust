@@ -1,4 +1,4 @@
-# Part 4: Analysis
+# Analysis
 
 This part discusses the many analyses that the compiler uses to check various
 properties of the code and to inform later stages. Typically, this is what people
