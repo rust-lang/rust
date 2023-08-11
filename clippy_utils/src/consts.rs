@@ -329,7 +329,7 @@ pub struct ConstEvalLateContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
-    fn new(lcx: &'a LateContext<'tcx>, typeck_results: &'a ty::TypeckResults<'tcx>) -> Self {
+    pub fn new(lcx: &'a LateContext<'tcx>, typeck_results: &'a ty::TypeckResults<'tcx>) -> Self {
         Self {
             lcx,
             typeck_results,

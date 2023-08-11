@@ -115,7 +115,7 @@ LL | |     }
    | |_____^ help: replace it with: `x?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:197:5
+  --> $DIR/question_mark.rs:214:5
    |
 LL | /     if let Err(err) = func_returning_result() {
 LL | |         return Err(err);
@@ -123,7 +123,7 @@ LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:204:5
+  --> $DIR/question_mark.rs:221:5
    |
 LL | /     if let Err(err) = func_returning_result() {
 LL | |         return Err(err);
@@ -131,7 +131,7 @@ LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:281:13
+  --> $DIR/question_mark.rs:298:13
    |
 LL | /             if a.is_none() {
 LL | |                 return None;
