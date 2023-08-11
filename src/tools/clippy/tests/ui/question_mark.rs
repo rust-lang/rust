@@ -170,6 +170,23 @@ fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     // no warning
     let _ = if let Err(e) = x { Err(e) } else { Ok(0) };
 
+    // issue #11283
+    // no warning
+    #[warn(clippy::question_mark_used)]
+    {
+        if let Err(err) = Ok(()) {
+            return Err(err);
+        }
+
+        if Err::<i32, _>(0).is_err() {
+            return Err(0);
+        } else {
+            return Ok(0);
+        }
+
+        unreachable!()
+    }
+
     Ok(y)
 }
 

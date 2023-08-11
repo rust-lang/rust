@@ -20,7 +20,7 @@ LL |     let mut x = x;
    = help: remove the redefinition of `x`
 
 error: redundant redefinition of a binding
-  --> $DIR/redundant_locals.rs:37:14
+  --> $DIR/redundant_locals.rs:46:14
    |
 LL | fn parameter(x: i32) {
    |              ^
@@ -30,7 +30,7 @@ LL |     let x = x;
    = help: remove the redefinition of `x`
 
 error: redundant redefinition of a binding
-  --> $DIR/redundant_locals.rs:42:9
+  --> $DIR/redundant_locals.rs:51:9
    |
 LL |     let x = 1;
    |         ^
@@ -40,7 +40,7 @@ LL |     let x = x;
    = help: remove the redefinition of `x`
 
 error: redundant redefinition of a binding
-  --> $DIR/redundant_locals.rs:43:9
+  --> $DIR/redundant_locals.rs:52:9
    |
 LL |     let x = x;
    |         ^
@@ -50,7 +50,7 @@ LL |     let x = x;
    = help: remove the redefinition of `x`
 
 error: redundant redefinition of a binding
-  --> $DIR/redundant_locals.rs:44:9
+  --> $DIR/redundant_locals.rs:53:9
    |
 LL |     let x = x;
    |         ^
@@ -60,7 +60,7 @@ LL |     let x = x;
    = help: remove the redefinition of `x`
 
 error: redundant redefinition of a binding
-  --> $DIR/redundant_locals.rs:45:9
+  --> $DIR/redundant_locals.rs:54:9
    |
 LL |     let x = x;
    |         ^
@@ -70,7 +70,7 @@ LL |     let x = x;
    = help: remove the redefinition of `x`
 
 error: redundant redefinition of a binding
-  --> $DIR/redundant_locals.rs:50:9
+  --> $DIR/redundant_locals.rs:59:9
    |
 LL |     let a = 1;
    |         ^
@@ -81,7 +81,7 @@ LL |     let a = a;
    = help: remove the redefinition of `a`
 
 error: redundant redefinition of a binding
-  --> $DIR/redundant_locals.rs:51:9
+  --> $DIR/redundant_locals.rs:60:9
    |
 LL |     let b = 2;
    |         ^
@@ -92,7 +92,7 @@ LL |     let b = b;
    = help: remove the redefinition of `b`
 
 error: redundant redefinition of a binding
-  --> $DIR/redundant_locals.rs:58:13
+  --> $DIR/redundant_locals.rs:67:13
    |
 LL |         let x = 1;
    |             ^
@@ -102,7 +102,7 @@ LL |         let x = x;
    = help: remove the redefinition of `x`
 
 error: redundant redefinition of a binding
-  --> $DIR/redundant_locals.rs:65:13
+  --> $DIR/redundant_locals.rs:74:13
    |
 LL |         let x = 1;
    |             ^
@@ -112,7 +112,7 @@ LL |         let x = x;
    = help: remove the redefinition of `x`
 
 error: redundant redefinition of a binding
-  --> $DIR/redundant_locals.rs:68:6
+  --> $DIR/redundant_locals.rs:77:6
    |
 LL |     |x: i32| {
    |      ^
@@ -122,7 +122,7 @@ LL |         let x = x;
    = help: remove the redefinition of `x`
 
 error: redundant redefinition of a binding
-  --> $DIR/redundant_locals.rs:85:9
+  --> $DIR/redundant_locals.rs:94:9
    |
 LL |     let x = 1;
    |         ^

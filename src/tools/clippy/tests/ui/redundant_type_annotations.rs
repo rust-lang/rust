@@ -6,8 +6,8 @@ struct Cake<T> {
     _data: T,
 }
 
-fn make_something<T: Default>() -> T {
-    T::default()
+fn make_something<T>() -> T {
+    unimplemented!()
 }
 
 fn make_cake<T: Default>() -> Cake<T> {
@@ -117,7 +117,15 @@ fn test_non_locals() {
     let _closure_arg = |x: u32| x;
 }
 
-fn test_complex_types() {
+trait Trait {
+    type AssocTy;
+}
+
+impl Trait for () {
+    type AssocTy = String;
+}
+
+fn test_complex_types<T>() {
     // Shouldn't be lint, since the literal will be i32 otherwise
     let _u8: u8 = 128;
 
@@ -135,6 +143,10 @@ fn test_complex_types() {
 
     // Shouldn't be lint
     let _array: [u32; 2] = [8, 9];
+
+    let ty_param: T = make_something();
+
+    let assoc_ty: <() as Trait>::AssocTy = String::new();
 }
 
 fn test_functions() {
@@ -172,5 +184,7 @@ fn test_simple_types() {
 
     let _var: bool = false;
 }
+
+fn issue11190() {}
 
 fn main() {}

@@ -17,10 +17,10 @@ mod collapsible_str_replace;
 mod drain_collect;
 mod err_expect;
 mod expect_fun_call;
-mod expect_used;
 mod extend_with_drain;
 mod filetype_is_file;
 mod filter_map;
+mod filter_map_bool_then;
 mod filter_map_identity;
 mod filter_map_next;
 mod filter_next;
@@ -104,7 +104,7 @@ mod unnecessary_lazy_eval;
 mod unnecessary_literal_unwrap;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
-mod unwrap_used;
+mod unwrap_expect_used;
 mod useless_asref;
 mod utils;
 mod vec_resize_to_zero;
@@ -3478,6 +3478,37 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for usage of `bool::then` in `Iterator::filter_map`.
+    ///
+    /// ### Why is this bad?
+    /// This can be written with `filter` then `map` instead, which would reduce nesting and
+    /// separates the filtering from the transformation phase. This comes with no cost to
+    /// performance and is just cleaner.
+    ///
+    /// ### Limitations
+    /// Does not lint `bool::then_some`, as it eagerly evaluates its arguments rather than lazily.
+    /// This can create differing behavior, so better safe than sorry.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # fn really_expensive_fn(i: i32) -> i32 { i }
+    /// # let v = vec![];
+    /// _ = v.into_iter().filter_map(|i| (i % 2 == 0).then(|| really_expensive_fn(i)));
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # fn really_expensive_fn(i: i32) -> i32 { i }
+    /// # let v = vec![];
+    /// _ = v.into_iter().filter(|i| i % 2 == 0).map(|i| really_expensive_fn(i));
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub FILTER_MAP_BOOL_THEN,
+    style,
+    "checks for usage of `bool::then` in `Iterator::filter_map`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Looks for calls to `RwLock::write` where the lock is only used for reading.
     ///
     /// ### Why is this bad?
@@ -3644,6 +3675,7 @@ impl_lint_pass!(Methods => [
     FORMAT_COLLECT,
     STRING_LIT_CHARS_ANY,
     ITER_SKIP_ZERO,
+    FILTER_MAP_BOOL_THEN,
     READONLY_WRITE_LOCK
 ]);
 
@@ -3848,6 +3880,13 @@ impl Methods {
                         unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
                     }
                 },
+                ("any", [arg]) if let ExprKind::Closure(arg) = arg.kind
+                    && let body = cx.tcx.hir().body(arg.body)
+                    && let [param] = body.params
+                    && let Some(("chars", recv, _, _, _)) = method_call(recv) =>
+                {
+                    string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), &self.msrv);
+                }
                 ("arg", [arg]) => {
                     suspicious_command_arg_space::check(cx, recv, arg, span);
                 }
@@ -3908,13 +3947,27 @@ impl Methods {
                     match method_call(recv) {
                         Some(("ok", recv, [], _, _)) => ok_expect::check(cx, expr, recv),
                         Some(("err", recv, [], err_span, _)) => err_expect::check(cx, expr, recv, span, err_span, &self.msrv),
-                        _ => expect_used::check(cx, expr, recv, false, self.allow_expect_in_tests),
+                        _ => unwrap_expect_used::check(
+                            cx,
+                            expr,
+                            recv,
+                            false,
+                            self.allow_expect_in_tests,
+                            unwrap_expect_used::Variant::Expect,
+                        ),
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("expect_err", [_]) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
-                    expect_used::check(cx, expr, recv, true, self.allow_expect_in_tests);
+                    unwrap_expect_used::check(
+                        cx,
+                        expr,
+                        recv,
+                        true,
+                        self.allow_expect_in_tests,
+                        unwrap_expect_used::Variant::Expect,
+                    );
                 },
                 ("extend", [arg]) => {
                     string_extend_chars::check(cx, expr, recv, arg);
@@ -3922,6 +3975,7 @@ impl Methods {
                 },
                 ("filter_map", [arg]) => {
                     unnecessary_filter_map::check(cx, expr, arg, name);
+                    filter_map_bool_then::check(cx, expr, arg, call_span);
                     filter_map_identity::check(cx, expr, arg, span);
                 },
                 ("find_map", [arg]) => {
@@ -3965,20 +4019,9 @@ impl Methods {
                         unnecessary_join::check(cx, expr, recv, join_arg, span);
                     }
                 },
-                ("skip", [arg]) => {
-                    iter_skip_zero::check(cx, expr, arg);
-
-                    if let Some((name2, recv2, args2, _span2, _)) = method_call(recv) {
-                        if let ("cloned", []) = (name2, args2) {
-                            iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
-                        }
-                    }
-                }
                 ("last", []) => {
-                    if let Some((name2, recv2, args2, _span2, _)) = method_call(recv) {
-                        if let ("cloned", []) = (name2, args2) {
-                            iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
-                        }
+                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                        iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
                     }
                 },
                 ("lock", []) => {
@@ -4026,13 +4069,6 @@ impl Methods {
                         }
                     }
                 },
-                ("any", [arg]) if let ExprKind::Closure(arg) = arg.kind
-                    && let body = cx.tcx.hir().body(arg.body)
-                    && let [param] = body.params
-                    && let Some(("chars", recv, _, _, _)) = method_call(recv) =>
-                {
-                    string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), &self.msrv);
-                }
                 ("nth", [n_arg]) => match method_call(recv) {
                     Some(("bytes", recv2, [], _, _)) => bytes_nth::check(cx, expr, recv2, n_arg),
                     Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(cx, expr, recv, recv2, false, false),
@@ -4086,6 +4122,13 @@ impl Methods {
                         seek_to_start_instead_of_rewind::check(cx, expr, recv, arg, span);
                     }
                 },
+                ("skip", [arg]) => {
+                    iter_skip_zero::check(cx, expr, arg);
+
+                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                        iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
+                    }
+                }
                 ("sort", []) => {
                     stable_sort_primitive::check(cx, expr, recv);
                 },
@@ -4108,10 +4151,8 @@ impl Methods {
                 },
                 ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
                 ("take", [_arg]) => {
-                    if let Some((name2, recv2, args2, _span2, _)) = method_call(recv) {
-                        if let ("cloned", []) = (name2, args2) {
-                            iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
-                        }
+                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                        iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
                     }
                 },
                 ("take", []) => needless_option_take::check(cx, expr, recv),
@@ -4146,11 +4187,25 @@ impl Methods {
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
-                    unwrap_used::check(cx, expr, recv, false, self.allow_unwrap_in_tests);
+                    unwrap_expect_used::check(
+                        cx,
+                        expr,
+                        recv,
+                        false,
+                        self.allow_unwrap_in_tests,
+                        unwrap_expect_used::Variant::Unwrap,
+                    );
                 },
                 ("unwrap_err", []) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
-                    unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests);
+                    unwrap_expect_used::check(
+                        cx,
+                        expr,
+                        recv,
+                        true,
+                        self.allow_unwrap_in_tests,
+                        unwrap_expect_used::Variant::Unwrap,
+                    );
                 },
                 ("unwrap_or", [u_arg]) => {
                     match method_call(recv) {
@@ -4180,6 +4235,9 @@ impl Methods {
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
+                ("write", []) => {
+                    readonly_write_lock::check(cx, expr, recv);
+                }
                 ("zip", [arg]) => {
                     if let ExprKind::MethodCall(name, iter_recv, [], _) = recv.kind
                         && name.ident.name == sym::iter
@@ -4187,9 +4245,6 @@ impl Methods {
                         range_zip_with_len::check(cx, expr, iter_recv, arg);
                     }
                 },
-                ("write", []) => {
-                    readonly_write_lock::check(cx, expr, recv);
-                }
                 _ => {},
             }
         }
