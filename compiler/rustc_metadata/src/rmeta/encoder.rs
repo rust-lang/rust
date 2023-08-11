@@ -1440,6 +1440,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let table = tcx.associated_types_for_impl_traits_in_associated_fn(def_id);
                 record_defaulted_array!(self.tables.associated_types_for_impl_traits_in_associated_fn[def_id] <- table);
             }
+            if let DefKind::Mod = tcx.def_kind(def_id) {
+                record!(self.tables.doc_link_resolutions[def_id] <- tcx.doc_link_resolutions(def_id));
+                record_array!(self.tables.doc_link_traits_in_scope[def_id] <- tcx.doc_link_traits_in_scope(def_id));
+            }
         }
 
         let inherent_impls = tcx.with_stable_hashing_context(|hcx| {
@@ -1450,14 +1454,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 assert!(def_id.is_local());
                 def_id.index
             }));
-        }
-
-        for (def_id, res_map) in &tcx.resolutions(()).doc_link_resolutions {
-            record!(self.tables.doc_link_resolutions[def_id.to_def_id()] <- res_map);
-        }
-
-        for (def_id, traits) in &tcx.resolutions(()).doc_link_traits_in_scope {
-            record_array!(self.tables.doc_link_traits_in_scope[def_id.to_def_id()] <- traits);
         }
     }
 
