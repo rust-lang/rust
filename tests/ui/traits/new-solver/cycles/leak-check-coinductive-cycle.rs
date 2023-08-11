@@ -1,5 +1,5 @@
-// check-pass
 // compile-flags: -Ztrait-solver=next
+// check-pass
 #![feature(rustc_attrs)]
 
 #[rustc_coinductive]
