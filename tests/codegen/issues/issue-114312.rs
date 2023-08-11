@@ -16,10 +16,10 @@ pub enum Expr {
 #[no_mangle]
 pub extern "C" fn issue_114312(expr: Expr) {
     // CHECK-LABEL: @issue_114312(
-    // CHECK-SAME: readonly
+    // CHECK-NOT: readonly
     // CHECK-SAME: byval
-    // CHECK: bb1:
-    // CHECK-NEXT: br label %bb1
+    // CHECK-NEXT: start:
+    // CHECK-NEXT: ret void
     match expr {
         Expr::Sum => {}
         Expr::Sub(_, _) => issue_114312(Expr::Sum),
