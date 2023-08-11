@@ -310,6 +310,7 @@ impl<'a> Write for BorrowedCursor<'a> {
         Ok(buf.len())
     }
 
+    #[inline]
     fn flush(&mut self) -> Result<()> {
         Ok(())
     }

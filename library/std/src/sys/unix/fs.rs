@@ -1204,6 +1204,7 @@ impl File {
         self.0.write_vectored_at(bufs, offset)
     }
 
+    #[inline]
     pub fn flush(&self) -> io::Result<()> {
         Ok(())
     }
