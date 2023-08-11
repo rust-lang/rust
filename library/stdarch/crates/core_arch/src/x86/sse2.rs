@@ -1248,7 +1248,7 @@ pub unsafe fn _mm_store_si128(mem_addr: *mut __m128i, a: __m128i) {
 #[cfg_attr(test, assert_instr(movups))] // FIXME movdqu expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_storeu_si128(mem_addr: *mut __m128i, a: __m128i) {
-    storeudq(mem_addr as *mut i8, a);
+    mem_addr.write_unaligned(a);
 }
 
 /// Stores the lower 64-bit integer `a` to a memory location.
@@ -2515,7 +2515,7 @@ pub unsafe fn _mm_store_pd(mem_addr: *mut f64, a: __m128d) {
 #[cfg_attr(test, assert_instr(movups))] // FIXME movupd expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_storeu_pd(mem_addr: *mut f64, a: __m128d) {
-    storeupd(mem_addr as *mut i8, a);
+    mem_addr.cast::<__m128d>().write_unaligned(a);
 }
 
 /// Stores the lower double-precision (64-bit) floating-point element from `a`
@@ -2920,10 +2920,6 @@ extern "C" {
     fn cvttsd2si(a: __m128d) -> i32;
     #[link_name = "llvm.x86.sse2.cvttps2dq"]
     fn cvttps2dq(a: __m128) -> i32x4;
-    #[link_name = "llvm.x86.sse2.storeu.dq"]
-    fn storeudq(mem_addr: *mut i8, a: __m128i);
-    #[link_name = "llvm.x86.sse2.storeu.pd"]
-    fn storeupd(mem_addr: *mut i8, a: __m128d);
 }
 
 #[cfg(test)]

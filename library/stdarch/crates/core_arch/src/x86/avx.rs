@@ -1439,7 +1439,7 @@ pub unsafe fn _mm256_loadu_pd(mem_addr: *const f64) -> __m256d {
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovupd expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_storeu_pd(mem_addr: *mut f64, a: __m256d) {
-    storeupd256(mem_addr, a);
+    mem_addr.cast::<__m256d>().write_unaligned(a);
 }
 
 /// Loads 256-bits (composed of 8 packed single-precision (32-bit)
@@ -1471,7 +1471,7 @@ pub unsafe fn _mm256_loadu_ps(mem_addr: *const f32) -> __m256 {
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_storeu_ps(mem_addr: *mut f32, a: __m256) {
-    storeups256(mem_addr, a);
+    mem_addr.cast::<__m256>().write_unaligned(a);
 }
 
 /// Loads 256-bits of integer data from memory into result.
@@ -1527,7 +1527,7 @@ pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovdqu expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_storeu_si256(mem_addr: *mut __m256i, a: __m256i) {
-    storeudq256(mem_addr as *mut i8, a.as_i8x32());
+    mem_addr.write_unaligned(a);
 }
 
 /// Loads packed double-precision (64-bit) floating-point elements from memory
@@ -2974,12 +2974,6 @@ extern "C" {
     fn vbroadcastf128ps256(a: &__m128) -> __m256;
     #[link_name = "llvm.x86.avx.vbroadcastf128.pd.256"]
     fn vbroadcastf128pd256(a: &__m128d) -> __m256d;
-    #[link_name = "llvm.x86.avx.storeu.pd.256"]
-    fn storeupd256(mem_addr: *mut f64, a: __m256d);
-    #[link_name = "llvm.x86.avx.storeu.ps.256"]
-    fn storeups256(mem_addr: *mut f32, a: __m256);
-    #[link_name = "llvm.x86.avx.storeu.dq.256"]
-    fn storeudq256(mem_addr: *mut i8, a: i8x32);
     #[link_name = "llvm.x86.avx.maskload.pd.256"]
     fn maskloadpd256(mem_addr: *const i8, mask: i64x4) -> __m256d;
     #[link_name = "llvm.x86.avx.maskstore.pd.256"]
