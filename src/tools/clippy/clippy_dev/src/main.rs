@@ -41,7 +41,7 @@ fn main() {
                 matches.get_one::<String>("type").map(String::as_str),
                 matches.get_flag("msrv"),
             ) {
-                Ok(_) => update_lints::update(update_lints::UpdateMode::Change),
+                Ok(()) => update_lints::update(update_lints::UpdateMode::Change),
                 Err(e) => eprintln!("Unable to create lint: {e}"),
             }
         },

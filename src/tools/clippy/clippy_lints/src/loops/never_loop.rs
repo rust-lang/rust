@@ -162,7 +162,9 @@ fn never_loop_expr<'tcx>(
         ExprKind::Binary(_, e1, e2)
         | ExprKind::Assign(e1, e2, _)
         | ExprKind::AssignOp(_, e1, e2)
-        | ExprKind::Index(e1, e2, _) => never_loop_expr_all(cx, &mut [e1, e2].iter().copied(), ignore_ids, main_loop_id),
+        | ExprKind::Index(e1, e2, _) => {
+            never_loop_expr_all(cx, &mut [e1, e2].iter().copied(), ignore_ids, main_loop_id)
+        },
         ExprKind::Loop(b, _, _, _) => {
             // Break can come from the inner loop so remove them.
             absorb_break(never_loop_block(cx, b, ignore_ids, main_loop_id))

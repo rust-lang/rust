@@ -716,10 +716,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
                 let fallback_bundle =
                     rustc_errors::fallback_fluent_bundle(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
-                let emitter = EmitterWriter::new(
-                    Box::new(io::sink()),
-                    fallback_bundle,
-                );
+                let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
                 let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
                 let sess = ParseSess::with_span_handler(handler, sm);
 

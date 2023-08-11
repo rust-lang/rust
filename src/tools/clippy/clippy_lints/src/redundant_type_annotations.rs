@@ -1,6 +1,8 @@
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::is_lint_allowed;
 use rustc_ast::LitKind;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -45,8 +47,8 @@ fn is_same_type<'tcx>(cx: &LateContext<'tcx>, ty_resolved_path: hir::def::Res, f
         return primty.name() == func_return_type_sym;
     }
 
-    // type annotation is any other non generic type
-    if let hir::def::Res::Def(_, defid) = ty_resolved_path
+    // type annotation is a non generic type
+    if let hir::def::Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum, defid) = ty_resolved_path
         && let Some(annotation_ty) = cx.tcx.type_of(defid).no_bound_vars()
     {
         return annotation_ty == func_return_type;
@@ -130,8 +132,9 @@ fn extract_primty(ty_kind: &hir::TyKind<'_>) -> Option<hir::PrimTy> {
 
 impl LateLintPass<'_> for RedundantTypeAnnotations {
     fn check_local<'tcx>(&mut self, cx: &LateContext<'tcx>, local: &'tcx rustc_hir::Local<'tcx>) {
-        // type annotation part
-        if !local.span.from_expansion()
+        if !is_lint_allowed(cx, REDUNDANT_TYPE_ANNOTATIONS, local.hir_id)
+            // type annotation part
+            && !local.span.from_expansion()
             && let Some(ty) = &local.ty
 
             // initialization part
