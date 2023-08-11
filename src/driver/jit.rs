@@ -98,7 +98,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         tcx.sess.fatal("JIT mode doesn't work with `cargo check`");
     }
 
-    if !tcx.sess.crate_types().contains(&rustc_session::config::CrateType::Executable) {
+    if !tcx.crate_types().contains(&rustc_session::config::CrateType::Executable) {
         tcx.sess.fatal("can't jit non-executable crate");
     }
 
