@@ -238,7 +238,7 @@ fn main() {
     /* error: expected expression */;
     /* error: expected expression, expected COMMA */;
     /* error: expected expression */::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::ArgumentV1::new(&(), ::core::fmt::Display::fmt), ]);
-    /* error: expected expression, expected expression */;
+    /* error: expected expression, expected R_PAREN */;
     ::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::ArgumentV1::new(&(5), ::core::fmt::Display::fmt), ]);
 }
 "##]],

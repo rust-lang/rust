@@ -505,6 +505,9 @@ impl ExprCollector<'_> {
                 let mut args = Vec::new();
                 let mut arg_types = Vec::new();
                 if let Some(pl) = e.param_list() {
+                    let num_params = pl.params().count();
+                    args.reserve_exact(num_params);
+                    arg_types.reserve_exact(num_params);
                     for param in pl.params() {
                         let pat = this.collect_pat_top(param.pat());
                         let type_ref =
