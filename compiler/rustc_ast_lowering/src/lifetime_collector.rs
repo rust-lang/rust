@@ -1,7 +1,7 @@
 use super::ResolverAstLoweringExt;
 use rustc_ast::visit::{self, BoundKind, LifetimeCtxt, Visitor};
 use rustc_ast::{GenericBounds, Lifetime, NodeId, PathSegment, PolyTraitRef, Ty, TyKind};
-use rustc_hir::def::LifetimeRes;
+use rustc_hir::def::{DefKind, LifetimeRes, Res};
 use rustc_middle::span_bug;
 use rustc_middle::ty::ResolverAstLowering;
 use rustc_span::symbol::{kw, Ident};
@@ -77,7 +77,20 @@ impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
     }
 
     fn visit_ty(&mut self, t: &'ast Ty) {
-        match t.kind {
+        match &t.kind {
+            TyKind::Path(None, _) => {
+                // We can sometimes encounter bare trait objects
+                // which are represented in AST as paths.
+                if let Some(partial_res) = self.resolver.get_partial_res(t.id)
+                    && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) = partial_res.full_res()
+                {
+                    self.current_binders.push(t.id);
+                    visit::walk_ty(self, t);
+                    self.current_binders.pop();
+                } else {
+                    visit::walk_ty(self, t);
+                }
+            }
             TyKind::BareFn(_) => {
                 self.current_binders.push(t.id);
                 visit::walk_ty(self, t);
