@@ -1,4 +1,4 @@
-use rustc_apfloat::Float;
+use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::{mir, ty, ty::FloatTy};
 use rustc_target::abi::{Endian, HasDataLayout, Size};
@@ -420,7 +420,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                 }
             }
-            #[rustfmt::skip]
             "cast" | "as" | "cast_ptr" | "expose_addr" | "from_exposed_addr" => {
                 let [op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
@@ -440,7 +439,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                     let val = match (op.layout.ty.kind(), dest.layout.ty.kind()) {
                         // Int-to-(int|float): always safe
-                        (ty::Int(_) | ty::Uint(_), ty::Int(_) | ty::Uint(_) | ty::Float(_)) if safe_cast || unsafe_cast =>
+                        (ty::Int(_) | ty::Uint(_), ty::Int(_) | ty::Uint(_) | ty::Float(_))
+                            if safe_cast || unsafe_cast =>
                             this.int_to_int_or_float(&op, dest.layout.ty)?,
                         // Float-to-float: always safe
                         (ty::Float(_), ty::Float(_)) if safe_cast || unsafe_cast =>
@@ -449,21 +449,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         (ty::Float(_), ty::Int(_) | ty::Uint(_)) if safe_cast =>
                             this.float_to_float_or_int(&op, dest.layout.ty)?,
                         // Float-to-int in unchecked mode
-                        (ty::Float(FloatTy::F32), ty::Int(_) | ty::Uint(_)) if unsafe_cast =>
-                            this.float_to_int_unchecked(op.to_scalar().to_f32()?, dest.layout.ty)?.into(),
-                        (ty::Float(FloatTy::F64), ty::Int(_) | ty::Uint(_)) if unsafe_cast =>
-                            this.float_to_int_unchecked(op.to_scalar().to_f64()?, dest.layout.ty)?.into(),
+                        (ty::Float(FloatTy::F32), ty::Int(_) | ty::Uint(_)) if unsafe_cast => {
+                            let f = op.to_scalar().to_f32()?;
+                            this.float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                                .ok_or_else(|| {
+                                    err_ub_format!(
+                                        "`simd_cast` intrinsic called on {f} which cannot be represented in target type `{:?}`",
+                                        dest.layout.ty
+                                    )
+                                })?
+                                .into()
+                        }
+                        (ty::Float(FloatTy::F64), ty::Int(_) | ty::Uint(_)) if unsafe_cast => {
+                            let f = op.to_scalar().to_f64()?;
+                            this.float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                                .ok_or_else(|| {
+                                    err_ub_format!(
+                                        "`simd_cast` intrinsic called on {f} which cannot be represented in target type `{:?}`",
+                                        dest.layout.ty
+                                    )
+                                })?
+                                .into()
+                        }
                         // Ptr-to-ptr cast
-                        (ty::RawPtr(..), ty::RawPtr(..)) if ptr_cast => {
-                            this.ptr_to_ptr(&op, dest.layout.ty)?
-                        }
+                        (ty::RawPtr(..), ty::RawPtr(..)) if ptr_cast =>
+                            this.ptr_to_ptr(&op, dest.layout.ty)?,
                         // Ptr/Int casts
-                        (ty::RawPtr(..), ty::Int(_) | ty::Uint(_)) if expose_cast => {
-                            this.pointer_expose_address_cast(&op, dest.layout.ty)?
-                        }
-                        (ty::Int(_) | ty::Uint(_), ty::RawPtr(..)) if from_exposed_cast => {
-                            this.pointer_from_exposed_address_cast(&op, dest.layout.ty)?
-                        }
+                        (ty::RawPtr(..), ty::Int(_) | ty::Uint(_)) if expose_cast =>
+                            this.pointer_expose_address_cast(&op, dest.layout.ty)?,
+                        (ty::Int(_) | ty::Uint(_), ty::RawPtr(..)) if from_exposed_cast =>
+                            this.pointer_from_exposed_address_cast(&op, dest.layout.ty)?,
                         // Error otherwise
                         _ =>
                             throw_unsup_format!(

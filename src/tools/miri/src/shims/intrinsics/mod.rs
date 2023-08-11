@@ -9,7 +9,7 @@ use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{
     mir,
-    ty::{self, FloatTy, Ty},
+    ty::{self, FloatTy},
 };
 use rustc_target::abi::Size;
 
@@ -356,10 +356,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let val = this.read_immediate(val)?;
 
                 let res = match val.layout.ty.kind() {
-                    ty::Float(FloatTy::F32) =>
-                        this.float_to_int_unchecked(val.to_scalar().to_f32()?, dest.layout.ty)?,
-                    ty::Float(FloatTy::F64) =>
-                        this.float_to_int_unchecked(val.to_scalar().to_f64()?, dest.layout.ty)?,
+                    ty::Float(FloatTy::F32) => {
+                        let f = val.to_scalar().to_f32()?;
+                        this
+                            .float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                            .ok_or_else(|| {
+                                err_ub_format!(
+                                    "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{:?}`",
+                                    dest.layout.ty
+                                )
+                            })?
+                    }
+                    ty::Float(FloatTy::F64) => {
+                        let f = val.to_scalar().to_f64()?;
+                        this
+                            .float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                            .ok_or_else(|| {
+                                err_ub_format!(
+                                    "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{:?}`",
+                                    dest.layout.ty
+                                )
+                            })?
+                    }
                     _ =>
                         span_bug!(
                             this.cur_span(),
@@ -382,21 +400,5 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         Ok(())
-    }
-
-    fn float_to_int_unchecked<F>(
-        &self,
-        f: F,
-        dest_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>>
-    where
-        F: Float + Into<Scalar<Provenance>>,
-    {
-        let this = self.eval_context_ref();
-        Ok(this
-            .float_to_int_checked(f, dest_ty, Round::TowardZero)
-            .ok_or_else(|| err_ub_format!(
-                "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{dest_ty:?}`",
-            ))?)
     }
 }
