@@ -618,8 +618,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match *self_ty.kind() {
             ty::Infer(ty::TyVar(found_vid)) => {
-                // FIXME: consider using `sub_root_var` here so we
-                // can see through subtyping.
                 let found_vid = self.root_var(found_vid);
                 debug!("self_type_matches_expected_vid - found_vid={:?}", found_vid);
                 expected_vid == found_vid
@@ -634,8 +632,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_ty: ty::TyVid,
     ) -> impl DoubleEndedIterator<Item = traits::PredicateObligation<'tcx>> + Captures<'tcx> + 'b
     {
-        // FIXME: consider using `sub_root_var` here so we
-        // can see through subtyping.
         let ty_var_root = self.root_var(self_ty);
         trace!("pending_obligations = {:#?}", self.fulfillment_cx.borrow().pending_obligations());
 
