@@ -7,6 +7,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Ident;
+use rustc_span::DesugaringKind;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -45,6 +46,7 @@ declare_lint_pass!(RedundantLocals => [REDUNDANT_LOCALS]);
 impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
         if_chain! {
+            if !local.span.is_desugaring(DesugaringKind::Async);
             // the pattern is a single by-value binding
             if let PatKind::Binding(BindingAnnotation(ByRef::No, mutability), _, ident, None) = local.pat.kind;
             // the binding is not type-ascribed
