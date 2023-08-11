@@ -39,14 +39,11 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
 
     let replacements =
         macro_calls.into_iter().filter_map(compute_dbg_replacement).collect::<Vec<_>>();
-    if replacements.is_empty() {
-        return None;
-    }
 
     acc.add(
         AssistId("remove_dbg", AssistKind::Refactor),
         "Remove dbg!()",
-        replacements.iter().map(|&(range, _)| range).reduce(|acc, range| acc.cover(range)).unwrap(),
+        replacements.iter().map(|&(range, _)| range).reduce(|acc, range| acc.cover(range))?,
         |builder| {
             for (range, expr) in replacements {
                 if let Some(expr) = expr {
