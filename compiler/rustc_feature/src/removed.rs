@@ -136,6 +136,9 @@ declare_features! (
      Some("subsumed by `#![feature(allocator_internals)]`")),
     /// Allows use of unary negate on unsigned integers, e.g., -e for e: u8
     (removed, negate_unsigned, "1.0.0", Some(29645), None, None),
+    /// Allows `#[no_coverage]` on functions.
+    /// The feature was renamed to `coverage` and the attribute to `#[coverage(on|off)]`
+    (removed, no_coverage, "CURRENT_RUSTC_VERSION", Some(84605), None, Some("renamed to `coverage`")),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), None, Some("removed due to lack of demand")),
     /// Allows using `#[on_unimplemented(..)]` on traits.

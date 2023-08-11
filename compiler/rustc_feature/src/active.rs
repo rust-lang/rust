@@ -400,7 +400,7 @@ declare_features! (
     (active, const_try, "1.56.0", Some(74935), None),
     /// Allows function attribute `#[coverage(on/off)]`, to control coverage
     /// instrumentation of that function.
-    (active, coverage, "1.53.0", Some(84605), None),
+    (active, coverage, "CURRENT_RUSTC_VERSION", Some(84605), None),
     /// Allows non-builtin attributes in inner attribute position.
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.

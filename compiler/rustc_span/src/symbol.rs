@@ -1038,6 +1038,7 @@ symbols! {
         no,
         no_builtins,
         no_core,
+        no_coverage,
         no_crate_inject,
         no_debug,
         no_default_passes,
