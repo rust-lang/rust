@@ -18,7 +18,7 @@ use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
-use core::ptr::{NonNull, Unique};
+use core::ptr::NonNull;
 
 use super::SpecExtend;
 use crate::alloc::{Allocator, Global};
@@ -168,15 +168,16 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// Adds the given node to the front of the list.
     ///
     /// # Safety
-    /// `node` must point to a valid node that was boxed using the list's allocator.
+    /// `node` must point to a valid node that was boxed and leaked using the list's allocator.
+    /// This method takes ownership of the node, so the pointer should not be used again.
     #[inline]
-    unsafe fn push_front_node(&mut self, node: Unique<Node<T>>) {
+    unsafe fn push_front_node(&mut self, node: NonNull<Node<T>>) {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
         unsafe {
             (*node.as_ptr()).next = self.head;
             (*node.as_ptr()).prev = None;
-            let node = Some(NonNull::from(node));
+            let node = Some(node);
 
             match self.head {
                 None => self.tail = node,
@@ -212,15 +213,16 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// Adds the given node to the back of the list.
     ///
     /// # Safety
-    /// `node` must point to a valid node that was boxed using the list's allocator.
+    /// `node` must point to a valid node that was boxed and leaked using the list's allocator.
+    /// This method takes ownership of the node, so the pointer should not be used again.
     #[inline]
-    unsafe fn push_back_node(&mut self, node: Unique<Node<T>>) {
+    unsafe fn push_back_node(&mut self, node: NonNull<Node<T>>) {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
         unsafe {
             (*node.as_ptr()).next = None;
             (*node.as_ptr()).prev = self.tail;
-            let node = Some(NonNull::from(node));
+            let node = Some(node);
 
             match self.tail {
                 None => self.head = node,
@@ -842,8 +844,8 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_front(&mut self, elt: T) {
         let node = Box::new_in(Node::new(elt), &self.alloc);
-        let node_ptr = Unique::from(Box::leak(node));
-        // SAFETY: node_ptr is a unique pointer to a node we boxed with self.alloc
+        let node_ptr = NonNull::from(Box::leak(node));
+        // SAFETY: node_ptr is a unique pointer to a node we boxed with self.alloc and leaked
         unsafe {
             self.push_front_node(node_ptr);
         }
@@ -890,8 +892,8 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_back(&mut self, elt: T) {
         let node = Box::new_in(Node::new(elt), &self.alloc);
-        let node_ptr = Unique::from(Box::leak(node));
-        // SAFETY: node_ptr is a unique pointer to a node we boxed with self.alloc
+        let node_ptr = NonNull::from(Box::leak(node));
+        // SAFETY: node_ptr is a unique pointer to a node we boxed with self.alloc and leaked
         unsafe {
             self.push_back_node(node_ptr);
         }
