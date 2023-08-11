@@ -712,6 +712,7 @@ impl<'a> io::Write for &'a UnixStream {
         self.0.is_write_vectored()
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
