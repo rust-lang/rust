@@ -1681,7 +1681,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || found_assoc(tcx.types.u64)
             || found_assoc(tcx.types.u128)
             || found_assoc(tcx.types.f32)
-            || found_assoc(tcx.types.f32);
+            || found_assoc(tcx.types.f64);
         if found_candidate
             && actual.is_numeric()
             && !actual.has_concrete_skeleton()
