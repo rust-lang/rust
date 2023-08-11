@@ -1,4 +1,4 @@
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 trait ConstDefaultFn: Sized {
@@ -22,7 +22,7 @@ impl const ConstDefaultFn for ConstImpl {
 
 const fn test() {
     NonConstImpl.a();
-    //~^ ERROR cannot call
+    //~^ ERROR the trait bound
     ConstImpl.a();
 }
 

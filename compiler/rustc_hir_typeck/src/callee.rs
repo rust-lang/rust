@@ -767,9 +767,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        if !tcx.features().effects || tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
-            return;
-        }
+        // fast-reject if callee doesn't have the host effect param (non-const)
+        let generics = tcx.generics_of(callee_did);
+        let Some(host_effect_index) = generics.host_effect_index else { return };
+
+        // if the callee does have the param, we need to equate the param to some const
+        // value no matter whether the effects feature is enabled in the local crate,
+        // because inference will fail if we don't.
+        let mut host_always_on =
+            !tcx.features().effects || tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
 
         // Compute the constness required by the context.
         let context = tcx.hir().enclosing_body_owner(call_expr_hir);
@@ -780,10 +786,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if tcx.has_attr(context.to_def_id(), sym::rustc_do_not_const_check) {
             trace!("do not const check this context");
-            return;
+            host_always_on = true;
         }
 
         let effect = match const_context {
+            _ if host_always_on => tcx.consts.true_,
             Some(hir::ConstContext::Static(_) | hir::ConstContext::Const) => tcx.consts.false_,
             Some(hir::ConstContext::ConstFn) => {
                 let args = ty::GenericArgs::identity_for_item(tcx, context);
@@ -792,21 +799,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => tcx.consts.true_,
         };
 
-        let generics = tcx.generics_of(callee_did);
-
         trace!(?effect, ?generics, ?callee_args);
 
-        if let Some(idx) = generics.host_effect_index {
-            let param = callee_args.const_at(idx);
-            let cause = self.misc(span);
-            match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::No, effect, param) {
-                Ok(infer::InferOk { obligations, value: () }) => {
-                    self.register_predicates(obligations);
-                }
-                Err(e) => {
-                    // FIXME(effects): better diagnostic
-                    self.err_ctxt().report_mismatched_consts(&cause, effect, param, e).emit();
-                }
+        let param = callee_args.const_at(host_effect_index);
+        let cause = self.misc(span);
+        match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::No, effect, param) {
+            Ok(infer::InferOk { obligations, value: () }) => {
+                self.register_predicates(obligations);
+            }
+            Err(e) => {
+                // FIXME(effects): better diagnostic
+                self.err_ctxt().report_mismatched_consts(&cause, effect, param, e).emit();
             }
         }
     }

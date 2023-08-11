@@ -1,5 +1,5 @@
 // check-pass
-#![feature(const_trait_impl, rustc_attrs)]
+#![feature(const_trait_impl, rustc_attrs, effects)]
 
 #[const_trait]
 trait Foo {

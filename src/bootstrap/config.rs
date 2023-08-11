@@ -130,7 +130,7 @@ pub struct Config {
     pub sanitizers: bool,
     pub profiler: bool,
     pub omit_git_hash: bool,
-    pub exclude: Vec<PathBuf>,
+    pub skip: Vec<PathBuf>,
     pub include_default_paths: bool,
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
@@ -1112,7 +1112,7 @@ impl Config {
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
-        config.exclude = flags.exclude;
+        config.skip = flags.skip.into_iter().chain(flags.exclude).collect();
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
         config.json_output = flags.json_output;

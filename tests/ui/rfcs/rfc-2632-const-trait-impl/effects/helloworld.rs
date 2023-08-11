@@ -7,7 +7,7 @@
 
 // ensure we are passing in the correct host effect in always const contexts.
 
-pub const fn hmm</* T, */ #[rustc_host] const host: bool = true>() -> usize {
+pub const fn hmm<T, #[rustc_host] const host: bool = true>() -> usize {
     if host {
         1
     } else {
@@ -16,14 +16,12 @@ pub const fn hmm</* T, */ #[rustc_host] const host: bool = true>() -> usize {
 }
 
 const _: () = {
-    let x = hmm();
+    let x = hmm::<()>();
     assert!(0 == x);
 };
 
-/* FIXME(effects)
 pub const fn uwu(x: [u8; hmm::<()>()]) {
     let [] = x;
 }
-*/
 
 fn main() {}

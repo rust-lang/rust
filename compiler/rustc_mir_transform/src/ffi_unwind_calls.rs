@@ -30,6 +30,8 @@ fn abi_can_unwind(abi: Abi) -> bool {
         | EfiApi
         | AvrInterrupt
         | AvrNonBlockingInterrupt
+        | RiscvInterruptM
+        | RiscvInterruptS
         | CCmseNonSecureCall
         | Wasm
         | RustIntrinsic

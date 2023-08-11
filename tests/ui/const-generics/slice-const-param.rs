@@ -11,9 +11,30 @@ pub fn function_with_bytes<const BYTES: &'static [u8]>() -> &'static [u8] {
     BYTES
 }
 
+// Also check the codepaths for custom DST
+#[derive(PartialEq, Eq)]
+struct MyStr(str);
+impl std::marker::ConstParamTy for MyStr {}
+
+fn function_with_my_str<const S: &'static MyStr>() -> &'static MyStr {
+    S
+}
+
+impl MyStr {
+    const fn new(s: &'static str) -> &'static MyStr {
+        unsafe { std::mem::transmute(s) }
+    }
+
+    fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 pub fn main() {
     assert_eq!(function_with_str::<"Rust">(), "Rust");
     assert_eq!(function_with_str::<"ℇ㇈↦">(), "ℇ㇈↦");
     assert_eq!(function_with_bytes::<b"AAAA">(), &[0x41, 0x41, 0x41, 0x41]);
     assert_eq!(function_with_bytes::<{&[0x41, 0x41, 0x41, 0x41]}>(), b"AAAA");
+
+    assert_eq!(function_with_my_str::<{ MyStr::new("hello") }>().as_str(), "hello");
 }

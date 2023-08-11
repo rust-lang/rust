@@ -57,6 +57,7 @@ pub mod debug_artifacts;
 pub mod deps;
 pub mod edition;
 pub mod error_codes;
+pub mod ext_tool_checks;
 pub mod extdeps;
 pub mod features;
 pub mod fluent_alphabetical;

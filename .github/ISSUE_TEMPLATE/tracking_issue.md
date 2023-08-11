@@ -39,10 +39,13 @@ for larger features an implementation could be broken up into multiple PRs.
 - [ ] Implement the RFC (cc @rust-lang/XXX -- can anyone write up mentoring
       instructions?)
 - [ ] Adjust documentation ([see instructions on rustc-dev-guide][doc-guide])
+- [ ] Formatting for new syntax has been added to the [Style Guide] ([nightly-style-procedure])
 - [ ] Stabilization PR ([see instructions on rustc-dev-guide][stabilization-guide])
 
 [stabilization-guide]: https://rustc-dev-guide.rust-lang.org/stabilization_guide.html#stabilization-pr
 [doc-guide]: https://rustc-dev-guide.rust-lang.org/stabilization_guide.html#documentation-prs
+[nightly-style-procedure]: https://github.com/rust-lang/style-team/blob/master/nightly-style-procedure.md 
+[Style Guide]: https://github.com/rust-lang/rust/tree/master/src/doc/style-guide
 
 ### Unresolved Questions
 <!--

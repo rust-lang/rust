@@ -83,6 +83,7 @@ mod openbsd_base;
 mod redox_base;
 mod solaris_base;
 mod solid_base;
+mod teeos_base;
 mod thumb_base;
 mod uefi_msvc_base;
 mod unikraft_linux_musl_base;
@@ -1494,6 +1495,8 @@ supported_targets! {
 
     ("x86_64-unknown-none", x86_64_unknown_none),
 
+    ("aarch64-unknown-teeos", aarch64_unknown_teeos),
+
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 
     ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx_710),
@@ -2267,6 +2270,7 @@ impl Target {
             PtxKernel => self.arch == "nvptx64",
             Msp430Interrupt => self.arch == "msp430",
             AmdGpuKernel => self.arch == "amdgcn",
+            RiscvInterruptM | RiscvInterruptS => ["riscv32", "riscv64"].contains(&&self.arch[..]),
             AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr",
             Wasm => ["wasm32", "wasm64"].contains(&&self.arch[..]),
             Thiscall { .. } => self.arch == "x86",
@@ -2698,7 +2702,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
                     match lookup_abi(s) {
-                        Some(abi) => base.$key_name = Some(abi),
+                        Ok(abi) => base.$key_name = Some(abi),
                         _ => return Some(Err(format!("'{}' is not a valid value for abi", s))),
                     }
                     Some(Ok(()))

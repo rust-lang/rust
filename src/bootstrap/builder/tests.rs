@@ -119,7 +119,7 @@ fn test_intersection() {
 #[test]
 fn test_exclude() {
     let mut config = configure("test", &["A"], &["A"]);
-    config.exclude = vec!["src/tools/tidy".into()];
+    config.skip = vec!["src/tools/tidy".into()];
     let cache = run_build(&[], config);
 
     // Ensure we have really excluded tidy
@@ -137,7 +137,7 @@ fn test_exclude_kind() {
     // Ensure our test is valid, and `test::Rustc` would be run without the exclude.
     assert!(run_build(&[], config.clone()).contains::<test::CrateLibrustc>());
     // Ensure tests for rustc are skipped.
-    config.exclude = vec![path.clone()];
+    config.skip = vec![path.clone()];
     assert!(!run_build(&[], config.clone()).contains::<test::CrateLibrustc>());
     // Ensure builds for rustc are not skipped.
     assert!(run_build(&[], config).contains::<compile::Rustc>());
@@ -587,6 +587,7 @@ mod dist {
             run: None,
             only_modified: false,
             skip: vec![],
+            extra_checks: None,
         };
 
         let build = Build::new(config);
@@ -658,6 +659,7 @@ mod dist {
             pass: None,
             run: None,
             only_modified: false,
+            extra_checks: None,
         };
         // Make sure rustfmt binary not being found isn't an error.
         config.channel = "beta".to_string();

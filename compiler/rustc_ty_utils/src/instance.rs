@@ -1,4 +1,5 @@
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
@@ -15,54 +16,48 @@ fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, (DefId, GenericArgsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
-    let (param_env, (def, args)) = key.into_parts();
+    let (param_env, (def_id, args)) = key.into_parts();
 
-    let result = if let Some(trait_def_id) = tcx.trait_of_item(def) {
+    let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
         resolve_associated_item(
             tcx,
-            def,
+            def_id,
             param_env,
             trait_def_id,
             tcx.normalize_erasing_regions(param_env, args),
         )
     } else {
-        let ty = tcx.type_of(def);
-        let item_type = tcx.subst_and_normalize_erasing_regions(args, param_env, ty);
+        let def = if matches!(tcx.def_kind(def_id), DefKind::Fn) && tcx.is_intrinsic(def_id) {
+            debug!(" => intrinsic");
+            ty::InstanceDef::Intrinsic(def_id)
+        } else if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
+            let ty = args.type_at(0);
 
-        let def = match *item_type.kind() {
-            ty::FnDef(def_id, ..) if tcx.is_intrinsic(def_id) => {
-                debug!(" => intrinsic");
-                ty::InstanceDef::Intrinsic(def)
-            }
-            ty::FnDef(def_id, args) if Some(def_id) == tcx.lang_items().drop_in_place_fn() => {
-                let ty = args.type_at(0);
-
-                if ty.needs_drop(tcx, param_env) {
-                    debug!(" => nontrivial drop glue");
-                    match *ty.kind() {
-                        ty::Closure(..)
-                        | ty::Generator(..)
-                        | ty::Tuple(..)
-                        | ty::Adt(..)
-                        | ty::Dynamic(..)
-                        | ty::Array(..)
-                        | ty::Slice(..) => {}
-                        // Drop shims can only be built from ADTs.
-                        _ => return Ok(None),
-                    }
-
-                    ty::InstanceDef::DropGlue(def_id, Some(ty))
-                } else {
-                    debug!(" => trivial drop glue");
-                    ty::InstanceDef::DropGlue(def_id, None)
+            if ty.needs_drop(tcx, param_env) {
+                debug!(" => nontrivial drop glue");
+                match *ty.kind() {
+                    ty::Closure(..)
+                    | ty::Generator(..)
+                    | ty::Tuple(..)
+                    | ty::Adt(..)
+                    | ty::Dynamic(..)
+                    | ty::Array(..)
+                    | ty::Slice(..) => {}
+                    // Drop shims can only be built from ADTs.
+                    _ => return Ok(None),
                 }
+
+                ty::InstanceDef::DropGlue(def_id, Some(ty))
+            } else {
+                debug!(" => trivial drop glue");
+                ty::InstanceDef::DropGlue(def_id, None)
             }
-            _ => {
-                debug!(" => free item");
-                ty::InstanceDef::Item(def)
-            }
+        } else {
+            debug!(" => free item");
+            ty::InstanceDef::Item(def_id)
         };
+
         Ok(Some(Instance { def, args }))
     };
     debug!("inner_resolve_instance: result={:?}", result);

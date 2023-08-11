@@ -9,6 +9,7 @@ use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
+    RiscvInterruptKind,
 };
 use rustc_target::abi::*;
 use rustc_target::spec::abi::Abi as SpecAbi;
@@ -193,6 +194,8 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
         AmdGpuKernel => Conv::AmdGpuKernel,
         AvrInterrupt => Conv::AvrInterrupt,
         AvrNonBlockingInterrupt => Conv::AvrNonBlockingInterrupt,
+        RiscvInterruptM => Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine },
+        RiscvInterruptS => Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor },
         Wasm => Conv::C,
 
         // These API constants ought to be more specific...

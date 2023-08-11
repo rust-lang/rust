@@ -317,19 +317,17 @@ impl StepDescription {
     }
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
-        if builder.config.exclude.iter().any(|e| pathset.has(&e, builder.kind)) {
+        if builder.config.skip.iter().any(|e| pathset.has(&e, builder.kind)) {
             if !matches!(builder.config.dry_run, DryRun::SelfCheck) {
                 println!("Skipping {pathset:?} because it is excluded");
             }
             return true;
         }
 
-        if !builder.config.exclude.is_empty()
-            && !matches!(builder.config.dry_run, DryRun::SelfCheck)
-        {
+        if !builder.config.skip.is_empty() && !matches!(builder.config.dry_run, DryRun::SelfCheck) {
             builder.verbose(&format!(
                 "{:?} not skipped for {:?} -- not in {:?}",
-                pathset, self.name, builder.config.exclude
+                pathset, self.name, builder.config.skip
             ));
         }
         false
@@ -2129,7 +2127,7 @@ impl<'a> Builder<'a> {
         let desc = StepDescription::from::<S>(kind);
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
-        // Avoid running steps contained in --exclude
+        // Avoid running steps contained in --skip
         for pathset in &should_run.paths {
             if desc.is_excluded(self, pathset) {
                 return None;

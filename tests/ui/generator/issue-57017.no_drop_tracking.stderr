@@ -14,6 +14,7 @@ LL | |     );
    | |_____- in this macro invocation
    |
    = help: the trait `Sync` is not implemented for `copy::unsync::Client`
+   = note: consider using `std::sync::Arc<copy::unsync::Client>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-57017.rs:30:28
    |
@@ -55,6 +56,7 @@ LL | |     );
    | |_____- in this macro invocation
    |
    = help: within `[generator@$DIR/issue-57017.rs:41:21: 41:28]`, the trait `Send` is not implemented for `copy::unsend::Client`
+   = note: consider using `std::sync::Arc<copy::unsend::Client>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-57017.rs:42:28
    |
@@ -96,6 +98,7 @@ LL | |     );
    | |_____- in this macro invocation
    |
    = help: the trait `Sync` is not implemented for `derived_drop::unsync::Client`
+   = note: consider using `std::sync::Arc<derived_drop::unsync::Client>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-57017.rs:30:28
    |
@@ -137,6 +140,7 @@ LL | |     );
    | |_____- in this macro invocation
    |
    = help: within `[generator@$DIR/issue-57017.rs:41:21: 41:28]`, the trait `Send` is not implemented for `derived_drop::unsend::Client`
+   = note: consider using `std::sync::Arc<derived_drop::unsend::Client>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-57017.rs:42:28
    |
@@ -178,6 +182,7 @@ LL | |     );
    | |_____- in this macro invocation
    |
    = help: the trait `Sync` is not implemented for `significant_drop::unsync::Client`
+   = note: consider using `std::sync::Arc<significant_drop::unsync::Client>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-57017.rs:30:28
    |
@@ -219,6 +224,7 @@ LL | |     );
    | |_____- in this macro invocation
    |
    = help: within `[generator@$DIR/issue-57017.rs:41:21: 41:28]`, the trait `Send` is not implemented for `significant_drop::unsend::Client`
+   = note: consider using `std::sync::Arc<significant_drop::unsend::Client>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-57017.rs:42:28
    |

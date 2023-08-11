@@ -38,6 +38,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             path,
                             ParamMode::Optional,
                             &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            None,
                         );
                         let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple struct");
                         break hir::PatKind::TupleStruct(qpath, pats, ddpos);
@@ -54,6 +55,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             path,
                             ParamMode::Optional,
                             &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            None,
                         );
                         break hir::PatKind::Path(qpath);
                     }
@@ -64,6 +66,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             path,
                             ParamMode::Optional,
                             &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            None,
                         );
 
                         let fs = self.arena.alloc_from_iter(fields.iter().map(|f| {

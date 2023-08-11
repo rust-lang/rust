@@ -10,9 +10,6 @@ use core::ffi::NonZero_c_int;
 #[cfg(target_os = "linux")]
 use crate::os::linux::process::PidFd;
 
-#[cfg(target_os = "linux")]
-use crate::sys::weak::raw_syscall;
-
 #[cfg(any(
     target_os = "macos",
     target_os = "watchos",
@@ -91,6 +88,11 @@ impl Command {
         if let Some(ret) = self.posix_spawn(&theirs, envp.as_ref())? {
             return Ok((ret, ours));
         }
+
+        #[cfg(target_os = "linux")]
+        let (input, output) = sys::net::Socket::new_pair(libc::AF_UNIX, libc::SOCK_SEQPACKET)?;
+
+        #[cfg(not(target_os = "linux"))]
         let (input, output) = sys::pipe::anon_pipe()?;
 
         // Whatever happens after the fork is almost for sure going to touch or
@@ -104,12 +106,16 @@ impl Command {
         // The child calls `mem::forget` to leak the lock, which is crucial because
         // releasing a lock is not async-signal-safe.
         let env_lock = sys::os::env_read_lock();
-        let (pid, pidfd) = unsafe { self.do_fork()? };
+        let pid = unsafe { self.do_fork()? };
 
         if pid == 0 {
             crate::panic::always_abort();
             mem::forget(env_lock); // avoid non-async-signal-safe unlocking
             drop(input);
+            #[cfg(target_os = "linux")]
+            if self.get_create_pidfd() {
+                self.send_pidfd(&output);
+            }
             let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
             let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
             let errno = errno.to_be_bytes();
@@ -132,6 +138,12 @@ impl Command {
 
         drop(env_lock);
         drop(output);
+
+        #[cfg(target_os = "linux")]
+        let pidfd = if self.get_create_pidfd() { self.recv_pidfd(&input) } else { -1 };
+
+        #[cfg(not(target_os = "linux"))]
+        let pidfd = -1;
 
         // Safety: We obtained the pidfd from calling `clone3` with
         // `CLONE_PIDFD` so it's valid an otherwise unowned.
@@ -160,6 +172,7 @@ impl Command {
                 }
                 Ok(..) => {
                     // pipe I/O up to PIPE_BUF bytes should be atomic
+                    // similarly SOCK_SEQPACKET messages should arrive whole
                     assert!(p.wait().is_ok(), "wait() should either return Ok or panic");
                     panic!("short read on the CLOEXEC pipe")
                 }
@@ -185,20 +198,19 @@ impl Command {
     );
 
     #[cfg(any(target_os = "tvos", target_os = "watchos"))]
-    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
+    unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         return Err(Self::ERR_APPLE_TV_WATCH_NO_FORK_EXEC);
     }
 
     // Attempts to fork the process. If successful, returns Ok((0, -1))
     // in the child, and Ok((child_pid, -1)) in the parent.
     #[cfg(not(any(
-        target_os = "linux",
         target_os = "watchos",
         target_os = "tvos",
         all(target_os = "nto", target_env = "nto71"),
     )))]
-    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
-        cvt(libc::fork()).map(|res| (res, -1))
+    unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
+        cvt(libc::fork())
     }
 
     // On QNX Neutrino, fork can fail with EBADF in case "another thread might have opened
@@ -206,7 +218,7 @@ impl Command {
     // Documentation says "... or try calling fork() again". This is what we do here.
     // See also https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
     #[cfg(all(target_os = "nto", target_env = "nto71"))]
-    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
+    unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         use crate::sys::os::errno;
 
         let mut delay = MIN_FORKSPAWN_SLEEP;
@@ -229,89 +241,9 @@ impl Command {
                 delay *= 2;
                 continue;
             } else {
-                return cvt(r).map(|res| (res, -1));
+                return cvt(r);
             }
         }
-    }
-
-    // Attempts to fork the process. If successful, returns Ok((0, -1))
-    // in the child, and Ok((child_pid, child_pidfd)) in the parent.
-    #[cfg(target_os = "linux")]
-    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
-        use crate::sync::atomic::{AtomicBool, Ordering};
-
-        static HAS_CLONE3: AtomicBool = AtomicBool::new(true);
-        const CLONE_PIDFD: u64 = 0x00001000;
-
-        #[repr(C)]
-        struct clone_args {
-            flags: u64,
-            pidfd: u64,
-            child_tid: u64,
-            parent_tid: u64,
-            exit_signal: u64,
-            stack: u64,
-            stack_size: u64,
-            tls: u64,
-            set_tid: u64,
-            set_tid_size: u64,
-            cgroup: u64,
-        }
-
-        raw_syscall! {
-            fn clone3(cl_args: *mut clone_args, len: libc::size_t) -> libc::c_long
-        }
-
-        // Bypassing libc for `clone3` can make further libc calls unsafe,
-        // so we use it sparingly for now. See #89522 for details.
-        // Some tools (e.g. sandboxing tools) may also expect `fork`
-        // rather than `clone3`.
-        let want_clone3_pidfd = self.get_create_pidfd();
-
-        // If we fail to create a pidfd for any reason, this will
-        // stay as -1, which indicates an error.
-        let mut pidfd: pid_t = -1;
-
-        // Attempt to use the `clone3` syscall, which supports more arguments
-        // (in particular, the ability to create a pidfd). If this fails,
-        // we will fall through this block to a call to `fork()`
-        if want_clone3_pidfd && HAS_CLONE3.load(Ordering::Relaxed) {
-            let mut args = clone_args {
-                flags: CLONE_PIDFD,
-                pidfd: &mut pidfd as *mut pid_t as u64,
-                child_tid: 0,
-                parent_tid: 0,
-                exit_signal: libc::SIGCHLD as u64,
-                stack: 0,
-                stack_size: 0,
-                tls: 0,
-                set_tid: 0,
-                set_tid_size: 0,
-                cgroup: 0,
-            };
-
-            let args_ptr = &mut args as *mut clone_args;
-            let args_size = crate::mem::size_of::<clone_args>();
-
-            let res = cvt(clone3(args_ptr, args_size));
-            match res {
-                Ok(n) => return Ok((n as pid_t, pidfd)),
-                Err(e) => match e.raw_os_error() {
-                    // Multiple threads can race to execute this store,
-                    // but that's fine - that just means that multiple threads
-                    // will have tried and failed to execute the same syscall,
-                    // with no other side effects.
-                    Some(libc::ENOSYS) => HAS_CLONE3.store(false, Ordering::Relaxed),
-                    // Fallback to fork if `EPERM` is returned. (e.g. blocked by seccomp)
-                    Some(libc::EPERM) => {}
-                    _ => return Err(e),
-                },
-            }
-        }
-
-        // Generally, we just call `fork`. If we get here after wanting `clone3`,
-        // then the syscall does not exist or we do not have permission to call it.
-        cvt(libc::fork()).map(|res| (res, pidfd))
     }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
@@ -722,6 +654,115 @@ impl Command {
             Ok(Some(p))
         }
     }
+
+    #[cfg(target_os = "linux")]
+    fn send_pidfd(&self, sock: &crate::sys::net::Socket) {
+        use crate::io::IoSlice;
+        use crate::os::fd::RawFd;
+        use crate::sys::cvt_r;
+        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
+
+        unsafe {
+            let child_pid = libc::getpid();
+            // pidfd_open sets CLOEXEC by default
+            let pidfd = libc::syscall(libc::SYS_pidfd_open, child_pid, 0);
+
+            let fds: [c_int; 1] = [pidfd as RawFd];
+
+            const SCM_MSG_LEN: usize = mem::size_of::<[c_int; 1]>();
+
+            #[repr(C)]
+            union Cmsg {
+                buf: [u8; unsafe { CMSG_SPACE(SCM_MSG_LEN as u32) as usize }],
+                _align: libc::cmsghdr,
+            }
+
+            let mut cmsg: Cmsg = mem::zeroed();
+
+            // 0-length message to send through the socket so we can pass along the fd
+            let mut iov = [IoSlice::new(b"")];
+            let mut msg: libc::msghdr = mem::zeroed();
+
+            msg.msg_iov = &mut iov as *mut _ as *mut _;
+            msg.msg_iovlen = 1;
+            msg.msg_controllen = mem::size_of_val(&cmsg.buf) as _;
+            msg.msg_control = &mut cmsg.buf as *mut _ as *mut _;
+
+            // only attach cmsg if we successfully acquired the pidfd
+            if pidfd >= 0 {
+                let hdr = CMSG_FIRSTHDR(&mut msg as *mut _ as *mut _);
+                (*hdr).cmsg_level = SOL_SOCKET;
+                (*hdr).cmsg_type = SCM_RIGHTS;
+                (*hdr).cmsg_len = CMSG_LEN(SCM_MSG_LEN as _) as _;
+                let data = CMSG_DATA(hdr);
+                crate::ptr::copy_nonoverlapping(
+                    fds.as_ptr().cast::<u8>(),
+                    data as *mut _,
+                    SCM_MSG_LEN,
+                );
+            }
+
+            // we send the 0-length message even if we failed to acquire the pidfd
+            // so we get a consistent SEQPACKET order
+            match cvt_r(|| libc::sendmsg(sock.as_raw(), &msg, 0)) {
+                Ok(0) => {}
+                _ => rtabort!("failed to communicate with parent process"),
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn recv_pidfd(&self, sock: &crate::sys::net::Socket) -> pid_t {
+        use crate::io::IoSliceMut;
+        use crate::sys::cvt_r;
+
+        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
+
+        unsafe {
+            const SCM_MSG_LEN: usize = mem::size_of::<[c_int; 1]>();
+
+            #[repr(C)]
+            union Cmsg {
+                _buf: [u8; unsafe { CMSG_SPACE(SCM_MSG_LEN as u32) as usize }],
+                _align: libc::cmsghdr,
+            }
+            let mut cmsg: Cmsg = mem::zeroed();
+            // 0-length read to get the fd
+            let mut iov = [IoSliceMut::new(&mut [])];
+
+            let mut msg: libc::msghdr = mem::zeroed();
+
+            msg.msg_iov = &mut iov as *mut _ as *mut _;
+            msg.msg_iovlen = 1;
+            msg.msg_controllen = mem::size_of::<Cmsg>() as _;
+            msg.msg_control = &mut cmsg as *mut _ as *mut _;
+
+            match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, 0)) {
+                Err(_) => return -1,
+                Ok(_) => {}
+            }
+
+            let hdr = CMSG_FIRSTHDR(&mut msg as *mut _ as *mut _);
+            if hdr.is_null()
+                || (*hdr).cmsg_level != SOL_SOCKET
+                || (*hdr).cmsg_type != SCM_RIGHTS
+                || (*hdr).cmsg_len != CMSG_LEN(SCM_MSG_LEN as _) as _
+            {
+                return -1;
+            }
+            let data = CMSG_DATA(hdr);
+
+            let mut fds = [-1 as c_int];
+
+            crate::ptr::copy_nonoverlapping(
+                data as *const _,
+                fds.as_mut_ptr().cast::<u8>(),
+                SCM_MSG_LEN,
+            );
+
+            fds[0]
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,7 +841,7 @@ impl Process {
 //
 // This is not actually an "exit status" in Unix terminology.  Rather, it is a "wait status".
 // See the discussion in comments and doc comments for `std::process::ExitStatus`.
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Default)]
 pub struct ExitStatus(c_int);
 
 impl fmt::Debug for ExitStatus {

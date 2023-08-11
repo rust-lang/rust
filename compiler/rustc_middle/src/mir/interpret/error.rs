@@ -184,8 +184,6 @@ pub enum InvalidProgramInfo<'tcx> {
     /// (which unfortunately typeck does not reject).
     /// Not using `FnAbiError` as that contains a nested `LayoutError`.
     FnAbiAdjustForForeignAbi(call::AdjustForForeignAbiError),
-    /// SizeOf of unsized type was requested.
-    SizeOfUnsizedType(Ty<'tcx>),
     /// We are runnning into a nonsense situation due to ConstProp violating our invariants.
     ConstPropNonsense,
 }

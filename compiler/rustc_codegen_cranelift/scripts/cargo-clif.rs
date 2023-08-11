@@ -3,6 +3,8 @@ use std::env;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 
+include!("../build_system/shared_utils.rs");
+
 fn main() {
     let current_exe = env::current_exe().unwrap();
     let mut sysroot = current_exe.parent().unwrap();
@@ -10,27 +12,19 @@ fn main() {
         sysroot = sysroot.parent().unwrap();
     }
 
-    let mut rustflags = String::new();
-    rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests -Zcodegen-backend=");
+    let mut rustflags = vec!["-Cpanic=abort".to_owned(), "-Zpanic-abort-tests".to_owned()];
     if let Some(name) = option_env!("BUILTIN_BACKEND") {
-        rustflags.push_str(name);
+        rustflags.push(format!("-Zcodegen-backend={name}"));
     } else {
-        rustflags.push_str(
-            sysroot
-                .join(if cfg!(windows) { "bin" } else { "lib" })
-                .join(
-                    env::consts::DLL_PREFIX.to_string()
-                        + "rustc_codegen_cranelift"
-                        + env::consts::DLL_SUFFIX,
-                )
-                .to_str()
-                .unwrap(),
+        let dylib = sysroot.join(if cfg!(windows) { "bin" } else { "lib" }).join(
+            env::consts::DLL_PREFIX.to_string()
+                + "rustc_codegen_cranelift"
+                + env::consts::DLL_SUFFIX,
         );
+        rustflags.push(format!("-Zcodegen-backend={}", dylib.to_str().unwrap()));
     }
-    rustflags.push_str(" --sysroot ");
-    rustflags.push_str(sysroot.to_str().unwrap());
-    env::set_var("RUSTFLAGS", env::var("RUSTFLAGS").unwrap_or(String::new()) + &rustflags);
-    env::set_var("RUSTDOCFLAGS", env::var("RUSTDOCFLAGS").unwrap_or(String::new()) + &rustflags);
+    rustflags.push("--sysroot".to_owned());
+    rustflags.push(sysroot.to_str().unwrap().to_owned());
 
     let cargo = if let Some(cargo) = option_env!("CARGO") {
         cargo
@@ -49,10 +43,7 @@ fn main() {
 
     let args: Vec<_> = match args.get(0).map(|arg| &**arg) {
         Some("jit") => {
-            env::set_var(
-                "RUSTFLAGS",
-                env::var("RUSTFLAGS").unwrap_or(String::new()) + " -Cprefer-dynamic",
-            );
+            rustflags.push("-Cprefer-dynamic".to_owned());
             args.remove(0);
             IntoIterator::into_iter(["rustc".to_string()])
                 .chain(args)
@@ -64,10 +55,7 @@ fn main() {
                 .collect()
         }
         Some("lazy-jit") => {
-            env::set_var(
-                "RUSTFLAGS",
-                env::var("RUSTFLAGS").unwrap_or(String::new()) + " -Cprefer-dynamic",
-            );
+            rustflags.push("-Cprefer-dynamic".to_owned());
             args.remove(0);
             IntoIterator::into_iter(["rustc".to_string()])
                 .chain(args)
@@ -81,11 +69,28 @@ fn main() {
         _ => args,
     };
 
+    let mut cmd = Command::new(cargo);
+    cmd.args(args);
+    rustflags_to_cmd_env(
+        &mut cmd,
+        "RUSTFLAGS",
+        &rustflags_from_env("RUSTFLAGS")
+            .into_iter()
+            .chain(rustflags.iter().map(|flag| flag.clone()))
+            .collect::<Vec<_>>(),
+    );
+    rustflags_to_cmd_env(
+        &mut cmd,
+        "RUSTDOCFLAGS",
+        &rustflags_from_env("RUSTDOCFLAGS")
+            .into_iter()
+            .chain(rustflags.iter().map(|flag| flag.clone()))
+            .collect::<Vec<_>>(),
+    );
+
     #[cfg(unix)]
-    panic!("Failed to spawn cargo: {}", Command::new(cargo).args(args).exec());
+    panic!("Failed to spawn cargo: {}", cmd.exec());
 
     #[cfg(not(unix))]
-    std::process::exit(
-        Command::new(cargo).args(args).spawn().unwrap().wait().unwrap().code().unwrap_or(1),
-    );
+    std::process::exit(cmd.spawn().unwrap().wait().unwrap().code().unwrap_or(1));
 }

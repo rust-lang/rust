@@ -815,6 +815,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "atanf"
             | "log1pf"
             | "expm1f"
+            | "tgammaf"
             => {
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // FIXME: Using host floats.
@@ -830,6 +831,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "atanf" => f.atan(),
                     "log1pf" => f.ln_1p(),
                     "expm1f" => f.exp_m1(),
+                    "tgammaf" => f.gamma(),
                     _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
@@ -866,6 +868,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "atan"
             | "log1p"
             | "expm1"
+            | "tgamma"
             => {
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // FIXME: Using host floats.
@@ -881,6 +884,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "atan" => f.atan(),
                     "log1p" => f.ln_1p(),
                     "expm1" => f.exp_m1(),
+                    "tgamma" => f.gamma(),
                     _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
@@ -916,6 +920,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let res = x.scalbn(exp);
                 this.write_scalar(Scalar::from_f64(res), dest)?;
+            }
+            "lgammaf_r" => {
+                let [x, signp] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // FIXME: Using host floats.
+                let x = f32::from_bits(this.read_scalar(x)?.to_u32()?);
+                let signp = this.deref_pointer(signp)?;
+
+                let (res, sign) = x.ln_gamma();
+                this.write_int(sign, &signp)?;
+                this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
+            }
+            "lgamma_r" => {
+                let [x, signp] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // FIXME: Using host floats.
+                let x = f64::from_bits(this.read_scalar(x)?.to_u64()?);
+                let signp = this.deref_pointer(signp)?;
+
+                let (res, sign) = x.ln_gamma();
+                this.write_int(sign, &signp)?;
+                this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
             }
 
             // Architecture-specific shims

@@ -320,6 +320,7 @@ impl<'a> DiagnosticHandlers<'a> {
             })
             .and_then(|dir| dir.to_str().and_then(|p| CString::new(p).ok()));
 
+        let pgo_available = cgcx.opts.cg.profile_use.is_some();
         let data = Box::into_raw(Box::new((cgcx, handler)));
         unsafe {
             let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
@@ -333,6 +334,7 @@ impl<'a> DiagnosticHandlers<'a> {
                 // The `as_ref()` is important here, otherwise the `CString` will be dropped
                 // too soon!
                 remark_file.as_ref().map(|dir| dir.as_ptr()).unwrap_or(std::ptr::null()),
+                pgo_available,
             );
             DiagnosticHandlers { data, llcx, old_handler }
         }
@@ -470,6 +472,8 @@ pub(crate) unsafe fn llvm_optimize(
         Some(llvm::SanitizerOptions {
             sanitize_address: config.sanitizer.contains(SanitizerSet::ADDRESS),
             sanitize_address_recover: config.sanitizer_recover.contains(SanitizerSet::ADDRESS),
+            sanitize_cfi: config.sanitizer.contains(SanitizerSet::CFI),
+            sanitize_kcfi: config.sanitizer.contains(SanitizerSet::KCFI),
             sanitize_memory: config.sanitizer.contains(SanitizerSet::MEMORY),
             sanitize_memory_recover: config.sanitizer_recover.contains(SanitizerSet::MEMORY),
             sanitize_memory_track_origins: config.sanitizer_memory_track_origins as c_int,
@@ -505,6 +509,7 @@ pub(crate) unsafe fn llvm_optimize(
         &*module.module_llvm.tm,
         to_pass_builder_opt_level(opt_level),
         opt_stage,
+        cgcx.opts.cg.linker_plugin_lto.enabled(),
         config.no_prepopulate_passes,
         config.verify_llvm_ir,
         using_thin_buffers,

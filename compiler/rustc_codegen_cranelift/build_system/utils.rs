@@ -5,15 +5,16 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use super::path::{Dirs, RelPath};
+use crate::path::{Dirs, RelPath};
+use crate::shared_utils::rustflags_to_cmd_env;
 
 #[derive(Clone, Debug)]
 pub(crate) struct Compiler {
     pub(crate) cargo: PathBuf,
     pub(crate) rustc: PathBuf,
     pub(crate) rustdoc: PathBuf,
-    pub(crate) rustflags: String,
-    pub(crate) rustdocflags: String,
+    pub(crate) rustflags: Vec<String>,
+    pub(crate) rustdocflags: Vec<String>,
     pub(crate) triple: String,
     pub(crate) runner: Vec<String>,
 }
@@ -23,8 +24,8 @@ impl Compiler {
         match self.triple.as_str() {
             "aarch64-unknown-linux-gnu" => {
                 // We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
-                self.rustflags += " -Clinker=aarch64-linux-gnu-gcc";
-                self.rustdocflags += " -Clinker=aarch64-linux-gnu-gcc";
+                self.rustflags.push("-Clinker=aarch64-linux-gnu-gcc".to_owned());
+                self.rustdocflags.push("-Clinker=aarch64-linux-gnu-gcc".to_owned());
                 self.runner = vec![
                     "qemu-aarch64".to_owned(),
                     "-L".to_owned(),
@@ -33,8 +34,8 @@ impl Compiler {
             }
             "s390x-unknown-linux-gnu" => {
                 // We are cross-compiling for s390x. Use the correct linker and run tests in qemu.
-                self.rustflags += " -Clinker=s390x-linux-gnu-gcc";
-                self.rustdocflags += " -Clinker=s390x-linux-gnu-gcc";
+                self.rustflags.push("-Clinker=s390x-linux-gnu-gcc".to_owned());
+                self.rustdocflags.push("-Clinker=s390x-linux-gnu-gcc".to_owned());
                 self.runner = vec![
                     "qemu-s390x".to_owned(),
                     "-L".to_owned(),
@@ -100,8 +101,8 @@ impl CargoProject {
 
         cmd.env("RUSTC", &compiler.rustc);
         cmd.env("RUSTDOC", &compiler.rustdoc);
-        cmd.env("RUSTFLAGS", &compiler.rustflags);
-        cmd.env("RUSTDOCFLAGS", &compiler.rustdocflags);
+        rustflags_to_cmd_env(&mut cmd, "RUSTFLAGS", &compiler.rustflags);
+        rustflags_to_cmd_env(&mut cmd, "RUSTDOCFLAGS", &compiler.rustdocflags);
         if !compiler.runner.is_empty() {
             cmd.env(
                 format!("CARGO_TARGET_{}_RUNNER", compiler.triple.to_uppercase().replace('-', "_")),

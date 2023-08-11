@@ -9,6 +9,7 @@ LL | |     })
    | |_____^ future created by async block is not `Send`
    |
    = help: within `[async block@$DIR/issue-65436-raw-ptr-not-send.rs:17:17: 20:6]`, the trait `Send` is not implemented for `*const u8`
+   = note: consider using `std::sync::Arc<*const u8>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-65436-raw-ptr-not-send.rs:19:36
    |

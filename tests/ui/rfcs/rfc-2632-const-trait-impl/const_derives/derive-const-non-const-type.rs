@@ -1,5 +1,5 @@
 // known-bug: #110395
-#![feature(derive_const)]
+#![feature(derive_const, effects)]
 
 pub struct A;
 

@@ -142,6 +142,8 @@ struct LoweringContext<'a, 'hir> {
     /// defined on the TAIT, so we have type Foo<'a1> = ... and we establish a mapping in this
     /// field from the original parameter 'a to the new parameter 'a1.
     generics_def_id_map: Vec<FxHashMap<LocalDefId, LocalDefId>>,
+
+    host_param_id: Option<LocalDefId>,
 }
 
 trait ResolverAstLoweringExt {
@@ -1262,6 +1264,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         span: t.span
                     },
                     itctx,
+                    ast::Const::No,
                 );
                 let bounds = this.arena.alloc_from_iter([bound]);
                 let lifetime_bound = this.elided_dyn_bound(t.span);
@@ -1272,7 +1275,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let id = self.lower_node_id(t.id);
-        let qpath = self.lower_qpath(t.id, qself, path, param_mode, itctx);
+        let qpath = self.lower_qpath(t.id, qself, path, param_mode, itctx, None);
         self.ty_path(id, t.span, qpath)
     }
 
@@ -1356,10 +1359,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         this.arena.alloc_from_iter(bounds.iter().filter_map(|bound| match bound {
                             GenericBound::Trait(
                                 ty,
-                                TraitBoundModifier::None
+                                modifier @ (TraitBoundModifier::None
                                 | TraitBoundModifier::MaybeConst
-                                | TraitBoundModifier::Negative,
-                            ) => Some(this.lower_poly_trait_ref(ty, itctx)),
+                                | TraitBoundModifier::Negative),
+                            ) => {
+                                Some(this.lower_poly_trait_ref(ty, itctx, modifier.to_constness()))
+                            }
                             // `~const ?Bound` will cause an error during AST validation
                             // anyways, so treat it like `?Bound` as compilation proceeds.
                             GenericBound::Trait(
@@ -1663,11 +1668,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             );
             debug!("lower_async_fn_ret_ty: generic_params={:#?}", generic_params);
 
-            let lifetime_mapping = if in_trait {
-                Some(&*self.arena.alloc_slice(&synthesized_lifetime_args))
-            } else {
-                None
-            };
+            let lifetime_mapping = self.arena.alloc_slice(&synthesized_lifetime_args);
 
             let opaque_ty_item = hir::OpaqueTy {
                 generics: this.arena.alloc(hir::Generics {
@@ -1956,7 +1957,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::GenericBound<'hir> {
         match tpb {
             GenericBound::Trait(p, modifier) => hir::GenericBound::Trait(
-                self.lower_poly_trait_ref(p, itctx),
+                self.lower_poly_trait_ref(p, itctx, modifier.to_constness()),
                 self.lower_trait_bound_modifier(*modifier),
             ),
             GenericBound::Outlives(lifetime) => {
@@ -2099,8 +2100,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_trait_ref(&mut self, p: &TraitRef, itctx: &ImplTraitContext) -> hir::TraitRef<'hir> {
-        let path = match self.lower_qpath(p.ref_id, &None, &p.path, ParamMode::Explicit, itctx) {
+    fn lower_trait_ref(
+        &mut self,
+        constness: ast::Const,
+        p: &TraitRef,
+        itctx: &ImplTraitContext,
+    ) -> hir::TraitRef<'hir> {
+        let path = match self.lower_qpath(
+            p.ref_id,
+            &None,
+            &p.path,
+            ParamMode::Explicit,
+            itctx,
+            Some(constness),
+        ) {
             hir::QPath::Resolved(None, path) => path,
             qpath => panic!("lower_trait_ref: unexpected QPath `{qpath:?}`"),
         };
@@ -2112,10 +2125,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         p: &PolyTraitRef,
         itctx: &ImplTraitContext,
+        constness: ast::Const,
     ) -> hir::PolyTraitRef<'hir> {
         let bound_generic_params =
             self.lower_lifetime_binder(p.trait_ref.ref_id, &p.bound_generic_params);
-        let trait_ref = self.lower_trait_ref(&p.trait_ref, itctx);
+        let trait_ref = self.lower_trait_ref(constness, &p.trait_ref, itctx);
         hir::PolyTraitRef { bound_generic_params, trait_ref, span: self.lower_span(p.span) }
     }
 
@@ -2469,6 +2483,67 @@ struct GenericArgsCtor<'hir> {
 }
 
 impl<'hir> GenericArgsCtor<'hir> {
+    fn push_constness(&mut self, lcx: &mut LoweringContext<'_, 'hir>, constness: ast::Const) {
+        if !lcx.tcx.features().effects {
+            return;
+        }
+
+        // if bound is non-const, don't add host effect param
+        let ast::Const::Yes(span) = constness else { return };
+
+        let span = lcx.lower_span(span);
+
+        let id = lcx.next_node_id();
+        let hir_id = lcx.next_id();
+        let body = lcx.lower_body(|lcx| {
+            (
+                &[],
+                match constness {
+                    ast::Const::Yes(_) => {
+                        let hir_id = lcx.next_id();
+                        let res =
+                            Res::Def(DefKind::ConstParam, lcx.host_param_id.unwrap().to_def_id());
+                        let expr_kind = hir::ExprKind::Path(hir::QPath::Resolved(
+                            None,
+                            lcx.arena.alloc(hir::Path {
+                                span,
+                                res,
+                                segments: arena_vec![lcx; hir::PathSegment::new(Ident {
+                                    name: sym::host,
+                                    span,
+                                }, hir_id, res)],
+                            }),
+                        ));
+                        lcx.expr(span, expr_kind)
+                    }
+                    ast::Const::No => lcx.expr(
+                        span,
+                        hir::ExprKind::Lit(
+                            lcx.arena.alloc(hir::Lit { span, node: ast::LitKind::Bool(true) }),
+                        ),
+                    ),
+                },
+            )
+        });
+
+        let attr_id = lcx.tcx.sess.parse_sess.attr_id_generator.mk_attr_id();
+        let attr = lcx.arena.alloc(Attribute {
+            kind: AttrKind::Normal(P(NormalAttr::from_ident(Ident::new(sym::rustc_host, span)))),
+            span,
+            id: attr_id,
+            style: AttrStyle::Outer,
+        });
+        lcx.attrs.insert(hir_id.local_id, std::slice::from_ref(attr));
+
+        let def_id =
+            lcx.create_def(lcx.current_hir_id_owner.def_id, id, DefPathData::AnonConst, span);
+        lcx.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
+        self.args.push(hir::GenericArg::Const(hir::ConstArg {
+            value: hir::AnonConst { def_id, hir_id, body },
+            span,
+        }))
+    }
+
     fn is_empty(&self) -> bool {
         self.args.is_empty()
             && self.bindings.is_empty()

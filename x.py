@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
             This message can be suppressed by setting `RUST_IGNORE_OLD_PYTHON=1`
         """.format(major, minor))
-        warnings.warn(msg)
+        warnings.warn(msg, stacklevel=1)
 
     rust_dir = os.path.dirname(os.path.abspath(__file__))
     # For the import below, have Python search in src/bootstrap first.
