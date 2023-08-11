@@ -21,6 +21,7 @@
     clippy::enum_variant_names,
     clippy::field_reassign_with_default,
     clippy::manual_map,
+    clippy::neg_cmp_op_on_partial_ord,
     clippy::new_without_default,
     clippy::single_match,
     clippy::useless_format,
