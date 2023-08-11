@@ -379,6 +379,23 @@ fn handle_vec_semi(
     }
 }
 
+fn rewrite_empty_macro_def_body(
+    context: &RewriteContext<'_>,
+    span: Span,
+    shape: Shape,
+) -> Option<String> {
+    // Create an empty, dummy `ast::Block` representing an empty macro body
+    let block = ast::Block {
+        stmts: vec![].into(),
+        id: rustc_ast::node_id::DUMMY_NODE_ID,
+        rules: ast::BlockCheckMode::Default,
+        span: span,
+        tokens: None,
+        could_be_bare_literal: false,
+    };
+    block.rewrite(context, shape)
+}
+
 pub(crate) fn rewrite_macro_def(
     context: &RewriteContext<'_>,
     shape: Shape,
@@ -418,6 +435,13 @@ pub(crate) fn rewrite_macro_def(
     } else {
         shape
     };
+
+    if parsed_def.branches.len() == 0 {
+        let lo = context.snippet_provider.span_before(span, "{");
+        result += " ";
+        result += &rewrite_empty_macro_def_body(context, span.with_lo(lo), shape)?;
+        return Some(result);
+    }
 
     let branch_items = itemize_list(
         context.snippet_provider,
