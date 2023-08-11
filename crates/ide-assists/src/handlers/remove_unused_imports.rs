@@ -67,7 +67,7 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 // This case maps to the situation where the * token is braced.
                 // In this case, the parent use tree's path is the one we should use to resolve the glob.
                 match u.syntax().ancestors().skip(1).find_map(ast::UseTree::cast) {
-                    Some(parent_u) if parent_u.path().is_some() => parent_u.path().unwrap(),
+                    Some(parent_u) if parent_u.path().is_some() => parent_u.path()?,
                     _ => return None,
                 }
             } else {
