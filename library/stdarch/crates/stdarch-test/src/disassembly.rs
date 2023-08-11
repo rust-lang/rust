@@ -1,7 +1,7 @@
 //! Disassembly calling function for most targets.
 
 use crate::Function;
-use std::{collections::HashSet, env, process::Command, str};
+use std::{collections::HashSet, env, str};
 
 // Extracts the "shim" name from the `symbol`.
 fn normalize(mut symbol: &str) -> String {
@@ -39,10 +39,11 @@ fn normalize(mut symbol: &str) -> String {
     symbol
 }
 
+#[cfg(windows)]
 pub(crate) fn disassemble_myself() -> HashSet<Function> {
     let me = env::current_exe().expect("failed to get current exe");
 
-    let disassembly = if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {
+    let disassembly = if cfg!(target_env = "msvc") {
         let target = if cfg!(target_arch = "x86_64") {
             "x86_64-pc-windows-msvc"
         } else if cfg!(target_arch = "x86") {
@@ -65,32 +66,39 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
         assert!(output.status.success());
         // Windows does not return valid UTF-8 output:
         String::from_utf8_lossy(Vec::leak(output.stdout))
-    } else if cfg!(target_os = "windows") {
-        panic!("disassembly unimplemented")
     } else {
-        let objdump = env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
-        let add_args = if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
-            // Target features need to be enabled for LLVM objdump on Macos ARM64
-            vec!["--mattr=+v8.6a,+crypto,+tme"]
-        } else {
-            vec![]
-        };
-        let output = Command::new(objdump.clone())
-            .arg("--disassemble")
-            .arg("--no-show-raw-insn")
-            .args(add_args)
-            .arg(&me)
-            .output()
-            .unwrap_or_else(|_| panic!("failed to execute objdump. OBJDUMP={objdump}"));
-        println!(
-            "{}\n{}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        );
-        assert!(output.status.success());
-
-        String::from_utf8_lossy(Vec::leak(output.stdout))
+        panic!("disassembly unimplemented")
     };
+
+    parse(&disassembly)
+}
+
+#[cfg(not(windows))]
+pub(crate) fn disassemble_myself() -> HashSet<Function> {
+    let me = env::current_exe().expect("failed to get current exe");
+
+    let objdump = env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
+    let add_args = if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
+        // Target features need to be enabled for LLVM objdump on Macos ARM64
+        vec!["--mattr=+v8.6a,+crypto,+tme"]
+    } else {
+        vec![]
+    };
+    let output = std::process::Command::new(objdump.clone())
+        .arg("--disassemble")
+        .arg("--no-show-raw-insn")
+        .args(add_args)
+        .arg(&me)
+        .output()
+        .unwrap_or_else(|_| panic!("failed to execute objdump. OBJDUMP={objdump}"));
+    println!(
+        "{}\n{}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.status.success());
+
+    let disassembly = String::from_utf8_lossy(Vec::leak(output.stdout));
 
     parse(&disassembly)
 }
