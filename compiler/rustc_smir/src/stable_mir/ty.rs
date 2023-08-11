@@ -417,6 +417,7 @@ pub fn allocation_filter<'tcx>(
 pub enum ConstantKind {
     Allocated(Allocation),
     Unevaluated(UnevaluatedConst),
+    ParamCt(Opaque),
 }
 
 #[derive(Clone, Debug)]
