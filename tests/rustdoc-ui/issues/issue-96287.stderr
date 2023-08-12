@@ -4,6 +4,6 @@ error[E0220]: associated type `Assoc` not found for `V`
 LL | pub type Foo<V> = impl Trait<V::Assoc>;
    |                                 ^^^^^ there is a similarly named associated type `Assoc` in the trait `TraitWithAssoc`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0220`.

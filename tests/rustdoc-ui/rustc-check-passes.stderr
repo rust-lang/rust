@@ -4,6 +4,6 @@ error[E0636]: the feature `rustdoc_internals` has already been declared
 LL | #![feature(rustdoc_internals)]
    |            ^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0636`.
