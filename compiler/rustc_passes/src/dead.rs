@@ -4,6 +4,7 @@
 
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use itertools::Itertools;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -38,6 +39,7 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
                 | Node::TraitItem(..)
                 | Node::Variant(..)
                 | Node::AnonConst(..)
+                | Node::Ctor(..)
         )
     )
 }
@@ -46,17 +48,11 @@ struct MarkSymbolVisitor<'tcx> {
     worklist: Vec<LocalDefId>,
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    live_symbols: LocalDefIdSet,
+    live_symbols: FxIndexSet<LocalDefId>,
     repr_has_repr_c: bool,
     repr_has_repr_simd: bool,
     in_pat: bool,
     ignore_variant_stack: Vec<DefId>,
-    // maps from tuple struct constructors to tuple struct items
-    struct_constructors: LocalDefIdMap<LocalDefId>,
-    // maps from ADTs to ignored derived traits (e.g. Debug and Clone)
-    // and the span of their respective impl (i.e., part of the derive
-    // macro)
-    ignored_derived_traits: LocalDefIdMap<Vec<(DefId, DefId)>>,
 }
 
 impl<'tcx> MarkSymbolVisitor<'tcx> {
@@ -71,7 +67,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn check_def_id(&mut self, def_id: DefId) {
         if let Some(def_id) = def_id.as_local() {
-            if should_explore(self.tcx, def_id) || self.struct_constructors.contains_key(&def_id) {
+            if should_explore(self.tcx, def_id) {
                 self.worklist.push(def_id);
             }
             self.live_symbols.insert(def_id);
@@ -268,53 +264,16 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
-    fn mark_live_symbols(&mut self) {
-        let mut scanned = LocalDefIdSet::default();
-        while let Some(id) = self.worklist.pop() {
-            if !scanned.insert(id) {
-                continue;
-            }
-
-            // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
-            if self.tcx.is_impl_trait_in_trait(id.to_def_id()) {
-                self.live_symbols.insert(id);
-                continue;
-            }
-
-            // in the case of tuple struct constructors we want to check the item, not the generated
-            // tuple struct constructor function
-            let id = self.struct_constructors.get(&id).copied().unwrap_or(id);
-
-            if let Some(node) = self.tcx.hir().find_by_def_id(id) {
-                self.live_symbols.insert(id);
-                self.visit_node(node);
-            }
-        }
-    }
-
     /// Automatically generated items marked with `rustc_trivial_field_reads`
     /// will be ignored for the purposes of dead code analysis (see PR #85200
     /// for discussion).
     fn should_ignore_item(&mut self, def_id: DefId) -> bool {
-        if let Some(impl_of) = self.tcx.impl_of_method(def_id) {
-            if !self.tcx.is_automatically_derived(impl_of) {
-                return false;
-            }
-
-            if let Some(trait_of) = self.tcx.trait_id_of_impl(impl_of)
-                && self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads)
-            {
-                let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap().instantiate_identity();
-                if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
-                    && let Some(adt_def_id) = adt_def.did().as_local()
-                {
-                    self.ignored_derived_traits
-                        .entry(adt_def_id)
-                        .or_default()
-                        .push((trait_of, impl_of));
-                }
-                return true;
-            }
+        if let Some(impl_of) = self.tcx.impl_of_method(def_id)
+            && self.tcx.is_automatically_derived(impl_of)
+            && let Some(trait_of) = self.tcx.trait_id_of_impl(impl_of)
+            && self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads)
+        {
+            return true;
         }
 
         return false;
@@ -668,9 +627,52 @@ fn live_symbols_and_ignored_derived_traits(
     tcx: TyCtxt<'_>,
     (): (),
 ) -> (LocalDefIdSet, LocalDefIdMap<Vec<(DefId, DefId)>>) {
-    let (worklist, struct_constructors) = create_and_seed_worklist(tcx);
+    let (mut worklist, struct_constructors) = create_and_seed_worklist(tcx);
+
+    let mut live_symbols = LocalDefIdSet::default();
+    let mut ignored_derived_traits = LocalDefIdMap::<Vec<_>>::default();
+
+    let mut scanned = LocalDefIdSet::default();
+    while let Some(id) = worklist.pop() {
+        if !scanned.insert(id) {
+            continue;
+        }
+
+        // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
+        if tcx.is_impl_trait_in_trait(id.to_def_id()) {
+            live_symbols.insert(id);
+            continue;
+        }
+
+        // in the case of tuple struct constructors we want to check the item, not the generated
+        // tuple struct constructor function
+        let id = struct_constructors.get(&id).copied().unwrap_or(id);
+        live_symbols.insert(id);
+
+        if let Some(impl_of) = tcx.impl_of_method(id.to_def_id())
+            && tcx.is_automatically_derived(impl_of)
+            && let Some(trait_of) = tcx.trait_id_of_impl(impl_of)
+            && tcx.has_attr(trait_of, sym::rustc_trivial_field_reads)
+            && let trait_ref = tcx.impl_trait_ref(impl_of).unwrap().instantiate_identity()
+            && let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
+            && let Some(adt_def_id) = adt_def.did().as_local()
+        {
+            ignored_derived_traits
+                .entry(adt_def_id)
+                .or_default()
+                .push((trait_of, impl_of));
+        }
+
+        let reachable = tcx.live_symbols_from(id);
+        worklist.extend(reachable);
+    }
+
+    (live_symbols, ignored_derived_traits)
+}
+
+fn live_symbols_from(tcx: TyCtxt<'_>, root: LocalDefId) -> FxIndexSet<LocalDefId> {
     let mut symbol_visitor = MarkSymbolVisitor {
-        worklist,
+        worklist: Vec::new(),
         tcx,
         maybe_typeck_results: None,
         live_symbols: Default::default(),
@@ -678,11 +680,11 @@ fn live_symbols_and_ignored_derived_traits(
         repr_has_repr_simd: false,
         in_pat: false,
         ignore_variant_stack: vec![],
-        struct_constructors,
-        ignored_derived_traits: Default::default(),
     };
-    symbol_visitor.mark_live_symbols();
-    (symbol_visitor.live_symbols, symbol_visitor.ignored_derived_traits)
+    if let Some(node) = symbol_visitor.tcx.hir().find_by_def_id(root) {
+        symbol_visitor.visit_node(node);
+    }
+    symbol_visitor.live_symbols
 }
 
 struct DeadVariant {
@@ -979,6 +981,10 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers =
-        Providers { live_symbols_and_ignored_derived_traits, check_mod_deathness, ..*providers };
+    *providers = Providers {
+        live_symbols_from,
+        live_symbols_and_ignored_derived_traits,
+        check_mod_deathness,
+        ..*providers
+    };
 }

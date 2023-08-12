@@ -952,6 +952,13 @@ rustc_queries! {
         desc { "finding live symbols in crate" }
     }
 
+    /// Return the live symbols reachable from given item.
+    query live_symbols_from(root: LocalDefId) -> &'tcx FxIndexSet<LocalDefId> {
+        arena_cache
+        desc { |tcx| "finding live symbols in crate from `{}`", tcx.def_path_str(root) }
+        cache_on_disk_if { true }
+    }
+
     query check_mod_deathness(key: LocalDefId) -> () {
         desc { |tcx| "checking deathness of variables in {}", describe_as_module(key, tcx) }
     }
