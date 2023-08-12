@@ -17540,9 +17540,11 @@ pub unsafe fn _mm_maskz_slli_epi64<const IMM8: u32>(k: __mmask8, a: __m128i) -> 
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm512_srli_epi64<const IMM8: u32>(a: __m512i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
-    let a = a.as_i64x8();
-    let r = vpsrliq(a, IMM8);
-    transmute(r)
+    if IMM8 >= 64 {
+        _mm512_setzero_si512()
+    } else {
+        transmute(simd_shr(a.as_u64x8(), u64x8::splat(IMM8 as u64)))
+    }
 }
 
 /// Shift packed 64-bit integers in a right by imm8 while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -17558,9 +17560,12 @@ pub unsafe fn _mm512_mask_srli_epi64<const IMM8: u32>(
     a: __m512i,
 ) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
-    let a = a.as_i64x8();
-    let shf = vpsrliq(a, IMM8);
-    transmute(simd_select_bitmask(k, shf, src.as_i64x8()))
+    let shf = if IMM8 >= 64 {
+        u64x8::splat(0)
+    } else {
+        simd_shr(a.as_u64x8(), u64x8::splat(IMM8 as u64))
+    };
+    transmute(simd_select_bitmask(k, shf, src.as_u64x8()))
 }
 
 /// Shift packed 64-bit integers in a right by imm8 while shifting in zeros, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -17572,10 +17577,13 @@ pub unsafe fn _mm512_mask_srli_epi64<const IMM8: u32>(
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_maskz_srli_epi64<const IMM8: u32>(k: __mmask8, a: __m512i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
-    let a = a.as_i64x8();
-    let shf = vpsrliq(a, IMM8);
-    let zero = _mm512_setzero_si512().as_i64x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    if IMM8 >= 64 {
+        _mm512_setzero_si512()
+    } else {
+        let shf = simd_shr(a.as_u64x8(), u64x8::splat(IMM8 as u64));
+        let zero = u64x8::splat(0);
+        transmute(simd_select_bitmask(k, shf, zero))
+    }
 }
 
 /// Shift packed 64-bit integers in a right by imm8 while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -17591,9 +17599,12 @@ pub unsafe fn _mm256_mask_srli_epi64<const IMM8: u32>(
     a: __m256i,
 ) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
-    let imm8 = IMM8 as i32;
-    let r = psrliq256(a.as_i64x4(), imm8);
-    transmute(simd_select_bitmask(k, r, src.as_i64x4()))
+    let r = if IMM8 >= 64 {
+        u64x4::splat(0)
+    } else {
+        simd_shr(a.as_u64x4(), u64x4::splat(IMM8 as u64))
+    };
+    transmute(simd_select_bitmask(k, r, src.as_u64x4()))
 }
 
 /// Shift packed 64-bit integers in a right by imm8 while shifting in zeros, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -17605,10 +17616,13 @@ pub unsafe fn _mm256_mask_srli_epi64<const IMM8: u32>(
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_maskz_srli_epi64<const IMM8: u32>(k: __mmask8, a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
-    let imm8 = IMM8 as i32;
-    let r = psrliq256(a.as_i64x4(), imm8);
-    let zero = _mm256_setzero_si256().as_i64x4();
-    transmute(simd_select_bitmask(k, r, zero))
+    if IMM8 >= 64 {
+        _mm256_setzero_si256()
+    } else {
+        let r = simd_shr(a.as_u64x4(), u64x4::splat(IMM8 as u64));
+        let zero = u64x4::splat(0);
+        transmute(simd_select_bitmask(k, r, zero))
+    }
 }
 
 /// Shift packed 64-bit integers in a right by imm8 while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -17624,9 +17638,12 @@ pub unsafe fn _mm_mask_srli_epi64<const IMM8: u32>(
     a: __m128i,
 ) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
-    let imm8 = IMM8 as i32;
-    let r = psrliq128(a.as_i64x2(), imm8);
-    transmute(simd_select_bitmask(k, r, src.as_i64x2()))
+    let r = if IMM8 >= 64 {
+        u64x2::splat(0)
+    } else {
+        simd_shr(a.as_u64x2(), u64x2::splat(IMM8 as u64))
+    };
+    transmute(simd_select_bitmask(k, r, src.as_u64x2()))
 }
 
 /// Shift packed 64-bit integers in a right by imm8 while shifting in zeros, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -17638,10 +17655,13 @@ pub unsafe fn _mm_mask_srli_epi64<const IMM8: u32>(
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_maskz_srli_epi64<const IMM8: u32>(k: __mmask8, a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
-    let imm8 = IMM8 as i32;
-    let r = psrliq128(a.as_i64x2(), imm8);
-    let zero = _mm_setzero_si128().as_i64x2();
-    transmute(simd_select_bitmask(k, r, zero))
+    if IMM8 >= 64 {
+        _mm_setzero_si128()
+    } else {
+        let r = simd_shr(a.as_u64x2(), u64x2::splat(IMM8 as u64));
+        let zero = u64x2::splat(0);
+        transmute(simd_select_bitmask(k, r, zero))
+    }
 }
 
 /// Shift packed 32-bit integers in a left by count while shifting in zeros, and store the results in dst.
@@ -38508,14 +38528,6 @@ extern "C" {
     fn vpsllvq(a: i64x8, b: i64x8) -> i64x8;
     #[link_name = "llvm.x86.avx512.psrlv.q.512"]
     fn vpsrlvq(a: i64x8, b: i64x8) -> i64x8;
-
-    #[link_name = "llvm.x86.avx512.psrli.q.512"]
-    fn vpsrliq(a: i64x8, imm8: u32) -> i64x8;
-
-    #[link_name = "llvm.x86.avx2.psrli.q"]
-    fn psrliq256(a: i64x4, imm8: i32) -> i64x4;
-    #[link_name = "llvm.x86.sse2.psrli.q"]
-    fn psrliq128(a: i64x2, imm8: i32) -> i64x2;
 
     #[link_name = "llvm.x86.avx512.psll.d.512"]
     fn vpslld(a: i32x16, count: i32x4) -> i32x16;
