@@ -296,6 +296,7 @@
 #![feature(int_roundings)]
 #![feature(ip)]
 #![feature(ip_in_core)]
+#![feature(iter_advance_by)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_write_slice)]
