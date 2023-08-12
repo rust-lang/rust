@@ -323,6 +323,8 @@ impl Query {
                             hir::ModuleDef::Adt(..)
                                 | hir::ModuleDef::TypeAlias(..)
                                 | hir::ModuleDef::BuiltinType(..)
+                                | hir::ModuleDef::TraitAlias(..)
+                                | hir::ModuleDef::Trait(..)
                         )
                     {
                         continue;

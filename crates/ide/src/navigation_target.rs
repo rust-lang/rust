@@ -175,8 +175,12 @@ impl TryToNav for FileSymbol {
 
         Some(NavigationTarget {
             file_id: full_range.file_id,
-            name: if self.is_alias { self.def.name(db)?.to_smol_str() } else { self.name.clone() },
-            alias: if self.is_alias { Some(self.name.clone()) } else { None },
+            name: self
+                .is_alias
+                .then(|| self.def.name(db))
+                .flatten()
+                .map_or_else(|| self.name.clone(), |it| it.to_smol_str()),
+            alias: self.is_alias.then(|| self.name.clone()),
             kind: Some(hir::ModuleDefId::from(self.def).into()),
             full_range: full_range.range,
             focus_range,
