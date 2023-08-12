@@ -245,50 +245,41 @@ fn exported_symbols_provider_local(
         ))
     }
 
+    // Rust assumes that all code provided to (non-plugin) LTO comes from Rust, so it knows about
+    // all symbols that are involved. This doesn't hold up for symbols that get injected by LLVM,
+    // so they need to be special-cased.
+    let mut externally_injected_weak_symbols = Vec::new();
     if tcx.sess.instrument_coverage() || tcx.sess.opts.cg.profile_generate.enabled() {
         // These are weak symbols that point to the profile version and the
         // profile name, which need to be treated as exported so LTO doesn't nix
         // them.
-        const PROFILER_WEAK_SYMBOLS: [&str; 2] =
-            ["__llvm_profile_raw_version", "__llvm_profile_filename"];
-
-        symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
-            (
-                exported_symbol,
-                SymbolExportInfo {
-                    level: SymbolExportLevel::C,
-                    kind: SymbolExportKind::Data,
-                    used: false,
-                },
-            )
-        }));
+        externally_injected_weak_symbols.push("__llvm_profile_raw_version");
+        externally_injected_weak_symbols.push("__llvm_profile_filename");
     }
-
     if tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::MEMORY) {
-        let mut msan_weak_symbols = Vec::new();
-
         // Similar to profiling, preserve weak msan symbol during LTO.
         if tcx.sess.opts.unstable_opts.sanitizer_recover.contains(SanitizerSet::MEMORY) {
-            msan_weak_symbols.push("__msan_keep_going");
+            externally_injected_weak_symbols.push("__msan_keep_going");
         }
-
         if tcx.sess.opts.unstable_opts.sanitizer_memory_track_origins != 0 {
-            msan_weak_symbols.push("__msan_track_origins");
+            externally_injected_weak_symbols.push("__msan_track_origins");
         }
-
-        symbols.extend(msan_weak_symbols.into_iter().map(|sym| {
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
-            (
-                exported_symbol,
-                SymbolExportInfo {
-                    level: SymbolExportLevel::C,
-                    kind: SymbolExportKind::Data,
-                    used: false,
-                },
-            )
-        }));
     }
+    if tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::ADDRESS) {
+        // Similar to profiling, preserve weak asan symbols during LTO.
+        externally_injected_weak_symbols.push("___asan_globals_registered");
+    }
+    symbols.extend(externally_injected_weak_symbols.into_iter().map(|sym| {
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
+        (
+            exported_symbol,
+            SymbolExportInfo {
+                level: SymbolExportLevel::C,
+                kind: SymbolExportKind::Data,
+                used: false,
+            },
+        )
+    }));
 
     if tcx.crate_types().contains(&CrateType::Dylib)
         || tcx.crate_types().contains(&CrateType::ProcMacro)
