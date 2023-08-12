@@ -422,7 +422,7 @@ are 1-based and inclusive of both end points. Specifying an empty array
 will result in no files being formatted. For example,
 
 ```
-rustfmt --file-lines '[
+rustfmt src/lib.rs src/foo.rs --file-lines '[
     {{\"file\":\"src/lib.rs\",\"range\":[7,13]}},
     {{\"file\":\"src/lib.rs\",\"range\":[21,29]}},
     {{\"file\":\"src/foo.rs\",\"range\":[10,11]}},
