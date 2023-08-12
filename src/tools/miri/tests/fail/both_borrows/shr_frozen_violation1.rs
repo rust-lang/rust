@@ -1,7 +1,7 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 
-#![allow(cast_ref_to_mut)]
+#![allow(invalid_reference_casting)]
 
 fn foo(x: &mut i32) -> i32 {
     *x = 5;
