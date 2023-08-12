@@ -791,6 +791,7 @@ impl Write for &File {
         self.inner.is_write_vectored()
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         self.inner.flush()
     }
@@ -836,6 +837,7 @@ impl Write for File {
     fn is_write_vectored(&self) -> bool {
         (&&*self).is_write_vectored()
     }
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         (&*self).flush()
     }
@@ -881,6 +883,7 @@ impl Write for Arc<File> {
     fn is_write_vectored(&self) -> bool {
         (&**self).is_write_vectored()
     }
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         (&**self).flush()
     }

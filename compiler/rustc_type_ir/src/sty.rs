@@ -200,7 +200,9 @@ pub enum TyKind<I: Interner> {
     /// A tuple type. For example, `(i32, bool)`.
     Tuple(I::ListTy),
 
-    /// A projection or opaque type. Both of these types
+    /// A projection, opaque type, weak type alias, or inherent associated type.
+    /// All of these types are represented as pairs of def-id and args, and can
+    /// be normalized, so they are grouped conceptually.
     Alias(AliasKind, I::AliasTy),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.

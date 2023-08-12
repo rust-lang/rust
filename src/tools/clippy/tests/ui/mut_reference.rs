@@ -1,7 +1,20 @@
-#![allow(unused_variables)]
+#![allow(unused_variables, dead_code)]
 
 fn takes_an_immutable_reference(a: &i32) {}
 fn takes_a_mutable_reference(a: &mut i32) {}
+
+mod issue11268 {
+    macro_rules! x {
+        ($f:expr) => {
+            $f(&mut 1);
+        };
+    }
+
+    fn f() {
+        x!(super::takes_an_immutable_reference);
+        x!(super::takes_a_mutable_reference);
+    }
+}
 
 struct MyStruct;
 

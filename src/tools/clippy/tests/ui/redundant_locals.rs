@@ -27,6 +27,15 @@ fn downgraded_mutability() {
     let x = x;
 }
 
+// see #11290
+fn shadow_mutation() {
+    let mut x = 1;
+    {
+        let mut x = x;
+        x = 2;
+    }
+}
+
 fn coercion(par: &mut i32) {
     let par: &i32 = par;
 

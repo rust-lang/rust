@@ -457,7 +457,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
 
     // Don't hash unless necessary, because it's expensive.
     let opt_hir_hash =
-        if tcx.sess.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
+        if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
     hir::Crate { owners, opt_hir_hash }
 }
 
@@ -648,7 +648,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let bodies = SortedMap::from_presorted_elements(bodies);
 
         // Don't hash unless necessary, because it's expensive.
-        let (opt_hash_including_bodies, attrs_hash) = if self.tcx.sess.needs_crate_hash() {
+        let (opt_hash_including_bodies, attrs_hash) = if self.tcx.needs_crate_hash() {
             self.tcx.with_stable_hashing_context(|mut hcx| {
                 let mut stable_hasher = StableHasher::new();
                 hcx.with_hir_bodies(node.def_id(), &bodies, |hcx| {

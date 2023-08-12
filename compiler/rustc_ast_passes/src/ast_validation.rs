@@ -136,40 +136,42 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_gat_where(
+    fn check_type_alias_where_clause_location(
         &mut self,
-        id: NodeId,
-        before_predicates: &[WherePredicate],
-        where_clauses: (ast::TyAliasWhereClause, ast::TyAliasWhereClause),
-    ) {
-        if !before_predicates.is_empty() {
-            let mut state = State::new();
-            if !where_clauses.1.0 {
-                state.space();
-                state.word_space("where");
-            } else {
+        ty_alias: &TyAlias,
+    ) -> Result<(), errors::WhereClauseBeforeTypeAlias> {
+        let before_predicates =
+            ty_alias.generics.where_clause.predicates.split_at(ty_alias.where_predicates_split).0;
+
+        if ty_alias.ty.is_none() || before_predicates.is_empty() {
+            return Ok(());
+        }
+
+        let mut state = State::new();
+        if !ty_alias.where_clauses.1.0 {
+            state.space();
+            state.word_space("where");
+        } else {
+            state.word_space(",");
+        }
+        let mut first = true;
+        for p in before_predicates {
+            if !first {
                 state.word_space(",");
             }
-            let mut first = true;
-            for p in before_predicates.iter() {
-                if !first {
-                    state.word_space(",");
-                }
-                first = false;
-                state.print_where_predicate(p);
-            }
-            let suggestion = state.s.eof();
-            self.lint_buffer.buffer_lint_with_diagnostic(
-                DEPRECATED_WHERE_CLAUSE_LOCATION,
-                id,
-                where_clauses.0.1,
-                fluent::ast_passes_deprecated_where_clause_location,
-                BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(
-                    where_clauses.1.1.shrink_to_hi(),
-                    suggestion,
-                ),
-            );
+            first = false;
+            state.print_where_predicate(p);
         }
+
+        let span = ty_alias.where_clauses.0.1;
+        Err(errors::WhereClauseBeforeTypeAlias {
+            span,
+            sugg: errors::WhereClauseBeforeTypeAliasSugg {
+                left: span,
+                snippet: state.s.eof(),
+                right: ty_alias.where_clauses.1.1.shrink_to_hi(),
+            },
+        })
     }
 
     fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
@@ -1009,7 +1011,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     replace_span: self.ending_semi_or_hi(item.span),
                 });
             }
-            ItemKind::TyAlias(box TyAlias { defaultness, where_clauses, bounds, ty, .. }) => {
+            ItemKind::TyAlias(
+                ty_alias @ box TyAlias { defaultness, bounds, where_clauses, ty, .. },
+            ) => {
                 self.check_defaultness(item.span, *defaultness);
                 if ty.is_none() {
                     self.session.emit_err(errors::TyAliasWithoutBody {
@@ -1018,9 +1022,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     });
                 }
                 self.check_type_no_bounds(bounds, "this context");
-                if where_clauses.1.0 {
-                    self.err_handler()
-                        .emit_err(errors::WhereAfterTypeAlias { span: where_clauses.1.1 });
+
+                if self.session.features_untracked().lazy_type_alias {
+                    if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
+                        self.err_handler().emit_err(err);
+                    }
+                } else if where_clauses.1.0 {
+                    self.err_handler().emit_err(errors::WhereClauseAfterTypeAlias {
+                        span: where_clauses.1.1,
+                        help: self.session.is_nightly_build().then_some(()),
+                    });
                 }
             }
             _ => {}
@@ -1313,18 +1324,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
         }
 
-        if let AssocItemKind::Type(box TyAlias {
-            generics,
-            where_clauses,
-            where_predicates_split,
-            ty: Some(_),
-            ..
-        }) = &item.kind
+        if let AssocItemKind::Type(ty_alias) = &item.kind
+            && let Err(err) = self.check_type_alias_where_clause_location(ty_alias)
         {
-            self.check_gat_where(
+            self.lint_buffer.buffer_lint_with_diagnostic(
+                DEPRECATED_WHERE_CLAUSE_LOCATION,
                 item.id,
-                generics.where_clause.predicates.split_at(*where_predicates_split).0,
-                *where_clauses,
+                err.span,
+                fluent::ast_passes_deprecated_where_clause_location,
+                BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(
+                    err.sugg.right,
+                    err.sugg.snippet,
+                ),
             );
         }
 

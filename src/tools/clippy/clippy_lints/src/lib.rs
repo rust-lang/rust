@@ -147,6 +147,7 @@ mod future_not_send;
 mod if_let_mutex;
 mod if_not_else;
 mod if_then_some_else_none;
+mod ignored_unit_patterns;
 mod implicit_hasher;
 mod implicit_return;
 mod implicit_saturating_add;
@@ -1093,6 +1094,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         })
     });
     store.register_late_pass(|_| Box::new(redundant_locals::RedundantLocals));
+    store.register_late_pass(|_| Box::new(ignored_unit_patterns::IgnoredUnitPatterns));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

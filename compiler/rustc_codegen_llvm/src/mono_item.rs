@@ -111,7 +111,7 @@ impl CodegenCx<'_, '_> {
         }
 
         // Symbols from executables can't really be imported any further.
-        let all_exe = self.tcx.sess.crate_types().iter().all(|ty| *ty == CrateType::Executable);
+        let all_exe = self.tcx.crate_types().iter().all(|ty| *ty == CrateType::Executable);
         let is_declaration_for_linker =
             is_declaration || linkage == llvm::Linkage::AvailableExternallyLinkage;
         if all_exe && !is_declaration_for_linker {

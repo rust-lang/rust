@@ -119,6 +119,15 @@ impl TraitDef {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct ImplDef(pub(crate) DefId);
+
+impl ImplDef {
+    pub fn trait_impl(&self) -> ImplTrait {
+        with(|cx| cx.trait_impl(self))
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);
 
@@ -194,6 +203,11 @@ pub enum Abi {
 pub struct Binder<T> {
     pub value: T,
     pub bound_vars: Vec<BoundVariableKind>,
+}
+
+#[derive(Clone, Debug)]
+pub struct EarlyBinder<T> {
+    pub value: T,
 }
 
 #[derive(Clone, Debug)]
@@ -431,4 +445,11 @@ pub struct TraitDecl {
     pub must_implement_one_of: Option<Vec<Ident>>,
     pub implement_via_object: bool,
     pub deny_explicit_impl: bool,
+}
+
+pub type ImplTrait = EarlyBinder<TraitRef>;
+
+pub struct TraitRef {
+    pub def_id: TraitDef,
+    pub args: GenericArgs,
 }

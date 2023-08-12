@@ -1703,7 +1703,7 @@ fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<String> {
         return Vec::new();
     }
 
-    let stable_crate_id = tcx.sess.local_stable_crate_id();
+    let stable_crate_id = tcx.stable_crate_id(LOCAL_CRATE);
     let proc_macro_decls_name = tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
     let metadata_symbol_name = exported_symbols::metadata_symbol_name(tcx);
 

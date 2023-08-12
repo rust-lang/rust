@@ -25,7 +25,6 @@ use rustc_middle::ty::Instance;
 use rustc_middle::ty::Ty;
 
 use std::cell::RefCell;
-use std::ffi::CString;
 
 pub(crate) mod ffi;
 pub(crate) mod map_data;
@@ -332,21 +331,32 @@ fn create_pgo_func_name_var<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
 ) -> &'ll llvm::Value {
-    let mangled_fn_name = CString::new(cx.tcx.symbol_name(instance).name)
-        .expect("error converting function name to C string");
+    let mangled_fn_name: &str = cx.tcx.symbol_name(instance).name;
     let llfn = cx.get_fn(instance);
-    unsafe { llvm::LLVMRustCoverageCreatePGOFuncNameVar(llfn, mangled_fn_name.as_ptr()) }
+    unsafe {
+        llvm::LLVMRustCoverageCreatePGOFuncNameVar(
+            llfn,
+            mangled_fn_name.as_ptr().cast(),
+            mangled_fn_name.len(),
+        )
+    }
 }
 
 pub(crate) fn write_filenames_section_to_buffer<'a>(
-    filenames: impl IntoIterator<Item = &'a CString>,
+    filenames: impl IntoIterator<Item = &'a str>,
     buffer: &RustString,
 ) {
-    let c_str_vec = filenames.into_iter().map(|cstring| cstring.as_ptr()).collect::<Vec<_>>();
+    let (pointers, lengths) = filenames
+        .into_iter()
+        .map(|s: &str| (s.as_ptr().cast(), s.len()))
+        .unzip::<_, _, Vec<_>, Vec<_>>();
+
     unsafe {
         llvm::LLVMRustCoverageWriteFilenamesSectionToBuffer(
-            c_str_vec.as_ptr(),
-            c_str_vec.len(),
+            pointers.as_ptr(),
+            pointers.len(),
+            lengths.as_ptr(),
+            lengths.len(),
             buffer,
         );
     }

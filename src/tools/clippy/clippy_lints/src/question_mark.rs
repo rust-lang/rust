@@ -1,11 +1,13 @@
 use crate::manual_let_else::{MatchLintBehaviour, MANUAL_LET_ELSE};
+use crate::question_mark_used::QUESTION_MARK_USED;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
-    eq_expr_value, get_parent_node, higher, in_constant, is_else_clause, is_path_lang_item, is_res_lang_ctor,
-    pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
+    eq_expr_value, get_parent_node, higher, in_constant, is_else_clause, is_lint_allowed, is_path_lang_item,
+    is_res_lang_ctor, pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks,
+    peel_blocks_with_stmt,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -299,13 +301,17 @@ fn is_try_block(cx: &LateContext<'_>, bl: &rustc_hir::Block<'_>) -> bool {
 
 impl<'tcx> LateLintPass<'tcx> for QuestionMark {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
+        if !is_lint_allowed(cx, QUESTION_MARK_USED, stmt.hir_id) {
+            return;
+        }
+
         if !in_constant(cx, stmt.hir_id) {
             check_let_some_else_return_none(cx, stmt);
         }
         self.check_manual_let_else(cx, stmt);
     }
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !in_constant(cx, expr.hir_id) {
+        if !in_constant(cx, expr.hir_id) && is_lint_allowed(cx, QUESTION_MARK_USED, expr.hir_id) {
             self.check_is_none_or_err_and_early_return(cx, expr);
             self.check_if_let_some_or_err_and_early_return(cx, expr);
         }

@@ -1,7 +1,7 @@
 use super::potentially_plural_count;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use hir::def_id::{DefId, LocalDefId};
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed, MultiSpan,
 };
@@ -265,7 +265,6 @@ fn compare_method_predicate_entailment<'tcx>(
         infer::HigherRankedType,
         tcx.fn_sig(impl_m.def_id).instantiate_identity(),
     );
-    let unnormalized_impl_fty = Ty::new_fn_ptr(tcx, ty::Binder::dummy(unnormalized_impl_sig));
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_def_id);
     let impl_sig = ocx.normalize(&norm_cause, param_env, unnormalized_impl_sig);
@@ -309,16 +308,44 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     if check_implied_wf == CheckImpliedWfMode::Check && !(impl_sig, trait_sig).references_error() {
-        // We need to check that the impl's args are well-formed given
-        // the hybrid param-env (impl + trait method where-clauses).
-        ocx.register_obligation(traits::Obligation::new(
-            infcx.tcx,
-            ObligationCause::dummy(),
-            param_env,
-            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
-                unnormalized_impl_fty.into(),
-            ))),
-        ));
+        // See #108544. Annoying, we can end up in cases where, because of winnowing,
+        // we pick param env candidates over a more general impl, leading to more
+        // stricter lifetime requirements than we would otherwise need. This can
+        // trigger the lint. Instead, let's only consider type outlives and
+        // region outlives obligations.
+        //
+        // FIXME(-Ztrait-solver=next): Try removing this hack again once
+        // the new solver is stable.
+        let mut wf_args: smallvec::SmallVec<[_; 4]> =
+            unnormalized_impl_sig.inputs_and_output.iter().map(|ty| ty.into()).collect();
+        // Annoyingly, asking for the WF predicates of an array (with an unevaluated const (only?))
+        // will give back the well-formed predicate of the same array.
+        let mut wf_args_seen: FxHashSet<_> = wf_args.iter().copied().collect();
+        while let Some(arg) = wf_args.pop() {
+            let Some(obligations) = rustc_trait_selection::traits::wf::obligations(
+                infcx,
+                param_env,
+                impl_m_def_id,
+                0,
+                arg,
+                impl_m_span,
+            ) else {
+                continue;
+            };
+            for obligation in obligations {
+                match obligation.predicate.kind().skip_binder() {
+                    ty::PredicateKind::Clause(
+                        ty::ClauseKind::RegionOutlives(..) | ty::ClauseKind::TypeOutlives(..),
+                    ) => ocx.register_obligation(obligation),
+                    ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
+                        if wf_args_seen.insert(arg) {
+                            wf_args.push(arg)
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
     }
 
     // Check that all obligations are satisfied by the implementation's

@@ -37,6 +37,11 @@ declare_lint_pass!(UnnecessaryMutPassed => [UNNECESSARY_MUT_PASSED]);
 
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
+        if e.span.from_expansion() {
+            // Issue #11268
+            return;
+        }
+
         match e.kind {
             ExprKind::Call(fn_expr, arguments) => {
                 if let ExprKind::Path(ref path) = fn_expr.kind {
