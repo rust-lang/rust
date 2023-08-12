@@ -300,14 +300,14 @@ types! {
     #[stable(feature = "simd_avx512_types", since = "CURRENT_RUSTC_VERSION")]
     pub struct __m512d(f64, f64, f64, f64, f64, f64, f64, f64);
 
-    /// 128-bit wide set of eight 'u16' types, x86-specific
+    /// 128-bit wide set of eight `u16` types, x86-specific
     ///
     /// This type is representing a 128-bit SIMD register which internally is consisted of
     /// eight packed `u16` instances. Its purpose is for bf16 related intrinsic
     /// implementations.
     pub struct __m128bh(u16, u16, u16, u16, u16, u16, u16, u16);
 
-    /// 256-bit wide set of 16 'u16' types, x86-specific
+    /// 256-bit wide set of 16 `u16` types, x86-specific
     ///
     /// This type is the same as the `__m256bh` type defined by Intel,
     /// representing a 256-bit SIMD register which internally is consisted of
@@ -318,7 +318,7 @@ types! {
         u16, u16, u16, u16, u16, u16, u16, u16
     );
 
-    /// 512-bit wide set of 32 'u16' types, x86-specific
+    /// 512-bit wide set of 32 `u16` types, x86-specific
     ///
     /// This type is the same as the `__m512bh` type defined by Intel,
     /// representing a 512-bit SIMD register which internally is consisted of
