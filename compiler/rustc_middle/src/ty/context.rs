@@ -2082,9 +2082,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> {
-        // Create a dependency to the red node to be sure we re-execute this when the amount of
-        // definitions change.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Depend on the `analysis` query to ensure compilation if finished.
+        self.ensure_ok().analysis(());
 
         let definitions = &self.untracked.definitions;
         gen {
@@ -2104,9 +2103,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {
-        // Create a dependency to the crate to be sure we re-execute this when the amount of
-        // definitions change.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Depend on the `analysis` query to ensure compilation if finished.
+        self.ensure_ok().analysis(());
 
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
