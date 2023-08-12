@@ -316,6 +316,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         self.assemble_param_env_candidates(goal, &mut candidates);
 
+        self.assemble_coherence_unknowable_candidates(goal, &mut candidates);
+
         candidates
     }
 
@@ -363,10 +365,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         self.assemble_object_bound_candidates(goal, &mut candidates);
 
-        self.assemble_coherence_unknowable_candidates(goal, &mut candidates);
-
         self.assemble_candidates_after_normalizing_self_ty(goal, &mut candidates, num_steps);
-
         candidates
     }
 
@@ -877,26 +876,43 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
+        let tcx = self.tcx();
         match self.solver_mode() {
             SolverMode::Normal => return,
-            SolverMode::Coherence => {
-                let trait_ref = goal.predicate.trait_ref(self.tcx());
-                match coherence::trait_ref_is_knowable(self.tcx(), trait_ref) {
-                    Ok(()) => {}
-                    Err(_) => match self
-                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                    {
-                        Ok(result) => candidates.push(Candidate {
-                            source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
-                            result,
-                        }),
-                        // FIXME: This will be reachable at some point if we're in
-                        // `assemble_candidates_after_normalizing_self_ty` and we get a
-                        // universe error. We'll deal with it at this point.
-                        Err(NoSolution) => bug!("coherence candidate resulted in NoSolution"),
-                    },
+            SolverMode::Coherence => {}
+        };
+
+        let result = self.probe_candidate("coherence unknowable").enter(|ecx| {
+            let trait_ref = goal.predicate.trait_ref(tcx);
+
+            #[derive(Debug)]
+            enum FailureKind {
+                Overflow,
+                NoSolution(NoSolution),
+            }
+            let lazily_normalize_ty = |ty| match ecx.try_normalize_ty(goal.param_env, ty) {
+                Ok(Some(ty)) => Ok(ty),
+                Ok(None) => Err(FailureKind::Overflow),
+                Err(e) => Err(FailureKind::NoSolution(e)),
+            };
+
+            match coherence::trait_ref_is_knowable(tcx, trait_ref, lazily_normalize_ty) {
+                Err(FailureKind::Overflow) => {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW)
+                }
+                Err(FailureKind::NoSolution(NoSolution)) | Ok(Ok(())) => Err(NoSolution),
+                Ok(Err(_)) => {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
             }
+        });
+
+        match result {
+            Ok(result) => candidates.push(Candidate {
+                source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+                result,
+            }),
+            Err(NoSolution) => {}
         }
     }
 
