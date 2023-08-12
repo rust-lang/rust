@@ -184,7 +184,9 @@ pub(crate) mod entry {
             };
             p.bump_any();
             while !p.at(EOF) && !p.at(closing_paren_kind) {
-                expressions::expr(p);
+                if expressions::expr(p).is_none() {
+                    break;
+                }
                 if !p.at(EOF) && !p.at(closing_paren_kind) {
                     p.expect(T![,]);
                 }
