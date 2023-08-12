@@ -303,12 +303,11 @@ pub struct IntoIter<T> {
     rx: Receiver<T>,
 }
 
-/// The sending-half of Rust's asynchronous [`channel`] type. This half can only be
-/// owned by one thread, but it can be cloned to send to other threads.
+/// The sending-half of Rust's asynchronous [`channel`] type.
 ///
 /// Messages can be sent through this channel with [`send`].
 ///
-/// Note: all senders (the original and the clones) need to be dropped for the receiver
+/// Note: all senders (the original and its clones) need to be dropped for the receiver
 /// to stop blocking to receive messages with [`Receiver::recv`].
 ///
 /// [`send`]: Sender::send
