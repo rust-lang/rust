@@ -85,25 +85,69 @@ pub fn error_string(mut errnum: i32) -> String {
 
 pub struct Env {
     base: c::LPWCH,
-    cur: c::LPWCH,
+    iter: EnvIterator,
+}
+
+// FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
+pub struct EnvStrDebug<'a> {
+    iter: &'a EnvIterator,
+}
+
+impl fmt::Debug for EnvStrDebug<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { iter } = self;
+        let iter: EnvIterator = (*iter).clone();
+        let mut list = f.debug_list();
+        for (a, b) in iter {
+            list.entry(&(a.to_str().unwrap(), b.to_str().unwrap()));
+        }
+        list.finish()
+    }
+}
+
+impl Env {
+    pub fn str_debug(&self) -> impl fmt::Debug + '_ {
+        let Self { base: _, iter } = self;
+        EnvStrDebug { iter }
+    }
+}
+
+impl fmt::Debug for Env {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { base: _, iter } = self;
+        f.debug_list().entries(iter.clone()).finish()
+    }
 }
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
 
     fn next(&mut self) -> Option<(OsString, OsString)> {
+        let Self { base: _, iter } = self;
+        iter.next()
+    }
+}
+
+#[derive(Clone)]
+struct EnvIterator(c::LPWCH);
+
+impl Iterator for EnvIterator {
+    type Item = (OsString, OsString);
+
+    fn next(&mut self) -> Option<(OsString, OsString)> {
+        let Self(cur) = self;
         loop {
             unsafe {
-                if *self.cur == 0 {
+                if **cur == 0 {
                     return None;
                 }
-                let p = self.cur as *const u16;
+                let p = *cur as *const u16;
                 let mut len = 0;
                 while *p.add(len) != 0 {
                     len += 1;
                 }
                 let s = slice::from_raw_parts(p, len);
-                self.cur = self.cur.add(len + 1);
+                *cur = cur.add(len + 1);
 
                 // Windows allows environment variables to start with an equals
                 // symbol (in any other position, this is the separator between
@@ -137,7 +181,7 @@ pub fn env() -> Env {
         if ch.is_null() {
             panic!("failure getting env string from OS: {}", io::Error::last_os_error());
         }
-        Env { base: ch, cur: ch }
+        Env { base: ch, iter: EnvIterator(ch) }
     }
 }
 
