@@ -778,4 +778,4 @@ pub enum LifetimeRes {
     ElidedAnchor { start: NodeId, end: NodeId },
 }
 
-pub type DocLinkResMap = FxHashMap<(Symbol, Namespace), Option<Res<NodeId>>>;
+pub type DocLinkResMap = FxHashMap<(Symbol, Namespace), Res<NodeId>>;

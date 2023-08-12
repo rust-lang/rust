@@ -14,7 +14,7 @@ use rustc_hir::def::{DefKind, Namespace, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_middle::{bug, span_bug, ty};
+use rustc_middle::{bug, ty};
 use rustc_resolve::rustdoc::{has_primitive_or_keyword_docs, prepare_to_doc_link_resolution};
 use rustc_resolve::rustdoc::{strip_generics_from_path, MalformedGenerics};
 use rustc_session::lint::Lint;
@@ -398,16 +398,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .doc_link_resolutions(module_id)
             .get(&(Symbol::intern(path_str), ns))
             .copied()
-            // NOTE: do not remove this panic! Missing links should be recorded as `Res::Err`; if
-            // `doc_link_resolutions` is missing a `path_str`, that means that there are valid links
-            // that are being missed. To fix the ICE, change
-            // `rustc_resolve::rustdoc::attrs_to_preprocessed_links` to cache the link.
-            .unwrap_or_else(|| {
-                span_bug!(
-                    self.cx.tcx.def_span(item_id),
-                    "no resolution for {path_str:?} {ns:?} {module_id:?}",
-                )
-            })
             .and_then(|res| res.try_into().ok())
             .or_else(|| resolve_primitive(path_str, ns));
         debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);

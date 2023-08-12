@@ -4368,22 +4368,29 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         // items with the same name in the same module.
         // Also hygiene is not considered.
         let mut doc_link_resolutions = std::mem::take(&mut self.r.doc_link_resolutions);
-        let res = *doc_link_resolutions
+        let res_entry = doc_link_resolutions
             .entry(self.parent_scope.module.nearest_parent_mod().expect_local())
             .or_default()
-            .entry((Symbol::intern(path_str), ns))
-            .or_insert_with_key(|(path, ns)| {
-                let res = self.r.resolve_rustdoc_path(path.as_str(), *ns, self.parent_scope);
-                if let Some(res) = res
+            .entry((Symbol::intern(path_str), ns));
+        let res = match res_entry {
+            Entry::Occupied(o) => Some(*o.get()),
+            Entry::Vacant(res_entry) => {
+                let mut opt_res = self.r.resolve_rustdoc_path(path_str, ns, self.parent_scope);
+                if let Some(res) = opt_res
                     && let Some(def_id) = res.opt_def_id()
                     && !def_id.is_local()
                     && self.r.tcx.crate_types().contains(&CrateType::ProcMacro)
-                    && matches!(self.r.tcx.sess.opts.resolve_doc_links, ResolveDocLinks::ExportedMetadata) {
+                    && matches!(self.r.tcx.sess.opts.resolve_doc_links, ResolveDocLinks::ExportedMetadata)
+                {
                     // Encoding foreign def ids in proc macro crate metadata will ICE.
-                    return None;
+                    opt_res = None;
                 }
-                res
-            });
+                if let Some(res) = opt_res {
+                    res_entry.insert(res);
+                }
+                opt_res
+            }
+        };
         self.r.doc_link_resolutions = doc_link_resolutions;
         res
     }
