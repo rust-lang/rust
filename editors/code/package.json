@@ -292,6 +292,11 @@
                 "command": "rust-analyzer.viewMemoryLayout",
                 "title": "View Memory Layout",
                 "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.toggleCheckOnSave",
+                "title": "Toggle Check on Save",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [

@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
 import { exec, type ExecOptions, spawnSync } from "child_process";
 import { inspect } from "util";
-import { Env } from "./client";
+import type { Env } from "./client";
 
 export function assert(condition: boolean, explanation: string): asserts condition {
     try {
