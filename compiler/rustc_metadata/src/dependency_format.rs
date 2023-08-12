@@ -66,8 +66,7 @@ use rustc_session::cstore::CrateDepKind;
 use rustc_session::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
 
 pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
-    tcx.sess
-        .crate_types()
+    tcx.crate_types()
         .iter()
         .map(|&ty| {
             let linkage = calculate_type(tcx, ty);

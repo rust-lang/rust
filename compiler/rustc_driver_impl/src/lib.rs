@@ -653,8 +653,6 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
 pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Compilation {
     if sess.opts.unstable_opts.link_only {
         if let Input::File(file) = &sess.io.input {
-            // FIXME: #![crate_type] and #![crate_name] support not implemented yet
-            sess.init_crate_types(collect_crate_types(sess, &[]));
             let outputs = compiler.build_output_filenames(sess, &[]);
             let rlink_data = fs::read(file).unwrap_or_else(|err| {
                 sess.emit_fatal(RlinkUnableToRead { err });

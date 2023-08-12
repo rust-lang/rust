@@ -150,6 +150,7 @@ impl From<&cstore::NativeLib> for NativeLib {
 #[derive(Debug, Encodable, Decodable)]
 pub struct CrateInfo {
     pub target_cpu: String,
+    pub crate_types: Vec<CrateType>,
     pub exported_symbols: FxHashMap<CrateType, Vec<String>>,
     pub linked_symbols: FxHashMap<CrateType, Vec<(String, SymbolExportKind)>>,
     pub local_crate_name: Symbol,

@@ -234,13 +234,13 @@ impl<'tcx> Queries<'tcx> {
             debug_assert_eq!(_id, CRATE_DEF_ID);
             let untracked = Untracked { cstore, source_span, definitions };
 
-            // FIXME: Move these fields from session to tcx and make them immutable.
-            sess.init_crate_types(crate_types);
-            sess.stable_crate_id.set(stable_crate_id).expect("not yet initialized");
+            // FIXME: Move features from session to tcx and make them immutable.
             sess.init_features(rustc_expand::config::features(sess, &pre_configured_attrs));
 
             let qcx = passes::create_global_ctxt(
                 self.compiler,
+                crate_types,
+                stable_crate_id,
                 lint_store,
                 self.dep_graph(dep_graph_future),
                 untracked,
@@ -320,7 +320,7 @@ impl<'tcx> Queries<'tcx> {
 
         let (crate_hash, prepare_outputs, dep_graph) = self.global_ctxt()?.enter(|tcx| {
             (
-                if tcx.sess.needs_crate_hash() { Some(tcx.crate_hash(LOCAL_CRATE)) } else { None },
+                if tcx.needs_crate_hash() { Some(tcx.crate_hash(LOCAL_CRATE)) } else { None },
                 tcx.output_filenames(()).clone(),
                 tcx.dep_graph.clone(),
             )

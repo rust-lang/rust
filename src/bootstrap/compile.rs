@@ -1129,7 +1129,7 @@ fn needs_codegen_config(run: &RunConfig<'_>) -> bool {
     needs_codegen_cfg
 }
 
-const CODEGEN_BACKEND_PREFIX: &str = "rustc_codegen_";
+pub(crate) const CODEGEN_BACKEND_PREFIX: &str = "rustc_codegen_";
 
 fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
     if path.path.to_str().unwrap().contains(&CODEGEN_BACKEND_PREFIX) {

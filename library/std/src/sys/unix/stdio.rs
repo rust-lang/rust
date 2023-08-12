@@ -54,6 +54,7 @@ impl io::Write for Stdout {
         true
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -81,6 +82,7 @@ impl io::Write for Stderr {
         true
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }

@@ -69,7 +69,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             }
 
             init_late_loggers(handler, tcx);
-            if !tcx.sess.crate_types().contains(&CrateType::Executable) {
+            if !tcx.crate_types().contains(&CrateType::Executable) {
                 tcx.sess.fatal("miri only makes sense on bin crates");
             }
 

@@ -545,7 +545,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 name,
                 // The all loop is because `--crate-type=rlib --crate-type=rlib` is
                 // legal and produces both inside this type.
-                self.sess.crate_types().iter().all(|c| *c == CrateType::Rlib),
+                self.tcx.crate_types().iter().all(|c| *c == CrateType::Rlib),
                 hash,
                 extra_filename,
                 false, // is_host
@@ -689,7 +689,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
         // If we're only compiling an rlib, then there's no need to select a
         // panic runtime, so we just skip this section entirely.
-        let any_non_rlib = self.sess.crate_types().iter().any(|ct| *ct != CrateType::Rlib);
+        let any_non_rlib = self.tcx.crate_types().iter().any(|ct| *ct != CrateType::Rlib);
         if !any_non_rlib {
             info!("panic runtime injection skipped, only generating rlib");
             return;
@@ -818,7 +818,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // At this point we've determined that we need an allocator. Let's see
         // if our compilation session actually needs an allocator based on what
         // we're emitting.
-        let all_rlib = self.sess.crate_types().iter().all(|ct| matches!(*ct, CrateType::Rlib));
+        let all_rlib = self.tcx.crate_types().iter().all(|ct| matches!(*ct, CrateType::Rlib));
         if all_rlib {
             return;
         }

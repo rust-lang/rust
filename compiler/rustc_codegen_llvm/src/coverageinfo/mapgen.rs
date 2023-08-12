@@ -12,8 +12,7 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::ty::TyCtxt;
-
-use std::ffi::CString;
+use rustc_span::Symbol;
 
 /// Generates and exports the Coverage Map.
 ///
@@ -89,7 +88,10 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 
     // Encode all filenames referenced by counters/expressions in this module
     let filenames_buffer = llvm::build_byte_buffer(|filenames_buffer| {
-        coverageinfo::write_filenames_section_to_buffer(&mapgen.filenames, filenames_buffer);
+        coverageinfo::write_filenames_section_to_buffer(
+            mapgen.filenames.iter().map(Symbol::as_str),
+            filenames_buffer,
+        );
     });
 
     let filenames_size = filenames_buffer.len();
@@ -117,7 +119,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 }
 
 struct CoverageMapGenerator {
-    filenames: FxIndexSet<CString>,
+    filenames: FxIndexSet<Symbol>,
 }
 
 impl CoverageMapGenerator {
@@ -128,11 +130,10 @@ impl CoverageMapGenerator {
         // Since rustc generates coverage maps with relative paths, the
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
-        let working_dir =
-            tcx.sess.opts.working_dir.remapped_path_if_available().to_string_lossy().to_string();
-        let c_filename =
-            CString::new(working_dir).expect("null error converting filename to C string");
-        filenames.insert(c_filename);
+        let working_dir = Symbol::intern(
+            &tcx.sess.opts.working_dir.remapped_path_if_available().to_string_lossy(),
+        );
+        filenames.insert(working_dir);
         Self { filenames }
     }
 
@@ -170,10 +171,8 @@ impl CoverageMapGenerator {
                     current_file_id += 1;
                 }
                 current_file_name = Some(file_name);
-                let c_filename = CString::new(file_name.to_string())
-                    .expect("null error converting filename to C string");
-                debug!("  file_id: {} = '{:?}'", current_file_id, c_filename);
-                let (filenames_index, _) = self.filenames.insert_full(c_filename);
+                debug!("  file_id: {} = '{:?}'", current_file_id, file_name);
+                let (filenames_index, _) = self.filenames.insert_full(file_name);
                 virtual_file_mapping.push(filenames_index as u32);
             }
             debug!("Adding counter {:?} to map for {:?}", counter, region);

@@ -59,6 +59,20 @@ impl<'tcx> Context for Tables<'tcx> {
         trait_def.stable(self)
     }
 
+    fn all_trait_impls(&mut self) -> stable_mir::ImplTraitDecls {
+        self.tcx
+            .trait_impls_in_crate(LOCAL_CRATE)
+            .iter()
+            .map(|impl_def_id| self.impl_def(*impl_def_id))
+            .collect()
+    }
+
+    fn trait_impl(&mut self, impl_def: &stable_mir::ty::ImplDef) -> stable_mir::ty::ImplTrait {
+        let def_id = self.impl_trait_def_id(impl_def);
+        let impl_trait = self.tcx.impl_trait_ref(def_id).unwrap();
+        impl_trait.stable(self)
+    }
+
     fn mir_body(&mut self, item: &stable_mir::CrateItem) -> stable_mir::mir::Body {
         let def_id = self.item_def_id(item);
         let mir = self.tcx.optimized_mir(def_id);
@@ -840,6 +854,19 @@ where
     }
 }
 
+impl<'tcx, S, V> Stable<'tcx> for ty::EarlyBinder<S>
+where
+    S: Stable<'tcx, T = V>,
+{
+    type T = stable_mir::ty::EarlyBinder<V>;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::EarlyBinder;
+
+        EarlyBinder { value: self.as_ref().skip_binder().stable(tables) }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
     type T = stable_mir::ty::FnSig;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
@@ -1152,5 +1179,14 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
                 stable_mir::ty::ConstantKind::Allocated(new_allocation(self, *val, tables))
             }
         }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::TraitRef<'tcx> {
+    type T = stable_mir::ty::TraitRef;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::TraitRef;
+
+        TraitRef { def_id: rustc_internal::trait_def(self.def_id), args: self.args.stable(tables) }
     }
 }

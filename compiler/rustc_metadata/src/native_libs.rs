@@ -52,10 +52,11 @@ fn find_bundled_library(
     verbatim: Option<bool>,
     kind: NativeLibKind,
     has_cfg: bool,
-    sess: &Session,
+    tcx: TyCtxt<'_>,
 ) -> Option<Symbol> {
+    let sess = tcx.sess;
     if let NativeLibKind::Static { bundle: Some(true) | None, whole_archive } = kind
-        && sess.crate_types().iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::Staticlib))
+        && tcx.crate_types().iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::Staticlib))
         && (sess.opts.unstable_opts.packed_bundled_libs || has_cfg || whole_archive == Some(true))
     {
         let verbatim = verbatim.unwrap_or(false);
@@ -364,7 +365,7 @@ impl<'tcx> Collector<'tcx> {
             };
 
             let kind = kind.unwrap_or(NativeLibKind::Unspecified);
-            let filename = find_bundled_library(name, verbatim, kind, cfg.is_some(), sess);
+            let filename = find_bundled_library(name, verbatim, kind, cfg.is_some(), self.tcx);
             self.libs.push(NativeLib {
                 name,
                 filename,
@@ -442,9 +443,13 @@ impl<'tcx> Collector<'tcx> {
                 // Add if not found
                 let new_name: Option<&str> = passed_lib.new_name.as_deref();
                 let name = Symbol::intern(new_name.unwrap_or(&passed_lib.name));
-                let sess = self.tcx.sess;
-                let filename =
-                    find_bundled_library(name, passed_lib.verbatim, passed_lib.kind, false, sess);
+                let filename = find_bundled_library(
+                    name,
+                    passed_lib.verbatim,
+                    passed_lib.kind,
+                    false,
+                    self.tcx,
+                );
                 self.libs.push(NativeLib {
                     name,
                     filename,

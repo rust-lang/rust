@@ -824,11 +824,8 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         }
 
         ty::Array(ty0, len) => {
-            let len = len
-                .try_to_scalar()
-                .unwrap()
-                .to_u64()
-                .unwrap_or_else(|_| panic!("failed to convert length to u64"));
+            let len = len.eval_target_usize(tcx, ty::ParamEnv::reveal_all());
+
             ty = Ty::new_array(tcx, transform_ty(tcx, *ty0, options), len);
         }
 

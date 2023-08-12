@@ -1010,7 +1010,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                             projections_handled = true;
                         },
                         // note: unable to trigger `Subslice` kind in tests
-                        ProjectionKind::Subslice => (),
+                        ProjectionKind::Subslice |
                         // Doesn't have surface syntax. Only occurs in patterns.
                         ProjectionKind::OpaqueCast => (),
                         ProjectionKind::Deref => {

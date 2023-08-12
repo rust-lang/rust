@@ -1707,6 +1707,8 @@ extern "C" {
     pub fn LLVMRustCoverageWriteFilenamesSectionToBuffer(
         Filenames: *const *const c_char,
         FilenamesLen: size_t,
+        Lengths: *const size_t,
+        LengthsLen: size_t,
         BufferOut: &RustString,
     );
 
@@ -1721,7 +1723,11 @@ extern "C" {
         BufferOut: &RustString,
     );
 
-    pub fn LLVMRustCoverageCreatePGOFuncNameVar(F: &Value, FuncName: *const c_char) -> &Value;
+    pub fn LLVMRustCoverageCreatePGOFuncNameVar(
+        F: &Value,
+        FuncName: *const c_char,
+        FuncNameLen: size_t,
+    ) -> &Value;
     pub fn LLVMRustCoverageHashByteArray(Bytes: *const c_char, NumBytes: size_t) -> u64;
 
     #[allow(improper_ctypes)]
