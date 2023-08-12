@@ -7,6 +7,6 @@ LL | #![cfg_attr(broken, no_std, no_core)]
    = note: see issue #29639 <https://github.com/rust-lang/rust/issues/29639> for more information
    = help: add `#![feature(no_core)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

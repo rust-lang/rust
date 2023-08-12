@@ -4,5 +4,5 @@ error: `C` does not live long enough
 LL |     async move { c.connect().await }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

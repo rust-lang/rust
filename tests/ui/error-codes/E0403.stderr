@@ -6,6 +6,6 @@ LL | fn foo<T, T>(s: T, u: T) {}
    |        |
    |        first use of `T`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0403`.

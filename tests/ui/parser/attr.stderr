@@ -13,5 +13,5 @@ LL - #![lang = "foo"]
 LL + #[lang = "foo"]
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

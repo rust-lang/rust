@@ -4,5 +4,5 @@ error: ~const can only be applied to `#[const_trait]` traits
 LL | impl<T: ~const PartialEq> const MyPartialEq for T {
    |                ^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

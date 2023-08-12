@@ -19,6 +19,6 @@ LL | where
 LL |     T: Check,
    |        ----- unsatisfied trait bound introduced here
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0275`.

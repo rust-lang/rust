@@ -10,5 +10,5 @@ LL - enum<T> Foo { Variant(T) }
 LL + enum Foo<T> { Variant(T) }
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

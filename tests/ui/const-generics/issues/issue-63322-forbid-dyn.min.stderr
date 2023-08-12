@@ -7,5 +7,5 @@ LL | fn test<const T: &'static dyn A>() {
    = note: the only supported types are integers, `bool` and `char`
    = help: more complex types are supported with `#![feature(adt_const_params)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -4,5 +4,5 @@ error: expected `[`, found `B`
 LL | #!B
    |   ^ expected `[`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

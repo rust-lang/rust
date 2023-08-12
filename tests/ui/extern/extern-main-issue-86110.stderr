@@ -4,5 +4,5 @@ error: the `main` function cannot be declared in an `extern` block
 LL |     fn main();
    |     ^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

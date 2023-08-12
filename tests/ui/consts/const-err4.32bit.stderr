@@ -4,6 +4,6 @@ error[E0080]: evaluation of constant value failed
 LL |     Boo = [unsafe { Foo { b: () }.a }; 4][3],
    |                     ^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

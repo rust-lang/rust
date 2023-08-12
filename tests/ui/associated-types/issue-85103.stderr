@@ -4,5 +4,5 @@ error: unable to determine layout for `<[E] as ToOwned>::Owned` because `<[E] as
 LL | type Edges<'a, E> = Cow<'a, [E]>;
    | ^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

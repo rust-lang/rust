@@ -18,6 +18,6 @@ LL | use ambiguous_8_extern::*;
    |     ^^^^^^^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `Error` to disambiguate
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0659`.

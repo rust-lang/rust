@@ -6,6 +6,6 @@ LL |         x.0({
 LL |             yield;
    |             ----- possible yield occurs here
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0626`.

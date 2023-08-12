@@ -4,5 +4,5 @@ error: removing an expression is not supported in this position
 LL |     let _ = #[cfg_eval] #[cfg(FALSE)] 0;
    |                         ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

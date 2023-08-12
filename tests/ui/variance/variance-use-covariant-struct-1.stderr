@@ -11,5 +11,5 @@ LL |     v
    |
    = help: consider adding the following bound: `'min: 'max`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

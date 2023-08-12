@@ -9,6 +9,6 @@ help: if this generic argument was intended as a const parameter, surround it wi
 LL | fn test<const N: usize>() -> Foo<{ N }> {
    |                                  +   +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0747`.

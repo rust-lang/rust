@@ -4,5 +4,5 @@ error: function should have one argument
 LL | fn panic() -> ! {
    | ^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -4,5 +4,5 @@ error: the return type of the `start` lang item is incorrect
 LL | fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
    |                                                                                    ^ help: change the type from `()` to `isize`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

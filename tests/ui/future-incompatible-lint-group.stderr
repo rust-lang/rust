@@ -24,5 +24,5 @@ LL | #![deny(future_incompatible)]
    |         ^^^^^^^^^^^^^^^^^^^
    = note: `#[deny(invalid_doc_attributes)]` implied by `#[deny(future_incompatible)]`
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

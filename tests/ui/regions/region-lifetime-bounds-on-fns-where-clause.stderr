@@ -8,6 +8,6 @@ LL |     let _: fn(&mut &isize, &mut &isize) = a;
                  found fn item `for<'a, 'b> fn(&'a mut &isize, &'b mut &isize) {a::<'_, '_>}`
    = note: when the arguments and return types match, functions can be coerced to function pointers
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

@@ -7,6 +7,6 @@ LL |     let ug = Graph::<i32, i32>::new_undirected();
    = note: the function or associated item was found for
            - `issue_30123_aux::Graph<N, E, Undirected>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

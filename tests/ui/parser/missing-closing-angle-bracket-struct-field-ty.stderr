@@ -14,5 +14,5 @@ help: you might have meant to end the type parameters here
 LL |     b: Arc<Mutex<usize>>,
    |                        +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

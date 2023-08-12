@@ -13,5 +13,5 @@ error: late-bound const parameter not allowed on closures
 LL |     for<const N: i32> || -> () {};
    |         ^^^^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

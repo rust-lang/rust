@@ -7,6 +7,6 @@ LL |     let y: Box<dyn for<'a> Foo<'a>> = x;
    = note: expected trait object `dyn for<'a> Foo<'a>`
               found trait object `dyn Foo<'_>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

@@ -14,5 +14,5 @@ LL | where
 LL |     [(); N + 1]:,
    |          ^^^^^ required by this bound in `bar`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

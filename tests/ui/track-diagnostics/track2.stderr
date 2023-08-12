@@ -13,6 +13,6 @@ help: borrow this binding in the pattern to avoid moving the value
 LL |     let ref _moved @ ref _from = String::from("foo");
    |         +++          +++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0382`.

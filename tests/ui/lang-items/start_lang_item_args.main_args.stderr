@@ -9,5 +9,5 @@ help: change the type from `fn(i32) -> T` to `fn() -> T`
 LL | fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> isize {
    |                    ~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

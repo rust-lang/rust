@@ -4,6 +4,6 @@ error[E0080]: evaluation of constant value failed
 LL |     let x = unsafe { Foo { b: () }.a };
    |                      ^^^^^^^^^^^^^^^ constructing invalid value at .inner: encountered a value of uninhabited type `AnonPipe`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

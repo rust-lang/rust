@@ -16,6 +16,6 @@ help: add missing generic argument
 LL |     Foo::<isize, B>::new();
    |                +++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0107`.

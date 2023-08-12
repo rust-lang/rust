@@ -10,5 +10,5 @@ LL |     let foo: (),
    = note: the `let` keyword is not allowed in `struct` fields
    = note: see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

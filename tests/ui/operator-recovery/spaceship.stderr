@@ -4,5 +4,5 @@ error: invalid comparison operator `<=>`
 LL |     println!("{}", 1 <=> 2);
    |                      ^^^ `<=>` is not a valid comparison operator, use `std::cmp::Ordering`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -15,5 +15,5 @@ LL |     T: Foo<test(): Send>,
    |
    = note: `test` is declared in two supertraits: `Super2` and `Super1<'a>`
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

@@ -9,5 +9,5 @@ help: consider adding `;` here
 LL |     foo();
    |          +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

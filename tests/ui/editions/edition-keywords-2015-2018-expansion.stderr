@@ -11,5 +11,5 @@ help: escape `async` to use it as an identifier
 LL |     () => (pub fn r#async() {})
    |                   ++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -11,5 +11,5 @@ note: the lint level is defined here
 LL | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

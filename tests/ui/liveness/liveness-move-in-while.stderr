@@ -41,6 +41,6 @@ help: consider cloning the value if the performance cost is acceptable
 LL |         while true { while true { while true { x = y.clone(); x.clone(); } } }
    |                                                     ++++++++
 
-error: aborting due to previous error; 3 warnings emitted
+error: aborting due to 1 previous error; 3 warnings emitted
 
 For more information about this error, try `rustc --explain E0382`.

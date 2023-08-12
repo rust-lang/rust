@@ -10,6 +10,6 @@ LL |     println!("{}", z.to_string());
            `*const u8: std::fmt::Display`
            which is required by `*const u8: ToString`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

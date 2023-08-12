@@ -4,5 +4,5 @@ error: expected string literal
 LL | fn main() { env!(10, "two"); }
    |                  ^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

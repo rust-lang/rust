@@ -10,5 +10,5 @@ help: you might have meant to introduce a new binding
 LL |     let _foo: i32 = 4;
    |     +++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

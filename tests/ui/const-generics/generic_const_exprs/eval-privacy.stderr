@@ -24,6 +24,6 @@ note: the lint level is defined here
 LL | #![warn(private_interfaces)]
    |         ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0446`.

@@ -7,6 +7,6 @@ LL | pub unsafe extern "C" fn test(_: i32, ap: ...) { }
    = note: see issue #44930 <https://github.com/rust-lang/rust/issues/44930> for more information
    = help: add `#![feature(c_variadic)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

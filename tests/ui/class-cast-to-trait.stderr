@@ -4,6 +4,6 @@ error[E0599]: no method named `eat` found for struct `Box<dyn Noisy>` in the cur
 LL |   nyan.eat();
    |        ^^^ method not found in `Box<dyn Noisy>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

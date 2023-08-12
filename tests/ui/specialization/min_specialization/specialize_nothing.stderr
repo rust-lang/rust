@@ -10,5 +10,5 @@ note: impl is a specialization of this impl
 LL | impl<T> Special for T {
    | ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

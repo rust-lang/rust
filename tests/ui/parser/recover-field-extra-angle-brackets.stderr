@@ -4,5 +4,5 @@ error: unmatched angle bracket
 LL |     first: Vec<u8>>,
    |                   ^ help: remove extra angle bracket
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

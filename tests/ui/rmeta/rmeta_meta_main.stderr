@@ -4,6 +4,6 @@ error[E0560]: struct `Foo` has no field named `field2`
 LL |     let _ = Foo { field2: 42 };
    |                   ^^^^^^ help: a field with a similar name exists: `field`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0560`.

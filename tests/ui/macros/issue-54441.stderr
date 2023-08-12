@@ -9,5 +9,5 @@ LL |     m!();
    |
    = note: the usage of `m!` is likely invalid in foreign item context
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

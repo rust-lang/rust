@@ -6,6 +6,6 @@ LL |     let _x = NonZero(0);
    |
    = note: initializing a layout restricted type's field with a value outside the valid range is undefined behavior
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0133`.

@@ -35,5 +35,5 @@ LL |         demand_y(outlives1, outlives2, x.get())
    |
    = help: consider adding the following bound: `'a: 'b`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -4,6 +4,6 @@ error[E0492]: constants cannot refer to interior mutable data
 LL |     &{a.0}
    |     ^^^^^^ this borrow of an interior mutable value may end up in the final value
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0492`.

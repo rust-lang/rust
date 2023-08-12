@@ -7,5 +7,5 @@ LL | fn test<X: ?Sized + Send>() {}
 LL |     test::<A>();
    |     ^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

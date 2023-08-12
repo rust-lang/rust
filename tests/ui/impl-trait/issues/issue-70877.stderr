@@ -15,5 +15,5 @@ note: opaque type being used as hidden type
 LL | type FooRet = impl std::fmt::Debug;
    |               ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

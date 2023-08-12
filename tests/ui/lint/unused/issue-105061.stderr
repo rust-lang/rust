@@ -16,5 +16,5 @@ LL -     ((for<'a> fn(Inv<'a>)),): Trait,
 LL +     (for<'a> fn(Inv<'a>),): Trait,
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -19,6 +19,6 @@ LL |     require_(&1u16);
 LL |     require_(&mut 1u16);
    |              ++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

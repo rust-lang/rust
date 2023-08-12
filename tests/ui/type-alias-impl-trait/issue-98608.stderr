@@ -11,6 +11,6 @@ LL |     let b: Box<dyn Fn() -> Box<u8>> = Box::new(hi);
            found opaque type `impl Sized`
    = note: required for the cast from `Box<fn() -> impl Sized {hi}>` to `Box<dyn Fn() -> Box<u8>>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0271`.

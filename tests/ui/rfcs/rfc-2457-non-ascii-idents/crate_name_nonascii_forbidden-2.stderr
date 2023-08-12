@@ -4,5 +4,5 @@ error: cannot load a crate with a non-ascii name `му_сгате`
 LL | use му_сгате::baz;
    |     ^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

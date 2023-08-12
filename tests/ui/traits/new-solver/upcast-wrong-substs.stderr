@@ -9,6 +9,6 @@ LL |     let y: &dyn Bar<usize> = x;
    = note: expected reference `&dyn Bar<usize>`
               found reference `&dyn Foo`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

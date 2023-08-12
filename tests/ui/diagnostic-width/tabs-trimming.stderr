@@ -7,6 +7,6 @@ LL | ...   v @ 1 | 2 | 3 => panic!("You gave me too little money {}", v), // Lon
    |       |       pattern doesn't bind `v`
    |       variable not in all patterns
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0408`.

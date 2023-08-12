@@ -22,6 +22,6 @@ LL | where
 LL |     for<T> T: Other<U> {}
    |               ^^^^^^^^ required by this bound in `foo`
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

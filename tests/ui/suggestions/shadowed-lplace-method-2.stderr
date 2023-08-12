@@ -20,6 +20,6 @@ help: try wrapping the expression in `X`
 LL |     *x.foo(0) = X { x: () };
    |                 ++++++    +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

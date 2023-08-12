@@ -9,5 +9,5 @@ LL | fn main() { m!(0, 0; 0, 0); }
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

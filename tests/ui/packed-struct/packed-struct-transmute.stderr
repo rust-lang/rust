@@ -7,6 +7,6 @@ LL |         let oof: Oof = mem::transmute(foo);
    = note: source type: `Foo` (N bits)
    = note: target type: `Oof` (N bits)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0512`.

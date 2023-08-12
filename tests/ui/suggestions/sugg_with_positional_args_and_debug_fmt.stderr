@@ -17,5 +17,5 @@ help: use the named argument by name to avoid ambiguity
 LL |     println!("hello {world:?}", world = "world");
    |                      +++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

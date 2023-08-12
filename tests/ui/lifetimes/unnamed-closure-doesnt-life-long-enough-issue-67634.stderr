@@ -16,6 +16,6 @@ help: to force the closure to take ownership of `a` (and any other referenced va
 LL |     [0].iter().flat_map(|a| [0].iter().map(move |_| &a));
    |                                            ++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0373`.

@@ -6,6 +6,6 @@ LL | impl<T> Trait3<usize> for T where T: Trait2<usize> {
    |
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

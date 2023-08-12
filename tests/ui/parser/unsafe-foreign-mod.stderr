@@ -4,5 +4,5 @@ error: extern block cannot be declared unsafe
 LL | unsafe extern "C" {
    | ^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

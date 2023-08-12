@@ -9,5 +9,5 @@ help: if you meant to bind the contents of the rest of the array pattern into `t
 LL |         [h, ref ts @ ..] => foo(c, n - h) + foo(ts, n),
    |                    +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

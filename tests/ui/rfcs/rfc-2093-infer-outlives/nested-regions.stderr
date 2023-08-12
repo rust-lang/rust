@@ -8,5 +8,5 @@ LL | struct Foo<'a, 'b, T> {
    = note: T: 'a
    = note: T: 'b
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

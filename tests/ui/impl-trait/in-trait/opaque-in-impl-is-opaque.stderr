@@ -12,6 +12,6 @@ LL |     let x: &str = ().bar();
    = note: expected reference `&str`
             found opaque type `impl std::fmt::Display`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

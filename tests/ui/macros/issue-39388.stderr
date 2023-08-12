@@ -4,5 +4,5 @@ error: expected one of: `*`, `+`, or `?`
 LL |     (($($a:tt)*) = ($($b:tt))*) => {
    |                      ^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

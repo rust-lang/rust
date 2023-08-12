@@ -6,6 +6,6 @@ LL | pub use doesnt_exist::*;
    |
    = help: consider adding `extern crate doesnt_exist` to use the `doesnt_exist` crate
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0432`.

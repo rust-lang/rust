@@ -13,6 +13,6 @@ LL | fn foo<T: ?Sized>(_f: impl AsRef<T>) {}
    |    ^^^ -
    = note: `impl Trait` cannot be explicitly specified as a generic argument
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0107`.

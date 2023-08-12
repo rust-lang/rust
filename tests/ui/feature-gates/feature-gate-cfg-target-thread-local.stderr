@@ -7,6 +7,6 @@ LL |     #[cfg_attr(target_thread_local, thread_local)]
    = note: see issue #29594 <https://github.com/rust-lang/rust/issues/29594> for more information
    = help: add `#![feature(cfg_target_thread_local)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

@@ -12,5 +12,5 @@ help: replace with conditional compilation to make the item only exist when test
 LL |     #[cfg(test)]
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

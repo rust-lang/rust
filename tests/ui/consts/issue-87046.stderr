@@ -4,5 +4,5 @@ error: cannot use unsized non-slice type `Username` in constant patterns
 LL |             ROOT_USER => true,
    |             ^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

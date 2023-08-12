@@ -16,6 +16,6 @@ LL |     fn intu(&self) -> &Self::Id {
    |
    = note: cannot satisfy `<T as Default>::Id == _`
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0284`.

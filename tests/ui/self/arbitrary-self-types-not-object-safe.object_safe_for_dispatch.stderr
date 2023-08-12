@@ -16,6 +16,6 @@ LL |     fn foo(self: &Rc<Self>) -> usize;
    |                  ^^^^^^^^^ ...because method `foo`'s `self` parameter cannot be dispatched on
    = note: required for the cast from `Rc<usize>` to `Rc<dyn Foo>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

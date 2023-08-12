@@ -4,5 +4,5 @@ error: type parameter `T` is part of concrete type but not used in parameter lis
 LL |         S::<T>(Default::default())
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

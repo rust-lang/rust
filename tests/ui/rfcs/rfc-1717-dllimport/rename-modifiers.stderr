@@ -4,5 +4,5 @@ error: overriding linking modifiers from command line is not supported
 LL | extern "C" {}
    | ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

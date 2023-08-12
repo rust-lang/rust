@@ -9,6 +9,6 @@ LL |     let (x, y) = ();
    = note: expected unit type `()`
                   found tuple `(_, _)`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

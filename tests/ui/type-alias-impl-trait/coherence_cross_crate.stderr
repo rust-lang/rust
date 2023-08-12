@@ -8,6 +8,6 @@ LL | impl OtherTrait for i32 {}
    |
    = note: upstream crates may add a new impl of trait `coherence_cross_crate_trait_decl::SomeTrait` for type `i32` in future versions
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0119`.

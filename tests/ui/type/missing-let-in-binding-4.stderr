@@ -6,5 +6,5 @@ LL | struct A {
 LL |     : u8 =,
    |     ^ expected identifier
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

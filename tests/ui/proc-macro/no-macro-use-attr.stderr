@@ -16,5 +16,5 @@ error: fatal error triggered by #[rustc_error]
 LL | fn main() {}
    | ^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

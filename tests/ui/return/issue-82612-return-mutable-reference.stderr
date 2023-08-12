@@ -23,6 +23,6 @@ help: you might have meant to return this value
 LL |             return value.get_or_insert_with(func);
    |             ++++++                               +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

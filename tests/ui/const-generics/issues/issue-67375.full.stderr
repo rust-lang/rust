@@ -8,5 +8,5 @@ LL |     inner: [(); { [|_: &T| {}; 0].len() }],
    |
    = help: consider moving this anonymous constant into a `const` function
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

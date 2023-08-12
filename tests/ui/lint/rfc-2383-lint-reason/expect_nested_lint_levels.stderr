@@ -48,5 +48,5 @@ warning: this lint expectation is unfulfilled
 LL | #[expect(unused_variables)]
    |          ^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error; 4 warnings emitted
+error: aborting due to 1 previous error; 4 warnings emitted
 

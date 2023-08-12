@@ -19,6 +19,6 @@ LL |     0.clone::<'a>();
    = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
    = note: `#[warn(late_bound_lifetime_arguments)]` on by default
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0261`.

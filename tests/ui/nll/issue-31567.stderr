@@ -11,6 +11,6 @@ LL |     &s_inner.0
 LL | }
    | - here, drop of `v` needs exclusive access to `*v.0`, because the type `VecWrapper<'_>` implements the `Drop` trait
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0713`.

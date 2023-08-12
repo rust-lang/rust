@@ -13,6 +13,6 @@ LL -     TraitA::<i32>::func();
 LL +     <StructA as TraitA<i32>>::func();
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0790`.

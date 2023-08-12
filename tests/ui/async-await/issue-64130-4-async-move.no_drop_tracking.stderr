@@ -23,5 +23,5 @@ help: consider moving this into a `let` binding to create a shorter lived borrow
 LL |         match client.status() {
    |               ^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

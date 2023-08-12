@@ -17,6 +17,6 @@ help: you can `clone` the value and consume it, but this might not be your desir
 LL |     some_vec.clone().into_iter();
    |             ++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0382`.

@@ -9,5 +9,5 @@ LL | import! { a::b::c }
    |
    = note: this error originates in the macro `import` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

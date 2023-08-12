@@ -19,6 +19,6 @@ help: consider constraining the associated type `<impl Bar as Foo>::Item` to `i3
 LL | fn bar() -> impl Bar<Item = i32> {
    |                     ++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0271`.

@@ -7,6 +7,6 @@ LL |     let s: Box<dyn Trait<isize>> = Box::new(Struct { person: "Fred" });
    = help: the trait `Trait<&'static str>` is implemented for `Struct`
    = note: required for the cast from `Box<Struct>` to `Box<dyn Trait<isize>>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

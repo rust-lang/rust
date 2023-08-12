@@ -4,5 +4,5 @@ error: unknown import name type `unknown`, expected one of: decorated, noprefix,
 LL | #[link(name = "foo", kind = "raw-dylib", import_name_type = "unknown")]
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

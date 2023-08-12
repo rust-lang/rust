@@ -14,6 +14,6 @@ error[E0750]: negative impls cannot be default impls
 LL | default impl !MyTrait for u32 {}
    | ^^^^^^^      ^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0750`.

@@ -4,6 +4,6 @@ error[E0091]: type parameter `Unused` is unused
 LL |     Unused
    |     ^^^^^^ unused type parameter
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0091`.

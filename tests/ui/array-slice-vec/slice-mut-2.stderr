@@ -9,6 +9,6 @@ help: consider changing this to be a mutable reference
 LL |     let x: &[isize] = &mut [1, 2, 3, 4, 5];
    |                        +++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0596`.

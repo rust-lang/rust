@@ -13,5 +13,5 @@ note: `const` first seen here
 LL | const async const fn test() {}
    | ^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -15,5 +15,5 @@ help: consider adding 'move' keyword before the nested closure
 LL |         move || f() // The `nested` closure
    |         ++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -29,6 +29,6 @@ LL |           return 2;
    = note: if the loop doesn't execute, 3 other values would never get returned
    = help: return a value for the case when the loop has zero elements to iterate on, or consider changing the return type to account for that possibility
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

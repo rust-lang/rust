@@ -11,5 +11,5 @@ LL | #![deny(deprecated)]
    |         ^^^^^^^^^^
    = note: this error originates in the macro `macro_test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -16,6 +16,6 @@ LL |     async fn baz(&self) -> &i32;
 LL | impl Trait for S {}
    | ^^^^^^^^^^^^^^^^ missing `foo`, `bar`, `test`, `baz` in implementation
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0046`.

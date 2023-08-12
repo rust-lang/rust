@@ -14,6 +14,6 @@ help: to declare that `impl Trait<'d, 'e>` captures `'b`, you can add an explici
 LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'d, 'e> + 'b
    |                                                                                             ++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0700`.

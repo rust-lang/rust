@@ -4,6 +4,6 @@ error[E0412]: cannot find type `Bla` in this scope
 LL |     fn to_bla(&self) -> Bla;
    |                         ^^^ help: you might have meant to use the associated type: `Self::Bla`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0412`.

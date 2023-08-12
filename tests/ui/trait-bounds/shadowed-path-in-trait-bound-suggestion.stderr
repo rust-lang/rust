@@ -14,6 +14,6 @@ LL -     pub struct A<H: A::Trait>(pub H);
 LL +     pub struct A<H: Trait>(pub H);
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0405`.

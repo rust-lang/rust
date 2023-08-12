@@ -15,5 +15,5 @@ help: use `.with_addr()` to adjust a valid pointer in the same allocation, to th
 LL |     let dangling = (...).with_addr(16_usize);
    |                    ++++++++++++++++        ~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -13,6 +13,6 @@ error[E0229]: associated type bindings are not allowed here
 LL | impl Super1<'_, bar(): Send> for () {}
    |                 ^^^^^^^^^^^ associated type not allowed here
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0229`.

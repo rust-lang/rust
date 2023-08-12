@@ -6,6 +6,6 @@ LL |     const l: usize = v.count();
    |     |
    |     help: consider using `let` instead of `const`: `let l`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0435`.

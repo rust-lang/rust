@@ -25,6 +25,6 @@ note: ...and refers to the struct `ParseOptions` which is defined here
 LL |     pub struct ParseOptions {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^ consider importing it directly
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0603`.

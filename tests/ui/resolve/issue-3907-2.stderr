@@ -10,6 +10,6 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
 LL |     fn bar();
    |        ^^^ the trait cannot be made into an object because associated function `bar` has no `self` parameter
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

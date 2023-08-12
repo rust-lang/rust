@@ -9,5 +9,5 @@ LL |     foo(;
 LL | }
    | ^ mismatched closing delimiter
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

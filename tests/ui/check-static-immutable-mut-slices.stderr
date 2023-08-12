@@ -4,6 +4,6 @@ error[E0764]: mutable references are not allowed in the final value of statics
 LL | static TEST: &'static mut [isize] = &mut [];
    |                                     ^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0764`.

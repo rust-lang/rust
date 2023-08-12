@@ -4,5 +4,5 @@ error: found associated const `BAR` when type was expected
 LL |   const QUX: Self::BAR;
    |              ^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

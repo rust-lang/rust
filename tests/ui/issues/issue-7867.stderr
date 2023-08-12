@@ -12,6 +12,6 @@ LL |         A::B => (),
    = note: expected tuple `(bool, bool)`
                found enum `A`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

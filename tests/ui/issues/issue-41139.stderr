@@ -7,6 +7,6 @@ LL | fn get_function<'a>() -> &'a dyn Fn() -> dyn Trait {
 LL |     let t: &dyn Trait = &get_function()();
    |                          ^^^^^^^^^^^^^^ this trait object returns an unsized value `(dyn Trait + 'static)`, so it cannot be called
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0618`.

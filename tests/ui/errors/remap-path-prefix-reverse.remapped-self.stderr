@@ -9,6 +9,6 @@ LL |     let _ = remapped_dep::SomeStruct; // ~ERROR E0423
 LL | pub struct SomeStruct {} // This line should be show as part of the error.
    | --------------------- `remapped_dep::SomeStruct` defined here
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0423`.

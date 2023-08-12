@@ -4,5 +4,5 @@ error: expected `{` after struct name, found `!`
 LL | struct A where T: Sized !
    |                         ^ expected `{` after struct name
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

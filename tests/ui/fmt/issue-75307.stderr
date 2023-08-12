@@ -4,5 +4,5 @@ error: 3 positional arguments in format string, but there is 1 argument
 LL |     format!(r"{}{}{}", named_arg=1);
    |               ^^^^^^             -
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

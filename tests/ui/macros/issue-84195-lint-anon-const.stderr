@@ -16,7 +16,7 @@ LL | #![deny(semicolon_in_expressions_from_macros)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `len` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 Future incompatibility report: Future breakage diagnostic:
 error: trailing semicolon in macro used in expression position

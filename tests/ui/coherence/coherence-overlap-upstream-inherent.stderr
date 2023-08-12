@@ -9,6 +9,6 @@ LL | impl A<i16> { fn dummy(&self) { } }
    |
    = note: upstream crates may add a new impl of trait `coherence_lib::Remote` for type `i16` in future versions
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0592`.

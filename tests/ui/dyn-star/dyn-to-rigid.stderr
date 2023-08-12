@@ -4,6 +4,6 @@ error[E0606]: casting `(dyn* Tr + 'static)` as `usize` is invalid
 LL |     x as usize
    |     ^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0606`.

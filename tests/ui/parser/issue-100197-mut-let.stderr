@@ -4,5 +4,5 @@ error: invalid variable declaration
 LL |     mut let _x = 123;
    |     ^^^^^^^ help: switch the order of `mut` and `let`: `let mut`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -13,5 +13,5 @@ LL | | ) -> isize {
    = note: the `start` lang item should have four parameters, but found 5
    = note: the `start` lang item should have the signature `fn(fn() -> T, isize, *const *const u8, u8) -> isize`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

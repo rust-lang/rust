@@ -7,6 +7,6 @@ LL | #[fundamental]
    = note: see issue #29635 <https://github.com/rust-lang/rust/issues/29635> for more information
    = help: add `#![feature(fundamental)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

@@ -4,5 +4,5 @@ error: type parameter `impl Deref<Target = Self>` is part of concrete type but n
 LL |         self
    |         ^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

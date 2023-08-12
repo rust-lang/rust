@@ -13,5 +13,5 @@ help: perhaps you meant to use `struct` here
 LL | struct VecOrMap {
    | ~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

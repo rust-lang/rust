@@ -10,5 +10,5 @@ LL |         let other = self.use_fcx(fcx);
    |
    = help: consider adding the following bound: `'a: 'tcx`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

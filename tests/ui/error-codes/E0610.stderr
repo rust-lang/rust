@@ -4,6 +4,6 @@ error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
 LL |     let _ = x.foo;
    |               ^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0610`.

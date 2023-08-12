@@ -4,5 +4,5 @@ error: ~const can only be applied to `#[const_trait]` traits
 LL | impl<A, B> const Convert<B> for A where B: ~const From<A> {
    |                                                   ^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

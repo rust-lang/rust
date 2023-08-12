@@ -4,5 +4,5 @@ error: non-item in item list
 LL |     let _X: i32;
    |     ^^^ help: consider using `const` instead of `let` for associated const: `const`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -9,5 +9,5 @@ help: use `::<...>` instead of `<...>` to specify lifetime, type, or const argum
 LL |         E::<i32>::A(v) => {
    |          ++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

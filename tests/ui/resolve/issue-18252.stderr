@@ -4,6 +4,6 @@ error[E0533]: expected value, found struct variant `Foo::Variant`
 LL |     let f = Foo::Variant(42);
    |             ^^^^^^^^^^^^ not a value
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0533`.

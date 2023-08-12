@@ -4,6 +4,6 @@ error[E0277]: the trait bound `Result<(), _>: Future` is not satisfied
 LL | fn foo() -> impl Future<Item=(), Error=Box<dyn Error>> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Future` is not implemented for `Result<(), _>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

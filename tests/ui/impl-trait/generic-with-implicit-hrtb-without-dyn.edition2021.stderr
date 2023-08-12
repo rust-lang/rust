@@ -9,6 +9,6 @@ help: add `dyn` keyword before this trait
 LL | fn ice() -> impl AsRef<dyn Fn(&())> {
    |                        +++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0782`.

@@ -11,5 +11,5 @@ note: this item must mention the opaque type in its signature in order to be abl
 LL | pub fn kazusa<'a>() -> <&'a () as Tr>::Item {
    |        ^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -6,6 +6,6 @@ error[E0391]: cycle detected when computing layout of `core::option::Option<S>`
    = note: cycle used when computing layout of `core::option::Option<<S as Mirror>::It>`
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0391`.

@@ -7,6 +7,6 @@ LL | fn foo(x: impl Fn(<S as T<'_>>::A) -> <S as T<'_>>::A) {}
    = note: lifetimes appearing in an associated or opaque type are not considered constrained
    = note: consider introducing a named lifetime parameter
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0582`.

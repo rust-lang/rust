@@ -8,6 +8,6 @@ LL |     drop(x);
    |
    = note: partial move occurs because `x.0` has type `Vec<i32>`, which does not implement the `Copy` trait
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0382`.

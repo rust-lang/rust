@@ -11,6 +11,6 @@ help: use `Option::as_ref` to convert `Option<<I as Iterator>::Item>` to `Option
 LL |     debug_assert_eq!(iter.next().as_ref(), Some(value));
    |                                 +++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

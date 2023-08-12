@@ -10,6 +10,6 @@ LL |            |w| {
 LL |             v = Box::new(4);
    |             - second borrow occurs due to use of `v` in closure
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0502`.

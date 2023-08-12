@@ -10,5 +10,5 @@ note: this function is not `const`, so it cannot have `~const` trait bounds
 LL | fn foo<T>() where T: ~const Bar {}
    |    ^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

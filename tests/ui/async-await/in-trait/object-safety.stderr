@@ -13,6 +13,6 @@ LL |     async fn foo(&self);
    |              ^^^ ...because method `foo` is `async`
    = help: consider moving `foo` to another trait
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

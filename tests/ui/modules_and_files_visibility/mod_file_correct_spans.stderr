@@ -4,6 +4,6 @@ error[E0425]: cannot find function `bar` in module `mod_file_aux`
 LL |     assert!(mod_file_aux::bar() == 10);
    |                           ^^^ not found in `mod_file_aux`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0425`.

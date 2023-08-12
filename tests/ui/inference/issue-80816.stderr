@@ -24,6 +24,6 @@ help: try using a fully qualified path to specify the expected types
 LL |     let guard: Guard<Arc<usize>> = <Arc<ArcSwapAny<Arc<usize>>> as Access<T>>::load(&s);
    |                                    ++++++++++++++++++++++++++++++++++++++++++++++++++ ~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0283`.

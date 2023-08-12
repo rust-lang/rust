@@ -14,5 +14,5 @@ LL -     bar::<Item =   >();
 LL +     bar::<Item >();
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

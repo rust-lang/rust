@@ -6,6 +6,6 @@ LL |     let _ = async |x: u8| {};
    |
    = help: consider using `let` statements to manually capture variables by reference before entering an `async move` closure
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0708`.

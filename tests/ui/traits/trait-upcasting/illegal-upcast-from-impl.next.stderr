@@ -9,6 +9,6 @@ LL | fn illegal(x: &dyn Sub<Assoc = ()>) -> &dyn Super<Assoc = i32> { x }
    = note: expected reference `&dyn Super<Assoc = i32>`
               found reference `&dyn Sub<Assoc = ()>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

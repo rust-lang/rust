@@ -7,6 +7,6 @@ LL |     fn call_once(self, _args: ()) {
    = note: expected signature `extern "rust-call" fn(Debuger<_>, ())`
               found signature `fn(Debuger<_>, ())`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0053`.

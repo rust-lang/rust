@@ -4,5 +4,5 @@ error: crate root imports need to be explicitly named: `use crate as name;`
 LL | use crate::{self};
    |             ^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

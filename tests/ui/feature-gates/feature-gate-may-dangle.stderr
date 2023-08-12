@@ -7,6 +7,6 @@ LL | unsafe impl<#[may_dangle] A> Drop for Pt<A> {
    = note: see issue #34761 <https://github.com/rust-lang/rust/issues/34761> for more information
    = help: add `#![feature(dropck_eyepatch)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

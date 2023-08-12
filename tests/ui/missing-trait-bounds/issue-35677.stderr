@@ -14,6 +14,6 @@ help: consider restricting the type parameters to satisfy the trait bounds
 LL | fn is_subset<T>(this: &HashSet<T>, other: &HashSet<T>) -> bool where T: Eq, T: Hash {
    |                                                                ++++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

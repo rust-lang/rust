@@ -11,6 +11,6 @@ LL ~         (Some(_), None) | (None, Some(_)) => {},
 LL +         (None, None) | (Some(_), Some(_)) => todo!()
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0004`.

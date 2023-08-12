@@ -16,5 +16,5 @@ LL |     let _ = [0u8; const { std::mem::size_of::<T>() }];
    = help: consider moving this anonymous constant into a `const` function
    = note: this operation may be supported in the future
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

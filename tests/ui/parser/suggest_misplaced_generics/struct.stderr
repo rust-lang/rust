@@ -10,5 +10,5 @@ LL - struct<T> Foo { x: T }
 LL + struct Foo<T> { x: T }
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

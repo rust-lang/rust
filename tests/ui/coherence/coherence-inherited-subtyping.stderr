@@ -9,6 +9,6 @@ LL |     fn method1(&self) {}
    |
    = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0592`.

@@ -13,5 +13,5 @@ error: late-bound type parameter not allowed on function pointer types
 LL | fn foo() -> for<T> fn(T) {
    |                 ^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

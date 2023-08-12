@@ -4,6 +4,6 @@ error[E0371]: the object type `(dyn Foo + 'a)` automatically implements the trai
 LL | impl<'a> Foo for dyn Foo + 'a {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Foo + 'a)` automatically implements trait `Foo`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0371`.

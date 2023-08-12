@@ -8,6 +8,6 @@ LL |     let strings: [String; 5] = [String::new(); 5];
    = help: consider creating a new `const` item and initializing it with the result of the function call to be used in the repeat position, like `const VAL: Type = const_fn();` and `let x = [VAL; 42];`
    = help: create an inline `const` block, see RFC #2920 <https://github.com/rust-lang/rfcs/pull/2920> for more information
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

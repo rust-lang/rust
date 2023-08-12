@@ -10,5 +10,5 @@ note: previous use here
 LL |     pub type Tait = impl Copy + From<Bar<()>> + Into<Bar<()>>;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

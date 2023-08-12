@@ -11,6 +11,6 @@ LL | |     };
    = note: see issue #31436 <https://github.com/rust-lang/rust/issues/31436> for more information
    = help: add `#![feature(try_blocks)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

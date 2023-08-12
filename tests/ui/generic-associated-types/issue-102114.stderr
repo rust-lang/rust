@@ -7,6 +7,6 @@ LL |     type B<'b>;
 LL |     type B<T> = Wrapper<T>;
    |            ^ found 1 type parameter
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0049`.

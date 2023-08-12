@@ -9,6 +9,6 @@ LL |     let alias: &'static mut String = s;
 LL |     *s = String::new();
    |     ^^ `*s` is assigned to here but it was already borrowed
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0506`.

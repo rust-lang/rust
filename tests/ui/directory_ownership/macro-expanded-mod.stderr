@@ -9,5 +9,5 @@ LL |     mod_decl!(foo);
    |
    = note: this error originates in the macro `mod_decl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

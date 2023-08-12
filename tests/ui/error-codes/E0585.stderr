@@ -6,6 +6,6 @@ LL |     /// Hello! I'm useless...
    |
    = help: doc comments must come before what they document, if a comment was intended use `//`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0585`.

@@ -11,5 +11,5 @@ help: to declare that the trait object captures data from argument `self`, you c
 LL | type BoxedGreeter<'a> = (Box<dyn Greeter0 + 'a>, Box<dyn Greeter1 + 'a>);
    |                  ++++                     ++++                    ++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -19,6 +19,6 @@ LL | |                 .and(Assume::VALIDITY)
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

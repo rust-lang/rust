@@ -10,6 +10,6 @@ help: try using a fully qualified path to specify the expected types
 LL |         <u8 as StreamHash<H>>::input_stream(self, &mut stream);
    |         ++++++++++++++++++++++++++++++++++++    ~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0284`.

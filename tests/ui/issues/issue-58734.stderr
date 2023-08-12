@@ -18,6 +18,6 @@ error[E0599]: no function or associated item named `nonexistent` found for trait
 LL |     Trait::nonexistent(());
    |            ^^^^^^^^^^^ function or associated item not found in `dyn Trait`
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0599`.

@@ -7,4 +7,4 @@
 #6 [typeck] type-checking `test`
 #7 [analysis] running analysis passes on this crate
 end of query stack
-error: aborting due to previous error
+error: aborting due to 1 previous error

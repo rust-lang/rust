@@ -9,6 +9,6 @@ help: try giving this closure an explicit return type
 LL |         .or_else(|err| -> Result<Child, F> {
    |                        +++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0282`.

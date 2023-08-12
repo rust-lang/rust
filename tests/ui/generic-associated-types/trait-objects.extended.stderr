@@ -14,6 +14,6 @@ LL |     x.size_hint().0
    |
    = note: due to current limitations in the borrow checker, this implies a `'static` lifetime
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0521`.

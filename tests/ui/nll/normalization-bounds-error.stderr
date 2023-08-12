@@ -22,6 +22,6 @@ LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
    = note: expected `Visitor<'d>`
               found `Visitor<'_>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0495`.

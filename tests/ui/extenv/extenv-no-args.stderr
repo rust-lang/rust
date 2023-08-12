@@ -4,5 +4,5 @@ error: `env!()` takes 1 or 2 arguments
 LL | fn main() { env!(); }
    |             ^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

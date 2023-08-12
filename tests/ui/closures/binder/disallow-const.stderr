@@ -7,6 +7,6 @@ LL |     for<const N: i32> || -> () {};
    = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

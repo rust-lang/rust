@@ -4,6 +4,6 @@ error[E0277]: the trait bound `DefaultAllocator: Allocator` is not satisfied
 LL | struct Foo(Matrix<<DefaultAllocator as Allocator>::Buffer>);
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Allocator` is not implemented for `DefaultAllocator`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

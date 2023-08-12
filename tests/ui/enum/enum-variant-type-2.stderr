@@ -7,6 +7,6 @@ LL | fn foo(x: Foo::Bar) {}
    |           not a type
    |           help: try using the variant's enum: `Foo`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0573`.

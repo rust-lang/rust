@@ -7,6 +7,6 @@ LL | #[rustc_allow_const_fn_unstable()]
    = note: see issue #69399 <https://github.com/rust-lang/rust/issues/69399> for more information
    = help: add `#![feature(rustc_allow_const_fn_unstable)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

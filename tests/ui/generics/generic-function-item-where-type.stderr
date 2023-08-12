@@ -7,6 +7,6 @@ LL |     foo::<main>()
    = help: `main` is a function item, not a type
    = help: function item types cannot be named directly
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0747`.

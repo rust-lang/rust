@@ -4,5 +4,5 @@ error: constant pattern depends on a generic parameter
 LL |     matches!(GetVariantCount::<T>::VALUE, GetVariantCount::<T>::VALUE)
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -226,5 +226,5 @@ LL | fn write_through_reference(mut arg: &mut Arg) {
    |                            |
    |                            help: remove this `mut`
 
-error: aborting due to previous error; 26 warnings emitted
+error: aborting due to 1 previous error; 26 warnings emitted
 

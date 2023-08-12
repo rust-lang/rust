@@ -12,6 +12,6 @@ help: try using a fully qualified path to specify the expected types
 LL |     let y: f64 = 0.01f64 * <i16 as Into<T>>::into(1i16);
    |                            +++++++++++++++++++++++    ~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0284`.

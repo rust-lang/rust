@@ -1,4 +1,4 @@
 error: `-Zsplit-lto-unit` requires `-Clto`, `-Clto=thin`, or `-Clinker-plugin-lto`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

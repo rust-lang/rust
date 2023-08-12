@@ -4,6 +4,6 @@ error[E0220]: associated type `Baa` not found for `T`
 LL |     T::Baa: std::fmt::Debug,
    |        ^^^ there is a similarly named associated type `Bar` in the trait `Foo`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0220`.

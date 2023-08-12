@@ -4,5 +4,5 @@ error: link cfg must have a single predicate argument
 LL | #[link(name = "foo", cfg("rlib"))]
    |                      ^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -4,6 +4,6 @@ error[E0781]: the `"C-cmse-nonsecure-call"` ABI is only allowed on function poin
 LL | pub extern "C-cmse-nonsecure-call" fn test() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0781`.

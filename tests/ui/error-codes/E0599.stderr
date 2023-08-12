@@ -7,6 +7,6 @@ LL | struct Foo;
 LL |     || if let Foo::NotEvenReal() = Foo {};
    |                    ^^^^^^^^^^^ associated item not found in `Foo`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

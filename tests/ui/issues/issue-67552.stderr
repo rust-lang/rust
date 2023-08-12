@@ -13,5 +13,5 @@ LL | |     T: Iterator,
    | |________________^
    = note: the full type name has been written to '$TEST_BUILD_DIR/issues/issue-67552/issue-67552.long-type.txt'
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

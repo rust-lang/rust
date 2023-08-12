@@ -7,5 +7,5 @@ LL |     unsafe pub(crate) fn t() {}
    |     |      expected one of `extern` or `fn`
    |     help: visibility `pub(crate)` must come before `unsafe`: `pub(crate) unsafe`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

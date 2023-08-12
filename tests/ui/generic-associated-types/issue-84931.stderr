@@ -6,6 +6,6 @@ LL |     type Item<'a> = &'a mut T;
    |                     |
    |                     ...so that the reference type `&'a mut T` does not outlive the data it points at
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0309`.

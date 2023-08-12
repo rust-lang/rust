@@ -4,6 +4,6 @@ error[E0164]: expected tuple struct or tuple variant, found associated constant 
 LL |         Foo::B(i) => i,
    |         ^^^^^^^^^ not a tuple struct or tuple variant
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0164`.

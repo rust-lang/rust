@@ -12,6 +12,6 @@ help: consider giving `var_fn` an explicit type, where the placeholders `_` are 
 LL |     let var_fn: Value<Rc<_>> = Value::wrap();
    |               ++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0282`.

@@ -9,5 +9,5 @@ LL | type A = single_quote_alone!();
    |
    = note: this error originates in the macro `single_quote_alone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

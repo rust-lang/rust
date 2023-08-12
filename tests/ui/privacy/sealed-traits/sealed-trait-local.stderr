@@ -11,6 +11,6 @@ LL |     pub trait Sealed: self::b::Hidden {
    |                       ^^^^^^^^^^^^^^^ required by this bound in `Sealed`
    = note: `Sealed` is a "sealed trait", because to implement it you also need to implement `a::b::Hidden`, which is not accessible; this is usually done to force you to use one of the provided types that already implement it
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

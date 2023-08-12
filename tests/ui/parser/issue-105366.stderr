@@ -9,5 +9,5 @@ help: replace `fn` with `impl` here
 LL | impl From<i32> for Foo {
    | ~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

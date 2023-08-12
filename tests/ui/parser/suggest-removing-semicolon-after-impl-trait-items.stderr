@@ -11,5 +11,5 @@ LL |     fn bar() {};
 LL | }
    | - item list ends here
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

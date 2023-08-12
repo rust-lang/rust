@@ -10,6 +10,6 @@ LL |         ::std::mem::transmute::<f64, [u8; 8]>(panic!())
    = note: expected type `!`
              found array `[u8; 8]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

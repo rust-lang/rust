@@ -19,6 +19,6 @@ LL | impl Deref for A {
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0015`.

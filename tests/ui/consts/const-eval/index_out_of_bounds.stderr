@@ -4,6 +4,6 @@ error[E0080]: could not evaluate static initializer
 LL | static FOO: i32 = [][0];
    |                   ^^^^^ index out of bounds: the length is 0 but the index is 0
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

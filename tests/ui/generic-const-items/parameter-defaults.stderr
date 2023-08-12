@@ -4,5 +4,5 @@ error: defaults for type parameters are only allowed in `struct`, `enum`, `type`
 LL | const NONE<T = ()>: Option<T> = None::<T>;
    |            ^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

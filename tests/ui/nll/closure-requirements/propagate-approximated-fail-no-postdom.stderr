@@ -32,5 +32,5 @@ LL | fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c:
    |
    = note: defining type: supply
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -12,6 +12,6 @@ help: copy the `where` clause predicates from the trait
 LL |     fn renew<'b: 'a>(self) -> &'b mut [T] where 'b: 'a {
    |                                           ~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0276`.

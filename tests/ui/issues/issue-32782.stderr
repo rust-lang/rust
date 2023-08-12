@@ -10,6 +10,6 @@ LL | foo!();
    = help: add `#![feature(allow_internal_unstable)]` to the crate attributes to enable
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

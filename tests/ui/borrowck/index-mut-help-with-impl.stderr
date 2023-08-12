@@ -4,6 +4,6 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
 LL |     Index::index(&v, 1..2).make_ascii_uppercase();
    |     ^^^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0596`.

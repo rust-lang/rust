@@ -10,5 +10,5 @@ note: lifetime declared here
 LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
    |                            ^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

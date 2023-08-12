@@ -4,5 +4,5 @@ error: `impl Trait` can only mention lifetimes from an fn or impl
 LL | fn test_argument_position(x: impl for<'a> Trait<'a, Assoc = impl Copy + 'a>) {}
    |                                       -- lifetime declared here         ^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

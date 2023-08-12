@@ -12,6 +12,6 @@ note: method defined here
   --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
    = note: this error originates in the macro `stringify` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

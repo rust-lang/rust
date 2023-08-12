@@ -14,6 +14,6 @@ help: consider dereferencing here
 LL |     let _errors = TcpListener::bind(&*bad);
    |                                      +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

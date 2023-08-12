@@ -13,6 +13,6 @@ LL | trait NotObjectSafe { fn eq(&self, other: Self); }
    |       this trait cannot be made into an object...
    = help: consider moving `eq` to another trait
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

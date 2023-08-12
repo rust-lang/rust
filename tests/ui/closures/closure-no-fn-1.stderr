@@ -14,6 +14,6 @@ note: closures can only be coerced to `fn` types if they do not capture any vari
 LL |     let foo: fn(u8) -> u8 = |v: u8| { a += v; a };
    |                                       ^ `a` captured here
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

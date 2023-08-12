@@ -10,5 +10,5 @@ help: add `struct` here to parse `onion` as a public struct
 LL | pub struct onion {
    |     ++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

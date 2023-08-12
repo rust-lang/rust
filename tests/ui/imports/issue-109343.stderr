@@ -6,6 +6,6 @@ LL | pub use unresolved::f;
    |
    = help: consider adding `extern crate unresolved` to use the `unresolved` crate
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0432`.

@@ -9,5 +9,5 @@ help: add `struct` here to parse `T` as a public struct
 LL | pub struct T(String);
    |     ++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

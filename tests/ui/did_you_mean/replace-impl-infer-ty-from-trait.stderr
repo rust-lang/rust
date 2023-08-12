@@ -13,6 +13,6 @@ help: try replacing `_` with the types in the corresponding trait method signatu
 LL |     fn bar(i: i32, t: usize, s: &()) -> (usize, i32) {
    |               ~~~     ~~~~~     ~~~     ~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0121`.

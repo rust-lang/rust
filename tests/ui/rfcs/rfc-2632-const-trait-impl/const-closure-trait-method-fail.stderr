@@ -10,6 +10,6 @@ help: consider further restricting this bound
 LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32 + ~const std::ops::FnOnce<((),)>>(x: T) -> i32 {
    |                                                         ++++++++++++++++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0015`.

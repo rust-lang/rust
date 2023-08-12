@@ -18,6 +18,6 @@ LL ~         P::C(PC::Q) => (),
 LL ~         P::C(PC::QA) => todo!(),
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0004`.

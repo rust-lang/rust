@@ -11,6 +11,6 @@ help: consider restricting type parameter `N`
 LL | fn add_ten<N: std::ops::Add<i32, Output = N>>(n: N) -> N {
    |             ++++++++++++++++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0369`.

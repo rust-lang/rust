@@ -10,5 +10,5 @@ help: this binary operation is possibly unfinished
 LL |     if 5 == {
    |        ^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -7,6 +7,6 @@ LL |     bar::<<T as MyTrait<'a>>::Output>()
    = help: consider adding an explicit lifetime bound `<T as MyTrait<'_>>::Output: 'a`...
    = note: ...so that the type `<T as MyTrait<'_>>::Output` will meet its required lifetime bounds
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0309`.

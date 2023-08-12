@@ -6,6 +6,6 @@ LL | type Foo = (impl Sized, u8);
 LL | pub fn foo() -> Foo {
    | ^^^^^^^^^^^^^^^^^^^ can't leak private type alias
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0446`.

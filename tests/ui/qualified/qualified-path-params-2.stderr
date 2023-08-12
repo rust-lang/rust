@@ -9,6 +9,6 @@ help: if there were a trait named `Example` with associated type `f` implemented
 LL | type A = <<S as Tr>::A as Example>::f;
    |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0223`.

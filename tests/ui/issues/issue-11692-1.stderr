@@ -4,5 +4,5 @@ error: cannot find macro `testo` in this scope
 LL |     print!(testo!());
    |            ^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

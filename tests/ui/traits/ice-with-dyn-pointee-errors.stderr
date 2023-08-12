@@ -14,6 +14,6 @@ note: required by a bound in `unknown_sized_object_ptr_in`
 LL | fn unknown_sized_object_ptr_in(_: &(impl Pointee<Metadata = ()> + ?Sized)) {}
    |                                                  ^^^^^^^^^^^^^ required by this bound in `unknown_sized_object_ptr_in`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0271`.

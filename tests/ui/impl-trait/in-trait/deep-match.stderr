@@ -10,6 +10,6 @@ LL |     fn bar() -> i32 {
    = note: expected struct `Wrapper<_>`
                 found type `i32`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0053`.

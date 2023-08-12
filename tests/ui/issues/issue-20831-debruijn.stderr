@@ -22,6 +22,6 @@ LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher
    = note: expected `<MyStruct<'a> as Publisher<'_>>`
               found `<MyStruct<'_> as Publisher<'_>>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0495`.

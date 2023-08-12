@@ -9,6 +9,6 @@ LL |         let (cmp, router) = self.router.at()?;
    = note: expected struct `Match<&(for<'a> fn(&'a ()), Box<Wrapper>)>`
                found tuple `(_, _)`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

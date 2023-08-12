@@ -6,5 +6,5 @@ LL | fn f1<'a>(arg : Box<dyn X<Y = B = &'a ()>>) {}
    |                               |
    |                               maybe try to close unmatched angle bracket
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

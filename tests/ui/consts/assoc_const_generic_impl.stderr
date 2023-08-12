@@ -10,6 +10,6 @@ note: the above error was encountered while instantiating `fn <u32 as ZeroSized>
 LL |     42_u32.requires_zero_size();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

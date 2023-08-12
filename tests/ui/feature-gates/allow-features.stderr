@@ -4,6 +4,6 @@ error[E0725]: the feature `unknown_stdlib_feature` is not in the list of allowed
 LL | #![feature(unknown_stdlib_feature)]
    |            ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0725`.

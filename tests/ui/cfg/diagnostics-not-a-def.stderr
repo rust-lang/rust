@@ -4,6 +4,6 @@ error[E0425]: cannot find function `i_am_not` in module `inner`
 LL |     inner::i_am_not();
    |            ^^^^^^^^ not found in `inner`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0425`.

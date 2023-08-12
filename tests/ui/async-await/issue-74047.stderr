@@ -7,6 +7,6 @@ LL | impl TryFrom<OtherStream> for MyStream {}
    = help: implement the missing item: `type Error = /* Type */;`
    = help: implement the missing item: `fn try_from(_: OtherStream) -> Result<Self, <Self as TryFrom<OtherStream>>::Error> { todo!() }`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0046`.

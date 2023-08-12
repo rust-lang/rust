@@ -4,5 +4,5 @@ error: macro expansion ends with an incomplete expression: expected expression
 LL |         $($c)ö*
    |              ^ expected expression
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
