@@ -4,6 +4,6 @@ error[E0457]: plugin `rlib_crate_test` only found in rlib format, but must be av
 LL | #![plugin(rlib_crate_test)]
    |           ^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0457`.

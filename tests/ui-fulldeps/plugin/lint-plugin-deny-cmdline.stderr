@@ -14,5 +14,5 @@ LL | #![plugin(lint_plugin_test)]
    |
    = note: `#[warn(deprecated)]` on by default
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
