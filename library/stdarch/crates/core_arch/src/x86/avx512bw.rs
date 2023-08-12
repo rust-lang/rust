@@ -5675,9 +5675,11 @@ pub unsafe fn _mm_maskz_srl_epi16(k: __mmask8, a: __m128i, count: __m128i) -> __
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm512_srli_epi16<const IMM8: u32>(a: __m512i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
-    let a = a.as_i16x32();
-    let r = vpsrliw(a, IMM8);
-    transmute(r)
+    if IMM8 >= 16 {
+        _mm512_setzero_si512()
+    } else {
+        transmute(simd_shr(a.as_u16x32(), u16x32::splat(IMM8 as u16)))
+    }
 }
 
 /// Shift packed 16-bit integers in a right by imm8 while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -5693,9 +5695,12 @@ pub unsafe fn _mm512_mask_srli_epi16<const IMM8: u32>(
     a: __m512i,
 ) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
-    let a = a.as_i16x32();
-    let shf = vpsrliw(a, IMM8);
-    transmute(simd_select_bitmask(k, shf, src.as_i16x32()))
+    let shf = if IMM8 >= 16 {
+        u16x32::splat(0)
+    } else {
+        simd_shr(a.as_u16x32(), u16x32::splat(IMM8 as u16))
+    };
+    transmute(simd_select_bitmask(k, shf, src.as_u16x32()))
 }
 
 /// Shift packed 16-bit integers in a right by imm8 while shifting in zeros, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -5708,10 +5713,13 @@ pub unsafe fn _mm512_mask_srli_epi16<const IMM8: u32>(
 pub unsafe fn _mm512_maskz_srli_epi16<const IMM8: i32>(k: __mmask32, a: __m512i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     //imm8 should be u32, it seems the document to verify is incorrect
-    let a = a.as_i16x32();
-    let shf = vpsrliw(a, IMM8 as u32);
-    let zero = _mm512_setzero_si512().as_i16x32();
-    transmute(simd_select_bitmask(k, shf, zero))
+    if IMM8 >= 16 {
+        _mm512_setzero_si512()
+    } else {
+        let shf = simd_shr(a.as_u16x32(), u16x32::splat(IMM8 as u16));
+        let zero = u16x32::splat(0);
+        transmute(simd_select_bitmask(k, shf, zero))
+    }
 }
 
 /// Shift packed 16-bit integers in a right by imm8 while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -9995,8 +10003,6 @@ extern "C" {
 
     #[link_name = "llvm.x86.avx512.psrl.w.512"]
     fn vpsrlw(a: i16x32, count: i16x8) -> i16x32;
-    #[link_name = "llvm.x86.avx512.psrli.w.512"]
-    fn vpsrliw(a: i16x32, imm8: u32) -> i16x32;
 
     #[link_name = "llvm.x86.avx512.psrlv.w.512"]
     fn vpsrlvw(a: i16x32, b: i16x32) -> i16x32;
