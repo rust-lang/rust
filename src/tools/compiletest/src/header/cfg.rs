@@ -1,38 +1,40 @@
+use test_common::{CommentKind, TestComment};
+
 use crate::common::{CompareMode, Config, Debugger};
 use crate::header::IgnoreDecision;
 use std::collections::HashSet;
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
 
-pub(super) fn handle_ignore(config: &Config, line: &str) -> IgnoreDecision {
-    let parsed = parse_cfg_name_directive(config, line, "ignore");
-    match parsed.outcome {
-        MatchOutcome::NoMatch => IgnoreDecision::Continue,
-        MatchOutcome::Match => IgnoreDecision::Ignore {
-            reason: match parsed.comment {
-                Some(comment) => format!("ignored {} ({comment})", parsed.pretty_reason.unwrap()),
-                None => format!("ignored {}", parsed.pretty_reason.unwrap()),
+pub(super) fn handle_ignore(config: &Config, comment: TestComment<'_>) -> IgnoreDecision {
+    match parse_cfg_name_directive(config, &comment, "ignore") {
+        MatchOutcome::Match { message, comment } => IgnoreDecision::Ignore {
+            reason: match comment {
+                Some(comment) => format!("ignored {} ({comment})", message),
+                None => format!("ignored {}", message),
             },
         },
-        MatchOutcome::Invalid => IgnoreDecision::Error { message: format!("invalid line: {line}") },
+        MatchOutcome::NoMatch { .. } => IgnoreDecision::Continue,
+        MatchOutcome::Invalid => {
+            IgnoreDecision::Error { message: format!("invalid line: {}", comment.comment_str()) }
+        }
         MatchOutcome::External => IgnoreDecision::Continue,
         MatchOutcome::NotADirective => IgnoreDecision::Continue,
     }
 }
 
-pub(super) fn handle_only(config: &Config, line: &str) -> IgnoreDecision {
-    let parsed = parse_cfg_name_directive(config, line, "only");
-    match parsed.outcome {
-        MatchOutcome::Match => IgnoreDecision::Continue,
-        MatchOutcome::NoMatch => IgnoreDecision::Ignore {
-            reason: match parsed.comment {
-                Some(comment) => {
-                    format!("only executed {} ({comment})", parsed.pretty_reason.unwrap())
-                }
-                None => format!("only executed {}", parsed.pretty_reason.unwrap()),
+pub(super) fn handle_only(config: &Config, comment: TestComment<'_>) -> IgnoreDecision {
+    match parse_cfg_name_directive(config, &comment, "only") {
+        MatchOutcome::Match { .. } => IgnoreDecision::Continue,
+        MatchOutcome::NoMatch { message, comment } => IgnoreDecision::Ignore {
+            reason: match comment {
+                Some(comment) => format!("only executed {} ({comment})", message),
+                None => format!("only executed {}", message),
             },
         },
-        MatchOutcome::Invalid => IgnoreDecision::Error { message: format!("invalid line: {line}") },
+        MatchOutcome::Invalid => {
+            IgnoreDecision::Error { message: format!("invalid line: {}", comment.comment_str()) }
+        }
         MatchOutcome::External => IgnoreDecision::Continue,
         MatchOutcome::NotADirective => IgnoreDecision::Continue,
     }
@@ -40,30 +42,99 @@ pub(super) fn handle_only(config: &Config, line: &str) -> IgnoreDecision {
 
 /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
 /// or `normalize-stderr-32bit`.
-pub(super) fn parse_cfg_name_directive<'a>(
+pub(super) fn parse_cfg_name_directive<'line>(
     config: &Config,
-    line: &'a str,
+    comment: &'line TestComment<'line>,
     prefix: &str,
-) -> ParsedNameDirective<'a> {
-    if !line.as_bytes().starts_with(prefix.as_bytes()) {
-        return ParsedNameDirective::not_a_directive();
+) -> MatchOutcome<'line> {
+    match comment.comment() {
+        CommentKind::Compiletest(line) => {
+            parse_cfg_name_directive_compiletest(config, line, prefix)
+        }
+        CommentKind::UiTest(line) => parse_cfg_name_directive_ui_test(config, line, prefix),
     }
-    if line.as_bytes().get(prefix.len()) != Some(&b'-') {
-        return ParsedNameDirective::not_a_directive();
-    }
-    let line = &line[prefix.len() + 1..];
+}
 
-    let (name, comment) =
-        line.split_once(&[':', ' ']).map(|(l, c)| (l, Some(c))).unwrap_or((line, None));
+fn directive_name_for_line<'line, 'p>(
+    line: &'line str,
+    prefix: &'p str,
+) -> Option<(&'line str, Option<&'line str>)> {
+    // Directives start with a specified prefix, and are immediately followed by a '-'.
+    let expected_start = format!("{}-", prefix);
+    let after_prefix = if line.starts_with(expected_start.as_str()) {
+        &line[expected_start.len()..]
+    } else {
+        return None;
+    };
+
+    // If there is a ':' or a ' ' (space), split the name off, and consider the rest of the line to
+    // be a "comment" that is ignored.
+    let (name, comment) = after_prefix
+        .split_once(&[':', ' '])
+        .map(|(l, c)| (l.trim(), Some(c)))
+        .unwrap_or((after_prefix, None));
 
     // Some of the matchers might be "" depending on what the target information is. To avoid
     // problems we outright reject empty directives.
-    if name == "" {
-        return ParsedNameDirective::not_a_directive();
-    }
+    if name == "" { None } else { Some((name, comment)) }
+}
 
-    let mut outcome = MatchOutcome::Invalid;
-    let mut message = None;
+fn parse_cfg_name_directive_ui_test<'line>(
+    config: &Config,
+    line: &'line str,
+    prefix: &str,
+) -> MatchOutcome<'line> {
+    let Some((name, comment)) = directive_name_for_line(line, prefix) else {
+        return MatchOutcome::NotADirective;
+    };
+    let comment = comment.map(|c| c.trim().trim_start_matches('-').trim());
+
+    let target_cfg = config.target_cfg();
+
+    if name == "on-host" {
+        unimplemented!("idk what to do about this yet")
+    } else if let Some(bits) = name.strip_suffix("bit") {
+        let Ok(bits) = bits.parse::<u32>() else {
+            // "invalid ignore/only filter ending in 'bit': {bits:?} is not a valid bitwdith"
+            return MatchOutcome::Invalid;
+        };
+
+        let message = format!("when the pointer width is {}", target_cfg.pointer_width);
+        if bits == target_cfg.pointer_width {
+            MatchOutcome::Match { message, comment }
+        } else {
+            MatchOutcome::NoMatch { message, comment }
+        }
+    } else if let Some(triple_substr) = name.strip_prefix("target-") {
+        let message = format!("when the target is {}", config.target);
+        if config.target.contains(triple_substr) {
+            MatchOutcome::Match { message, comment }
+        } else {
+            MatchOutcome::NoMatch { message, comment }
+        }
+    } else if let Some(triple_substr) = name.strip_prefix("host-") {
+        let message = format!("when the host is {}", config.host);
+        if config.host.contains(triple_substr) {
+            MatchOutcome::Match { message, comment }
+        } else {
+            MatchOutcome::NoMatch { message, comment }
+        }
+    } else {
+        panic!(
+            "`{name}` is not a valid condition, expected `on-host`, /[0-9]+bit/, /host-.*/, or /target-.*/"
+        )
+    }
+}
+
+fn parse_cfg_name_directive_compiletest<'a>(
+    config: &Config,
+    line: &'a str,
+    prefix: &str,
+) -> MatchOutcome<'a> {
+    let Some((name, comment)) = directive_name_for_line(line, prefix) else {
+        return MatchOutcome::NotADirective;
+    };
+    let comment = comment.map(|c| c.trim().trim_start_matches('-').trim());
 
     macro_rules! condition {
         (
@@ -75,19 +146,24 @@ pub(super) fn parse_cfg_name_directive<'a>(
             // This is not inlined to avoid problems with macro repetitions.
             let format_message = || format!($($message)*);
 
-            if outcome != MatchOutcome::Invalid {
-                // Ignore all other matches if we already found one
-            } else if $name.custom_matches(name) {
-                message = Some(format_message());
+            if $name.custom_matches(name) {
                 if true $(&& $condition)? {
-                    outcome = MatchOutcome::Match;
+                    return MatchOutcome::Match {
+                        message: format_message(),
+                        comment,
+                    };
                 } else {
-                    outcome = MatchOutcome::NoMatch;
+                    return MatchOutcome::NoMatch{
+                        message: format_message(),
+                        comment,
+                    };
                 }
             }
             $(else if $allowed_names.custom_contains(name) {
-                message = Some(format_message());
-                outcome = MatchOutcome::NoMatch;
+                return MatchOutcome::NoMatch {
+                    message: format_message(),
+                    comment,
+                };
             })?
         }};
     }
@@ -123,11 +199,6 @@ pub(super) fn parse_cfg_name_directive<'a>(
         name: &target_cfg.os_and_env(),
         allowed_names: &target_cfgs.all_oses_and_envs,
         message: "when the operating system and target environment are {name}"
-    }
-    condition! {
-        name: &target_cfg.abi,
-        allowed_names: &target_cfgs.all_abis,
-        message: "when the ABI is {name}"
     }
     condition! {
         name: &target_cfg.arch,
@@ -215,64 +286,40 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "when comparing with {name}",
     }
 
-    if prefix == "ignore" && outcome == MatchOutcome::Invalid {
+    if prefix == "ignore" {
         // Don't error out for ignore-tidy-* diretives, as those are not handled by compiletest.
         if name.starts_with("tidy-") {
-            outcome = MatchOutcome::External;
+            return MatchOutcome::External;
         }
 
         // Don't error out for ignore-pass, as that is handled elsewhere.
         if name == "pass" {
-            outcome = MatchOutcome::External;
+            return MatchOutcome::External;
         }
 
         // Don't error out for ignore-llvm-version, that has a custom syntax and is handled
         // elsewhere.
         if name == "llvm-version" {
-            outcome = MatchOutcome::External;
+            return MatchOutcome::External;
         }
 
         // Don't error out for ignore-llvm-version, that has a custom syntax and is handled
         // elsewhere.
         if name == "gdb-version" {
-            outcome = MatchOutcome::External;
+            return MatchOutcome::External;
         }
     }
 
-    ParsedNameDirective {
-        name: Some(name),
-        comment: comment.map(|c| c.trim().trim_start_matches('-').trim()),
-        outcome,
-        pretty_reason: message,
-    }
+    // Did not match any known condition, emit an error.
+    MatchOutcome::Invalid
 }
 
-/// The result of parse_cfg_name_directive.
 #[derive(Clone, PartialEq, Debug)]
-pub(super) struct ParsedNameDirective<'a> {
-    pub(super) name: Option<&'a str>,
-    pub(super) pretty_reason: Option<String>,
-    pub(super) comment: Option<&'a str>,
-    pub(super) outcome: MatchOutcome,
-}
-
-impl ParsedNameDirective<'_> {
-    fn not_a_directive() -> Self {
-        Self {
-            name: None,
-            pretty_reason: None,
-            comment: None,
-            outcome: MatchOutcome::NotADirective,
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub(super) enum MatchOutcome {
+pub(super) enum MatchOutcome<'a> {
     /// No match.
-    NoMatch,
+    NoMatch { message: String, comment: Option<&'a str> },
     /// Match.
-    Match,
+    Match { message: String, comment: Option<&'a str> },
     /// The directive was invalid.
     Invalid,
     /// The directive is handled by other parts of our tooling.

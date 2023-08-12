@@ -402,14 +402,10 @@ impl TestProps {
 
                 config.set_name_directive(&comment, IgnorePassDirective, &mut self.ignore_pass);
 
-                if let Some(rule) =
-                    config.parse_custom_normalization(comment.comment_str(), "normalize-stdout")
-                {
+                if let Some(rule) = config.parse_custom_normalization(comment, "normalize-stdout") {
                     self.normalize_stdout.push(rule);
                 }
-                if let Some(rule) =
-                    config.parse_custom_normalization(comment.comment_str(), "normalize-stderr")
-                {
+                if let Some(rule) = config.parse_custom_normalization(comment, "normalize-stderr") {
                     self.normalize_stderr.push(rule);
                 }
 
@@ -659,8 +655,13 @@ impl Config {
         }
     }
 
-    fn parse_custom_normalization(&self, mut line: &str, prefix: &str) -> Option<(String, String)> {
-        if parse_cfg_name_directive(self, line, prefix).outcome == MatchOutcome::Match {
+    fn parse_custom_normalization(
+        &self,
+        comment: TestComment<'_>,
+        prefix: &str,
+    ) -> Option<(String, String)> {
+        if matches!(parse_cfg_name_directive(self, &comment, prefix), MatchOutcome::Match { .. }) {
+            let mut line = comment.comment_str();
             let from = parse_normalization_string(&mut line)?;
             let to = parse_normalization_string(&mut line)?;
             Some((from, to))
@@ -927,8 +928,8 @@ pub fn make_test_description<R: Read>(
         }
 
         let ln = comment.comment_str();
-        decision!(cfg::handle_ignore(config, ln));
-        decision!(cfg::handle_only(config, ln));
+        decision!(cfg::handle_ignore(config, comment));
+        decision!(cfg::handle_only(config, comment));
         decision!(needs::handle_needs(&cache.needs, config, comment));
         decision!(ignore_llvm(config, &comment));
         decision!(ignore_cdb(config, ln));
