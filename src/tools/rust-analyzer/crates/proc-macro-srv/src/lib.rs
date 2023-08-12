@@ -11,9 +11,17 @@
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
 #![cfg(feature = "sysroot-abi")]
-#![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+// tidy-alphabetical-start
+#![feature(proc_macro_diagnostic)]
+#![feature(proc_macro_internals)]
+#![feature(proc_macro_span)]
+// tidy-alphabetical-end
+// tidy-alphabetical-start
 #![allow(unreachable_pub)]
+#![warn(rust_2018_idioms)]
+#![warn(semicolon_in_expressions_from_macros)]
+#![warn(unused_lifetimes)]
+// tidy-alphabetical-end
 
 extern crate proc_macro;
 

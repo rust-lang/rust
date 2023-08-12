@@ -9,8 +9,10 @@
     html_playground_url = "https://play.rust-lang.org/",
     test(attr(deny(warnings)))
 )]
-#![deny(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-start
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-end
 // We want to be able to build this crate with a stable compiler, so no
 // `#![feature]` attributes should be added.
 

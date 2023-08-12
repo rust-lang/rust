@@ -12,9 +12,15 @@
 //! * `powerpc64`: [`is_powerpc64_feature_detected`]
 
 #![unstable(feature = "stdsimd", issue = "27731")]
-#![feature(const_fn, staged_api, stdsimd, doc_cfg, allow_internal_unstable)]
+// tidy-alphabetical-start
 #![allow(clippy::shadow_reuse)]
 #![deny(clippy::missing_inline_in_public_items)]
+#![feature(allow_internal_unstable)]
+#![feature(const_fn)]
+#![feature(doc_cfg)]
+#![feature(staged_api)]
+#![feature(stdsimd)]
+// tidy-alphabetical-end
 #![cfg_attr(target_os = "linux", feature(linkage))]
 #![cfg_attr(all(target_os = "freebsd", target_arch = "aarch64"), feature(asm))]
 #![cfg_attr(stdsimd_strict, deny(warnings))]

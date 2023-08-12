@@ -1,13 +1,15 @@
+// tidy-alphabetical-start
+#![allow(rustc::potential_query_instability)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(internal_output_capture)]
-#![feature(thread_spawn_unchecked)]
 #![feature(lazy_cell)]
+#![feature(thread_spawn_unchecked)]
 #![feature(try_blocks)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;

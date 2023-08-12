@@ -1,4 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+// tidy-alphabetical-start
+#![allow(rustc::potential_query_instability)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
@@ -7,8 +9,8 @@
 #![feature(never_type)]
 #![feature(strict_provenance)]
 #![feature(try_blocks)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).
 //! The backend-agnostic functions of this crate use functions defined in various traits that

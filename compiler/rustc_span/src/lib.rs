@@ -14,15 +14,17 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+// tidy-alphabetical-start
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(array_windows)]
 #![feature(if_let_guard)]
-#![feature(negative_impls)]
-#![feature(min_specialization)]
-#![feature(rustc_attrs)]
 #![feature(let_chains)]
+#![feature(min_specialization)]
+#![feature(negative_impls)]
 #![feature(round_char_boundary)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
+#![feature(rustc_attrs)]
+// tidy-alphabetical-end
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]

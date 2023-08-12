@@ -16,11 +16,13 @@
 
 #![unstable(feature = "test", issue = "50297")]
 #![doc(test(attr(deny(warnings))))]
+// tidy-alphabetical-start
 #![feature(internal_output_capture)]
-#![feature(staged_api)]
-#![feature(process_exitcode_internals)]
 #![feature(panic_can_unwind)]
+#![feature(process_exitcode_internals)]
+#![feature(staged_api)]
 #![feature(test)]
+// tidy-alphabetical-end
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 
 // Public reexports

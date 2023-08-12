@@ -1,15 +1,17 @@
+// tidy-alphabetical-start
+#![allow(rustc::potential_query_instability)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(if_let_guard)]
+#![feature(lazy_cell)]
 #![feature(let_chains)]
+#![feature(map_many_mut)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(lazy_cell)]
 #![feature(option_get_or_insert_default)]
 #![feature(rustc_attrs)]
-#![feature(map_many_mut)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]

@@ -1,9 +1,11 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+// tidy-alphabetical-start
+#![allow(rustc::default_hash_types)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::default_hash_types)]
+// tidy-alphabetical-end
 
 use proc_macro::TokenStream;
 

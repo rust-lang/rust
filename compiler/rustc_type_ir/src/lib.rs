@@ -1,11 +1,13 @@
+// tidy-alphabetical-start
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(associated_type_defaults)]
 #![feature(fmt_helpers_for_derive)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(unwrap_infallible)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
+// tidy-alphabetical-end
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]

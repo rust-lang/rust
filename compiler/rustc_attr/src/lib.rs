@@ -4,9 +4,11 @@
 //! The goal is to move the definition of `MetaItem` and things that don't need to be in `syntax`
 //! to this crate.
 
-#![feature(let_chains)]
-#![deny(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-start
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![feature(let_chains)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate rustc_macros;

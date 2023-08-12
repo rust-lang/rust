@@ -1,12 +1,14 @@
+// tidy-alphabetical-start
+#![allow(rustc::potential_query_instability)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
 #![feature(core_intrinsics)]
-#![feature(hash_raw_entry)]
-#![feature(min_specialization)]
 #![feature(extern_types)]
+#![feature(hash_raw_entry)]
 #![feature(let_chains)]
-#![allow(rustc::potential_query_instability)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
+#![feature(min_specialization)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate tracing;

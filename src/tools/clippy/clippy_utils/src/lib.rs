@@ -1,3 +1,7 @@
+// tidy-alphabetical-start
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::must_use_candidate)]
 #![feature(array_chunks)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
@@ -5,13 +9,15 @@
 #![feature(lint_reasons)]
 #![feature(never_type)]
 #![feature(rustc_private)]
+// tidy-alphabetical-end
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
-#![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
 // warn on the same lints as `clippy_lints`
-#![warn(trivial_casts, trivial_numeric_casts)]
+#![warn(trivial_casts)]
+#![warn(trivial_numeric_casts)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
-#![warn(rust_2018_idioms, unused_lifetimes)]
+#![warn(rust_2018_idioms)]
+#![warn(unused_lifetimes)]
 // warn on rustc internal lints
 #![warn(rustc::internal)]
 

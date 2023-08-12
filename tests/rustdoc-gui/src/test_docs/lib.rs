@@ -1,12 +1,13 @@
 //! The point of this crate is to be able to have enough different "kinds" of
 //! documentation generated so we can test each different features.
-#![doc(html_playground_url="https://play.rust-lang.org/")]
-
+#![doc(html_playground_url = "https://play.rust-lang.org/")]
 #![crate_name = "test_docs"]
 #![allow(internal_features)]
-#![feature(rustdoc_internals)]
-#![feature(doc_cfg)]
+// tidy-alphabetical-start
 #![feature(associated_type_defaults)]
+#![feature(doc_cfg)]
+#![feature(rustdoc_internals)]
+// tidy-alphabetical-end
 
 /*!
 Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
@@ -301,7 +302,7 @@ pub trait EmptyTrait1 {}
 pub trait EmptyTrait2 {}
 pub trait EmptyTrait3 {}
 
-pub struct HasEmptyTraits{}
+pub struct HasEmptyTraits {}
 
 impl EmptyTrait1 for HasEmptyTraits {}
 impl EmptyTrait2 for HasEmptyTraits {}
@@ -312,7 +313,7 @@ mod macros;
 pub use macros::*;
 
 #[doc(alias = "AliasForTheStdReexport")]
-pub use ::std as TheStdReexport;
+pub use std as TheStdReexport;
 
 pub mod details {
     /// We check the appearance of the `<details>`/`<summary>` in here.
@@ -364,19 +365,22 @@ pub mod doc_block_table {
             println!();
         }
     }
-
 }
 
 pub struct NotableStructWithLongName<R>(R);
 
 impl<R: std::io::Read> NotableStructWithLongName<R> {
-    pub fn create_an_iterator_from_read(r: R) -> NotableStructWithLongName<R> { Self(r) }
+    pub fn create_an_iterator_from_read(r: R) -> NotableStructWithLongName<R> {
+        Self(r)
+    }
 }
 
 impl<R: std::io::Read> std::iter::Iterator for NotableStructWithLongName<R> {
     type Item = ();
 
-    fn next(&mut self) -> Option<Self::Item> { () }
+    fn next(&mut self) -> Option<Self::Item> {
+        ()
+    }
 }
 
 pub trait TraitWithNoDocblocks {
@@ -485,7 +489,6 @@ pub mod search_results {
     macro_rules! foo {
         () => {};
     }
-
 }
 
 pub mod fields {
@@ -498,14 +501,8 @@ pub mod fields {
         pub b: u32,
     }
     pub enum Enum {
-        A {
-            a: u8,
-            b: u32,
-        },
-        B {
-            a: u8,
-            b: u32,
-        },
+        A { a: u8, b: u32 },
+        B { a: u8, b: u32 },
     }
 }
 

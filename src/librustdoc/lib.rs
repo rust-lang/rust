@@ -2,7 +2,7 @@
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
 )]
-#![feature(rustc_private)]
+// tidy-alphabetical-start
 #![feature(array_methods)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -12,9 +12,11 @@
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(round_char_boundary)]
+#![feature(rustc_private)]
 #![feature(test)]
 #![feature(type_alias_impl_trait)]
 #![feature(type_ascription)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]

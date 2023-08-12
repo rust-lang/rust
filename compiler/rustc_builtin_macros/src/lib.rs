@@ -2,6 +2,7 @@
 //! injecting code into the crate before it is lowered to HIR.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+// tidy-alphabetical-start
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
@@ -11,6 +12,7 @@
 #![feature(lint_reasons)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
 
 extern crate proc_macro;

@@ -1,11 +1,13 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+// tidy-alphabetical-start
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(associated_type_defaults)]
+#![feature(let_chains)]
 #![feature(rustc_private)]
 #![feature(try_blocks)]
-#![feature(let_chains)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;

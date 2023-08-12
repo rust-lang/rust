@@ -8,6 +8,9 @@
 //! LLVM.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+// tidy-alphabetical-start
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
 #![feature(associated_type_bounds)]
 #![feature(exhaustive_patterns)]
@@ -17,8 +20,7 @@
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(step_trait)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
+// tidy-alphabetical-end
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 
 use std::path::{Path, PathBuf};

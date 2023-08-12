@@ -1,20 +1,22 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+// tidy-alphabetical-start
+#![allow(rustc::potential_query_instability)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(decl_macro)]
 #![feature(extract_if)]
 #![feature(generators)]
 #![feature(iter_from_generator)]
 #![feature(let_chains)]
-#![feature(proc_macro_internals)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
+#![feature(never_type)]
+#![feature(proc_macro_internals)]
 #![feature(slice_as_chunks)]
 #![feature(trusted_len)]
 #![feature(try_blocks)]
-#![feature(never_type)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 extern crate proc_macro;
 

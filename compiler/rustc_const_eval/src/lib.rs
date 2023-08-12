@@ -4,23 +4,25 @@ Rust MIR: a lowered representation of Rust.
 
 */
 
+// tidy-alphabetical-start
 #![deny(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(exact_size_is_empty)]
+#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
-#![feature(slice_ptr_get)]
-#![feature(option_get_or_insert_default)]
 #![feature(never_type)]
+#![feature(option_get_or_insert_default)]
+#![feature(slice_ptr_get)]
 #![feature(trait_alias)]
 #![feature(trusted_len)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
-#![feature(if_let_guard)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
 
 #[macro_use]

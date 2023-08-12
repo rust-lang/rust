@@ -1,4 +1,7 @@
-#![feature(no_core, lang_items)]
+// tidy-alphabetical-start
+#![feature(lang_items)]
+#![feature(no_core)]
+// tidy-alphabetical-end
 #![no_std]
 #![no_core]
 #![crate_type = "lib"]
@@ -8,7 +11,7 @@
 trait Sized {}
 
 #[link(name = "extern_1", kind = "raw-dylib")]
-extern {
+extern "C" {
     fn extern_fn();
 }
 

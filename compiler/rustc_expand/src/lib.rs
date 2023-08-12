@@ -1,3 +1,5 @@
+// tidy-alphabetical-start
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(array_windows)]
 #![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]
@@ -9,8 +11,8 @@
 #![feature(proc_macro_span)]
 #![feature(rustc_attrs)]
 #![feature(try_blocks)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
-#![deny(rustc::untranslatable_diagnostic)]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]

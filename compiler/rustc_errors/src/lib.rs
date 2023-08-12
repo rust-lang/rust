@@ -3,18 +3,20 @@
 //! This module contains the code for creating and emitting diagnostics.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+// tidy-alphabetical-start
+#![allow(incomplete_features)]
 #![feature(array_windows)]
+#![feature(box_patterns)]
+#![feature(error_reporter)]
 #![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(result_option_inspect)]
 #![feature(rustc_attrs)]
-#![feature(yeet_expr)]
 #![feature(try_blocks)]
-#![feature(box_patterns)]
-#![feature(error_reporter)]
-#![allow(incomplete_features)]
+#![feature(yeet_expr)]
+// tidy-alphabetical-end
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]

@@ -1,9 +1,11 @@
+// tidy-alphabetical-start
+#![allow(rustc::potential_query_instability)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(array_windows)]
 #![feature(is_sorted)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;

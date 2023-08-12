@@ -1,5 +1,6 @@
 //! The main parser interface.
 
+// tidy-alphabetical-start
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
@@ -7,6 +8,7 @@
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 

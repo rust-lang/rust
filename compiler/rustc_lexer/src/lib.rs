@@ -18,8 +18,10 @@
 //! lexeme types.
 //!
 //! [`rustc_parse::lexer`]: ../rustc_parse/lexer/index.html
-#![deny(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-start
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-end
 // We want to be able to build this crate with a stable compiler, so no
 // `#![feature]` attributes should be added.
 

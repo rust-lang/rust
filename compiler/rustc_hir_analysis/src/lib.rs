@@ -55,20 +55,22 @@ This API is completely unstable and subject to change.
 
 */
 
-#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+// tidy-alphabetical-start
+#![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
 #![feature(is_sorted)]
 #![feature(iter_intersperse)]
+#![feature(lazy_cell)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(lazy_cell)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![feature(type_alias_impl_trait)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
 
 #[macro_use]

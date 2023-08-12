@@ -1,6 +1,7 @@
 //! Construction of MIR from HIR.
 //!
 //! This crate also contains the match exhaustiveness and usefulness checking.
+// tidy-alphabetical-start
 #![allow(rustc::potential_query_instability)]
 #![feature(assert_matches)]
 #![feature(associated_type_bounds)]
@@ -9,6 +10,7 @@
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(try_blocks)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
 
 #[macro_use]

@@ -1,9 +1,12 @@
+// tidy-alphabetical-start
 #![feature(lazy_cell)]
 #![feature(let_chains)]
 #![feature(rustc_private)]
+// tidy-alphabetical-end
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
-#![warn(rust_2018_idioms, unused_lifetimes)]
+#![warn(rust_2018_idioms)]
+#![warn(unused_lifetimes)]
 
 // The `rustc_driver` crate seems to be required in order to use the `rust_lexer` crate.
 #[allow(unused_extern_crates)]

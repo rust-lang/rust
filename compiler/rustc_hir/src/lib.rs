@@ -2,6 +2,9 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
+// tidy-alphabetical-start
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
 #![feature(const_btree_len)]
@@ -10,9 +13,8 @@
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(variant_count)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]

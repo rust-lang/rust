@@ -1,9 +1,11 @@
-#![feature(let_chains)]
+// tidy-alphabetical-start
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(lazy_cell)]
+#![feature(let_chains)]
 #![feature(rustc_attrs)]
 #![feature(type_alias_impl_trait)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
+// tidy-alphabetical-end
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]

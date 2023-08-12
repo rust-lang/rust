@@ -1,3 +1,6 @@
+// tidy-alphabetical-start
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(exact_size_is_empty)]
@@ -5,9 +8,8 @@
 #![feature(min_specialization)]
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;

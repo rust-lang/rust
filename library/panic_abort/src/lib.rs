@@ -8,12 +8,14 @@
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![panic_runtime]
 #![allow(unused_features)]
+// tidy-alphabetical-start
+#![feature(c_unwind)]
 #![feature(core_intrinsics)]
 #![feature(panic_runtime)]
-#![feature(std_internals)]
-#![feature(staged_api)]
 #![feature(rustc_attrs)]
-#![feature(c_unwind)]
+#![feature(staged_api)]
+#![feature(std_internals)]
+// tidy-alphabetical-end
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[cfg(target_os = "android")]

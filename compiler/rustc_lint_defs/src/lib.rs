@@ -1,6 +1,8 @@
-#![feature(min_specialization)]
-#![deny(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-start
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![feature(min_specialization)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate rustc_macros;

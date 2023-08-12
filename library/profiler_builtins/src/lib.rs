@@ -1,11 +1,13 @@
 #![no_std]
-#![feature(profiler_runtime)]
 #![profiler_runtime]
 #![unstable(
     feature = "profiler_runtime_lib",
     reason = "internal implementation detail of rustc right now",
     issue = "none"
 )]
+// tidy-alphabetical-start
 #![allow(unused_features)]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![feature(profiler_runtime)]
 #![feature(staged_api)]
+// tidy-alphabetical-end
+#![cfg_attr(not(bootstrap), allow(internal_features))]

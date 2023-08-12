@@ -1,15 +1,17 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
+// tidy-alphabetical-start
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
+#![feature(lazy_cell)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(lazy_cell)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 

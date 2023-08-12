@@ -1,10 +1,12 @@
 // wasm32 does not support benches (no time).
 #![cfg(not(target_arch = "wasm32"))]
+// tidy-alphabetical-start
 #![feature(flt2dec)]
-#![feature(test)]
-#![feature(trusted_random_access)]
 #![feature(iter_array_chunks)]
 #![feature(iter_next_chunk)]
+#![feature(test)]
+#![feature(trusted_random_access)]
+// tidy-alphabetical-end
 
 extern crate test;
 

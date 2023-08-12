@@ -1,7 +1,12 @@
-#![feature(alloc_layout_extra, decl_macro, iterator_try_reduce, never_type)]
+// tidy-alphabetical-start
 #![allow(dead_code, unused_variables)]
-#![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![feature(alloc_layout_extra)]
+#![feature(decl_macro)]
+#![feature(iterator_try_reduce)]
+#![feature(never_type)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate tracing;

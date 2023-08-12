@@ -1,8 +1,9 @@
 //! Queries that are independent from the main solver code.
-
-#![deny(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-start
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(let_chains)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
 
 #[macro_use]

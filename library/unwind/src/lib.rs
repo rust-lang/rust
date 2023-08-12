@@ -1,9 +1,11 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
-#![feature(link_cfg)]
-#![feature(staged_api)]
+// tidy-alphabetical-start
 #![feature(c_unwind)]
 #![feature(cfg_target_abi)]
+#![feature(link_cfg)]
+#![feature(staged_api)]
+// tidy-alphabetical-end
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 

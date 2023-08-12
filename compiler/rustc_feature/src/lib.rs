@@ -10,10 +10,11 @@
 //! For the purpose of future feature-tracking, once a feature gate is added,
 //! even if it is stabilized or removed, *do not remove it*. Instead, move the
 //! symbol to the `accepted` or `removed` modules respectively.
-
-#![feature(lazy_cell)]
-#![deny(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-start
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![feature(lazy_cell)]
+// tidy-alphabetical-end
 
 mod accepted;
 mod active;

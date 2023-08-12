@@ -1,11 +1,13 @@
 //! Support for serializing the dep-graph and reloading it.
 
-#![deny(missing_docs)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(never_type)]
-#![recursion_limit = "256"]
-#![deny(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-start
+#![deny(missing_docs)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![feature(never_type)]
+// tidy-alphabetical-end
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate rustc_middle;

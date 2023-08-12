@@ -9,18 +9,20 @@ Core encoding and decoding interfaces.
     html_playground_url = "https://play.rust-lang.org/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]
-#![feature(never_type)]
+// tidy-alphabetical-start
+#![allow(rustc::internal)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![feature(allocator_api)]
 #![feature(associated_type_bounds)]
-#![feature(min_specialization)]
 #![feature(core_intrinsics)]
 #![feature(maybe_uninit_slice)]
+#![feature(min_specialization)]
+#![feature(never_type)]
 #![feature(new_uninit)]
-#![feature(allocator_api)]
 #![feature(ptr_sub_ptr)]
+// tidy-alphabetical-end
 #![cfg_attr(test, feature(test))]
-#![allow(rustc::internal)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};
 

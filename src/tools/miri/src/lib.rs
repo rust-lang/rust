@@ -1,48 +1,48 @@
-#![feature(rustc_private)]
+// tidy-alphabetical-start
 #![feature(float_gamma)]
+#![feature(io_error_more)]
+#![feature(lint_reasons)]
+#![feature(local_key_cell_methods)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
+#![feature(nonzero_ops)]
+#![feature(os_str_bytes)]
+#![feature(round_ties_even)]
+#![feature(rustc_private)]
+#![feature(trait_upcasting)]
 #![feature(try_blocks)]
-#![feature(io_error_more)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
-#![feature(nonzero_ops)]
-#![feature(local_key_cell_methods)]
-#![feature(round_ties_even)]
-#![feature(os_str_bytes)]
-#![feature(lint_reasons)]
-#![feature(trait_upcasting)]
-// Configure clippy and other lints
-#![allow(
-    clippy::collapsible_else_if,
-    clippy::collapsible_if,
-    clippy::if_same_then_else,
-    clippy::comparison_chain,
-    clippy::enum_variant_names,
-    clippy::field_reassign_with_default,
-    clippy::manual_map,
-    clippy::neg_cmp_op_on_partial_ord,
-    clippy::new_without_default,
-    clippy::single_match,
-    clippy::useless_format,
-    clippy::derive_partial_eq_without_eq,
-    clippy::derived_hash_with_manual_eq,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::single_element_loop,
-    clippy::needless_return,
-    clippy::bool_to_int_with_if,
-    clippy::box_default,
-    // We are not implementing queries here so it's fine
-    rustc::potential_query_instability
-)]
-#![warn(
-    rust_2018_idioms,
-    clippy::cast_possible_wrap, // unsigned -> signed
-    clippy::cast_sign_loss, // signed -> unsigned
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-)]
+// tidy-alphabetical-end
+// tidy-alphabetical-start
+#![allow(clippy::bool_to_int_with_if)]
+#![allow(clippy::box_defaul)]
+#![allow(clippy::box_default)]
+#![allow(clippy::collapsible_else_if)]
+#![allow(clippy::collapsible_if)]
+#![allow(clippy::comparison_chain)]
+#![allow(clippy::derived_hash_with_manual_eq)]
+#![allow(clippy::derive_partial_eq_without_eq)]
+#![allow(clippy::enum_variant_names)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::if_same_then_else)]
+#![allow(clippy::manual_map)]
+#![allow(clippy::needless_return)]
+#![allow(clippy::neg_cmp_op_on_partial_ord)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::single_element_loop)]
+#![allow(clippy::single_match)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::useless_format)]
+#![warn(clippy::cast_lossless)]
+#![warn(clippy::cast_possible_truncation)]
+#![warn(clippy::cast_possible_wrap)]
+#![warn(clippy::cast_sign_loss)]
+#![warn(rust_2018_idioms)]
+// tidy-alphabetical-end
+// We are not implementing queries here so it's fine
+#![allow(rustc::potential_query_instability)]
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 

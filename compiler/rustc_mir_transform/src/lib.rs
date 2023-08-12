@@ -1,7 +1,9 @@
+// tidy-alphabetical-start
 #![allow(rustc::potential_query_instability)]
-#![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(box_patterns)]
+#![feature(if_let_guard)]
 #![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
@@ -11,7 +13,7 @@
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
-#![feature(if_let_guard)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
 
 #[macro_use]

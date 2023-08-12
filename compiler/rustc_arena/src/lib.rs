@@ -11,20 +11,23 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(no_crate_inject, attr(deny(warnings)))
 )]
+// tidy-alphabetical-start
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(unsafe_op_in_unsafe_fn)]
+#![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
-#![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
 #![feature(min_specialization)]
-#![feature(decl_macro)]
+#![feature(new_uninit)]
 #![feature(pointer_byte_offsets)]
 #![feature(rustc_attrs)]
-#![cfg_attr(test, feature(test))]
 #![feature(strict_provenance)]
-#![deny(unsafe_op_in_unsafe_fn)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
+// tidy-alphabetical-end
 #![cfg_attr(not(bootstrap), allow(internal_features))]
-#![allow(clippy::mut_from_ref)] // Arena allocators are one of the places where this pattern is fine.
+#![cfg_attr(test, feature(test))]
+// Arena allocators are one of the places where this pattern is fine.
+#![allow(clippy::mut_from_ref)]
 
 use smallvec::SmallVec;
 

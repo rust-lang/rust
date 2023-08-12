@@ -1,9 +1,11 @@
 #![feature(rustc_private)]
-#![deny(rust_2018_idioms)]
-#![warn(unreachable_pub)]
-#![recursion_limit = "256"]
+// tidy-alphabetical-start
 #![allow(clippy::match_like_matches_macro)]
 #![allow(unreachable_pub)]
+#![deny(rust_2018_idioms)]
+#![warn(unreachable_pub)]
+// tidy-alphabetical-end
+#![recursion_limit = "256"]
 
 #[cfg(test)]
 #[macro_use]

@@ -20,18 +20,20 @@
 // This library is copied into rust-analyzer to allow loading rustc compiled proc macros.
 // Please avoid unstable features where possible to minimize the amount of changes necessary
 // to make it compile with rust-analyzer on stable.
-#![feature(rustc_allow_const_fn_unstable)]
-#![feature(staged_api)]
+// tidy-alphabetical-start
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
 #![feature(local_key_cell_methods)]
 #![feature(maybe_uninit_write_slice)]
+#![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(new_uninit)]
 #![feature(restricted_std)]
+#![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
-#![feature(min_specialization)]
+#![feature(staged_api)]
 #![feature(strict_provenance)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 

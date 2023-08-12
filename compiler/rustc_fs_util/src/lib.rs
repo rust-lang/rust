@@ -1,6 +1,8 @@
-#![feature(absolute_path)]
-#![deny(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-start
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![feature(absolute_path)]
+// tidy-alphabetical-end
 
 use std::ffi::CString;
 use std::fs;

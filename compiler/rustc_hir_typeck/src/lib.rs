@@ -1,11 +1,13 @@
+// tidy-alphabetical-start
+#![feature(box_patterns)]
+#![feature(control_flow_enum)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(try_blocks)]
-#![feature(never_type)]
-#![feature(box_patterns)]
 #![feature(min_specialization)]
-#![feature(control_flow_enum)]
+#![feature(never_type)]
 #![feature(option_as_slice)]
+#![feature(try_blocks)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
 
 #[macro_use]

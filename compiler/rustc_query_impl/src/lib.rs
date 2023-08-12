@@ -3,14 +3,17 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 // this shouldn't be necessary, but the check for `&mut _` is too naive and denies returning a function pointer that takes a mut ref
 #![feature(const_mut_refs)]
+// tidy-alphabetical-start
+#![allow(rustc::potential_query_instability)]
+#![allow(unused_parens)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(const_refs_to_cell)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
+// tidy-alphabetical-end
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability, unused_parens)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]

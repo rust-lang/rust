@@ -1,12 +1,14 @@
+// tidy-alphabetical-start
+#![allow(rustc::default_hash_types)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(allow_internal_unstable)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
-#![allow(rustc::default_hash_types)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
+// tidy-alphabetical-end
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 #![recursion_limit = "128"]
 

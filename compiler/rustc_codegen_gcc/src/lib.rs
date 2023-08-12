@@ -6,20 +6,22 @@
  * TODO(antoyo): remove the patches.
  */
 
-#![feature(
-    rustc_private,
-    decl_macro,
-    associated_type_bounds,
-    never_type,
-    trusted_len,
-    hash_raw_entry
-)]
+// tidy-alphabetical-start
 #![allow(broken_intra_doc_links)]
-#![recursion_limit="256"]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
+// tidy-alphabetical-end
+// tidy-alphabetical-start
+#![feature(associated_type_bounds)]
+#![feature(decl_macro)]
+#![feature(hash_raw_entry)]
+#![feature(never_type)]
+#![feature(rustc_private)]
+#![feature(trusted_len)]
+// tidy-alphabetical-end
+#![recursion_limit="256"]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;

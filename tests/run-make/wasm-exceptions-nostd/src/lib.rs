@@ -4,10 +4,12 @@
 // Allow a few unstable features because we create a panic
 // runtime for native wasm exceptions from scratch
 
+// tidy-alphabetical-start
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(panic_info_message)]
+// tidy-alphabetical-end
 
 extern crate alloc;
 
