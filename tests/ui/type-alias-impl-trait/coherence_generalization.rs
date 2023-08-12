@@ -1,3 +1,5 @@
+// check-pass
+
 // FIXME(type_alias_impl_trait): What does this test? This needs a comment
 // explaining what we're worried about here.
 
@@ -8,8 +10,7 @@ fn foo<T>() -> Opaque<T> {
     ()
 }
 
-impl<T, V> Trait for (T, V, V, u32) {}
-impl<U, V> Trait for (Opaque<U>, V, i32, V) {}
-//~^ ERROR the type parameter `U` is not constrained by the impl trait, self type, or predicates
+impl<T, U, V> Trait for (T, U, V, V, u32) {}
+impl<U, V> Trait for (Opaque<U>, U, V, i32, V) {}
 
 fn main() {}

@@ -2,13 +2,13 @@
 
 use std::fmt::Display;
 
-type Opaque<'a> = impl Sized + 'static;
-fn define<'a>() -> Opaque<'a> {}
+type Opaque<X> = impl Sized + 'static;
+fn define<X>() -> Opaque<X> {}
 
 trait Trait {
     type Assoc: Display;
 }
-impl<'a> Trait for Opaque<'a> {
+impl<'a> Trait for Opaque<&'a str> {
     //~^ ERROR the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
     type Assoc = &'a str;
 }
@@ -20,6 +20,6 @@ fn extend<T: Trait + 'static>(s: T::Assoc) -> Box<dyn Display> {
 }
 
 fn main() {
-    let val = extend::<Opaque<'_>>(&String::from("blah blah blah"));
+    let val = extend::<Opaque<&'_ str>>(&String::from("blah blah blah"));
     println!("{}", val);
 }

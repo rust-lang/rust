@@ -11,7 +11,7 @@ fn use_alias<T>(val: T) -> AliasOfForeignType<T> {
     foreign_crate::ForeignType(val)
 }
 
-impl<T> foreign_crate::ForeignTrait for AliasOfForeignType<T> {}
-//~^ ERROR the type parameter `T` is not constrained by the impl trait, self type, or predicates
+impl foreign_crate::ForeignTrait for AliasOfForeignType<()> {}
+//~^ ERROR only traits defined in the current crate can be implemented for arbitrary types
 
 fn main() {}
