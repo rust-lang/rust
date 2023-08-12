@@ -1896,7 +1896,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
     // items which are reachable from external crates based on visibility.
     let mut visitor = EmbargoVisitor {
         tcx,
-        effective_visibilities: tcx.resolutions(()).effective_visibilities.clone(),
+        effective_visibilities: tcx.early_effective_visibilities(()).steal(),
         macro_reachable: Default::default(),
         // HACK(jynelson): trying to infer the type of `impl Trait` breaks `async-std` (and
         // `pub async fn` in general). Since rustdoc never needs to do codegen and doesn't

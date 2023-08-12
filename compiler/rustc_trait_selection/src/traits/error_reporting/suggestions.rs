@@ -2774,7 +2774,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let def_id = trait_pred.def_id();
                         let visible_item = if let Some(local) = def_id.as_local() {
                             // Check for local traits being reachable.
-                            let vis = &self.tcx.resolutions(()).effective_visibilities;
+                            let vis = &self.tcx.effective_visibilities(());
                             // Account for non-`pub` traits in the root of the local crate.
                             let is_locally_reachable = self.tcx.parent(def_id).is_crate_root();
                             vis.is_reachable(local) || is_locally_reachable

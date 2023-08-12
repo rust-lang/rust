@@ -19,7 +19,6 @@ pub use self::IntVarValue::*;
 pub use self::Variance::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
-use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, GeneratorLayout};
 use crate::query::Providers;
 use crate::traits::{self, Reveal};
@@ -164,7 +163,6 @@ pub struct ResolverGlobalCtxt {
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
-    pub effective_visibilities: EffectiveVisibilities,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub module_children: LocalDefIdMap<Vec<ModChild>>,

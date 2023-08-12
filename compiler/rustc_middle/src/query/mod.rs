@@ -1127,9 +1127,14 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
+    /// Effective visibilities as computed by the resolver.
+    query early_effective_visibilities(_: ()) -> &'tcx Steal<EffectiveVisibilities> {
+        arena_cache
+        desc { "checking effective visibilities" }
+        feedable
+    }
     /// Performs part of the privacy check and computes effective visibilities.
     query effective_visibilities(_: ()) -> &'tcx EffectiveVisibilities {
-        eval_always
         desc { "checking effective visibilities" }
     }
     query check_private_in_public(_: ()) -> () {

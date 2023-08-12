@@ -1497,11 +1497,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Some(StrippedCfgItem { parent_module, name: item.name, cfg: item.cfg })
             }),
         ));
+        self.tcx.feed_unit_query().early_effective_visibilities(Steal::new(effective_visibilities));
 
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
             visibilities,
-            effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,
             glob_map,
