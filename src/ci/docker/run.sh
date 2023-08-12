@@ -63,6 +63,11 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       uname -m >> $hash_key
 
       docker --version >> $hash_key
+
+      # Include cache version. Currently it is needed to bust Docker
+      # cache key after opting in into the old Docker build backend.
+      echo "1" >> $hash_key
+
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
 
@@ -90,6 +95,12 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         context="$script_dir"
     fi
     echo "::group::Building docker image for $image"
+
+    # As of August 2023, Github Actions have updated Docker to 23.X,
+    # which uses the BuildKit by default. It currently throws aways all
+    # intermediate layers, which breaks our usage of S3 layer caching.
+    # Therefore we opt-in to the old build backend for now.
+    export DOCKER_BUILDKIT=0
     retry docker \
       build \
       --rm \
