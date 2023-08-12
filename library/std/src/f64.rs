@@ -978,7 +978,9 @@ impl f64 {
         unsafe { cmath::tgamma(self) }
     }
 
-    /// Returns the natural logarithm of the gamma function.
+    /// Natural logarithm of the absolute value of the gamma function
+    ///
+    /// The integer part of the tuple indicates the sign of the gamma function.
     ///
     /// # Examples
     ///
