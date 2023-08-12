@@ -49,13 +49,11 @@ async fn foo8() -> Result<(), ()> {
     Ok(())
 }
 fn foo9() -> Result<(), ()> {
-    let _ = await bar(); //~ ERROR `await` is only allowed inside `async` functions and blocks
-    //~^ ERROR incorrect use of `await`
+    let _ = await bar(); //~ ERROR incorrect use of `await`
     Ok(())
 }
 fn foo10() -> Result<(), ()> {
-    let _ = await? bar(); //~ ERROR `await` is only allowed inside `async` functions and blocks
-    //~^ ERROR incorrect use of `await`
+    let _ = await? bar(); //~ ERROR incorrect use of `await`
     Ok(())
 }
 fn foo11() -> Result<(), ()> {
@@ -63,8 +61,7 @@ fn foo11() -> Result<(), ()> {
     Ok(())
 }
 fn foo12() -> Result<(), ()> {
-    let _ = (await bar())?; //~ ERROR `await` is only allowed inside `async` functions and blocks
-    //~^ ERROR incorrect use of `await`
+    let _ = (await bar())?; //~ ERROR incorrect use of `await`
     Ok(())
 }
 fn foo13() -> Result<(), ()> {
@@ -111,7 +108,6 @@ async fn foo27() -> Result<(), ()> {
 fn foo28() -> Result<(), ()> {
     fn foo() -> Result<(), ()> {
         let _ = await!(bar())?; //~ ERROR incorrect use of `await`
-        //~^ ERROR `await` is only allowed inside `async` functions
         Ok(())
     }
     foo()
@@ -119,7 +115,6 @@ fn foo28() -> Result<(), ()> {
 fn foo29() -> Result<(), ()> {
     let foo = || {
         let _ = await!(bar())?; //~ ERROR incorrect use of `await`
-        //~^ ERROR `await` is only allowed inside `async` functions
         Ok(())
     };
     foo()
