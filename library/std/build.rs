@@ -1,5 +1,11 @@
 use std::env;
 
+// backtrace-rs requires a feature check on Android targets, so
+// we need to run its build.rs as well.
+#[allow(unused_extern_crates)]
+#[path = "../backtrace/build.rs"]
+mod backtrace_build_rs;
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let target = env::var("TARGET").expect("TARGET was not set");
@@ -58,4 +64,6 @@ fn main() {
     }
     println!("cargo:rustc-env=STD_ENV_ARCH={}", env::var("CARGO_CFG_TARGET_ARCH").unwrap());
     println!("cargo:rustc-cfg=backtrace_in_libstd");
+
+    backtrace_build_rs::main();
 }
