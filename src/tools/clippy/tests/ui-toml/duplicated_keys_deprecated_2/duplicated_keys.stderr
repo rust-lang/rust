@@ -10,5 +10,5 @@ warning: error reading Clippy's configuration file: deprecated field `cyclomatic
 LL | cyclomatic-complexity-threshold = 3
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

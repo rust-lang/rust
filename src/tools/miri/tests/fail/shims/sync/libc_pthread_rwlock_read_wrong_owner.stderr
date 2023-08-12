@@ -11,5 +11,5 @@ LL | ...   assert_eq!(libc::pthread_rwlock_unlock(lock_copy.0.get() as *mut _), 
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

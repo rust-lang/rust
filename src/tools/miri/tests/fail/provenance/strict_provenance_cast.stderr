@@ -10,5 +10,5 @@ LL |     let _ptr = std::ptr::from_exposed_addr::<i32>(addr);
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -1,4 +1,4 @@
 error: error reading Clippy's configuration file. `invalid.version` is not a valid Rust version
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

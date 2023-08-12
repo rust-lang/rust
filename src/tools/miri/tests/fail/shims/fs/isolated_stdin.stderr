@@ -11,5 +11,5 @@ LL |         libc::read(0, bytes.as_mut_ptr() as *mut libc::c_void, 512);
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

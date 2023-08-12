@@ -4,5 +4,5 @@ error: error reading Clippy's configuration file: duplicate key `cognitive-compl
 LL | cognitive-complexity-threshold = 4
    | ^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

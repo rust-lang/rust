@@ -9,5 +9,5 @@ LL |     permissions.set_readonly(false);
            https://doc.rust-lang.org/std/os/unix/fs/trait.PermissionsExt.html
    = note: `-D clippy::permissions-set-readonly-false` implied by `-D warnings`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

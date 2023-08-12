@@ -17,5 +17,5 @@ please report an issue at <https://github.com/rust-lang/miri/issues> if this is 
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -7,5 +7,5 @@ LL |     let _ = '❤' as u8; // no suggestion, since a byte literal won't work.
    = note: `char` is four bytes wide, but `u8` is a single byte
    = note: `-D clippy::char-lit-as-u8` implied by `-D warnings`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

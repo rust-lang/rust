@@ -7,5 +7,5 @@ LL | fn my_test() {}
    = note: move it to a testing module marked with #[cfg(test)]
    = note: `-D clippy::tests-outside-test-module` implied by `-D warnings`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

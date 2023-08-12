@@ -12,5 +12,5 @@ LL | | }
    |
    = note: `-D clippy::too-many-lines` implied by `-D warnings`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

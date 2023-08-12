@@ -12,5 +12,5 @@ LL |     assert_eq!(42, **unsafe { &*Weak::as_ptr(&weak) });
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

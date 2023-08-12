@@ -8,5 +8,5 @@ LL |     println!(with_span!(""something ""));
    |
    = note: `-D clippy::println-empty-string` implied by `-D warnings`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

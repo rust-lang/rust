@@ -28,5 +28,5 @@ ALLOC (global (static or const), size: 1, align: 1) {
     00                                              │ .
 }
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

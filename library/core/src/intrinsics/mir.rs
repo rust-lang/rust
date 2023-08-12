@@ -193,7 +193,7 @@
 //! 27 | |     )
 //!    | |_____- binding declared here but left uninitialized
 //!
-//! error: aborting due to previous error
+//! error: aborting due to 1 previous error
 //!
 //! For more information about this error, try `rustc --explain E0381`.
 //! ```

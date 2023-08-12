@@ -22,5 +22,5 @@ LL | pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
    = note: inside `std::rt::lang_start_internal` at RUSTLIB/std/src/rt.rs:LL:CC
    = note: inside `std::rt::lang_start::<()>` at RUSTLIB/std/src/rt.rs:LL:CC
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

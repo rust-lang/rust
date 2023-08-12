@@ -13,5 +13,5 @@ LL | | }
    = note: consider implementing `IntoIterator` instead
    = note: `-D clippy::copy-iterator` implied by `-D warnings`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

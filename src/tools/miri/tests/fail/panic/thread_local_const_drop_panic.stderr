@@ -3,5 +3,5 @@ ow
 fatal runtime error: thread local panicked on drop
 error: abnormal termination: the program aborted execution
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

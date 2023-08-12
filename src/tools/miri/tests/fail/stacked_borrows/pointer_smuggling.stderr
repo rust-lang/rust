@@ -29,5 +29,5 @@ LL |     fun2(); // if they now use a raw ptr they break our reference
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
