@@ -4,7 +4,7 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
 reload:
 // First we check that the reexport has the correct ID and no background color.
-assert-text: ("//*[@id='reexport.TheStdReexport']", "pub use ::std as TheStdReexport;")
+assert-text: ("//*[@id='reexport.TheStdReexport']", "pub use std as TheStdReexport;")
 assert-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "rgba(0, 0, 0, 0)"})
 write: (".search-input", "TheStdReexport")
 // To be SURE that the search will be run.
