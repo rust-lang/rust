@@ -6,8 +6,9 @@
 //! and rustc) libtest doesn't include the rendered human-readable output as a JSON field. We had
 //! to reimplement all the rendering logic in this module because of that.
 use std::collections::HashSet;
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Read, Write};
+use std::path::Path;
 use std::process::{ChildStdout, Command, Stdio};
 use std::time::Duration;
 
@@ -306,13 +307,19 @@ impl<'a> Renderer<'a> {
     fn init_tracking(&mut self) {
         let mut contents = String::new();
         {
-            let mut file =
-                OpenOptions::new().read(true).write(true).create(true).open(TRACKER_FILE).unwrap();
-            file.read_to_string(&mut contents).unwrap();
-        }
+            let path = Path::new(TRACKER_FILE);
 
-        if !contents.is_empty() {
-            self.tracker = serde_json::from_str(&contents).unwrap();
+            if !path.exists() {
+                let mut file = File::create(path).expect(&format!(
+                    "failed to create test.tracker | {:?}",
+                    path.canonicalize().unwrap()
+                ));
+                file.write_all(b"[]").unwrap();
+            } else {
+                let mut file = File::open(path).expect("failed to open test.tracker");
+                file.read_to_string(&mut contents).unwrap();
+                self.tracker = serde_json::from_str(&contents).unwrap();
+            }
         }
     }
 
