@@ -305,6 +305,10 @@ impl CargoWorkspace {
                     .collect(),
             );
         }
+        if cargo_toml.extension().is_some_and(|x| x == "rs") {
+            // TODO: enable `+nightly` for cargo scripts
+            other_options.push("-Zscript".to_owned());
+        }
         meta.other_options(other_options);
 
         // FIXME: Fetching metadata is a slow process, as it might require

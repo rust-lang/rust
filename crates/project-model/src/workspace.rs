@@ -2,7 +2,7 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{collections::VecDeque, fmt, fs, iter, sync};
+use std::{collections::VecDeque, fmt, fs, io::BufRead, iter, sync};
 
 use anyhow::{format_err, Context};
 use base_db::{
@@ -115,7 +115,53 @@ pub enum ProjectWorkspace {
         target_layout: TargetLayoutLoadResult,
         /// A set of cfg overrides for the files.
         cfg_overrides: CfgOverrides,
+        /// Is this file a cargo script file?
+        cargo_script: Option<CargoWorkspace>,
     },
+}
+
+/// Tracks the cargo toml parts in cargo scripts, to detect if they
+/// changed and reload workspace in that case.
+pub struct CargoScriptTomls(pub FxHashMap<AbsPathBuf, String>);
+
+impl CargoScriptTomls {
+    fn extract_toml_part(p: &AbsPath) -> Option<String> {
+        let mut r = String::new();
+        let f = std::fs::File::open(p).ok()?;
+        let f = std::io::BufReader::new(f);
+        let mut started = false;
+        for line in f.lines() {
+            let line = line.ok()?;
+            if started {
+                if line.trim() == "//! ```" {
+                    return Some(r);
+                }
+                r += &line;
+            } else {
+                if line.trim() == "//! ```cargo" {
+                    started = true;
+                }
+            }
+        }
+        None
+    }
+
+    pub fn track_file(&mut self, p: AbsPathBuf) {
+        let toml = CargoScriptTomls::extract_toml_part(&p).unwrap_or_default();
+        self.0.insert(p, toml);
+    }
+
+    pub fn need_reload(&mut self, p: &AbsPath) -> bool {
+        let Some(prev) = self.0.get_mut(p) else {
+            return false; // File is not tracked
+        };
+        let next = CargoScriptTomls::extract_toml_part(p).unwrap_or_default();
+        if *prev == next {
+            return false;
+        }
+        *prev = next;
+        true
+    }
 }
 
 impl fmt::Debug for ProjectWorkspace {
@@ -174,10 +220,12 @@ impl fmt::Debug for ProjectWorkspace {
                 toolchain,
                 target_layout,
                 cfg_overrides,
+                cargo_script,
             } => f
                 .debug_struct("DetachedFiles")
                 .field("n_files", &files.len())
                 .field("sysroot", &sysroot.is_ok())
+                .field("cargo_script", &cargo_script.is_some())
                 .field("n_rustc_cfg", &rustc_cfg.len())
                 .field("toolchain", &toolchain)
                 .field("data_layout", &target_layout)
@@ -431,6 +479,7 @@ impl ProjectWorkspace {
     pub fn load_detached_files(
         detached_files: Vec<AbsPathBuf>,
         config: &CargoConfig,
+        cargo_script_tomls: &mut CargoScriptTomls,
     ) -> anyhow::Result<ProjectWorkspace> {
         let dir = detached_files
             .first()
@@ -469,6 +518,23 @@ impl ProjectWorkspace {
             None,
             &config.extra_env,
         );
+        let cargo_toml = ManifestPath::try_from(detached_files[0].clone()).unwrap();
+        let meta = CargoWorkspace::fetch_metadata(
+            &cargo_toml,
+            cargo_toml.parent(),
+            config,
+            sysroot_ref,
+            &|_| (),
+        )
+        .with_context(|| {
+            format!("Failed to read Cargo metadata from Cargo.toml file {cargo_toml}")
+        })?;
+        let cargo = CargoWorkspace::new(meta);
+
+        for file in &detached_files {
+            cargo_script_tomls.track_file(file.clone());
+        }
+
         Ok(ProjectWorkspace::DetachedFiles {
             files: detached_files,
             sysroot,
@@ -476,6 +542,7 @@ impl ProjectWorkspace {
             toolchain,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
             cfg_overrides: config.cfg_overrides.clone(),
+            cargo_script: Some(cargo),
         })
     }
 
@@ -788,14 +855,27 @@ impl ProjectWorkspace {
                 toolchain: _,
                 target_layout: _,
                 cfg_overrides,
+                cargo_script,
             } => (
-                detached_files_to_crate_graph(
-                    rustc_cfg.clone(),
-                    load,
-                    files,
-                    sysroot.as_ref().ok(),
-                    cfg_overrides,
-                ),
+                if let Some(cargo) = cargo_script {
+                    cargo_to_crate_graph(
+                        load,
+                        None,
+                        cargo,
+                        sysroot.as_ref().ok(),
+                        rustc_cfg.clone(),
+                        cfg_overrides,
+                        &WorkspaceBuildScripts::default(),
+                    )
+                } else {
+                    detached_files_to_crate_graph(
+                        rustc_cfg.clone(),
+                        load,
+                        files,
+                        sysroot.as_ref().ok(),
+                        cfg_overrides,
+                    )
+                },
                 sysroot,
             ),
         };
@@ -873,6 +953,7 @@ impl ProjectWorkspace {
                     files,
                     sysroot,
                     rustc_cfg,
+                    cargo_script,
                     toolchain,
                     target_layout,
                     cfg_overrides,
@@ -881,6 +962,7 @@ impl ProjectWorkspace {
                     files: o_files,
                     sysroot: o_sysroot,
                     rustc_cfg: o_rustc_cfg,
+                    cargo_script: o_cargo_script,
                     toolchain: o_toolchain,
                     target_layout: o_target_layout,
                     cfg_overrides: o_cfg_overrides,
@@ -892,6 +974,7 @@ impl ProjectWorkspace {
                     && toolchain == o_toolchain
                     && target_layout == o_target_layout
                     && cfg_overrides == o_cfg_overrides
+                    && cargo_script == o_cargo_script
             }
             _ => false,
         }
