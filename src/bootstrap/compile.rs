@@ -1384,6 +1384,16 @@ impl Step for Sysroot {
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
+        // In some cases(see https://github.com/rust-lang/rust/issues/109314), when the stage0
+        // compiler relies on more recent version of LLVM than the beta compiler, it may not
+        // be able to locate the correct LLVM in the sysroot. This situation typically occurs
+        // when we upgrade LLVM version while the beta compiler continues to use an older version.
+        //
+        // Make sure to add the correct version of LLVM into the stage0 sysroot.
+        if compiler.stage == 0 {
+            dist::maybe_install_llvm_target(builder, compiler.host, &sysroot);
+        }
+
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
         if builder.download_rustc() && compiler.stage != 0 {
             assert_eq!(
