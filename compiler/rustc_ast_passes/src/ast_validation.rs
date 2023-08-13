@@ -221,7 +221,7 @@ impl<'a> AstValidator<'a> {
             }
             TyKind::AnonymousStruct(ref fields, ..) | TyKind::AnonymousUnion(ref fields, ..) => {
                 // self.with_banned_assoc_ty_bound(|this| {
-                    walk_list!(self, visit_struct_field_def, fields)
+                walk_list!(self, visit_struct_field_def, fields)
                 // });
             }
             _ => visit::walk_ty(self, t),
@@ -865,6 +865,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         self.visit_ty_common(ty);
+        tracing::info!(?ty);
         self.deny_anonymous_struct(ty);
         self.walk_ty(ty)
     }
@@ -1085,7 +1086,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.visit_ident(item.ident);
                     self.visit_generics(generics);
                     // self.with_banned_assoc_ty_bound(|this| {
-                        walk_list!(self, visit_struct_field_def, fields);
+                    walk_list!(self, visit_struct_field_def, fields);
                     // });
                     walk_list!(self, visit_attribute, &item.attrs);
                     return;
@@ -1102,7 +1103,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         self.visit_ident(item.ident);
                         self.visit_generics(generics);
                         // self.with_banned_assoc_ty_bound(|this| {
-                            walk_list!(self, visit_struct_field_def, fields);
+                        walk_list!(self, visit_struct_field_def, fields);
                         // });
                         walk_list!(self, visit_attribute, &item.attrs);
                         return;

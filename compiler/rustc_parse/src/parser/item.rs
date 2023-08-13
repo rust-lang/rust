@@ -1,5 +1,5 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
-use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
+use super::ty::{AllowPlus, RecoverAnonymousStructOrUnion, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
@@ -602,7 +602,7 @@ impl<'a> Parser<'a> {
             Some(self.mk_ty(self.prev_token.span, TyKind::Err))
         } else if has_for || self.token.can_begin_type() {
             snapshot_before_last_ty = self.create_snapshot_for_diagnostic();
-            Some(self.parse_ty_no_anon_recovery()?)
+            Some(self.parse_ty()?)
         } else {
             None
         };
@@ -615,7 +615,7 @@ impl<'a> Parser<'a> {
         if let Some(mut err) = err {
             let mut snapshot = snapshot_before_last_ty;
 
-            if snapshot.can_start_anonymous_type() {
+            if snapshot.can_start_anonymous_union() {
                 let recover_result = {
                     let recover_last_ty = match snapshot.parse_ty() {
                         Ok(ty) => Some(ty),
@@ -1665,11 +1665,26 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Union(vdata, generics)))
     }
 
-    pub(crate) fn parse_record_struct_body(
+    fn parse_record_struct_body(
         &mut self,
         adt_ty: &str,
         ident_span: Span,
         parsed_where: bool,
+    ) -> PResult<'a, (ThinVec<FieldDef>, /* recovered */ bool)> {
+        self.parse_record_struct_body_common(
+            adt_ty,
+            ident_span,
+            parsed_where,
+            RecoverAnonymousStructOrUnion::No,
+        )
+    }
+
+    pub(crate) fn parse_record_struct_body_common(
+        &mut self,
+        adt_ty: &str,
+        ident_span: Span,
+        parsed_where: bool,
+        recover_anonymous_struct_or_union: RecoverAnonymousStructOrUnion,
     ) -> PResult<'a, (ThinVec<FieldDef>, /* recovered */ bool)> {
         let mut fields = ThinVec::new();
         let mut recovered = false;
@@ -1683,6 +1698,16 @@ impl<'a> Parser<'a> {
                 match field {
                     Ok(field) => fields.push(field),
                     Err(mut err) => {
+                        // When recovering the anonymous structs or unions, we should't emit the error
+                        // immediately, because it may also be a type path `union` followed by a block,
+                        // such as `impl union { fn foo() {} }`. Here we are actaully not parsing a
+                        // record struct body but an `impl` body.
+                        //
+                        // Instead, the error should be thrown and handled by the caller
+                        // `parse_anonymous_struct_or_union`.
+                        if recover_anonymous_struct_or_union == RecoverAnonymousStructOrUnion::Yes {
+                            return Err(err);
+                        }
                         err.span_label(ident_span, format!("while parsing this {adt_ty}"));
                         err.emit();
                         break;
@@ -1965,85 +1990,83 @@ impl<'a> Parser<'a> {
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(true)?;
-        if !is_raw && ident.is_reserved() {
+        if ident.name == kw::Underscore {
+            self.sess.gated_spans.gate(sym::unnamed_fields, lo);
+        } else if !is_raw && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
-            if ident.name == kw::Underscore {
-                self.sess.gated_spans.gate(sym::unnamed_fields, lo);
-            } else {
-                let err = if self.check_fn_front_matter(false, Case::Sensitive) {
-                    let inherited_vis = Visibility {
-                        span: rustc_span::DUMMY_SP,
-                        kind: VisibilityKind::Inherited,
-                        tokens: None,
-                    };
-                    // We use `parse_fn` to get a span for the function
-                    let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
-                    match self.parse_fn(
-                        &mut AttrVec::new(),
-                        fn_parse_mode,
-                        lo,
-                        &inherited_vis,
-                        Case::Insensitive,
-                    ) {
-                        Ok(_) => {
-                            let mut err = self.struct_span_err(
-                                lo.to(self.prev_token.span),
-                                format!("functions are not allowed in {adt_ty} definitions"),
-                            );
-                            err.help(
-                                "unlike in C++, Java, and C#, functions are declared in `impl` blocks",
-                            );
-                            err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
-                            err
-                        }
-                        Err(err) => {
-                            err.cancel();
-                            self.restore_snapshot(snapshot);
-                            self.expected_ident_found_err()
-                        }
-                    }
-                } else if self.eat_keyword(kw::Struct) {
-                    match self.parse_item_struct() {
-                        Ok((ident, _)) => {
-                            let mut err = self.struct_span_err(
-                                lo.with_hi(ident.span.hi()),
-                                format!("structs are not allowed in {adt_ty} definitions"),
-                            );
-                            err.help("consider creating a new `struct` definition instead of nesting");
-                            err
-                        }
-                        Err(err) => {
-                            err.cancel();
-                            self.restore_snapshot(snapshot);
-                            self.expected_ident_found_err()
-                        }
-                    }
-                } else {
-                    let mut err = self.expected_ident_found_err();
-                    if self.eat_keyword_noexpect(kw::Let)
-                        && let removal_span = self.prev_token.span.until(self.token.span)
-                        && let Ok(ident) = self.parse_ident_common(false)
-                            // Cancel this error, we don't need it.
-                            .map_err(|err| err.cancel())
-                        && self.token.kind == TokenKind::Colon
-                    {
-                        err.span_suggestion(
-                            removal_span,
-                            "remove this `let` keyword",
-                            String::new(),
-                            Applicability::MachineApplicable,
-                        );
-                        err.note("the `let` keyword is not allowed in `struct` fields");
-                        err.note("see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information");
-                        err.emit();
-                        return Ok(ident);
-                    } else {
-                        self.restore_snapshot(snapshot);
-                    }
-                    err
+            let err = if self.check_fn_front_matter(false, Case::Sensitive) {
+                let inherited_vis = Visibility {
+                    span: rustc_span::DUMMY_SP,
+                    kind: VisibilityKind::Inherited,
+                    tokens: None,
                 };
-                return Err(err);
-            }
+                // We use `parse_fn` to get a span for the function
+                let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
+                match self.parse_fn(
+                    &mut AttrVec::new(),
+                    fn_parse_mode,
+                    lo,
+                    &inherited_vis,
+                    Case::Insensitive,
+                ) {
+                    Ok(_) => {
+                        let mut err = self.struct_span_err(
+                            lo.to(self.prev_token.span),
+                            format!("functions are not allowed in {adt_ty} definitions"),
+                        );
+                        err.help(
+                            "unlike in C++, Java, and C#, functions are declared in `impl` blocks",
+                        );
+                        err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
+                        err
+                    }
+                    Err(err) => {
+                        err.cancel();
+                        self.restore_snapshot(snapshot);
+                        self.expected_ident_found_err()
+                    }
+                }
+            } else if self.eat_keyword(kw::Struct) {
+                match self.parse_item_struct() {
+                    Ok((ident, _)) => {
+                        let mut err = self.struct_span_err(
+                            lo.with_hi(ident.span.hi()),
+                            format!("structs are not allowed in {adt_ty} definitions"),
+                        );
+                        err.help("consider creating a new `struct` definition instead of nesting");
+                        err
+                    }
+                    Err(err) => {
+                        err.cancel();
+                        self.restore_snapshot(snapshot);
+                        self.expected_ident_found_err()
+                    }
+                }
+            } else {
+                let mut err = self.expected_ident_found_err();
+                if self.eat_keyword_noexpect(kw::Let)
+                    && let removal_span = self.prev_token.span.until(self.token.span)
+                    && let Ok(ident) = self.parse_ident_common(false)
+                        // Cancel this error, we don't need it.
+                        .map_err(|err| err.cancel())
+                    && self.token.kind == TokenKind::Colon
+                {
+                    err.span_suggestion(
+                        removal_span,
+                        "remove this `let` keyword",
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    );
+                    err.note("the `let` keyword is not allowed in `struct` fields");
+                    err.note("see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information");
+                    err.emit();
+                    return Ok(ident);
+                } else {
+                    self.restore_snapshot(snapshot);
+                }
+                err
+            };
+            return Err(err);
         }
         self.bump();
         Ok(ident)

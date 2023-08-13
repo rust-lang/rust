@@ -1053,11 +1053,11 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
-            ast::TyKind::AnonymousStruct(fields, _recovered) => {
+            ast::TyKind::AnonymousStruct(fields) => {
                 self.head("struct");
                 self.print_record_struct_body(&fields, ty.span);
             }
-            ast::TyKind::AnonymousUnion(fields, _recovered) => {
+            ast::TyKind::AnonymousUnion(fields) => {
                 self.head("union");
                 self.print_record_struct_body(&fields, ty.span);
             }

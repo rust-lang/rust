@@ -509,8 +509,7 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             visit_vec(bounds, |bound| vis.visit_param_bound(bound));
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
-        TyKind::AnonymousStruct(fields, _recovered)
-        | TyKind::AnonymousUnion(fields, _recovered) => {
+        TyKind::AnonymousStruct(fields) | TyKind::AnonymousUnion(fields) => {
             fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
         }
     }
