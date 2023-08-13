@@ -43,17 +43,13 @@ use thin_vec::{thin_vec, ThinVec};
 /// `token::Interpolated` tokens.
 macro_rules! maybe_whole_expr {
     ($p:expr) => {
+        let span = $p.token.span;
         if let token::Interpolated(nt) = &$p.token.kind {
             match &**nt {
                 token::NtExpr(e) | token::NtLiteral(e) => {
                     let e = e.clone();
                     $p.bump();
                     return Ok(e);
-                }
-                token::NtPath(path) => {
-                    let path = (**path).clone();
-                    $p.bump();
-                    return Ok($p.mk_expr($p.prev_token.span, ExprKind::Path(None, path)));
                 }
                 token::NtBlock(block) => {
                     let block = block.clone();
@@ -62,6 +58,14 @@ macro_rules! maybe_whole_expr {
                 }
                 _ => {}
             };
+        } else if let Some(path) = crate::maybe_reparse_metavar_seq!(
+            $p,
+            token::NonterminalKind::Path,
+            token::NonterminalKind::Path,
+            super::ParseNtResult::Path(path),
+            path
+        ) {
+            return Ok($p.mk_expr(span, ExprKind::Path(None, path.into_inner())));
         }
     };
 }

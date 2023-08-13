@@ -48,7 +48,7 @@ impl<'a> Parser<'a> {
                 NtExpr(_)
                 | NtIdent(..)
                 | NtLiteral(_) // `true`, `false`
-                | NtPath(_) => true,
+                => true,
 
                 NtBlock(_)
                 | NtLifetime(_) => false,
@@ -78,7 +78,7 @@ impl<'a> Parser<'a> {
                 token::OpenDelim(Delimiter::Brace) => true,
                 token::Interpolated(nt) => match **nt {
                     NtBlock(_) | NtLifetime(_) | NtExpr(_) | NtLiteral(_) => true,
-                    NtIdent(..) | NtPath(_) => false,
+                    NtIdent(..) => false,
                 },
                 token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(k))) => match k {
                     NonterminalKind::Block
@@ -213,9 +213,9 @@ impl<'a> Parser<'a> {
                     token: self.token.clone(),
                 }.into_diagnostic(&self.sess.span_diagnostic));
             }
-            NonterminalKind::Path => NtPath(
+            NonterminalKind::Path => return Ok(ParseNtResult::Path(
                 P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?),
-            ),
+            )),
             NonterminalKind::Meta => return Ok(ParseNtResult::Meta(P(self.parse_attr_item(true)?))),
             NonterminalKind::Vis => return Ok(ParseNtResult::Vis(
                 P(self.collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?),

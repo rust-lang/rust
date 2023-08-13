@@ -1588,6 +1588,7 @@ pub enum ParseNtResult {
     PatWithOr(P<ast::Pat>),
     Ty(P<ast::Ty>),
     Meta(P<ast::AttrItem>),
+    Path(P<ast::Path>),
     Vis(P<ast::Visibility>),
 
     /// This case will eventually be removed, along with `Token::Interpolate`.

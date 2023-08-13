@@ -1,7 +1,7 @@
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{ParseNtResult, Parser, Restrictions, TokenType};
 use crate::errors::PathSingleColon;
-use crate::{errors, maybe_whole};
+use crate::{errors, maybe_reparse_metavar_seq};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::{
@@ -179,10 +179,16 @@ impl<'a> Parser<'a> {
             }
         };
 
-        maybe_whole!(self, NtPath, |path| {
+        if let Some(path) = maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::Path,
+            NonterminalKind::Path,
+            ParseNtResult::Path(path),
+            path
+        ) {
             reject_generics_if_mod_style(self, &path);
-            path.into_inner()
-        });
+            return Ok(path.into_inner());
+        }
 
         if let Some(NonterminalKind::Ty) = self.token.is_metavar_seq() {
             let mut self2 = self.clone();
