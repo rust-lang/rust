@@ -12,13 +12,15 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 
-const ACCEPTABLE_METHODS: [&[&str]; 4] = [
+const ACCEPTABLE_METHODS: [&[&str]; 5] = [
+    &paths::BINARYHEAP_ITER,
     &paths::HASHSET_ITER,
     &paths::BTREESET_ITER,
     &paths::SLICE_INTO,
     &paths::VEC_DEQUE_ITER,
 ];
-const ACCEPTABLE_TYPES: [(rustc_span::Symbol, Option<RustcVersion>); 6] = [
+const ACCEPTABLE_TYPES: [(rustc_span::Symbol, Option<RustcVersion>); 7] = [
+    (sym::BinaryHeap, Some(msrvs::BINARY_HEAP_RETAIN)),
     (sym::BTreeSet, Some(msrvs::BTREE_SET_RETAIN)),
     (sym::BTreeMap, Some(msrvs::BTREE_MAP_RETAIN)),
     (sym::HashSet, Some(msrvs::HASH_SET_RETAIN)),
