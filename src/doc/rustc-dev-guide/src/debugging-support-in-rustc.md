@@ -133,8 +133,7 @@ or `symbols`.
 Rust has support for embedding Natvis files for crates outside of the standard libraries by
 using the `#[debugger_visualizer]` attribute.
 For more details on how to embed debugger visualizers,
-please refer to the `#[debugger_visualizer]` attribute in
-[the unstable book](https://doc.rust-lang.org/unstable-book/language-features/debugger-visualizer.html).
+please refer to the section on the [`debugger_visualizer` attribute].
 
 ## DWARF and `rustc`
 
@@ -352,3 +351,4 @@ but may have to add some mode to let the compiler understand some extensions.
 [symbol records]: https://llvm.org/docs/PDB/CodeViewSymbols.html
 [type records]: https://llvm.org/docs/PDB/CodeViewTypes.html
 [Windows Debugging Tools]: https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/
+[`debugger_visualizer` attribute]: https://doc.rust-lang.org/nightly/reference/attributes/debugger.html#the-debugger_visualizer-attribute
