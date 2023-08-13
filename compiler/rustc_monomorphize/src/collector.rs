@@ -604,6 +604,40 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
             ty::EarlyBinder::bind(value),
         )
     }
+
+    fn check_move_size(&mut self, limit: usize, operand: &mir::Operand<'tcx>, location: Location) {
+        let limit = Size::from_bytes(limit);
+        let ty = operand.ty(self.body, self.tcx);
+        let ty = self.monomorphize(ty);
+        let layout = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty));
+        if let Ok(layout) = layout {
+            if layout.size > limit {
+                debug!(?layout);
+                let source_info = self.body.source_info(location);
+                debug!(?source_info);
+                let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
+                debug!(?lint_root);
+                let Some(lint_root) = lint_root else {
+                    // This happens when the issue is in a function from a foreign crate that
+                    // we monomorphized in the current crate. We can't get a `HirId` for things
+                    // in other crates.
+                    // FIXME: Find out where to report the lint on. Maybe simply crate-level lint root
+                    // but correct span? This would make the lint at least accept crate-level lint attributes.
+                    return;
+                };
+                self.tcx.emit_spanned_lint(
+                    LARGE_ASSIGNMENTS,
+                    lint_root,
+                    source_info.span,
+                    LargeAssignmentsLint {
+                        span: source_info.span,
+                        size: layout.size.bytes(),
+                        limit: limit.bytes(),
+                    },
+                )
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
@@ -811,40 +845,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
 
     fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
-        let limit = self.tcx.move_size_limit().0;
-        if limit == 0 {
-            return;
-        }
-        let limit = Size::from_bytes(limit);
-        let ty = operand.ty(self.body, self.tcx);
-        let ty = self.monomorphize(ty);
-        let layout = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty));
-        if let Ok(layout) = layout {
-            if layout.size > limit {
-                debug!(?layout);
-                let source_info = self.body.source_info(location);
-                debug!(?source_info);
-                let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
-                debug!(?lint_root);
-                let Some(lint_root) = lint_root else {
-                    // This happens when the issue is in a function from a foreign crate that
-                    // we monomorphized in the current crate. We can't get a `HirId` for things
-                    // in other crates.
-                    // FIXME: Find out where to report the lint on. Maybe simply crate-level lint root
-                    // but correct span? This would make the lint at least accept crate-level lint attributes.
-                    return;
-                };
-                self.tcx.emit_spanned_lint(
-                    LARGE_ASSIGNMENTS,
-                    lint_root,
-                    source_info.span,
-                    LargeAssignmentsLint {
-                        span: source_info.span,
-                        size: layout.size.bytes(),
-                        limit: limit.bytes(),
-                    },
-                )
-            }
+        let move_size_limit = self.tcx.move_size_limit().0;
+        if move_size_limit > 0 {
+            self.check_move_size(move_size_limit, operand, location);
         }
     }
 
