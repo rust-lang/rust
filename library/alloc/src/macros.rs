@@ -142,7 +142,6 @@ macro_rules! __rust_force_expr {
 /// [`Box`]: crate::boxed::Box
 #[macro_export]
 #[unstable(feature = "box_macro", issue = "114778", reason = "Might change")]
-#[rustc_diagnostic_item = "box_macro"]
 macro_rules! r#box {
     ($boxed:expr) => {
         $crate::boxed::Box::new($boxed)
