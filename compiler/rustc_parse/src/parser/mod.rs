@@ -29,7 +29,6 @@ use rustc_ast::{Async, AttrArgs, AttrArgsEq, Expr, ExprKind, Mutability, StrLit}
 use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Ordering;
 use rustc_errors::PResult;
 use rustc_errors::{
     Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, IntoDiagnostic, MultiSpan,
@@ -1453,18 +1452,6 @@ pub(crate) fn make_unclosed_delims_error(
     }
     .into_diagnostic(&sess.span_diagnostic);
     Some(err)
-}
-
-pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedDelim>, sess: &ParseSess) {
-    let _ = sess.reached_eof.fetch_or(
-        unclosed_delims.iter().any(|unmatched_delim| unmatched_delim.found_delim.is_none()),
-        Ordering::Relaxed,
-    );
-    for unmatched in unclosed_delims.drain(..) {
-        if let Some(mut e) = make_unclosed_delims_error(unmatched, sess) {
-            e.emit();
-        }
-    }
 }
 
 /// A helper struct used when building an `AttrTokenStream` from
