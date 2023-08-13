@@ -2803,11 +2803,6 @@ impl<'tcx> Ty<'tcx> {
     /// this method doesn't return `Option<bool>`.
     #[inline]
     pub fn is_trivially_sized(self, tcx: TyCtxt<'tcx>) -> bool {
-        #[inline(never)]
-        fn trivially_sized_cold_path<'tcx>(def: AdtDef<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-            def.sized_constraint(tcx).skip_binder().is_empty()
-        }
-
         match self.kind() {
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Uint(_)
@@ -2829,9 +2824,11 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
 
-            ty::Tuple(tys) => tys.iter().all(|ty| ty.is_trivially_sized(tcx)),
+            ty::Tuple(tys) => {
+                tys.iter().last().map(|ty| ty.is_trivially_sized(tcx)).unwrap_or(true)
+            }
 
-            ty::Adt(def, _args) => trivially_sized_cold_path(*def, tcx),
+            ty::Adt(def, args) => false,
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => false,
 
