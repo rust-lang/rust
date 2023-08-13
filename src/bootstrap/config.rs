@@ -16,6 +16,7 @@ use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
+use std::sync::OnceLock;
 
 use crate::cache::{Interned, INTERNER};
 use crate::cc_detect::{ndk_compiler, Language};
@@ -25,7 +26,6 @@ pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags, Warnings};
 use crate::util::{exe, output, t};
 use build_helper::exit;
-use once_cell::sync::OnceCell;
 use semver::Version;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
@@ -1913,7 +1913,7 @@ impl Config {
     }
 
     pub(crate) fn download_rustc_commit(&self) -> Option<&str> {
-        static DOWNLOAD_RUSTC: OnceCell<Option<String>> = OnceCell::new();
+        static DOWNLOAD_RUSTC: OnceLock<Option<String>> = OnceLock::new();
         if self.dry_run() && DOWNLOAD_RUSTC.get().is_none() {
             // avoid trying to actually download the commit
             return self.download_rustc_commit.as_deref();

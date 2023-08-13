@@ -5,10 +5,10 @@ use std::{
     io::{BufRead, BufReader, BufWriter, ErrorKind, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    sync::OnceLock,
 };
 
 use build_helper::ci::CiEnv;
-use once_cell::sync::OnceCell;
 use xz2::bufread::XzDecoder;
 
 use crate::{
@@ -19,7 +19,7 @@ use crate::{
     Config,
 };
 
-static SHOULD_FIX_BINS_AND_DYLIBS: OnceCell<bool> = OnceCell::new();
+static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
 /// `Config::try_run` wrapper for this module to avoid warnings on `try_run`, since we don't have access to a `builder` yet.
 fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
@@ -125,7 +125,7 @@ impl Config {
         println!("attempting to patch {}", fname.display());
 
         // Only build `.nix-deps` once.
-        static NIX_DEPS_DIR: OnceCell<PathBuf> = OnceCell::new();
+        static NIX_DEPS_DIR: OnceLock<PathBuf> = OnceLock::new();
         let mut nix_build_succeeded = true;
         let nix_deps_dir = NIX_DEPS_DIR.get_or_init(|| {
             // Run `nix-build` to "build" each dependency (which will likely reuse

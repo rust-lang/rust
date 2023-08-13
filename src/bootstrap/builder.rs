@@ -10,6 +10,7 @@ use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use crate::cache::{Cache, Interned, INTERNER};
@@ -29,12 +30,9 @@ use crate::{clean, dist};
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
-// FIXME:
-// - use std::lazy for `Lazy`
-// - use std::cell for `OnceCell`
-// Once they get stabilized and reach beta.
 use clap::ValueEnum;
-use once_cell::sync::{Lazy, OnceCell};
+// FIXME: use std::lazy for `Lazy` once stabilised and in beta.
+use once_cell::sync::Lazy;
 
 pub struct Builder<'a> {
     pub build: &'a Build,
@@ -494,7 +492,7 @@ impl<'a> ShouldRun<'a> {
     ///
     /// [`path`]: ShouldRun::path
     pub fn paths(mut self, paths: &[&str]) -> Self {
-        static SUBMODULES_PATHS: OnceCell<Vec<String>> = OnceCell::new();
+        static SUBMODULES_PATHS: OnceLock<Vec<String>> = OnceLock::new();
 
         let init_submodules_paths = |src: &PathBuf| {
             let file = File::open(src.join(".gitmodules")).unwrap();
