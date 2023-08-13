@@ -273,11 +273,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //
             // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
             if is_const_eval_select && (1..=2).contains(&idx) {
-                if let ty::FnDef(def_id, _) = checked_ty.kind() {
-                    if idx == 1 && !self.tcx.is_const_fn_raw(*def_id) {
-                        self.tcx
-                            .sess
-                            .emit_err(errors::ConstSelectMustBeConst { span: provided_arg.span });
+                if let ty::FnDef(def_id, args) = *checked_ty.kind() {
+                    if idx == 1 {
+                        if !self.tcx.is_const_fn_raw(def_id) {
+                            self.tcx.sess.emit_err(errors::ConstSelectMustBeConst {
+                                span: provided_arg.span,
+                            });
+                        } else {
+                            self.enforce_context_effects(
+                                provided_arg.hir_id,
+                                provided_arg.span,
+                                def_id,
+                                args,
+                            )
+                        }
                     }
                 } else {
                     self.tcx.sess.emit_err(errors::ConstSelectMustBeFn {

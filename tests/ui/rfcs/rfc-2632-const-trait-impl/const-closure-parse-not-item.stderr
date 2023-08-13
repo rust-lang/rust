@@ -1,0 +1,8 @@
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closure-parse-not-item.rs:7:32
+   |
+LL | const fn test() -> impl ~const Fn() {
+   |                                ^^^^
+
+error: aborting due to previous error
+

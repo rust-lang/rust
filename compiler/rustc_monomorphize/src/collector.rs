@@ -815,6 +815,12 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     mir::AssertKind::BoundsCheck { .. } => LangItem::PanicBoundsCheck,
                     _ => LangItem::Panic,
                 };
+                let def_id = tcx.require_lang_item(lang_item, Some(source));
+                let instance = if has_host_effect {
+                    Instance::new(def_id, tcx.mk_args(&[tcx.consts.true_.into()]))
+                } else {
+                    Instance::mono(tcx, def_id)
+                };
                 push_mono_lang_item(self, lang_item);
             }
             mir::TerminatorKind::UnwindTerminate(reason) => {
