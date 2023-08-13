@@ -38,7 +38,7 @@ fn main() {
     let exit_code = match execute(&opts) {
         Ok(code) => code,
         Err(e) => {
-            eprintln!("{:#}", e);
+            eprintln!("{e:#}");
             1
         }
     };
@@ -284,7 +284,7 @@ fn format_string(input: String, options: GetOptsOptions) -> Result<i32> {
     for f in config.file_lines().files() {
         match *f {
             FileName::Stdin => {}
-            _ => eprintln!("Warning: Extra file listed in file_lines option '{}'", f),
+            _ => eprintln!("Warning: Extra file listed in file_lines option '{f}'"),
         }
     }
 
@@ -380,7 +380,7 @@ fn format_and_emit_report<T: Write>(session: &mut Session<'_, T>, input: Input) 
             }
         }
         Err(msg) => {
-            eprintln!("Error writing files: {}", msg);
+            eprintln!("Error writing files: {msg}");
             session.add_operational_error();
         }
     }
@@ -403,12 +403,9 @@ fn print_usage_to_stdout(opts: &Options, reason: &str) {
     let sep = if reason.is_empty() {
         String::new()
     } else {
-        format!("{}\n\n", reason)
+        format!("{reason}\n\n")
     };
-    let msg = format!(
-        "{}Format Rust code\n\nusage: rustfmt [options] <file>...",
-        sep
-    );
+    let msg = format!("{sep}Format Rust code\n\nusage: rustfmt [options] <file>...");
     println!("{}", opts.usage(&msg));
 }
 
@@ -442,7 +439,7 @@ fn print_version() {
         include_str!(concat!(env!("OUT_DIR"), "/commit-info.txt"))
     );
 
-    println!("rustfmt {}", version_info);
+    println!("rustfmt {version_info}");
 }
 
 fn determine_operation(matches: &Matches) -> Result<Operation, OperationError> {
@@ -647,9 +644,9 @@ impl GetOptsOptions {
             match *f {
                 FileName::Real(ref f) if files.contains(f) => {}
                 FileName::Real(_) => {
-                    eprintln!("Warning: Extra file listed in file_lines option '{}'", f)
+                    eprintln!("Warning: Extra file listed in file_lines option '{f}'")
                 }
-                FileName::Stdin => eprintln!("Warning: Not a file '{}'", f),
+                FileName::Stdin => eprintln!("Warning: Not a file '{f}'"),
             }
         }
     }

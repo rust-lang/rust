@@ -43,7 +43,7 @@ fn git_diff(commits: &str) -> String {
     let mut cmd = Command::new("git");
     cmd.arg("diff");
     if commits != "0" {
-        cmd.arg(format!("HEAD~{}", commits));
+        cmd.arg(format!("HEAD~{commits}"));
     }
     let output = cmd.output().expect("Couldn't execute `git diff`");
     String::from_utf8_lossy(&output.stdout).into_owned()
@@ -108,7 +108,7 @@ fn check_uncommitted() {
     if !uncommitted.is_empty() {
         println!("Found untracked changes:");
         for f in &uncommitted {
-            println!("  {}", f);
+            println!("  {f}");
         }
         println!("Commit your work, or run with `-u`.");
         println!("Exiting.");

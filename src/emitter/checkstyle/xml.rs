@@ -13,7 +13,7 @@ impl<'a> Display for XmlEscaped<'a> {
                 '"' => write!(formatter, "&quot;"),
                 '\'' => write!(formatter, "&apos;"),
                 '&' => write!(formatter, "&amp;"),
-                _ => write!(formatter, "{}", char),
+                _ => write!(formatter, "{char}"),
             }?;
         }
 

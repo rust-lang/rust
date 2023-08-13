@@ -103,7 +103,7 @@ fn rewrite_macro_name(
         format!("{}!", pprust::path_to_string(path))
     };
     match extra_ident {
-        Some(ident) if ident.name != kw::Empty => format!("{} {}", name, ident),
+        Some(ident) if ident.name != kw::Empty => format!("{name} {ident}"),
         _ => name,
     }
 }
@@ -214,14 +214,14 @@ fn rewrite_macro_inner(
     if ts.is_empty() && !has_comment {
         return match style {
             Delimiter::Parenthesis if position == MacroPosition::Item => {
-                Some(format!("{}();", macro_name))
+                Some(format!("{macro_name}();"))
             }
             Delimiter::Bracket if position == MacroPosition::Item => {
-                Some(format!("{}[];", macro_name))
+                Some(format!("{macro_name}[];"))
             }
-            Delimiter::Parenthesis => Some(format!("{}()", macro_name)),
-            Delimiter::Bracket => Some(format!("{}[]", macro_name)),
-            Delimiter::Brace => Some(format!("{} {{}}", macro_name)),
+            Delimiter::Parenthesis => Some(format!("{macro_name}()")),
+            Delimiter::Bracket => Some(format!("{macro_name}[]")),
+            Delimiter::Brace => Some(format!("{macro_name} {{}}")),
             _ => unreachable!(),
         };
     }
@@ -321,7 +321,7 @@ fn rewrite_macro_inner(
                     _ => "",
                 };
 
-                Some(format!("{}{}", rewrite, comma))
+                Some(format!("{rewrite}{comma}"))
             }
         }
         Delimiter::Brace => {
@@ -330,8 +330,8 @@ fn rewrite_macro_inner(
             // anything in between the braces (for now).
             let snippet = context.snippet(mac.span()).trim_start_matches(|c| c != '{');
             match trim_left_preserve_layout(snippet, shape.indent, context.config) {
-                Some(macro_body) => Some(format!("{} {}", macro_name, macro_body)),
-                None => Some(format!("{} {}", macro_name, snippet)),
+                Some(macro_body) => Some(format!("{macro_name} {macro_body}")),
+                None => Some(format!("{macro_name} {snippet}")),
             }
         }
         _ => unreachable!(),
@@ -362,7 +362,7 @@ fn handle_vec_semi(
         && lhs.len() + rhs.len() + total_overhead <= shape.width
     {
         // macro_name(lhs; rhs) or macro_name[lhs; rhs]
-        Some(format!("{}{}{}; {}{}", macro_name, left, lhs, rhs, right))
+        Some(format!("{macro_name}{left}{lhs}; {rhs}{right}"))
     } else {
         // macro_name(\nlhs;\nrhs\n) or macro_name[\nlhs;\nrhs\n]
         Some(format!(
@@ -596,8 +596,8 @@ fn delim_token_to_str(
             .block_indent(context.config)
             .to_string_with_newline(context.config);
         (
-            format!("{}{}", lhs, nested_indent_str),
-            format!("{}{}", indent_str, rhs),
+            format!("{lhs}{nested_indent_str}"),
+            format!("{indent_str}{rhs}"),
         )
     } else {
         (lhs.to_owned(), rhs.to_owned())
@@ -654,7 +654,7 @@ impl MacroArgKind {
         };
 
         match *self {
-            MacroArgKind::MetaVariable(ty, ref name) => Some(format!("${}:{}", name, ty)),
+            MacroArgKind::MetaVariable(ty, ref name) => Some(format!("${name}:{ty}")),
             MacroArgKind::Repeat(delim_tok, ref args, ref another, ref tok) => {
                 let (lhs, inner, rhs) = rewrite_delimited_inner(delim_tok, args)?;
                 let another = another
@@ -663,14 +663,14 @@ impl MacroArgKind {
                     .unwrap_or_else(|| "".to_owned());
                 let repeat_tok = pprust::token_to_string(tok);
 
-                Some(format!("${}{}{}{}{}", lhs, inner, rhs, another, repeat_tok))
+                Some(format!("${lhs}{inner}{rhs}{another}{repeat_tok}"))
             }
             MacroArgKind::Delimited(delim_tok, ref args) => {
                 rewrite_delimited_inner(delim_tok, args)
                     .map(|(lhs, inner, rhs)| format!("{}{}{}", lhs, inner, rhs))
             }
-            MacroArgKind::Separator(ref sep, ref prefix) => Some(format!("{}{} ", prefix, sep)),
-            MacroArgKind::Other(ref inner, ref prefix) => Some(format!("{}{}", prefix, inner)),
+            MacroArgKind::Separator(ref sep, ref prefix) => Some(format!("{prefix}{sep} ")),
+            MacroArgKind::Other(ref inner, ref prefix) => Some(format!("{prefix}{inner}")),
         }
     }
 }

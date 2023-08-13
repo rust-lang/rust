@@ -301,7 +301,7 @@ where
     let output = match *output {
         FnRetTy::Ty(ref ty) => {
             let type_str = ty.rewrite(context, ty_shape)?;
-            format!(" -> {}", type_str)
+            format!(" -> {type_str}")
         }
         FnRetTy::Default(..) => String::new(),
     };
@@ -373,7 +373,7 @@ where
         || !context.use_block_indent()
         || is_inputs_empty
     {
-        format!("({})", list_str)
+        format!("({list_str})")
     } else {
         format!(
             "({}{}{})",
@@ -383,7 +383,7 @@ where
         )
     };
     if output.is_empty() || last_line_width(&args) + first_line_width(&output) <= shape.width {
-        Some(format!("{}{}", args, output))
+        Some(format!("{args}{output}"))
     } else {
         Some(format!(
             "{}\n{}{}",
@@ -429,9 +429,9 @@ impl Rewrite for ast::WherePredicate {
                 let lhs = if let Some(binder_str) =
                     rewrite_bound_params(context, shape, bound_generic_params)
                 {
-                    format!("for<{}> {}{}", binder_str, type_str, colon)
+                    format!("for<{binder_str}> {type_str}{colon}")
                 } else {
-                    format!("{}{}", type_str, colon)
+                    format!("{type_str}{colon}")
                 };
 
                 rewrite_assign_rhs(context, lhs, bounds, &RhsAssignKind::Bounds, shape)?
@@ -665,7 +665,7 @@ impl Rewrite for ast::PolyTraitRef {
                 .trait_ref
                 .rewrite(context, shape.offset_left(extra_offset)?)?;
 
-            Some(format!("for<{}> {}", lifetime_str, path_str))
+            Some(format!("for<{lifetime_str}> {path_str}"))
         } else {
             self.trait_ref.rewrite(context, shape)
         }
@@ -695,7 +695,7 @@ impl Rewrite for ast::Ty {
                         res.push('+');
                     }
                 }
-                Some(format!("{}{}", prefix, res))
+                Some(format!("{prefix}{res}"))
             }
             ast::TyKind::Ptr(ref mt) => {
                 let prefix = match mt.mutbl {
@@ -791,7 +791,7 @@ impl Rewrite for ast::Ty {
                 if let Some(sh) = shape.sub_width(2) {
                     if let Some(ref s) = ty.rewrite(context, sh) {
                         if !s.contains('\n') {
-                            return Some(format!("({})", s));
+                            return Some(format!("({s})"));
                         }
                     }
                 }

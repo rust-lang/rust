@@ -28,7 +28,7 @@ impl Emitter for DiffEmitter {
 
         if has_diff {
             if self.config.print_misformatted_file_names() {
-                writeln!(output, "{}", filename)?;
+                writeln!(output, "{filename}")?;
             } else {
                 print_diff(
                     mismatch,
@@ -40,7 +40,7 @@ impl Emitter for DiffEmitter {
             // This occurs when the only difference between the original and formatted values
             // is the newline style. This happens because The make_diff function compares the
             // original and formatted values line by line, independent of line endings.
-            writeln!(output, "Incorrect newline style in {}", filename)?;
+            writeln!(output, "Incorrect newline style in {filename}")?;
             return Ok(EmitterResult { has_diff: true });
         }
 
@@ -110,7 +110,7 @@ mod tests {
 
         assert_eq!(
             String::from_utf8(writer).unwrap(),
-            format!("{}\n{}\n", bin_file, lib_file),
+            format!("{bin_file}\n{lib_file}\n"),
         )
     }
 

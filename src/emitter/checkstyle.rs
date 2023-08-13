@@ -43,7 +43,7 @@ pub(crate) fn output_checkstyle_file<T>(
 where
     T: Write,
 {
-    write!(writer, r#"<file name="{}">"#, filename)?;
+    write!(writer, r#"<file name="{filename}">"#)?;
     for mismatch in diff {
         let begin_line = mismatch.line_number;
         let mut current_line;
@@ -82,7 +82,7 @@ mod tests {
         );
         assert_eq!(
             &writer[..],
-            format!(r#"<file name="{}"></file>"#, file_name).as_bytes()
+            format!(r#"<file name="{file_name}"></file>"#).as_bytes()
         );
     }
 

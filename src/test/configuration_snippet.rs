@@ -233,13 +233,11 @@ impl ConfigCodeBlock {
                 Some(ConfigurationSection::ConfigName(name)) => {
                     assert!(
                         Config::is_valid_name(&name),
-                        "an unknown configuration option was found: {}",
-                        name
+                        "an unknown configuration option was found: {name}"
                     );
                     assert!(
                         hash_set.remove(&name),
-                        "multiple configuration guides found for option {}",
-                        name
+                        "multiple configuration guides found for option {name}"
                     );
                     code_block.set_config_name(Some(name));
                 }
@@ -266,7 +264,7 @@ fn configuration_snippet_tests() {
 
     // Display results.
     println!("Ran {} configurations tests.", blocks.len());
-    assert_eq!(failures, 0, "{} configurations tests failed", failures);
+    assert_eq!(failures, 0, "{failures} configurations tests failed");
 }
 
 // Read Configurations.md and build a `Vec` of `ConfigCodeBlock` structs with one
@@ -289,7 +287,7 @@ fn get_code_blocks() -> Vec<ConfigCodeBlock> {
 
     for name in hash_set {
         if !Config::is_hidden_option(&name) {
-            panic!("{} does not have a configuration guide", name);
+            panic!("{name} does not have a configuration guide");
         }
     }
 

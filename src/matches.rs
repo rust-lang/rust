@@ -124,7 +124,7 @@ pub(crate) fn rewrite_match(
     if arms.is_empty() {
         let snippet = context.snippet(mk_sp(open_brace_pos, span.hi() - BytePos(1)));
         if snippet.trim().is_empty() {
-            Some(format!("match {} {{}}", cond_str))
+            Some(format!("match {cond_str} {{}}"))
         } else {
             // Empty match with comments or inner attributes? We are not going to bother, sorry ;)
             Some(context.snippet(span).to_owned())
@@ -274,7 +274,7 @@ fn rewrite_match_arm(
     let lhs_str = combine_strs_with_missing_comments(
         context,
         &attrs_str,
-        &format!("{}{}{}", pipe_str, pats_str, guard_str),
+        &format!("{pipe_str}{pats_str}{guard_str}"),
         missing_span,
         shape,
         false,
@@ -543,7 +543,7 @@ fn rewrite_guard(
             if let Some(cond_shape) = cond_shape {
                 if let Some(cond_str) = guard.rewrite(context, cond_shape) {
                     if !cond_str.contains('\n') || pattern_width <= context.config.tab_spaces() {
-                        return Some(format!(" if {}", cond_str));
+                        return Some(format!(" if {cond_str}"));
                     }
                 }
             }

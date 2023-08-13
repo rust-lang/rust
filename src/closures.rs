@@ -175,7 +175,7 @@ fn rewrite_closure_with_block(
         shape,
         false,
     )?;
-    Some(format!("{} {}", prefix, block))
+    Some(format!("{prefix} {block}"))
 }
 
 // Rewrite closure with a single expression without wrapping its body with block.
@@ -310,10 +310,7 @@ fn rewrite_closure_fn_decl(
         .tactic(tactic)
         .preserve_newline(true);
     let list_str = write_list(&item_vec, &fmt)?;
-    let mut prefix = format!(
-        "{}{}{}{}{}|{}|",
-        binder, const_, immovable, is_async, mover, list_str
-    );
+    let mut prefix = format!("{binder}{const_}{immovable}{is_async}{mover}|{list_str}|");
 
     if !ret_str.is_empty() {
         if prefix.contains('\n') {

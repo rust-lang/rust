@@ -208,7 +208,7 @@ impl Rewrite for Pat {
                         None => "",
                         Some(_) => " ",
                     };
-                    format!("{}{}{}", lhs_spacing, infix, rhs_spacing)
+                    format!("{lhs_spacing}{infix}{rhs_spacing}")
                 } else {
                     infix.to_owned()
                 };
@@ -283,7 +283,7 @@ fn rewrite_struct_pat(
     let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape)?;
 
     if fields.is_empty() && !ellipsis {
-        return Some(format!("{} {{}}", path_str));
+        return Some(format!("{path_str} {{}}"));
     }
 
     let (ellipsis_str, terminator) = if ellipsis { (", ..", "..") } else { ("", "}") };
@@ -344,7 +344,7 @@ fn rewrite_struct_pat(
 
     // ast::Pat doesn't have attrs so use &[]
     let fields_str = wrap_struct_field(context, &[], &fields_str, shape, v_shape, one_line_width)?;
-    Some(format!("{} {{{}}}", path_str, fields_str))
+    Some(format!("{path_str} {{{fields_str}}}"))
 }
 
 impl Rewrite for PatField {
@@ -376,7 +376,7 @@ impl Rewrite for PatField {
             let id_str = rewrite_ident(context, self.ident);
             let one_line_width = id_str.len() + 2 + pat_str.len();
             let pat_and_id_str = if one_line_width <= shape.width {
-                format!("{}: {}", id_str, pat_str)
+                format!("{id_str}: {pat_str}")
             } else {
                 format!(
                     "{}:\n{}{}",

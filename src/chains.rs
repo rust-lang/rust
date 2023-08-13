@@ -296,7 +296,7 @@ impl Rewrite for ChainItem {
                 rewrite_comment(comment, false, shape, context.config)?
             }
         };
-        Some(format!("{}{}", rewrite, "?".repeat(self.tries)))
+        Some(format!("{rewrite}{}", "?".repeat(self.tries)))
     }
 }
 

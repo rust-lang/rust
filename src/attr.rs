@@ -308,7 +308,7 @@ impl Rewrite for ast::MetaItem {
                 // See #2479 for example.
                 let value = rewrite_literal(context, lit.as_token_lit(), lit.span, lit_shape)
                     .unwrap_or_else(|| context.snippet(lit.span).to_owned());
-                format!("{} = {}", path, value)
+                format!("{path} = {value}")
             }
         })
     }
@@ -342,7 +342,7 @@ impl Rewrite for ast::Attribute {
                         let literal_str = literal.as_str();
                         let doc_comment_formatter =
                             DocCommentFormatter::new(literal_str, comment_style);
-                        let doc_comment = format!("{}", doc_comment_formatter);
+                        let doc_comment = format!("{doc_comment_formatter}");
                         return rewrite_doc_comment(
                             &doc_comment,
                             shape.comment(context.config),
@@ -406,9 +406,9 @@ impl Rewrite for [ast::Attribute] {
                         0,
                     )?;
                     let comment = if comment.is_empty() {
-                        format!("\n{}", mlb)
+                        format!("\n{mlb}")
                     } else {
-                        format!("{}{}\n{}", mla, comment, mlb)
+                        format!("{mla}{comment}\n{mlb}")
                     };
                     result.push_str(&comment);
                     result.push_str(&shape.indent.to_string(context.config));

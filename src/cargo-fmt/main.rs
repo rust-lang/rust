@@ -200,14 +200,13 @@ fn convert_message_format_to_rustfmt_args(
         }
         "human" => Ok(()),
         _ => Err(format!(
-            "invalid --message-format value: {}. Allowed values are: short|json|human",
-            message_format
+            "invalid --message-format value: {message_format}. Allowed values are: short|json|human"
         )),
     }
 }
 
 fn print_usage_to_stderr(reason: &str) {
-    eprintln!("{}", reason);
+    eprintln!("{reason}");
     let app = Opts::command();
     app.after_help("")
         .write_help(&mut io::stderr())
@@ -460,7 +459,7 @@ fn get_targets_with_hitlist(
         let package = workspace_hitlist.iter().next().unwrap();
         Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            format!("package `{}` is not a member of the workspace", package),
+            format!("package `{package}` is not a member of the workspace"),
         ))
     }
 }
@@ -498,7 +497,7 @@ fn run_rustfmt(
 
         if verbosity == Verbosity::Verbose {
             print!("rustfmt");
-            print!(" --edition {}", edition);
+            print!(" --edition {edition}");
             fmt_args.iter().for_each(|f| print!(" {}", f));
             files.iter().for_each(|f| print!(" {}", f.display()));
             println!();

@@ -470,7 +470,7 @@ impl<'a> FmtVisitor<'a> {
             && self.block_indent.width() + fn_str.len() + 3 <= self.config.max_width()
             && !last_line_contains_single_line_comment(fn_str)
         {
-            return Some(format!("{} {{}}", fn_str));
+            return Some(format!("{fn_str} {{}}"));
         }
 
         if !self.config.fn_single_line() || !is_simple_block_stmt(&context, block, None) {
@@ -482,7 +482,7 @@ impl<'a> FmtVisitor<'a> {
 
         let width = self.block_indent.width() + fn_str.len() + res.len() + 5;
         if !res.contains('\n') && width <= self.config.max_width() {
-            Some(format!("{} {{ {} }}", fn_str, res))
+            Some(format!("{fn_str} {{ {res} }}"))
         } else {
             None
         }
@@ -664,7 +664,7 @@ impl<'a> FmtVisitor<'a> {
         };
 
         let variant_body = if let Some(ref expr) = field.disr_expr {
-            let lhs = format!("{:1$} =", variant_body, pad_discrim_ident_to);
+            let lhs = format!("{variant_body:pad_discrim_ident_to$} =");
             let ex = &*expr.value;
             rewrite_assign_rhs_with(
                 &context,
@@ -827,7 +827,7 @@ pub(crate) fn format_impl(
             if generics.where_clause.predicates.len() == 1 {
                 result.push(',');
             }
-            result.push_str(&format!("{}{{{}}}", sep, sep));
+            result.push_str(&format!("{sep}{{{sep}}}"));
         } else {
             result.push_str(" {}");
         }
@@ -1018,7 +1018,7 @@ fn rewrite_trait_ref(
     let shape = Shape::indented(offset + used_space, context.config);
     if let Some(trait_ref_str) = trait_ref.rewrite(context, shape) {
         if !trait_ref_str.contains('\n') {
-            return Some(format!(" {}{}", polarity_str, trait_ref_str));
+            return Some(format!(" {polarity_str}{trait_ref_str}"));
         }
     }
     // We could not make enough space for trait_ref, so put it on new line.
@@ -1320,7 +1320,7 @@ impl<'a> Rewrite for TraitAliasBounds<'a> {
             shape.indent.to_string_with_newline(context.config)
         };
 
-        Some(format!("{}{}{}", generic_bounds_str, space, where_str))
+        Some(format!("{generic_bounds_str}{space}{where_str}"))
     }
 }
 
@@ -1337,7 +1337,7 @@ pub(crate) fn format_trait_alias(
     let g_shape = shape.offset_left(6)?.sub_width(2)?;
     let generics_str = rewrite_generics(context, alias, generics, g_shape)?;
     let vis_str = format_visibility(context, vis);
-    let lhs = format!("{}trait {} =", vis_str, generics_str);
+    let lhs = format!("{vis_str}trait {generics_str} =");
     // 1 = ";"
     let trait_alias_bounds = TraitAliasBounds {
         generic_bounds,
@@ -1374,7 +1374,7 @@ fn format_unit_struct(
     } else {
         String::new()
     };
-    Some(format!("{}{};", header_str, generics_str))
+    Some(format!("{header_str}{generics_str};"))
 }
 
 pub(crate) fn format_struct_struct(
@@ -1464,7 +1464,7 @@ pub(crate) fn format_struct_struct(
         && items_str.len() <= one_line_budget
         && !last_line_contains_single_line_comment(&items_str)
     {
-        Some(format!("{} {} }}", result, items_str))
+        Some(format!("{result} {items_str} }}"))
     } else {
         Some(format!(
             "{}\n{}{}\n{}}}",
@@ -1694,7 +1694,7 @@ pub(crate) fn rewrite_type_alias<'a, 'b>(
                 rewrite_ty(rw_info, Some(bounds), ty_opt, vis)
             }?;
             match defaultness {
-                ast::Defaultness::Default(..) => Some(format!("default {}", result)),
+                ast::Defaultness::Default(..) => Some(format!("default {result}")),
                 _ => Some(result),
             }
         }
@@ -1801,14 +1801,14 @@ fn rewrite_ty<R: Rewrite>(
                     true,
                 )?
             }
-            _ => format!("{}=", result),
+            _ => format!("{result}="),
         };
 
         // 1 = `;`
         let shape = Shape::indented(indent, context.config).sub_width(1)?;
         rewrite_assign_rhs(context, lhs, &*ty, &RhsAssignKind::Ty, shape).map(|s| s + ";")
     } else {
-        Some(format!("{};", result))
+        Some(format!("{result};"))
     }
 }
 
@@ -2017,7 +2017,7 @@ fn rewrite_static(
         let expr_lo = expr.span.lo();
         let comments_span = mk_sp(comments_lo, expr_lo);
 
-        let lhs = format!("{}{} =", prefix, ty_str);
+        let lhs = format!("{prefix}{ty_str} =");
 
         // 1 = ;
         let remaining_width = context.budget(offset.block_indent + 1);
@@ -2034,7 +2034,7 @@ fn rewrite_static(
         .and_then(|res| recover_comment_removed(res, static_parts.span, context))
         .map(|s| if s.ends_with(';') { s } else { s + ";" })
     } else {
-        Some(format!("{}{};", prefix, ty_str))
+        Some(format!("{prefix}{ty_str};"))
     }
 }
 
@@ -2227,7 +2227,7 @@ fn rewrite_explicit_self(
                     Some(combine_strs_with_missing_comments(
                         context,
                         param_attrs,
-                        &format!("&{} {}self", lifetime_str, mut_str),
+                        &format!("&{lifetime_str} {mut_str}self"),
                         span,
                         shape,
                         !has_multiple_attr_lines,
@@ -2236,7 +2236,7 @@ fn rewrite_explicit_self(
                 None => Some(combine_strs_with_missing_comments(
                     context,
                     param_attrs,
-                    &format!("&{}self", mut_str),
+                    &format!("&{mut_str}self"),
                     span,
                     shape,
                     !has_multiple_attr_lines,
@@ -2906,7 +2906,7 @@ fn rewrite_where_clause_rfc_style(
             clause_shape.indent.to_string_with_newline(context.config)
         };
 
-    Some(format!("{}{}{}", where_keyword, clause_sep, preds_str))
+    Some(format!("{where_keyword}{clause_sep}{preds_str}"))
 }
 
 /// Rewrite `where` and comment around it.
@@ -2946,8 +2946,8 @@ fn rewrite_where_keyword(
     let newline_before_where = comment_separator(&comment_before, shape);
     let newline_after_where = comment_separator(&comment_after, clause_shape);
     let result = format!(
-        "{}{}{}where{}{}",
-        starting_newline, comment_before, newline_before_where, newline_after_where, comment_after
+        "{starting_newline}{comment_before}{newline_before_where}where\
+{newline_after_where}{comment_after}"
     );
     let allow_single_line = where_clause_option.allow_single_line
         && comment_before.is_empty()
@@ -3102,7 +3102,7 @@ fn rewrite_where_clause(
             preds_str
         ))
     } else {
-        Some(format!(" where {}", preds_str))
+        Some(format!(" where {preds_str}"))
     }
 }
 

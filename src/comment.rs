@@ -621,7 +621,7 @@ impl<'a> CommentRewrite<'a> {
             is_prev_line_multi_line: false,
             code_block_attr: None,
             item_block: None,
-            comment_line_separator: format!("{}{}", indent_str, line_start),
+            comment_line_separator: format!("{indent_str}{line_start}"),
             max_width,
             indent_str,
             fmt_indent: shape.indent,
@@ -951,7 +951,7 @@ const RUSTFMT_CUSTOM_COMMENT_PREFIX: &str = "//#### ";
 fn hide_sharp_behind_comment(s: &str) -> Cow<'_, str> {
     let s_trimmed = s.trim();
     if s_trimmed.starts_with("# ") || s_trimmed == "#" {
-        Cow::from(format!("{}{}", RUSTFMT_CUSTOM_COMMENT_PREFIX, s))
+        Cow::from(format!("{RUSTFMT_CUSTOM_COMMENT_PREFIX}{s}"))
     } else {
         Cow::from(s)
     }
@@ -1035,7 +1035,7 @@ pub(crate) fn recover_missing_comment_in_span(
         } else {
             Cow::from(" ")
         };
-        Some(format!("{}{}", sep, missing_comment))
+        Some(format!("{sep}{missing_comment}"))
     }
 }
 
@@ -1832,8 +1832,7 @@ fn remove_comment_header(comment: &str) -> &str {
     } else {
         assert!(
             comment.starts_with("/*"),
-            "string '{}' is not a comment",
-            comment
+            "string '{comment}' is not a comment"
         );
         &comment[2..comment.len() - 2]
     }
@@ -2069,26 +2068,13 @@ fn main() {
             expected_line_start: &str,
         ) {
             let block = ItemizedBlock::new(test_input).unwrap();
-            assert_eq!(1, block.lines.len(), "test_input: {:?}", test_input);
-            assert_eq!(
-                expected_line, &block.lines[0],
-                "test_input: {:?}",
-                test_input
-            );
-            assert_eq!(
-                expected_indent, block.indent,
-                "test_input: {:?}",
-                test_input
-            );
-            assert_eq!(
-                expected_opener, &block.opener,
-                "test_input: {:?}",
-                test_input
-            );
+            assert_eq!(1, block.lines.len(), "test_input: {test_input:?}");
+            assert_eq!(expected_line, &block.lines[0], "test_input: {test_input:?}");
+            assert_eq!(expected_indent, block.indent, "test_input: {test_input:?}");
+            assert_eq!(expected_opener, &block.opener, "test_input: {test_input:?}");
             assert_eq!(
                 expected_line_start, &block.line_start,
-                "test_input: {:?}",
-                test_input
+                "test_input: {test_input:?}"
             );
         }
 
@@ -2145,8 +2131,7 @@ fn main() {
             let maybe_block = ItemizedBlock::new(line);
             assert!(
                 maybe_block.is_none(),
-                "The following line shouldn't be classified as a list item: {}",
-                line
+                "The following line shouldn't be classified as a list item: {line}"
             );
         }
     }

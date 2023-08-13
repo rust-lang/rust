@@ -123,6 +123,6 @@ mod test {
     #[test]
     fn macro_names_display() {
         let macro_names = MacroSelectors::from_str(r#"["foo", "*", "bar"]"#).unwrap();
-        assert_eq!(format!("{}", macro_names), "foo, *, bar");
+        assert_eq!(format!("{macro_names}"), "foo, *, bar");
     }
 }

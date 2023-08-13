@@ -216,8 +216,8 @@ impl Config {
             let required_version = self.required_version();
             if version != required_version {
                 println!(
-                    "Error: rustfmt version ({}) doesn't match the required version ({})",
-                    version, required_version,
+                    "Error: rustfmt version ({version}) doesn't match the required version \
+({required_version})"
                 );
                 return false;
             }
@@ -310,20 +310,20 @@ impl Config {
             .ok_or_else(|| String::from("Parsed config was not table"))?;
         for key in table.keys() {
             if !Config::is_valid_name(key) {
-                let msg = &format!("Warning: Unknown configuration option `{}`\n", key);
+                let msg = &format!("Warning: Unknown configuration option `{key}`\n");
                 err.push_str(msg)
             }
         }
         match parsed.try_into() {
             Ok(parsed_config) => {
                 if !err.is_empty() {
-                    eprint!("{}", err);
+                    eprint!("{err}");
                 }
                 Ok(Config::default().fill_from_parsed_config(parsed_config, dir))
             }
             Err(e) => {
                 err.push_str("Error: Decoding config file failed:\n");
-                err.push_str(format!("{}\n", e).as_str());
+                err.push_str(format!("{e}\n").as_str());
                 err.push_str("Please check your config file.");
                 Err(err)
             }
@@ -563,10 +563,7 @@ mod test {
         let toml = used_options.to_toml().unwrap();
         assert_eq!(
             toml,
-            format!(
-                "merge_derives = {}\nskip_children = {}\n",
-                merge_derives, skip_children,
-            )
+            format!("merge_derives = {merge_derives}\nskip_children = {skip_children}\n",)
         );
     }
 

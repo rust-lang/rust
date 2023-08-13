@@ -69,7 +69,7 @@ pub(crate) fn format_visibility(
             let path = segments_iter.collect::<Vec<_>>().join("::");
             let in_str = if is_keyword(&path) { "" } else { "in " };
 
-            Cow::from(format!("pub({}{}) ", in_str, path))
+            Cow::from(format!("pub({in_str}{path}) "))
         }
     }
 }
@@ -147,7 +147,7 @@ pub(crate) fn format_extern(
     } else if abi == "C" && !explicit_abi {
         Cow::from("extern ")
     } else {
-        Cow::from(format!(r#"extern "{}" "#, abi))
+        Cow::from(format!(r#"extern "{abi}" "#))
     }
 }
 

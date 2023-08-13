@@ -234,8 +234,8 @@ where
     let rhs_result = rhs.rewrite(context, rhs_shape)?;
     let indent_str = rhs_shape.indent.to_string_with_newline(context.config);
     let infix_with_sep = match separator_place {
-        SeparatorPlace::Back => format!("{}{}", infix, indent_str),
-        SeparatorPlace::Front => format!("{}{}", indent_str, infix),
+        SeparatorPlace::Back => format!("{infix}{indent_str}"),
+        SeparatorPlace::Front => format!("{indent_str}{infix}"),
     };
     Some(format!(
         "{}{}{}{}",
