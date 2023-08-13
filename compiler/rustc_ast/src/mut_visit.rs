@@ -795,12 +795,6 @@ pub fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T
         token::NtIdent(ident, _is_raw) => vis.visit_ident(ident),
         token::NtLifetime(ident) => vis.visit_ident(ident),
         token::NtLiteral(expr) => vis.visit_expr(expr),
-        token::NtMeta(item) => {
-            let AttrItem { path, args, tokens } = item.deref_mut();
-            vis.visit_path(path);
-            visit_attr_args(args, vis);
-            visit_lazy_tts(tokens, vis);
-        }
         token::NtPath(path) => vis.visit_path(path),
     }
 }

@@ -5,7 +5,7 @@ use crate::ast::{DelimArgs, Expr, ExprKind, LitKind, MetaItemLit};
 use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem, NormalAttr};
 use crate::ast::{Path, PathSegment, DUMMY_NODE_ID};
 use crate::ptr::P;
-use crate::token::{self, CommentKind, Delimiter, Token};
+use crate::token::{self, CommentKind, Delimiter, InvisibleSource, NonterminalKind, Token};
 use crate::tokenstream::{DelimSpan, Spacing, TokenTree};
 use crate::tokenstream::{LazyAttrTokenStream, TokenStream};
 use crate::util::comments;
@@ -327,10 +327,17 @@ impl MetaItem {
                 Path { span, segments, tokens: None }
             }
             Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &**nt {
-                token::Nonterminal::NtMeta(item) => return item.meta(item.path.span),
                 token::Nonterminal::NtPath(path) => (**path).clone(),
                 _ => return None,
             },
+            Some(TokenTree::Delimited(
+                _span,
+                Delimiter::Invisible(InvisibleSource::MetaVar(NonterminalKind::Meta)),
+                _stream,
+            )) => {
+                // njn: this pre-existing (equivalent) path is unreachable in the test suite
+                unreachable!()
+            }
             _ => return None,
         };
         let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());

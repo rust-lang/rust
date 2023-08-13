@@ -847,8 +847,6 @@ pub enum Nonterminal {
     NtIdent(Ident, /* is_raw */ bool),
     NtLifetime(Ident),
     NtLiteral(P<ast::Expr>),
-    /// Stuff inside brackets for attributes
-    NtMeta(P<ast::AttrItem>),
     NtPath(P<ast::Path>),
 }
 
@@ -936,7 +934,6 @@ impl Nonterminal {
             NtBlock(block) => block.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
             NtIdent(ident, _) | NtLifetime(ident) => ident.span,
-            NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
         }
     }
@@ -965,7 +962,6 @@ impl fmt::Debug for Nonterminal {
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtIdent(..) => f.pad("NtIdent(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
-            NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
             NtLifetime(..) => f.pad("NtLifetime(..)"),
         }

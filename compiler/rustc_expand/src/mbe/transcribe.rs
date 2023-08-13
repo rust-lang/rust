@@ -255,6 +255,9 @@ pub(super) fn transcribe<'a>(
                         MatchedSingle(ParseNtResult::Ty(ref ty)) => {
                             mk_delimited(NonterminalKind::Ty, TokenStream::from_ast(ty))
                         }
+                        MatchedSingle(ParseNtResult::Meta(ref meta)) => {
+                            mk_delimited(NonterminalKind::Meta, TokenStream::from_ast(meta))
+                        }
                         MatchedSingle(ParseNtResult::Vis(ref vis)) => {
                             mk_delimited(NonterminalKind::Vis, TokenStream::from_ast(vis))
                         }
