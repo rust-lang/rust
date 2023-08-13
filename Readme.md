@@ -1,6 +1,7 @@
 # WIP libgccjit codegen backend for rust
 
 [![Chat on IRC](https://img.shields.io/badge/irc.libera.chat-%23rustc__codegen__gcc-blue.svg)](https://web.libera.chat/#rustc_codegen_gcc)
+[![Chat on Matrix](https://img.shields.io/badge/matrix.org-%23rustc__codegen__gcc-blue.svg)](https://matrix.to/#/#rustc_codegen_gcc:matrix.org)
 
 This is a GCC codegen for rustc, which means it can be loaded by the existing rustc frontend, but benefits from GCC: more architectures are supported and GCC's optimizations are used.
 
@@ -14,9 +15,7 @@ A secondary goal is to check if using the gcc backend will provide any run-time 
 ## Building
 
 **This requires a patched libgccjit in order to work.
-The patches in [this repository](https://github.com/antoyo/libgccjit-patches) need to be applied.
-(Those patches should work when applied on master, but in case it doesn't work, they are known to work when applied on 079c23cfe079f203d5df83fea8e92a60c7d7e878.)
-You can also use my [fork of gcc](https://github.com/antoyo/gcc) which already includes these patches.**
+You need to use my [fork of gcc](https://github.com/antoyo/gcc) which already includes these patches.**
 
 To build it (most of these instructions come from [here](https://gcc.gnu.org/onlinedocs/jit/internals/index.html), so don't hesitate to take a look there if you encounter an issue):
 
@@ -106,6 +105,12 @@ $ rustc +$(cat $cg_gccjit_dir/rust-toolchain) -Cpanic=abort -Zcodegen-backend=$c
     <dt>CG_GCCJIT_DISPLAY_CG_TIME</dt>
     <dd>Display the time it took to perform codegen for a crate</dd>
 </dl>
+
+## Licensing
+
+While this crate is licensed under a dual Apache/MIT license, it links to `libgccjit` which is under the GPLv3+ and thus, the resulting toolchain (rustc + GCC codegen) will need to be released under the GPL license.
+
+However, programs compiled with `rustc_codegen_gcc` do not need to be released under a GPL license.
 
 ## Debugging
 
@@ -222,6 +227,11 @@ https://rust-lang.zulipchat.com/#narrow/stream/301329-t-devtools/topic/subtree.2
 ### How to use [mem-trace](https://github.com/antoyo/mem-trace)
 
 `rustc` needs to be built without `jemalloc` so that `mem-trace` can overload `malloc` since `jemalloc` is linked statically, so a `LD_PRELOAD`-ed library won't a chance to intercept the calls to `malloc`.
+
+### How to generate GIMPLE
+
+If you need to check what gccjit is generating (GIMPLE), then take a look at how to
+generate it in [gimple.md](./doc/gimple.md).
 
 ### How to build a cross-compiling libgccjit
 

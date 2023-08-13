@@ -1,10 +1,12 @@
+use std::collections::HashSet;
 use std::env;
+use std::sync::Arc;
 use std::time::Instant;
 
 use gccjit::{
     Context,
     FunctionType,
-    GlobalKind,
+    GlobalKind, TargetInfo,
 };
 use rustc_middle::dep_graph;
 use rustc_middle::ty::TyCtxt;
@@ -63,7 +65,7 @@ pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
     }
 }
 
-pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, supports_128bit_integers: bool) -> (ModuleCodegen<GccContext>, u64) {
+pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<TargetInfo>) -> (ModuleCodegen<GccContext>, u64) {
     let prof_timer = tcx.prof.generic_activity("codegen_module");
     let start_time = Instant::now();
 
@@ -71,7 +73,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, supports_128bit_i
     let (module, _) = tcx.dep_graph.with_task(
         dep_node,
         tcx,
-        (cgu_name, supports_128bit_integers),
+        (cgu_name, target_info),
         module_codegen,
         Some(dep_graph::hash_result),
     );
@@ -82,7 +84,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, supports_128bit_i
     // the time we needed for codegenning it.
     let cost = time_to_codegen.as_secs() * 1_000_000_000 + time_to_codegen.subsec_nanos() as u64;
 
-    fn module_codegen(tcx: TyCtxt<'_>, (cgu_name, supports_128bit_integers): (Symbol, bool)) -> ModuleCodegen<GccContext> {
+    fn module_codegen(tcx: TyCtxt<'_>, (cgu_name, target_info): (Symbol, Arc<TargetInfo>)) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
         //let llvm_module = ModuleLlvm::new(tcx, &cgu_name.as_str());
@@ -91,29 +93,36 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, supports_128bit_i
         context.add_command_line_option("-fexceptions");
         context.add_driver_option("-fexceptions");
 
+        let disabled_features: HashSet<_> = tcx.sess.opts.cg.target_feature.split(',')
+            .filter(|feature| feature.starts_with('-'))
+            .map(|string| &string[1..])
+            .collect();
+
+        let add_cpu_feature_flag = |feature: &str| {
+            // FIXME(antoyo): some tests cause a segfault in GCC when not enabling all these
+            // features.
+            if (true || target_info.cpu_supports(feature)) && !disabled_features.contains(feature) {
+                context.add_command_line_option(&format!("-m{}", feature));
+            }
+        };
+
         // TODO(antoyo): only set on x86 platforms.
         context.add_command_line_option("-masm=intel");
-        // TODO(antoyo): only add the following cli argument if the feature is supported.
-        context.add_command_line_option("-msse2");
-        context.add_command_line_option("-mavx2");
-        // FIXME(antoyo): the following causes an illegal instruction on vmovdqu64 in std_example on my CPU.
-        // Only add if the CPU supports it.
-        context.add_command_line_option("-msha");
+
+        let features = ["sse2", "avx", "avx2", "sha", "fma", "gfni", "f16c", "aes", "bmi2", "rtm",
+            "vaes", "vpclmulqdq", "xsavec",
+        ];
+
+        for feature in &features {
+            add_cpu_feature_flag(feature);
+        }
+
+        // TODO(antoyo): only add the following cli arguments if the feature is supported.
         context.add_command_line_option("-mpclmul");
-        context.add_command_line_option("-mfma");
         context.add_command_line_option("-mfma4");
         context.add_command_line_option("-m64");
         context.add_command_line_option("-mbmi");
-        context.add_command_line_option("-mgfni");
         //context.add_command_line_option("-mavxvnni"); // The CI doesn't support this option.
-        context.add_command_line_option("-mf16c");
-        context.add_command_line_option("-maes");
-        context.add_command_line_option("-mxsavec");
-        context.add_command_line_option("-mbmi2");
-        context.add_command_line_option("-mrtm");
-        context.add_command_line_option("-mvaes");
-        context.add_command_line_option("-mvpclmulqdq");
-        context.add_command_line_option("-mavx");
 
         for arg in &tcx.sess.opts.cg.llvm_args {
             context.add_command_line_option(arg);
@@ -156,7 +165,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, supports_128bit_i
         context.set_allow_unreachable_blocks(true);
 
         {
-            let cx = CodegenCx::new(&context, cgu, tcx, supports_128bit_integers);
+            let cx = CodegenCx::new(&context, cgu, tcx, target_info.supports_128bit_int());
 
             let mono_items = cgu.items_in_deterministic_order(tcx);
             for &(mono_item, data) in &mono_items {

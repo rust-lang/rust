@@ -35,7 +35,6 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-extern crate tempfile;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
 #[allow(unused_extern_crates)]
@@ -64,10 +63,10 @@ mod type_;
 mod type_of;
 
 use std::any::Any;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::errors::LTONotSupported;
-use gccjit::{Context, OptimizationLevel, CType};
+use gccjit::{Context, OptimizationLevel, TargetInfo};
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_codegen_ssa::base::codegen_crate;
@@ -86,7 +85,6 @@ use rustc_session::config::{Lto, OptLevel, OutputFilenames};
 use rustc_session::Session;
 use rustc_span::Symbol;
 use rustc_span::fatal_error::FatalError;
-use tempfile::TempDir;
 
 fluent_messages! { "../messages.ftl" }
 
@@ -102,7 +100,7 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 
 #[derive(Clone)]
 pub struct GccCodegenBackend {
-    supports_128bit_integers: Arc<Mutex<bool>>,
+    target_info: Arc<TargetInfo>,
 }
 
 impl CodegenBackend for GccCodegenBackend {
@@ -116,15 +114,6 @@ impl CodegenBackend for GccCodegenBackend {
         if sess.lto() != Lto::No {
             sess.emit_warning(LTONotSupported {});
         }
-
-        let temp_dir = TempDir::new().expect("cannot create temporary directory");
-        let temp_file = temp_dir.into_path().join("result.asm");
-        let check_context = Context::default();
-        check_context.set_print_errors_to_stderr(false);
-        let _int128_ty = check_context.new_c_type(CType::UInt128t);
-        // NOTE: we cannot just call compile() as this would require other files than libgccjit.so.
-        check_context.compile_to_file(gccjit::OutputKind::Assembler, temp_file.to_str().expect("path to str"));
-        *self.supports_128bit_integers.lock().expect("lock") = check_context.get_last_error() == Ok(None);
     }
 
     fn provide(&self, providers: &mut Providers) {
@@ -160,7 +149,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn target_features(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-        target_features(sess, allow_unstable)
+        target_features(sess, allow_unstable, &self.target_info)
     }
 }
 
@@ -174,7 +163,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
     }
 
     fn compile_codegen_unit(&self, tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen<Self::Module>, u64) {
-        base::compile_codegen_unit(tcx, cgu_name, *self.supports_128bit_integers.lock().expect("lock"))
+        base::compile_codegen_unit(tcx, cgu_name, Arc::clone(&self.target_info))
     }
 
     fn target_machine_factory(&self, _sess: &Session, _opt_level: OptLevel, _features: &[String]) -> TargetMachineFactoryFn<Self> {
@@ -277,8 +266,17 @@ impl WriteBackendMethods for GccCodegenBackend {
 /// This is the entrypoint for a hot plugged rustc_codegen_gccjit
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
+    // Get the native arch and check whether the target supports 128-bit integers.
+    let context = Context::default();
+    let arch = context.get_target_info().arch().unwrap();
+
+    // Get the second TargetInfo with the correct CPU features by setting the arch.
+    let context = Context::default();
+    context.add_driver_option(&format!("-march={}", arch.to_str().unwrap()));
+    let target_info = Arc::new(context.get_target_info());
+
     Box::new(GccCodegenBackend {
-        supports_128bit_integers: Arc::new(Mutex::new(false)),
+        target_info,
     })
 }
 
@@ -312,7 +310,7 @@ pub fn target_cpu(sess: &Session) -> &str {
     }
 }
 
-pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+pub fn target_features(sess: &Session, allow_unstable: bool, target_info: &Arc<TargetInfo>) -> Vec<Symbol> {
     supported_target_features(sess)
         .iter()
         .filter_map(
@@ -321,14 +319,9 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
             },
         )
         .filter(|_feature| {
-            // TODO(antoyo): implement a way to get enabled feature in libgccjit.
-            // Probably using the equivalent of __builtin_cpu_supports.
-            // TODO(antoyo): maybe use whatever outputs the following command:
-            // gcc -march=native -Q --help=target
             #[cfg(feature="master")]
             {
-                // NOTE: the CPU in the CI doesn't support sse4a, so disable it to make the stdarch tests pass in the CI.
-                (_feature.contains("sse") || _feature.contains("avx")) && !_feature.contains("avx512") && !_feature.contains("sse4a")
+                target_info.cpu_supports(_feature)
             }
             #[cfg(not(feature="master"))]
             {
@@ -340,7 +333,6 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
                bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
                sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
              */
-            //false
         })
         .map(|feature| Symbol::intern(feature))
         .collect()
