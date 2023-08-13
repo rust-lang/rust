@@ -734,12 +734,12 @@ fn test_pat() {
 #[test]
 fn test_path() {
     assert_eq!(stringify_path!(thing), "thing");
-    assert_eq!(stringify_path!(m::thing), "m::thing");
-    assert_eq!(stringify_path!(self::thing), "self::thing");
-    assert_eq!(stringify_path!(crate::thing), "crate::thing");
-    assert_eq!(stringify_path!(Self::thing), "Self::thing");
-    assert_eq!(stringify_path!(Self<'static>), "Self<'static>");
-    assert_eq!(stringify_path!(Self::<'static>), "Self<'static>");
+    assert_eq!(stringify_path!(m::thing), "m :: thing");
+    assert_eq!(stringify_path!(self::thing), "self :: thing");
+    assert_eq!(stringify_path!(crate::thing), "crate :: thing");
+    assert_eq!(stringify_path!(Self::thing), "Self :: thing");
+    assert_eq!(stringify_path!(Self<'static>), "Self < 'static >");
+    assert_eq!(stringify_path!(Self::<'static>), "Self :: < 'static >"); // njn: added `::`
     assert_eq!(stringify_path!(Self()), "Self()");
     assert_eq!(stringify_path!(Self() -> ()), "Self() -> ()");
 }

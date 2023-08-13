@@ -326,16 +326,14 @@ impl MetaItem {
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments, tokens: None }
             }
-            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &**nt {
-                token::Nonterminal::NtPath(path) => (**path).clone(),
-                _ => return None,
-            },
             Some(TokenTree::Delimited(
                 _span,
-                Delimiter::Invisible(InvisibleSource::MetaVar(NonterminalKind::Meta)),
+                Delimiter::Invisible(InvisibleSource::MetaVar(
+                    NonterminalKind::Meta | NonterminalKind::Path,
+                )),
                 _stream,
             )) => {
-                // njn: this pre-existing (equivalent) path is unreachable in the test suite
+                // njn: these pre-existing (equivalent) paths are unreachable in the test suite
                 unreachable!()
             }
             _ => return None,
