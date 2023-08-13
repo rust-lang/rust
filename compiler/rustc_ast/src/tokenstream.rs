@@ -13,7 +13,7 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
-use crate::ast::{AttrStyle, StmtKind};
+use crate::ast::AttrStyle;
 use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
 use crate::token::{self, Delimiter, InvisibleSource, Nonterminal, Token, TokenKind};
 use crate::AttrVec;
@@ -464,11 +464,6 @@ impl TokenStream {
                 TokenStream::token_alone(token::Lifetime(ident.name), ident.span)
             }
             Nonterminal::NtBlock(block) => TokenStream::from_ast(block),
-            Nonterminal::NtStmt(stmt) if let StmtKind::Empty = stmt.kind => {
-                // FIXME: Properly collect tokens for empty statements.
-                TokenStream::token_alone(token::Semi, stmt.span)
-            }
-            Nonterminal::NtStmt(stmt) => TokenStream::from_ast(stmt),
             Nonterminal::NtMeta(attr) => TokenStream::from_ast(attr),
             Nonterminal::NtPath(path) => TokenStream::from_ast(path),
             Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => TokenStream::from_ast(expr),

@@ -791,12 +791,6 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
 pub fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
     match nt {
         token::NtBlock(block) => vis.visit_block(block),
-        token::NtStmt(stmt) => visit_clobber(stmt, |stmt| {
-            // See reasoning above.
-            stmt.map(|stmt| {
-                vis.flat_map_stmt(stmt).expect_one("expected visitor to produce exactly one item")
-            })
-        }),
         token::NtExpr(expr) => vis.visit_expr(expr),
         token::NtIdent(ident, _is_raw) => vis.visit_ident(ident),
         token::NtLifetime(ident) => vis.visit_ident(ident),

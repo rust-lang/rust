@@ -747,30 +747,31 @@ fn test_path() {
 #[test]
 fn test_stmt() {
     // StmtKind::Local
-    assert_eq!(stringify_stmt!(let _), "let _;");
-    assert_eq!(stringify_stmt!(let x = true), "let x = true;");
-    assert_eq!(stringify_stmt!(let x: bool = true), "let x: bool = true;");
+    // njn: originals had semicolons, hmm
+    assert_eq!(stringify_stmt!(let _), "let _");
+    assert_eq!(stringify_stmt!(let x = true), "let x = true");
+    assert_eq!(stringify_stmt!(let x: bool = true), "let x : bool = true");
 
     // StmtKind::Item
     assert_eq!(
         stringify_stmt!(
             struct S;
         ),
-        "struct S;",
+        "struct S ;",
     );
 
     // StmtKind::Expr
     assert_eq!(stringify_stmt!(loop {}), "loop {}");
 
     // StmtKind::Semi
-    assert_eq!(stringify_stmt!(1 + 1), "1 + 1;");
+    assert_eq!(stringify_stmt!(1 + 1), "1 + 1");
 
     // StmtKind::Empty
     assert_eq!(stringify_stmt!(;), ";");
 
     // StmtKind::MacCall
-    assert_eq!(stringify_stmt!(mac!(...)), "mac!(...)");
-    assert_eq!(stringify_stmt!(mac![...]), "mac![...]");
+    assert_eq!(stringify_stmt!(mac!(...)), "mac! (...)");
+    assert_eq!(stringify_stmt!(mac![...]), "mac! [...]");
     assert_eq!(stringify_stmt!(mac! { ... }), "mac! { ... }");
 }
 

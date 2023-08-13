@@ -3,18 +3,16 @@ use super::diagnostics::AttemptLocalParseRecovery;
 use super::expr::LhsExpr;
 use super::pat::{PatternLocation, RecoverComma};
 use super::path::PathStyle;
-use super::TrailingToken;
 use super::{
-    AttrWrapper, BlockMode, FnParseMode, ForceCollect, Parser, Restrictions, SemiColonMode,
+    AttrWrapper, BlockMode, FnParseMode, ForceCollect, ParseNtResult, Parser, Restrictions,
+    SemiColonMode, TrailingToken,
 };
-use crate::errors;
+use crate::errors::{self, MalformedLoopLabel};
 use crate::maybe_whole;
-
-use crate::errors::MalformedLoopLabel;
 use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, TokenKind};
+use rustc_ast::token::{self, Delimiter, NonterminalKind, TokenKind};
 use rustc_ast::util::classify;
 use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
@@ -50,11 +48,13 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
 
-        // Don't use `maybe_whole` so that we have precise control
-        // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind && let token::NtStmt(stmt) = &**nt {
-            let mut stmt = stmt.clone();
-            self.bump();
+        if let Some(mut stmt) = crate::maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::Stmt,
+            NonterminalKind::Stmt,
+            ParseNtResult::Stmt(stmt),
+            stmt
+        ) {
             stmt.visit_attrs(|stmt_attrs| {
                 attrs.prepend_to_nt_inner(stmt_attrs);
             });
@@ -603,8 +603,16 @@ impl<'a> Parser<'a> {
         &mut self,
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, Option<Stmt>> {
-        // Skip looking for a trailing semicolon when we have an interpolated statement.
-        maybe_whole!(self, NtStmt, |x| Some(x.into_inner()));
+        // Skip looking for a trailing semicolon when we have metavar seq.
+        if let Some(stmt) = crate::maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::Stmt,
+            NonterminalKind::Stmt,
+            ParseNtResult::Stmt(stmt),
+            stmt
+        ) {
+            return Ok(Some(stmt.into_inner()));
+        }
 
         let Some(mut stmt) = self.parse_stmt_without_recovery(true, ForceCollect::No)? else {
             return Ok(None);
