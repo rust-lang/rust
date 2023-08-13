@@ -17,7 +17,6 @@ use crate::failed::TRACKER_FILE;
 use termcolor::{Color, ColorSpec, WriteColor};
 
 const TERSE_TESTS_PER_LINE: usize = 88;
-#[allow(unused)] // FIXME unused warning even though it is
 
 pub(crate) fn add_flags_and_try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if cmd.get_args().position(|arg| arg == "--").is_none() {
@@ -283,6 +282,7 @@ impl<'a> Renderer<'a> {
             }
             Message::Test(TestMessage::Ok(outcome)) => {
                 self.render_test_outcome(Outcome::Ok, &outcome);
+                self.remove_failure(&outcome.name);
             }
             Message::Test(TestMessage::Ignored(outcome)) => {
                 self.render_test_outcome(
@@ -307,7 +307,7 @@ impl<'a> Renderer<'a> {
         let mut contents = String::new();
         {
             let mut file =
-                OpenOptions::new().create(true).read(true).write(true).open(TRACKER_FILE).unwrap();
+                OpenOptions::new().read(true).write(true).create(true).open(TRACKER_FILE).unwrap();
             file.read_to_string(&mut contents).unwrap();
         }
 
@@ -317,14 +317,20 @@ impl<'a> Renderer<'a> {
     }
 
     /// Add a test that failed to the list
-    #[inline]
     fn track_failure(&mut self, name: &str) {
         self.tracker.insert(String::from(name));
     }
 
+    /// Remove a test that no longer fails from the list
+    fn remove_failure(&mut self, name: &str) {
+        if self.tracker.contains(name) {
+            self.tracker.remove(name);
+        }
+    }
+
     /// Store the state of the tracker into file for retrieval on next run
     fn end_tracking(&mut self) {
-        let mut file = OpenOptions::new().write(true).open(TRACKER_FILE).unwrap();
+        let mut file = OpenOptions::new().write(true).truncate(true).open(TRACKER_FILE).unwrap();
         file.write_all(serde_json::to_string(&self.tracker).unwrap().as_bytes())
             .expect("failed to write to tracking file");
     }

@@ -58,7 +58,6 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
 
     if run {
         for sug in suggestions {
-            println!("paths: {:?}", &sug.2);
             let mut build: crate::Build = builder.build.clone();
             build.config.paths = sug.2;
             build.config.cmd = crate::flags::Flags::parse_from(["x.py", sug.0]).cmd;

@@ -218,7 +218,6 @@ pub struct Build {
     in_tree_llvm_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
-    failed: bool,
     doc_tests: DocTests,
     verbosity: usize,
 
@@ -439,7 +438,6 @@ impl Build {
             initial_libdir,
             initial_sysroot: initial_sysroot.into(),
             local_rebuild: config.local_rebuild,
-            failed: config.cmd.failed(),
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
             verbosity: config.verbose,
