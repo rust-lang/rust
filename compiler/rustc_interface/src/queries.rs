@@ -86,9 +86,6 @@ pub struct Queries<'tcx> {
 
     parse: Query<ast::Crate>,
     pre_configure: Query<(ast::Crate, ast::AttrVec)>,
-    crate_name: Query<Symbol>,
-    crate_types: Query<Vec<CrateType>>,
-    stable_crate_id: Query<StableCrateId>,
     // This just points to what's in `gcx_cell`.
     gcx: Query<&'tcx GlobalCtxt<'tcx>>,
 }
@@ -102,9 +99,6 @@ impl<'tcx> Queries<'tcx> {
             hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
             parse: Default::default(),
             pre_configure: Default::default(),
-            crate_name: Default::default(),
-            crate_types: Default::default(),
-            stable_crate_id: Default::default(),
             gcx: Default::default(),
         }
     }
@@ -138,39 +132,12 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    fn crate_name(&self) -> Result<QueryResult<'_, Symbol>> {
-        self.crate_name.compute(|| {
-            let pre_configure_result = self.pre_configure()?;
-            let (_, pre_configured_attrs) = &*pre_configure_result.borrow();
-            // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
-            Ok(find_crate_name(self.session(), pre_configured_attrs))
-        })
-    }
-
-    fn crate_types(&self) -> Result<QueryResult<'_, Vec<CrateType>>> {
-        self.crate_types.compute(|| {
-            let pre_configure_result = self.pre_configure()?;
-            let (_, pre_configured_attrs) = &*pre_configure_result.borrow();
-            Ok(util::collect_crate_types(&self.session(), &pre_configured_attrs))
-        })
-    }
-
-    fn stable_crate_id(&self) -> Result<QueryResult<'_, StableCrateId>> {
-        self.stable_crate_id.compute(|| {
-            let sess = self.session();
-            Ok(StableCrateId::new(
-                *self.crate_name()?.borrow(),
-                self.crate_types()?.borrow().contains(&CrateType::Executable),
-                sess.opts.cg.metadata.clone(),
-                sess.cfg_version,
-            ))
-        })
-    }
-
-    fn dep_graph_future(&self) -> Result<Option<DepGraphFuture>> {
+    fn dep_graph_future(
+        &self,
+        crate_name: Symbol,
+        stable_crate_id: StableCrateId,
+    ) -> Result<Option<DepGraphFuture>> {
         let sess = self.session();
-        let crate_name = *self.crate_name()?.borrow();
-        let stable_crate_id = *self.stable_crate_id()?.borrow();
 
         // `load_dep_graph` can only be called after `prepare_session_directory`.
         rustc_incremental::prepare_session_directory(sess, crate_name, stable_crate_id)?;
@@ -211,16 +178,23 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
         self.gcx.compute(|| {
-            // Compute the dependency graph (in the background). We want to do this as early as
-            // possible, to give the DepGraph maximum time to load before `dep_graph` is called.
-            let dep_graph_future = self.dep_graph_future()?;
-
-            let crate_name = self.crate_name()?.steal();
-            let crate_types = self.crate_types()?.steal();
-            let stable_crate_id = self.stable_crate_id()?.steal();
+            let sess = self.session();
             let (krate, pre_configured_attrs) = self.pre_configure()?.steal();
 
-            let sess = self.session();
+            // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
+            let crate_name = find_crate_name(self.session(), &pre_configured_attrs);
+            let crate_types = util::collect_crate_types(sess, &pre_configured_attrs);
+            let stable_crate_id = StableCrateId::new(
+                crate_name,
+                crate_types.contains(&CrateType::Executable),
+                sess.opts.cg.metadata.clone(),
+                sess.cfg_version,
+            );
+
+            // Compute the dependency graph (in the background). We want to do this as early as
+            // possible, to give the DepGraph maximum time to load before `dep_graph` is called.
+            let dep_graph_future = self.dep_graph_future(crate_name, stable_crate_id)?;
+
             let lint_store = Lrc::new(passes::create_lint_store(
                 sess,
                 &*self.codegen_backend().metadata_loader(),
