@@ -772,7 +772,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     };
 
                     match implsrc {
-                        Ok(Some(ImplSource::Param(ty::BoundConstness::ConstIfConst, _))) => {
+                        Ok(Some(ImplSource::Param(_))) if tcx.features().effects => {
                             debug!(
                                 "const_trait_impl: provided {:?} via where-clause in {:?}",
                                 trait_ref, param_env

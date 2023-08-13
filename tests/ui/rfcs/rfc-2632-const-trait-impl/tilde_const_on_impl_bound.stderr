@@ -1,11 +1,12 @@
-error[E0015]: cannot call non-const fn `<T as Foo>::foo` in constant functions
-  --> $DIR/tilde_const_on_impl_bound.rs:14:16
+error[E0308]: mismatched types
+  --> $DIR/tilde_const_on_impl_bound.rs:14:9
    |
 LL |         self.0.foo()
-   |                ^^^^^
+   |         ^^^^^^^^^^^^ expected `host`, found `true`
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: expected constant `host`
+              found constant `true`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0308`.
