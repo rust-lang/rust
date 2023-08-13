@@ -9,7 +9,7 @@ use rustc_const_eval::interpret::Immediate;
 use rustc_const_eval::interpret::{
     self, InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, Scalar, StackPopCleanup,
 };
-use rustc_const_eval::InterpErrorExt2;
+use rustc_const_eval::InterpErrorExt;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
@@ -233,7 +233,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 op
             }
             Err(e) => {
-                let err = InterpErrorExt2 {
+                let err = InterpErrorExt {
                     err: e.into_kind(),
                     span: self.ecx.cur_span(),
                     tcx: *self.ecx.tcx,

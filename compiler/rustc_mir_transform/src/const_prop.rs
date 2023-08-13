@@ -4,7 +4,7 @@
 use either::Right;
 
 use rustc_const_eval::const_eval::CheckAlignment;
-use rustc_const_eval::InterpErrorExt2;
+use rustc_const_eval::InterpErrorExt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
@@ -385,7 +385,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 op
             }
             Err(e) => {
-                let err = InterpErrorExt2 {
+                let err = InterpErrorExt {
                     err: e.into_kind(),
                     span: self.ecx.cur_span(),
                     tcx: *self.ecx.tcx,

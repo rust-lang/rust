@@ -470,13 +470,13 @@ fn bad_pointer_message(msg: CheckInAllocMsg, handler: &Handler) -> String {
     handler.eagerly_translate_to_string(msg, [].into_iter())
 }
 
-struct UndefinedBehaviorInfoExt2<'tcx> {
+struct UndefinedBehaviorInfoExt<'tcx> {
     err: UndefinedBehaviorInfo<'tcx>,
     span: Span,
     tcx: TyCtxt<'tcx>,
 }
 
-impl UndefinedBehaviorInfoExt2<'_> {
+impl UndefinedBehaviorInfoExt<'_> {
     fn eagerly_translate(self) -> String {
         use crate::fluent_generated::*;
         use UndefinedBehaviorInfo::*;
@@ -704,7 +704,7 @@ impl UndefinedBehaviorInfoExt2<'_> {
                 eagerly_translate_with_args!(handler, const_eval_uninhabited_enum_variant_read,)
             }
             ValidationError(err) => {
-                ValidationErrorInfoExt2 { err, tcx: self.tcx, span: self.span }.eagerly_translate()
+                ValidationErrorInfoExt { err, tcx: self.tcx, span: self.span }.eagerly_translate()
             }
             Custom(x) => {
                 let mut args = Vec::new();
@@ -722,7 +722,7 @@ impl UndefinedBehaviorInfoExt2<'_> {
     }
 }
 
-impl AddToDiagnostic for UndefinedBehaviorInfoExt2<'_> {
+impl AddToDiagnostic for UndefinedBehaviorInfoExt<'_> {
     fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
@@ -763,20 +763,20 @@ impl AddToDiagnostic for UndefinedBehaviorInfoExt2<'_> {
                 diag.span_label(self.span, self.eagerly_translate());
             }
             ValidationError(err) => {
-                ValidationErrorInfoExt2 { err, tcx: self.tcx, span: self.span }
+                ValidationErrorInfoExt { err, tcx: self.tcx, span: self.span }
                     .add_to_diagnostic(diag);
             }
         }
     }
 }
 
-struct ValidationErrorInfoExt2<'tcx> {
+struct ValidationErrorInfoExt<'tcx> {
     err: ValidationErrorInfo<'tcx>,
     span: Span,
     tcx: TyCtxt<'tcx>,
 }
 
-impl ValidationErrorInfoExt2<'_> {
+impl ValidationErrorInfoExt<'_> {
     fn eagerly_translate(self) -> String {
         use crate::fluent_generated::*;
         use crate::interpret::ValidationErrorKind::*;
@@ -1194,7 +1194,7 @@ impl ValidationErrorInfoExt2<'_> {
     }
 }
 
-impl AddToDiagnostic for ValidationErrorInfoExt2<'_> {
+impl AddToDiagnostic for ValidationErrorInfoExt<'_> {
     fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
@@ -1239,13 +1239,13 @@ impl AddToDiagnostic for ValidationErrorInfoExt2<'_> {
     }
 }
 
-struct UnsupportedOpExt2<'tcx> {
+struct UnsupportedOpExt<'tcx> {
     err: UnsupportedOpInfo,
     span: Span,
     tcx: TyCtxt<'tcx>,
 }
 
-impl UnsupportedOpExt2<'_> {
+impl UnsupportedOpExt<'_> {
     fn eagerly_translate(self) -> String {
         use crate::fluent_generated::*;
         use UnsupportedOpInfo::*;
@@ -1296,7 +1296,7 @@ impl UnsupportedOpExt2<'_> {
     }
 }
 
-impl AddToDiagnostic for UnsupportedOpExt2<'_> {
+impl AddToDiagnostic for UnsupportedOpExt<'_> {
     fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
@@ -1317,42 +1317,41 @@ impl AddToDiagnostic for UnsupportedOpExt2<'_> {
     }
 }
 
-pub struct InterpErrorExt2<'tcx> {
+pub struct InterpErrorExt<'tcx> {
     pub err: InterpError<'tcx>,
     pub span: Span,
     pub tcx: TyCtxt<'tcx>,
 }
 
-impl AddToDiagnostic for InterpErrorExt2<'_> {
+impl AddToDiagnostic for InterpErrorExt<'_> {
     fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
         match self.err {
             InterpError::UndefinedBehavior(ub) => {
-                UndefinedBehaviorInfoExt2 { err: ub, span: self.span, tcx: self.tcx }
+                UndefinedBehaviorInfoExt { err: ub, span: self.span, tcx: self.tcx }
                     .add_to_diagnostic(diag);
             }
             InterpError::Unsupported(e) => {
-                UnsupportedOpExt2 { err: e, span: self.span, tcx: self.tcx }
-                    .add_to_diagnostic(diag);
+                UnsupportedOpExt { err: e, span: self.span, tcx: self.tcx }.add_to_diagnostic(diag);
             }
             InterpError::InvalidProgram(e) => {
-                InvalidProgramInfoExt2 { err: e, span: self.span, tcx: self.tcx }
+                InvalidProgramInfoExt { err: e, span: self.span, tcx: self.tcx }
                     .add_to_diagnostic(diag);
             }
             InterpError::ResourceExhaustion(e) => {
-                ResourceExhaustionExt2 { err: e, span: self.span, tcx: self.tcx }
+                ResourceExhaustionExt { err: e, span: self.span, tcx: self.tcx }
                     .add_to_diagnostic(diag);
             }
             InterpError::MachineStop(e) => {
-                MachineStopExt2 { err: e, span: self.span, tcx: self.tcx }.add_to_diagnostic(diag);
+                MachineStopExt { err: e, span: self.span, tcx: self.tcx }.add_to_diagnostic(diag);
             }
         }
     }
 }
 
-impl InterpErrorExt2<'_> {
+impl InterpErrorExt<'_> {
     /// Translate InterpError to String.
     ///
     /// This should not be used for any user-facing diagnostics,
@@ -1361,34 +1360,32 @@ impl InterpErrorExt2<'_> {
         // FIXME(victor-timofei): implement this
         match self.err {
             InterpError::UndefinedBehavior(ub) => {
-                UndefinedBehaviorInfoExt2 { err: ub, span: self.span, tcx: self.tcx }
+                UndefinedBehaviorInfoExt { err: ub, span: self.span, tcx: self.tcx }
                     .eagerly_translate()
             }
             InterpError::Unsupported(e) => {
-                UnsupportedOpExt2 { err: e, span: self.span, tcx: self.tcx }.eagerly_translate()
+                UnsupportedOpExt { err: e, span: self.span, tcx: self.tcx }.eagerly_translate()
             }
             InterpError::InvalidProgram(e) => {
-                InvalidProgramInfoExt2 { err: e, span: self.span, tcx: self.tcx }
-                    .eagerly_translate()
+                InvalidProgramInfoExt { err: e, span: self.span, tcx: self.tcx }.eagerly_translate()
             }
             InterpError::ResourceExhaustion(e) => {
-                ResourceExhaustionExt2 { err: e, span: self.span, tcx: self.tcx }
-                    .eagerly_translate()
+                ResourceExhaustionExt { err: e, span: self.span, tcx: self.tcx }.eagerly_translate()
             }
             InterpError::MachineStop(e) => {
-                MachineStopExt2 { err: e, span: self.span, tcx: self.tcx }.eagerly_translate()
+                MachineStopExt { err: e, span: self.span, tcx: self.tcx }.eagerly_translate()
             }
         }
     }
 }
 
-struct MachineStopExt2<'tcx> {
+struct MachineStopExt<'tcx> {
     err: Box<dyn MachineStopType>,
     span: Span,
     tcx: TyCtxt<'tcx>,
 }
 
-impl MachineStopExt2<'_> {
+impl MachineStopExt<'_> {
     fn eagerly_translate(self) -> String {
         let mut args = Vec::new();
         let msg = self.err.diagnostic_message().clone();
@@ -1402,7 +1399,7 @@ impl MachineStopExt2<'_> {
     }
 }
 
-impl AddToDiagnostic for MachineStopExt2<'_> {
+impl AddToDiagnostic for MachineStopExt<'_> {
     fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
@@ -1412,13 +1409,13 @@ impl AddToDiagnostic for MachineStopExt2<'_> {
     }
 }
 
-struct InvalidProgramInfoExt2<'tcx> {
+struct InvalidProgramInfoExt<'tcx> {
     err: InvalidProgramInfo<'tcx>,
     span: Span,
     tcx: TyCtxt<'tcx>,
 }
 
-impl InvalidProgramInfoExt2<'_> {
+impl InvalidProgramInfoExt<'_> {
     fn eagerly_translate(self) -> String {
         use crate::fluent_generated::*;
         let handler = &self.tcx.sess.parse_sess.span_diagnostic;
@@ -1459,7 +1456,7 @@ impl InvalidProgramInfoExt2<'_> {
     }
 }
 
-impl AddToDiagnostic for InvalidProgramInfoExt2<'_> {
+impl AddToDiagnostic for InvalidProgramInfoExt<'_> {
     fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
@@ -1479,13 +1476,13 @@ impl AddToDiagnostic for InvalidProgramInfoExt2<'_> {
     }
 }
 
-struct ResourceExhaustionExt2<'tcx> {
+struct ResourceExhaustionExt<'tcx> {
     err: ResourceExhaustionInfo,
     span: Span,
     tcx: TyCtxt<'tcx>,
 }
 
-impl ResourceExhaustionExt2<'_> {
+impl ResourceExhaustionExt<'_> {
     fn eagerly_translate(self) -> String {
         let handler = &self.tcx.sess.parse_sess.span_diagnostic;
 
@@ -1500,7 +1497,7 @@ impl ResourceExhaustionExt2<'_> {
     }
 }
 
-impl AddToDiagnostic for ResourceExhaustionExt2<'_> {
+impl AddToDiagnostic for ResourceExhaustionExt<'_> {
     fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
