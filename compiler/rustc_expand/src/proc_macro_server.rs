@@ -246,17 +246,12 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 }
 
                 Interpolated(nt) => {
-                    // See the "hack" comment above.
                     let stream = TokenStream::from_nonterminal_ast(&nt);
-                    if crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.sess()) {
-                        trees.extend(Self::from_internal((stream, rustc)));
-                    } else {
-                        trees.push(TokenTree::Group(Group {
-                            delimiter: pm::Delimiter::None,
-                            stream: Some(stream),
-                            span: DelimSpan::from_single(span),
-                        }))
-                    }
+                    trees.push(TokenTree::Group(Group {
+                        delimiter: pm::Delimiter::None,
+                        stream: Some(stream),
+                        span: DelimSpan::from_single(span),
+                    }))
                 }
 
                 OpenDelim(..) | CloseDelim(..) => unreachable!(),

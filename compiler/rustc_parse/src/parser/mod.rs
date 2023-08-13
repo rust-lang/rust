@@ -1583,6 +1583,7 @@ pub enum ParseNtResult {
     Tt(TokenTree),
 
     Item(P<ast::Item>),
+    Stmt(P<ast::Stmt>),
     PatParam(P<ast::Pat>, /* inferred */ bool),
     PatWithOr(P<ast::Pat>),
     Ty(P<ast::Ty>),

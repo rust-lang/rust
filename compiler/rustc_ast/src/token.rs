@@ -843,7 +843,6 @@ impl PartialEq<TokenKind> for Token {
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtBlock(P<ast::Block>),
-    NtStmt(P<ast::Stmt>),
     NtExpr(P<ast::Expr>),
     NtIdent(Ident, /* is_raw */ bool),
     NtLifetime(Ident),
@@ -935,7 +934,6 @@ impl Nonterminal {
     pub fn span(&self) -> Span {
         match self {
             NtBlock(block) => block.span,
-            NtStmt(stmt) => stmt.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
             NtIdent(ident, _) | NtLifetime(ident) => ident.span,
             NtMeta(attr_item) => attr_item.span(),
@@ -964,7 +962,6 @@ impl fmt::Debug for Nonterminal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             NtBlock(..) => f.pad("NtBlock(..)"),
-            NtStmt(..) => f.pad("NtStmt(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtIdent(..) => f.pad("NtIdent(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),

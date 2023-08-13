@@ -45,8 +45,7 @@ impl<'a> Parser<'a> {
         /// Old variant of `may_be_ident`, being phased out.
         fn nt_may_be_ident(nt: &token::Nonterminal) -> bool {
             match nt {
-                NtStmt(_)
-                | NtExpr(_)
+                NtExpr(_)
                 | NtIdent(..)
                 | NtLiteral(_) // `true`, `false`
                 | NtMeta(_)
@@ -79,7 +78,7 @@ impl<'a> Parser<'a> {
             NonterminalKind::Block => match &token.kind {
                 token::OpenDelim(Delimiter::Brace) => true,
                 token::Interpolated(nt) => match **nt {
-                    NtBlock(_) | NtLifetime(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
+                    NtBlock(_) | NtLifetime(_) | NtExpr(_) | NtLiteral(_) => true,
                     NtIdent(..) | NtMeta(_) | NtPath(_) => false,
                 },
                 token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(k))) => match k {
@@ -169,7 +168,7 @@ impl<'a> Parser<'a> {
                 NtBlock(self.collect_tokens_no_attrs(|this| this.parse_block())?)
             }
             NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
-                Some(s) => NtStmt(P(s)),
+                Some(stmt) => return Ok(ParseNtResult::Stmt(P(stmt))),
                 None => {
                     return Err(UnexpectedNonterminal::Statement(self.token.span)
                                .into_diagnostic(&self.sess.span_diagnostic));

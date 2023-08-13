@@ -8,6 +8,7 @@ use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, InvisibleSource, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::StmtKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, PResult};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
@@ -234,6 +235,15 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSingle(ParseNtResult::Item(ref item)) => {
                             mk_delimited(NonterminalKind::Item, TokenStream::from_ast(item))
+                        }
+                        MatchedSingle(ParseNtResult::Stmt(ref stmt)) => {
+                            let stream = if let StmtKind::Empty = stmt.kind {
+                                // FIXME: Properly collect tokens for empty statements.
+                                TokenStream::token_alone(token::Semi, stmt.span)
+                            } else {
+                                TokenStream::from_ast(stmt)
+                            };
+                            mk_delimited(NonterminalKind::Stmt, stream)
                         }
                         MatchedSingle(ParseNtResult::PatParam(ref pat, inferred)) => mk_delimited(
                             NonterminalKind::PatParam { inferred: *inferred },
