@@ -9,6 +9,10 @@ extern "C" {
     fn int_ffi(c: *mut i32);
 }
 
+fn static_u8() -> &'static u8 {
+    &8
+}
+
 unsafe fn ref_to_mut() {
     let num = &3i32;
 
@@ -24,12 +28,28 @@ unsafe fn ref_to_mut() {
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     let _num = &mut *(std::ptr::from_ref({ num }) as *mut i32);
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    let _num = &mut *(num as *const i32).cast::<i32>().cast_mut();
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    let _num = &mut *(num as *const i32).cast::<i32>().cast_mut().cast_const().cast_mut();
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    let _num = &mut *(std::ptr::from_ref(static_u8()) as *mut i32);
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     let _num = &mut *std::mem::transmute::<_, *mut i32>(num);
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
 
     let deferred = num as *const i32 as *mut i32;
     let _num = &mut *deferred;
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    let deferred = (std::ptr::from_ref(num) as *const i32 as *const i32).cast_mut() as *mut i32;
+    let _num = &mut *deferred;
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    let _num = &mut *(num as *const _ as usize as *mut i32);
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+
+    unsafe fn generic_ref_cast_mut<T>(this: &T) -> &mut T {
+        &mut *((this as *const _) as *mut _)
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
 }
 
 unsafe fn assign_to_ref() {
@@ -55,6 +75,15 @@ unsafe fn assign_to_ref() {
     let value = num as *const i32 as *mut i32;
     *value = 1;
     //~^ ERROR assigning to `&T` is undefined behavior
+    *(num as *const i32).cast::<i32>().cast_mut() = 2;
+    //~^ ERROR assigning to `&T` is undefined behavior
+    *(num as *const _ as usize as *mut i32) = 2;
+    //~^ ERROR assigning to `&T` is undefined behavior
+
+    unsafe fn generic_assign_to_ref<T>(this: &T, a: T) {
+        *(this as *const _ as *mut _) = a;
+        //~^ ERROR assigning to `&T` is undefined behavior
+    }
 }
 
 unsafe fn no_warn() {
