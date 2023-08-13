@@ -42,6 +42,43 @@ pub fn vec_one_bytes(n: usize) -> Vec<u8> {
     vec![1; n]
 }
 
+// CHECK-LABEL: @vec_false
+#[no_mangle]
+pub fn vec_false(n: usize) -> Vec<bool> {
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc(
+    // CHECK-NOT: call {{.*}}llvm.memset
+
+    // CHECK: call {{.*}}__rust_alloc_zeroed(
+
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc(
+    // CHECK-NOT: call {{.*}}llvm.memset
+
+    // CHECK: ret void
+    vec![false; n]
+}
+
+// CHECK-LABEL: @vec_true
+#[no_mangle]
+pub fn vec_true(n: usize) -> Vec<bool> {
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc_zeroed(
+
+    // CHECK: call {{.*}}__rust_alloc(
+    // CHECK: call {{.*}}llvm.memset
+
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc_zeroed(
+
+    // CHECK: ret void
+    vec![true; n]
+}
+
 // CHECK-LABEL: @vec_zero_scalar
 #[no_mangle]
 pub fn vec_zero_scalar(n: usize) -> Vec<i32> {
