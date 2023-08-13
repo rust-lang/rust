@@ -224,8 +224,8 @@ fn vec_deque_retain() {
     bar = foobar.into_iter().filter(|x| x % 2 == 0).collect();
 }
 
-#[clippy::msrv = "1.70"]
-fn _msrv_170() {
+#[clippy::msrv = "1.69"]
+fn _msrv_169() {
     let mut binary_heap = BinaryHeap::from([1, 2, 3]);
     binary_heap = binary_heap.into_iter().filter(|x| x % 2 == 0).collect();
 }
