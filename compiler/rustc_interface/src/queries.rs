@@ -193,7 +193,10 @@ impl<'tcx> Queries<'tcx> {
                 self.compiler.register_lints.as_deref(),
                 &pre_configured_attrs,
             ));
-            let cstore = RwLock::new(Box::new(CStore::new(stable_crate_id)) as _);
+            let cstore = RwLock::new(Box::new(CStore::new(
+                self.codegen_backend().metadata_loader(),
+                stable_crate_id,
+            )) as _);
             let definitions = RwLock::new(Definitions::new(stable_crate_id));
             let source_span = AppendOnlyIndexVec::new();
             let _id = source_span.push(krate.spans.inner_span);
@@ -221,9 +224,6 @@ impl<'tcx> Queries<'tcx> {
                     tcx.arena.alloc(rustc_expand::config::features(sess, &pre_configured_attrs)),
                 );
                 feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
-                feed.metadata_loader(
-                    tcx.arena.alloc(Steal::new(self.codegen_backend().metadata_loader())),
-                );
             });
             Ok(qcx)
         })

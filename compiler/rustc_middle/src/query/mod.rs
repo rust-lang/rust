@@ -2096,12 +2096,6 @@ rustc_queries! {
         desc { "looking up enabled feature gates" }
     }
 
-    query metadata_loader((): ()) -> &'tcx Steal<Box<rustc_session::cstore::MetadataLoaderDyn>> {
-        feedable
-        no_hash
-        desc { "raw operations for metadata file access" }
-    }
-
     query crate_for_resolver((): ()) -> &'tcx Steal<(rustc_ast::Crate, rustc_ast::AttrVec)> {
         feedable
         no_hash
