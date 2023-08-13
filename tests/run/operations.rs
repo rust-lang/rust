@@ -5,7 +5,7 @@
 //     39
 //     10
 
-#![allow(unused_attributes)]
+#![allow(internal_features, unused_attributes)]
 #![feature(auto_traits, lang_items, no_core, start, intrinsics, arbitrary_self_types)]
 
 #![no_std]

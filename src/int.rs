@@ -546,7 +546,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn gcc_uint(&self, typ: Type<'gcc>, int: u64) -> RValue<'gcc> {
-        if self.is_native_int_type_or_bool(typ) {
+        if typ.is_u128(self) {
+            // FIXME(antoyo): libgccjit cannot create 128-bit values yet.
+            let num = self.context.new_rvalue_from_long(self.u64_type, int as i64);
+            self.gcc_int_cast(num, typ)
+        }
+        else if self.is_native_int_type_or_bool(typ) {
             self.context.new_rvalue_from_long(typ, u64::try_from(int).expect("u64::try_from") as i64)
         }
         else {
@@ -572,6 +577,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             }
         }
         else if typ.is_i128(self) {
+            // FIXME(antoyo): libgccjit cannot create 128-bit values yet.
             let num = self.context.new_rvalue_from_long(self.u64_type, num as u64 as i64);
             self.gcc_int_cast(num, typ)
         }

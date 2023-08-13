@@ -144,6 +144,9 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
         if env::var("CG_GCCJIT_DUMP_RTL").as_deref() == Ok("1") {
             context.add_command_line_option("-fdump-rtl-vregs");
         }
+        if env::var("CG_GCCJIT_DUMP_RTL_ALL").as_deref() == Ok("1") {
+            context.add_command_line_option("-fdump-rtl-all");
+        }
         if env::var("CG_GCCJIT_DUMP_TREE_ALL").as_deref() == Ok("1") {
             context.add_command_line_option("-fdump-tree-all");
         }
