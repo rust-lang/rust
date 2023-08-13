@@ -590,6 +590,8 @@ struct MirUsedCollector<'a, 'tcx> {
     body: &'a mir::Body<'tcx>,
     output: &'a mut MonoItems<'tcx>,
     instance: Instance<'tcx>,
+    /// Spans for move size lints already emitted. Helps avoid duplicate lints.
+    move_size_spans: Vec<Span>,
 }
 
 impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
@@ -616,6 +618,11 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         debug!(?layout);
         let source_info = self.body.source_info(location);
         debug!(?source_info);
+        for span in &self.move_size_spans {
+            if span.overlaps(source_info.span) {
+                return;
+            }
+        }
         let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
         debug!(?lint_root);
         let Some(lint_root) = lint_root else {
@@ -636,6 +643,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
                 limit: limit.bytes(),
             },
         );
+        self.move_size_spans.push(source_info.span);
     }
 }
 
@@ -1373,7 +1381,8 @@ fn collect_used_items<'tcx>(
     output: &mut MonoItems<'tcx>,
 ) {
     let body = tcx.instance_mir(instance.def);
-    MirUsedCollector { tcx, body: &body, output, instance }.visit_body(&body);
+    MirUsedCollector { tcx, body: &body, output, instance, move_size_spans: vec![] }
+        .visit_body(&body);
 }
 
 #[instrument(skip(tcx, output), level = "debug")]
