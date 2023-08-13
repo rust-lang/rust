@@ -131,3 +131,19 @@ macro_rules! __rust_force_expr {
         $e
     };
 }
+
+/// Creates a [`Box`] given the expression
+///
+/// ```
+/// let boxed = box!(10);
+/// assert_eq!(boxed, Box::new(10));
+/// ```
+///
+/// [`Box`]: crate::boxed::Box
+#[macro_export]
+#[rustc_diagnostic_item = "box_macro"]
+macro_rules! box {
+    ($boxed:expr) => { 
+        $crate::boxed::Box::new($boxed) 
+    };
+}
