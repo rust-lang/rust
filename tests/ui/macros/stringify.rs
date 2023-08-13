@@ -641,7 +641,7 @@ fn test_meta() {
     assert_eq!(stringify_meta!(k), "k");
     assert_eq!(stringify_meta!(k = "v"), "k = \"v\"");
     assert_eq!(stringify_meta!(list(k1, k2 = "v")), "list(k1, k2 = \"v\")");
-    assert_eq!(stringify_meta!(serde::k), "serde::k");
+    assert_eq!(stringify_meta!(serde::k), "serde :: k");
 }
 
 #[test]

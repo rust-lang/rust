@@ -464,7 +464,6 @@ impl TokenStream {
                 TokenStream::token_alone(token::Lifetime(ident.name), ident.span)
             }
             Nonterminal::NtBlock(block) => TokenStream::from_ast(block),
-            Nonterminal::NtMeta(attr) => TokenStream::from_ast(attr),
             Nonterminal::NtPath(path) => TokenStream::from_ast(path),
             Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => TokenStream::from_ast(expr),
         }
