@@ -1,8 +1,6 @@
 #![cfg_attr(feature = "build-metrics", allow(unused))]
 
-use std::str::FromStr;
-
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 use clap::Parser;
 
@@ -60,6 +58,7 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
 
     if run {
         for sug in suggestions {
+            println!("paths: {:?}", &sug.2);
             let mut build: crate::Build = builder.build.clone();
             build.config.paths = sug.2;
             build.config.cmd = crate::flags::Flags::parse_from(["x.py", sug.0]).cmd;

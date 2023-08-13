@@ -50,6 +50,7 @@ mod config;
 mod dist;
 mod doc;
 mod download;
+mod failed;
 mod flags;
 mod format;
 mod install;
@@ -217,6 +218,7 @@ pub struct Build {
     in_tree_llvm_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
+    failed: bool,
     doc_tests: DocTests,
     verbosity: usize,
 
@@ -437,6 +439,7 @@ impl Build {
             initial_libdir,
             initial_sysroot: initial_sysroot.into(),
             local_rebuild: config.local_rebuild,
+            failed: config.cmd.failed(),
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
             verbosity: config.verbose,
@@ -673,10 +676,15 @@ impl Build {
         // Download rustfmt early so that it can be used in rust-analyzer configs.
         let _ = &builder::Builder::new(&self).initial_rustfmt();
 
-        // hardcoded subcommands
+        // hardcoded subcommands and flags
         match &self.config.cmd {
             Subcommand::Format { check } => {
                 return format::format(&builder::Builder::new(&self), *check, &self.config.paths);
+            }
+            Subcommand::Test { failed, .. } => {
+                if *failed {
+                    return failed::failed(&builder::Builder::new(&self));
+                }
             }
             Subcommand::Suggest { run } => {
                 return suggest::suggest(&builder::Builder::new(&self), *run);

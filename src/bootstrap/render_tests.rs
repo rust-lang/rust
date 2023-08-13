@@ -5,18 +5,19 @@
 //! about the executed tests. Doing so suppresses the human-readable output, and (compared to Cargo
 //! and rustc) libtest doesn't include the rendered human-readable output as a JSON field. We had
 //! to reimplement all the rendering logic in this module because of that.
-
-use crate::builder::Builder;
 use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{ChildStdout, Command, Stdio};
 use std::time::Duration;
+
+use crate::builder::Builder;
+use crate::failed::TRACKER_FILE;
+
 use termcolor::{Color, ColorSpec, WriteColor};
 
 const TERSE_TESTS_PER_LINE: usize = 88;
 #[allow(unused)] // FIXME unused warning even though it is
-const TRACKER_FILE: &'static str = "./src/bootstrap/test.tracker";
 
 pub(crate) fn add_flags_and_try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if cmd.get_args().position(|arg| arg == "--").is_none() {

@@ -576,6 +576,7 @@ mod dist {
         config.cmd = Subcommand::Test {
             test_args: vec![],
             rustc_args: vec![],
+            failed: false,
             no_fail_fast: false,
             no_doc: true,
             doc: false,
@@ -649,6 +650,7 @@ mod dist {
             test_args: vec![],
             rustc_args: vec![],
             no_fail_fast: false,
+            failed: false,
             doc: true,
             no_doc: false,
             skip: vec![],
