@@ -161,14 +161,12 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
     match *ty.kind() {
-        ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
-        | ty::FnDef(..)
-        | ty::FnPtr(_)
-        | ty::Error(_) => Ok(vec![]),
+        ty::FnDef(..) | ty::FnPtr(_) | ty::Error(_) => Ok(vec![]),
 
         // Implementations are provided in core
         ty::Uint(_)
         | ty::Int(_)
+        | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Bool
         | ty::Float(_)
         | ty::Char
