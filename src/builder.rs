@@ -247,16 +247,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     fn check_store(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>) -> RValue<'gcc> {
-        let dest_ptr_ty = self.cx.val_ty(ptr).make_pointer(); // TODO(antoyo): make sure make_pointer() is okay here.
         let stored_ty = self.cx.val_ty(val);
         let stored_ptr_ty = self.cx.type_ptr_to(stored_ty);
-
-        if dest_ptr_ty == stored_ptr_ty {
-            ptr
-        }
-        else {
-            self.bitcast(ptr, stored_ptr_ty)
-        }
+        self.bitcast(ptr, stored_ptr_ty)
     }
 
     pub fn current_func(&self) -> Function<'gcc> {
@@ -916,7 +909,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             .add_eval(None, self.context.new_call(None, atomic_store, &[ptr, value, ordering]));
     }
 
-    fn gep(&mut self, _typ: Type<'gcc>, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
+    fn gep(&mut self, typ: Type<'gcc>, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
+        // NOTE: due to opaque pointers now being used, we need to cast here.
+        let ptr = self.context.new_cast(None, ptr, typ.make_pointer());
         let ptr_type = ptr.get_type();
         let mut pointee_type = ptr.get_type();
         // NOTE: we cannot use array indexing here like in inbounds_gep because array indexing is
