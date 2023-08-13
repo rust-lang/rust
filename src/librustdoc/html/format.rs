@@ -604,7 +604,7 @@ fn generate_macro_def_id_path(
     }
     // Check to see if it is a macro 2.0 or built-in macro.
     // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
-    let is_macro_2 = match cstore.load_macro_untracked(def_id, tcx.sess) {
+    let is_macro_2 = match cstore.load_macro_untracked(def_id, tcx) {
         LoadedMacro::MacroDef(def, _) => {
             // If `ast_def.macro_rules` is `true`, then it's not a macro 2.0.
             matches!(&def.kind, ast::ItemKind::MacroDef(ast_def) if !ast_def.macro_rules)

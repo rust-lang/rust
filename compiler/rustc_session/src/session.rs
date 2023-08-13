@@ -17,7 +17,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{duration_to_secs_str, SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
-    self, AtomicU64, AtomicUsize, Lock, Lrc, OnceCell, OneThread, Ordering, Ordering::SeqCst,
+    self, AtomicU64, AtomicUsize, Lock, Lrc, OneThread, Ordering, Ordering::SeqCst,
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
@@ -151,8 +151,6 @@ pub struct Session {
     pub sysroot: PathBuf,
     /// Input, input file path and output file path to this compilation process.
     pub io: CompilerIO,
-
-    features: OnceCell<rustc_feature::Features>,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
     /// Used for incremental compilation tests. Will only be populated if
@@ -703,21 +701,6 @@ impl Session {
 
     pub fn instrument_coverage_except_unused_functions(&self) -> bool {
         self.opts.cg.instrument_coverage() == InstrumentCoverage::ExceptUnusedFunctions
-    }
-
-    /// Gets the features enabled for the current compilation session.
-    /// DO NOT USE THIS METHOD if there is a TyCtxt available, as it circumvents
-    /// dependency tracking. Use tcx.features() instead.
-    #[inline]
-    pub fn features_untracked(&self) -> &rustc_feature::Features {
-        self.features.get().unwrap()
-    }
-
-    pub fn init_features(&self, features: rustc_feature::Features) {
-        match self.features.set(features) {
-            Ok(()) => {}
-            Err(_) => panic!("`features` was initialized twice"),
-        }
     }
 
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
@@ -1464,7 +1447,6 @@ pub fn build_session(
         parse_sess,
         sysroot,
         io,
-        features: OnceCell::new(),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
         prof,

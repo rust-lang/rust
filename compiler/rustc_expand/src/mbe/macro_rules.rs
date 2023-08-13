@@ -16,6 +16,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, ErrorGuaranteed};
+use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
 };
@@ -375,6 +376,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 /// Converts a macro item into a syntax extension.
 pub fn compile_declarative_macro(
     sess: &Session,
+    features: &Features,
     def: &ast::Item,
     edition: Edition,
 ) -> (SyntaxExtension, Vec<(usize, Span)>) {
@@ -382,6 +384,7 @@ pub fn compile_declarative_macro(
     let mk_syn_ext = |expander| {
         SyntaxExtension::new(
             sess,
+            features,
             SyntaxExtensionKind::LegacyBang(expander),
             def.span,
             Vec::new(),
@@ -503,7 +506,7 @@ pub fn compile_declarative_macro(
                         true,
                         &sess.parse_sess,
                         def.id,
-                        sess.features_untracked(),
+                        features,
                         edition,
                     )
                     .pop()
@@ -527,7 +530,7 @@ pub fn compile_declarative_macro(
                         false,
                         &sess.parse_sess,
                         def.id,
-                        sess.features_untracked(),
+                        features,
                         edition,
                     )
                     .pop()

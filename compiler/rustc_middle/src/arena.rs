@@ -131,6 +131,7 @@ macro_rules! arena_types {
             [] closure_kind_origin: (rustc_span::Span, rustc_middle::hir::place::Place<'tcx>),
             [] stripped_cfg_items: rustc_ast::expand::StrippedCfgItem,
             [] mod_child: rustc_middle::metadata::ModChild,
+            [] features: rustc_feature::Features,
         ]);
     )
 }

@@ -234,9 +234,6 @@ impl<'tcx> Queries<'tcx> {
             debug_assert_eq!(_id, CRATE_DEF_ID);
             let untracked = Untracked { cstore, source_span, definitions };
 
-            // FIXME: Move features from session to tcx and make them immutable.
-            sess.init_features(rustc_expand::config::features(sess, &pre_configured_attrs));
-
             let qcx = passes::create_global_ctxt(
                 self.compiler,
                 crate_types,
@@ -254,11 +251,13 @@ impl<'tcx> Queries<'tcx> {
                 feed.crate_name(crate_name);
 
                 let feed = tcx.feed_unit_query();
+                feed.features_query(
+                    tcx.arena.alloc(rustc_expand::config::features(sess, &pre_configured_attrs)),
+                );
                 feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
                 feed.metadata_loader(
                     tcx.arena.alloc(Steal::new(self.codegen_backend().metadata_loader())),
                 );
-                feed.features_query(tcx.sess.features_untracked());
             });
             Ok(qcx)
         })

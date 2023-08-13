@@ -2237,7 +2237,7 @@ declare_lint_pass!(
 
 impl EarlyLintPass for IncompleteInternalFeatures {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
-        let features = cx.sess().features_untracked();
+        let features = cx.builder.features();
         features
             .declared_lang_features
             .iter()

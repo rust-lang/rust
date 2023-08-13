@@ -24,7 +24,7 @@ pub fn expand_cfg(
                 &cfg,
                 &cx.sess.parse_sess,
                 cx.current_expansion.lint_node_id,
-                cx.ecfg.features,
+                Some(cx.ecfg.features),
             );
             MacEager::expr(cx.expr_bool(sp, matches_cfg))
         }
