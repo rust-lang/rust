@@ -24,6 +24,8 @@ unsafe fn ref_to_mut() {
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     let _num = &mut *(std::ptr::from_ref({ num }) as *mut i32);
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    let _num = &mut *std::mem::transmute::<_, *mut i32>(num);
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
 
     let deferred = num as *const i32 as *mut i32;
     let _num = &mut *deferred;
@@ -47,6 +49,9 @@ unsafe fn assign_to_ref() {
     //~^ ERROR assigning to `&T` is undefined behavior
     *(std::ptr::from_ref({ num }) as *mut i32) += 1;
     //~^ ERROR assigning to `&T` is undefined behavior
+    *std::mem::transmute::<_, *mut i32>(num) += 1;
+    //~^ ERROR assigning to `&T` is undefined behavior
+
     let value = num as *const i32 as *mut i32;
     *value = 1;
     //~^ ERROR assigning to `&T` is undefined behavior
