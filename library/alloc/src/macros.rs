@@ -142,8 +142,8 @@ macro_rules! __rust_force_expr {
 /// [`Box`]: crate::boxed::Box
 #[macro_export]
 #[rustc_diagnostic_item = "box_macro"]
-macro_rules! box {
-    ($boxed:expr) => { 
-        $crate::boxed::Box::new($boxed) 
+macro_rules! r#box {
+    ($boxed:expr) => {
+        $crate::boxed::Box::new($boxed)
     };
 }
