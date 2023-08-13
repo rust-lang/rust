@@ -5,7 +5,7 @@
 //! the [`Read`] and [`Write`] traits, which provide the
 //! most general interface for reading and writing input and output.
 //!
-//! # Read and Write
+//! ## Read and Write
 //!
 //! Because they are traits, [`Read`] and [`Write`] are implemented by a number
 //! of other types, and you can implement them for your types too. As such,
@@ -238,6 +238,35 @@
 //! contract. The implementation of many of these functions are subject to change over
 //! time and may call fewer or more syscalls/library functions.
 //!
+//! ## I/O Safety
+//!
+//! Rust follows an [I/O safety] discipline that is comparable to its memory safety discipline. This
+//! means that file descriptors can be *exclusively owned*. (Here, "file descriptor" is meant to
+//! subsume similar concepts that exist across a wide range of operating systems even if they might
+//! use a different name, such as "handle".) An exclusivley owned file descriptor is one that no
+//! other code is allowed to close, but the owner is allowed to close it any time. A type that owns
+//! its file descriptor should close it in its `drop` function. Types like [`File`] generally own
+//! their file descriptor. Similarly, file descriptors can be *borrowed*. This indicates that the
+//! file descriptor will not be closed for the lifetime of the borrow, but it does *not* imply any
+//! right to close this file descriptor, since it will likely be owned by someone else.
+//!
+//! The platform-specific parts of the Rust standard library expose types that reflect these
+//! concepts, see [`os::unix`] and [`os::windows`].
+//!
+//! To uphold I/O safety, it is crucial that no code closes file descriptors it does not own. In
+//! other words, a safe function that takes a regular integer, treats it as a file descriptor, and
+//! closes it, is *unsound*.
+//!
+//! Note that this does not talk about performing other operations on the file descriptor, such as
+//! reading or writing. For example, on Unix, the [`OwnedFd`] and [`BorrowedFd`] types from the
+//! standard library do *not* exclude that there is other code that reads or writes the same
+//! underlying object, and indeed there exist safe functions like `BorrowedFd::try_clone_to_owned`
+//! that can be used to read or write an object even after the end of the borrow. However, user code
+//! might want to rely on keeping the object behind a file descriptor completely private and
+//! protected against reads or writes from other parts of the program. Whether that is sound is
+//! [currently unclear](https://github.com/rust-lang/rust/issues/114167). Certainly, `OwnedFd` as a
+//! type does not provide any promise that the underlying file descriptor has not been cloned.
+//!
 //! [`File`]: crate::fs::File
 //! [`TcpStream`]: crate::net::TcpStream
 //! [`io::stdout`]: stdout
@@ -245,6 +274,11 @@
 //! [`?` operator]: ../../book/appendix-02-operators.html
 //! [`Result`]: crate::result::Result
 //! [`.unwrap()`]: crate::result::Result::unwrap
+//! [I/O safety]: https://rust-lang.github.io/rfcs/3128-io-safety.html
+//! [`os::unix`]: ../os/unix/io/index.html
+//! [`os::windows`]: ../os/windows/io/index.html
+//! [`OwnedFd`]: ../os/fd/struct.OwnedFd.html
+//! [`BorrowedFd`]: ../os/fd/struct.BorrowedFd.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

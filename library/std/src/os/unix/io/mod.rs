@@ -6,7 +6,7 @@
 //!
 //! This module provides three types for representing file descriptors,
 //! with different ownership properties: raw, borrowed, and owned, which are
-//! analogous to types used for representing pointers:
+//! analogous to types used for representing pointers. These types realize the Unix version of [I/O safety].
 //!
 //! | Type               | Analogous to |
 //! | ------------------ | ------------ |
@@ -74,6 +74,7 @@
 //! necessary to use *sandboxing*, which is outside the scope of `std`.
 //!
 //! [`BorrowedFd<'a>`]: crate::os::unix::io::BorrowedFd
+//! [I/O safety]: crate::io#io-safety
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

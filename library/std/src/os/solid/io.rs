@@ -27,9 +27,11 @@ pub trait FromRawFd {
     /// Constructs a new instance of `Self` from the given raw file
     /// descriptor.
     ///
-    /// This function **consumes ownership** of the specified file
+    /// This function **consumes [ownership][io-safety]** of the specified file
     /// descriptor. The returned object will take responsibility for closing
     /// it when the object goes out of scope.
+    ///
+    /// [io-safety]: crate::io#io-safety
     ///
     /// This function is also unsafe as the primitives currently returned
     /// have the contract that they are the sole owner of the file
