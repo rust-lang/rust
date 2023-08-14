@@ -584,7 +584,7 @@ See the [Symbol Mangling] chapter for details on symbol mangling and the manglin
 This instructs `rustc` to generate code specifically for a particular processor.
 
 You can run `rustc --print target-cpus` to see the valid options to pass
-and the default target CPU for the current buid target.
+and the default target CPU for the current build target.
 Each target has a default base CPU. Special values include:
 
 * `native` can be passed to use the processor of the host machine.
