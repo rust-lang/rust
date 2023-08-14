@@ -103,6 +103,14 @@ pub fn initialize_available_targets() {
         LLVMInitializeM68kAsmParser
     );
     init_target!(
+        llvm_component = "csky",
+        LLVMInitializeCSKYTargetInfo,
+        LLVMInitializeCSKYTarget,
+        LLVMInitializeCSKYTargetMC,
+        LLVMInitializeCSKYAsmPrinter,
+        LLVMInitializeCSKYAsmParser
+    );
+    init_target!(
         llvm_component = "loongarch",
         LLVMInitializeLoongArchTargetInfo,
         LLVMInitializeLoongArchTarget,

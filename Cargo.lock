@@ -8,8 +8,17 @@ version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4fa78e18c64fce05e902adecd7a5eed15a5e0a3439f7b0e169f0252214865e3"
 dependencies = [
- "compiler_builtins",
  "gimli 0.27.3",
+]
+
+[[package]]
+name = "addr2line"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a30b2e23b9e17a9f90641c7ab1549cd9b44f296d3ccbf309d2863cfe398a0cb"
+dependencies = [
+ "compiler_builtins",
+ "gimli 0.28.0",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
 ]
@@ -22,17 +31,6 @@ checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
-]
-
-[[package]]
-name = "ahash"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
-dependencies = [
- "getrandom",
- "once_cell",
- "version_check",
 ]
 
 [[package]]
@@ -178,11 +176,11 @@ dependencies = [
 
 [[package]]
 name = "ar_archive_writer"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74cfb39880a59e122232cb5fb06b20b4382d58c12fa9747d16f846d38a7b094c"
+checksum = "9792d37ca5173d7e7f4fe453739a0671d0557915a030a383d6b866476bbc3e71"
 dependencies = [
- "object",
+ "object 0.32.0",
 ]
 
 [[package]]
@@ -252,12 +250,12 @@ version = "0.3.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4319208da049c43661739c5fade2ba182f09d1dc2299b32298d3a31692b17e12"
 dependencies = [
- "addr2line",
+ "addr2line 0.20.0",
  "cc",
  "cfg-if",
  "libc",
  "miniz_oxide",
- "object",
+ "object 0.31.1",
  "rustc-demangle",
 ]
 
@@ -1159,9 +1157,9 @@ dependencies = [
 
 [[package]]
 name = "fallible-iterator"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
+checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
 
 [[package]]
 name = "fastrand"
@@ -1439,24 +1437,22 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.26.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22030e2c5a68ec659fde1e949a745124b48e6fa8b045b7ed5bd1fe4ccc5c4e5d"
-dependencies = [
- "fallible-iterator",
- "indexmap 1.9.3",
- "stable_deref_trait",
-]
-
-[[package]]
-name = "gimli"
 version = "0.27.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c80984affa11d98d1b88b66ac8853f143217b399d3c74116778ff8fdb4ed2e"
+
+[[package]]
+name = "gimli"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fb8d784f27acf97159b40fc4db5ecd8aa23b9ad5ef69cdd136d3bc80665f0c0"
 dependencies = [
  "compiler_builtins",
+ "fallible-iterator",
+ "indexmap 2.0.0",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
+ "stable_deref_trait",
 ]
 
 [[package]]
@@ -1525,18 +1521,6 @@ name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
-dependencies = [
- "ahash 0.7.6",
-]
-
-[[package]]
-name = "hashbrown"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
-dependencies = [
- "ahash 0.8.3",
-]
 
 [[package]]
 name = "hashbrown"
@@ -1544,6 +1528,7 @@ version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c6201b9ff9fd90a5a3bac2e56a830d0caa509576f0e503818ee82c181b3437a"
 dependencies = [
+ "ahash",
  "allocator-api2",
  "compiler_builtins",
  "rustc-std-workspace-alloc",
@@ -2450,11 +2435,20 @@ version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8bda667d9f2b5051b8833f59f3bf748b28ef54f850f4fcb389a252aa383866d1"
 dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "object"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77ac5bbd07aea88c60a577a1ce218075ffd59208b2d7ca97adf9bfc5aeb21ebe"
+dependencies = [
  "compiler_builtins",
  "crc32fast",
  "flate2",
- "hashbrown 0.13.2",
- "indexmap 1.9.3",
+ "hashbrown 0.14.0",
+ "indexmap 2.0.0",
  "memchr",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
@@ -3362,7 +3356,7 @@ dependencies = [
  "cstr",
  "libc",
  "measureme",
- "object",
+ "object 0.32.0",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3398,7 +3392,7 @@ dependencies = [
  "itertools",
  "jobserver",
  "libc",
- "object",
+ "object 0.32.0",
  "pathdiff",
  "regex",
  "rustc_arena",
@@ -4332,7 +4326,7 @@ name = "rustc_target"
 version = "0.0.0"
 dependencies = [
  "bitflags 1.3.2",
- "object",
+ "object 0.32.0",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_feature",
@@ -4587,12 +4581,12 @@ checksum = "4f3208ce4d8448b3f3e7d168a73f5e0c43a61e32930de3bceeccedb388b6bf06"
 
 [[package]]
 name = "ruzstd"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a15e661f0f9dac21f3494fe5d23a6338c0ac116a2d22c2b63010acd89467ffe"
+checksum = "ac3ffab8f9715a0d455df4bbb9d21e91135aab3cd3ca187af0cd0c3c3f868fdc"
 dependencies = [
  "byteorder",
- "thiserror",
+ "thiserror-core",
  "twox-hash",
 ]
 
@@ -4861,7 +4855,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "std"
 version = "0.0.0"
 dependencies = [
- "addr2line",
+ "addr2line 0.21.0",
  "alloc",
  "cfg-if",
  "compiler_builtins",
@@ -4872,7 +4866,7 @@ dependencies = [
  "hermit-abi 0.3.2",
  "libc",
  "miniz_oxide",
- "object",
+ "object 0.32.0",
  "panic_abort",
  "panic_unwind",
  "profiler_builtins",
@@ -5140,6 +5134,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "thiserror-core"
+version = "1.0.38"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d97345f6437bb2004cd58819d8a9ef8e36cdd7661c2abc4bbde0a7c40d9f497"
+dependencies = [
+ "thiserror-core-impl",
+]
+
+[[package]]
+name = "thiserror-core-impl"
+version = "1.0.38"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10ac1c5050e43014d16b2f94d0d2ce79e65ffdd8b38d8048f9c8f6a8a6da62ac"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "thiserror-impl"
 version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5152,13 +5166,13 @@ dependencies = [
 
 [[package]]
 name = "thorin-dwp"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98c040e1340b889d4180c64e1d787efa9c32cb1617757e101480b61238b0d927"
+checksum = "4db52ee8fec06e119b692ef3dd2c4cf621a99204c1b8c47407870ed050305b9b"
 dependencies = [
- "gimli 0.26.2",
- "hashbrown 0.12.3",
- "object",
+ "gimli 0.28.0",
+ "hashbrown 0.14.0",
+ "object 0.32.0",
  "tracing",
 ]
 

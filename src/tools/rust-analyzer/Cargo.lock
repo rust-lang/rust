@@ -1196,9 +1196,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.31.1"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bda667d9f2b5051b8833f59f3bf748b28ef54f850f4fcb389a252aa383866d1"
+checksum = "77ac5bbd07aea88c60a577a1ce218075ffd59208b2d7ca97adf9bfc5aeb21ebe"
 dependencies = [
  "memchr",
 ]
@@ -1337,7 +1337,7 @@ name = "proc-macro-api"
 version = "0.0.0"
 dependencies = [
  "memmap2",
- "object 0.31.1",
+ "object 0.32.0",
  "paths",
  "profile",
  "serde",
@@ -1357,7 +1357,7 @@ dependencies = [
  "libloading",
  "mbe",
  "memmap2",
- "object 0.31.1",
+ "object 0.32.0",
  "paths",
  "proc-macro-api",
  "proc-macro-test",

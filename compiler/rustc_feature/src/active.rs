@@ -282,6 +282,7 @@ declare_features! (
     (active, arm_target_feature, "1.27.0", Some(44839), None),
     (active, avx512_target_feature, "1.27.0", Some(44839), None),
     (active, bpf_target_feature, "1.54.0", Some(44839), None),
+    (active, csky_target_feature, "CURRENT_RUSTC_VERSION", Some(44839), None),
     (active, ermsb_target_feature, "1.49.0", Some(44839), None),
     (active, hexagon_target_feature, "1.27.0", Some(44839), None),
     (active, mips_target_feature, "1.27.0", Some(44839), None),
