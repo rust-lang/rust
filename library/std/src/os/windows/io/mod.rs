@@ -6,7 +6,7 @@
 //!
 //! This module provides three types for representing raw handles and sockets
 //! with different ownership properties: raw, borrowed, and owned, which are
-//! analogous to types used for representing pointers. These types realize the Windows version of [I/O safety].
+//! analogous to types used for representing pointers. These types reflect the Windows version of [I/O safety].
 //!
 //! | Type                   | Analogous to |
 //! | ---------------------- | ------------ |

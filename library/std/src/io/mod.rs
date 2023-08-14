@@ -245,7 +245,7 @@
 //! subsume similar concepts that exist across a wide range of operating systems even if they might
 //! use a different name, such as "handle".) An exclusively owned file descriptor is one that no
 //! other code is allowed to close, but the owner is allowed to close it any time. A type that owns
-//! its file descriptor should close it in its `drop` function. Types like [`File`] generally own
+//! its file descriptor should usually close it in its `drop` function. Types like [`File`] generally own
 //! their file descriptor. Similarly, file descriptors can be *borrowed*. This indicates that the
 //! file descriptor will not be closed for the lifetime of the borrow, but it does *not* imply any
 //! right to close this file descriptor, since it will likely be owned by someone else.
@@ -256,6 +256,12 @@
 //! To uphold I/O safety, it is crucial that no code closes file descriptors it does not own. In
 //! other words, a safe function that takes a regular integer, treats it as a file descriptor, and
 //! closes it, is *unsound*.
+//!
+//! Not upholding I/O safety and closing a file descriptor without proof of ownership can lead to
+//! misbehavior and even Undefined Behavior in code that relies on ownership of its file
+//! descriptors: the closed file descriptor could be re-allocated to some other library (such as the
+//! allocator or a memory mapping library) and now accessing the file descriptor will interfere in
+//! arbitrarily destructive ways with that other library.
 //!
 //! Note that this does not talk about performing other operations on the file descriptor, such as
 //! reading or writing. For example, on Unix, the [`OwnedFd`] and [`BorrowedFd`] types from the
