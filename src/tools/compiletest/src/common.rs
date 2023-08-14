@@ -66,6 +66,7 @@ string_enum! {
         JsDocTest => "js-doc-test",
         MirOpt => "mir-opt",
         Assembly => "assembly",
+        CoverageMap => "coverage-map",
         RunCoverage => "run-coverage",
     }
 }
@@ -160,6 +161,9 @@ pub struct Config {
 
     /// The rust-demangler executable.
     pub rust_demangler_path: Option<PathBuf>,
+
+    /// The coverage-dump executable.
+    pub coverage_dump_path: Option<PathBuf>,
 
     /// The Python executable to use for LLDB and htmldocck.
     pub python: String,
@@ -639,6 +643,7 @@ pub const UI_EXTENSIONS: &[&str] = &[
     UI_STDERR_32,
     UI_STDERR_16,
     UI_COVERAGE,
+    UI_COVERAGE_MAP,
 ];
 pub const UI_STDERR: &str = "stderr";
 pub const UI_STDOUT: &str = "stdout";
@@ -649,6 +654,7 @@ pub const UI_STDERR_64: &str = "64bit.stderr";
 pub const UI_STDERR_32: &str = "32bit.stderr";
 pub const UI_STDERR_16: &str = "16bit.stderr";
 pub const UI_COVERAGE: &str = "coverage";
+pub const UI_COVERAGE_MAP: &str = "cov-map";
 
 /// Absolute path to the directory where all output for all tests in the given
 /// `relative_dir` group should reside. Example:
