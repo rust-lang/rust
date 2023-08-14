@@ -133,10 +133,10 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
     ) -> std::fmt::Result {
         writeln!(self.f, "TRY_EVALUATE_ADDED_GOALS: {:?}", added_goals_evaluation.result)?;
 
-        for (n, revision) in added_goals_evaluation.evaluations.iter().enumerate() {
-            writeln!(self.f, "REVISION {n}")?;
+        for (n, iterations) in added_goals_evaluation.evaluations.iter().enumerate() {
+            writeln!(self.f, "ITERATION {n}")?;
             self.nested(|this| {
-                for goal_evaluation in revision {
+                for goal_evaluation in iterations {
                     this.format_goal_evaluation(goal_evaluation)?;
                 }
                 Ok(())
