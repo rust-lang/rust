@@ -25,7 +25,7 @@ use rustc_errors::{
     MultiSpan, Style,
 };
 use rustc_hir as hir;
-use rustc_hir::def::Namespace;
+use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{GenericParam, Item, Node};
@@ -2453,12 +2453,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         && let [
                             ..,
                             trait_path_segment @ hir::PathSegment {
-                                res: rustc_hir::def::Res::Def(rustc_hir::def::DefKind::Trait, trait_id),
+                                res: Res::Def(DefKind::Trait, trait_id),
                                 ..
                             },
                             hir::PathSegment {
                                 ident: assoc_item_name,
-                                res: rustc_hir::def::Res::Def(_, item_id),
+                                res: Res::Def(_, item_id),
                                 ..
                             }
                         ] = path.segments
@@ -2469,7 +2469,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let (verb, noun) = match self.tcx.associated_item(item_id).kind {
                             ty::AssocKind::Const => ("refer to the", "constant"),
                             ty::AssocKind::Fn => ("call", "function"),
-                            ty::AssocKind::Type => ("refer to the", "type"), // this is already covered by E0223, but this single match arm doesn't hurt here
+                            // This is already covered by E0223, but this following single match
+                            // arm doesn't hurt here.
+                            ty::AssocKind::Type => ("refer to the", "type"),
                         };
 
                         // Replace the more general E0283 with a more specific error
@@ -2477,37 +2479,58 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         err = self.tcx.sess.struct_span_err_with_code(
                             span,
                             format!(
-                                "cannot {verb} associated {noun} on trait without specifying the corresponding `impl` type",
+                                "cannot {verb} associated {noun} on trait without specifying the \
+                                 corresponding `impl` type",
                             ),
                             rustc_errors::error_code!(E0790),
                         );
 
                         if let Some(local_def_id) = data.trait_ref.def_id.as_local()
-                            && let Some(hir::Node::Item(hir::Item { ident: trait_name, kind: hir::ItemKind::Trait(_, _, _, _, trait_item_refs), .. })) = self.tcx.hir().find_by_def_id(local_def_id)
-                            && let Some(method_ref) = trait_item_refs.iter().find(|item_ref| item_ref.ident == *assoc_item_name) {
-                            err.span_label(method_ref.span, format!("`{trait_name}::{assoc_item_name}` defined here"));
+                            && let Some(hir::Node::Item(hir::Item {
+                                ident: trait_name,
+                                kind: hir::ItemKind::Trait(_, _, _, _, trait_item_refs),
+                                ..
+                            })) = self.tcx.hir().find_by_def_id(local_def_id)
+                            && let Some(method_ref) = trait_item_refs
+                                .iter()
+                                .find(|item_ref| item_ref.ident == *assoc_item_name)
+                        {
+                            err.span_label(
+                                method_ref.span,
+                                format!("`{trait_name}::{assoc_item_name}` defined here"),
+                            );
                         }
 
                         err.span_label(span, format!("cannot {verb} associated {noun} of trait"));
 
                         let trait_impls = self.tcx.trait_impls_of(data.trait_ref.def_id);
 
-                        if trait_impls.blanket_impls().is_empty()
-                            && let Some(impl_def_id) = trait_impls.non_blanket_impls().values().flatten().next()
+                        if let Some(impl_def_id) =
+                            trait_impls.non_blanket_impls().values().flatten().next()
                         {
-                            let non_blanket_impl_count = trait_impls.non_blanket_impls().values().flatten().count();
+                            let non_blanket_impl_count =
+                                trait_impls.non_blanket_impls().values().flatten().count();
                             // If there is only one implementation of the trait, suggest using it.
                             // Otherwise, use a placeholder comment for the implementation.
-                            let (message, impl_suggestion) = if non_blanket_impl_count == 1 {(
-                                "use the fully-qualified path to the only available implementation",
-                                format!("<{} as ", self.tcx.type_of(impl_def_id).instantiate_identity())
-                            )} else {
-                                ("use a fully-qualified path to a specific available implementation",
-                                                                "</* self type */ as ".to_string()
-                            )};
+                            let (message, self_type) = if non_blanket_impl_count == 1 {
+                                (
+                                    "use the fully-qualified path to the only available \
+                                     implementation",
+                                    format!(
+                                        "{}",
+                                        self.tcx.type_of(impl_def_id).instantiate_identity()
+                                    ),
+                                )
+                            } else {
+                                (
+                                    "use a fully-qualified path to a specific available \
+                                     implementation",
+                                    "/* self type */".to_string(),
+                                )
+                            };
                             let mut suggestions = vec![(
                                 path.span.shrink_to_lo(),
-                                impl_suggestion
+                                format!("<{self_type} as "),
                             )];
                             if let Some(generic_arg) = trait_path_segment.args {
                                 let between_span = trait_path_segment.ident.span.between(generic_arg.span_ext);

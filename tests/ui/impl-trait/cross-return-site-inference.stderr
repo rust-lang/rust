@@ -14,12 +14,22 @@ error[E0790]: cannot call associated function on trait without specifying the co
    |
 LL |     return Err(From::from("foo"));
    |                ^^^^^^^^^^ cannot call associated function of trait
+   |
+help: use a fully-qualified path to a specific available implementation
+   |
+LL |     return Err(</* self type */ as From>::from("foo"));
+   |                +++++++++++++++++++     +
 
 error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
   --> $DIR/cross-return-site-inference.rs:44:9
    |
 LL |     Err(From::from("foo"))
    |         ^^^^^^^^^^ cannot call associated function of trait
+   |
+help: use a fully-qualified path to a specific available implementation
+   |
+LL |     Err(</* self type */ as From>::from("foo"))
+   |         +++++++++++++++++++     +
 
 error: aborting due to 3 previous errors
 
