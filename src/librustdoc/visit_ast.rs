@@ -180,7 +180,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     /// 1. The items which are not glob imports/reexports.
     /// 2. The glob imports/reexports.
     fn visit_mod_contents(&mut self, def_id: LocalDefId, m: &'tcx hir::Mod<'tcx>) {
-        debug!("Going through module {:?}", m);
+        debug!("Going through module {m:?}");
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= self.cx.tcx.local_visibility(def_id).is_public();
@@ -203,7 +203,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
         }
         self.inside_public_path = orig_inside_public_path;
-        debug!("Leaving module {:?}", m);
+        debug!("Leaving module {m:?}");
     }
 
     /// Tries to resolve the target of a `pub use` statement and inlines the
@@ -394,7 +394,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         renamed: Option<Symbol>,
         import_id: Option<LocalDefId>,
     ) {
-        debug!("visiting item {:?}", item);
+        debug!("visiting item {item:?}");
         if self.inside_body {
             // Only impls can be "seen" outside a body. For example:
             //

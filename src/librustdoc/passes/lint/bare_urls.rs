@@ -28,7 +28,7 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                         .span_suggestion(
                             sp,
                             "use an automatic link instead",
-                            format!("<{}>", url),
+                            format!("<{url}>"),
                             Applicability::MachineApplicable,
                         )
                 });
@@ -74,7 +74,7 @@ fn find_raw_urls(
     range: Range<usize>,
     f: &impl Fn(&DocContext<'_>, &'static str, &str, Range<usize>),
 ) {
-    trace!("looking for raw urls in {}", text);
+    trace!("looking for raw urls in {text}");
     // For now, we only check "full" URLs (meaning, starting with "http://" or "https://").
     for match_ in URL_REGEX.find_iter(text) {
         let url = match_.as_str();
