@@ -15,8 +15,8 @@ cranelift-native = { version = "0.98" }
 cranelift-jit = { version = "0.98", optional = true }
 cranelift-object = { version = "0.98" }
 target-lexicon = "0.12.0"
-gimli = { version = "0.28.0", default-features = false, features = ["write"]}
-object = { version = "0.32.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
+gimli = { version = "0.27.2", default-features = false, features = ["write"]}
+object = { version = "0.30.4", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
 
 indexmap = "2.0.0"
 libloading = { version = "0.7.3", optional = true }
