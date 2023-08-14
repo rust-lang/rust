@@ -385,16 +385,13 @@ fn check_opaque_type_parameter_valid(
 
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
-            GenericArgKind::Lifetime(lt) => {
-                if is_ty_alias {
-                    matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
-                } else {
-                    // FIXME(#113916): we can't currently check for unique lifetime params,
-                    // see that issue for more. We will also have to ignore bivariant lifetime
-                    // params for RPIT, but that's comparatively trivial ✨
-                    continue;
-                }
+            GenericArgKind::Lifetime(lt) if is_ty_alias => {
+                matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
             }
+            // FIXME(#113916): we can't currently check for unique lifetime params,
+            // see that issue for more. We will also have to ignore unused lifetime
+            // params for RPIT, but that's comparatively trivial ✨
+            GenericArgKind::Lifetime(_) => continue,
             GenericArgKind::Const(ct) => matches!(ct.kind(), ty::ConstKind::Param(_)),
         };
 
