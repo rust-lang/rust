@@ -244,35 +244,37 @@
 //! means that file descriptors can be *exclusively owned*. (Here, "file descriptor" is meant to
 //! subsume similar concepts that exist across a wide range of operating systems even if they might
 //! use a different name, such as "handle".) An exclusively owned file descriptor is one that no
-//! other code is allowed to close, but the owner is allowed to close it any time. A type that owns
-//! its file descriptor should usually close it in its `drop` function. Types like [`File`] generally own
-//! their file descriptor. Similarly, file descriptors can be *borrowed*. This indicates that the
-//! file descriptor will not be closed for the lifetime of the borrow, but it does *not* imply any
-//! right to close this file descriptor, since it will likely be owned by someone else.
+//! other code is allowed to access in any way, but the owner is allowed to a access and even close
+//! it any time. A type that owns its file descriptor should usually close it in its `drop`
+//! function. Types like [`File`] generally own their file descriptor. Similarly, file descriptors
+//! can be *borrowed*, granting the temporary right to perform operations on this file descriptor.
+//! This indicates that the file descriptor will not be closed for the lifetime of the borrow, but
+//! it does *not* imply any right to close this file descriptor, since it will likely be owned by
+//! someone else.
 //!
 //! The platform-specific parts of the Rust standard library expose types that reflect these
 //! concepts, see [`os::unix`] and [`os::windows`].
 //!
-//! To uphold I/O safety, it is crucial that no code closes file descriptors it does not own. In
+//! To uphold I/O safety, it is crucial that no code acts on file descriptors it does not own. In
 //! other words, a safe function that takes a regular integer, treats it as a file descriptor, and
-//! closes it, is *unsound*.
+//! acts on it, is *unsound*.
 //!
-//! Not upholding I/O safety and closing a file descriptor without proof of ownership can lead to
+//! Not upholding I/O safety and acting on a file descriptor without proof of ownership can lead to
 //! misbehavior and even Undefined Behavior in code that relies on ownership of its file
-//! descriptors: the closed file descriptor could be re-allocated to some other library (such as the
-//! allocator or a memory mapping library) and now accessing the file descriptor will interfere in
-//! arbitrarily destructive ways with that other library.
+//! descriptors: a closed file descriptor could be re-allocated, so the original owner of that file
+//! descriptor is now working on the wrong file. Some code might even rely on fully encapsulating
+//! its file descriptors with no operations being performed by any other part of the program.
 //!
 //! Note that exclusive ownership of a file descriptor does *not* imply exclusive ownership of the
 //! underlying kernel object that the file descriptor references (also called "file description" on
-//! some operating systems). An owned file descriptor can have duplicates, i.e., other file
-//! descriptors that share the same kernel object. The exact rules around ownership of kernel
-//! objects are [still unclear](https://github.com/rust-lang/rust/issues/114167). Until that is
-//! clarified, the general advice is not to perform *any* operations on file descriptors that were
-//! never borrowed to or owned by you. In other words, receiving a borrowed file descriptor *does*
-//! give you the right to make a duplicate and use that duplicate beyond the end of the borrow, but
-//! nothing gives you the right to just `write` to a file descriptor that never even got borrowed to
-//! you.
+//! some operating systems). File descriptors basically work like [`Arc`]: when you receive an owned
+//! file descriptor, you cannot know whether there are any other file descriptors that reference the
+//! same kernel object. However, when you create a new kernel object, you know that you are holding
+//! the only reference to it. Just be careful not to borrow it to anyone, since they can obtain a
+//! clone and then you can no longer know what the reference count is! In that sense, [`OwnedFd`] is
+//! like `Arc` and [`BorrowedFd<'a>`] is like `&'a Arc` (and similar for the Windows types). There
+//! is no equivalent to `Box` for file descriptors in the standard library (that would be a type
+//! that guarantees that the reference count is `1`).
 //!
 //! [`File`]: crate::fs::File
 //! [`TcpStream`]: crate::net::TcpStream
@@ -284,7 +286,8 @@
 //! [`os::unix`]: ../os/unix/io/index.html
 //! [`os::windows`]: ../os/windows/io/index.html
 //! [`OwnedFd`]: ../os/fd/struct.OwnedFd.html
-//! [`BorrowedFd`]: ../os/fd/struct.BorrowedFd.html
+//! [`BorrowedFd<'a>`]: ../os/fd/struct.BorrowedFd.html
+//! [`Arc`]: crate::sync::Arc
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
