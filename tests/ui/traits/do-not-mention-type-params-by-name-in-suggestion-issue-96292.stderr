@@ -1,14 +1,3 @@
-error[E0282]: type annotations needed
-  --> $DIR/do-not-mention-type-params-by-name-in-suggestion-issue-96292.rs:17:11
-   |
-LL |     thing.method(42);
-   |           ^^^^^^
-   |
-help: try using a fully qualified path to specify the expected types
-   |
-LL |     <Thing<bool> as Method<T>>::method(thing, 42);
-   |     +++++++++++++++++++++++++++++++++++     ~
-
 error[E0283]: type annotations needed
   --> $DIR/do-not-mention-type-params-by-name-in-suggestion-issue-96292.rs:17:11
    |
@@ -28,7 +17,6 @@ help: try using a fully qualified path to specify the expected types
 LL |     <Thing<bool> as Method<T>>::method(thing, 42);
    |     +++++++++++++++++++++++++++++++++++     ~
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0282, E0283.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0283`.

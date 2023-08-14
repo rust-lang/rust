@@ -1,5 +1,4 @@
 fn main() {
-    let x = "hello".chars().rev().collect();
+    let x;
     //~^ ERROR E0282
-    //~| ERROR E0283
 }

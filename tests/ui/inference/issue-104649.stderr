@@ -2,7 +2,7 @@ error[E0282]: type annotations needed for `A<std::result::Result<std::result::Re
   --> $DIR/issue-104649.rs:24:9
    |
 LL |     let a = A(Result::Ok(Result::Ok(())));
-   |         ^
+   |         ^                -------------- type must be known at this point
    |
 help: consider giving `a` an explicit type, where the type for type parameter `E` is specified
    |

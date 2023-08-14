@@ -1,14 +1,3 @@
-error[E0282]: type annotations needed
-  --> $DIR/multidispatch-convert-ambig-dest.rs:26:5
-   |
-LL |     test(22, std::default::Default::default());
-   |     ^^^^ cannot infer type of the type parameter `U` declared on the function `test`
-   |
-help: consider specifying the generic arguments
-   |
-LL |     test::<i32, U>(22, std::default::Default::default());
-   |         ++++++++++
-
 error[E0283]: type annotations needed
   --> $DIR/multidispatch-convert-ambig-dest.rs:26:5
    |
@@ -37,7 +26,6 @@ help: consider specifying the generic arguments
 LL |     test::<i32, U>(22, std::default::Default::default());
    |         ++++++++++
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0282, E0283.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0283`.

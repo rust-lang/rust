@@ -1,9 +1,11 @@
-error[E0282]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/opaque-cast-field-access-in-future.rs:22:17
    |
 LL | fn run() -> Foo<impl Future<Output = ()>> {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+   = note: cannot satisfy `_: Future`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0283`.

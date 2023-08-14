@@ -31,9 +31,7 @@ fn main() {
     let x: Baz = Baz { inner: 42 };
 
     // DOESN'T Compile: Multiple options!
-    let y = x.into();
-    //~^ ERROR E0282
-    //~| ERROR E0283
+    let y = x.into(); //~ ERROR E0283
 
     let y_1: Foo = x.into();
     let y_2: Bar = x.into();

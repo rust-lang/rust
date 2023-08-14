@@ -42,9 +42,7 @@ impl<T> DerefMut for DerefsTo<T> {
 
 fn main() {
     let mut thing = Thing;
-    thing.method();
-    //~^ ERROR type annotations needed
-    //~| ERROR type annotations needed
+    thing.method(); //~ ERROR type annotations needed
     thing.mut_method(); //~ ERROR type annotations needed
     thing.by_self(); //~ ERROR type annotations needed
 

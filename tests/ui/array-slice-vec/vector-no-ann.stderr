@@ -2,7 +2,7 @@ error[E0282]: type annotations needed for `Vec<T>`
   --> $DIR/vector-no-ann.rs:2:9
    |
 LL |     let _foo = Vec::new();
-   |         ^^^^
+   |         ^^^^   ---------- type must be known at this point
    |
 help: consider giving `_foo` an explicit type, where the type for type parameter `T` is specified
    |

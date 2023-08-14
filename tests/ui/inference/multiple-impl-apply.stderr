@@ -1,14 +1,3 @@
-error[E0282]: type annotations needed
-  --> $DIR/multiple-impl-apply.rs:34:9
-   |
-LL |     let y = x.into();
-   |         ^
-   |
-help: consider giving `y` an explicit type
-   |
-LL |     let y: /* Type */ = x.into();
-   |          ++++++++++++
-
 error[E0283]: type annotations needed
   --> $DIR/multiple-impl-apply.rs:34:9
    |
@@ -29,7 +18,6 @@ help: consider giving `y` an explicit type
 LL |     let y: /* Type */ = x.into();
    |          ++++++++++++
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0282, E0283.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0283`.

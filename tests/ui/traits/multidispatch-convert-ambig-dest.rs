@@ -25,7 +25,6 @@ where T : Convert<U>
 fn a() {
     test(22, std::default::Default::default());
     //~^ ERROR type annotations needed
-    //~| ERROR type annotations needed
 }
 
 fn main() {}

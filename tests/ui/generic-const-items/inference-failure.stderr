@@ -2,7 +2,7 @@ error[E0282]: type annotations needed for `Option<T>`
   --> $DIR/inference-failure.rs:8:9
    |
 LL |     let _ = NONE;
-   |         ^
+   |         ^   ---- type must be known at this point
    |
 help: consider giving this pattern a type, where the type for type parameter `T` is specified
    |

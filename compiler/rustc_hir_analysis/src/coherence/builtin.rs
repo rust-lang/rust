@@ -261,7 +261,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                 }
                 let errors = ocx.select_all_or_error();
                 if !errors.is_empty() {
-                    infcx.err_ctxt().report_fulfillment_errors(&errors);
+                    infcx.err_ctxt().report_fulfillment_errors(errors);
                 }
 
                 // Finally, resolve all regions.
@@ -470,7 +470,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
     ocx.register_obligation(obligation);
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors);
+        infcx.err_ctxt().report_fulfillment_errors(errors);
     }
 
     // Finally, resolve all regions.

@@ -137,7 +137,7 @@ pub trait TypeErrCtxtExt<'tcx> {
 
     fn report_overflow_no_abort(&self, obligation: PredicateObligation<'tcx>) -> ErrorGuaranteed;
 
-    fn report_fulfillment_errors(&self, errors: &[FulfillmentError<'tcx>]) -> ErrorGuaranteed;
+    fn report_fulfillment_errors(&self, errors: Vec<FulfillmentError<'tcx>>) -> ErrorGuaranteed;
 
     fn report_overflow_obligation<T>(
         &self,
@@ -401,7 +401,10 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 }
 
 impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
-    fn report_fulfillment_errors(&self, errors: &[FulfillmentError<'tcx>]) -> ErrorGuaranteed {
+    fn report_fulfillment_errors(
+        &self,
+        mut errors: Vec<FulfillmentError<'tcx>>,
+    ) -> ErrorGuaranteed {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
             predicate: ty::Predicate<'tcx>,
@@ -422,6 +425,19 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 )
             })
             .collect();
+
+        // Ensure `T: Sized` and `T: WF` obligations come last. This lets us display diagnostics
+        // with more relevant type information and hide redundant E0282 errors.
+        errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
+                if Some(pred.def_id()) == self.tcx.lang_items().sized_trait() =>
+            {
+                1
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
+            ty::PredicateKind::Coerce(_) => 2,
+            _ => 0,
+        });
 
         for (index, error) in errors.iter().enumerate() {
             // We want to ignore desugarings here: spans are equivalent even
@@ -476,7 +492,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         for from_expansion in [false, true] {
-            for (error, suppressed) in iter::zip(errors, &is_suppressed) {
+            for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
                     self.report_fulfillment_error(error);
                 }

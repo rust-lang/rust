@@ -9,28 +9,19 @@ help: consider specifying the generic arguments
 LL |     Ok::<(), E>(())
    |       +++++++++
 
-error[E0282]: type annotations needed
-  --> $DIR/cross-return-site-inference.rs:38:12
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/cross-return-site-inference.rs:38:16
    |
 LL |     return Err(From::from("foo"));
-   |            ^^^ cannot infer type of the type parameter `E` declared on the enum `Result`
-   |
-help: consider specifying the generic arguments
-   |
-LL |     return Err::<(), E>(From::from("foo"));
-   |               +++++++++
+   |                ^^^^^^^^^^ cannot call associated function of trait
 
-error[E0282]: type annotations needed
-  --> $DIR/cross-return-site-inference.rs:44:5
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/cross-return-site-inference.rs:44:9
    |
 LL |     Err(From::from("foo"))
-   |     ^^^ cannot infer type of the type parameter `E` declared on the enum `Result`
-   |
-help: consider specifying the generic arguments
-   |
-LL |     Err::<(), E>(From::from("foo"))
-   |        +++++++++
+   |         ^^^^^^^^^^ cannot call associated function of trait
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0282`.
+Some errors have detailed explanations: E0282, E0790.
+For more information about an error, try `rustc --explain E0282`.

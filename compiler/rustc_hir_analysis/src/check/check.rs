@@ -327,7 +327,7 @@ fn check_opaque_meets_bounds<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let guar = infcx.err_ctxt().report_fulfillment_errors(&errors);
+        let guar = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(guar);
     }
     match origin {
@@ -1512,6 +1512,6 @@ pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let errors = fulfillment_cx.select_all_or_error(&infcx);
     debug!(?errors);
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors);
+        infcx.err_ctxt().report_fulfillment_errors(errors);
     }
 }
