@@ -714,6 +714,7 @@ impl<'a> Parser<'a> {
     /// ```
     fn parse_generic_bound(&mut self) -> PResult<'a, GenericBound> {
         let lo = self.token.span;
+        let leading_token = self.prev_token.clone();
         let has_parens = self.eat(&token::OpenDelim(Delimiter::Parenthesis));
         let inner_lo = self.token.span;
 
@@ -722,7 +723,7 @@ impl<'a> Parser<'a> {
             self.error_lt_bound_with_modifiers(modifiers);
             self.parse_generic_lt_bound(lo, inner_lo, has_parens)?
         } else {
-            self.parse_generic_ty_bound(lo, has_parens, modifiers)?
+            self.parse_generic_ty_bound(lo, has_parens, modifiers, &leading_token)?
         };
 
         Ok(bound)
@@ -827,6 +828,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         has_parens: bool,
         modifiers: BoundModifiers,
+        leading_token: &Token,
     ) -> PResult<'a, GenericBound> {
         let mut lifetime_defs = self.parse_late_bound_lifetime_defs()?;
         let mut path = if self.token.is_keyword(kw::Fn)
@@ -873,18 +875,18 @@ impl<'a> Parser<'a> {
         }
 
         if has_parens {
-            if self.token.is_like_plus() {
-                // Someone has written something like `&dyn (Trait + Other)`. The correct code
-                // would be `&(dyn Trait + Other)`, but we don't have access to the appropriate
-                // span to suggest that. When written as `&dyn Trait + Other`, an appropriate
-                // suggestion is given.
+            // Someone has written something like `&dyn (Trait + Other)`. The correct code
+            // would be `&(dyn Trait + Other)`
+            if self.token.is_like_plus() && leading_token.is_keyword(kw::Dyn) {
                 let bounds = vec![];
                 self.parse_remaining_bounds(bounds, true)?;
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
-                let sp = vec![lo, self.prev_token.span];
-                self.sess.emit_err(errors::IncorrectBracesTraitBounds {
-                    span: sp,
-                    sugg: errors::IncorrectBracesTraitBoundsSugg { l: lo, r: self.prev_token.span },
+                self.sess.emit_err(errors::IncorrectParensTraitBounds {
+                    span: vec![lo, self.prev_token.span],
+                    sugg: errors::IncorrectParensTraitBoundsSugg {
+                        wrong_span: leading_token.span.shrink_to_hi().to(lo),
+                        new_span: leading_token.span.shrink_to_lo(),
+                    },
                 });
             } else {
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;

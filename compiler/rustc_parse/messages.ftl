@@ -310,8 +310,8 @@ parse_inclusive_range_no_end = inclusive range with no end
     .suggestion_open_range = use `..` instead
     .note = inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
-parse_incorrect_braces_trait_bounds = incorrect braces around trait bounds
-    .suggestion = remove the parentheses
+parse_incorrect_parens_trait_bounds = incorrect parentheses around trait bounds
+parse_incorrect_parens_trait_bounds_sugg = fix the parentheses
 
 parse_incorrect_semicolon =
     expected item, found `;`
