@@ -200,6 +200,7 @@ impl<'tcx> SearchGraph<'tcx> {
                     available_depth,
                 )
             {
+                inspect.cache_hit(CacheHit::Global);
                 self.on_cache_hit(reached_depth, encountered_overflow);
                 return result;
             }
