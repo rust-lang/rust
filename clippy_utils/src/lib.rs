@@ -5,6 +5,7 @@
 #![feature(lint_reasons)]
 #![feature(never_type)]
 #![feature(rustc_private)]
+#![feature(assert_matches)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]

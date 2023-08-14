@@ -27,6 +27,7 @@ use rustc_target::abi::{Size, VariantIdx};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
+use std::assert_matches::debug_assert_matches;
 use std::iter;
 
 use crate::{match_def_path, path_res, paths};
@@ -259,7 +260,11 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
             })),
     );
 
-    debug_assert_eq!(tcx.def_kind(trait_id), DefKind::Trait);
+    debug_assert_matches!(
+        tcx.def_kind(trait_id),
+        DefKind::Trait | DefKind::TraitAlias,
+        "`DefId` must belong to a trait or trait alias"
+    );
     #[cfg(debug_assertions)]
     assert_generic_args_match(tcx, trait_id, trait_ref.args);
 
