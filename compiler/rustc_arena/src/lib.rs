@@ -366,16 +366,18 @@ unsafe impl<T: Send> Send for TypedArena<T> {}
 
 #[inline(always)]
 fn align_down(val: usize, align: usize) -> usize {
-    assert!(align.is_power_of_two());
+    debug_assert!(align.is_power_of_two());
     val & !(align - 1)
 }
 
 #[inline(always)]
-fn align(val: usize, align: usize) -> usize {
-    assert!(align.is_power_of_two());
+fn align_up(val: usize, align: usize) -> usize {
+    debug_assert!(align.is_power_of_two());
     (val + align - 1) & !(align - 1)
 }
 
+// Pointer alignment is common in compiler types, so keep `DroplessArena` aligned to them
+// to optimize away alignment code.
 const DROPLESS_ALIGNMENT: usize = mem::align_of::<usize>();
 
 /// An arena that can hold objects of multiple different types that impl `Copy`
@@ -390,6 +392,8 @@ pub struct DroplessArena {
     /// start. (This is slightly simpler and faster than allocating upwards,
     /// see <https://fitzgeraldnick.com/2019/11/01/always-bump-downwards.html>.)
     /// When this pointer crosses the start pointer, a new chunk is allocated.
+    ///
+    /// This is kept aligned to DROPLESS_ALIGNMENT.
     end: Cell<*mut u8>,
 
     /// A vector of arena chunks.
@@ -433,13 +437,16 @@ impl DroplessArena {
             // Also ensure that this chunk can fit `additional`.
             new_cap = cmp::max(additional, new_cap);
 
-            let mut chunk = ArenaChunk::new(align(new_cap, PAGE));
+            let mut chunk = ArenaChunk::new(align_up(new_cap, PAGE));
             self.start.set(chunk.start());
 
             // Align the end to DROPLESS_ALIGNMENT
             let end = align_down(chunk.end().addr(), DROPLESS_ALIGNMENT);
-            // Make sure we don't go past `start`
-            let end = cmp::max(chunk.start().addr(), end);
+
+            // Make sure we don't go past `start`. This should not happen since the allocation
+            // should be at least DROPLESS_ALIGNMENT - 1 bytes.
+            debug_assert!(chunk.start().addr() <= end);
+
             self.end.set(chunk.end().with_addr(end));
 
             chunks.push(chunk);
@@ -469,7 +476,7 @@ impl DroplessArena {
         let end = old_end.addr();
 
         // Align allocated bytes so that `self.end` stays aligned to DROPLESS_ALIGNMENT
-        let bytes = align(layout.size(), DROPLESS_ALIGNMENT);
+        let bytes = align_up(layout.size(), DROPLESS_ALIGNMENT);
 
         // Tell LLVM that `end` is aligned to DROPLESS_ALIGNMENT
         unsafe { intrinsics::assume(end == align_down(end, DROPLESS_ALIGNMENT)) };
@@ -477,6 +484,8 @@ impl DroplessArena {
         let new_end = align_down(end.checked_sub(bytes)?, layout.align());
         if start <= new_end {
             let new_end = old_end.with_addr(new_end);
+            // `new_end` is aligned to DROPLESS_ALIGNMENT as `align_down` preserves alignment
+            // as both `end` and `bytes` are already aligned to DROPLESS_ALIGNMENT.
             self.end.set(new_end);
             Some(new_end)
         } else {
