@@ -107,7 +107,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (span, code) = match prior_arm {
                 // The reason for the first arm to fail is not that the match arms diverge,
                 // but rather that there's a prior obligation that doesn't hold.
-                None => (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id)),
+                None => (
+                    arm_span,
+                    ObligationCauseCode::BlockTailExpression(
+                        arm.body.hir_id,
+                        scrut.hir_id,
+                        match_src,
+                    ),
+                ),
                 Some((prior_arm_block_id, prior_arm_ty, prior_arm_span)) => (
                     expr.span,
                     ObligationCauseCode::MatchExpressionArm(Box::new(MatchExpressionArmCause {
@@ -145,7 +152,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 other_arms.remove(0);
             }
 
-            prior_arm = Some((arm_block_id, arm_ty, arm_span));
+            if !arm_ty.is_never() {
+                prior_arm = Some((arm_block_id, arm_ty, arm_span));
+            }
         }
 
         // If all of the arms in the `match` diverge,

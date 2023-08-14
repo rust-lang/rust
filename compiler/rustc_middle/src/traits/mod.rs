@@ -402,7 +402,7 @@ pub enum ObligationCauseCode<'tcx> {
     OpaqueReturnType(Option<(Ty<'tcx>, Span)>),
 
     /// Block implicit return
-    BlockTailExpression(hir::HirId),
+    BlockTailExpression(hir::HirId, hir::HirId, hir::MatchSource),
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
