@@ -139,11 +139,9 @@ pub(crate) mod hack {
             let mut vec = Vec::with_capacity_in(s.len(), alloc);
             let mut guard = DropGuard { vec: &mut vec, num_init: 0 };
             let slots = guard.vec.spare_capacity_mut();
-            // .take(slots.len()) is necessary for LLVM to remove bounds checks
-            // and has better codegen than zip.
-            for (i, b) in s.iter().enumerate().take(slots.len()) {
+            for (i, (b, slot)) in s.iter().zip(slots.iter_mut()).enumerate() {
                 guard.num_init = i;
-                slots[i].write(b.clone());
+                slot.write(b.clone());
             }
             core::mem::forget(guard);
             // SAFETY:
