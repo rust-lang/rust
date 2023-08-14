@@ -438,7 +438,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err => {}
         TyKind::MacCall(mac) => visitor.visit_mac_call(mac),
         TyKind::Never | TyKind::CVarArgs => {}
-        TyKind::AnonymousStruct(ref fields, ..) | TyKind::AnonymousUnion(ref fields, ..) => {
+        TyKind::AnonStruct(ref fields, ..) | TyKind::AnonUnion(ref fields, ..) => {
             walk_list!(visitor, visit_field_def, fields)
         }
     }

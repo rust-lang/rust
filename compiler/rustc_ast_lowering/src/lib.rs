@@ -1296,13 +1296,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // FIXME(unnamed_fields): IMPLEMENTATION IN PROGRESS
             #[allow(rustc::untranslatable_diagnostic)]
             #[allow(rustc::diagnostic_outside_of_impl)]
-            TyKind::AnonymousStruct(ref _fields) => hir::TyKind::Err(
+            TyKind::AnonStruct(ref _fields) => hir::TyKind::Err(
                 self.tcx.sess.span_err(t.span, "anonymous structs are unimplemented"),
             ),
             // FIXME(unnamed_fields): IMPLEMENTATION IN PROGRESS
             #[allow(rustc::untranslatable_diagnostic)]
             #[allow(rustc::diagnostic_outside_of_impl)]
-            TyKind::AnonymousUnion(ref _fields) => hir::TyKind::Err(
+            TyKind::AnonUnion(ref _fields) => hir::TyKind::Err(
                 self.tcx.sess.span_err(t.span, "anonymous unions are unimplemented"),
             ),
             TyKind::Slice(ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),

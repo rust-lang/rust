@@ -1,5 +1,5 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
-use super::ty::{AllowPlus, RecoverAnonymousStructOrUnion, RecoverQPath, RecoverReturnSign};
+use super::ty::{AllowPlus, MaybeRecoverAnonStructOrUnion, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
@@ -1675,7 +1675,7 @@ impl<'a> Parser<'a> {
             adt_ty,
             ident_span,
             parsed_where,
-            RecoverAnonymousStructOrUnion::No,
+            MaybeRecoverAnonStructOrUnion::Parse,
         )
     }
 
@@ -1684,7 +1684,7 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         ident_span: Span,
         parsed_where: bool,
-        recover_anonymous_struct_or_union: RecoverAnonymousStructOrUnion,
+        maybe_recover_anon_struct_or_union: MaybeRecoverAnonStructOrUnion,
     ) -> PResult<'a, (ThinVec<FieldDef>, /* recovered */ bool)> {
         let mut fields = ThinVec::new();
         let mut recovered = false;
@@ -1705,7 +1705,9 @@ impl<'a> Parser<'a> {
                         //
                         // Instead, the error should be thrown and handled by the caller
                         // `parse_anonymous_struct_or_union`.
-                        if recover_anonymous_struct_or_union == RecoverAnonymousStructOrUnion::Yes {
+                        if maybe_recover_anon_struct_or_union
+                            == MaybeRecoverAnonStructOrUnion::Recover
+                        {
                             return Err(err);
                         }
                         err.span_label(ident_span, format!("while parsing this {adt_ty}"));
