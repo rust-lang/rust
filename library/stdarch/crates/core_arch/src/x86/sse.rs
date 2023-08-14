@@ -1381,6 +1381,10 @@ pub unsafe fn _mm_sfence() {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(stmxcsr))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
+#[deprecated(
+    since = "1.73.0",
+    note = "see `_mm_getcsr` documentation - use inline assembly instead"
+)]
 pub unsafe fn _mm_getcsr() -> u32 {
     let mut result = 0_i32;
     stmxcsr(&mut result as *mut _ as *mut i8);
@@ -1528,6 +1532,10 @@ pub unsafe fn _mm_getcsr() -> u32 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ldmxcsr))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
+#[deprecated(
+    since = "1.73.0",
+    note = "see `_mm_setcsr` documentation - use inline assembly instead"
+)]
 pub unsafe fn _mm_setcsr(val: u32) {
     ldmxcsr(&val as *const _ as *const i8);
 }
