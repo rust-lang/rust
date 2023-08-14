@@ -16,6 +16,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
             super::ImplSource::Param(ct, n) => {
                 write!(f, "ImplSourceParamData({n:?}, {ct:?})")
             }
+            super::ImplSource::Exhaustive(ref n) => write!(f, "Exhaustive({:?})", n),
         }
     }
 }

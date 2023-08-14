@@ -290,6 +290,7 @@ fn resolve_associated_item<'tcx>(
         }
         traits::ImplSource::Param(..)
         | traits::ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _)
+        | traits::ImplSource::Exhaustive(..)
         | traits::ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => None,
     })
 }
