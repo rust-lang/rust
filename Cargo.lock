@@ -71,7 +71,7 @@ dependencies = [
  "cranelift-control",
  "cranelift-entity",
  "cranelift-isle",
- "gimli",
+ "gimli 0.27.2",
  "hashbrown 0.13.2",
  "log",
  "regalloc2",
@@ -180,7 +180,7 @@ dependencies = [
  "cranelift-control",
  "cranelift-module",
  "log",
- "object",
+ "object 0.30.4",
  "target-lexicon",
 ]
 
@@ -195,9 +195,9 @@ dependencies = [
 
 [[package]]
 name = "equivalent"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88bffebc5d80432c9b140ee17875ff173a8ab62faad5b257da912bd2f6c1c0a1"
+checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
 name = "fallible-iterator"
@@ -214,6 +214,15 @@ dependencies = [
  "fallible-iterator",
  "indexmap 1.9.3",
  "stable_deref_trait",
+]
+
+[[package]]
+name = "gimli"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fb8d784f27acf97159b40fc4db5ecd8aa23b9ad5ef69cdd136d3bc80665f0c0"
+dependencies = [
+ "indexmap 2.0.0",
 ]
 
 [[package]]
@@ -236,6 +245,9 @@ name = "hashbrown"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c6201b9ff9fd90a5a3bac2e56a830d0caa509576f0e503818ee82c181b3437a"
+dependencies = [
+ "ahash",
+]
 
 [[package]]
 name = "indexmap"
@@ -310,6 +322,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "object"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77ac5bbd07aea88c60a577a1ce218075ffd59208b2d7ca97adf9bfc5aeb21ebe"
+dependencies = [
+ "crc32fast",
+ "hashbrown 0.14.0",
+ "indexmap 2.0.0",
+ "memchr",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -356,10 +380,10 @@ dependencies = [
  "cranelift-module",
  "cranelift-native",
  "cranelift-object",
- "gimli",
- "indexmap 2.0.0",
+ "gimli 0.28.0",
+ "indexmap 1.9.3",
  "libloading",
- "object",
+ "object 0.32.0",
  "smallvec",
  "target-lexicon",
 ]
