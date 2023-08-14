@@ -308,6 +308,15 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     if check_implied_wf == CheckImpliedWfMode::Check && !(impl_sig, trait_sig).references_error() {
+        // Select obligations to make progress on inference before processing
+        // the wf obligation below.
+        // FIXME(-Ztrait-solver=next): Not needed when the hack below is removed.
+        let errors = ocx.select_where_possible();
+        if !errors.is_empty() {
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
+            return Err(reported);
+        }
+
         // See #108544. Annoying, we can end up in cases where, because of winnowing,
         // we pick param env candidates over a more general impl, leading to more
         // stricter lifetime requirements than we would otherwise need. This can
@@ -378,7 +387,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // lifetime parameters.
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
-        infcx.implied_bounds_tys(param_env, impl_m_def_id, wf_tys.clone()),
+        infcx.implied_bounds_tys(param_env, impl_m_def_id, wf_tys),
     );
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
