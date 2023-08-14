@@ -65,9 +65,9 @@
 //! to be opened and read from or written must be `unsafe`. Rust's safety guarantees
 //! only cover what the program itself can do, and not what entities outside
 //! the program can do to it. `/proc/self/mem` is considered to be such an
-//! external entity, along with debugging interfaces, and people with physical access to
-//! the hardware. This is true even in cases where the program is controlling
-//! the external entity.
+//! external entity, along with `/proc/self/fd/*`, debugging interfaces, and people with physical
+//! access to the hardware. This is true even in cases where the program is controlling the external
+//! entity.
 //!
 //! If you desire to comprehensively prevent programs from reaching out and
 //! causing external entities to reach back in and violate memory safety, it's
