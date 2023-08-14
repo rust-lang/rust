@@ -1,5 +1,6 @@
 use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{
@@ -126,6 +127,58 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// Add a region that will be marked as "unreachable", with a constant "zero counter".
     pub fn add_unreachable_region(&mut self, region: CodeRegion) {
         self.unreachable_regions.push(region)
+    }
+
+    /// Perform some simplifications to make the final coverage mappings
+    /// slightly smaller.
+    ///
+    /// This method mainly exists to preserve the simplifications that were
+    /// already being performed by the Rust-side expression renumbering, so that
+    /// the resulting coverage mappings don't get worse.
+    pub(crate) fn simplify_expressions(&mut self) {
+        // The set of expressions that either were optimized out entirely, or
+        // have zero as both of their operands, and will therefore always have
+        // a value of zero. Other expressions that refer to these as operands
+        // can have those operands replaced with `Operand::Zero`.
+        let mut zero_expressions = FxIndexSet::default();
+
+        // For each expression, perform simplifications based on lower-numbered
+        // expressions, and then update the set of always-zero expressions if
+        // necessary.
+        // (By construction, expressions can only refer to other expressions
+        // that have lower IDs, so one simplification pass is sufficient.)
+        for (id, maybe_expression) in self.expressions.iter_enumerated_mut() {
+            let Some(expression) = maybe_expression else {
+                // If an expression is missing, it must have been optimized away,
+                // so any operand that refers to it can be replaced with zero.
+                zero_expressions.insert(id);
+                continue;
+            };
+
+            // If an operand refers to an expression that is always zero, then
+            // that operand can be replaced with `Operand::Zero`.
+            let maybe_set_operand_to_zero = |operand: &mut Operand| match &*operand {
+                Operand::Expression(id) if zero_expressions.contains(id) => {
+                    *operand = Operand::Zero;
+                }
+                _ => (),
+            };
+            maybe_set_operand_to_zero(&mut expression.lhs);
+            maybe_set_operand_to_zero(&mut expression.rhs);
+
+            // Coverage counter values cannot be negative, so if an expression
+            // involves subtraction from zero, assume that its RHS must also be zero.
+            // (Do this after simplifications that could set the LHS to zero.)
+            if let Expression { lhs: Operand::Zero, op: Op::Subtract, .. } = expression {
+                expression.rhs = Operand::Zero;
+            }
+
+            // After the above simplifications, if both operands are zero, then
+            // we know that this expression is always zero too.
+            if let Expression { lhs: Operand::Zero, rhs: Operand::Zero, .. } = expression {
+                zero_expressions.insert(id);
+            }
+        }
     }
 
     /// Return the source hash, generated from the HIR node structure, and used to indicate whether
