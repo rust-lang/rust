@@ -1,4 +1,4 @@
-error: unexpected token: `1.1`
+error: unexpected token: ``
   --> $DIR/float-field-interpolated.rs:8:13
    |
 LL |         { s.$b; }
@@ -9,7 +9,7 @@ LL |     generate_field_accesses!(1.1, 1.1, 1.1);
    |
    = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1.1`
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found invisible open delimiter
   --> $DIR/float-field-interpolated.rs:8:13
    |
 LL |         { s.$b; }
@@ -20,8 +20,8 @@ LL |     generate_field_accesses!(1.1, 1.1, 1.1);
    |
    = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: unexpected token: `1.1`
-  --> $DIR/float-field-interpolated.rs:10:13
+error: unexpected token: ``
+  --> $DIR/float-field-interpolated.rs:11:13
    |
 LL |         { s.$c; }
    |             ^^
@@ -31,8 +31,8 @@ LL |     generate_field_accesses!(1.1, 1.1, 1.1);
    |
    = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: expected one of `.`, `;`, `?`, `}`, or an operator, found `1.1`
-  --> $DIR/float-field-interpolated.rs:10:13
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found invisible open delimiter
+  --> $DIR/float-field-interpolated.rs:11:13
    |
 LL |         { s.$c; }
    |             ^^ expected one of `.`, `;`, `?`, `}`, or an operator

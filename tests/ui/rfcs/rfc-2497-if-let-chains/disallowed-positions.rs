@@ -100,9 +100,13 @@ fn _macros() {
     //~^ ERROR `let` expressions are not supported here
     //~| ERROR `let` expressions are not supported here
     //~| ERROR expected expression, found `let` statement
+    //~| ERROR expected expression, found `let` statement
+    //~| ERROR expected expression, found `let` statement
     use_expr!((let 0 = 1));
     //~^ ERROR `let` expressions are not supported here
     //~| ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
+    //~| ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
 }
 

@@ -77,10 +77,14 @@ fn _macros() {
     }
     use_expr!((let 0 = 1 && 0 == 0));
     //~^ ERROR `let` expressions in this position are unstable
+    //~| ERROR `let` expressions in this position are unstable
+    //~| ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
     //~| ERROR `let` expressions are not supported here
     use_expr!((let 0 = 1));
     //~^ ERROR `let` expressions in this position are unstable
+    //~| ERROR `let` expressions in this position are unstable
+    //~| ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
     //~| ERROR `let` expressions are not supported here
     match () {

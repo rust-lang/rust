@@ -88,6 +88,7 @@ pub enum TrailingToken {
     MaybeComma,
 }
 
+// njn: hmm, will need to match InvisibleSource::ProcMacro eventually?
 /// Reparses an invisible-delimited sequence produced by expansion of a
 /// declarative macro metavariable. Will panic if called with a `self.token`
 /// that is not an `InvisibleSource::Metavar` invisible open delimiter.
@@ -101,7 +102,15 @@ macro_rules! reparse_metavar_seq {
         let Ok($nt_res) = $p.parse_nonterminal($nt_kind) else {
             panic!("failed to reparse");
         };
-        $p.expect(&token::CloseDelim(delim)).expect("no close delim when reparsing");
+        //$p.expect(&token::CloseDelim(delim)).expect("no close delim when reparsing");
+        // njn: failures here somehow related to TrailingToken::MaybeComma?
+        // Sometimes see a trailing comma here. See the FIXME in
+        // collect_tokens_for_expr
+        let res = $p.expect(&token::CloseDelim(delim));
+        match res {
+            Ok(_) => {}
+            Err(_) => panic!("no close delim when reparsing: {:?}", $p.token),
+        }
         $ret
     }};
 }
@@ -1175,6 +1184,32 @@ impl<'a> Parser<'a> {
         looker(&token)
     }
 
+    /// njn: comment, explain non-zero dist requirements
+    pub fn tree_look_ahead<R: std::fmt::Debug>(
+        // njn: remove Debug
+        &self,
+        dist: usize,
+        looker: impl FnOnce(&Token) -> R,
+    ) -> Option<R> {
+        assert_ne!(dist, 0);
+
+        let tree_cursor = self.token_cursor.tree_cursor.clone();
+        // njn: remove x and y
+        let x = tree_cursor.look_ahead(dist - 1);
+        //eprintln!("x = `{x:#?}`");
+        match x {
+            Some(TokenTree::Token(token, _)) => {
+                let y = Some(looker(token));
+                //eprintln!("=> {y:?}");
+                y
+            }
+            _ => {
+                //eprintln!("=> None");
+                None
+            }
+        }
+    }
+
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
     fn is_keyword_ahead(&self, dist: usize, kws: &[Symbol]) -> bool {
         self.look_ahead(dist, |t| kws.iter().any(|&kw| t.is_keyword(kw)))
@@ -1518,6 +1553,22 @@ impl<'a> Parser<'a> {
     pub fn approx_token_stream_pos(&self) -> usize {
         self.num_bump_calls
     }
+
+    // njn: comment
+    // njn: rename?
+    pub fn uninterpolated_token_span(&self) -> Span {
+        match &self.token.kind {
+            token::Interpolated(nt) => nt.span(),
+            // njn: this pretty much assumes that it'll be a single token
+            // between the invisible delims. True for ident,lifetime, most
+            // literals, not true for `-1`. Could try to be more precise, match
+            // on the NonterminalKind as well
+            token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(_))) => {
+                self.look_ahead(1, |t| t.span)
+            }
+            _ => self.token.span,
+        }
+    }
 }
 
 pub(crate) fn make_unclosed_delims_error(
@@ -1577,6 +1628,8 @@ pub enum ParseNtResult {
     Stmt(P<ast::Stmt>),
     PatParam(P<ast::Pat>, /* inferred */ bool),
     PatWithOr(P<ast::Pat>),
+    Expr(P<ast::Expr>), // njn: combine with Literal?
+    Literal(P<ast::Expr>),
     Ty(P<ast::Ty>),
     Meta(P<ast::AttrItem>),
     Path(P<ast::Path>),

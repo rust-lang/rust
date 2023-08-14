@@ -384,6 +384,7 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
         LitError::LexerError => {}
         LitError::InvalidSuffix => {
             if let Some(suffix) = suffix {
+                //eprintln!("EMIT {span:?}");
                 sess.emit_err(InvalidLiteralSuffix { span, kind: kind.descr(), suffix });
             }
         }

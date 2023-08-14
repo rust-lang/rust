@@ -28,8 +28,8 @@ struct S9;
 macro_rules! generate_s10 {
     ($expr: expr) => {
         #[cfg(feature = $expr)]
-        //~^ ERROR expected unsuffixed literal or identifier, found `concat!("nonexistent")`
-        //~| ERROR expected unsuffixed literal or identifier, found `concat!("nonexistent")`
+        //~^ ERROR expected unsuffixed literal or identifier, found ``
+        //~| ERROR expected unsuffixed literal or identifier, found ``
         struct S10;
     }
 }
@@ -37,3 +37,5 @@ macro_rules! generate_s10 {
 generate_s10!(concat!("nonexistent"));
 
 fn main() {}
+
+// njn: error messages aren't good, could be improved

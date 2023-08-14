@@ -790,10 +790,8 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
 // multiple items there....
 pub fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
     match nt {
-        token::NtExpr(expr) => vis.visit_expr(expr),
         token::NtIdent(ident, _is_raw) => vis.visit_ident(ident),
         token::NtLifetime(ident) => vis.visit_ident(ident),
-        token::NtLiteral(expr) => vis.visit_expr(expr),
     }
 }
 
