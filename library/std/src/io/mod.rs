@@ -243,7 +243,7 @@
 //! Rust follows an [I/O safety] discipline that is comparable to its memory safety discipline. This
 //! means that file descriptors can be *exclusively owned*. (Here, "file descriptor" is meant to
 //! subsume similar concepts that exist across a wide range of operating systems even if they might
-//! use a different name, such as "handle".) An exclusivley owned file descriptor is one that no
+//! use a different name, such as "handle".) An exclusively owned file descriptor is one that no
 //! other code is allowed to close, but the owner is allowed to close it any time. A type that owns
 //! its file descriptor should close it in its `drop` function. Types like [`File`] generally own
 //! their file descriptor. Similarly, file descriptors can be *borrowed*. This indicates that the

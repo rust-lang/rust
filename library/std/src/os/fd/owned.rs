@@ -43,7 +43,7 @@ pub struct BorrowedFd<'fd> {
 
 /// An owned file descriptor.
 ///
-/// This closes the file descriptor on drop. It is guarantees that nobody else will close the file
+/// This closes the file descriptor on drop. It is guaranteed that nobody else will close the file
 /// descriptor.
 ///
 /// This uses `repr(transparent)` and has the representation of a host file
