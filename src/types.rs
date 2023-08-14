@@ -892,7 +892,6 @@ fn rewrite_bare_fn(
     result.push_str(&format_extern(
         bare_fn.ext,
         context.config.force_explicit_abi(),
-        false,
     ));
 
     result.push_str("fn");

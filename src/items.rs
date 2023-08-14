@@ -248,7 +248,6 @@ impl<'a> Item<'a> {
             abi: format_extern(
                 ast::Extern::from_abi(fm.abi, DUMMY_SP),
                 config.force_explicit_abi(),
-                true,
             ),
             vis: None,
             body: fm
@@ -336,7 +335,6 @@ impl<'a> FnSig<'a> {
         result.push_str(&format_extern(
             self.ext,
             context.config.force_explicit_abi(),
-            false,
         ));
         result
     }

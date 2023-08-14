@@ -131,23 +131,18 @@ pub(crate) fn format_mutability(mutability: ast::Mutability) -> &'static str {
 }
 
 #[inline]
-pub(crate) fn format_extern(
-    ext: ast::Extern,
-    explicit_abi: bool,
-    is_mod: bool,
-) -> Cow<'static, str> {
-    let abi = match ext {
-        ast::Extern::None => "Rust".to_owned(),
-        ast::Extern::Implicit(_) => "C".to_owned(),
-        ast::Extern::Explicit(abi, _) => abi.symbol_unescaped.to_string(),
-    };
-
-    if abi == "Rust" && !is_mod {
-        Cow::from("")
-    } else if abi == "C" && !explicit_abi {
-        Cow::from("extern ")
-    } else {
-        Cow::from(format!(r#"extern "{abi}" "#))
+pub(crate) fn format_extern(ext: ast::Extern, explicit_abi: bool) -> Cow<'static, str> {
+    match ext {
+        ast::Extern::None => Cow::from(""),
+        ast::Extern::Implicit(_) if explicit_abi => Cow::from("extern \"C\" "),
+        ast::Extern::Implicit(_) => Cow::from("extern "),
+        // turn `extern "C"` into `extern` when `explicit_abi` is set to false
+        ast::Extern::Explicit(abi, _) if abi.symbol_unescaped == sym::C && !explicit_abi => {
+            Cow::from("extern ")
+        }
+        ast::Extern::Explicit(abi, _) => {
+            Cow::from(format!(r#"extern "{}" "#, abi.symbol_unescaped))
+        }
     }
 }
 
