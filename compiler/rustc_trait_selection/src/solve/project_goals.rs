@@ -497,7 +497,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         )
     }
 
-    fn consider_builtin_unsize_candidates(
+    fn consider_unsize_to_dyn_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`Unsize` does not have an associated type: {:?}", goal)
+    }
+
+    fn consider_structural_builtin_unsize_candidates(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)> {
