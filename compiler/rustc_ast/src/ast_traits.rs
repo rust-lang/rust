@@ -231,13 +231,11 @@ impl HasTokens for Attribute {
 impl HasTokens for Nonterminal {
     fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         match self {
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens(),
             Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
         }
     }
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
         match self {
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens_mut(),
             Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
         }
     }

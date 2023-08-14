@@ -1163,6 +1163,8 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Unsafe)
             && self.is_keyword_ahead(1, &[kw::Extern])
             && self.look_ahead(
+                // njn: won't work with interpolate?
+                // njn: need to check all look_ahead calls for problems?
                 2 + self.look_ahead(2, |t| t.can_begin_literal_maybe_minus() as usize),
                 |t| t.kind == token::OpenDelim(Delimiter::Brace),
             )
@@ -2322,12 +2324,15 @@ impl<'a> Parser<'a> {
                 })
             // `extern ABI fn`
             || self.check_keyword_case(kw::Extern, case)
+                // njn: explain tree_look_ahead
                 && self.look_ahead(1, |t| t.can_begin_literal_maybe_minus())
-                && (self.look_ahead(2, |t| t.is_keyword_case(kw::Fn, case)) ||
+                && (self.tree_look_ahead(2, |t| t.is_keyword_case(kw::Fn, case)) == Some(true) ||
                     // this branch is only for better diagnostic in later, `pub` is not allowed here
                     (self.may_recover()
-                        && self.look_ahead(2, |t| t.is_keyword(kw::Pub))
-                        && self.look_ahead(3, |t| t.is_keyword_case(kw::Fn, case))))
+                        && self.tree_look_ahead(2, |t| t.is_keyword(kw::Pub)) == Some(true)
+                        && self.tree_look_ahead(3, |t| t.is_keyword_case(kw::Fn, case)) == Some(true)
+                    )
+                   )
     }
 
     /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,

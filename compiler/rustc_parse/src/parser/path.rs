@@ -193,6 +193,7 @@ impl<'a> Parser<'a> {
         if let Some(NonterminalKind::Ty) = self.token.is_metavar_seq() {
             let mut self2 = self.clone();
             let ty =
+                // njn: qual
                 crate::reparse_metavar_seq!(self2, NonterminalKind::Ty, ParseNtResult::Ty(ty), ty);
             if let ast::TyKind::Path(None, path) = ty.into_inner().kind {
                 *self = self2;

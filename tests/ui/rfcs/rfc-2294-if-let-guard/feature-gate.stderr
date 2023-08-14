@@ -59,13 +59,25 @@ LL |     use_expr!((let 0 = 1 && 0 == 0));
    |                ^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:82:16
+  --> $DIR/feature-gate.rs:78:16
+   |
+LL |     use_expr!((let 0 = 1 && 0 == 0));
+   |                ^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/feature-gate.rs:84:16
+   |
+LL |     use_expr!((let 0 = 1));
+   |                ^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/feature-gate.rs:84:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^
 
 error: no rules expected the token `let`
-  --> $DIR/feature-gate.rs:92:15
+  --> $DIR/feature-gate.rs:96:15
    |
 LL |     macro_rules! use_expr {
    |     --------------------- when calling this macro
@@ -210,14 +222,14 @@ LL |     use_expr!((let 0 = 1 && 0 == 0));
    |                ^^^^^^^^^^^^^^^^^^^
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:82:16
+  --> $DIR/feature-gate.rs:84:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^^^^^^^
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
-  --> $DIR/feature-gate.rs:82:16
+  --> $DIR/feature-gate.rs:84:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^^^^^^^
@@ -273,7 +285,7 @@ LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `if let` guards are experimental
-  --> $DIR/feature-gate.rs:88:12
+  --> $DIR/feature-gate.rs:92:12
    |
 LL |         () if let 0 = 1 => {}
    |            ^^^^^^^^^^^^
@@ -418,7 +430,16 @@ LL |     use_expr!((let 0 = 1 && 0 == 0));
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are unstable
-  --> $DIR/feature-gate.rs:82:16
+  --> $DIR/feature-gate.rs:78:16
+   |
+LL |     use_expr!((let 0 = 1 && 0 == 0));
+   |                ^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/feature-gate.rs:84:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^^^^^^^
@@ -426,6 +447,15 @@ LL |     use_expr!((let 0 = 1));
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
-error: aborting due to 45 previous errors
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/feature-gate.rs:84:16
+   |
+LL |     use_expr!((let 0 = 1));
+   |                ^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error: aborting due to 49 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

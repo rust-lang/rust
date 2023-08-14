@@ -221,6 +221,9 @@ pub(super) fn transcribe<'a>(
                         // Emit as a token stream within `Delimiter::Invisible` to maintain parsing
                         // priorities.
                         marker.visit_span(&mut sp);
+                        // njn: `sp` usage here means that both the open delim
+                        // and close delim end up with the same span, which
+                        // covers the `$foo` in the decl macro RHS
                         TokenTree::Delimited(
                             DelimSpan::from_single(sp),
                             Delimiter::Invisible(InvisibleSource::MetaVar(nt_kind)),
@@ -254,6 +257,12 @@ pub(super) fn transcribe<'a>(
                         ),
                         MatchedSingle(ParseNtResult::PatWithOr(ref pat)) => {
                             mk_delimited(NonterminalKind::PatWithOr, TokenStream::from_ast(pat))
+                        }
+                        MatchedSingle(ParseNtResult::Expr(ref expr)) => {
+                            mk_delimited(NonterminalKind::Expr, TokenStream::from_ast(expr))
+                        }
+                        MatchedSingle(ParseNtResult::Literal(ref expr)) => {
+                            mk_delimited(NonterminalKind::Literal, TokenStream::from_ast(expr))
                         }
                         MatchedSingle(ParseNtResult::Ty(ref ty)) => {
                             mk_delimited(NonterminalKind::Ty, TokenStream::from_ast(ty))

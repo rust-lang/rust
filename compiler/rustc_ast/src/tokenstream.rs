@@ -444,6 +444,7 @@ impl TokenStream {
         let Some(tokens) = node.tokens() else {
             panic!("missing tokens for node at {:?}: {:?}", node.span(), node);
         };
+        //eprintln!("from_ast: {tokens:#?}");
         let attrs = node.attrs();
         let attr_stream = if attrs.is_empty() {
             tokens.to_attr_token_stream()
@@ -463,7 +464,6 @@ impl TokenStream {
             Nonterminal::NtLifetime(ident) => {
                 TokenStream::token_alone(token::Lifetime(ident.name), ident.span)
             }
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => TokenStream::from_ast(expr),
         }
     }
 

@@ -5,13 +5,17 @@ macro_rules! generate_field_accesses {
         let s = S(0, (0, 0));
 
         s.$a; // OK
-        { s.$b; } //~ ERROR unexpected token: `1.1`
-                  //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `1.1`
-        { s.$c; } //~ ERROR unexpected token: `1.1`
-                  //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `1.1`
+        { s.$b; }
+        //~^ ERROR unexpected token: ``
+        //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found invisible open delimiter
+        { s.$c; }
+        //~^ ERROR unexpected token: ``
+        //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found invisible open delimiter
     };
 }
 
 fn main() {
     generate_field_accesses!(1.1, 1.1, 1.1);
 }
+
+// njn: error messages aren't good, could do better

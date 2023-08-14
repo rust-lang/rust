@@ -4,7 +4,6 @@ pub use Nonterminal::*;
 pub use TokenKind::*;
 
 use crate::ast;
-use crate::ptr::P;
 use crate::util::case::Case;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -134,18 +133,27 @@ impl Lit {
         }
     }
 
-    /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
+    /// Keep this in sync with `Token::can_begin_literal_maybe_minus` and
+    /// `Parser::maybe_parse_token_lit` (excluding unary negation).
     pub fn from_token(token: &Token) -> Option<Lit> {
         match token.uninterpolate().kind {
-            Ident(name, false) if name.is_bool_lit() => {
-                Some(Lit::new(Bool, name, None))
-            }
+            Ident(name, false) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
             Literal(token_lit) => Some(token_lit),
-            Interpolated(ref nt)
-                if let NtExpr(expr) | NtLiteral(expr) = &**nt
-                && let ast::ExprKind::Lit(token_lit) = expr.kind =>
-            {
-                Some(token_lit)
+            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(NonterminalKind::Literal))) => {
+                panic!("njn: FROM_TOKEN (1)");
+                // if let NtExpr(expr) | NtLiteral(expr) = &**nt
+                // && let ast::ExprKind::Lit(token_lit) = expr.kind =>
+                // {
+                //     Some(token_lit)
+                // }
+            }
+            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(NonterminalKind::Expr))) => {
+                panic!("njn: FROM_TOKEN (2)");
+                // if let NtExpr(expr) | NtLiteral(expr) = &**nt
+                // && let ast::ExprKind::Lit(token_lit) = expr.kind =>
+                // {
+                //     Some(token_lit)
+                // }
             }
             _ => None,
         }
@@ -417,6 +425,7 @@ impl Token {
         Token::new(Ident(ident.name, ident.is_raw_guess()), ident.span)
     }
 
+    /// njn: phase this out in favour of Parser::uninterpolated_span
     /// For interpolated tokens, returns a span of the fragment to which the interpolated
     /// token refers. For all other tokens this is just a regular span.
     /// It is particularly important to use this for identifiers and lifetimes
@@ -469,9 +478,11 @@ impl Token {
             ModSep                            | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
-            Interpolated(ref nt) => matches!(**nt, NtLiteral(..) | NtExpr(..)),
             OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
-                NonterminalKind::Block | NonterminalKind::Path
+                NonterminalKind::Block |
+                NonterminalKind::Expr |
+                NonterminalKind::Literal |
+                NonterminalKind::Path
             )))
                 => true,
             _ => false,
@@ -494,12 +505,12 @@ impl Token {
             | DotDot | DotDotDot | DotDotEq      // ranges
             | Lt | BinOp(Shl)                    // associated path
             | ModSep => true,                    // global path
-            Interpolated(ref nt) => matches!(**nt, NtLiteral(..)),
             | OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
                 NonterminalKind::Block |
                 NonterminalKind::PatParam { .. } |
                 NonterminalKind::PatWithOr |
-                NonterminalKind::Path
+                NonterminalKind::Path |
+                NonterminalKind::Literal
             ))) => true,
             _ => false,
         }
@@ -532,10 +543,9 @@ impl Token {
     pub fn can_begin_const_arg(&self) -> bool {
         match self.kind {
             OpenDelim(Delimiter::Brace) => true,
-            Interpolated(ref nt) => matches!(**nt, NtExpr(..) | NtLiteral(..)),
-            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(NonterminalKind::Block))) => {
-                true
-            }
+            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
+                NonterminalKind::Block | NonterminalKind::Expr | NonterminalKind::Literal,
+            ))) => true,
             _ => self.can_begin_literal_maybe_minus(),
         }
     }
@@ -584,22 +594,15 @@ impl Token {
     ///
     /// In other words, would this token be a valid start of `parse_literal_maybe_minus`?
     ///
-    /// Keep this in sync with and `Lit::from_token`, excluding unary negation.
+    /// Keep this in sync with `Lit::from_token` and
+    /// `Parser::maybe_parse_token_lit` (excluding unary negation).
     pub fn can_begin_literal_maybe_minus(&self) -> bool {
         match self.uninterpolate().kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,
-            Interpolated(ref nt) => match &**nt {
-                NtLiteral(_) => true,
-                NtExpr(e) => match &e.kind {
-                    ast::ExprKind::Lit(_) => true,
-                    ast::ExprKind::Unary(ast::UnOp::Neg, e) => {
-                        matches!(&e.kind, ast::ExprKind::Lit(_))
-                    }
-                    _ => false,
-                },
-                _ => false,
-            },
+            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
+                NonterminalKind::Literal | NonterminalKind::Expr,
+            ))) => true,
             _ => false,
         }
     }
@@ -615,7 +618,6 @@ impl Token {
                     Cow::Owned(Token::new(Ident(ident.name, is_raw), ident.span))
                 }
                 NtLifetime(ident) => Cow::Owned(Token::new(Lifetime(ident.name), ident.span)),
-                _ => Cow::Borrowed(self),
             },
             _ => Cow::Borrowed(self),
         }
@@ -665,22 +667,19 @@ impl Token {
         self.ident().is_some_and(|(ident, _)| ident.name == name)
     }
 
-    /// Would `maybe_whole_expr` in `parser.rs` return `Ok(..)`?
+    /// Would `maybe_reparse_metavar_expr` in `parser.rs` return `Ok(..)`?
     /// That is, is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
-    pub fn is_whole_expr(&self) -> bool {
-        if let Interpolated(nt) = &self.kind
-            && let NtExpr(_) | NtLiteral(_) = **nt
-        {
-            true
-        } else if matches!(
+    pub fn is_metavar_expr(&self) -> bool {
+        matches!(
             self.is_metavar_seq(),
-            Some(NonterminalKind::Block | NonterminalKind::Path)
-        ) {
-            true
-        } else {
-            false
-        }
+            Some(
+                NonterminalKind::Expr
+                    | NonterminalKind::Literal
+                    | NonterminalKind::Block
+                    | NonterminalKind::Path
+            )
+        )
     }
 
     /// Are we at a block from a metavar (`$b:block`)?
@@ -843,10 +842,8 @@ impl PartialEq<TokenKind> for Token {
 #[derive(Clone, Encodable, Decodable)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
-    NtExpr(P<ast::Expr>),
     NtIdent(Ident, /* is_raw */ bool),
     NtLifetime(Ident),
-    NtLiteral(P<ast::Expr>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
@@ -930,7 +927,6 @@ impl fmt::Display for NonterminalKind {
 impl Nonterminal {
     pub fn span(&self) -> Span {
         match self {
-            NtExpr(expr) | NtLiteral(expr) => expr.span,
             NtIdent(ident, _) | NtLifetime(ident) => ident.span,
         }
     }
@@ -955,9 +951,7 @@ impl PartialEq for Nonterminal {
 impl fmt::Debug for Nonterminal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            NtExpr(..) => f.pad("NtExpr(..)"),
             NtIdent(..) => f.pad("NtIdent(..)"),
-            NtLiteral(..) => f.pad("NtLiteral(..)"),
             NtLifetime(..) => f.pad("NtLifetime(..)"),
         }
     }
