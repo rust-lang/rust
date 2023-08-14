@@ -240,7 +240,7 @@
 //!
 //! ## I/O Safety
 //!
-//! Rust follows an [I/O safety] discipline that is comparable to its memory safety discipline. This
+//! Rust follows an I/O safety discipline that is comparable to its memory safety discipline. This
 //! means that file descriptors can be *exclusively owned*. (Here, "file descriptor" is meant to
 //! subsume similar concepts that exist across a wide range of operating systems even if they might
 //! use a different name, such as "handle".) An exclusively owned file descriptor is one that no
@@ -280,7 +280,6 @@
 //! [`?` operator]: ../../book/appendix-02-operators.html
 //! [`Result`]: crate::result::Result
 //! [`.unwrap()`]: crate::result::Result::unwrap
-//! [I/O safety]: https://rust-lang.github.io/rfcs/3128-io-safety.html
 //! [`os::unix`]: ../os/unix/io/index.html
 //! [`os::windows`]: ../os/windows/io/index.html
 //! [`OwnedFd`]: ../os/fd/struct.OwnedFd.html
