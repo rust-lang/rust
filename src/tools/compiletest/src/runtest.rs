@@ -6,8 +6,8 @@ use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, RustdocJs
 use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
 use crate::common::{CompareMode, FailMode, PassMode};
 use crate::common::{Config, TestPaths};
-use crate::common::{Pretty, RunCoverage, RunPassValgrind};
-use crate::common::{UI_COVERAGE, UI_RUN_STDERR, UI_RUN_STDOUT};
+use crate::common::{CoverageMap, Pretty, RunCoverage, RunPassValgrind};
+use crate::common::{UI_COVERAGE, UI_COVERAGE_MAP, UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::compute_diff::{write_diff, write_filtered_diff};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
@@ -254,6 +254,7 @@ impl<'test> TestCx<'test> {
             MirOpt => self.run_mir_opt_test(),
             Assembly => self.run_assembly_test(),
             JsDocTest => self.run_js_doc_test(),
+            CoverageMap => self.run_coverage_map_test(),
             RunCoverage => self.run_coverage_test(),
         }
     }
@@ -467,6 +468,46 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn run_coverage_map_test(&self) {
+        let Some(coverage_dump_path) = &self.config.coverage_dump_path else {
+            self.fatal("missing --coverage-dump");
+        };
+
+        let proc_res = self.compile_test_and_save_ir();
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("compilation failed!", &proc_res);
+        }
+        drop(proc_res);
+
+        let llvm_ir_path = self.output_base_name().with_extension("ll");
+
+        let mut dump_command = Command::new(coverage_dump_path);
+        dump_command.arg(llvm_ir_path);
+        let proc_res = self.run_command_to_procres(&mut dump_command);
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("coverage-dump failed!", &proc_res);
+        }
+
+        let kind = UI_COVERAGE_MAP;
+
+        let expected_coverage_dump = self.load_expected_output(kind);
+        let actual_coverage_dump = self.normalize_output(&proc_res.stdout, &[]);
+
+        let coverage_dump_errors = self.compare_output(
+            kind,
+            &actual_coverage_dump,
+            &expected_coverage_dump,
+            self.props.compare_output_lines_by_subset,
+        );
+
+        if coverage_dump_errors > 0 {
+            self.fatal_proc_rec(
+                &format!("{coverage_dump_errors} errors occurred comparing coverage output."),
+                &proc_res,
+            );
+        }
+    }
+
     fn run_coverage_test(&self) {
         let should_run = self.run_if_enabled();
         let proc_res = self.compile_test(should_run, Emit::None);
@@ -650,6 +691,10 @@ impl<'test> TestCx<'test> {
         let mut cmd = Command::new(tool_path);
         configure_cmd_fn(&mut cmd);
 
+        self.run_command_to_procres(&mut cmd)
+    }
+
+    fn run_command_to_procres(&self, cmd: &mut Command) -> ProcRes {
         let output = cmd.output().unwrap_or_else(|_| panic!("failed to exec `{cmd:?}`"));
 
         let proc_res = ProcRes {
@@ -2321,9 +2366,11 @@ impl<'test> TestCx<'test> {
                     }
                 }
                 DebugInfo => { /* debuginfo tests must be unoptimized */ }
-                RunCoverage => {
-                    // Coverage reports are affected by optimization level, and
-                    // the current snapshots assume no optimization by default.
+                CoverageMap | RunCoverage => {
+                    // Coverage mappings and coverage reports are affected by
+                    // optimization level, so they ignore the optimize-tests
+                    // setting and set an optimization level in their mode's
+                    // compile flags (below) or in per-test `compile-flags`.
                 }
                 _ => {
                     rustc.arg("-O");
@@ -2392,8 +2439,22 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
+            CoverageMap => {
+                rustc.arg("-Cinstrument-coverage");
+                // These tests only compile to MIR, so they don't need the
+                // profiler runtime to be present.
+                rustc.arg("-Zno-profiler-runtime");
+                // Coverage mappings are sensitive to MIR optimizations, and
+                // the current snapshots assume `opt-level=2` unless overridden
+                // by `compile-flags`.
+                rustc.arg("-Copt-level=2");
+            }
             RunCoverage => {
                 rustc.arg("-Cinstrument-coverage");
+                // Coverage reports are sometimes sensitive to optimizations,
+                // and the current snapshots assume no optimization unless
+                // overridden by `compile-flags`.
+                rustc.arg("-Copt-level=0");
             }
             RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson | RunMake
             | CodegenUnits | JsDocTest | Assembly => {

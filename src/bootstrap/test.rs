@@ -1340,6 +1340,12 @@ host_test!(RunMakeFullDeps {
 
 default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
 
+default_test!(CoverageMap {
+    path: "tests/coverage-map",
+    mode: "coverage-map",
+    suite: "coverage-map"
+});
+
 host_test!(RunCoverage { path: "tests/run-coverage", mode: "run-coverage", suite: "run-coverage" });
 host_test!(RunCoverageRustdoc {
     path: "tests/run-coverage-rustdoc",
@@ -1543,6 +1549,14 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }));
             cmd.arg("--jsondoclint-path")
                 .arg(builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }));
+        }
+
+        if mode == "coverage-map" {
+            let coverage_dump = builder.ensure(tool::CoverageDump {
+                compiler: compiler.with_stage(0),
+                target: compiler.host,
+            });
+            cmd.arg("--coverage-dump-path").arg(coverage_dump);
         }
 
         if mode == "run-make" || mode == "run-coverage" {
