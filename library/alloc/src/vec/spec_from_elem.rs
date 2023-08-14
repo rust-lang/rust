@@ -68,7 +68,7 @@ impl SpecFromElem for bool {
         }
         unsafe {
             let mut v = Vec::with_capacity_in(n, alloc);
-            ptr::write_bytes(v.as_mut_ptr(), 1u8, n);
+            ptr::write_bytes(v.as_mut_ptr(), elem as u8, n);
             v.set_len(n);
             v
         }
