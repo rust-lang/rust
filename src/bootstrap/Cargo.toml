@@ -36,7 +36,7 @@ filetime = "0.2"
 cc = "1.0.69"
 libc = "0.2"
 hex = "0.4"
-object = { version = "0.31.1", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
+object = { version = "0.32.0", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
 serde = "1.0.137"
 # Directly use serde_derive rather than through the derive feature of serde to allow building both
 # in parallel and to allow serde_json and toml to start building as soon as serde has been built.

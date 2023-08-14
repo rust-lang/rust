@@ -374,8 +374,7 @@ impl Step for Llvm {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
-        if (target.starts_with("riscv")
-            || target.starts_with("csky"))
+        if (target.starts_with("riscv") || target.starts_with("csky"))
             && !target.contains("freebsd")
             && !target.contains("openbsd")
             && !target.contains("netbsd")
