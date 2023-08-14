@@ -381,7 +381,7 @@ dependencies = [
  "cranelift-native",
  "cranelift-object",
  "gimli 0.28.0",
- "indexmap 1.9.3",
+ "indexmap 2.0.0",
  "libloading",
  "object 0.32.0",
  "smallvec",
