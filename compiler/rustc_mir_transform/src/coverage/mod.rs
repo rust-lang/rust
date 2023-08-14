@@ -106,6 +106,7 @@ struct Instrumentor<'a, 'tcx> {
     source_file: Lrc<SourceFile>,
     fn_sig_span: Span,
     body_span: Span,
+    function_source_hash: u64,
     basic_coverage_blocks: CoverageGraph,
     coverage_counters: CoverageCounters,
 }
@@ -137,7 +138,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         let function_source_hash = hash_mir_source(tcx, hir_body);
         let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
-        let coverage_counters = CoverageCounters::new(function_source_hash, &basic_coverage_blocks);
+        let coverage_counters = CoverageCounters::new(&basic_coverage_blocks);
 
         Self {
             pass_name,
@@ -146,6 +147,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             source_file,
             fn_sig_span,
             body_span,
+            function_source_hash,
             basic_coverage_blocks,
             coverage_counters,
         }
@@ -435,8 +437,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
     fn make_mir_coverage_kind(&self, counter_kind: &BcbCounter) -> CoverageKind {
         match *counter_kind {
-            BcbCounter::Counter { function_source_hash, id } => {
-                CoverageKind::Counter { function_source_hash, id }
+            BcbCounter::Counter { id } => {
+                CoverageKind::Counter { function_source_hash: self.function_source_hash, id }
             }
             BcbCounter::Expression { id, lhs, op, rhs } => {
                 CoverageKind::Expression { id, lhs, op, rhs }

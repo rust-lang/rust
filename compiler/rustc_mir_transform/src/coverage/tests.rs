@@ -674,7 +674,7 @@ fn test_make_bcb_counters() {
                 ));
             }
         }
-        let mut coverage_counters = counters::CoverageCounters::new(0, &basic_coverage_blocks);
+        let mut coverage_counters = counters::CoverageCounters::new(&basic_coverage_blocks);
         coverage_counters
             .make_bcb_counters(&mut basic_coverage_blocks, &coverage_spans)
             .expect("should be Ok");

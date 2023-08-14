@@ -20,7 +20,7 @@ use std::fmt::{self, Debug};
 /// BCB node or BCB edge.
 #[derive(Clone)]
 pub(super) enum BcbCounter {
-    Counter { function_source_hash: u64, id: CounterId },
+    Counter { id: CounterId },
     Expression { id: ExpressionId, lhs: Operand, op: Op, rhs: Operand },
 }
 
@@ -59,7 +59,6 @@ impl Debug for BcbCounter {
 /// Generates and stores coverage counter and coverage expression information
 /// associated with nodes/edges in the BCB graph.
 pub(super) struct CoverageCounters {
-    function_source_hash: u64,
     next_counter_id: CounterId,
     next_expression_id: ExpressionId,
 
@@ -81,11 +80,10 @@ pub(super) struct CoverageCounters {
 }
 
 impl CoverageCounters {
-    pub(super) fn new(function_source_hash: u64, basic_coverage_blocks: &CoverageGraph) -> Self {
+    pub(super) fn new(basic_coverage_blocks: &CoverageGraph) -> Self {
         let num_bcbs = basic_coverage_blocks.num_nodes();
 
         Self {
-            function_source_hash,
             next_counter_id: CounterId::START,
             next_expression_id: ExpressionId::START,
 
@@ -119,10 +117,7 @@ impl CoverageCounters {
     where
         F: Fn() -> Option<String>,
     {
-        let counter = BcbCounter::Counter {
-            function_source_hash: self.function_source_hash,
-            id: self.next_counter(),
-        };
+        let counter = BcbCounter::Counter { id: self.next_counter() };
         if self.debug_counters.is_enabled() {
             self.debug_counters.add_counter(&counter, (debug_block_label_fn)());
         }
