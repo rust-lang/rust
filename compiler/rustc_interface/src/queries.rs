@@ -174,7 +174,7 @@ impl<'tcx> Queries<'tcx> {
             let (krate, pre_configured_attrs) = self.pre_configure()?.steal();
 
             // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
-            let crate_name = find_crate_name(self.session(), &pre_configured_attrs);
+            let crate_name = find_crate_name(sess, &pre_configured_attrs);
             let crate_types = util::collect_crate_types(sess, &pre_configured_attrs);
             let stable_crate_id = StableCrateId::new(
                 crate_name,
