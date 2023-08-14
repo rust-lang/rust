@@ -4,16 +4,14 @@ error[E0599]: no method named `x` found for struct `S` in the current scope
 LL | struct S;
    | -------- method `x` not found for this struct
 ...
-LL |     fn x(self: Pin<&mut Self>) {
-   |        - the method is available for `Pin<&mut S>` here
-...
 LL |     S.x();
    |       ^ method not found in `S`
    |
-help: consider wrapping the receiver expression with the appropriate type
+help: consider pinning the expression
    |
-LL |     Pin::new(&mut S).x();
-   |     +++++++++++++  +
+LL ~     let mut pinned = std::pin::pin!(S);
+LL ~     pinned.as_mut().x();
+   |
 
 error: aborting due to previous error
 

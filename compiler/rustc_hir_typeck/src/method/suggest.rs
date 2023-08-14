@@ -2496,13 +2496,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // FIXME: probe for all types that *could* be arbitrary self-types, not
             // just this list.
             for (rcvr_ty, post, pin_call) in &[
-                (rcvr_ty, "", ""),
+                (rcvr_ty, "", None),
                 (
                     Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_erased, rcvr_ty),
                     "&mut ",
-                    "as_mut",
+                    Some("as_mut"),
                 ),
-                (Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rcvr_ty), "&", "as_ref"),
+                (
+                    Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rcvr_ty),
+                    "&",
+                    Some("as_ref"),
+                ),
             ] {
                 match self.lookup_probe_for_diagnostic(
                     item_name,
@@ -2594,13 +2598,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                // We special case the situation where `Pin::new` wouldn't work, and isntead
+                // We special case the situation where `Pin::new` wouldn't work, and instead
                 // suggest using the `pin!()` macro instead.
                 if let Some(new_rcvr_t) = Ty::new_lang_item(self.tcx, *rcvr_ty, LangItem::Pin)
+                    // We didn't find an alternative receiver for the method.
                     && !alt_rcvr_sugg
+                    // `T: !Unpin`
                     && !unpin
+                    // The method isn't `as_ref`, as it would provide a wrong suggestion for `Pin`.
                     && sym::as_ref != item_name.name
-                    && *pin_call != ""
+                    // Either `Pin::as_ref` or `Pin::as_mut`.
+                    && let Some(pin_call) = pin_call
+                    // Search for `item_name` as a method accessible on `Pin<T>`.
                     && let Ok(pick) = self.lookup_probe_for_diagnostic(
                         item_name,
                         new_rcvr_t,
@@ -2608,8 +2617,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ProbeScope::AllTraits,
                         return_type,
                     )
+                    // We skip some common traits that we don't want to consider because autoderefs
+                    // would take care of them.
                     && !skippable.contains(&Some(pick.item.container_id(self.tcx)))
+                    // We don't want to go through derefs.
                     && pick.autoderefs == 0
+                    // Check that the method of the same name that was found on the new `Pin<T>`
+                    // receiver has the same number of arguments that appear in the user's code.
                     && inputs_len.is_some_and(|inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().skip_binder().inputs().len() == inputs_len)
                 {
                     let indent = self.tcx.sess
