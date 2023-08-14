@@ -146,8 +146,8 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
             examples_percentage: f64,
         ) {
             println!(
-                "| {:<35} | {:>10} | {:>9.1}% | {:>10} | {:>9.1}% |",
-                name, count.with_docs, percentage, count.with_examples, examples_percentage,
+                "| {name:<35} | {:>10} | {percentage:>9.1}% | {:>10} | {:>9.1}% |",
+                count.with_docs, count.with_examples, examples_percentage,
             );
         }
 
@@ -249,7 +249,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
 
                 if let Some(span) = i.span(self.ctx.tcx) {
                     let filename = span.filename(self.ctx.sess());
-                    debug!("counting {:?} {:?} in {:?}", i.type_(), i.name, filename);
+                    debug!("counting {:?} {:?} in {filename:?}", i.type_(), i.name);
                     self.items.entry(filename).or_default().count_item(
                         has_docs,
                         has_doc_example,

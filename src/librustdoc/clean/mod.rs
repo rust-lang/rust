@@ -215,7 +215,7 @@ pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
 ) -> Path {
     let kind = cx.tcx.def_kind(trait_ref.def_id()).into();
     if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
-        span_bug!(cx.tcx.def_span(trait_ref.def_id()), "`TraitRef` had unexpected kind {:?}", kind);
+        span_bug!(cx.tcx.def_span(trait_ref.def_id()), "`TraitRef` had unexpected kind {kind:?}");
     }
     inline::record_extern_fqn(cx, trait_ref.def_id(), kind);
     let path =
@@ -304,7 +304,7 @@ pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Life
         | ty::ReError(_)
         | ty::RePlaceholder(..)
         | ty::ReErased => {
-            debug!("cannot clean region {:?}", region);
+            debug!("cannot clean region {region:?}");
             None
         }
     }
@@ -1867,11 +1867,11 @@ fn normalize<'tcx>(
         .map(|resolved| infcx.resolve_vars_if_possible(resolved.value));
     match normalized {
         Ok(normalized_value) => {
-            debug!("normalized {:?} to {:?}", ty, normalized_value);
+            debug!("normalized {ty:?} to {normalized_value:?}");
             Some(normalized_value)
         }
         Err(err) => {
-            debug!("failed to normalize {:?}: {:?}", ty, err);
+            debug!("failed to normalize {ty:?}: {err:?}");
             None
         }
     }
