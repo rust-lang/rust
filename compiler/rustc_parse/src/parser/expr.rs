@@ -626,8 +626,8 @@ impl<'a> Parser<'a> {
 
     fn parse_expr_prefix_common(&mut self, lo: Span) -> PResult<'a, (Span, P<Expr>)> {
         self.bump();
-        let expr = self.parse_expr_prefix(None);
-        let (span, expr) = self.interpolated_or_expr_span(expr)?;
+        let expr = self.parse_expr_prefix(None)?;
+        let span = self.interpolated_or_expr_span(&expr);
         Ok((lo.to(span), expr))
     }
 
@@ -702,20 +702,12 @@ impl<'a> Parser<'a> {
         self.parse_expr_unary(lo, UnOp::Not)
     }
 
-    /// Returns the span of expr, if it was not interpolated or the span of the interpolated token.
-    fn interpolated_or_expr_span(
-        &self,
-        expr: PResult<'a, P<Expr>>,
-    ) -> PResult<'a, (Span, P<Expr>)> {
-        expr.map(|e| {
-            (
-                match self.prev_token.kind {
-                    TokenKind::Interpolated(..) => self.prev_token.span,
-                    _ => e.span,
-                },
-                e,
-            )
-        })
+    /// Returns the span of expr if it was not interpolated, or the span of the interpolated token.
+    fn interpolated_or_expr_span(&self, expr: &Expr) -> Span {
+        match self.prev_token.kind {
+            TokenKind::Interpolated(..) => self.prev_token.span,
+            _ => expr.span,
+        }
     }
 
     fn parse_assoc_op_cast(
@@ -898,8 +890,8 @@ impl<'a> Parser<'a> {
             self.parse_expr_prefix_range(None)
         } else {
             self.parse_expr_prefix(None)
-        };
-        let (hi, expr) = self.interpolated_or_expr_span(expr)?;
+        }?;
+        let hi = self.interpolated_or_expr_span(&expr);
         let span = lo.to(hi);
         if let Some(lt) = lifetime {
             self.error_remove_borrow_lifetime(span, lt.ident.span);
@@ -930,8 +922,8 @@ impl<'a> Parser<'a> {
     fn parse_expr_dot_or_call(&mut self, attrs: Option<AttrWrapper>) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
         self.collect_tokens_for_expr(attrs, |this, attrs| {
-            let base = this.parse_expr_bottom();
-            let (span, base) = this.interpolated_or_expr_span(base)?;
+            let base = this.parse_expr_bottom()?;
+            let span = this.interpolated_or_expr_span(&base);
             this.parse_expr_dot_or_call_with(base, span, attrs)
         })
     }
