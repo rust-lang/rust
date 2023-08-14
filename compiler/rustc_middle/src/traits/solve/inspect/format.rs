@@ -39,44 +39,49 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         func(&mut ProofTreeFormatter { f: &mut Indentor { f: self.f, on_newline: true } })
     }
 
-    pub(super) fn format_goal_evaluation(&mut self, goal: &GoalEvaluation<'_>) -> std::fmt::Result {
-        let goal_text = match goal.is_normalizes_to_hack {
+    pub(super) fn format_goal_evaluation(&mut self, eval: &GoalEvaluation<'_>) -> std::fmt::Result {
+        let goal_text = match eval.is_normalizes_to_hack {
             IsNormalizesToHack::Yes => "NORMALIZES-TO HACK GOAL",
             IsNormalizesToHack::No => "GOAL",
         };
+        writeln!(self.f, "{}: {:?}", goal_text, eval.uncanonicalized_goal)?;
+        self.nested(|this| this.format_canonical_goal_evaluation(&eval.evaluation))?;
+        if eval.returned_goals.len() > 0 {
+            writeln!(self.f, "NESTED GOALS ADDED TO CALLER: [")?;
+            self.nested(|this| {
+                for goal in eval.returned_goals.iter() {
+                    writeln!(this.f, "ADDED GOAL: {goal:?},")?;
+                }
+                Ok(())
+            })?;
 
-        writeln!(self.f, "{}: {:?}", goal_text, goal.uncanonicalized_goal)?;
-        writeln!(self.f, "CANONICALIZED: {:?}", goal.canonicalized_goal)?;
+            writeln!(self.f, "]")
+        } else {
+            Ok(())
+        }
+    }
 
-        match &goal.kind {
+    pub(super) fn format_canonical_goal_evaluation(
+        &mut self,
+        eval: &CanonicalGoalEvaluation<'_>,
+    ) -> std::fmt::Result {
+        writeln!(self.f, "GOAL: {:?}", eval.goal)?;
+
+        match &eval.kind {
             GoalEvaluationKind::CacheHit(CacheHit::Global) => {
-                writeln!(self.f, "GLOBAL CACHE HIT: {:?}", goal.result)
+                writeln!(self.f, "GLOBAL CACHE HIT: {:?}", eval.result)
             }
             GoalEvaluationKind::CacheHit(CacheHit::Provisional) => {
-                writeln!(self.f, "PROVISIONAL CACHE HIT: {:?}", goal.result)
+                writeln!(self.f, "PROVISIONAL CACHE HIT: {:?}", eval.result)
             }
             GoalEvaluationKind::Uncached { revisions } => {
                 for (n, step) in revisions.iter().enumerate() {
                     writeln!(self.f, "REVISION {n}: {:?}", step.result)?;
                     self.nested(|this| this.format_evaluation_step(step))?;
                 }
-                writeln!(self.f, "RESULT: {:?}", goal.result)
+                writeln!(self.f, "RESULT: {:?}", eval.result)
             }
-        }?;
-
-        if goal.returned_goals.len() > 0 {
-            writeln!(self.f, "NESTED GOALS ADDED TO CALLER: [")?;
-            self.nested(|this| {
-                for goal in goal.returned_goals.iter() {
-                    writeln!(this.f, "ADDED GOAL: {goal:?},")?;
-                }
-                Ok(())
-            })?;
-
-            writeln!(self.f, "]")?;
         }
-
-        Ok(())
     }
 
     pub(super) fn format_evaluation_step(
@@ -88,8 +93,8 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         for candidate in &evaluation_step.candidates {
             self.nested(|this| this.format_candidate(candidate))?;
         }
-        for nested in &evaluation_step.nested_goal_evaluations {
-            self.nested(|this| this.format_nested_goal_evaluation(nested))?;
+        for nested in &evaluation_step.added_goals_evaluations {
+            self.nested(|this| this.format_added_goals_evaluation(nested))?;
         }
 
         Ok(())
@@ -115,20 +120,20 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             for candidate in &candidate.candidates {
                 this.format_candidate(candidate)?;
             }
-            for nested in &candidate.nested_goal_evaluations {
-                this.format_nested_goal_evaluation(nested)?;
+            for nested in &candidate.added_goals_evaluations {
+                this.format_added_goals_evaluation(nested)?;
             }
             Ok(())
         })
     }
 
-    pub(super) fn format_nested_goal_evaluation(
+    pub(super) fn format_added_goals_evaluation(
         &mut self,
-        nested_goal_evaluation: &AddedGoalsEvaluation<'_>,
+        added_goals_evaluation: &AddedGoalsEvaluation<'_>,
     ) -> std::fmt::Result {
-        writeln!(self.f, "TRY_EVALUATE_ADDED_GOALS: {:?}", nested_goal_evaluation.result)?;
+        writeln!(self.f, "TRY_EVALUATE_ADDED_GOALS: {:?}", added_goals_evaluation.result)?;
 
-        for (n, revision) in nested_goal_evaluation.evaluations.iter().enumerate() {
+        for (n, revision) in added_goals_evaluation.evaluations.iter().enumerate() {
             writeln!(self.f, "REVISION {n}")?;
             self.nested(|this| {
                 for goal_evaluation in revision {
