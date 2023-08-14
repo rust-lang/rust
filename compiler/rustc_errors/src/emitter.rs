@@ -273,7 +273,7 @@ pub trait Emitter: Translate {
                             substitution,
                             sugg.substitutions[0].parts[0].span,
                         )) {
-                            " (notice the capitalization)"
+                            " (notice the capitalization or Unicode difference)"
                         } else {
                             ""
                         },
@@ -2709,23 +2709,73 @@ impl Style {
     }
 }
 
-/// Whether the original and suggested code are visually similar enough to warrant extra wording.
+/// Determines if there are potential visual differences between two pieces of code.
+///
+/// This function compares two code snippets, `suggested` and `original_code`, to identify
+/// potential visual differences that might be confusing to developers. It considers both
+/// case differences and Unicode characters that are visually similar or confusable.
+///
+/// # Parameters
+///
+/// - `sm`: A `SourceMap` instance used for retrieving code snippets.
+/// - `sp`: A `Span` instance indicating the position of the code snippet in the source.
+/// - `suggested`: The suggested code snippet to compare.
+///
+/// # Returns
+///
+/// - `true` if there are potential visual differences, `false` otherwise.
+///
+/// # Note
+///
+/// This function performs Unicode-aware case conversion for accurate comparison and
+/// considers both ASCII and non-ASCII characters.
 pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
-    // FIXME: this should probably be extended to also account for `FO0` → `FOO` and unicode.
+
+    // Retrieve original code
     let found = match sm.span_to_snippet(sp) {
-        Ok(snippet) => snippet,
+        Ok(snippet) => {
+            snippet
+        }
         Err(e) => {
             warn!(error = ?e, "Invalid span {:?}", sp);
             return false;
         }
     };
-    let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
-    // All the chars that differ in capitalization are confusable (above):
-    let confusable = iter::zip(found.chars(), suggested.chars())
-        .filter(|(f, s)| f != s)
-        .all(|(f, s)| (ascii_confusables.contains(&f) || ascii_confusables.contains(&s)));
-    confusable && found.to_lowercase() == suggested.to_lowercase()
-            // FIXME: We sometimes suggest the same thing we already have, which is a
-            //        bug, but be defensive against that here.
-            && found != suggested
+
+    // Test-case (current code):
+    // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=d93045b89275ca1b0f35e6e2e575c6ca
+
+    // Test-case (previous code):
+    // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=612ff2375920220c60674c921f84dd9b
+
+    // Converting characters to lowercase (or uppercase) one by one, 
+    // is a more accurate way to handle Unicode normalization. 
+    // There might be rare cases where converting whole string into 
+    // lowercase (or uppercase) might not produces the desired results.
+    // It is important to consider Unicode case folding when comparing 
+    // byte slices for equality.
+
+    // Normalize the strings to lowercase
+    let normalized_found = found
+        .chars()
+        .flat_map(char::to_lowercase)
+        .collect::<String>();
+    let normalized_suggested = suggested
+        .chars()
+        .flat_map(char::to_lowercase)
+        .collect::<String>();
+
+    // In many cases, directly comparing found and suggested without 
+    // normalization might be sufficient, but there might be rare 
+    // cases where normalization is still necessary to handle Unicode 
+    // character that remains the same when comparing original and 
+    // suggested, but changes after normalization.
+    // E.g, character that has a singleton decomposition.
+    // https://unicode.org/faq/normalization.html
+
+    // Using "!=" to looks for differences between two strings is 
+    // more accurate when identifying unique identifiers or patterns 
+    // in the strings
+
+    normalized_found != normalized_suggested || found != suggested
 }
