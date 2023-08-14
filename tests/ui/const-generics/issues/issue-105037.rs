@@ -1,4 +1,7 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
 // run-pass
+
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 #![allow(dead_code)]

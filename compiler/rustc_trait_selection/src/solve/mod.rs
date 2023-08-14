@@ -173,35 +173,60 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         &mut self,
         Goal { param_env, predicate: ct }: Goal<'tcx, ty::Const<'tcx>>,
     ) -> QueryResult<'tcx> {
-        match ct.kind() {
-            ty::ConstKind::Unevaluated(uv) => {
-                // We never return `NoSolution` here as `try_const_eval_resolve` emits an
-                // error itself when failing to evaluate, so emitting an additional fulfillment
-                // error in that case is unnecessary noise. This may change in the future once
-                // evaluation failures are allowed to impact selection, e.g. generic const
-                // expressions in impl headers or `where`-clauses.
+        let mut responses = vec![];
 
-                // FIXME(generic_const_exprs): Implement handling for generic
-                // const expressions here.
-                if let Some(_normalized) = self.try_const_eval_resolve(param_env, uv, ct.ty()) {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                } else {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+        let resolve_response = self.probe_candidate("const-evaluatable via resolve").enter(|ecx| {
+            match ct.kind() {
+                ty::ConstKind::Unevaluated(uv) => {
+                    // We never return `NoSolution` here as `try_const_eval_resolve` emits an
+                    // error itself when failing to evaluate, so emitting an additional fulfillment
+                    // error in that case is unnecessary noise. This may change in the future once
+                    // evaluation failures are allowed to impact selection, e.g. generic const
+                    // expressions in impl headers or `where`-clauses.
+                    if let Some(_normalized) = ecx.try_const_eval_resolve(param_env, uv, ct.ty()) {
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    } else {
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                    }
+                }
+                ty::ConstKind::Infer(_) => {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                }
+                ty::ConstKind::Placeholder(_)
+                | ty::ConstKind::Value(_)
+                | ty::ConstKind::Error(_) => {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+                // We can freely ICE here as:
+                // - `Param` gets replaced with a placeholder during canonicalization
+                // - `Bound` cannot exist as we don't have a binder around the self Type
+                // - `Expr` is part of `feature(generic_const_exprs)` and is not implemented yet
+                ty::ConstKind::Param(_) | ty::ConstKind::Bound(_, _) | ty::ConstKind::Expr(_) => {
+                    bug!("unexpect const kind: {:?}", ct)
                 }
             }
-            ty::ConstKind::Infer(_) => {
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+        });
+        responses.extend(resolve_response);
+
+        // FIXME(generic_const_exprs): We don't walk into these candidates, though perhaps we should.
+        for candidate in param_env.caller_bounds() {
+            if let ty::ClauseKind::ConstEvaluatable(candidate_ct) = candidate.kind().skip_binder() {
+                responses.extend(self.probe_candidate("const evaluatable via param-env").enter(
+                    |ecx| {
+                        let candidate_ct = ecx.instantiate_binder_with_placeholders(
+                            candidate.kind().rebind(candidate_ct),
+                        );
+                        ecx.eq(param_env, ct, candidate_ct)?;
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    },
+                ))
             }
-            ty::ConstKind::Placeholder(_) | ty::ConstKind::Value(_) | ty::ConstKind::Error(_) => {
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            }
-            // We can freely ICE here as:
-            // - `Param` gets replaced with a placeholder during canonicalization
-            // - `Bound` cannot exist as we don't have a binder around the self Type
-            // - `Expr` is part of `feature(generic_const_exprs)` and is not implemented yet
-            ty::ConstKind::Param(_) | ty::ConstKind::Bound(_, _) | ty::ConstKind::Expr(_) => {
-                bug!("unexpect const kind: {:?}", ct)
-            }
+        }
+
+        if let Some(response) = self.try_merge_responses(&responses) {
+            Ok(response)
+        } else {
+            self.flounder(&responses)
         }
     }
 
