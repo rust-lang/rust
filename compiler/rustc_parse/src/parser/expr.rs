@@ -51,13 +51,16 @@ macro_rules! maybe_whole_expr {
                     $p.bump();
                     return Ok(e);
                 }
-                token::NtBlock(block) => {
-                    let block = block.clone();
-                    $p.bump();
-                    return Ok($p.mk_expr($p.prev_token.span, ExprKind::Block(block, None)));
-                }
                 _ => {}
             };
+        } else if let Some(block) = crate::maybe_reparse_metavar_seq!(
+            $p,
+            token::NonterminalKind::Block,
+            token::NonterminalKind::Block,
+            super::ParseNtResult::Block(block),
+            block
+        ) {
+            return Ok($p.mk_expr(span, ExprKind::Block(block, None)));
         } else if let Some(path) = crate::maybe_reparse_metavar_seq!(
             $p,
             token::NonterminalKind::Path,
@@ -1584,7 +1587,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Loop) {
             self.parse_expr_loop(label, lo)
         } else if self.check_noexpect(&token::OpenDelim(Delimiter::Brace))
-            || self.token.is_whole_block()
+            || self.token.is_metavar_block()
         {
             self.parse_expr_block(label, lo, BlockCheckMode::Default)
         } else if !ate_colon
@@ -2182,7 +2185,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if self.token.is_whole_block() {
+        if self.token.is_metavar_block() {
             self.sess.emit_err(errors::InvalidBlockMacroSegment {
                 span: self.token.span,
                 context: lo.to(self.token.span),
@@ -2998,7 +3001,7 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Do)
             && self.is_keyword_ahead(1, &[kw::Catch])
             && self
-                .look_ahead(2, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
+                .look_ahead(2, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block())
             && !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }
 
@@ -3009,7 +3012,7 @@ impl<'a> Parser<'a> {
     fn is_try_block(&self) -> bool {
         self.token.is_keyword(kw::Try)
             && self
-                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
+                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block())
             && self.token.uninterpolated_span().at_least_rust_2018()
     }
 
@@ -3029,12 +3032,12 @@ impl<'a> Parser<'a> {
                 // `async move {`
                 self.is_keyword_ahead(1, &[kw::Move])
                     && self.look_ahead(2, |t| {
-                        *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
+                        *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block()
                     })
             ) || (
                 // `async {`
                 self.look_ahead(1, |t| {
-                    *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
+                    *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block()
                 })
             ))
     }

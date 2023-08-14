@@ -18,7 +18,9 @@ pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Nonterminal, NonterminalKind, Token, TokenKind};
+use rustc_ast::token::{
+    self, Delimiter, InvisibleSource, Nonterminal, NonterminalKind, Token, TokenKind,
+};
 use rustc_ast::tokenstream::{AttributesData, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
@@ -84,20 +86,6 @@ pub enum TrailingToken {
     /// If the trailing token is a comma, then capture it
     /// Otherwise, ignore the trailing token
     MaybeComma,
-}
-
-/// Like `maybe_whole_expr`, but for things other than expressions.
-#[macro_export]
-macro_rules! maybe_whole {
-    ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
-        if let token::Interpolated(nt) = &$p.token.kind {
-            if let token::$constructor(x) = &**nt {
-                let $x = x.clone();
-                $p.bump();
-                return Ok($e);
-            }
-        }
-    };
 }
 
 /// Reparses an invisible-delimited sequence produced by expansion of a
@@ -733,8 +721,10 @@ impl<'a> Parser<'a> {
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
             && self.look_ahead(dist + 1, |t| match &t.kind {
-                token::Interpolated(nt) => matches!(**nt, token::NtBlock(..)),
                 token::OpenDelim(Delimiter::Brace) => true,
+                token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
+                    NonterminalKind::Block,
+                ))) => true,
                 _ => false,
             })
     }
@@ -1227,7 +1217,7 @@ impl<'a> Parser<'a> {
         // Avoid const blocks and const closures to be parsed as const items
         if (self.check_const_closure() == is_closure)
             && !self
-                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
+                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block())
             && self.eat_keyword_case(kw::Const, case)
         {
             Const::Yes(self.prev_token.uninterpolated_span())
@@ -1583,6 +1573,7 @@ pub enum ParseNtResult {
     Tt(TokenTree),
 
     Item(P<ast::Item>),
+    Block(P<ast::Block>),
     Stmt(P<ast::Stmt>),
     PatParam(P<ast::Pat>, /* inferred */ bool),
     PatWithOr(P<ast::Pat>),

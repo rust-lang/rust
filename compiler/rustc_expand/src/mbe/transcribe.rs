@@ -236,6 +236,9 @@ pub(super) fn transcribe<'a>(
                         MatchedSingle(ParseNtResult::Item(ref item)) => {
                             mk_delimited(NonterminalKind::Item, TokenStream::from_ast(item))
                         }
+                        MatchedSingle(ParseNtResult::Block(ref block)) => {
+                            mk_delimited(NonterminalKind::Block, TokenStream::from_ast(block))
+                        }
                         MatchedSingle(ParseNtResult::Stmt(ref stmt)) => {
                             let stream = if let StmtKind::Empty = stmt.kind {
                                 // FIXME: Properly collect tokens for empty statements.
