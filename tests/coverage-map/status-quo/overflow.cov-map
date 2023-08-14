@@ -1,0 +1,43 @@
+Function name: overflow::main
+Raw bytes (65): 0x[01, 01, 08, 01, 1b, 05, 1f, 09, 0d, 03, 11, 16, 05, 03, 11, 05, 1f, 09, 0d, 09, 01, 0f, 01, 01, 1b, 03, 02, 0b, 00, 18, 16, 01, 0c, 00, 1a, 05, 00, 1b, 03, 0a, 12, 03, 13, 00, 20, 09, 00, 21, 03, 0a, 0d, 03, 0a, 00, 0b, 1b, 01, 09, 00, 17, 11, 02, 05, 01, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 8
+- expression 0 operands: lhs = Counter(0), rhs = Expression(6, Add)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(7, Add)
+- expression 2 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 3 operands: lhs = Expression(0, Add), rhs = Counter(4)
+- expression 4 operands: lhs = Expression(5, Sub), rhs = Counter(1)
+- expression 5 operands: lhs = Expression(0, Add), rhs = Counter(4)
+- expression 6 operands: lhs = Counter(1), rhs = Expression(7, Add)
+- expression 7 operands: lhs = Counter(2), rhs = Counter(3)
+Number of file 0 mappings: 9
+- Code(Counter(0)) at (prev + 15, 1) to (start + 1, 27)
+- Code(Expression(0, Add)) at (prev + 2, 11) to (start + 0, 24)
+    = (c0 + (c1 + (c2 + c3)))
+- Code(Expression(5, Sub)) at (prev + 1, 12) to (start + 0, 26)
+    = ((c0 + (c1 + (c2 + c3))) - c4)
+- Code(Counter(1)) at (prev + 0, 27) to (start + 3, 10)
+- Code(Expression(4, Sub)) at (prev + 3, 19) to (start + 0, 32)
+    = (((c0 + (c1 + (c2 + c3))) - c4) - c1)
+- Code(Counter(2)) at (prev + 0, 33) to (start + 3, 10)
+- Code(Counter(3)) at (prev + 3, 10) to (start + 0, 11)
+- Code(Expression(6, Add)) at (prev + 1, 9) to (start + 0, 23)
+    = (c1 + (c2 + c3))
+- Code(Counter(4)) at (prev + 2, 5) to (start + 1, 2)
+
+Function name: overflow::might_overflow
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 04, 01, 01, 12, 05, 01, 13, 02, 06, 02, 02, 06, 00, 07, 07, 01, 09, 05, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 4, 1) to (start + 1, 18)
+- Code(Counter(1)) at (prev + 1, 19) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = (c0 - c1)
+- Code(Expression(1, Add)) at (prev + 1, 9) to (start + 5, 2)
+    = (c1 + (c0 - c1))
+
