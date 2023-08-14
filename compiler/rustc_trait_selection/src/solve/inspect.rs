@@ -182,11 +182,11 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    fn nested(&self, state: impl Into<DebugSolver<'tcx>>) -> Self {
+    fn nested<T: Into<DebugSolver<'tcx>>>(&self, state: impl FnOnce() -> T) -> Self {
         match &self.state {
             Some(prev_state) => Self {
                 state: Some(Box::new(BuilderData {
-                    tree: state.into(),
+                    tree: state().into(),
                     use_global_cache: prev_state.use_global_cache,
                 })),
             },
@@ -255,11 +255,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         is_normalizes_to_hack: IsNormalizesToHack,
     ) -> ProofTreeBuilder<'tcx> {
-        if self.state.is_none() {
-            return ProofTreeBuilder { state: None };
-        }
-
-        self.nested(WipGoalEvaluation {
+        self.nested(|| WipGoalEvaluation {
             uncanonicalized_goal: goal,
             evaluation: None,
             is_normalizes_to_hack,
@@ -271,11 +267,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         &mut self,
         goal: CanonicalInput<'tcx>,
     ) -> ProofTreeBuilder<'tcx> {
-        if self.state.is_none() {
-            return ProofTreeBuilder { state: None };
-        }
-
-        self.nested(WipCanonicalGoalEvaluation {
+        self.nested(|| WipCanonicalGoalEvaluation {
             goal,
             cache_hit: None,
             evaluation_steps: vec![],
@@ -336,11 +328,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         &mut self,
         instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
     ) -> ProofTreeBuilder<'tcx> {
-        if self.state.is_none() {
-            return ProofTreeBuilder { state: None };
-        }
-
-        self.nested(WipGoalEvaluationStep {
+        self.nested(|| WipGoalEvaluationStep {
             instantiated_goal,
             added_goals_evaluations: vec![],
             candidates: vec![],
@@ -362,11 +350,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     }
 
     pub fn new_goal_candidate(&mut self) -> ProofTreeBuilder<'tcx> {
-        if self.state.is_none() {
-            return ProofTreeBuilder { state: None };
-        }
-
-        self.nested(WipGoalCandidate {
+        self.nested(|| WipGoalCandidate {
             added_goals_evaluations: vec![],
             candidates: vec![],
             kind: None,
@@ -398,11 +382,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     }
 
     pub fn new_evaluate_added_goals(&mut self) -> ProofTreeBuilder<'tcx> {
-        if self.state.is_none() {
-            return ProofTreeBuilder { state: None };
-        }
-
-        self.nested(WipAddedGoalsEvaluation { evaluations: vec![], result: None })
+        self.nested(|| WipAddedGoalsEvaluation { evaluations: vec![], result: None })
     }
 
     pub fn evaluate_added_goals_loop_start(&mut self) {
