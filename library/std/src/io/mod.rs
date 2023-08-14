@@ -263,15 +263,16 @@
 //! allocator or a memory mapping library) and now accessing the file descriptor will interfere in
 //! arbitrarily destructive ways with that other library.
 //!
-//! Note that this does not talk about performing other operations on the file descriptor, such as
-//! reading or writing. For example, on Unix, the [`OwnedFd`] and [`BorrowedFd`] types from the
-//! standard library do *not* exclude that there is other code that reads or writes the same
-//! underlying object, and indeed there exist safe functions like `BorrowedFd::try_clone_to_owned`
-//! that can be used to read or write an object even after the end of the borrow. However, user code
-//! might want to rely on keeping the object behind a file descriptor completely private and
-//! protected against reads or writes from other parts of the program. Whether that is sound is
-//! [currently unclear](https://github.com/rust-lang/rust/issues/114167). Certainly, `OwnedFd` as a
-//! type does not provide any promise that the underlying file descriptor has not been cloned.
+//! Note that exclusive ownership of a file descriptor does *not* imply exclusive ownership of the
+//! underlying kernel object that the file descriptor references (also called "file description" on
+//! some operating systems). An owned file descriptor can have duplicates, i.e., other file
+//! descriptors that share the same kernel object. The exact rules around ownership of kernel
+//! objects are [still unclear](https://github.com/rust-lang/rust/issues/114167). Until that is
+//! clarified, the general advice is not to perform *any* operations on file descriptors that were
+//! never borrowed to or owned by you. In other words, receiving a borrowed file descriptor *does*
+//! give you the right to make a duplicate and use that duplicate beyond the end of the borrow, but
+//! nothing gives you the right to just `write` to a file descriptor that never even got borrowed to
+//! you.
 //!
 //! [`File`]: crate::fs::File
 //! [`TcpStream`]: crate::net::TcpStream
