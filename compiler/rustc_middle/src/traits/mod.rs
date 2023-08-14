@@ -402,7 +402,7 @@ pub enum ObligationCauseCode<'tcx> {
     OpaqueReturnType(Option<(Ty<'tcx>, Span)>),
 
     /// Block implicit return
-    BlockTailExpression(hir::HirId, hir::HirId, hir::MatchSource),
+    BlockTailExpression(hir::HirId, hir::MatchSource),
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
@@ -543,7 +543,6 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub scrut_span: Span,
     pub source: hir::MatchSource,
     pub prior_arms: Vec<Span>,
-    pub scrut_hir_id: hir::HirId,
     pub opt_suggest_box_span: Option<Span>,
 }
 

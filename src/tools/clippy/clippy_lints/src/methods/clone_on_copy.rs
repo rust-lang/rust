@@ -64,7 +64,7 @@ pub(super) fn check(
                     ExprKind::Path(QPath::LangItem(rustc_hir::LangItem::TryTraitBranch, _, _))
                 ),
                 ExprKind::MethodCall(_, self_arg, ..) if expr.hir_id == self_arg.hir_id => true,
-                ExprKind::Match(_, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar)
+                ExprKind::Match(_, _, MatchSource::TryDesugar(_) | MatchSource::AwaitDesugar)
                 | ExprKind::Field(..)
                 | ExprKind::Index(..) => true,
                 _ => false,

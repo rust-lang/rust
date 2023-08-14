@@ -745,8 +745,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::BlockTailExpression(
                 _,
-                scrut_hir_id,
-                hir::MatchSource::TryDesugar,
+                hir::MatchSource::TryDesugar(scrut_hir_id),
             ) => {
                 if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
                     let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
@@ -782,12 +781,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 prior_arm_ty,
                 source,
                 ref prior_arms,
-                scrut_hir_id,
                 opt_suggest_box_span,
                 scrut_span,
                 ..
             }) => match source {
-                hir::MatchSource::TryDesugar => {
+                hir::MatchSource::TryDesugar(scrut_hir_id) => {
                     if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
                         let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
                         let scrut_ty = if let hir::ExprKind::Call(_, args) = &scrut_expr.kind {
@@ -2077,7 +2075,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if let &(MatchExpressionArm(box MatchExpressionArmCause { source, .. })
             | BlockTailExpression(.., source)
         ) = code
-            && let hir::MatchSource::TryDesugar = source
+            && let hir::MatchSource::TryDesugar(_) = source
             && let Some((expected_ty, found_ty, _, _)) = self.values_str(trace.values)
         {
             suggestions.push(TypeErrorAdditionalDiags::TryCannotConvert {
@@ -2954,11 +2952,11 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => {
                 ObligationCauseFailureCode::ConstCompat { span, subdiags }
             }
-            BlockTailExpression(.., hir::MatchSource::TryDesugar) => {
+            BlockTailExpression(.., hir::MatchSource::TryDesugar(_)) => {
                 ObligationCauseFailureCode::TryCompat { span, subdiags }
             }
             MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => match source {
-                hir::MatchSource::TryDesugar => {
+                hir::MatchSource::TryDesugar(_) => {
                     ObligationCauseFailureCode::TryCompat { span, subdiags }
                 }
                 _ => ObligationCauseFailureCode::MatchCompat { span, subdiags },

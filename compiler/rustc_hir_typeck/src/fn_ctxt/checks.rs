@@ -1582,11 +1582,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let span = self.get_expr_coercion_span(tail_expr);
                 let cause = self.cause(
                     span,
-                    ObligationCauseCode::BlockTailExpression(
-                        blk.hir_id,
-                        blk.hir_id,
-                        hir::MatchSource::Normal,
-                    ),
+                    ObligationCauseCode::BlockTailExpression(blk.hir_id, hir::MatchSource::Normal),
                 );
                 let ty_for_diagnostic = coerce.merged_ty();
                 // We use coerce_inner here because we want to augment the error
