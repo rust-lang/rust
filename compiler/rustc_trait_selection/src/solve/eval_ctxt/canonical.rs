@@ -10,6 +10,7 @@
 //! [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 use super::{CanonicalInput, Certainty, EvalCtxt, Goal};
 use crate::solve::canonicalize::{CanonicalizeMode, Canonicalizer};
+use crate::solve::inspect;
 use crate::solve::{response_no_constraints_raw, CanonicalResponse, QueryResult, Response};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
@@ -328,6 +329,22 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             self.insert_hidden_type(key, param_env, ty)?;
         }
         Ok(())
+    }
+}
+
+impl<'tcx> inspect::ProofTreeBuilder<'tcx> {
+    pub fn make_canonical_state<T: TypeFoldable<TyCtxt<'tcx>>>(
+        ecx: &EvalCtxt<'_, 'tcx>,
+        data: T,
+    ) -> inspect::CanonicalState<'tcx, T> {
+        let state = inspect::State { var_values: ecx.var_values, data };
+        let state = state.fold_with(&mut EagerResolver { infcx: ecx.infcx });
+        Canonicalizer::canonicalize(
+            ecx.infcx,
+            CanonicalizeMode::Response { max_input_universe: ecx.max_input_universe },
+            &mut vec![],
+            state,
+        )
     }
 }
 

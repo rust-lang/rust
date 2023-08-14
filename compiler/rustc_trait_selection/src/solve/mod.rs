@@ -59,6 +59,13 @@ enum SolverMode {
     Coherence,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum GoalEvaluationKind {
+    Root,
+    NormalizesToHack,
+    Nested,
+}
+
 trait CanonicalResponseExt {
     fn has_no_inference_or_external_constraints(&self) -> bool;
 

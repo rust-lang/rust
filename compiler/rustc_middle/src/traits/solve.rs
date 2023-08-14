@@ -229,9 +229,3 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
         self.opaque_types.visit_with(visitor)
     }
 }
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
-pub enum IsNormalizesToHack {
-    Yes,
-    No,
-}

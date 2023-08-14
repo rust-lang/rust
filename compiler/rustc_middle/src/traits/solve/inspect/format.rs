@@ -39,12 +39,36 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         func(&mut ProofTreeFormatter { f: &mut Indentor { f: self.f, on_newline: true } })
     }
 
-    pub(super) fn format_goal_evaluation(&mut self, eval: &GoalEvaluation<'_>) -> std::fmt::Result {
+    pub(super) fn format_root_goal_evaluation(
+        &mut self,
+        eval: &RootGoalEvaluation<'_>,
+    ) -> std::fmt::Result {
+        writeln!(self.f, "ROOT GOAL: {:?}", eval.goal)?;
+        self.nested(|this| this.format_canonical_goal_evaluation(&eval.evaluation))?;
+        if eval.returned_goals.len() > 0 {
+            writeln!(self.f, "NESTED GOALS ADDED TO CALLER: [")?;
+            self.nested(|this| {
+                for goal in eval.returned_goals.iter() {
+                    writeln!(this.f, "ADDED GOAL: {goal:?},")?;
+                }
+                Ok(())
+            })?;
+
+            writeln!(self.f, "]")
+        } else {
+            Ok(())
+        }
+    }
+
+    pub(super) fn format_nested_goal_evaluation(
+        &mut self,
+        eval: &NestedGoalEvaluation<'_>,
+    ) -> std::fmt::Result {
         let goal_text = match eval.is_normalizes_to_hack {
             IsNormalizesToHack::Yes => "NORMALIZES-TO HACK GOAL",
-            IsNormalizesToHack::No => "GOAL",
+            IsNormalizesToHack::No => "NESTED GOAL",
         };
-        writeln!(self.f, "{}: {:?}", goal_text, eval.uncanonicalized_goal)?;
+        writeln!(self.f, "{}: {:?}", goal_text, eval.goal)?;
         self.nested(|this| this.format_canonical_goal_evaluation(&eval.evaluation))?;
         if eval.returned_goals.len() > 0 {
             writeln!(self.f, "NESTED GOALS ADDED TO CALLER: [")?;
@@ -67,17 +91,17 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
     ) -> std::fmt::Result {
         writeln!(self.f, "GOAL: {:?}", eval.goal)?;
 
-        match &eval.kind {
-            GoalEvaluationKind::CacheHit(CacheHit::Global) => {
+        match &eval.data {
+            GoalEvaluationData::CacheHit(CacheHit::Global) => {
                 writeln!(self.f, "GLOBAL CACHE HIT: {:?}", eval.result)
             }
-            GoalEvaluationKind::CacheHit(CacheHit::Provisional) => {
+            GoalEvaluationData::CacheHit(CacheHit::Provisional) => {
                 writeln!(self.f, "PROVISIONAL CACHE HIT: {:?}", eval.result)
             }
-            GoalEvaluationKind::Uncached { revisions } => {
+            GoalEvaluationData::Uncached { revisions } => {
                 for (n, step) in revisions.iter().enumerate() {
                     writeln!(self.f, "REVISION {n}: {:?}", step.result)?;
-                    self.nested(|this| this.format_evaluation_step(step))?;
+                    self.format_evaluation_step(step)?;
                 }
                 writeln!(self.f, "RESULT: {:?}", eval.result)
             }
@@ -88,8 +112,6 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         &mut self,
         evaluation_step: &GoalEvaluationStep<'_>,
     ) -> std::fmt::Result {
-        writeln!(self.f, "INSTANTIATED: {:?}", evaluation_step.instantiated_goal)?;
-
         for candidate in &evaluation_step.candidates {
             self.nested(|this| this.format_candidate(candidate))?;
         }
@@ -137,7 +159,7 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             writeln!(self.f, "ITERATION {n}")?;
             self.nested(|this| {
                 for goal_evaluation in iterations {
-                    this.format_goal_evaluation(goal_evaluation)?;
+                    this.format_nested_goal_evaluation(goal_evaluation)?;
                 }
                 Ok(())
             })?;

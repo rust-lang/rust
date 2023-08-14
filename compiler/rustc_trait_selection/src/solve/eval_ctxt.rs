@@ -12,8 +12,8 @@ use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::solve::inspect;
 use rustc_middle::traits::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, IsNormalizesToHack, PredefinedOpaques,
-    PredefinedOpaquesData, QueryResult,
+    CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaques, PredefinedOpaquesData,
+    QueryResult,
 };
 use rustc_middle::traits::{specialization_graph, DefiningAnchor};
 use rustc_middle::ty::{
@@ -28,8 +28,8 @@ use std::ops::ControlFlow;
 use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
 
 use super::inspect::ProofTreeBuilder;
-use super::search_graph;
 use super::SolverMode;
+use super::{search_graph, GoalEvaluationKind};
 use super::{search_graph::SearchGraph, Goal};
 pub use select::InferCtxtSelectExt;
 
@@ -85,7 +85,7 @@ pub struct EvalCtxt<'a, 'tcx> {
     // evaluation code.
     tainted: Result<(), NoSolution>,
 
-    inspect: ProofTreeBuilder<'tcx>,
+    pub(super) inspect: ProofTreeBuilder<'tcx>,
 }
 
 #[derive(Debug, Clone)]
@@ -149,7 +149,7 @@ pub trait InferCtxtEvalExt<'tcx> {
         generate_proof_tree: GenerateProofTree,
     ) -> (
         Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution>,
-        Option<inspect::GoalEvaluation<'tcx>>,
+        Option<inspect::RootGoalEvaluation<'tcx>>,
     );
 }
 
@@ -161,10 +161,10 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
         generate_proof_tree: GenerateProofTree,
     ) -> (
         Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution>,
-        Option<inspect::GoalEvaluation<'tcx>>,
+        Option<inspect::RootGoalEvaluation<'tcx>>,
     ) {
         EvalCtxt::enter_root(self, generate_proof_tree, |ecx| {
-            ecx.evaluate_goal(IsNormalizesToHack::No, goal)
+            ecx.evaluate_goal(GoalEvaluationKind::Root, goal)
         })
     }
 }
@@ -185,7 +185,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         infcx: &InferCtxt<'tcx>,
         generate_proof_tree: GenerateProofTree,
         f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> R,
-    ) -> (R, Option<inspect::GoalEvaluation<'tcx>>) {
+    ) -> (R, Option<inspect::RootGoalEvaluation<'tcx>>) {
         let mode = if infcx.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
         let mut search_graph = search_graph::SearchGraph::new(infcx.tcx, mode);
 
@@ -260,7 +260,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             search_graph,
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: canonical_goal_evaluation.new_goal_evaluation_step(input),
+            inspect: canonical_goal_evaluation.new_goal_evaluation_step(),
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
@@ -340,11 +340,13 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     /// been constrained and the certainty of the result.
     fn evaluate_goal(
         &mut self,
-        is_normalizes_to_hack: IsNormalizesToHack,
+        goal_evaluation_kind: GoalEvaluationKind,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
     ) -> Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
-        let mut goal_evaluation = self.inspect.new_goal_evaluation(goal, is_normalizes_to_hack);
+
+        let mut goal_evaluation =
+            ProofTreeBuilder::new_goal_evaluation(self, goal, &orig_values, goal_evaluation_kind);
         let encountered_overflow = self.search_graph.encountered_overflow();
         let canonical_response = EvalCtxt::evaluate_canonical_goal(
             self.tcx(),
@@ -354,7 +356,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         );
         let canonical_response = match canonical_response {
             Err(e) => {
-                self.inspect.goal_evaluation(goal_evaluation);
+                ProofTreeBuilder::goal_evaluation(self, goal_evaluation, &[]);
                 return Err(e);
             }
             Ok(response) => response,
@@ -368,13 +370,12 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             canonical_response,
         ) {
             Err(e) => {
-                self.inspect.goal_evaluation(goal_evaluation);
+                ProofTreeBuilder::goal_evaluation(self, goal_evaluation, &[]);
                 return Err(e);
             }
             Ok(response) => response,
         };
-        goal_evaluation.returned_goals(&nested_goals);
-        self.inspect.goal_evaluation(goal_evaluation);
+        ProofTreeBuilder::goal_evaluation(self, goal_evaluation, &nested_goals);
 
         if !has_changed && !nested_goals.is_empty() {
             bug!("an unchanged goal shouldn't have any side-effects on instantiation");
@@ -389,7 +390,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // solver cycle.
         if cfg!(debug_assertions)
             && has_changed
-            && is_normalizes_to_hack == IsNormalizesToHack::No
+            && goal_evaluation_kind != GoalEvaluationKind::NormalizesToHack
             && !self.search_graph.in_cycle()
         {
             // The nested evaluation has to happen with the original state
@@ -562,7 +563,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             );
 
             let (_, certainty, instantiate_goals) =
-                self.evaluate_goal(IsNormalizesToHack::Yes, unconstrained_goal)?;
+                self.evaluate_goal(GoalEvaluationKind::NormalizesToHack, unconstrained_goal)?;
             self.add_goals(instantiate_goals);
 
             // Finally, equate the goal's RHS with the unconstrained var.
@@ -597,7 +598,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
         for goal in goals.goals.drain(..) {
             let (has_changed, certainty, instantiate_goals) =
-                self.evaluate_goal(IsNormalizesToHack::No, goal)?;
+                self.evaluate_goal(GoalEvaluationKind::Nested, goal)?;
             self.add_goals(instantiate_goals);
             if has_changed {
                 unchanged_certainty = None;

@@ -1,11 +1,17 @@
-use super::{
-    CanonicalInput, Certainty, Goal, IsNormalizesToHack, NoSolution, QueryInput, QueryResult,
-};
+use super::{CanonicalInput, Certainty, Goal, NoSolution, QueryResult};
+use crate::infer::canonical::{Canonical, CanonicalVarValues};
 use crate::ty;
 use format::ProofTreeFormatter;
 use std::fmt::{Debug, Write};
 
 mod format;
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub struct State<'tcx, T> {
+    pub var_values: CanonicalVarValues<'tcx>,
+    pub data: T,
+}
+pub type CanonicalState<'tcx, T> = Canonical<'tcx, State<'tcx, T>>;
 
 #[derive(Eq, PartialEq, Debug, Hash, HashStable)]
 pub enum CacheHit {
@@ -13,42 +19,55 @@ pub enum CacheHit {
     Global,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum IsNormalizesToHack {
+    Yes,
+    No,
+}
+
 #[derive(Eq, PartialEq, Hash, HashStable)]
-pub struct GoalEvaluation<'tcx> {
-    pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    pub is_normalizes_to_hack: IsNormalizesToHack,
+pub struct RootGoalEvaluation<'tcx> {
+    pub goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    pub orig_values: Vec<ty::GenericArg<'tcx>>,
     pub evaluation: CanonicalGoalEvaluation<'tcx>,
     pub returned_goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
 
 #[derive(Eq, PartialEq, Hash, HashStable)]
+pub struct NestedGoalEvaluation<'tcx> {
+    pub goal: CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>,
+    pub orig_values: CanonicalState<'tcx, Vec<ty::GenericArg<'tcx>>>,
+    pub is_normalizes_to_hack: IsNormalizesToHack,
+    pub evaluation: CanonicalGoalEvaluation<'tcx>,
+    pub returned_goals: Vec<CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>>,
+}
+
+#[derive(Eq, PartialEq, Hash, HashStable)]
 pub struct CanonicalGoalEvaluation<'tcx> {
     pub goal: CanonicalInput<'tcx>,
-    pub kind: GoalEvaluationKind<'tcx>,
+    pub data: GoalEvaluationData<'tcx>,
     pub result: QueryResult<'tcx>,
 }
 
 #[derive(Eq, PartialEq, Hash, HashStable)]
-pub enum GoalEvaluationKind<'tcx> {
+pub enum GoalEvaluationData<'tcx> {
     CacheHit(CacheHit),
     Uncached { revisions: Vec<GoalEvaluationStep<'tcx>> },
 }
-impl Debug for GoalEvaluation<'_> {
+impl Debug for RootGoalEvaluation<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ProofTreeFormatter::new(f).format_goal_evaluation(self)
+        ProofTreeFormatter::new(f).format_root_goal_evaluation(self)
     }
 }
 
 #[derive(Eq, PartialEq, Hash, HashStable)]
 pub struct AddedGoalsEvaluation<'tcx> {
-    pub evaluations: Vec<Vec<GoalEvaluation<'tcx>>>,
+    pub evaluations: Vec<Vec<NestedGoalEvaluation<'tcx>>>,
     pub result: Result<Certainty, NoSolution>,
 }
 
 #[derive(Eq, PartialEq, Hash, HashStable)]
 pub struct GoalEvaluationStep<'tcx> {
-    pub instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
-
     pub added_goals_evaluations: Vec<AddedGoalsEvaluation<'tcx>>,
     pub candidates: Vec<GoalCandidate<'tcx>>,
 
