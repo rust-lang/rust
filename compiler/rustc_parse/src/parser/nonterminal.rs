@@ -50,8 +50,7 @@ impl<'a> Parser<'a> {
                 | NtLiteral(_) // `true`, `false`
                 => true,
 
-                NtBlock(_)
-                | NtLifetime(_) => false,
+                NtLifetime(_) => false,
             }
         }
 
@@ -77,7 +76,7 @@ impl<'a> Parser<'a> {
             NonterminalKind::Block => match &token.kind {
                 token::OpenDelim(Delimiter::Brace) => true,
                 token::Interpolated(nt) => match **nt {
-                    NtBlock(_) | NtLifetime(_) | NtExpr(_) | NtLiteral(_) => true,
+                    NtLifetime(_) | NtExpr(_) | NtLiteral(_) => true,
                     NtIdent(..) => false,
                 },
                 token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(k))) => match k {
@@ -164,7 +163,9 @@ impl<'a> Parser<'a> {
             NonterminalKind::Block => {
                 // While a block *expression* may have attributes (e.g. `#[my_attr] { ... }`),
                 // the ':block' matcher does not support them
-                NtBlock(self.collect_tokens_no_attrs(|this| this.parse_block())?)
+                return Ok(ParseNtResult::Block(
+                    self.collect_tokens_no_attrs(|this| this.parse_block())?)
+                )
             }
             NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
                 Some(stmt) => return Ok(ParseNtResult::Stmt(P(stmt))),

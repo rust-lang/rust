@@ -77,14 +77,14 @@ fn test_block() {
         stringify_block!({
             return;
         }),
-        "{ return; }",
+        "{ return ; }",
     );
     assert_eq!(
         stringify_block!({
             let _;
             true
         }),
-        "{ let _; true }",
+        "{ let _ ; true }",
     );
 }
 

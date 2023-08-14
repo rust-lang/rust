@@ -469,10 +469,10 @@ impl Token {
             ModSep                            | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
-            Interpolated(ref nt) => matches!(**nt, NtLiteral(..) |
-                NtExpr(..)    |
-                NtBlock(..)),
-            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(NonterminalKind::Path)))
+            Interpolated(ref nt) => matches!(**nt, NtLiteral(..) | NtExpr(..)),
+            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
+                NonterminalKind::Block | NonterminalKind::Path
+            )))
                 => true,
             _ => false,
         }
@@ -494,8 +494,9 @@ impl Token {
             | DotDot | DotDotDot | DotDotEq      // ranges
             | Lt | BinOp(Shl)                    // associated path
             | ModSep => true,                    // global path
-            Interpolated(ref nt) => matches!(**nt, NtLiteral(..) | NtBlock(..)),
+            Interpolated(ref nt) => matches!(**nt, NtLiteral(..)),
             | OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
+                NonterminalKind::Block |
                 NonterminalKind::PatParam { .. } |
                 NonterminalKind::PatWithOr |
                 NonterminalKind::Path
@@ -531,7 +532,10 @@ impl Token {
     pub fn can_begin_const_arg(&self) -> bool {
         match self.kind {
             OpenDelim(Delimiter::Brace) => true,
-            Interpolated(ref nt) => matches!(**nt, NtExpr(..) | NtBlock(..) | NtLiteral(..)),
+            Interpolated(ref nt) => matches!(**nt, NtExpr(..) | NtLiteral(..)),
+            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(NonterminalKind::Block))) => {
+                true
+            }
             _ => self.can_begin_literal_maybe_minus(),
         }
     }
@@ -666,23 +670,22 @@ impl Token {
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
         if let Interpolated(nt) = &self.kind
-            && let NtExpr(_) | NtLiteral(_) | NtBlock(_) = **nt
+            && let NtExpr(_) | NtLiteral(_) = **nt
         {
             true
-        } else if matches!(self.is_metavar_seq(), Some(NonterminalKind::Path)) {
+        } else if matches!(
+            self.is_metavar_seq(),
+            Some(NonterminalKind::Block | NonterminalKind::Path)
+        ) {
             true
         } else {
             false
         }
     }
 
-    /// Is the token an interpolated block (`$b:block`)?
-    pub fn is_whole_block(&self) -> bool {
-        if let Interpolated(nt) = &self.kind && let NtBlock(..) = **nt {
-            return true;
-        }
-
-        false
+    /// Are we at a block from a metavar (`$b:block`)?
+    pub fn is_metavar_block(&self) -> bool {
+        matches!(self.is_metavar_seq(), Some(NonterminalKind::Block))
     }
 
     /// Returns `true` if the token is either the `mut` or `const` keyword.
@@ -840,7 +843,6 @@ impl PartialEq<TokenKind> for Token {
 #[derive(Clone, Encodable, Decodable)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
-    NtBlock(P<ast::Block>),
     NtExpr(P<ast::Expr>),
     NtIdent(Ident, /* is_raw */ bool),
     NtLifetime(Ident),
@@ -928,7 +930,6 @@ impl fmt::Display for NonterminalKind {
 impl Nonterminal {
     pub fn span(&self) -> Span {
         match self {
-            NtBlock(block) => block.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
             NtIdent(ident, _) | NtLifetime(ident) => ident.span,
         }
@@ -954,7 +955,6 @@ impl PartialEq for Nonterminal {
 impl fmt::Debug for Nonterminal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            NtBlock(..) => f.pad("NtBlock(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtIdent(..) => f.pad("NtIdent(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),

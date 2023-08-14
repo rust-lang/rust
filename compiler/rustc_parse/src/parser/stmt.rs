@@ -8,7 +8,7 @@ use super::{
     SemiColonMode, TrailingToken,
 };
 use crate::errors::{self, MalformedLoopLabel};
-use crate::maybe_whole;
+use crate::maybe_reparse_metavar_seq;
 use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
@@ -517,7 +517,15 @@ impl<'a> Parser<'a> {
         blk_mode: BlockCheckMode,
         can_be_struct_literal: bool,
     ) -> PResult<'a, (AttrVec, P<Block>)> {
-        maybe_whole!(self, NtBlock, |x| (AttrVec::new(), x));
+        if let Some(block) = maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::Block,
+            NonterminalKind::Block,
+            ParseNtResult::Block(block),
+            block
+        ) {
+            return Ok((AttrVec::new(), block));
+        }
 
         let maybe_ident = self.prev_token.clone();
         self.maybe_recover_unexpected_block_label();
@@ -665,7 +673,7 @@ impl<'a> Parser<'a> {
                                 ExprKind::Path(None, ast::Path { segments, .. }) if segments.len() == 1 => {
                                     if self.token == token::Colon
                                         && self.look_ahead(1, |token| {
-                                            token.is_whole_block() || matches!(
+                                            token.is_metavar_block() || matches!(
                                                 token.kind,
                                                 token::Ident(kw::For | kw::Loop | kw::While, false)
                                                     | token::OpenDelim(Delimiter::Brace)
