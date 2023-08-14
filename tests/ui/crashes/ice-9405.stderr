@@ -1,7 +1,7 @@
 warning: multiple lines skipped by escaped newline
   --> $DIR/ice-9405.rs:6:10
    |
-LL |           "/
+LL |           "\
    |  __________^
 LL | |
 LL | |             {}",

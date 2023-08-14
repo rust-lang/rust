@@ -72,8 +72,8 @@ LL |     let _ = Some(format!("{}", a + "bar"));
 error: useless use of `format!`
   --> $DIR/format.rs:78:22
    |
-LL |     let _s: String = format!("{}", &*v.join("/n"));
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `(&*v.join("/n")).to_string()`
+LL |     let _s: String = format!("{}", &*v.join("\n"));
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `(&*v.join("\n")).to_string()`
 
 error: useless use of `format!`
   --> $DIR/format.rs:84:13

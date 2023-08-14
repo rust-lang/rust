@@ -15,14 +15,14 @@ LL |     let _: String = std::iter::repeat('x').take(10).collect();
 error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:9:21
    |
-LL |     let _: String = std::iter::repeat('/'').take(10).collect();
+LL |     let _: String = std::iter::repeat('\'').take(10).collect();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"'".repeat(10)`
 
 error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:10:21
    |
 LL |     let _: String = std::iter::repeat('"').take(10).collect();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"/"".repeat(10)`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"\"".repeat(10)`
 
 error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:14:13
