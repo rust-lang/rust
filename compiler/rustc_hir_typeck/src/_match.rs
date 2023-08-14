@@ -147,6 +147,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             if !arm_ty.is_never() {
+                // When a match arm has type `!`, then it doesn't influence the expected type for
+                // the following arm. If all of the prior arms are `!`, then the influence comes
+                // from elsewhere and we shouldn't point to any previous arm.
                 prior_arm = Some((arm_block_id, arm_ty, arm_span));
             }
         }
