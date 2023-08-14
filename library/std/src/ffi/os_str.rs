@@ -110,14 +110,11 @@ impl crate::sealed::Sealed for OsString {}
 /// [conversions]: super#conversions
 #[cfg_attr(not(test), rustc_diagnostic_item = "OsStr")]
 #[stable(feature = "rust1", since = "1.0.0")]
-// FIXME:
 // `OsStr::from_inner` current implementation relies
 // on `OsStr` being layout-compatible with `Slice`.
-// When attribute privacy is implemented, `OsStr` should be annotated as `#[repr(transparent)]`.
-// Anyway, `OsStr` representation and layout are considered implementation details, are
-// not documented and must not be relied upon.
-// For now we just hide this from rustdoc, technically making our doc test builds rely on
-// unspecified layout assumptions. We are std, so we can get away with that.
+// However, `OsStr` layout is considered an implementation detail and must not be relied upon. We
+// want `repr(transparent)` but we don't want it to show up in rustdoc, so we hide it under
+// `cfg(doc)`. This is an ad-hoc implementation of attribute privacy.
 #[cfg_attr(not(doc), repr(transparent))]
 pub struct OsStr {
     inner: Slice,
