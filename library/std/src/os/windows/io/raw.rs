@@ -62,7 +62,7 @@ pub trait FromRawHandle {
     /// # Safety
     ///
     /// The `handle` passed in must:
-    ///   - be a valid an open handle,
+    ///   - be an [owned handle][io-safety]; in particular, it must be open.
     ///   - be a handle for a resource that may be freed via [`CloseHandle`]
     ///     (as opposed to `RegCloseKey` or other close functions).
     ///
@@ -71,6 +71,7 @@ pub trait FromRawHandle {
     ///
     /// [`CloseHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
+    /// [io-safety]: io#io-safety
     #[stable(feature = "from_raw_os", since = "1.1.0")]
     unsafe fn from_raw_handle(handle: RawHandle) -> Self;
 }
@@ -207,10 +208,11 @@ pub trait FromRawSocket {
     /// # Safety
     ///
     /// The `socket` passed in must:
-    ///   - be a valid an open socket,
+    ///   - be an [owned socket][io-safety]; in particular, it must be open.
     ///   - be a socket that may be freed via [`closesocket`].
     ///
     /// [`closesocket`]: https://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-closesocket
+    /// [io-safety]: io#io-safety
     #[stable(feature = "from_raw_os", since = "1.1.0")]
     unsafe fn from_raw_socket(sock: RawSocket) -> Self;
 }
