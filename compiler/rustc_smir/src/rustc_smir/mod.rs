@@ -10,7 +10,7 @@
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
 use crate::stable_mir::ty::{
-    allocation_filter, new_allocation, FloatTy, IntTy, Movability, RigidTy, TyKind, UintTy,
+    allocation_filter, new_allocation, Const, FloatTy, IntTy, Movability, RigidTy, TyKind, UintTy,
 };
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
@@ -187,7 +187,11 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
         use mir::Rvalue::*;
         match self {
             Use(op) => stable_mir::mir::Rvalue::Use(op.stable(tables)),
-            Repeat(op, len) => stable_mir::mir::Rvalue::Repeat(op.stable(tables), opaque(len)),
+            Repeat(op, len) => {
+                let cnst = ConstantKind::from_const(*len, tables.tcx);
+                let len = Const { literal: cnst.stable(tables) };
+                stable_mir::mir::Rvalue::Repeat(op.stable(tables), len)
+            }
             Ref(region, kind, place) => stable_mir::mir::Rvalue::Ref(
                 opaque(region),
                 kind.stable(tables),
@@ -372,7 +376,11 @@ impl<'tcx> Stable<'tcx> for ty::TermKind<'tcx> {
         use stable_mir::ty::TermKind;
         match self {
             ty::TermKind::Ty(ty) => TermKind::Type(tables.intern_ty(*ty)),
-            ty::TermKind::Const(const_) => TermKind::Const(opaque(const_)),
+            ty::TermKind::Const(cnst) => {
+                let cnst = ConstantKind::from_const(*cnst, tables.tcx);
+                let cnst = Const { literal: cnst.stable(tables) };
+                TermKind::Const(cnst)
+            }
         }
     }
 }
@@ -829,7 +837,10 @@ impl<'tcx> Stable<'tcx> for ty::GenericArgKind<'tcx> {
         match self {
             ty::GenericArgKind::Lifetime(region) => GenericArgKind::Lifetime(opaque(region)),
             ty::GenericArgKind::Type(ty) => GenericArgKind::Type(tables.intern_ty(*ty)),
-            ty::GenericArgKind::Const(const_) => GenericArgKind::Const(opaque(&const_)),
+            ty::GenericArgKind::Const(cnst) => {
+                let cnst = ConstantKind::from_const(*cnst, tables.tcx);
+                GenericArgKind::Const(stable_mir::ty::Const { literal: cnst.stable(tables) })
+            }
         }
     }
 }
@@ -1035,7 +1046,9 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
             }
             ty::Str => TyKind::RigidTy(RigidTy::Str),
             ty::Array(ty, constant) => {
-                TyKind::RigidTy(RigidTy::Array(tables.intern_ty(*ty), opaque(constant)))
+                let cnst = ConstantKind::from_const(*constant, tables.tcx);
+                let cnst = stable_mir::ty::Const { literal: cnst.stable(tables) };
+                TyKind::RigidTy(RigidTy::Array(tables.intern_ty(*ty), cnst))
             }
             ty::Slice(ty) => TyKind::RigidTy(RigidTy::Slice(tables.intern_ty(*ty))),
             ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
