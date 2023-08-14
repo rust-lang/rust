@@ -1164,6 +1164,9 @@ impl FusedIterator for Ancestors<'_> {}
 // When attribute privacy is implemented, `PathBuf` should be annotated as `#[repr(transparent)]`.
 // Anyway, `PathBuf` representation and layout are considered implementation detail, are
 // not documented and must not be relied upon.
+// For now we just hide this from rustdoc, technically making our doc test builds rely on
+// unspecified layout assumptions. We are std, so we can get away with that.
+#[cfg_attr(not(doc), repr(transparent))]
 pub struct PathBuf {
     inner: OsString,
 }
@@ -1989,6 +1992,9 @@ impl AsRef<OsStr> for PathBuf {
 // When attribute privacy is implemented, `Path` should be annotated as `#[repr(transparent)]`.
 // Anyway, `Path` representation and layout are considered implementation detail, are
 // not documented and must not be relied upon.
+// For now we just hide this from rustdoc, technically making our doc test builds rely on
+// unspecified layout assumptions. We are std, so we can get away with that.
+#[cfg_attr(not(doc), repr(transparent))]
 pub struct Path {
     inner: OsStr,
 }

@@ -116,6 +116,9 @@ impl crate::sealed::Sealed for OsString {}
 // When attribute privacy is implemented, `OsStr` should be annotated as `#[repr(transparent)]`.
 // Anyway, `OsStr` representation and layout are considered implementation details, are
 // not documented and must not be relied upon.
+// For now we just hide this from rustdoc, technically making our doc test builds rely on
+// unspecified layout assumptions. We are std, so we can get away with that.
+#[cfg_attr(not(doc), repr(transparent))]
 pub struct OsStr {
     inner: Slice,
 }

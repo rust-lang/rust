@@ -88,6 +88,9 @@ use crate::str;
 // When attribute privacy is implemented, `CStr` should be annotated as `#[repr(transparent)]`.
 // Anyway, `CStr` representation and layout are considered implementation detail, are
 // not documented and must not be relied upon.
+// For now we just hide this from rustdoc, technically making our doc test builds rely on
+// unspecified layout assumptions. We are std, so we can get away with that.
+#[cfg_attr(not(doc), repr(transparent))]
 pub struct CStr {
     // FIXME: this should not be represented with a DST slice but rather with
     //        just a raw `c_char` along with some form of marker to make
