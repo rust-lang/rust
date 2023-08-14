@@ -204,18 +204,25 @@ fn overlap<'tcx>(
 
     // Equate the headers to find their intersection (the general type, with infer vars,
     // that may apply both impls).
-    let equate_obligations = equate_impl_headers(selcx.infcx, &impl1_header, &impl2_header)?;
+    let mut obligations = equate_impl_headers(selcx.infcx, &impl1_header, &impl2_header)?;
     debug!("overlap: unification check succeeded");
 
-    if overlap_mode.use_implicit_negative()
-        && impl_intersection_has_impossible_obligation(
-            selcx,
-            param_env,
-            &impl1_header,
-            impl2_header,
-            equate_obligations,
-        )
-    {
+    if !overlap_mode.use_implicit_negative() {
+        let impl_header = selcx.infcx.resolve_vars_if_possible(impl1_header);
+        return Some(OverlapResult {
+            impl_header,
+            intercrate_ambiguity_causes: Default::default(),
+            involves_placeholder: false,
+        });
+    };
+
+    obligations.extend(
+        [&impl1_header.predicates, &impl2_header.predicates].into_iter().flatten().map(
+            |&predicate| Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, predicate),
+        ),
+    );
+
+    if impl_intersection_has_impossible_obligation(selcx, &obligations) {
         return None;
     }
 
@@ -226,7 +233,12 @@ fn overlap<'tcx>(
         return None;
     }
 
-    let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
+    let intercrate_ambiguity_causes = if infcx.next_trait_solver() {
+        crate::solve::compute_intercrate_ambiguity_causes(&infcx, &obligations)
+    } else {
+        selcx.take_intercrate_ambiguity_causes()
+    };
+
     debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
     let involves_placeholder = infcx
         .inner
@@ -282,14 +294,11 @@ fn equate_impl_headers<'tcx>(
 /// Importantly, this works even if there isn't a `impl !Error for MyLocalType`.
 fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    impl1_header: &ty::ImplHeader<'tcx>,
-    impl2_header: ty::ImplHeader<'tcx>,
-    obligations: PredicateObligations<'tcx>,
+    obligations: &[PredicateObligation<'tcx>],
 ) -> bool {
     let infcx = selcx.infcx;
 
-    let obligation_guaranteed_to_fail = move |obligation: &PredicateObligation<'tcx>| {
+    let obligation_guaranteed_to_fail = move |obligation: &&PredicateObligation<'tcx>| {
         if infcx.next_trait_solver() {
             infcx.evaluate_obligation(obligation).map_or(false, |result| !result.may_apply())
         } else {
@@ -303,15 +312,7 @@ fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
         }
     };
 
-    let opt_failing_obligation = [&impl1_header.predicates, &impl2_header.predicates]
-        .into_iter()
-        .flatten()
-        .map(|&predicate| {
-            Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, predicate)
-        })
-        .chain(obligations)
-        .find(obligation_guaranteed_to_fail);
-
+    let opt_failing_obligation = obligations.iter().find(obligation_guaranteed_to_fail);
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
         true

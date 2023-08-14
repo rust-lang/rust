@@ -8,6 +8,8 @@ use super::{EvalCtxt, GenerateProofTree, GoalEvaluationKind};
 
 pub use rustc_middle::traits::solve::inspect::*;
 
+pub(super) mod analyse;
+
 #[derive(Eq, PartialEq, Debug, Hash, HashStable)]
 pub struct WipRootGoalEvaluation<'tcx> {
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
