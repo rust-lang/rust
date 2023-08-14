@@ -17,6 +17,7 @@ use crate::solve::{GenerateProofTree, InferCtxtEvalExt, UseGlobalCache};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
 use crate::traits::NormalizeExt;
+use ambiguity::Ambiguity::*;
 use on_unimplemented::{AppendConstMessage, OnUnimplementedNote, TypeErrCtxtExt as _};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
@@ -2366,14 +2367,28 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                 };
 
-                let ambiguities = ambiguity::recompute_applicable_impls(
+                let mut ambiguities = ambiguity::recompute_applicable_impls(
                     self.infcx,
                     &obligation.with(self.tcx, trait_ref),
                 );
                 let has_non_region_infer =
                     trait_ref.skip_binder().args.types().any(|t| !t.is_ty_or_numeric_infer());
-                // It doesn't make sense to talk about applicable impls if there are more
-                // than a handful of them.
+                // It doesn't make sense to talk about applicable impls if there are more than a
+                // handful of them. If there are a lot of them, but only a few of them have no type
+                // params, we only show those, as they are more likely to be useful/intended.
+                if ambiguities.len() > 20 {
+                    let infcx = self.infcx;
+                    if !ambiguities.iter().all(|option| match option {
+                        DefId(did) => infcx.fresh_args_for_item(DUMMY_SP, *did).is_empty(),
+                        ParamEnv(_) => true,
+                    }) {
+                        // If not all are blanket impls, we filter blanked impls out.
+                        ambiguities.retain(|option| match option {
+                            DefId(did) => infcx.fresh_args_for_item(DUMMY_SP, *did).is_empty(),
+                            ParamEnv(_) => true,
+                        });
+                    }
+                }
                 if ambiguities.len() > 1 && ambiguities.len() < 10 && has_non_region_infer {
                     if self.tainted_by_errors().is_some() && subst.is_none() {
                         // If `subst.is_none()`, then this is probably two param-env
@@ -2392,7 +2407,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     err.note(format!("cannot satisfy `{predicate}`"));
                     let impl_candidates = self
                         .find_similar_impl_candidates(predicate.to_opt_poly_trait_pred().unwrap());
-                    if impl_candidates.len() < 10 {
+                    if impl_candidates.len() < 40 {
                         self.report_similar_impl_candidates(
                             impl_candidates.as_slice(),
                             trait_ref,

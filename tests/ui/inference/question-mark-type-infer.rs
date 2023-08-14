@@ -9,6 +9,7 @@ fn g() -> Result<Vec<i32>, ()> {
     let l = [1, 2, 3, 4];
     l.iter().map(f).collect()?
     //~^ ERROR type annotations needed
+    //~| ERROR type annotations needed
 }
 
 fn main() {

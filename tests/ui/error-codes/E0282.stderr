@@ -9,6 +9,39 @@ help: consider giving `x` an explicit type
 LL |     let x: Vec<_> = "hello".chars().rev().collect();
    |          ++++++++
 
-error: aborting due to previous error
+error[E0283]: type annotations needed
+  --> $DIR/E0282.rs:2:9
+   |
+LL |     let x = "hello".chars().rev().collect();
+   |         ^                         ------- type must be known at this point
+   |
+   = note: multiple `impl`s satisfying `_: FromIterator<char>` found in the following crates: `alloc`, `hashbrown`, `std`:
+           - impl FromIterator<char> for String;
+           - impl<'a, T> FromIterator<T> for Cow<'a, [T]>
+             where T: Clone;
+           - impl<'a> FromIterator<char> for Cow<'a, str>;
+           - impl<I> FromIterator<I> for Box<[I]>;
+           - impl<T, S, A> FromIterator<T> for hashbrown::set::HashSet<T, S, A>
+             where T: Eq, T: Hash, S: BuildHasher, S: Default, A: Default, A: Allocator, A: Clone;
+           - impl<T, S> FromIterator<T> for HashSet<T, S>
+             where T: Eq, T: Hash, S: BuildHasher, S: Default;
+           - impl<T> FromIterator<T> for Arc<[T]>;
+           - impl<T> FromIterator<T> for BTreeSet<T>
+             where T: Ord;
+           - impl<T> FromIterator<T> for BinaryHeap<T>
+             where T: Ord;
+           - impl<T> FromIterator<T> for LinkedList<T>;
+           - impl<T> FromIterator<T> for Rc<[T]>;
+           - impl<T> FromIterator<T> for Vec<T>;
+           - impl<T> FromIterator<T> for VecDeque<T>;
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider giving `x` an explicit type
+   |
+LL |     let x: Vec<_> = "hello".chars().rev().collect();
+   |          ++++++++
 
-For more information about this error, try `rustc --explain E0282`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0283.
+For more information about an error, try `rustc --explain E0282`.

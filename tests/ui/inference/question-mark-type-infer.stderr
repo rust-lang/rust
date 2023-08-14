@@ -9,6 +9,21 @@ help: consider specifying the generic argument
 LL |     l.iter().map(f).collect::<Vec<_>>()?
    |                            ++++++++++
 
-error: aborting due to previous error
+error[E0283]: type annotations needed
+  --> $DIR/question-mark-type-infer.rs:10:21
+   |
+LL |     l.iter().map(f).collect()?
+   |                     ^^^^^^^ cannot infer type of the type parameter `B` declared on the method `collect`
+   |
+   = note: cannot satisfy `_: FromIterator<Result<i32, ()>>`
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider specifying the generic argument
+   |
+LL |     l.iter().map(f).collect::<Vec<_>>()?
+   |                            ++++++++++
 
-For more information about this error, try `rustc --explain E0282`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0283.
+For more information about an error, try `rustc --explain E0282`.
