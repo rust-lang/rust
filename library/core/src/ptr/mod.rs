@@ -797,6 +797,9 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 ///
 /// * Both `x` and `y` must be [valid] for both reads and writes.
 ///
+/// * `x` must remain valid for reads and writes even after `y` is read/written, and vice versa.
+///   (In other words, there cannot be aliasing restrictions on the use of these pointers.)
+///
 /// * Both `x` and `y` must be properly aligned.
 ///
 /// Note that even if `T` has size `0`, the pointers must be non-null and properly aligned.

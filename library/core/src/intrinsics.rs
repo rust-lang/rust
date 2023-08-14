@@ -2709,6 +2709,9 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 ///
 /// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
 ///
+/// * `src` must remain valid for reads even after `dst` is written, and vice versa.
+///   (In other words, there cannot be aliasing restrictions on the use of these pointers.)
+///
 /// * Both `src` and `dst` must be properly aligned.
 ///
 /// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
