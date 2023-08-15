@@ -108,7 +108,7 @@ object.debug = 0
 # See comments in `src/tools/rustc-workspace-hack/README.md` for what's going on
 # here
 rustc-workspace-hack = { path = 'src/tools/rustc-workspace-hack' }
-libc = { git = "https://github.com/john-sharratt/libc.git" }
+libc = { git = "https://github.com/wasix-org/libc.git", branch = "v0.2.147" }
 
 # See comments in `library/rustc-std-workspace-core/README.md` for what's going on
 # here

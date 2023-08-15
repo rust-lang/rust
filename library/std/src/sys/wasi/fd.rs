@@ -28,29 +28,29 @@ fn ciovec<'a>(a: &'a [IoSlice<'_>]) -> &'a [wasi::Ciovec] {
 }
 
 impl WasiFd {
-    pub fn datasync(&self) -> io::Result<()> {
+    pub(crate) fn datasync(&self) -> io::Result<()> {
         unsafe { wasi::fd_datasync(self.as_raw_fd() as wasi::Fd).map_err(err2io) }
     }
 
-    pub fn pread(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+    pub(crate) fn pread(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         unsafe { wasi::fd_pread(self.as_raw_fd() as wasi::Fd, iovec(bufs), offset).map_err(err2io) }
     }
 
-    pub fn pwrite(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+    pub(crate) fn pwrite(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         unsafe {
             wasi::fd_pwrite(self.as_raw_fd() as wasi::Fd, ciovec(bufs), offset).map_err(err2io)
         }
     }
 
-    pub fn read(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+    pub(crate) fn read(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         unsafe { wasi::fd_read(self.as_raw_fd() as wasi::Fd, iovec(bufs)).map_err(err2io) }
     }
 
-    pub fn write(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+    pub(crate) fn write(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         unsafe { wasi::fd_write(self.as_raw_fd() as wasi::Fd, ciovec(bufs)).map_err(err2io) }
     }
 
-    pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
+    pub(crate) fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
         let (whence, offset) = match pos {
             SeekFrom::Start(pos) => (wasi::WHENCE_SET, pos as i64),
             SeekFrom::End(pos) => (wasi::WHENCE_END, pos),
@@ -59,42 +59,42 @@ impl WasiFd {
         unsafe { wasi::fd_seek(self.as_raw_fd() as wasi::Fd, offset, whence).map_err(err2io) }
     }
 
-    pub fn tell(&self) -> io::Result<u64> {
+    pub(crate) fn tell(&self) -> io::Result<u64> {
         unsafe { wasi::fd_tell(self.as_raw_fd() as wasi::Fd).map_err(err2io) }
     }
 
     // FIXME: __wasi_fd_fdstat_get
 
-    pub fn set_flags(&self, flags: wasi::Fdflags) -> io::Result<()> {
+    pub(crate) fn set_flags(&self, flags: wasi::Fdflags) -> io::Result<()> {
         unsafe { wasi::fd_fdstat_set_flags(self.as_raw_fd() as wasi::Fd, flags).map_err(err2io) }
     }
 
-    pub fn set_rights(&self, base: wasi::Rights, inheriting: wasi::Rights) -> io::Result<()> {
+    pub(crate) fn set_rights(&self, base: wasi::Rights, inheriting: wasi::Rights) -> io::Result<()> {
         unsafe {
             wasi::fd_fdstat_set_rights(self.as_raw_fd() as wasi::Fd, base, inheriting)
                 .map_err(err2io)
         }
     }
 
-    pub fn sync(&self) -> io::Result<()> {
+    pub(crate) fn sync(&self) -> io::Result<()> {
         unsafe { wasi::fd_sync(self.as_raw_fd() as wasi::Fd).map_err(err2io) }
     }
 
-    pub fn advise(&self, offset: u64, len: u64, advice: wasi::Advice) -> io::Result<()> {
+    pub(crate) fn advise(&self, offset: u64, len: u64, advice: wasi::Advice) -> io::Result<()> {
         unsafe {
             wasi::fd_advise(self.as_raw_fd() as wasi::Fd, offset, len, advice).map_err(err2io)
         }
     }
 
-    pub fn allocate(&self, offset: u64, len: u64) -> io::Result<()> {
+    pub(crate) fn allocate(&self, offset: u64, len: u64) -> io::Result<()> {
         unsafe { wasi::fd_allocate(self.as_raw_fd() as wasi::Fd, offset, len).map_err(err2io) }
     }
 
-    pub fn create_directory(&self, path: &str) -> io::Result<()> {
+    pub(crate) fn create_directory(&self, path: &str) -> io::Result<()> {
         unsafe { wasi::path_create_directory(self.as_raw_fd() as wasi::Fd, path).map_err(err2io) }
     }
 
-    pub fn link(
+    pub(crate) fn link(
         &self,
         old_flags: wasi::Lookupflags,
         old_path: &str,
@@ -113,7 +113,7 @@ impl WasiFd {
         }
     }
 
-    pub fn open(
+    pub(crate) fn open(
         &self,
         dirflags: wasi::Lookupflags,
         path: &str,
@@ -137,21 +137,21 @@ impl WasiFd {
         }
     }
 
-    pub fn readdir(&self, buf: &mut [u8], cookie: wasi::Dircookie) -> io::Result<usize> {
+    pub(crate) fn readdir(&self, buf: &mut [u8], cookie: wasi::Dircookie) -> io::Result<usize> {
         unsafe {
             wasi::fd_readdir(self.as_raw_fd() as wasi::Fd, buf.as_mut_ptr(), buf.len(), cookie)
                 .map_err(err2io)
         }
     }
 
-    pub fn readlink(&self, path: &str, buf: &mut [u8]) -> io::Result<usize> {
+    pub(crate) fn readlink(&self, path: &str, buf: &mut [u8]) -> io::Result<usize> {
         unsafe {
             wasi::path_readlink(self.as_raw_fd() as wasi::Fd, path, buf.as_mut_ptr(), buf.len())
                 .map_err(err2io)
         }
     }
 
-    pub fn rename(&self, old_path: &str, new_fd: &WasiFd, new_path: &str) -> io::Result<()> {
+    pub(crate) fn rename(&self, old_path: &str, new_fd: &WasiFd, new_path: &str) -> io::Result<()> {
         unsafe {
             wasi::path_rename(
                 self.as_raw_fd() as wasi::Fd,
@@ -163,11 +163,11 @@ impl WasiFd {
         }
     }
 
-    pub fn filestat_get(&self) -> io::Result<wasi::Filestat> {
+    pub(crate) fn filestat_get(&self) -> io::Result<wasi::Filestat> {
         unsafe { wasi::fd_filestat_get(self.as_raw_fd() as wasi::Fd).map_err(err2io) }
     }
 
-    pub fn filestat_set_times(
+    pub(crate) fn filestat_set_times(
         &self,
         atim: wasi::Timestamp,
         mtim: wasi::Timestamp,
@@ -179,11 +179,11 @@ impl WasiFd {
         }
     }
 
-    pub fn filestat_set_size(&self, size: u64) -> io::Result<()> {
+    pub(crate) fn filestat_set_size(&self, size: u64) -> io::Result<()> {
         unsafe { wasi::fd_filestat_set_size(self.as_raw_fd() as wasi::Fd, size).map_err(err2io) }
     }
 
-    pub fn path_filestat_get(
+    pub(crate) fn path_filestat_get(
         &self,
         flags: wasi::Lookupflags,
         path: &str,
@@ -193,7 +193,7 @@ impl WasiFd {
         }
     }
 
-    pub fn path_filestat_set_times(
+    pub(crate) fn path_filestat_set_times(
         &self,
         flags: wasi::Lookupflags,
         path: &str,
@@ -214,25 +214,25 @@ impl WasiFd {
         }
     }
 
-    pub fn symlink(&self, old_path: &str, new_path: &str) -> io::Result<()> {
+    pub(crate) fn symlink(&self, old_path: &str, new_path: &str) -> io::Result<()> {
         unsafe {
             wasi::path_symlink(old_path, self.as_raw_fd() as wasi::Fd, new_path).map_err(err2io)
         }
     }
 
-    pub fn unlink_file(&self, path: &str) -> io::Result<()> {
+    pub(crate) fn unlink_file(&self, path: &str) -> io::Result<()> {
         unsafe { wasi::path_unlink_file(self.as_raw_fd() as wasi::Fd, path).map_err(err2io) }
     }
 
-    pub fn remove_directory(&self, path: &str) -> io::Result<()> {
+    pub(crate) fn remove_directory(&self, path: &str) -> io::Result<()> {
         unsafe { wasi::path_remove_directory(self.as_raw_fd() as wasi::Fd, path).map_err(err2io) }
     }
 
-    pub fn sock_accept(&self, flags: wasi::Fdflags) -> io::Result<wasi::Fd> {
+    pub(crate) fn sock_accept(&self, flags: wasi::Fdflags) -> io::Result<wasi::Fd> {
         unsafe { wasi::sock_accept_v2(self.as_raw_fd() as wasi::Fd, flags).map_err(err2io) }
     }
 
-    pub fn sock_recv(
+    pub(crate) fn sock_recv(
         &self,
         ri_data: &mut [IoSliceMut<'_>],
         ri_flags: wasi::Riflags,
@@ -242,13 +242,13 @@ impl WasiFd {
         }
     }
 
-    pub fn sock_send(&self, si_data: &[IoSlice<'_>], si_flags: wasi::Siflags) -> io::Result<usize> {
+    pub(crate) fn sock_send(&self, si_data: &[IoSlice<'_>], si_flags: wasi::Siflags) -> io::Result<usize> {
         unsafe {
             wasi::sock_send(self.as_raw_fd() as wasi::Fd, ciovec(si_data), si_flags).map_err(err2io)
         }
     }
 
-    pub fn sock_shutdown(&self, how: Shutdown) -> io::Result<()> {
+    pub(crate) fn sock_shutdown(&self, how: Shutdown) -> io::Result<()> {
         let how = match how {
             Shutdown::Read => wasi::SDFLAGS_RD,
             Shutdown::Write => wasi::SDFLAGS_WR,

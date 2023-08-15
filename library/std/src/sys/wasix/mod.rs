@@ -22,9 +22,7 @@ pub mod os;
 pub mod os_str;
 #[path = "../unix/path.rs"]
 pub mod path;
-#[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
 pub mod process;
 #[path = "../wasi/stdio.rs"]
 pub mod stdio;
@@ -111,6 +109,7 @@ pub use super::common::cvt::{
     cvt,
     cvt_r
 };
+pub use os::cvt_nz;
 
 pub(crate) fn err2io<I>(err: I) -> std_io::Error
 where I: Into<wasi::Errno> {

@@ -17,7 +17,7 @@ panic_abort = { path = "../panic_abort" }
 core = { path = "../core" }
 # FIXME: use target specific dependency
 #libc = { version = "0.2.126", default-features = false, features = ['rustc-dep-of-std'] }
-libc = { git = "https://github.com/john-sharratt/libc.git", default-features = false, features = ['rustc-dep-of-std'] }
+libc = { git = "https://github.com/wasix-org/libc.git", branch = "v0.2.147", default-features = false, features = ['rustc-dep-of-std'] }
 compiler_builtins = { version = "0.1.87" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
@@ -39,7 +39,7 @@ rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
 rand_xorshift = "0.3.0"
 
 [patch.crates-io]
-libc = { git = "https://github.com/john-sharratt/libc.git", default-features = false, features = ['rustc-dep-of-std'] }
+libc = { git = "https://github.com/wasix-org/libc.git", branch = "v0.2.147", default-features = false, features = ['rustc-dep-of-std'] }
 
 [target.'cfg(any(all(target_family = "wasm", not(target_os = "emscripten")), all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
 dlmalloc = { version = "0.2.3", features = ['rustc-dep-of-std'] }

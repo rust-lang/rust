@@ -13,9 +13,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::sync::{Arc, Mutex};
 use crate::time::Instant;
 use crate::time::Duration;
-use libc::{
-    c_int,
-};
+use libc::c_int;
 
 pub use crate::sys::{cvt, cvt_r};
 

@@ -13,6 +13,8 @@ use crate::str;
 use crate::sys::memchr;
 use crate::vec;
 
+use libc::c_int;
+
 use super::err2io;
 
 const PATH_SEPARATOR: u8 = b':';
@@ -23,6 +25,7 @@ pub fn env_lock<'a>() -> MutexGuard<'a, ()> {
     ENV_LOCK.lock().unwrap()
 }
 
+#[allow(unused, dead_code)]
 pub fn errno() -> i32 {
     extern "C" {
         #[thread_local]
@@ -30,6 +33,18 @@ pub fn errno() -> i32 {
     }
 
     unsafe { errno as i32 }
+}
+
+#[allow(unused, dead_code)]
+pub fn set_errno(e: i32) {
+    extern "C" {
+        #[thread_local]
+        static mut errno: c_int;
+    }
+
+    unsafe {
+        errno = e;
+    }
 }
 
 pub fn error_string(errno: i32) -> String {
@@ -276,4 +291,9 @@ impl_is_minus_one! { i8 i16 i32 i64 isize }
 
 fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
     if t.is_minus_one() { Err(io::Error::last_os_error()) } else { Ok(t) }
+}
+
+#[allow(dead_code)] // Not used on all platforms.
+pub fn cvt_nz(error: libc::c_int) -> crate::io::Result<()> {
+    if error == 0 { Ok(()) } else { Err(crate::io::Error::from_raw_os_error(error)) }
 }
