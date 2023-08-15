@@ -1,4 +1,4 @@
-// This implements the dead-code warning pass. It follows middle::reachable
+// This implements the dead-code warning pass. It follows crate::reachable
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
@@ -814,13 +814,15 @@ impl<'tcx> DeadVisitor<'tcx> {
             }
         };
 
-        for id in &dead_codes[1..] {
-            let hir = self.tcx.hir().local_def_id_to_hir_id(*id);
-            let lint_level = self.tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir).0;
-            if let Some(expectation_id) = lint_level.get_expectation_id() {
-                self.tcx.sess.diagnostic().insert_fulfilled_expectation(expectation_id);
-            }
-        }
+        // FIXME: Remove this before landing the PR.
+        //  Just keeping it around so that I remember how to get the expectation id.
+        // for id in &dead_codes[1..] {
+        //     let hir = self.tcx.hir().local_def_id_to_hir_id(*id);
+        //     let lint_level = self.tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir).0;
+        //     if let Some(expectation_id) = lint_level.get_expectation_id() {
+        //         self.tcx.sess.diagnostic().insert_fulfilled_expectation(expectation_id);
+        //     }
+        // }
         self.tcx.emit_spanned_lint(
             lint,
             tcx.hir().local_def_id_to_hir_id(first_id),
@@ -829,7 +831,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         );
     }
 
-    fn warn_dead_fields_and_variants(
+    fn warn_dead_code_grouped_by_lint_level(
         &self,
         def_id: LocalDefId,
         participle: &str,
@@ -903,13 +905,21 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
             for item in impl_item.items {
                 let did = item.id.owner_id.def_id;
                 if !visitor.is_live_code(did) {
-                    dead_items.push(did)
+                    let name = tcx.item_name(def_id.to_def_id());
+                    let hir = tcx.hir().local_def_id_to_hir_id(did);
+                    let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir).0;
+
+                    dead_items.push(DeadVariant {
+                        def_id: did,
+                        name,
+                        level,
+                    })
                 }
             }
-            visitor.warn_multiple_dead_codes(
-                &dead_items,
+            visitor.warn_dead_code_grouped_by_lint_level(
+                item.owner_id.def_id,
                 "used",
-                Some(item.owner_id.def_id),
+                dead_items,
                 false,
             );
         }
@@ -966,10 +976,10 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                         }
                     })
                     .collect();
-                visitor.warn_dead_fields_and_variants(def_id, "read", dead_fields, is_positional)
+                visitor.warn_dead_code_grouped_by_lint_level(def_id, "read", dead_fields, is_positional)
             }
 
-            visitor.warn_dead_fields_and_variants(
+            visitor.warn_dead_code_grouped_by_lint_level(
                 item.owner_id.def_id,
                 "constructed",
                 dead_variants,
