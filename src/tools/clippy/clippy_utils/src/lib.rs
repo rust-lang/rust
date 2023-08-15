@@ -1765,7 +1765,7 @@ pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tc
 
     if let ExprKind::Match(_, arms, ref source) = expr.kind {
         // desugared from a `?` operator
-        if *source == MatchSource::TryDesugar {
+        if let MatchSource::TryDesugar(_) = *source {
             return Some(expr);
         }
 

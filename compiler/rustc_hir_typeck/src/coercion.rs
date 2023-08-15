@@ -1603,7 +1603,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         );
                         err.span_label(cause.span, "return type is not `()`");
                     }
-                    ObligationCauseCode::BlockTailExpression(blk_id) => {
+                    ObligationCauseCode::BlockTailExpression(blk_id, ..) => {
                         let parent_id = fcx.tcx.hir().parent_id(blk_id);
                         err = self.report_return_mismatched_types(
                             cause,
@@ -1751,7 +1751,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 ) && !in_external_macro(fcx.tcx.sess, cond_expr.span)
                     && !matches!(
                         cond_expr.kind,
-                        hir::ExprKind::Match(.., hir::MatchSource::TryDesugar)
+                        hir::ExprKind::Match(.., hir::MatchSource::TryDesugar(_))
                     )
             {
                 err.span_label(cond_expr.span, "expected this to be `()`");
