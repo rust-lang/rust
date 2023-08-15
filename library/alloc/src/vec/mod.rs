@@ -1222,7 +1222,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// does not materialize a reference to the underlying slice, and thus the returned pointer
     /// will remain valid when mixed with other calls to [`as_ptr`] and [`as_mut_ptr`].
     /// Note that calling other methods that materialize mutable references to the slice,
-    /// or references to specific elements you are planning on accessing through this pointer,
+    /// or mutable references to specific elements you are planning on accessing through this pointer,
     /// may still invalidate this pointer.
     /// See the second example below for how this guarantee can be used.
     ///
@@ -1244,10 +1244,10 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// ```rust
     /// unsafe {
-    ///     let mut v = vec![0];
+    ///     let mut v = vec![0, 1, 2];
     ///     let ptr1 = v.as_ptr();
     ///     let _ = ptr1.read();
-    ///     let ptr2 = v.as_mut_ptr();
+    ///     let ptr2 = v.as_mut_ptr().offset(2);
     ///     ptr2.write(2);
     ///     // Notably, the write to `ptr2` did *not* invalidate `ptr1`:
     ///     let _ = ptr1.read();
