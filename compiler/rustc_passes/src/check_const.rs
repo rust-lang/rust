@@ -45,7 +45,7 @@ impl NonConstExpr {
 
             Self::Loop(ForLoop) | Self::Match(ForLoopDesugar) => &[sym::const_for],
 
-            Self::Match(TryDesugar) => &[sym::const_try],
+            Self::Match(TryDesugar(_)) => &[sym::const_try],
 
             // All other expressions are allowed.
             Self::Loop(Loop | While) | Self::Match(Normal | FormatArgs) => &[],

@@ -135,10 +135,12 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for MatchVisitor<'a, '_, 'tcx> {
                 });
                 return;
             }
-            ExprKind::Match { scrutinee, box ref arms } => {
+            ExprKind::Match { scrutinee, scrutinee_hir_id, box ref arms } => {
                 let source = match ex.span.desugaring_kind() {
                     Some(DesugaringKind::ForLoop) => hir::MatchSource::ForLoopDesugar,
-                    Some(DesugaringKind::QuestionMark) => hir::MatchSource::TryDesugar,
+                    Some(DesugaringKind::QuestionMark) => {
+                        hir::MatchSource::TryDesugar(scrutinee_hir_id)
+                    }
                     Some(DesugaringKind::Await) => hir::MatchSource::AwaitDesugar,
                     _ => hir::MatchSource::Normal,
                 };
@@ -277,7 +279,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             | hir::MatchSource::FormatArgs => report_arm_reachability(&cx, &report),
             // Unreachable patterns in try and await expressions occur when one of
             // the arms are an uninhabited type. Which is OK.
-            hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
+            hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar(_) => {}
         }
 
         // Check if the match is exhaustive.
