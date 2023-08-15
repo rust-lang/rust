@@ -8,7 +8,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Node, PatKind, TyKind};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -944,7 +944,7 @@ impl<'tcx> DeadVisitor<'tcx> {
     }
 }
 
-fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
+fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
     let (live_symbols, ignored_derived_traits) = tcx.live_symbols_and_ignored_derived_traits(());
     let mut visitor = DeadVisitor { tcx, live_symbols, ignored_derived_traits };
 
@@ -969,7 +969,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
 
         if !live_symbols.contains(&item.owner_id.def_id) {
             let parent = tcx.local_parent(item.owner_id.def_id);
-            if parent != module && !live_symbols.contains(&parent) {
+            if parent != module.to_local_def_id() && !live_symbols.contains(&parent) {
                 // We already have diagnosed something.
                 continue;
             }
