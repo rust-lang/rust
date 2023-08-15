@@ -9,5 +9,6 @@ enum Alpha {
 
 fn main() {
     offset_of!(Alpha::One, 0); //~ ERROR expected type, found variant `Alpha::One`
-    offset_of!(Alpha, Two.0); //~ ERROR no field `Two` on type `Alpha`
+    offset_of!(Alpha, One); //~ ERROR `One` is an enum variant; expected field at end of `offset_of`
+    offset_of!(Alpha, Two.0);
 }

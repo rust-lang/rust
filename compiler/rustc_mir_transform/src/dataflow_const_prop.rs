@@ -287,7 +287,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     NullOp::SizeOf if layout.is_sized() => layout.size.bytes(),
                     NullOp::AlignOf if layout.is_sized() => layout.align.abi.bytes(),
                     NullOp::OffsetOf(fields) => layout
-                        .offset_of_subfield(&self.ecx, fields.iter().map(|f| f.index()))
+                        .offset_of_subfield(&self.ecx, fields.iter())
                         .bytes(),
                     _ => return ValueOrPlace::Value(FlatSet::Top),
                 };

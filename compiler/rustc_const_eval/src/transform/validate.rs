@@ -1056,16 +1056,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            Rvalue::NullaryOp(NullOp::OffsetOf(fields), container) => {
+            Rvalue::NullaryOp(NullOp::OffsetOf(indices), container) => {
                 let fail_out_of_bounds = |this: &mut Self, location, field, ty| {
                     this.fail(location, format!("Out of bounds field {field:?} for {ty:?}"));
                 };
 
                 let mut current_ty = *container;
+                let mut indices = indices.into_iter();
 
-                for field in fields.iter() {
-                    match current_ty.kind() {
-                        ty::Tuple(fields) => {
+                use rustc_target::abi::OffsetOfIdx::*;
+
+                while let Some(index) = indices.next() {
+                    match (current_ty.kind(), index) {
+                        (ty::Tuple(fields), Field(field)) => {
                             let Some(&f_ty) = fields.get(field.as_usize()) else {
                                 fail_out_of_bounds(self, location, field, current_ty);
                                 return;
@@ -1073,16 +1076,24 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                             current_ty = self.tcx.normalize_erasing_regions(self.param_env, f_ty);
                         }
-                        ty::Adt(adt_def, args) => {
-                            if adt_def.is_enum() {
+                        (ty::Adt(adt_def, args), Field(field)) if !adt_def.is_enum() => {
+                            let Some(field) = adt_def.non_enum_variant().fields.get(field) else {
+                                fail_out_of_bounds(self, location, field, current_ty);
+                                return;
+                            };
+
+                            let f_ty = field.ty(self.tcx, args);
+                            current_ty = self.tcx.normalize_erasing_regions(self.param_env, f_ty);
+                        }
+                        (ty::Adt(adt_def, args), Variant(variant)) if adt_def.is_enum() => {
+                            let Some(Field(field)) = indices.next() else {
                                 self.fail(
                                     location,
-                                    format!("Cannot get field offset from enum {current_ty:?}"),
+                                    format!("enum variant must be followed by field index in offset_of; in {current_ty:?}"),
                                 );
                                 return;
-                            }
-
-                            let Some(field) = adt_def.non_enum_variant().fields.get(field) else {
+                            };
+                            let Some(field) = adt_def.variant(variant).fields.get(field) else {
                                 fail_out_of_bounds(self, location, field, current_ty);
                                 return;
                             };
@@ -1093,7 +1104,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         _ => {
                             self.fail(
                                 location,
-                                format!("Cannot get field offset from non-adt type {current_ty:?}"),
+                                format!("Cannot get offset {index:?} from type {current_ty:?}"),
                             );
                             return;
                         }

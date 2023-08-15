@@ -250,7 +250,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::is_transparent(self)
     }
 
-    pub fn offset_of_subfield<C>(self, cx: &C, indices: impl Iterator<Item = usize>) -> Size
+    pub fn offset_of_subfield<C>(self, cx: &C, indices: impl Iterator<Item = OffsetOfIdx>) -> Size
     where
         Ty: TyAbiInterface<'a, C>,
     {
@@ -258,13 +258,21 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         let mut offset = Size::ZERO;
 
         for index in indices {
-            offset += layout.fields.offset(index);
-            layout = layout.field(cx, index);
-            assert!(
-                layout.is_sized(),
-                "offset of unsized field (type {:?}) cannot be computed statically",
-                layout.ty
-            );
+            match index {
+                OffsetOfIdx::Field(field) => {
+                    let index = field.index();
+                    offset += layout.fields.offset(index);
+                    layout = layout.field(cx, index);
+                    assert!(
+                        layout.is_sized(),
+                        "offset of unsized field (type {:?}) cannot be computed statically",
+                        layout.ty
+                    );
+                }
+                OffsetOfIdx::Variant(variant) => {
+                    layout = layout.for_variant(cx, variant);
+                }
+            }
         }
 
         offset

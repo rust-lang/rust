@@ -16,7 +16,7 @@ use rustc_middle::mir::interpret::{alloc_range, AllocId};
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_target::abi::FieldIdx;
+use rustc_target::abi::{FieldIdx, OffsetOfIdx};
 use stable_mir::mir::mono::InstanceDef;
 use stable_mir::mir::{Body, CopyNonOverlapping, Statement, UserTypeProjection, VariantIdx};
 use stable_mir::ty::{
@@ -640,6 +640,16 @@ impl<'tcx> Stable<'tcx> for FieldIdx {
     type T = usize;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         self.as_usize()
+    }
+}
+
+impl<'tcx> Stable<'tcx> for OffsetOfIdx {
+    type T = usize;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            OffsetOfIdx::Field(f) => f.as_usize(),
+            OffsetOfIdx::Variant(v) => v.as_usize(),
+        }
     }
 }
 

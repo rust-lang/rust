@@ -17,7 +17,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir};
 use rustc_hir::{self, CoroutineKind};
 use rustc_index::IndexVec;
-use rustc_target::abi::{FieldIdx, VariantIdx};
+use rustc_target::abi::{FieldIdx, OffsetOfIdx, VariantIdx};
 
 use rustc_ast::Mutability;
 use rustc_span::def_id::LocalDefId;
@@ -1354,7 +1354,7 @@ pub enum NullOp<'tcx> {
     /// Returns the minimum alignment of a type
     AlignOf,
     /// Returns the offset of a field
-    OffsetOf(&'tcx List<FieldIdx>),
+    OffsetOf(&'tcx List<OffsetOfIdx>),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

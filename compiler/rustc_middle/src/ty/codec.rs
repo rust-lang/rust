@@ -19,7 +19,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Span;
-use rustc_target::abi::FieldIdx;
+use rustc_target::abi::{FieldIdx, OffsetOfIdx};
 pub use rustc_type_ir::{TyDecoder, TyEncoder};
 use std::hash::Hash;
 use std::intrinsics;
@@ -414,6 +414,15 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<Fi
     }
 }
 
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<OffsetOfIdx> {
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        let len = decoder.read_usize();
+        decoder
+            .interner()
+            .mk_offset_of_from_iter((0..len).map::<OffsetOfIdx, _>(|_| Decodable::decode(decoder)))
+    }
+}
+
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
@@ -426,6 +435,7 @@ impl_decodable_via_ref! {
     &'tcx ty::List<ty::BoundVariableKind>,
     &'tcx ty::List<ty::Clause<'tcx>>,
     &'tcx ty::List<FieldIdx>,
+    &'tcx ty::List<OffsetOfIdx>,
 }
 
 #[macro_export]

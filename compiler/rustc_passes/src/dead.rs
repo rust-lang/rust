@@ -248,6 +248,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     }
 
     fn handle_offset_of(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+        use rustc_target::abi::OffsetOfIdx::*;
+
         let data = self.typeck_results().offset_of_data();
         let &(container, ref indices) =
             data.get(expr.hir_id).expect("no offset_of_data for offset_of");
@@ -256,11 +258,23 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         let param_env = self.tcx.param_env(body_did);
 
         let mut current_ty = container;
+        let mut indices = indices.into_iter();
 
-        for &index in indices {
-            match current_ty.kind() {
-                ty::Adt(def, subst) => {
-                    let field = &def.non_enum_variant().fields[index];
+        while let Some(&index) = indices.next() {
+            match (current_ty.kind(), index) {
+                (ty::Adt(def, subst), Field(field)) if !def.is_enum() => {
+                    let field = &def.non_enum_variant().fields[field];
+
+                    self.insert_def_id(field.did);
+                    let field_ty = field.ty(self.tcx, subst);
+
+                    current_ty = self.tcx.normalize_erasing_regions(param_env, field_ty);
+                }
+                (ty::Adt(def, subst), Variant(variant)) if def.is_enum() => {
+                    let Some(&Field(field)) = indices.next() else {
+                        span_bug!(expr.span, "variant must be followed by field in offset_of")
+                    };
+                    let field = &def.variant(variant).fields[field];
 
                     self.insert_def_id(field.did);
                     let field_ty = field.ty(self.tcx, subst);
@@ -269,11 +283,12 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 }
                 // we don't need to mark tuple fields as live,
                 // but we may need to mark subfields
-                ty::Tuple(tys) => {
+                (ty::Tuple(tys), Field(field)) => {
                     current_ty =
-                        self.tcx.normalize_erasing_regions(param_env, tys[index.as_usize()]);
+                        self.tcx.normalize_erasing_regions(param_env, tys[field.as_usize()]);
                 }
-                _ => span_bug!(expr.span, "named field access on non-ADT"),
+                (_, Field(_)) => span_bug!(expr.span, "named field access on non-ADT"),
+                (_, Variant(_)) => span_bug!(expr.span, "enum variant access on non-enum"),
             }
         }
     }

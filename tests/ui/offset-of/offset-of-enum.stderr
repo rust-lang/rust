@@ -7,13 +7,13 @@ LL |     offset_of!(Alpha::One, 0);
    |                not a type
    |                help: try using the variant's enum: `Alpha`
 
-error[E0609]: no field `Two` on type `Alpha`
+error[E0795]: `One` is an enum variant; expected field at end of `offset_of`
   --> $DIR/offset-of-enum.rs:12:23
    |
-LL |     offset_of!(Alpha, Two.0);
-   |                       ^^^
+LL |     offset_of!(Alpha, One);
+   |                       ^^^ enum variant
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0573, E0609.
+Some errors have detailed explanations: E0573, E0795.
 For more information about an error, try `rustc --explain E0573`.
