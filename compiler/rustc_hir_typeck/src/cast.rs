@@ -389,34 +389,26 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
                     if let ty::RawPtr(TypeAndMut { ty: expr_ty, .. }) = *self.expr_ty.kind()
                         && fcx
-                            .try_coerce(
-                                self.expr,
+                            .can_coerce(
                                 Ty::new_ref(fcx.tcx,
                                     fcx.tcx.lifetimes.re_erased,
                                     TypeAndMut { ty: expr_ty, mutbl },
                                 ),
                                 self.cast_ty,
-                                AllowTwoPhase::No,
-                                None,
                             )
-                            .is_ok()
                     {
                         sugg = Some((format!("&{}*", mutbl.prefix_str()), cast_ty == expr_ty));
                     } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind()
                         && expr_mutbl == Mutability::Not
                         && mutbl == Mutability::Mut
                         && fcx
-                            .try_coerce(
-                                self.expr,
+                            .can_coerce(
                                 Ty::new_ref(fcx.tcx,
                                     expr_reg,
                                     TypeAndMut { ty: expr_ty, mutbl: Mutability::Mut },
                                 ),
                                 self.cast_ty,
-                                AllowTwoPhase::No,
-                                None,
                             )
-                            .is_ok()
                     {
                         sugg_mutref = true;
                     }
@@ -424,30 +416,22 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     if !sugg_mutref
                         && sugg == None
                         && fcx
-                            .try_coerce(
-                                self.expr,
+                            .can_coerce(
                                 Ty::new_ref(fcx.tcx,reg, TypeAndMut { ty: self.expr_ty, mutbl }),
                                 self.cast_ty,
-                                AllowTwoPhase::No,
-                                None,
                             )
-                            .is_ok()
                     {
                         sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                     }
                 } else if let ty::RawPtr(TypeAndMut { mutbl, .. }) = *self.cast_ty.kind()
                     && fcx
-                        .try_coerce(
-                            self.expr,
+                        .can_coerce(
                             Ty::new_ref(fcx.tcx,
                                 fcx.tcx.lifetimes.re_erased,
                                 TypeAndMut { ty: self.expr_ty, mutbl },
                             ),
                             self.cast_ty,
-                            AllowTwoPhase::No,
-                            None,
                         )
-                        .is_ok()
                 {
                     sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                 }
