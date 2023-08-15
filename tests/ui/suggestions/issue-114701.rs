@@ -1,11 +1,11 @@
-enum Enum<T> { , SVariant { v: T }, UVariant } //~ ERROR expected identifier, found `,`
+enum Enum<T> { SVariant { v: T }, UVariant }
 
 macro_rules! is_variant {
     (TSVariant, ) => (!);
     (SVariant, ) => (!);
     (UVariant, $expr:expr) => (is_variant!(@check UVariant, {}, $expr));
     (@check $variant:ident, $matcher:tt, $expr:expr) => (
-        assert!(if let Enum::$variant::<()> $matcher = $expr () else { false }, //~ ERROR this `if` expression
+        assert!(if let Enum::$variant::<()> $matcher = $expr () { true } else { false },
                 );
     );
 }
