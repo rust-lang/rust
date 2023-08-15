@@ -271,7 +271,7 @@ impl str {
 
     /// Finds the closest `x` not below `index` where `is_char_boundary(x)` is `true`.
     ///
-    /// If `x` is greater than the length of the string, this returns the length of the string.
+    /// If `index` is greater than the length of the string, this returns the length of the string.
     ///
     /// This method is the natural complement to [`floor_char_boundary`]. See that method
     /// for more details.
