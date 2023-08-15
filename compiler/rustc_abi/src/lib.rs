@@ -1133,13 +1133,6 @@ rustc_index::newtype_index! {
     pub struct FieldIdx {}
 }
 
-/// `offset_of` can traverse fields and enum variants and should keep track of which is which.
-#[derive(Copy, Clone, Debug, Eq, Hash, HashStable_Generic, PartialEq, Encodable, Decodable)]
-pub enum OffsetOfIdx {
-    Field(FieldIdx),
-    Variant(VariantIdx),
-}
-
 /// Describes how the fields of a type are located in memory.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]

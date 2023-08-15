@@ -13,7 +13,29 @@ error[E0795]: `One` is an enum variant; expected field at end of `offset_of`
 LL |     offset_of!(Alpha, One);
    |                       ^^^ enum variant
 
-error: aborting due to 2 previous errors
+error[E0609]: no field named `1` on enum variant `Alpha::Two`
+  --> $DIR/offset-of-enum.rs:14:23
+   |
+LL |     offset_of!(Alpha, Two.1);
+   |                       ^^^ - ...does not have this field
+   |                       |
+   |                       this enum variant...
 
-Some errors have detailed explanations: E0573, E0795.
+error[E0609]: no field named `foo` on enum variant `Alpha::Two`
+  --> $DIR/offset-of-enum.rs:15:23
+   |
+LL |     offset_of!(Alpha, Two.foo);
+   |                       ^^^ --- ...does not have this field
+   |                       |
+   |                       this enum variant...
+
+error[E0599]: no variant named `NonExistent` found for enum `Alpha`
+  --> $DIR/offset-of-enum.rs:16:23
+   |
+LL |     offset_of!(Alpha, NonExistent);
+   |                       ^^^^^^^^^^^ variant not found
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0573, E0599, E0609, E0795.
 For more information about an error, try `rustc --explain E0573`.

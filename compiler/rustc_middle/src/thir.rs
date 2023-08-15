@@ -26,7 +26,7 @@ use rustc_middle::ty::{
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, ErrorGuaranteed, Span, Symbol, DUMMY_SP};
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
-use rustc_target::abi::{FieldIdx, OffsetOfIdx, VariantIdx};
+use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::fmt;
 use std::ops::Index;
@@ -491,7 +491,7 @@ pub enum ExprKind<'tcx> {
     /// Field offset (`offset_of!`)
     OffsetOf {
         container: Ty<'tcx>,
-        fields: &'tcx List<OffsetOfIdx>,
+        fields: &'tcx List<(VariantIdx, FieldIdx)>,
     },
     /// An expression taking a reference to a thread local.
     ThreadLocalRef(DefId),

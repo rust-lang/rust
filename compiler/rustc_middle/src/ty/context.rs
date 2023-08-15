@@ -63,7 +63,7 @@ use rustc_session::{Limit, MetadataKind, Session};
 use rustc_span::def_id::{DefPathHash, StableCrateId};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{FieldIdx, Layout, LayoutS, OffsetOfIdx, TargetDataLayout, VariantIdx};
+use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
@@ -163,7 +163,7 @@ pub struct CtxtInterners<'tcx> {
     predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<'tcx>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
     local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
-    offset_of: InternedSet<'tcx, List<OffsetOfIdx>>,
+    offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -1589,7 +1589,7 @@ slice_interners!(
     bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind),
     fields: pub mk_fields(FieldIdx),
     local_def_ids: intern_local_def_ids(LocalDefId),
-    offset_of: pub mk_offset_of(OffsetOfIdx),
+    offset_of: pub mk_offset_of((VariantIdx, FieldIdx)),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -1920,7 +1920,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_offset_of_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: CollectAndApply<OffsetOfIdx, &'tcx List<OffsetOfIdx>>,
+        T: CollectAndApply<(VariantIdx, FieldIdx), &'tcx List<(VariantIdx, FieldIdx)>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_offset_of(xs))
     }
