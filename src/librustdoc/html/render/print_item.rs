@@ -117,8 +117,7 @@ macro_rules! item_template_methods {
         fn render_attributes_in_pre<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
                 let (item, cx) = self.item_and_mut_cx();
-                let tcx = cx.tcx();
-                let v = render_attributes_in_pre(item, "", tcx);
+                let v = render_attributes_in_pre(item, "", &cx);
                 write!(f, "{v}")
             })
         }
@@ -656,7 +655,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
             w,
             "{attrs}{vis}{constness}{asyncness}{unsafety}{abi}fn \
                 {name}{generics}{decl}{notable_traits}{where_clause}",
-            attrs = render_attributes_in_pre(it, "", tcx),
+            attrs = render_attributes_in_pre(it, "", cx),
             vis = visibility,
             constness = constness,
             asyncness = asyncness,
@@ -691,7 +690,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         write!(
             w,
             "{attrs}{vis}{unsafety}{is_auto}trait {name}{generics}{bounds}",
-            attrs = render_attributes_in_pre(it, "", tcx),
+            attrs = render_attributes_in_pre(it, "", cx),
             vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
             unsafety = t.unsafety(tcx).print_with_space(),
             is_auto = if t.is_auto(tcx) { "auto " } else { "" },
@@ -1170,7 +1169,7 @@ fn item_trait_alias(
         write!(
             w,
             "{attrs}trait {name}{generics}{where_b} = {bounds};",
-            attrs = render_attributes_in_pre(it, "", cx.tcx()),
+            attrs = render_attributes_in_pre(it, "", cx),
             name = it.name.unwrap(),
             generics = t.generics.print(cx),
             where_b = print_where_clause(&t.generics, cx, 0, Ending::Newline),
@@ -1198,7 +1197,7 @@ fn item_opaque_ty(
         write!(
             w,
             "{attrs}type {name}{generics}{where_clause} = impl {bounds};",
-            attrs = render_attributes_in_pre(it, "", cx.tcx()),
+            attrs = render_attributes_in_pre(it, "", cx),
             name = it.name.unwrap(),
             generics = t.generics.print(cx),
             where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
@@ -1223,7 +1222,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
             write!(
                 w,
                 "{attrs}{vis}type {name}{generics}{where_clause} = {type_};",
-                attrs = render_attributes_in_pre(it, "", cx.tcx()),
+                attrs = render_attributes_in_pre(it, "", cx),
                 vis = visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
                 name = it.name.unwrap(),
                 generics = t.generics.print(cx),
@@ -1408,7 +1407,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
     let tcx = cx.tcx();
     let count_variants = e.variants().count();
     wrap_item(w, |w| {
-        render_attributes_in_code(w, it, tcx);
+        render_attributes_in_code(w, it, cx);
         write!(
             w,
             "{}enum {}{}",
@@ -1644,7 +1643,7 @@ fn item_primitive(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Ite
 fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &clean::Constant) {
     wrap_item(w, |w| {
         let tcx = cx.tcx();
-        render_attributes_in_code(w, it, tcx);
+        render_attributes_in_code(w, it, cx);
 
         write!(
             w,
@@ -1693,7 +1692,7 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
 
 fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Struct) {
     wrap_item(w, |w| {
-        render_attributes_in_code(w, it, cx.tcx());
+        render_attributes_in_code(w, it, cx);
         render_struct(w, it, Some(&s.generics), s.ctor_kind, &s.fields, "", true, cx);
     });
 
@@ -1753,7 +1752,7 @@ fn item_fields(
 
 fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
     wrap_item(w, |buffer| {
-        render_attributes_in_code(buffer, it, cx.tcx());
+        render_attributes_in_code(buffer, it, cx);
         write!(
             buffer,
             "{vis}static {mutability}{name}: {typ}",
@@ -1771,7 +1770,7 @@ fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, 
 fn item_foreign_type(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item) {
     wrap_item(w, |buffer| {
         buffer.write_str("extern {\n").unwrap();
-        render_attributes_in_code(buffer, it, cx.tcx());
+        render_attributes_in_code(buffer, it, cx);
         write!(
             buffer,
             "    {}type {};\n}}",

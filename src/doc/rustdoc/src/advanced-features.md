@@ -110,3 +110,23 @@ https://doc.rust-lang.org/stable/std/?search=%s&go_to_first=true
 
 This URL adds the `go_to_first=true` query parameter which can be appended to any `rustdoc` search URL
 to automatically go to the first result.
+
+## `#[repr(transparent)]`: Documenting the transparent representation
+
+You can read more about `#[repr(transparent)]` itself in the [Rust Reference][repr-trans-ref] and
+in the [Rustonomicon][repr-trans-nomicon].
+
+Since this representation is only considered part of the public ABI if the single field with non-trivial
+size or alignment is public and if the documentation does not state otherwise, Rustdoc helpfully displays
+the attribute if and only if the non-1-ZST field is public or at least one field is public in case all
+fields are 1-ZST fields. The term *1-ZST* refers to types that are one-aligned and zero-sized.
+
+It would seem that one can manually hide the attribute with `#[cfg_attr(not(doc), repr(transparent))]`
+if one wishes to declare the representation as private even if the non-1-ZST field is public.
+However, due to [current limitations][cross-crate-cfg-doc], this method is not always guaranteed to work.
+Therefore, if you would like to do so, you should always write it down in prose independently of whether
+you use `cfg_attr` or not.
+
+[repr-trans-ref]: https://doc.rust-lang.org/reference/type-layout.html#the-transparent-representation
+[repr-trans-nomicon]: https://doc.rust-lang.org/nomicon/other-reprs.html#reprtransparent
+[cross-crate-cfg-doc]: https://github.com/rust-lang/rust/issues/114952
