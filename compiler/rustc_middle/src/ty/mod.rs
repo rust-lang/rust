@@ -238,7 +238,7 @@ pub struct ImplHeader<'tcx> {
     pub impl_def_id: DefId,
     pub self_ty: Ty<'tcx>,
     pub trait_ref: Option<TraitRef<'tcx>>,
-    pub predicates: Vec<Predicate<'tcx>>,
+    pub predicates: Vec<(Predicate<'tcx>, Span)>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
