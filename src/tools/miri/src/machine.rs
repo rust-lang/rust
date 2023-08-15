@@ -140,7 +140,9 @@ impl MiriMemoryKind {
     fn should_save_allocation_span(self) -> bool {
         use self::MiriMemoryKind::*;
         match self {
+            // Heap allocations are fine since the `Allocation` is created immediately.
             Rust | Miri | C | Mmap => true,
+            // Everything else is unclear, let's not show potentially confusing spans.
             Machine | Global | ExternStatic | Tls | WinHeap | Runtime => false,
         }
     }
