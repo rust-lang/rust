@@ -709,7 +709,7 @@ impl ConstParam {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn default_val(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn default_val(&self) -> Option<ConstArg> { support::child(&self.syntax) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -21,16 +21,17 @@ SOURCE_FILE
         WHITESPACE " "
         EQ "="
         WHITESPACE " "
-        PATH_EXPR
-          PATH
+        CONST_ARG
+          PATH_EXPR
             PATH
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "i32"
+              COLON2 "::"
               PATH_SEGMENT
                 NAME_REF
-                  IDENT "i32"
-            COLON2 "::"
-            PATH_SEGMENT
-              NAME_REF
-                IDENT "MAX"
+                  IDENT "MAX"
       R_ANGLE ">"
     SEMICOLON ";"
   WHITESPACE "\n"

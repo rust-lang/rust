@@ -20,7 +20,8 @@ SOURCE_FILE
                 IDENT "i32"
         WHITESPACE " "
         EQ "="
-      WHITESPACE " "
+        WHITESPACE " "
+        CONST_ARG
       COMMA ","
       WHITESPACE " "
       CONST_PARAM
@@ -37,8 +38,9 @@ SOURCE_FILE
                 IDENT "i32"
         WHITESPACE " "
         EQ "="
+        CONST_ARG
       R_ANGLE ">"
     SEMICOLON ";"
   WHITESPACE "\n"
-error 23: expected a generic const argument
+error 24: expected a generic const argument
 error 40: expected a generic const argument

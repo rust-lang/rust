@@ -422,7 +422,7 @@ impl<'x, 'y, T, V, U: Default> Trait<'x, 'y, T, V, U> for () {
         check_assist(
             add_missing_default_members,
             r#"
-struct Bar<const: N: bool> {
+struct Bar<const N: usize> {
     bar: [i32, N]
 }
 
@@ -439,7 +439,7 @@ impl<const X: usize, Y, Z> Foo<X, Z> for S<Y> {
     $0
 }"#,
             r#"
-struct Bar<const: N: bool> {
+struct Bar<const N: usize> {
     bar: [i32, N]
 }
 
@@ -479,6 +479,107 @@ trait Foo<const N: usize, const M: usize, T> {
 
 impl<X> Foo<42, {20 + 22}, X> for () {
     $0fn get_sum(&self, arg: &X) -> usize { 42 + {20 + 22} }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_const_substitution_with_defaults() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+trait Foo<T, const N: usize = 42, const M: bool = false, const P: char = 'a'> {
+    fn get_n(&self) -> usize { N }
+    fn get_m(&self) -> bool { M }
+    fn get_p(&self) -> char { P }
+    fn get_array(&self, arg: &T) -> [bool; N] { [M; N] }
+}
+
+impl<X> Foo<X> for () {
+    $0
+}"#,
+            r#"
+trait Foo<T, const N: usize = 42, const M: bool = false, const P: char = 'a'> {
+    fn get_n(&self) -> usize { N }
+    fn get_m(&self) -> bool { M }
+    fn get_p(&self) -> char { P }
+    fn get_array(&self, arg: &T) -> [bool; N] { [M; N] }
+}
+
+impl<X> Foo<X> for () {
+    $0fn get_n(&self) -> usize { 42 }
+
+    fn get_m(&self) -> bool { false }
+
+    fn get_p(&self) -> char { 'a' }
+
+    fn get_array(&self, arg: &X) -> [bool; 42] { [false; 42] }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_const_substitution_with_defaults_2() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod m {
+    pub const LEN: usize = 42;
+    pub trait Foo<const M: usize = LEN, const N: usize = M, T = [bool; N]> {
+        fn get_t(&self) -> T;
+    }
+}
+
+impl m::Foo for () {
+    $0
+}"#,
+            r#"
+mod m {
+    pub const LEN: usize = 42;
+    pub trait Foo<const M: usize = LEN, const N: usize = M, T = [bool; N]> {
+        fn get_t(&self) -> T;
+    }
+}
+
+impl m::Foo for () {
+    fn get_t(&self) -> [bool; m::LEN] {
+        ${0:todo!()}
+    }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_const_substitution_with_defaults_3() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+mod m {
+    pub const VAL: usize = 0;
+
+    pub trait Foo<const N: usize = {40 + 2}, const M: usize = {VAL + 1}> {
+        fn get_n(&self) -> usize { N }
+        fn get_m(&self) -> usize { M }
+    }
+}
+
+impl m::Foo for () {
+    $0
+}"#,
+            r#"
+mod m {
+    pub const VAL: usize = 0;
+
+    pub trait Foo<const N: usize = {40 + 2}, const M: usize = {VAL + 1}> {
+        fn get_n(&self) -> usize { N }
+        fn get_m(&self) -> usize { M }
+    }
+}
+
+impl m::Foo for () {
+    $0fn get_n(&self) -> usize { {40 + 2} }
+
+    fn get_m(&self) -> usize { {m::VAL + 1} }
 }"#,
         )
     }

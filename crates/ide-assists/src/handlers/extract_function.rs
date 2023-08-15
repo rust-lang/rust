@@ -810,7 +810,7 @@ impl FunctionBody {
                         (true, konst.body(), Some(sema.to_def(&konst)?.ty(sema.db)))
                     },
                     ast::ConstParam(cp) => {
-                        (true, cp.default_val(), Some(sema.to_def(&cp)?.ty(sema.db)))
+                        (true, cp.default_val()?.expr(), Some(sema.to_def(&cp)?.ty(sema.db)))
                     },
                     ast::ConstBlockPat(cbp) => {
                         let expr = cbp.block_expr().map(ast::Expr::BlockExpr);

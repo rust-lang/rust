@@ -63,12 +63,13 @@ use hir_ty::{
     all_super_traits, autoderef,
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
+    known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
     mir::{self, interpret_mir},
     primitive::UintTy,
     traits::FnTrait,
-    AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
+    AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId, GenericArg,
     GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
     TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, ValueTyDefId,
     WhereClause,
@@ -3128,12 +3129,8 @@ impl TypeParam {
     }
 
     pub fn default(self, db: &dyn HirDatabase) -> Option<Type> {
-        let params = db.generic_defaults(self.id.parent());
-        let local_idx = hir_ty::param_idx(db, self.id.into())?;
+        let ty = generic_arg_from_param(db, self.id.into())?;
         let resolver = self.id.parent().resolver(db.upcast());
-        let ty = params.get(local_idx)?.clone();
-        let subst = TyBuilder::placeholder_subst(db, self.id.parent());
-        let ty = ty.substitute(Interner, &subst);
         match ty.data(Interner) {
             GenericArgData::Ty(it) => {
                 Some(Type::new_with_resolver_inner(db, &resolver, it.clone()))
@@ -3195,6 +3192,19 @@ impl ConstParam {
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::new(db, self.id.parent(), db.const_param_ty(self.id))
     }
+
+    pub fn default(self, db: &dyn HirDatabase) -> Option<ast::ConstArg> {
+        let arg = generic_arg_from_param(db, self.id.into())?;
+        known_const_to_ast(arg.constant(Interner)?, db)
+    }
+}
+
+fn generic_arg_from_param(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<GenericArg> {
+    let params = db.generic_defaults(id.parent);
+    let local_idx = hir_ty::param_idx(db, id)?;
+    let ty = params.get(local_idx)?.clone();
+    let subst = TyBuilder::placeholder_subst(db, id.parent);
+    Some(ty.substitute(Interner, &subst))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

@@ -25,7 +25,7 @@ use crate::{
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
     src::{HasChildSource, HasSource},
-    type_ref::{LifetimeRef, TypeBound, TypeRef},
+    type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef},
     AdtId, ConstParamId, GenericDefId, HasModule, LifetimeParamId, LocalLifetimeParamId,
     LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
@@ -49,7 +49,7 @@ pub struct LifetimeParamData {
 pub struct ConstParamData {
     pub name: Name,
     pub ty: Interned<TypeRef>,
-    pub has_default: bool,
+    pub default: Option<ConstRef>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -76,7 +76,7 @@ impl TypeOrConstParamData {
     pub fn has_default(&self) -> bool {
         match self {
             TypeOrConstParamData::TypeParamData(it) => it.default.is_some(),
-            TypeOrConstParamData::ConstParamData(it) => it.has_default,
+            TypeOrConstParamData::ConstParamData(it) => it.default.is_some(),
         }
     }
 
@@ -307,7 +307,7 @@ impl GenericParams {
                     let param = ConstParamData {
                         name,
                         ty: Interned::new(ty),
-                        has_default: const_param.default_val().is_some(),
+                        default: ConstRef::from_const_param(lower_ctx, &const_param),
                     };
                     let idx = self.type_or_consts.alloc(param.into());
                     add_param_attrs(idx.into(), ast::GenericParam::ConstParam(const_param));
