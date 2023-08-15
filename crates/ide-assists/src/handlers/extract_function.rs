@@ -1726,8 +1726,9 @@ fn make_body(
 
     let block = match &fun.body {
         FunctionBody::Expr(expr) => {
-            let expr = rewrite_body_segment(ctx, &fun.params, &handler, expr.syntax())?;
-            let expr = ast::Expr::cast(expr)?;
+            let expr = rewrite_body_segment(ctx, &fun.params, &handler, expr.syntax())
+                .expect("rewrite_body_segment failed.");
+            let expr = ast::Expr::cast(expr).expect("error while casting body segment to an expr.");
             match expr {
                 ast::Expr::BlockExpr(block) => {
                     // If the extracted expression is itself a block, there is no need to wrap it inside another block.
@@ -1934,25 +1935,22 @@ fn fix_param_usages(
 
     for (param, usages) in usages_for_param {
         for usage in usages {
-            match usage.syntax().ancestors().skip(1).find_map(ast::Expr::cast) {
-                Some(ast::Expr::MethodCallExpr(_) | ast::Expr::FieldExpr(_)) => {
-                    // do nothing
-                }
-                Some(ast::Expr::RefExpr(node))
-                    if param.kind() == ParamKind::MutRef && node.mut_token().is_some() =>
+            let expr = usage.syntax().ancestors().skip(1).find_map(ast::Expr::cast);
+            if let Some(ast::Expr::MethodCallExpr(_) | ast::Expr::FieldExpr(_)) = expr {
+                continue;
+            }
+
+            if let Some(ast::Expr::RefExpr(node)) = expr {
+                if (param.kind() == ParamKind::MutRef && node.mut_token().is_some())
+                    || (param.kind() == ParamKind::SharedRef && node.mut_token().is_none())
                 {
                     ted::replace(node.syntax(), node.expr()?.syntax());
-                }
-                Some(ast::Expr::RefExpr(node))
-                    if param.kind() == ParamKind::SharedRef && node.mut_token().is_none() =>
-                {
-                    ted::replace(node.syntax(), node.expr()?.syntax());
-                }
-                Some(_) | None => {
-                    let p = &make::expr_prefix(T![*], usage.clone()).clone_for_update();
-                    ted::replace(usage.syntax(), p.syntax())
+                    continue;
                 }
             }
+
+            let p = &make::expr_prefix(T![*], usage.clone()).clone_for_update();
+            ted::replace(usage.syntax(), p.syntax())
         }
     }
 
