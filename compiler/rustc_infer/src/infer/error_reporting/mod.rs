@@ -1927,7 +1927,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     true
                 };
 
-            if should_suggest_fixes {
+            // FIXME(#73154): For now, we do leak check when coercing function
+            // pointers in typeck, instead of only during borrowck. This can lead
+            // to these `RegionsInsufficientlyPolymorphic` errors that aren't helpful.
+            if should_suggest_fixes
+                && !matches!(terr, TypeError::RegionsInsufficientlyPolymorphic(..))
+            {
                 self.suggest_tuple_pattern(cause, &exp_found, diag);
                 self.suggest_accessing_field_where_appropriate(cause, &exp_found, diag);
                 self.suggest_await_on_expect_found(cause, span, &exp_found, diag);

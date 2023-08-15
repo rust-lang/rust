@@ -1650,10 +1650,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
                 augment_error(&mut err);
 
-                let is_insufficiently_polymorphic =
-                    matches!(coercion_error, TypeError::RegionsInsufficientlyPolymorphic(..));
-
-                if !is_insufficiently_polymorphic && let Some(expr) = expression {
+                if let Some(expr) = expression {
                     fcx.emit_coerce_suggestions(
                         &mut err,
                         expr,
