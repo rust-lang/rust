@@ -434,9 +434,9 @@ impl<'a> fmt::Display for Display<'a> {
                     }
                     if let (true, Cfg::Cfg(_, Some(feat))) = (short_longhand, sub_cfg) {
                         if self.1.is_html() {
-                            write!(fmt, "<code>{}</code>", feat)?;
+                            write!(fmt, "<code>{feat}</code>")?;
                         } else {
-                            write!(fmt, "`{}`", feat)?;
+                            write!(fmt, "`{feat}`")?;
                         }
                     } else {
                         write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
@@ -471,9 +471,9 @@ impl<'a> fmt::Display for Display<'a> {
                     }
                     if let (true, Cfg::Cfg(_, Some(feat))) = (short_longhand, sub_cfg) {
                         if self.1.is_html() {
-                            write!(fmt, "<code>{}</code>", feat)?;
+                            write!(fmt, "<code>{feat}</code>")?;
                         } else {
-                            write!(fmt, "`{}`", feat)?;
+                            write!(fmt, "`{feat}`")?;
                         }
                     } else {
                         write_with_opt_paren(fmt, !sub_cfg.is_simple(), Display(sub_cfg, self.1))?;
@@ -552,21 +552,21 @@ impl<'a> fmt::Display for Display<'a> {
                         "sgx" => "SGX",
                         _ => "",
                     },
-                    (sym::target_endian, Some(endian)) => return write!(fmt, "{}-endian", endian),
-                    (sym::target_pointer_width, Some(bits)) => return write!(fmt, "{}-bit", bits),
+                    (sym::target_endian, Some(endian)) => return write!(fmt, "{endian}-endian"),
+                    (sym::target_pointer_width, Some(bits)) => return write!(fmt, "{bits}-bit"),
                     (sym::target_feature, Some(feat)) => match self.1 {
                         Format::LongHtml => {
-                            return write!(fmt, "target feature <code>{}</code>", feat);
+                            return write!(fmt, "target feature <code>{feat}</code>");
                         }
-                        Format::LongPlain => return write!(fmt, "target feature `{}`", feat),
-                        Format::ShortHtml => return write!(fmt, "<code>{}</code>", feat),
+                        Format::LongPlain => return write!(fmt, "target feature `{feat}`"),
+                        Format::ShortHtml => return write!(fmt, "<code>{feat}</code>"),
                     },
                     (sym::feature, Some(feat)) => match self.1 {
                         Format::LongHtml => {
-                            return write!(fmt, "crate feature <code>{}</code>", feat);
+                            return write!(fmt, "crate feature <code>{feat}</code>");
                         }
-                        Format::LongPlain => return write!(fmt, "crate feature `{}`", feat),
-                        Format::ShortHtml => return write!(fmt, "<code>{}</code>", feat),
+                        Format::LongPlain => return write!(fmt, "crate feature `{feat}`"),
+                        Format::ShortHtml => return write!(fmt, "<code>{feat}</code>"),
                     },
                     _ => "",
                 };
@@ -581,12 +581,12 @@ impl<'a> fmt::Display for Display<'a> {
                             Escape(v.as_str())
                         )
                     } else {
-                        write!(fmt, r#"`{}="{}"`"#, name, v)
+                        write!(fmt, r#"`{name}="{v}"`"#)
                     }
                 } else if self.1.is_html() {
                     write!(fmt, "<code>{}</code>", Escape(name.as_str()))
                 } else {
-                    write!(fmt, "`{}`", name)
+                    write!(fmt, "`{name}`")
                 }
             }
         }
