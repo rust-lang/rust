@@ -101,15 +101,13 @@ impl Thread {
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     let res = unsafe {
-        let mut sysinfo: c::SYSTEM_INFO = crate::mem::zeroed();
-        c::GetSystemInfo(&mut sysinfo);
-        sysinfo.dwNumberOfProcessors as usize
+        // FIXME: windows::Win32::System::SystemServices::ALL_PROCESSOR_GROUPS should be u16, not u32
+        // FIXME: if you need even more accurate result on 32-bit Windows with more, than 64 cores,
+        // consider implementing this using GetLogicalProcessorInformationEx
+        c::GetActiveProcessorCount(c::ALL_PROCESSOR_GROUPS as u16) as usize
     };
     match res {
-        0 => Err(io::const_io_error!(
-            io::ErrorKind::NotFound,
-            "The number of hardware threads is not known for the target platform",
-        )),
+        0 => Err(io::Error::last_os_error()),
         cpus => Ok(unsafe { NonZeroUsize::new_unchecked(cpus) }),
     }
 }

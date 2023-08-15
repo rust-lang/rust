@@ -2477,11 +2477,11 @@ Windows.Win32.System.Pipes.PIPE_TYPE_BYTE
 Windows.Win32.System.Pipes.PIPE_TYPE_MESSAGE
 Windows.Win32.System.Pipes.PIPE_WAIT
 Windows.Win32.System.SystemInformation.GetSystemDirectoryW
-Windows.Win32.System.SystemInformation.GetSystemInfo
 Windows.Win32.System.SystemInformation.GetSystemTimeAsFileTime
 Windows.Win32.System.SystemInformation.GetWindowsDirectoryW
 Windows.Win32.System.SystemInformation.PROCESSOR_ARCHITECTURE
 Windows.Win32.System.SystemInformation.SYSTEM_INFO
+Windows.Win32.System.SystemServices.ALL_PROCESSOR_GROUPS
 Windows.Win32.System.SystemServices.DLL_PROCESS_DETACH
 Windows.Win32.System.SystemServices.DLL_THREAD_DETACH
 Windows.Win32.System.SystemServices.EXCEPTION_MAXIMUM_PARAMETERS
@@ -2513,6 +2513,7 @@ Windows.Win32.System.Threading.DEBUG_PROCESS
 Windows.Win32.System.Threading.DETACHED_PROCESS
 Windows.Win32.System.Threading.ExitProcess
 Windows.Win32.System.Threading.EXTENDED_STARTUPINFO_PRESENT
+Windows.Win32.System.Threading.GetActiveProcessorCount
 Windows.Win32.System.Threading.GetCurrentProcess
 Windows.Win32.System.Threading.GetCurrentProcessId
 Windows.Win32.System.Threading.GetCurrentThread
