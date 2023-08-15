@@ -1407,3 +1407,10 @@ locate()
         ctx.pushExtCleanup(document);
     };
 }
+
+export function toggleCheckOnSave(ctx: Ctx): Cmd {
+    return async () => {
+        await ctx.config.toggleCheckOnSave();
+        ctx.refreshServerStatus();
+    };
+}
