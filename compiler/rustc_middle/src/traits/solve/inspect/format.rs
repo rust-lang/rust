@@ -124,17 +124,20 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
 
     pub(super) fn format_candidate(&mut self, candidate: &GoalCandidate<'_>) -> std::fmt::Result {
         match &candidate.kind {
-            CandidateKind::NormalizedSelfTyAssembly => {
+            ProbeKind::NormalizedSelfTyAssembly => {
                 writeln!(self.f, "NORMALIZING SELF TY FOR ASSEMBLY:")
             }
-            CandidateKind::UnsizeAssembly => {
+            ProbeKind::UnsizeAssembly => {
                 writeln!(self.f, "ASSEMBLING CANDIDATES FOR UNSIZING:")
             }
-            CandidateKind::UpcastProbe => {
+            ProbeKind::UpcastProjectionCompatibility => {
                 writeln!(self.f, "PROBING FOR PROJECTION COMPATIBILITY FOR UPCASTING:")
             }
-            CandidateKind::Candidate { name, result } => {
+            ProbeKind::MiscCandidate { name, result } => {
                 writeln!(self.f, "CANDIDATE {name}: {result:?}")
+            }
+            ProbeKind::TraitCandidate { source, result } => {
+                writeln!(self.f, "CANDIDATE {source:?}: {result:?}")
             }
         }?;
 

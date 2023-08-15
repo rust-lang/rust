@@ -125,7 +125,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         direction: ty::AliasRelationDirection,
         invert: Invert,
     ) -> QueryResult<'tcx> {
-        self.probe_candidate("normalizes-to").enter(|ecx| {
+        self.probe_misc_candidate("normalizes-to").enter(|ecx| {
             ecx.normalizes_to_inner(param_env, alias, other, direction, invert)?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
@@ -175,7 +175,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         alias_rhs: ty::AliasTy<'tcx>,
         direction: ty::AliasRelationDirection,
     ) -> QueryResult<'tcx> {
-        self.probe_candidate("args relate").enter(|ecx| {
+        self.probe_misc_candidate("args relate").enter(|ecx| {
             match direction {
                 ty::AliasRelationDirection::Equate => {
                     ecx.eq(param_env, alias_lhs, alias_rhs)?;
@@ -196,7 +196,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         rhs: ty::Term<'tcx>,
         direction: ty::AliasRelationDirection,
     ) -> QueryResult<'tcx> {
-        self.probe_candidate("bidir normalizes-to").enter(|ecx| {
+        self.probe_misc_candidate("bidir normalizes-to").enter(|ecx| {
             ecx.normalizes_to_inner(
                 param_env,
                 lhs.to_alias_ty(ecx.tcx()).unwrap(),

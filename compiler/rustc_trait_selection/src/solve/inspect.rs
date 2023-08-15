@@ -10,7 +10,7 @@ pub use rustc_middle::traits::solve::inspect::*;
 
 pub(super) mod analyse;
 
-#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+#[derive(Debug)]
 pub struct WipRootGoalEvaluation<'tcx> {
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     orig_values: Vec<ty::GenericArg<'tcx>>,
@@ -29,7 +29,7 @@ impl<'tcx> WipRootGoalEvaluation<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+#[derive(Debug)]
 pub struct WipNestedGoalEvaluation<'tcx> {
     pub goal: CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>,
     pub orig_values: CanonicalState<'tcx, Vec<ty::GenericArg<'tcx>>>,
@@ -50,7 +50,7 @@ impl<'tcx> WipNestedGoalEvaluation<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+#[derive(Debug)]
 pub struct WipCanonicalGoalEvaluation<'tcx> {
     pub goal: CanonicalInput<'tcx>,
     pub cache_hit: Option<CacheHit>,
@@ -78,7 +78,7 @@ impl<'tcx> WipCanonicalGoalEvaluation<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+#[derive(Debug)]
 pub struct WipAddedGoalsEvaluation<'tcx> {
     pub evaluations: Vec<Vec<WipNestedGoalEvaluation<'tcx>>>,
     pub result: Option<Result<Certainty, NoSolution>>,
@@ -97,7 +97,7 @@ impl<'tcx> WipAddedGoalsEvaluation<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+#[derive(Debug)]
 pub struct WipGoalEvaluationStep<'tcx> {
     pub added_goals_evaluations: Vec<WipAddedGoalsEvaluation<'tcx>>,
     pub candidates: Vec<WipGoalCandidate<'tcx>>,
@@ -118,11 +118,11 @@ impl<'tcx> WipGoalEvaluationStep<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+#[derive(Debug)]
 pub struct WipGoalCandidate<'tcx> {
     pub added_goals_evaluations: Vec<WipAddedGoalsEvaluation<'tcx>>,
     pub candidates: Vec<WipGoalCandidate<'tcx>>,
-    pub kind: Option<CandidateKind<'tcx>>,
+    pub kind: Option<ProbeKind<'tcx>>,
 }
 
 impl<'tcx> WipGoalCandidate<'tcx> {
@@ -415,11 +415,11 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         })
     }
 
-    pub(super) fn candidate_kind(&mut self, candidate_kind: CandidateKind<'tcx>) {
+    pub(super) fn probe_kind(&mut self, probe_kind: ProbeKind<'tcx>) {
         if let Some(this) = self.as_mut() {
             match this {
                 DebugSolver::GoalCandidate(this) => {
-                    assert_eq!(this.kind.replace(candidate_kind), None)
+                    assert_eq!(this.kind.replace(probe_kind), None)
                 }
                 _ => unreachable!(),
             }

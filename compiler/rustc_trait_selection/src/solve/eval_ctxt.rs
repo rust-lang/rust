@@ -921,7 +921,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             if candidate_key.def_id != key.def_id {
                 continue;
             }
-            values.extend(self.probe_candidate("opaque type storage").enter(|ecx| {
+            values.extend(self.probe_misc_candidate("opaque type storage").enter(|ecx| {
                 for (a, b) in std::iter::zip(candidate_key.args, key.args) {
                     ecx.eq(param_env, a, b)?;
                 }

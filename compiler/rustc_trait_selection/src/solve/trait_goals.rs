@@ -5,8 +5,10 @@ use super::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, Movability};
 use rustc_infer::traits::query::NoSolution;
-use rustc_middle::traits::solve::inspect::CandidateKind;
-use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
+use rustc_middle::traits::solve::inspect::ProbeKind;
+use rustc_middle::traits::solve::{
+    CandidateSource, CanonicalResponse, Certainty, Goal, QueryResult,
+};
 use rustc_middle::traits::{BuiltinImplSource, Reveal};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjections};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
@@ -61,7 +63,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             },
         };
 
-        ecx.probe_candidate("impl").enter(|ecx| {
+        ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id);
             let impl_trait_ref = impl_trait_ref.instantiate(tcx, impl_args);
 
@@ -96,7 +98,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 && trait_clause.polarity() == goal.predicate.polarity
             {
                 // FIXME: Constness
-                ecx.probe_candidate("assumption").enter(|ecx| {
+                ecx.probe_misc_candidate("assumption").enter(|ecx| {
                     let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
                     ecx.eq(
                         goal.param_env,
@@ -167,7 +169,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         let tcx = ecx.tcx();
 
-        ecx.probe_candidate("trait alias").enter(|ecx| {
+        ecx.probe_misc_candidate("trait alias").enter(|ecx| {
             let nested_obligations = tcx
                 .predicates_of(goal.predicate.def_id())
                 .instantiate(tcx, goal.predicate.trait_ref.args);
@@ -443,7 +445,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             Err(NoSolution) => vec![],
         };
 
-        ecx.probe(|_| CandidateKind::UnsizeAssembly).enter(|ecx| {
+        ecx.probe(|_| ProbeKind::UnsizeAssembly).enter(|ecx| {
             let a_ty = goal.predicate.self_ty();
             // We need to normalize the b_ty since it's matched structurally
             // in the other functions below.
@@ -630,7 +632,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
              target_projection: ty::PolyExistentialProjection<'tcx>| {
                 source_projection.item_def_id() == target_projection.item_def_id()
                     && ecx
-                        .probe(|_| CandidateKind::UpcastProbe)
+                        .probe(|_| ProbeKind::UpcastProjectionCompatibility)
                         .enter(|ecx| -> Result<(), NoSolution> {
                             ecx.eq(param_env, source_projection, target_projection)?;
                             let _ = ecx.try_evaluate_added_goals()?;
@@ -908,7 +910,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         constituent_tys: impl Fn(&EvalCtxt<'_, 'tcx>, Ty<'tcx>) -> Result<Vec<Ty<'tcx>>, NoSolution>,
     ) -> QueryResult<'tcx> {
-        self.probe_candidate("constituent tys").enter(|ecx| {
+        self.probe_misc_candidate("constituent tys").enter(|ecx| {
             ecx.add_goals(
                 constituent_tys(ecx, goal.predicate.self_ty())?
                     .into_iter()
