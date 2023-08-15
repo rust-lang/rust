@@ -203,6 +203,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 )?;
             }
 
+            // Number of cores, but more accurate vaulue, than GetSystemInfo.dwNumberOfProcessors
+            // if number of cores > 64. If called with ALL_PROCESSOR_GROUPS as groupnumber,
+            // returns total number of cores, instead of number in group, see
+            // https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getactiveprocessorcount
+            "GetActiveProcessorCount" => {
+                let [groupnumber] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                this.read_scalar(groupnumber)?.to_u16()?;
+                this.write_scalar(Scalar::from_u32(this.machine.num_cpus), dest)?;
+            }
+
             // Thread-local storage
             "TlsAlloc" => {
                 // This just creates a key; Windows does not natively support TLS destructors.
