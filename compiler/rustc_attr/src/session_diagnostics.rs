@@ -401,3 +401,11 @@ pub(crate) struct UnknownVersionLiteral {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(attr_scalable_missing_n, code = E0799)]
+pub(crate) struct ScalableAttrMissingN {
+    #[primary_span]
+    #[suggestion(applicability = "has-placeholders", code = "scalable(...)")]
+    pub span: Span,
+}

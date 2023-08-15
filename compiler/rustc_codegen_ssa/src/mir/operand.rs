@@ -401,7 +401,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 bx.store(*llval, llptr, field.align.abi);
                 *llval = bx.load(llfield_ty, llptr, field.align.abi);
             }
-            (OperandValue::Immediate(_), Abi::Uninhabited | Abi::Aggregate { sized: false }) => {
+            (
+                OperandValue::Immediate(_),
+                Abi::Uninhabited | Abi::Aggregate { sized: false } | Abi::ScalableVector { .. },
+            ) => {
                 bug!()
             }
             (OperandValue::Pair(..), _) => bug!(),

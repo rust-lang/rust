@@ -449,6 +449,10 @@ fn layout_of_uncached<'tcx>(
                 };
 
                 (*e_ty, *count, true)
+            } else if let ty::Slice(e_ty) = f0_ty.kind()
+                && def.repr().scalable()
+            {
+                (*e_ty, 1, false)
             } else {
                 // First ADT field is not an array:
                 (f0_ty, def.non_enum_variant().fields.len() as _, false)
@@ -479,7 +483,10 @@ fn layout_of_uncached<'tcx>(
                 .checked_mul(e_len, dl)
                 .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?;
 
-            let (abi, align) = if def.repr().packed() && !e_len.is_power_of_two() {
+            let (abi, align) = if !def.repr().scalable()
+                && def.repr().packed()
+                && !e_len.is_power_of_two()
+            {
                 // Non-power-of-two vectors have padding up to the next power-of-two.
                 // If we're a packed repr, remove the padding while keeping the alignment as close
                 // to a vector as possible.
@@ -490,6 +497,12 @@ fn layout_of_uncached<'tcx>(
                         pref: dl.vector_align(size).pref,
                     },
                 )
+            } else if def.repr().scalable() {
+                if let Some(elt) = def.repr().scalable {
+                    (Abi::ScalableVector { element: e_abi, elt: elt as u64 }, e_ly.layout.align())
+                } else {
+                    bug!("scalable SIMD type `{}` doesn't contain the number of elements", ty,)
+                }
             } else {
                 (Abi::Vector { element: e_abi, count: e_len }, dl.vector_align(size))
             };
@@ -535,6 +548,12 @@ fn layout_of_uncached<'tcx>(
                         "union cannot be packed and aligned",
                     );
                     return Err(error(cx, LayoutError::Unknown(ty)));
+                }
+
+                if def.repr().scalable()
+                    && variants[FIRST_VARIANT].iter().all(|field| !field.0.is_zst())
+                {
+                    bug!("Fields for a Scalable vector should be a ZST");
                 }
 
                 return Ok(tcx.mk_layout(

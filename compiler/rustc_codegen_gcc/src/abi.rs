@@ -87,6 +87,7 @@ impl GccType for Reg {
                 _ => bug!("unsupported float: {:?}", self),
             },
             RegKind::Vector => unimplemented!(), //cx.type_vector(cx.type_i8(), self.size.bytes()),
+            RegKind::ScalableVector => unimplemented!(),
         }
     }
 }

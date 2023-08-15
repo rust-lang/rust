@@ -383,6 +383,7 @@ where
                 hide_niches(b);
             }
             Abi::Vector { element, count: _ } => hide_niches(element),
+            Abi::ScalableVector { element, .. } => hide_niches(element),
             Abi::Aggregate { sized: _ } => {}
         }
         st.largest_niche = None;

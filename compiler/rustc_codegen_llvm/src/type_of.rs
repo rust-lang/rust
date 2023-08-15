@@ -23,6 +23,15 @@ fn uncached_llvm_type<'a, 'tcx>(
             let element = layout.scalar_llvm_type_at(cx, element);
             return cx.type_vector(element, count);
         }
+        Abi::ScalableVector { ref element, elt } => {
+            let element = if element.is_bool() {
+                cx.type_i1()
+            } else {
+                layout.scalar_llvm_type_at(cx, *element)
+            };
+
+            return cx.type_scalable_vector(element, elt);
+        }
         Abi::Uninhabited | Abi::Aggregate { .. } | Abi::ScalarPair(..) => {}
     }
 
@@ -171,7 +180,7 @@ pub trait LayoutLlvmExt<'tcx> {
 impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn is_llvm_immediate(&self) -> bool {
         match self.abi {
-            Abi::Scalar(_) | Abi::Vector { .. } => true,
+            Abi::Scalar(_) | Abi::Vector { .. } | Abi::ScalableVector { .. } => true,
             Abi::ScalarPair(..) | Abi::Uninhabited | Abi::Aggregate { .. } => false,
         }
     }
@@ -179,7 +188,11 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn is_llvm_scalar_pair(&self) -> bool {
         match self.abi {
             Abi::ScalarPair(..) => true,
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Aggregate { .. } => false,
+            Abi::Uninhabited
+            | Abi::Scalar(_)
+            | Abi::Vector { .. }
+            | Abi::ScalableVector { .. }
+            | Abi::Aggregate { .. } => false,
         }
     }
 

@@ -108,6 +108,9 @@ where
                         }
                         false
                     }
+                    Abi::ScalableVector { .. } => {
+                        unreachable!("Scalable Vectors are unsupported on this target")
+                    }
                 }
             }
 

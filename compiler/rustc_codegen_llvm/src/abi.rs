@@ -126,6 +126,7 @@ impl LlvmType for Reg {
                 _ => bug!("unsupported float: {:?}", self),
             },
             RegKind::Vector => cx.type_vector(cx.type_i8(), self.size.bytes()),
+            RegKind::ScalableVector => cx.type_scalable_vector(cx.type_i8(), 16),
         }
     }
 }

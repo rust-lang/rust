@@ -11,7 +11,7 @@ use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh}
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
-use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
@@ -406,6 +406,14 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let use_integer_compare = match layout.abi() {
                     Scalar(_) | ScalarPair(_, _) => true,
                     Uninhabited | Vector { .. } => false,
+                    ScalableVector { .. } => {
+                        tcx.dcx().emit_err(InvalidMonomorphization::NonScalableType {
+                            span,
+                            name: sym::raw_eq,
+                            ty: tp_ty,
+                        });
+                        return Ok(());
+                    }
                     Aggregate { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
@@ -1155,6 +1163,18 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 
+    if name == sym::simd_reinterpret {
+        require_simd!(ret_ty, SimdReturn);
+
+        return Ok(match args[0].val {
+            OperandValue::Ref(PlaceValue { llval: val, .. }) | OperandValue::Immediate(val) => {
+                bx.bitcast(val, llret_ty)
+            }
+            OperandValue::ZeroSized => bx.const_undef(llret_ty),
+            OperandValue::Pair(_, _) => todo!(),
+        });
+    }
+
     // every intrinsic below takes a SIMD vector as its first argument
     let (in_len, in_elem) = require_simd!(arg_tys[0], SimdInput);
     let in_ty = arg_tys[0];
@@ -1368,12 +1388,16 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
         );
         match m_elem_ty.kind() {
-            ty::Int(_) => {}
+            ty::Int(_) | ty::Bool => {}
             _ => return_error!(InvalidMonomorphization::MaskType { span, name, ty: m_elem_ty }),
         }
         // truncate the mask to a vector of i1s
         let i1 = bx.type_i1();
-        let i1xn = bx.type_vector(i1, m_len as u64);
+        let i1xn = if arg_tys[1].is_scalable_simd() {
+            bx.type_scalable_vector(i1, m_len as u64)
+        } else {
+            bx.type_vector(i1, m_len as u64)
+        };
         let m_i1s = bx.trunc(args[0].immediate(), i1xn);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
@@ -2345,6 +2369,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             out_elem
         });
     }
+
     macro_rules! arith_binary {
         ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
             $(if name == sym::$name {

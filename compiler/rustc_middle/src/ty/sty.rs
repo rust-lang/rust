@@ -1079,6 +1079,14 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    #[inline]
+    pub fn is_scalable_simd(self) -> bool {
+        match self.kind() {
+            Adt(def, _) => def.repr().simd() && def.repr().scalable(),
+            _ => false,
+        }
+    }
+
     pub fn sequence_element_type(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             Array(ty, _) | Slice(ty) => *ty,
@@ -1095,6 +1103,12 @@ impl<'tcx> Ty<'tcx> {
                 let f0_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
 
                 match f0_ty.kind() {
+                    Array(_, _) if def.repr().scalable() => {
+                        bug!("Scalable SIMD should be using a slice, not array");
+                    }
+                    Slice(f0_elem_ty) if def.repr().scalable() => {
+                        (def.repr().scalable.unwrap_or(0) as u64, *f0_elem_ty)
+                    }
                     // If the first field is an array, we assume it is the only field and its
                     // elements are the SIMD components.
                     Array(f0_elem_ty, f0_len) => {
@@ -1834,6 +1848,10 @@ impl<'tcx> Ty<'tcx> {
     /// This is mostly useful for optimizations, as these are the types
     /// on which we can replace cloning with dereferencing.
     pub fn is_trivially_pure_clone_copy(self) -> bool {
+        if self.is_scalable_simd() {
+            return true;
+        }
+
         match self.kind() {
             ty::Bool | ty::Char | ty::Never => true,
 

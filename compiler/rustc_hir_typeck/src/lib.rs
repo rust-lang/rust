@@ -197,7 +197,10 @@ fn typeck_with_fallback<'tcx>(
 
     for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
         let ty = fcx.normalize(span, ty);
-        fcx.require_type_is_sized(ty, span, code);
+        // ScalableSIMD: Justify this.
+        if !ty.is_scalable_simd() {
+            fcx.require_type_is_sized(ty, span, code);
+        }
     }
 
     fcx.select_obligations_where_possible(|_| {});

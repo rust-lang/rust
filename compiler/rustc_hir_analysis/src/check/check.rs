@@ -71,7 +71,7 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     def.destructor(tcx); // force the destructor to be evaluated
 
     if def.repr().simd() {
-        check_simd(tcx, span, def_id);
+        check_simd(tcx, span, def_id, def.repr().scalable());
     }
 
     check_transparent(tcx, def);
@@ -1054,13 +1054,13 @@ fn check_impl_items_against_trait<'tcx>(
     }
 }
 
-pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
+pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId, is_scalable: bool) {
     let t = tcx.type_of(def_id).instantiate_identity();
     if let ty::Adt(def, args) = t.kind()
         && def.is_struct()
     {
         let fields = &def.non_enum_variant().fields;
-        if fields.is_empty() {
+        if fields.is_empty() && !is_scalable {
             struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot be empty").emit();
             return;
         }
@@ -1078,7 +1078,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
             Some(fields.len() as u64)
         };
         if let Some(len) = len {
-            if len == 0 {
+            if len == 0 && !is_scalable {
                 struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot be empty").emit();
                 return;
             } else if len > MAX_SIMD_LANES {
@@ -1107,6 +1107,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                     ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_, _)
                 ) =>
             { /* struct([f32; 4]) is ok */ }
+            ty::Slice(_) if is_scalable => (),
             _ => {
                 struct_span_code_err!(
                     tcx.dcx(),

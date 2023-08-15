@@ -99,7 +99,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         layout: TyAndLayout<'tcx>,
         align: Align,
     ) -> PlaceRef<'tcx, V> {
-        assert!(layout.is_sized());
+        assert!(layout.is_sized() || layout.is_runtime_sized());
         PlaceValue::new_sized(llval, align).with_type(layout)
     }
 
@@ -117,7 +117,10 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         size: Size,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        assert!(layout.is_sized(), "tried to statically allocate unsized place");
+        assert!(
+            layout.is_sized() || layout.is_runtime_sized(),
+            "tried to statically allocate unsized place"
+        );
         PlaceValue::alloca(bx, size, layout.align.abi).with_type(layout)
     }
 

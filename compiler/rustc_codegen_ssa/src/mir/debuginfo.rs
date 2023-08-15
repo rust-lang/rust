@@ -350,6 +350,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
                     return;
                 }
+                // FIXME: Don't spill scalable simd, this works for most of them however,
+                // some intermediate types can't be spilled e.g. `<vscale x 4 x i1>`
+                if operand.layout.ty.is_scalable_simd() {
+                    return;
+                }
 
                 Self::spill_operand_to_stack(*operand, name, bx)
             }

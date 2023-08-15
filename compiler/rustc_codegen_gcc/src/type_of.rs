@@ -81,6 +81,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
                 false,
             );
         }
+        Abi::ScalableVector { .. } => todo!(),
         Abi::Uninhabited | Abi::Aggregate { .. } => {}
     }
 
@@ -175,7 +176,7 @@ pub trait LayoutGccExt<'tcx> {
 impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     fn is_gcc_immediate(&self) -> bool {
         match self.abi {
-            Abi::Scalar(_) | Abi::Vector { .. } => true,
+            Abi::Scalar(_) | Abi::Vector { .. } | Abi::ScalableVector { .. } => true,
             Abi::ScalarPair(..) | Abi::Uninhabited | Abi::Aggregate { .. } => false,
         }
     }
@@ -183,7 +184,11 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     fn is_gcc_scalar_pair(&self) -> bool {
         match self.abi {
             Abi::ScalarPair(..) => true,
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Aggregate { .. } => false,
+            Abi::Uninhabited
+            | Abi::Scalar(_)
+            | Abi::Vector { .. }
+            | Abi::ScalableVector { .. }
+            | Abi::Aggregate { .. } => false,
         }
     }
 

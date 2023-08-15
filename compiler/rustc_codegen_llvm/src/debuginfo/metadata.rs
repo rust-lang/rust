@@ -1091,6 +1091,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         Cow::Borrowed(f.name.as_str())
                     };
                     let field_layout = struct_type_and_layout.field(cx, i);
+
                     build_field_di_node(
                         cx,
                         owner,

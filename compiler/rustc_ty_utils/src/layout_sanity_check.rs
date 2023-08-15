@@ -78,7 +78,7 @@ pub(super) fn sanity_check_layout<'tcx>(
         let Some((align, size)) = align.zip(size) else {
             assert_matches!(
                 layout.layout.abi(),
-                Abi::Uninhabited | Abi::Aggregate { .. },
+                Abi::Uninhabited | Abi::Aggregate { .. } | Abi::ScalableVector { .. },
                 "ABI unexpectedly missing alignment and/or size in {layout:#?}"
             );
             return;
@@ -242,7 +242,7 @@ pub(super) fn sanity_check_layout<'tcx>(
                 assert!(align >= element.align(cx).abi); // just sanity-checking `vector_align`.
                 // FIXME: Do some kind of check of the inner type, like for Scalar and ScalarPair.
             }
-            Abi::Uninhabited | Abi::Aggregate { .. } => {} // Nothing to check.
+            Abi::Uninhabited | Abi::Aggregate { .. } | Abi::ScalableVector { .. } => {} // Nothing to check.
         }
     }
 

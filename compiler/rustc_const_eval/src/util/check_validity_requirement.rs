@@ -107,6 +107,7 @@ fn might_permit_raw_init_lax<'tcx>(
         Abi::Scalar(s) => scalar_allows_raw_init(s),
         Abi::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
         Abi::Vector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
+        Abi::ScalableVector { element, .. } => scalar_allows_raw_init(element),
         Abi::Aggregate { .. } => true, // Fields are checked below.
     };
     if !valid {

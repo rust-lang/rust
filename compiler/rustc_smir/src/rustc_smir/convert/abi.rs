@@ -214,6 +214,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Abi {
                 ValueAbi::Vector { element: element.stable(tables), count }
             }
             rustc_abi::Abi::Aggregate { sized } => ValueAbi::Aggregate { sized },
+            rustc_abi::Abi::ScalableVector { element: _element, elt: _elt } => todo!(),
         }
     }
 }
