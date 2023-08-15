@@ -1530,9 +1530,18 @@ impl From<fs::File> for Stdio {
 // vs `_exit`.  Naming of Unix system calls is not standardised across Unices, so terminology is a
 // matter of convention and tradition.  For clarity we usually speak of `exit`, even when we might
 // mean an underlying system call such as `_exit`.
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Default)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
+
+/// The default value is one which indicates successful completion.
+#[stable(feature = "process-exitcode-default", since = "CURRENT_RUSTC_VERSION")]
+impl Default for ExitStatus {
+    fn default() -> Self {
+        // Ideally this would be done by ExitCode::default().into() but that is complicated.
+        ExitStatus::from_inner(imp::ExitStatus::default())
+    }
+}
 
 /// Allows extension traits within `std`.
 #[unstable(feature = "sealed", issue = "none")]
