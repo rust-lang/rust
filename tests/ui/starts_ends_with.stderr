@@ -15,14 +15,14 @@ LL |     Some(' ') != "".chars().next();
 error: you should use the `starts_with` method
   --> $DIR/starts_ends_with.rs:11:5
    |
-LL |     "".chars().next() == Some('/n');
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with('/n')`
+LL |     "".chars().next() == Some('\n');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with('\n')`
 
 error: you should use the `starts_with` method
   --> $DIR/starts_ends_with.rs:12:5
    |
-LL |     Some('/n') != "".chars().next();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".starts_with('/n')`
+LL |     Some('\n') != "".chars().next();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".starts_with('\n')`
 
 error: you should use the `starts_with` method
   --> $DIR/starts_ends_with.rs:17:8
@@ -59,8 +59,8 @@ LL |     if s.chars().next_back().unwrap() != 'o' {
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:37:8
    |
-LL |     if s.chars().last().unwrap() != '/n' {
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('/n')`
+LL |     if s.chars().last().unwrap() != '\n' {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('\n')`
 
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:45:5
@@ -89,14 +89,14 @@ LL |     Some(' ') != "".chars().next_back();
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:51:5
    |
-LL |     "".chars().last() == Some('/n');
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with('/n')`
+LL |     "".chars().last() == Some('\n');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with('\n')`
 
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:52:5
    |
-LL |     Some('/n') != "".chars().last();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with('/n')`
+LL |     Some('\n') != "".chars().last();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with('\n')`
 
 error: aborting due to 16 previous errors
 

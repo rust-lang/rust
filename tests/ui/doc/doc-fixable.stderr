@@ -24,12 +24,12 @@ LL | /// The foo_bar function does _nothing_. See also `foo::bar`. (note the dot
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:10:83
    |
-LL | /// Markdown is _weird_. I mean _really weird_. This /_ is ok. So is `_`. But not Foo::some_fun
+LL | /// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. But not Foo::some_fun
    |                                                                                   ^^^^^^^^^^^^^
    |
 help: try
    |
-LL | /// Markdown is _weird_. I mean _really weird_. This /_ is ok. So is `_`. But not `Foo::some_fun`
+LL | /// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. But not `Foo::some_fun`
    |                                                                                   ~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks

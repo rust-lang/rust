@@ -10,19 +10,19 @@ error: calling `push_str()` using a single-character string literal
   --> $DIR/single_char_add_str.rs:15:5
    |
 LL |     string.push_str("'");
-   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('/'')`
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('\'')`
 
 error: calling `push_str()` using a single-character string literal
   --> $DIR/single_char_add_str.rs:20:5
    |
-LL |     string.push_str("/x52");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('/x52')`
+LL |     string.push_str("\x52");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('\x52')`
 
 error: calling `push_str()` using a single-character string literal
   --> $DIR/single_char_add_str.rs:21:5
    |
-LL |     string.push_str("/u{0052}");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('/u{0052}')`
+LL |     string.push_str("\u{0052}");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('\u{0052}')`
 
 error: calling `push_str()` using a single-character string literal
   --> $DIR/single_char_add_str.rs:22:5
@@ -46,19 +46,19 @@ error: calling `insert_str()` using a single-character string literal
   --> $DIR/single_char_add_str.rs:30:5
    |
 LL |     string.insert_str(1, "'");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(1, '/'')`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(1, '\'')`
 
 error: calling `insert_str()` using a single-character string literal
   --> $DIR/single_char_add_str.rs:35:5
    |
-LL |     string.insert_str(0, "/x52");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(0, '/x52')`
+LL |     string.insert_str(0, "\x52");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(0, '\x52')`
 
 error: calling `insert_str()` using a single-character string literal
   --> $DIR/single_char_add_str.rs:36:5
    |
-LL |     string.insert_str(0, "/u{0052}");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(0, '/u{0052}')`
+LL |     string.insert_str(0, "\u{0052}");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(0, '\u{0052}')`
 
 error: calling `insert_str()` using a single-character string literal
   --> $DIR/single_char_add_str.rs:38:5
@@ -82,7 +82,7 @@ error: calling `insert_str()` using a single-character string literal
   --> $DIR/single_char_add_str.rs:42:5
    |
 LL |     string.insert_str(Y, r##"'"##);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(Y, '/'')`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(Y, '\'')`
 
 error: calling `insert_str()` using a single-character string literal
   --> $DIR/single_char_add_str.rs:44:5

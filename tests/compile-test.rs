@@ -4,12 +4,10 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unused_extern_crates)]
 
-use compiletest::{status_emitter, Args, CommandBuilder, OutputConflictHandling};
-use ui_test as compiletest;
-use ui_test::Mode as TestMode;
+use ui_test::{status_emitter, Args, CommandBuilder, Config, Match, Mode, OutputConflictHandling};
 
 use std::collections::BTreeMap;
-use std::env::{self, remove_var, set_var, var_os};
+use std::env::{self, set_var, var_os};
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -28,6 +26,8 @@ extern crate parking_lot;
 extern crate quote;
 extern crate syn;
 extern crate tokio;
+
+mod test_utils;
 
 /// All crates used in UI tests are listed here
 static TEST_DEPENDENCIES: &[&str] = &[
@@ -104,8 +104,6 @@ static EXTERN_FLAGS: LazyLock<Vec<String>> = LazyLock::new(|| {
         .collect()
 });
 
-mod test_utils;
-
 // whether to run internal tests or not
 const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal");
 
@@ -115,7 +113,7 @@ fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
     fs::canonicalize(path).unwrap_or_else(|err| panic!("{} cannot be canonicalized: {err}", path.display()))
 }
 
-fn base_config(test_dir: &str) -> (compiletest::Config, Args) {
+fn base_config(test_dir: &str) -> (Config, Args) {
     let bless = var_os("RUSTC_BLESS").is_some_and(|v| v != "0") || env::args().any(|arg| arg == "--bless");
 
     let args = Args {
@@ -131,9 +129,9 @@ fn base_config(test_dir: &str) -> (compiletest::Config, Args) {
         skip: Vec::new(),
     };
 
-    let mut config = compiletest::Config {
-        mode: TestMode::Yolo { rustfix: true },
-        stderr_filters: vec![],
+    let mut config = Config {
+        mode: Mode::Yolo { rustfix: true },
+        stderr_filters: vec![(Match::PathBackslash, b"/")],
         stdout_filters: vec![],
         output_conflict_handling: if bless {
             OutputConflictHandling::Bless
@@ -141,8 +139,8 @@ fn base_config(test_dir: &str) -> (compiletest::Config, Args) {
             OutputConflictHandling::Error("cargo uibless".into())
         },
         target: None,
-        out_dir: canonicalize(std::env::var_os("CARGO_TARGET_DIR").unwrap_or_else(|| "target".into())).join("ui_test"),
-        ..compiletest::Config::rustc(Path::new("tests").join(test_dir))
+        out_dir: canonicalize(var_os("CARGO_TARGET_DIR").unwrap_or_else(|| "target".into())).join("ui_test"),
+        ..Config::rustc(Path::new("tests").join(test_dir))
     };
     let current_exe_path = env::current_exe().unwrap();
     let deps_path = current_exe_path.parent().unwrap();
@@ -167,10 +165,6 @@ fn base_config(test_dir: &str) -> (compiletest::Config, Args) {
         config.program.args.push(dep.into());
     }
 
-    // Normalize away slashes in windows paths.
-    config.stderr_filter(r"\\", "/");
-
-    //config.build_base = profile_path.join("test").join(test_dir);
     config.program.program = profile_path.join(if cfg!(windows) {
         "clippy-driver.exe"
     } else {
@@ -180,18 +174,19 @@ fn base_config(test_dir: &str) -> (compiletest::Config, Args) {
 }
 
 fn run_ui() {
-    let (config, args) = base_config("ui");
-    // use tests/clippy.toml
-    let _g = VarGuard::set("CARGO_MANIFEST_DIR", canonicalize("tests"));
-    let _threads = VarGuard::set("RUST_TEST_THREADS", args.threads.to_string());
+    let (mut config, args) = base_config("ui");
+    config
+        .program
+        .envs
+        .push(("CLIPPY_CONF_DIR".into(), Some(canonicalize("tests").into())));
 
     let quiet = args.quiet;
 
-    compiletest::run_tests_generic(
+    ui_test::run_tests_generic(
         vec![config],
         args,
-        compiletest::default_file_filter,
-        compiletest::default_per_file_config,
+        ui_test::default_file_filter,
+        ui_test::default_per_file_config,
         if quiet {
             status_emitter::Text::quiet()
         } else {
@@ -212,11 +207,11 @@ fn run_internal_tests() {
     }
     let quiet = args.quiet;
 
-    compiletest::run_tests_generic(
+    ui_test::run_tests_generic(
         vec![config],
         args,
-        compiletest::default_file_filter,
-        compiletest::default_per_file_config,
+        ui_test::default_file_filter,
+        ui_test::default_per_file_config,
         if quiet {
             status_emitter::Text::quiet()
         } else {
@@ -229,24 +224,27 @@ fn run_internal_tests() {
 fn run_ui_toml() {
     let (mut config, args) = base_config("ui-toml");
 
-    config.stderr_filter(
-        &regex::escape(
-            &canonicalize("tests")
-                .parent()
-                .unwrap()
-                .display()
-                .to_string()
-                .replace('\\', "/"),
+    config.stderr_filters = vec![
+        (
+            Match::Exact(
+                canonicalize("tests")
+                    .parent()
+                    .unwrap()
+                    .to_string_lossy()
+                    .as_bytes()
+                    .to_vec(),
+            ),
+            b"$DIR",
         ),
-        "$$DIR",
-    );
+        (Match::Exact(b"\\".to_vec()), b"/"),
+    ];
 
     let quiet = args.quiet;
 
     ui_test::run_tests_generic(
         vec![config],
         args,
-        compiletest::default_file_filter,
+        ui_test::default_file_filter,
         |config, path, _file_contents| {
             config
                 .program
@@ -285,17 +283,20 @@ fn run_ui_cargo() {
     });
     config.edition = None;
 
-    config.stderr_filter(
-        &regex::escape(
-            &canonicalize("tests")
-                .parent()
-                .unwrap()
-                .display()
-                .to_string()
-                .replace('\\', "/"),
+    config.stderr_filters = vec![
+        (
+            Match::Exact(
+                canonicalize("tests")
+                    .parent()
+                    .unwrap()
+                    .to_string_lossy()
+                    .as_bytes()
+                    .to_vec(),
+            ),
+            b"$DIR",
         ),
-        "$$DIR",
-    );
+        (Match::Exact(b"\\".to_vec()), b"/"),
+    ];
 
     let quiet = args.quiet;
 
@@ -408,29 +409,5 @@ fn ui_cargo_toml_metadata() {
             !publish || publish_exceptions.contains(&path.parent().unwrap().to_path_buf()),
             "{path:?} lacks `publish = false`"
         );
-    }
-}
-
-/// Restores an env var on drop
-#[must_use]
-struct VarGuard {
-    key: &'static str,
-    value: Option<OsString>,
-}
-
-impl VarGuard {
-    fn set(key: &'static str, val: impl AsRef<OsStr>) -> Self {
-        let value = var_os(key);
-        set_var(key, val);
-        Self { key, value }
-    }
-}
-
-impl Drop for VarGuard {
-    fn drop(&mut self) {
-        match self.value.as_deref() {
-            None => remove_var(self.key),
-            Some(value) => set_var(self.key, value),
-        }
     }
 }
