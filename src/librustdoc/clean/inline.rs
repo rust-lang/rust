@@ -299,6 +299,9 @@ fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> Box<clean::TypeAlias
     Box::new(clean::TypeAlias {
         type_,
         generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
+        // FIXME: Figure-out how to handle inner_type with
+        // clean_ty_typedef_inner_type
+        inner_type: None,
         item_type: None,
     })
 }

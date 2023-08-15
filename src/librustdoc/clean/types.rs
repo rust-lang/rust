@@ -2230,9 +2230,30 @@ pub(crate) struct PathSegment {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) enum TypeAliasInnerType {
+    Enum {
+        variants: IndexVec<VariantIdx, Item>,
+        has_stripped_variants: bool,
+        is_non_exhaustive: bool,
+    },
+    Union {
+        fields: Vec<Item>,
+        has_stripped_fields: bool,
+    },
+    Struct {
+        ctor_kind: Option<CtorKind>,
+        fields: Vec<Item>,
+        has_stripped_fields: bool,
+    },
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct TypeAlias {
     pub(crate) type_: Type,
     pub(crate) generics: Generics,
+    /// Inner `AdtDef` type, ie `type TyKind = IrTyKind<Adt, Ty>`,
+    /// to be shown directly on the typedef page.
+    pub(crate) inner_type: Option<TypeAliasInnerType>,
     /// `type_` can come from either the HIR or from metadata. If it comes from HIR, it may be a type
     /// alias instead of the final type. This will always have the final type, regardless of whether
     /// `type_` came from HIR or from metadata.

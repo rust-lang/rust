@@ -1237,6 +1237,100 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
 
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
+    // Only show inner variants if:
+    //  - the typealias does NOT have any generics (modulo lifetimes)
+    //  - AND the aliased type has some generics
+    //
+    // Otherwise, showing a non-generic type is rendurant with its own page, or
+    // if it still has some generics, it's not as useful.
+    let should_print_inner_type = t
+        .generics
+        .params
+        .iter()
+        .all(|param| matches!(param.kind, clean::GenericParamDefKind::Lifetime { .. }))
+        && t.generics.where_predicates.is_empty()
+        && t.type_.generics().is_some_and(|generics| !generics.is_empty());
+
+    if should_print_inner_type {
+        fn toggle<W, F>(w: &mut W, f: F)
+        where
+            W: fmt::Write,
+            F: FnOnce(&mut W),
+        {
+            write!(
+                w,
+                "<details class=\"toggle\">\
+                    <summary>\
+                        <span>Show Aliased Type</span>\
+                    </summary>",
+            )
+            .unwrap();
+            f(w);
+            write!(w, "</details>").unwrap();
+        }
+
+        match &t.inner_type {
+            Some(clean::TypeAliasInnerType::Enum {
+                variants,
+                has_stripped_variants: has_stripped_entries,
+                is_non_exhaustive,
+            }) => {
+                toggle(w, |w| {
+                    wrap_item(w, |w| {
+                        write!(w, "enum {}{}", it.name.unwrap(), t.generics.print(cx));
+                        render_enum_fields(
+                            w,
+                            cx,
+                            None,
+                            variants.iter(),
+                            variants.len(),
+                            *has_stripped_entries,
+                            *is_non_exhaustive,
+                        )
+                    });
+                    item_variants(w, cx, it, variants.iter());
+                });
+            }
+            Some(clean::TypeAliasInnerType::Union { fields, has_stripped_fields }) => {
+                toggle(w, |w| {
+                    wrap_item(w, |w| {
+                        write!(w, "union {}{}", it.name.unwrap(), t.generics.print(cx));
+                        render_struct_fields(
+                            w,
+                            None,
+                            None,
+                            fields,
+                            "",
+                            true,
+                            *has_stripped_fields,
+                            cx,
+                        );
+                    });
+                    item_fields(w, cx, it, fields, None);
+                });
+            }
+            Some(clean::TypeAliasInnerType::Struct { ctor_kind, fields, has_stripped_fields }) => {
+                toggle(w, |w| {
+                    wrap_item(w, |w| {
+                        write!(w, "struct {}{}", it.name.unwrap(), t.generics.print(cx));
+                        render_struct_fields(
+                            w,
+                            None,
+                            *ctor_kind,
+                            fields,
+                            "",
+                            true,
+                            *has_stripped_fields,
+                            cx,
+                        );
+                    });
+                    item_fields(w, cx, it, fields, None);
+                });
+            }
+            None => {}
+        }
+    }
+
     let def_id = it.item_id.expect_def_id();
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
