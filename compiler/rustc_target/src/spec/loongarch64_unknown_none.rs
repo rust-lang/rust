@@ -10,7 +10,8 @@ pub fn target() -> Target {
         options: TargetOptions {
             cpu: "generic".into(),
             features: "+f,+d".into(),
-            linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::No),
+            linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
+            linker: Some("rust-lld".into()),
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
             relocation_model: RelocModel::Static,
