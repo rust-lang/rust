@@ -51,7 +51,7 @@
 #![cfg(not(test))]
 // To run core tests without x.py without ending up with two copies of core, Miri needs to be
 // able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
-// rustc itself never sets the feature, so this line has no affect there.
+// rustc itself never sets the feature, so this line has no effect there.
 #![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
 #![stable(feature = "core", since = "1.6.0")]
 #![doc(
