@@ -6,8 +6,10 @@ use std::time::Instant;
 use gccjit::{
     Context,
     FunctionType,
-    GlobalKind, TargetInfo,
+    GlobalKind,
 };
+#[cfg(feature="master")]
+use gccjit::TargetInfo;
 use rustc_middle::dep_graph;
 use rustc_middle::ty::TyCtxt;
 #[cfg(feature="master")]
@@ -20,6 +22,8 @@ use rustc_codegen_ssa::traits::DebugInfoMethods;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
 
+#[cfg(not(feature="master"))]
+use crate::TargetInfo;
 use crate::GccContext;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -144,6 +148,9 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
         if env::var("CG_GCCJIT_DUMP_RTL").as_deref() == Ok("1") {
             context.add_command_line_option("-fdump-rtl-vregs");
         }
+        if env::var("CG_GCCJIT_DUMP_RTL_ALL").as_deref() == Ok("1") {
+            context.add_command_line_option("-fdump-rtl-all");
+        }
         if env::var("CG_GCCJIT_DUMP_TREE_ALL").as_deref() == Ok("1") {
             context.add_command_line_option("-fdump-tree-all");
         }
@@ -168,8 +175,8 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
             let cx = CodegenCx::new(&context, cgu, tcx, target_info.supports_128bit_int());
 
             let mono_items = cgu.items_in_deterministic_order(tcx);
-            for &(mono_item, (linkage, visibility)) in &mono_items {
-                mono_item.predefine::<Builder<'_, '_, '_>>(&cx, linkage, visibility);
+            for &(mono_item, data) in &mono_items {
+                mono_item.predefine::<Builder<'_, '_, '_>>(&cx, data.linkage, data.visibility);
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.

@@ -346,7 +346,9 @@ function test_rustc() {
     git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 
     rm -r tests/ui/{abi*,extern/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,borrowck/,chalkify/bugs/,test*,*lto*.rs,consts/const-float-bits-reject-conv.rs,consts/issue-miri-1910.rs} || true
-    rm tests/ui/mir/mir_heavy_promoted.rs # this tests is oom-killed in the CI.
+    rm tests/ui/mir/mir_heavy_promoted.rs # this test is oom-killed in the CI.
+    # Tests generating errors.
+    rm tests/ui/consts/const-eval/nonnull_as_ref_ub.rs tests/ui/consts/issue-94675.rs
     for test in $(rg --files-with-matches "thread|lto" tests/ui); do
       rm $test
     done
@@ -354,6 +356,8 @@ function test_rustc() {
     git checkout tests/ui/type-alias-impl-trait/auxiliary/cross_crate_ice.rs
     git checkout tests/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
     git checkout tests/ui/macros/rfc-2011-nicer-assert-messages/auxiliary/common.rs
+    git checkout tests/ui/imports/ambiguous-1.rs
+    git checkout tests/ui/imports/ambiguous-4-extern.rs
 
     RUSTC_ARGS="$TEST_FLAGS -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot"
 

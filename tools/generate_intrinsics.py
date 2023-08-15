@@ -3,7 +3,6 @@ import os
 import re
 import sys
 import subprocess
-from os import walk
 
 
 def run_command(command, cwd=None):
@@ -180,7 +179,7 @@ def update_intrinsics(llvm_path, llvmint, llvmint2):
             intrinsics[arch].sort(key=lambda x: (x[0], x[2]))
             out.write('    // {}\n'.format(arch))
             for entry in intrinsics[arch]:
-                if entry[2] == True: # if it is a duplicate
+                if entry[2] is True: # if it is a duplicate
                     out.write('    // [DUPLICATE]: "{}" => "{}",\n'.format(entry[0], entry[1]))
                 elif "_round_mask" in entry[1]:
                     out.write('    // [INVALID CONVERSION]: "{}" => "{}",\n'.format(entry[0], entry[1]))

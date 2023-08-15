@@ -10,9 +10,10 @@ use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
-use rustc_codegen_ssa::traits::{ArgAbiMethods, BaseTypeMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods};
+use rustc_codegen_ssa::traits::{ArgAbiMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods};
 #[cfg(feature="master")]
-use rustc_codegen_ssa::traits::{DerivedTypeMethods, MiscMethods};
+use rustc_codegen_ssa::traits::{BaseTypeMethods, MiscMethods};
+use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::ty::layout::LayoutOf;
@@ -31,7 +32,6 @@ use crate::abi::FnAbiGccExt;
 use crate::builder::Builder;
 use crate::common::{SignType, TypeReflection};
 use crate::context::CodegenCx;
-use crate::errors::InvalidMonomorphizationBasicInteger;
 use crate::type_of::LayoutGccExt;
 use crate::intrinsic::simd::generic_simd_intrinsic;
 
@@ -92,8 +92,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
-        let (def_id, substs) = match *callee_ty.kind() {
-            ty::FnDef(def_id, substs) => (def_id, substs),
+        let (def_id, fn_args) = match *callee_ty.kind() {
+            ty::FnDef(def_id, fn_args) => (def_id, fn_args),
             _ => bug!("expected fn item type, found {}", callee_ty),
         };
 
@@ -142,7 +142,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 }
 
                 sym::volatile_load | sym::unaligned_volatile_load => {
-                    let tp_ty = substs.type_at(0);
+                    let tp_ty = fn_args.type_at(0);
                     let mut ptr = args[0].immediate();
                     if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
                         ptr = self.pointercast(ptr, self.type_ptr_to(ty.gcc_type(self)));
@@ -256,7 +256,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                 _ => bug!(),
                             },
                             None => {
-                                tcx.sess.emit_err(InvalidMonomorphizationBasicInteger { span, name, ty });
+                                tcx.sess.emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
                                 return;
                             }
                         }
@@ -264,7 +264,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 sym::raw_eq => {
                     use rustc_target::abi::Abi::*;
-                    let tp_ty = substs.type_at(0);
+                    let tp_ty = fn_args.type_at(0);
                     let layout = self.layout_of(tp_ty).layout;
                     let _use_integer_compare = match layout.abi() {
                         Scalar(_) | ScalarPair(_, _) => true,
@@ -300,6 +300,21 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         let cmp = self.context.new_call(None, builtin, &[a_ptr, b_ptr, n]);
                         self.icmp(IntPredicate::IntEQ, cmp, self.const_i32(0))
                     }
+                }
+
+                sym::compare_bytes => {
+                    let a = args[0].immediate();
+                    let b = args[1].immediate();
+                    let n = args[2].immediate();
+
+                    let void_ptr_type = self.context.new_type::<*const ()>();
+                    let a_ptr = self.bitcast(a, void_ptr_type);
+                    let b_ptr = self.bitcast(b, void_ptr_type);
+
+                    // Here we assume that the `memcmp` provided by the target is a NOP for size 0.
+                    let builtin = self.context.get_builtin_function("memcmp");
+                    let cmp = self.context.new_call(None, builtin, &[a_ptr, b_ptr, n]);
+                    self.sext(cmp, self.type_ix(32))
                 }
 
                 sym::black_box => {
@@ -1147,19 +1162,19 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, codegen: &mut 
 
     // Define the type up front for the signature of the rust_try function.
     let tcx = cx.tcx;
-    let i8p = tcx.mk_mut_ptr(tcx.types.i8);
+    let i8p = Ty::new_mut_ptr(tcx,tcx.types.i8);
     // `unsafe fn(*mut i8) -> ()`
-    let try_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
+    let try_fn_ty = Ty::new_fn_ptr(tcx,ty::Binder::dummy(tcx.mk_fn_sig(
         iter::once(i8p),
-        tcx.mk_unit(),
+        Ty::new_unit(tcx,),
         false,
         rustc_hir::Unsafety::Unsafe,
         Abi::Rust,
     )));
     // `unsafe fn(*mut i8, *mut i8) -> ()`
-    let catch_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
+    let catch_fn_ty = Ty::new_fn_ptr(tcx,ty::Binder::dummy(tcx.mk_fn_sig(
         [i8p, i8p].iter().cloned(),
-        tcx.mk_unit(),
+        Ty::new_unit(tcx,),
         false,
         rustc_hir::Unsafety::Unsafe,
         Abi::Rust,

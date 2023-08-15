@@ -5,7 +5,7 @@
 //     7 8
 //     10
 
-#![allow(unused_attributes)]
+#![allow(internal_features, unused_attributes)]
 #![feature(auto_traits, lang_items, no_core, start, intrinsics, track_caller)]
 
 #![no_std]

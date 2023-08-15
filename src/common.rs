@@ -16,6 +16,10 @@ use crate::context::CodegenCx;
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
+    pub fn const_ptrcast(&self, val: RValue<'gcc>, ty: Type<'gcc>) -> RValue<'gcc> {
+        self.context.new_cast(None, val, ty)
+    }
+
     pub fn const_bytes(&self, bytes: &[u8]) -> RValue<'gcc> {
         bytes_in_context(self, bytes)
     }
@@ -240,10 +244,6 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
         const_alloc_to_gcc(self, alloc)
-    }
-
-    fn const_ptrcast(&self, val: RValue<'gcc>, ty: Type<'gcc>) -> RValue<'gcc> {
-        self.context.new_cast(None, val, ty)
     }
 
     fn const_bitcast(&self, value: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
