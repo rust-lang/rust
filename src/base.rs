@@ -6,8 +6,10 @@ use std::time::Instant;
 use gccjit::{
     Context,
     FunctionType,
-    GlobalKind, TargetInfo,
+    GlobalKind,
 };
+#[cfg(feature="master")]
+use gccjit::TargetInfo;
 use rustc_middle::dep_graph;
 use rustc_middle::ty::TyCtxt;
 #[cfg(feature="master")]
@@ -20,6 +22,8 @@ use rustc_codegen_ssa::traits::DebugInfoMethods;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
 
+#[cfg(not(feature="master"))]
+use crate::TargetInfo;
 use crate::GccContext;
 use crate::builder::Builder;
 use crate::context::CodegenCx;

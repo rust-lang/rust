@@ -493,7 +493,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(not(feature="master"))]
-    fn invoke(&mut self, typ: Type<'gcc>, fn_attrs: &CodegenFnAttrs, fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
+    fn invoke(&mut self, typ: Type<'gcc>, fn_attrs: Option<&CodegenFnAttrs>, fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
         let call_site = self.call(typ, fn_attrs, None, func, args, None);
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(None, condition, then, catch);
