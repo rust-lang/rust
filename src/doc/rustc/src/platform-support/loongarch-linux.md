@@ -71,7 +71,7 @@ CXX_loongarch64_unknown_linux_gnu=/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-
 AR_loongarch64_unknown_linux_gnu=/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-gcc-ar \
 CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNUN_LINKER=/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-gcc \
 # SET TARGET SYSTEM LIBRARY PATH
-CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNUN_RUNNER="qemu-loongarch64 -L /TOOLCHAIN_PATH/TARGET_LIBRAY_PATH" \
+CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNUN_RUNNER="qemu-loongarch64 -L /TOOLCHAIN_PATH/TARGET_LIBRARY_PATH" \
 cargo run --target loongarch64-unknown-linux-gnu --release
 ```
 Tested on x86 architecture, other architectures not tested.
