@@ -1,6 +1,8 @@
 error[E0308]: `?` operator has incompatible types
   --> $DIR/issue-51632-try-desugar-incompatible-types.rs:8:5
    |
+LL | fn forbidden_narratives() -> Result<isize, ()> {
+   |                              ----------------- expected `Result<isize, ()>` because of return type
 LL |     missing_discourses()?
    |     ^^^^^^^^^^^^^^^^^^^^^ expected `Result<isize, ()>`, found `isize`
    |
