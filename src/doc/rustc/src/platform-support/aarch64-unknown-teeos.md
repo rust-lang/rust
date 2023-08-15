@@ -10,7 +10,7 @@ It's very small that there is no RwLock, no network, no stdin, and no file syste
 Some abbreviation:
 | Abbreviation | The full text | Description |
 |  ----  | ----  | ---- |
-| TEE | Trusted Execution Environment | ARM TrustZone devide the system into two worlds/modes -- the secure world/mode and the normal world/mode. TEE is in the secure world/mode. |
+| TEE | Trusted Execution Environment | ARM TrustZone divides the system into two worlds/modes -- the secure world/mode and the normal world/mode. TEE is in the secure world/mode. |
 | REE | Rich Execution Environment | The normal world. for example, Linux for Android phone is in REE side. |
 | TA | Trusted Application | The app run in TEE side system. |
 | CA | Client Application | The progress run in REE side system. |
