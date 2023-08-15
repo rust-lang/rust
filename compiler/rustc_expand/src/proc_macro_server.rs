@@ -202,6 +202,10 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 SingleQuote => op("'"),
 
                 Ident(sym, is_raw) => trees.push(TokenTree::Ident(Ident { sym, is_raw, span })),
+                InterpolatedIdent(sym, is_raw, uninterpolated_span) => {
+                    trees.push(TokenTree::Ident(Ident { sym, is_raw, span: uninterpolated_span }))
+                }
+
                 Lifetime(name) => {
                     let ident = symbol::Ident::new(name, span).without_first_quote();
                     trees.extend([
@@ -209,6 +213,16 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                         TokenTree::Ident(Ident { sym: ident.name, is_raw: false, span }),
                     ]);
                 }
+                InterpolatedLifetime(name, uninterpolated_span) => {
+                    let stream =
+                        TokenStream::token_alone(token::Lifetime(name), uninterpolated_span);
+                    trees.push(TokenTree::Group(Group {
+                        delimiter: pm::Delimiter::None,
+                        stream: Some(stream),
+                        span: DelimSpan::from_single(span),
+                    }))
+                }
+
                 Literal(token::Lit { kind, symbol, suffix }) => {
                     trees.push(TokenTree::Literal(self::Literal {
                         kind: FromInternal::from_internal(kind),
@@ -217,6 +231,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                         span,
                     }));
                 }
+
                 DocComment(_, attr_style, data) => {
                     let mut escaped = String::new();
                     for ch in data.as_str().chars() {
@@ -239,19 +254,6 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                         stream: Some(stream),
                         span: DelimSpan::from_single(span),
                     }));
-                }
-
-                Interpolated(nt) if let NtIdent(ident, is_raw) = *nt => {
-                    trees.push(TokenTree::Ident(Ident { sym: ident.name, is_raw, span: ident.span }))
-                }
-
-                Interpolated(nt) => {
-                    let stream = TokenStream::from_nonterminal_ast(&nt);
-                    trees.push(TokenTree::Group(Group {
-                        delimiter: pm::Delimiter::None,
-                        stream: Some(stream),
-                        span: DelimSpan::from_single(span),
-                    }))
                 }
 
                 OpenDelim(..) | CloseDelim(..) => unreachable!(),

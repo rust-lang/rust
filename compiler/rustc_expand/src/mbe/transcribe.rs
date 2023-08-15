@@ -236,6 +236,7 @@ pub(super) fn transcribe<'a>(
                             // without wrapping them into groups.
                             tt.clone()
                         }
+                        // njn: remove all the `ref`s
                         MatchedSingle(ParseNtResult::Item(ref item)) => {
                             mk_delimited(NonterminalKind::Item, TokenStream::from_ast(item))
                         }
@@ -264,6 +265,16 @@ pub(super) fn transcribe<'a>(
                         MatchedSingle(ParseNtResult::Literal(ref expr)) => {
                             mk_delimited(NonterminalKind::Literal, TokenStream::from_ast(expr))
                         }
+                        MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
+                            marker.visit_span(&mut sp);
+                            let kind = token::InterpolatedIdent(ident.name, *is_raw, ident.span);
+                            TokenTree::token_alone(kind, sp)
+                        }
+                        MatchedSingle(ParseNtResult::Lifetime(ref ident)) => {
+                            marker.visit_span(&mut sp);
+                            let kind = token::InterpolatedLifetime(ident.name, ident.span);
+                            TokenTree::token_alone(kind, sp)
+                        }
                         MatchedSingle(ParseNtResult::Ty(ref ty)) => {
                             mk_delimited(NonterminalKind::Ty, TokenStream::from_ast(ty))
                         }
@@ -275,12 +286,6 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSingle(ParseNtResult::Vis(ref vis)) => {
                             mk_delimited(NonterminalKind::Vis, TokenStream::from_ast(vis))
-                        }
-                        MatchedSingle(ParseNtResult::Nt(nt)) => {
-                            // `Interpolated` is currently used to maintain parsing priorities for
-                            // these cases, but will eventually be removed.
-                            marker.visit_span(&mut sp);
-                            TokenTree::token_alone(token::Interpolated(nt.clone()), sp)
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.

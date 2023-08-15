@@ -495,7 +495,7 @@ impl<'a> Parser<'a> {
             mutbl = Mutability::Mut;
             let (dyn_tok, dyn_tok_sp) = (self.token.clone(), self.token_spacing);
             self.bump();
-            self.bump_with((dyn_tok, dyn_tok_sp));
+            self.bump_with(5, (dyn_tok, dyn_tok_sp));
         }
         let ty = self.parse_ty_no_plus()?;
         Ok(TyKind::Ref(opt_lifetime, MutTy { ty, mutbl }))

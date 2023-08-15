@@ -15,7 +15,7 @@
 
 use crate::ast::AttrStyle;
 use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
-use crate::token::{self, Delimiter, InvisibleSource, Nonterminal, Token, TokenKind};
+use crate::token::{self, Delimiter, InvisibleSource, Token, TokenKind};
 use crate::AttrVec;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -299,11 +299,6 @@ pub struct AttributesData {
 }
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
-///
-/// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
-/// instead of a representation of the abstract syntax tree.
-/// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
-/// backwards compatibility.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
 
@@ -444,7 +439,6 @@ impl TokenStream {
         let Some(tokens) = node.tokens() else {
             panic!("missing tokens for node at {:?}: {:?}", node.span(), node);
         };
-        //eprintln!("from_ast: {tokens:#?}");
         let attrs = node.attrs();
         let attr_stream = if attrs.is_empty() {
             tokens.to_attr_token_stream()
@@ -456,26 +450,16 @@ impl TokenStream {
         attr_stream.to_tokenstream()
     }
 
-    pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {
-        match nt {
-            Nonterminal::NtIdent(ident, is_raw) => {
-                TokenStream::token_alone(token::Ident(ident.name, *is_raw), ident.span)
-            }
-            Nonterminal::NtLifetime(ident) => {
-                TokenStream::token_alone(token::Lifetime(ident.name), ident.span)
-            }
-        }
-    }
-
     fn flatten_token(token: &Token, spacing: Spacing) -> TokenTree {
-        match &token.kind {
-            token::Interpolated(nt) if let token::NtIdent(ident, is_raw) = **nt => {
-                TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span), spacing)
-            }
-            token::Interpolated(nt) => TokenTree::Delimited(
+        match token.kind {
+            token::InterpolatedIdent(name, is_raw, uninterpolated_span) => TokenTree::Token(
+                Token::new(token::Ident(name, is_raw), uninterpolated_span),
+                spacing,
+            ),
+            token::InterpolatedLifetime(name, uninterpolated_span) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
                 Delimiter::Invisible(InvisibleSource::FlattenToken),
-                TokenStream::from_nonterminal_ast(nt).flattened(),
+                TokenStream::token_alone(token::Lifetime(name), uninterpolated_span),
             ),
             _ => TokenTree::Token(token.clone(), spacing),
         }
@@ -494,7 +478,10 @@ impl TokenStream {
     pub fn flattened(&self) -> TokenStream {
         fn can_skip(stream: &TokenStream) -> bool {
             stream.trees().all(|tree| match tree {
-                TokenTree::Token(token, _) => !matches!(token.kind, token::Interpolated(_)),
+                TokenTree::Token(token, _) => !matches!(
+                    token.kind,
+                    token::InterpolatedIdent(..) | token::InterpolatedLifetime(..)
+                ),
                 TokenTree::Delimited(_, _, inner) => can_skip(inner),
             })
         }
@@ -701,6 +688,18 @@ impl TokenTreeCursor {
 
     pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
         self.stream.0.get(self.index + n)
+    }
+
+    // Computes the span for the entire stream.
+    pub fn span(&self) -> Span {
+        if self.stream.is_empty() {
+            DUMMY_SP
+        } else {
+            // Unwrapping safe because we checked for emptiness above.
+            let lo = self.stream.0.first().unwrap().span();
+            let hi = self.stream.0.last().unwrap().span();
+            lo.to(hi)
+        }
     }
 }
 

@@ -1,13 +1,10 @@
 pub use BinOpToken::*;
 pub use LitKind::*;
-pub use Nonterminal::*;
 pub use TokenKind::*;
 
 use crate::ast;
 use crate::util::case::Case;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{kw, sym};
 #[allow(hidden_glob_reexports)]
@@ -262,9 +259,7 @@ fn ident_can_begin_type(name: Symbol, span: Span, is_raw: bool) -> bool {
             .contains(&name)
 }
 
-// SAFETY: due to the `Clone` impl below, all fields of all variants other than
-// `Interpolated` must impl `Copy`.
-#[derive(PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     Eq,
@@ -308,26 +303,23 @@ pub enum TokenKind {
     Literal(Lit),
 
     /// Identifier token.
-    /// Do not forget about `NtIdent` when you want to match on identifiers.
+    /// Do not forget about `InterpolatedIdent` when you want to match on identifiers.
     /// It's recommended to use `Token::(ident,uninterpolate,uninterpolated_span)` to
     /// treat regular and interpolated identifiers in the same way.
     Ident(Symbol, /* is_raw */ bool),
+    /// This `Span` is the span of the original identifier passed to the
+    /// declarative macro. The span in the `Token` is the span of the `ident`
+    /// metavariable in the macro's RHS.
+    InterpolatedIdent(Symbol, /* is_raw */ bool, Span),
     /// Lifetime identifier token.
-    /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
+    /// Do not forget about `InterpolatedLIfetime` when you want to match on lifetime identifiers.
     /// It's recommended to use `Token::(lifetime,uninterpolate,uninterpolated_span)` to
     /// treat regular and interpolated lifetime identifiers in the same way.
     Lifetime(Symbol),
-
-    /// An embedded AST node, as produced by a macro. This only exists for
-    /// historical reasons. We'd like to get rid of it, for multiple reasons.
-    /// - It's conceptually very strange. Saying a token can contain an AST
-    ///   node is like saying, in natural language, that a word can contain a
-    ///   sentence.
-    /// - It requires special handling in a bunch of places in the parser.
-    /// - It prevents `Token` from implementing `Copy`.
-    /// It adds complexity and likely slows things down. Please don't add new
-    /// occurrences of this token kind!
-    Interpolated(Lrc<Nonterminal>),
+    /// This `Span` is the span of the original lifetime passed to the
+    /// declarative macro. The span in the `Token` is the span of the
+    /// `lifetime` metavariable in the macro's RHS.
+    InterpolatedLifetime(Symbol, Span),
 
     /// A doc comment token.
     /// `Symbol` is the doc comment's data excluding its "quotes" (`///`, `/**`, etc)
@@ -335,19 +327,6 @@ pub enum TokenKind {
     DocComment(CommentKind, ast::AttrStyle, Symbol),
 
     Eof,
-}
-
-impl Clone for TokenKind {
-    fn clone(&self) -> Self {
-        // `TokenKind` would impl `Copy` if it weren't for `Interpolated`. So
-        // for all other variants, this implementation of `clone` is just like
-        // a copy. This is faster than the `derive(Clone)` version which has a
-        // separate path for every variant.
-        match self {
-            Interpolated(nt) => Interpolated(nt.clone()),
-            _ => unsafe { std::ptr::read(self) },
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -433,8 +412,12 @@ impl Token {
     /// Note that keywords are also identifiers, so they should use this
     /// if they keep spans or perform edition checks.
     pub fn uninterpolated_span(&self) -> Span {
-        match &self.kind {
-            Interpolated(nt) => nt.span(),
+        match self.kind {
+            InterpolatedIdent(_, _, uninterpolated_span)
+            | InterpolatedLifetime(_, uninterpolated_span) => uninterpolated_span,
+            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(kind))) => {
+                panic!("njn: uninterpolated_span {kind:?}");
+            }
             _ => self.span,
         }
     }
@@ -449,8 +432,15 @@ impl Token {
             | BinOpEq(_) | At | Dot | DotDot | DotDotDot | DotDotEq | Comma | Semi | Colon
             | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => true,
 
-            OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
-            | Lifetime(..) | Interpolated(..) | Eof => false,
+            OpenDelim(..)
+            | CloseDelim(..)
+            | Literal(..)
+            | DocComment(..)
+            | Ident(..)
+            | InterpolatedIdent(..)
+            | Lifetime(..)
+            | InterpolatedLifetime(..)
+            | Eof => false,
         }
     }
 
@@ -612,13 +602,13 @@ impl Token {
     /// into the regular identifier or lifetime token it refers to,
     /// otherwise returns the original token.
     pub fn uninterpolate(&self) -> Cow<'_, Token> {
-        match &self.kind {
-            Interpolated(nt) => match **nt {
-                NtIdent(ident, is_raw) => {
-                    Cow::Owned(Token::new(Ident(ident.name, is_raw), ident.span))
-                }
-                NtLifetime(ident) => Cow::Owned(Token::new(Lifetime(ident.name), ident.span)),
-            },
+        match self.kind {
+            InterpolatedIdent(name, is_raw, uninterpolated_span) => {
+                Cow::Owned(Token::new(Ident(name, is_raw), uninterpolated_span))
+            }
+            InterpolatedLifetime(name, uninterpolated_span) => {
+                Cow::Owned(Token::new(Lifetime(name), uninterpolated_span))
+            }
             _ => Cow::Borrowed(self),
         }
     }
@@ -627,12 +617,11 @@ impl Token {
     #[inline]
     pub fn ident(&self) -> Option<(Ident, /* is_raw */ bool)> {
         // We avoid using `Token::uninterpolate` here because it's slow.
-        match &self.kind {
-            &Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
-            Interpolated(nt) => match **nt {
-                NtIdent(ident, is_raw) => Some((ident, is_raw)),
-                _ => None,
-            },
+        match self.kind {
+            Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
+            InterpolatedIdent(name, is_raw, uninterpolated_span) => {
+                Some((Ident::new(name, uninterpolated_span), is_raw))
+            }
             _ => None,
         }
     }
@@ -641,12 +630,11 @@ impl Token {
     #[inline]
     pub fn lifetime(&self) -> Option<Ident> {
         // We avoid using `Token::uninterpolate` here because it's slow.
-        match &self.kind {
-            &Lifetime(name) => Some(Ident::new(name, self.span)),
-            Interpolated(nt) => match **nt {
-                NtLifetime(ident) => Some(ident),
-                _ => None,
-            },
+        match self.kind {
+            Lifetime(name) => Some(Ident::new(name, self.span)),
+            InterpolatedLifetime(name, uninterpolated_span) => {
+                Some(Ident::new(name, uninterpolated_span))
+            }
             _ => None,
         }
     }
@@ -822,10 +810,35 @@ impl Token {
                 _ => return None,
             },
 
-            Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
-            | DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar
-            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..)
-            | Lifetime(..) | Interpolated(..) | DocComment(..) | Eof => return None,
+            Le
+            | EqEq
+            | Ne
+            | Ge
+            | AndAnd
+            | OrOr
+            | Tilde
+            | BinOpEq(..)
+            | At
+            | DotDotDot
+            | DotDotEq
+            | Comma
+            | Semi
+            | ModSep
+            | RArrow
+            | LArrow
+            | FatArrow
+            | Pound
+            | Dollar
+            | Question
+            | OpenDelim(..)
+            | CloseDelim(..)
+            | Literal(..)
+            | Ident(..)
+            | InterpolatedIdent(..)
+            | Lifetime(..)
+            | InterpolatedLifetime(..)
+            | DocComment(..)
+            | Eof => return None,
         };
 
         Some(Token::new(kind, self.span.to(joint.span)))
@@ -839,13 +852,8 @@ impl PartialEq<TokenKind> for Token {
     }
 }
 
-#[derive(Clone, Encodable, Decodable)]
-/// For interpolation during macro expansion.
-pub enum Nonterminal {
-    NtIdent(Ident, /* is_raw */ bool),
-    NtLifetime(Ident),
-}
-
+// njn: introduce cut-back version lacking Ident/Lifetime?
+// - could that simplify the Pat cases too?
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
 pub enum NonterminalKind {
     Item,
@@ -859,6 +867,7 @@ pub enum NonterminalKind {
     PatWithOr,
     Expr,
     Ty,
+    //njn: explain how these are never put in Invisible delims
     Ident,
     Lifetime,
     Literal,
@@ -924,48 +933,6 @@ impl fmt::Display for NonterminalKind {
     }
 }
 
-impl Nonterminal {
-    pub fn span(&self) -> Span {
-        match self {
-            NtIdent(ident, _) | NtLifetime(ident) => ident.span,
-        }
-    }
-}
-
-impl PartialEq for Nonterminal {
-    fn eq(&self, rhs: &Self) -> bool {
-        match (self, rhs) {
-            (NtIdent(ident_lhs, is_raw_lhs), NtIdent(ident_rhs, is_raw_rhs)) => {
-                ident_lhs == ident_rhs && is_raw_lhs == is_raw_rhs
-            }
-            (NtLifetime(ident_lhs), NtLifetime(ident_rhs)) => ident_lhs == ident_rhs,
-            // FIXME: Assume that all "complex" nonterminal are not equal, we can't compare them
-            // correctly based on data from AST. This will prevent them from matching each other
-            // in macros. The comparison will become possible only when each nonterminal has an
-            // attached token stream from which it was parsed.
-            _ => false,
-        }
-    }
-}
-
-impl fmt::Debug for Nonterminal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            NtIdent(..) => f.pad("NtIdent(..)"),
-            NtLifetime(..) => f.pad("NtLifetime(..)"),
-        }
-    }
-}
-
-impl<CTX> HashStable<CTX> for Nonterminal
-where
-    CTX: crate::HashStableContext,
-{
-    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
-        panic!("interpolated tokens should not be present in the HIR")
-    }
-}
-
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
@@ -974,7 +941,6 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(Lit, 12);
     static_assert_size!(LitKind, 2);
-    static_assert_size!(Nonterminal, 16);
     static_assert_size!(Token, 24);
     static_assert_size!(TokenKind, 16);
     // tidy-alphabetical-end

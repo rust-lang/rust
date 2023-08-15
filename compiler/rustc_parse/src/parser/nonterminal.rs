@@ -1,8 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, InvisibleSource, Nonterminal::*, NonterminalKind, Token};
-use rustc_ast::HasTokens;
-use rustc_ast_pretty::pprust;
-use rustc_data_structures::sync::Lrc;
+use rustc_ast::token::{self, Delimiter, InvisibleSource, NonterminalKind, Token};
 use rustc_errors::IntoDiagnostic;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
@@ -28,26 +25,17 @@ impl<'a> Parser<'a> {
                 | PatWithOr
                 | Expr
                 | Ty
-                | Ident
                 | Literal // `true`, `false`
                 | Meta
                 | Path => true,
 
                 Item
                 | Block
-                | Vis
-                | Lifetime => false,
+                | Vis => false,
 
-                TT => unreachable!(),
-            }
-        }
-
-        /// Old variant of `may_be_ident`, being phased out.
-        fn nt_may_be_ident(nt: &token::Nonterminal) -> bool {
-            match nt {
-                NtIdent(..) => true,
-
-                NtLifetime(_) => false,
+                Ident
+                | Lifetime
+                | TT => unreachable!(),
             }
         }
 
@@ -66,19 +54,15 @@ impl<'a> Parser<'a> {
                 // The follow-set of :vis + "priv" keyword + interpolated/metavar-expansion
                 token::Comma
                 | token::Ident(..)
-                | token::Interpolated(..)
+                | token::InterpolatedIdent(..)
+                | token::InterpolatedLifetime(..)
                 | token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(_))) => true,
                 _ => token.can_begin_type(),
             },
             NonterminalKind::Block => match &token.kind {
                 token::OpenDelim(Delimiter::Brace) => true,
-                token::Interpolated(nt) => match **nt {
-                    NtLifetime(_) => true,
-                    NtIdent(..) => false,
-                },
                 token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(k))) => match k {
                     NonterminalKind::Block
-                    | NonterminalKind::Lifetime
                     | NonterminalKind::Stmt
                     | NonterminalKind::Expr
                     | NonterminalKind::Literal => true,
@@ -86,24 +70,26 @@ impl<'a> Parser<'a> {
                     | NonterminalKind::PatParam { .. }
                     | NonterminalKind::PatWithOr
                     | NonterminalKind::Ty
-                    | NonterminalKind::Ident
                     | NonterminalKind::Meta
                     | NonterminalKind::Path
                     | NonterminalKind::Vis => false,
-                    NonterminalKind::TT => unreachable!(),
+                    NonterminalKind::Ident | NonterminalKind::Lifetime | NonterminalKind::TT => {
+                        unreachable!()
+                    }
                 },
+                token::InterpolatedLifetime(..) => true,
                 _ => false,
             },
             NonterminalKind::Path | NonterminalKind::Meta => match &token.kind {
-                token::ModSep | token::Ident(..) => true,
-                token::Interpolated(nt) => nt_may_be_ident(nt),
+                token::ModSep | token::Ident(..) | token::InterpolatedIdent(..) => true,
                 token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(kind))) => {
                     may_be_ident(*kind)
                 }
                 _ => false,
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => match &token.kind {
-                token::Ident(..) |                          // box, ref, mut, and other identifiers (can stricten)
+                // box, ref, mut, and other identifiers (can stricten)
+                token::Ident(..) | token::InterpolatedIdent(..) |
                 token::OpenDelim(Delimiter::Parenthesis) |  // tuple pattern
                 token::OpenDelim(Delimiter::Bracket) |      // slice pattern
                 token::BinOp(token::And) |                  // reference
@@ -117,20 +103,13 @@ impl<'a> Parser<'a> {
                 token::BinOp(token::Shl) => true,           // path (double UFCS)
                 // leading vert `|` or-pattern
                 token::BinOp(token::Or) => matches!(kind, NonterminalKind::PatWithOr),
-                token::Interpolated(nt) => nt_may_be_ident(nt),
                 token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(kind))) => {
                     may_be_ident(*kind)
                 }
                 _ => false,
             },
             NonterminalKind::Lifetime => match &token.kind {
-                token::Lifetime(_) => true,
-                token::Interpolated(nt) => {
-                    matches!(**nt, NtLifetime(_))
-                }
-                token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
-                    NonterminalKind::Lifetime,
-                ))) => true,
+                token::Lifetime(_) | token::InterpolatedLifetime(..) => true,
                 _ => false,
             },
             NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
@@ -146,103 +125,80 @@ impl<'a> Parser<'a> {
         // A `macro_rules!` invocation may pass a captured item/expr to a proc-macro,
         // which requires having captured tokens available. Since we cannot determine
         // in advance whether or not a proc-macro will be (transitively) invoked,
-        // we always capture tokens for any `Nonterminal` which needs them.
-        let mut nt = match kind {
-            // Note that TT is treated differently to all the others.
-            NonterminalKind::TT => return Ok(ParseNtResult::Tt(self.parse_token_tree())),
+        // we always capture tokens for any nonterminal which needs them.
+        match kind {
+            NonterminalKind::TT => Ok(ParseNtResult::Tt(self.parse_token_tree())),
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
-                Some(item) => return Ok(ParseNtResult::Item(item)),
-                None => {
-                    return Err(UnexpectedNonterminal::Item(self.token.span)
-                               .into_diagnostic(&self.sess.span_diagnostic));
-                }
+                Some(item) => Ok(ParseNtResult::Item(item)),
+                None => Err(UnexpectedNonterminal::Item(self.token.span)
+                    .into_diagnostic(&self.sess.span_diagnostic)),
             },
             NonterminalKind::Block => {
                 // While a block *expression* may have attributes (e.g. `#[my_attr] { ... }`),
                 // the ':block' matcher does not support them
-                return Ok(ParseNtResult::Block(
-                    self.collect_tokens_no_attrs(|this| this.parse_block())?)
-                )
+                Ok(ParseNtResult::Block(self.collect_tokens_no_attrs(|this| this.parse_block())?))
             }
             NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
-                Some(stmt) => return Ok(ParseNtResult::Stmt(P(stmt))),
-                None => {
-                    return Err(UnexpectedNonterminal::Statement(self.token.span)
-                               .into_diagnostic(&self.sess.span_diagnostic));
-                }
+                Some(stmt) => Ok(ParseNtResult::Stmt(P(stmt))),
+                None => Err(UnexpectedNonterminal::Statement(self.token.span)
+                    .into_diagnostic(&self.sess.span_diagnostic)),
             },
-            NonterminalKind::PatParam { inferred } => {
-                return Ok(ParseNtResult::PatParam(self.collect_tokens_no_attrs(|this|
-                    this.parse_pat_no_top_alt(None, None)
-                )?, inferred))
-            }
+            NonterminalKind::PatParam { inferred } => Ok(ParseNtResult::PatParam(
+                self.collect_tokens_no_attrs(|this| this.parse_pat_no_top_alt(None, None))?,
+                inferred,
+            )),
             NonterminalKind::PatWithOr => {
-                return Ok(ParseNtResult::PatWithOr(self.collect_tokens_no_attrs(|this|
+                Ok(ParseNtResult::PatWithOr(self.collect_tokens_no_attrs(|this| {
                     this.parse_pat_allow_top_alt(
                         None,
                         RecoverComma::No,
                         RecoverColon::No,
                         CommaRecoveryMode::EitherTupleOrPipe,
                     )
-                )?))
+                })?))
             }
-            NonterminalKind::Expr => {
-                return Ok(ParseNtResult::Expr(self.parse_expr_force_collect()?));
-            }
+            NonterminalKind::Expr => Ok(ParseNtResult::Expr(self.parse_expr_force_collect()?)),
             NonterminalKind::Literal => {
                 // The `:literal` matcher does not support attributes
-                return Ok(ParseNtResult::Literal(
+                Ok(ParseNtResult::Literal(
                     self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?,
                 ))
             }
-
-            NonterminalKind::Ty => return Ok(ParseNtResult::Ty(
-                self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?
+            NonterminalKind::Ty => Ok(ParseNtResult::Ty(
+                self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?,
             )),
-
-            // this could be handled like a token, since it is one
-            NonterminalKind::Ident
-                if let Some((ident, is_raw)) = get_macro_ident(&self.token) =>
-            {
-                self.bump();
-                NtIdent(ident, is_raw)
-            }
             NonterminalKind::Ident => {
-                return Err(UnexpectedNonterminal::Ident {
-                    span: self.token.span,
-                    token: self.token.clone(),
-                }.into_diagnostic(&self.sess.span_diagnostic));
-            }
-            NonterminalKind::Path => return Ok(ParseNtResult::Path(
-                P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?),
-            )),
-            NonterminalKind::Meta => return Ok(ParseNtResult::Meta(P(self.parse_attr_item(true)?))),
-            NonterminalKind::Vis => return Ok(ParseNtResult::Vis(
-                P(self.collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?),
-            )),
-            NonterminalKind::Lifetime => {
-                if self.check_lifetime() {
-                    NtLifetime(self.expect_lifetime().ident)
+                if let Some((ident, is_raw)) = get_macro_ident(&self.token) {
+                    self.bump();
+                    Ok(ParseNtResult::Ident(ident, is_raw))
                 } else {
-                    return Err(UnexpectedNonterminal::Lifetime {
+                    Err(UnexpectedNonterminal::Ident {
                         span: self.token.span,
                         token: self.token.clone(),
-                    }.into_diagnostic(&self.sess.span_diagnostic));
+                    }
+                    .into_diagnostic(&self.sess.span_diagnostic))
                 }
             }
-        };
-
-        // If tokens are supported at all, they should be collected.
-        if matches!(nt.tokens_mut(), Some(None)) {
-            panic!(
-                "Missing tokens for nt {:?} at {:?}: {:?}",
-                nt,
-                nt.span(),
-                pprust::nonterminal_to_string(&nt)
-            );
+            NonterminalKind::Path => Ok(ParseNtResult::Path(P(
+                self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?
+            ))),
+            NonterminalKind::Meta => Ok(ParseNtResult::Meta(P(self.parse_attr_item(true)?))),
+            NonterminalKind::Vis => {
+                Ok(ParseNtResult::Vis(P(self
+                    .collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?)))
+            }
+            NonterminalKind::Lifetime => {
+                if self.check_lifetime() {
+                    Ok(ParseNtResult::Lifetime(self.expect_lifetime().ident))
+                } else {
+                    Err(UnexpectedNonterminal::Lifetime {
+                        span: self.token.span,
+                        token: self.token.clone(),
+                    }
+                    .into_diagnostic(&self.sess.span_diagnostic))
+                }
+            }
         }
-
-        Ok(ParseNtResult::Nt(Lrc::new(nt)))
     }
 }
 
