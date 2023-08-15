@@ -103,9 +103,7 @@ impl Metrics {
         path: &str,
     ) -> anyhow::Result<()> {
         eprintln!("\nMeasuring analysis-stats/{name}");
-        let output =
-            cmd!(sh, "./target/release/rust-analyzer -q analysis-stats --memory-usage {path}")
-                .read()?;
+        let output = cmd!(sh, "./target/release/rust-analyzer -q analysis-stats {path}").read()?;
         for (metric, value, unit) in parse_metrics(&output) {
             self.report(&format!("analysis-stats/{name}/{metric}"), value, unit.into());
         }

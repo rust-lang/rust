@@ -235,9 +235,7 @@ impl flags::AnalysisStats {
         if let Some(instructions) = total_span.instructions {
             report_metric("total instructions", instructions, "#instr");
         }
-        if let Some(memory) = total_span.memory {
-            report_metric("total memory", memory.allocated.megabytes() as u64, "MB");
-        }
+        report_metric("total memory", total_span.memory.allocated.megabytes() as u64, "MB");
 
         if env::var("RA_COUNT").is_ok() {
             eprintln!("{}", profile::countme::get_all());
@@ -257,7 +255,7 @@ impl flags::AnalysisStats {
             eprintln!("source files: {total_file_size}, macro files: {total_macro_file_size}");
         }
 
-        if self.memory_usage && verbosity.is_verbose() {
+        if verbosity.is_verbose() {
             print_memory_usage(host, vfs);
         }
 
@@ -814,7 +812,7 @@ impl flags::AnalysisStats {
     }
 
     fn stop_watch(&self) -> StopWatch {
-        StopWatch::start().memory(self.memory_usage)
+        StopWatch::start()
     }
 }
 
