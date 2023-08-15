@@ -142,9 +142,6 @@ pub unsafe fn aes32dsi(rs1: u32, rs2: u32, bs: u8) -> u32 {
     constify_imm2!(bs, aes32dsi)
 }
 
-#[target_feature(enable = "zknd")]
-#[cfg_attr(test, assert_instr(aes32dsmi))]
-#[inline]
 /// AES middle round decryption instruction for RV32.
 ///
 /// This instruction sources a single byte from rs2 according to bs. To this it applies the
@@ -166,6 +163,9 @@ pub unsafe fn aes32dsi(rs1: u32, rs2: u32, bs: u8) -> u32 {
 /// # Safety
 ///
 /// This function is safe to use if the `zknd` target feature is present.
+#[target_feature(enable = "zknd")]
+#[cfg_attr(test, assert_instr(aes32dsmi))]
+#[inline]
 pub unsafe fn aes32dsmi(rs1: u32, rs2: u32, bs: u8) -> u32 {
     macro_rules! aes32dsmi {
             ($imm2:expr) => {{

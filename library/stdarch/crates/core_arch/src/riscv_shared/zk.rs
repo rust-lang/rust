@@ -267,7 +267,7 @@ pub unsafe fn sha256sum0(rs1: usize) -> usize {
     let value: usize;
     unsafe {
         asm!(
-            "sha256sig1 {rd},{rs1}",
+            "sha256sum0 {rd},{rs1}",
             rd = lateout(reg) value,
             rs1 = in(reg) rs1,
             options(pure, nomem, nostack),
@@ -302,7 +302,7 @@ pub unsafe fn sha256sum1(rs1: usize) -> usize {
     let value: usize;
     unsafe {
         asm!(
-            "sha256sig1 {rd},{rs1}",
+            "sha256sum1 {rd},{rs1}",
             rd = lateout(reg) value,
             rs1 = in(reg) rs1,
             options(pure, nomem, nostack),

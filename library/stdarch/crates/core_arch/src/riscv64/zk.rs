@@ -142,7 +142,7 @@ pub unsafe fn aes64dsm(rs1: u64, rs2: u64) -> u64 {
     let value: u64;
     unsafe {
         asm!(
-            "aes64esm {rd},{rs1},{rs2}",
+            "aes64dsm {rd},{rs1},{rs2}",
             rd = lateout(reg) value,
             rs1 = in(reg) rs1,
             rs2 = in(reg) rs2,
@@ -378,7 +378,7 @@ pub unsafe fn sha512sum1(rs1: u64) -> u64 {
     let value: u64;
     unsafe {
         asm!(
-            "sha512sum0 {rd},{rs1}",
+            "sha512sum1 {rd},{rs1}",
             rd = lateout(reg) value,
             rs1 = in(reg) rs1,
             options(pure, nomem, nostack),
