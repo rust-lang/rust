@@ -59,7 +59,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         ProbeCtxt {
             ecx: self,
             probe_kind: move |result: &QueryResult<'tcx>| inspect::ProbeKind::MiscCandidate {
-                name: name.to_string(),
+                name,
                 result: *result,
             },
             _result: PhantomData,

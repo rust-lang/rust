@@ -81,7 +81,7 @@ pub enum ProbeKind<'tcx> {
     /// Some candidate to prove the current goal.
     ///
     /// FIXME: Remove this in favor of always using more strongly typed variants.
-    MiscCandidate { name: String, result: QueryResult<'tcx> },
+    MiscCandidate { name: &'static str, result: QueryResult<'tcx> },
     /// A candidate for proving a trait or alias-relate goal.
     TraitCandidate { source: CandidateSource, result: QueryResult<'tcx> },
     /// Used in the probe that wraps normalizing the non-self type for the unsize
