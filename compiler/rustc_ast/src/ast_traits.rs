@@ -3,7 +3,6 @@
 //! The traits are not implemented exhaustively, only when actually necessary.
 
 use crate::ptr::P;
-use crate::token::Nonterminal;
 use crate::tokenstream::LazyAttrTokenStream;
 use crate::{Arm, Crate, ExprField, FieldDef, GenericParam, Param, PatField, Variant};
 use crate::{AssocItem, Expr, ForeignItem, Item, NodeId};
@@ -225,19 +224,6 @@ impl HasTokens for Attribute {
                 panic!("Called tokens_mut on doc comment attr {kind:?}")
             }
         })
-    }
-}
-
-impl HasTokens for Nonterminal {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
-        match self {
-            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
-        }
-    }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
-        match self {
-            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
-        }
     }
 }
 

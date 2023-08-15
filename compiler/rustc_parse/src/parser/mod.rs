@@ -18,9 +18,7 @@ pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{
-    self, Delimiter, InvisibleSource, Nonterminal, NonterminalKind, Token, TokenKind,
-};
+use rustc_ast::token::{self, Delimiter, InvisibleSource, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{AttributesData, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
@@ -31,7 +29,6 @@ use rustc_ast::{Async, AttrArgs, AttrArgsEq, Expr, ExprKind, Mutability, StrLit}
 use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_errors::{
     Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, IntoDiagnostic, MultiSpan,
@@ -769,7 +766,7 @@ impl<'a> Parser<'a> {
                 self.break_last_token = true;
                 // Use the spacing of the glued token as the spacing
                 // of the unglued second token.
-                self.bump_with((Token::new(second, second_span), self.token_spacing));
+                self.bump_with(6, (Token::new(second, second_span), self.token_spacing));
                 true
             }
             _ => {
@@ -1088,15 +1085,16 @@ impl<'a> Parser<'a> {
     }
 
     /// Advance the parser by one token using provided token as the next one.
-    fn bump_with(&mut self, next: (Token, Spacing)) {
-        self.inlined_bump_with(next)
+    fn bump_with(&mut self, x: u32, next: (Token, Spacing)) {
+        self.inlined_bump_with(x, next)
     }
 
     /// This always-inlined version should only be used on hot code paths.
     #[inline(always)]
-    fn inlined_bump_with(&mut self, (next_token, next_spacing): (Token, Spacing)) {
+    fn inlined_bump_with(&mut self, _x: u32, (next_token, next_spacing): (Token, Spacing)) {
         // Update the current and previous tokens.
         self.prev_token = mem::replace(&mut self.token, next_token);
+        //eprintln!("bump `{:?}`", self.token);
         self.token_spacing = next_spacing;
 
         // Diagnostics.
@@ -1117,12 +1115,13 @@ impl<'a> Parser<'a> {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
             let fallback_span = self.token.span;
             next.0.span = fallback_span.with_ctxt(next.0.span.ctxt());
+            //eprintln!("fallback {:?}", next.0.span);
         }
         debug_assert!(!matches!(
             next.0.kind,
             token::OpenDelim(delim) | token::CloseDelim(delim) if delim.skip()
         ));
-        self.inlined_bump_with(next)
+        self.inlined_bump_with(1, next)
     }
 
     /// Look-ahead `dist` tokens of `self.token` and get access to that token there.
@@ -1557,14 +1556,12 @@ impl<'a> Parser<'a> {
     // njn: comment
     // njn: rename?
     pub fn uninterpolated_token_span(&self) -> Span {
-        match &self.token.kind {
-            token::Interpolated(nt) => nt.span(),
-            // njn: this pretty much assumes that it'll be a single token
-            // between the invisible delims. True for ident,lifetime, most
-            // literals, not true for `-1`. Could try to be more precise, match
-            // on the NonterminalKind as well
+        match self.token.kind {
+            token::InterpolatedIdent(_, _, uninterpolated_span)
+            | token::InterpolatedLifetime(_, uninterpolated_span) => uninterpolated_span,
             token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(_))) => {
-                self.look_ahead(1, |t| t.span)
+                // njn: explain
+                self.token_cursor.tree_cursor.span()
             }
             _ => self.token.span,
         }
@@ -1630,11 +1627,10 @@ pub enum ParseNtResult {
     PatWithOr(P<ast::Pat>),
     Expr(P<ast::Expr>), // njn: combine with Literal?
     Literal(P<ast::Expr>),
+    Ident(Ident, /* is_raw */ bool),
+    Lifetime(Ident),
     Ty(P<ast::Ty>),
     Meta(P<ast::AttrItem>),
     Path(P<ast::Path>),
     Vis(P<ast::Visibility>),
-
-    /// This case will eventually be removed, along with `Token::Interpolate`.
-    Nt(Lrc<Nonterminal>),
 }

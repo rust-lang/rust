@@ -6,7 +6,7 @@ use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
@@ -729,13 +729,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn nonterminal_to_string(&self, nt: &Nonterminal) -> String {
-        match nt {
-            token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(*e, *is_raw).to_string(),
-            token::NtLifetime(e) => e.to_string(),
-        }
-    }
-
     /// Print the token kind precisely, without converting `$crate` into its respective crate name.
     fn token_kind_to_string(&self, tok: &TokenKind) -> Cow<'static, str> {
         self.token_kind_to_string_ext(tok, None)
@@ -791,18 +784,16 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::Literal(lit) => literal_to_string(lit).into(),
 
             /* Name components */
-            token::Ident(s, is_raw) => {
+            token::Ident(s, is_raw) | token::InterpolatedIdent(s, is_raw, _) => {
                 IdentPrinter::new(s, is_raw, convert_dollar_crate).to_string().into()
             }
-            token::Lifetime(s) => s.to_string().into(),
+            token::Lifetime(s) | token::InterpolatedLifetime(s, _) => s.to_string().into(),
 
             /* Other */
             token::DocComment(comment_kind, attr_style, data) => {
                 doc_comment_to_string(comment_kind, attr_style, data).into()
             }
             token::Eof => "<eof>".into(),
-
-            token::Interpolated(ref nt) => self.nonterminal_to_string(nt).into(),
         }
     }
 

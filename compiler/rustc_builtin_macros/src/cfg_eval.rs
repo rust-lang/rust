@@ -177,16 +177,14 @@ impl CfgEval<'_, '_> {
                 _ => unreachable!(),
             };
 
-        // 'Flatten' all nonterminals (i.e. `TokenKind::Interpolated`)
-        // to `None`-delimited groups containing the corresponding tokens. This
-        // is normally delayed until the proc-macro server actually needs to
-        // provide a `TokenKind::Interpolated` to a proc-macro. We do this earlier,
+        // Flatten interpolated tokens
+        // (`TokenKind::Interpolated{Ident,Lifetime}`) appropriately. This is
+        // normally delayed until the proc-macro server actually needs to
+        // provide an interpolated token to a proc-macro. We do this earlier,
         // so that we can handle cases like:
-        //
         // ```rust
         // #[cfg_eval] #[cfg] $item
         //```
-        //
         // where `$item` is `#[cfg_attr] struct Foo {}`. We want to make
         // sure to evaluate *all* `#[cfg]` and `#[cfg_attr]` attributes - the simplest
         // way to do this is to do a single parse of a stream without any nonterminals.

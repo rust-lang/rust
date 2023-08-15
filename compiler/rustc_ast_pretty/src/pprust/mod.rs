@@ -5,14 +5,10 @@ pub mod state;
 pub use state::{print_crate, AnnNode, Comments, PpAnn, PrintState, State};
 
 use rustc_ast as ast;
-use rustc_ast::token::{Nonterminal, Token, TokenKind};
+use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 
 use std::borrow::Cow;
-
-pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
-    State::new().nonterminal_to_string(nt)
-}
 
 /// Print the token kind precisely, without converting `$crate` into its respective crate name.
 pub fn token_kind_to_string(tok: &TokenKind) -> Cow<'static, str> {

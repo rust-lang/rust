@@ -711,8 +711,13 @@ impl<'a> Parser<'a> {
     /// Returns the span of expr if it was not interpolated, or the span of the interpolated token.
     fn interpolated_or_expr_span(&self, expr: &Expr) -> Span {
         match self.prev_token.kind {
-            TokenKind::Interpolated(..) => self.prev_token.span,
+            TokenKind::InterpolatedIdent(..) | TokenKind::InterpolatedLifetime(..) => {
+                // njn: backwards?
+                // `expr.span` is the interpolated span, which is what we want.
+                expr.span
+            }
             TokenKind::CloseDelim(Delimiter::Invisible(_)) => {
+                // njn: backwards?
                 // `expr.span` is the interpolated span, because invisible open
                 // and close delims both get marked with the same span, one
                 // that covers the entire thing between them. (See
@@ -1150,7 +1155,7 @@ impl<'a> Parser<'a> {
                 let base1 =
                     self.parse_expr_tuple_field_access(lo, base, symbol1, None, Some(next_token1));
                 let next_token2 = Token::new(token::Ident(symbol2, false), ident2_span);
-                self.bump_with((next_token2, self.token_spacing)); // `.`
+                self.bump_with(2, (next_token2, self.token_spacing)); // `.`
                 self.parse_expr_tuple_field_access(lo, base1, symbol2, suffix, None)
             }
             DestructuredFloat::Error => base,
@@ -1178,7 +1183,7 @@ impl<'a> Parser<'a> {
                 // after the float-like token, and therefore we have to make
                 // the other parts of the parser think that there is a dot literal.
                 self.token = Token::new(token::Ident(sym, false), sym_span);
-                self.bump_with((Token::new(token::Dot, dot_span), self.token_spacing));
+                self.bump_with(3, (Token::new(token::Dot, dot_span), self.token_spacing));
                 thin_vec![Ident::new(sym, sym_span)]
             }
             // 1.2 | 1.2e3
@@ -1202,7 +1207,7 @@ impl<'a> Parser<'a> {
         next_token: Option<(Token, Spacing)>,
     ) -> P<Expr> {
         match next_token {
-            Some(next_token) => self.bump_with(next_token),
+            Some(next_token) => self.bump_with(4, next_token),
             None => self.bump(),
         }
         let span = self.prev_token.span;
@@ -1452,7 +1457,7 @@ impl<'a> Parser<'a> {
             self.parse_expr_let()
         } else if self.eat_keyword(kw::Underscore) {
             Ok(self.mk_expr(self.prev_token.span, ExprKind::Underscore))
-        } else if self.token.uninterpolated_span().at_least_rust_2018() {
+        } else if self.uninterpolated_token_span().at_least_rust_2018() {
             // `Span:.at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
             if self.check_keyword(kw::Async) {
                 if self.is_async_block() {
@@ -1968,6 +1973,7 @@ impl<'a> Parser<'a> {
             return Err(err);
         }
 
+        // njn: remove in NtExpr/NtLiteral commit
         // if let token::Interpolated(nt) = &self.token.kind
         //     && let token::NtExpr(e) | token::NtLiteral(e) = &**nt
         //     && matches!(e.kind, ExprKind::Err)
