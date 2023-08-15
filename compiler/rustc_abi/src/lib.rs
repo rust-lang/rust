@@ -43,9 +43,11 @@ bitflags! {
         // If true, the type's layout can be randomized using
         // the seed stored in `ReprOptions.field_shuffle_seed`
         const RANDOMIZE_LAYOUT   = 1 << 4;
+        const IS_SCALABLE = 1 << 5;
         // Any of these flags being set prevent field reordering optimisation.
         const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits()
                                  | ReprFlags::IS_SIMD.bits()
+                                 | ReprFlags::IS_SCALABLE.bits()
                                  | ReprFlags::IS_LINEAR.bits();
     }
 }
@@ -86,6 +88,7 @@ pub struct ReprOptions {
     pub align: Option<Align>,
     pub pack: Option<Align>,
     pub flags: ReprFlags,
+    pub scalable: Option<u32>,
     /// The seed to be used for randomizing a type's layout
     ///
     /// Note: This could technically be a `u128` which would
@@ -100,6 +103,11 @@ impl ReprOptions {
     #[inline]
     pub fn simd(&self) -> bool {
         self.flags.contains(ReprFlags::IS_SIMD)
+    }
+
+    #[inline]
+    pub fn scalable(&self) -> bool {
+        self.flags.contains(ReprFlags::IS_SCALABLE)
     }
 
     #[inline]
@@ -1266,6 +1274,10 @@ pub enum Abi {
     Uninhabited,
     Scalar(Scalar),
     ScalarPair(Scalar, Scalar),
+    ScalableVector {
+        element: Scalar,
+        elt: u64,
+    },
     Vector {
         element: Scalar,
         count: u64,
@@ -1283,6 +1295,7 @@ impl Abi {
         match *self {
             Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
             Abi::Aggregate { sized } => !sized,
+            Abi::ScalableVector { .. } => true,
         }
     }
 
@@ -1329,7 +1342,7 @@ impl Abi {
             Abi::Vector { element, count } => {
                 cx.data_layout().vector_align(element.size(cx) * count)
             }
-            Abi::Uninhabited | Abi::Aggregate { .. } => return None,
+            Abi::Uninhabited | Abi::Aggregate { .. } | Abi::ScalableVector { .. } => return None,
         })
     }
 
@@ -1350,7 +1363,7 @@ impl Abi {
                 // to make the size a multiple of align (e.g. for vectors of size 3).
                 (element.size(cx) * count).align_to(self.inherent_align(cx)?.abi)
             }
-            Abi::Uninhabited | Abi::Aggregate { .. } => return None,
+            Abi::Uninhabited | Abi::Aggregate { .. } | Abi::ScalableVector { .. } => return None,
         })
     }
 
@@ -1360,6 +1373,9 @@ impl Abi {
             Abi::Scalar(s) => Abi::Scalar(s.to_union()),
             Abi::ScalarPair(s1, s2) => Abi::ScalarPair(s1.to_union(), s2.to_union()),
             Abi::Vector { element, count } => Abi::Vector { element: element.to_union(), count },
+            Abi::ScalableVector { element, elt } => {
+                Abi::ScalableVector { element: element.to_union(), elt }
+            }
             Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
         }
     }
@@ -1646,6 +1662,11 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
         self.is_sized() && self.size.bytes() == 0 && self.align.abi.bytes() == 1
     }
 
+    /// Returns true if the size of the type is only known at runtime.
+    pub fn is_runtime_sized(&self) -> bool {
+        matches!(self.abi, Abi::ScalableVector { .. })
+    }
+
     /// Returns `true` if the type is a ZST and not unsized.
     ///
     /// Note that this does *not* imply that the type is irrelevant for layout! It can still have
@@ -1655,6 +1676,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
             Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
+            Abi::ScalableVector { .. } => false,
         }
     }
 

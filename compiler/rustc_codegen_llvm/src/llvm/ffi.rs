@@ -888,6 +888,7 @@ extern "C" {
     // Operations on array, pointer, and vector types (sequence types)
     pub fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
     pub fn LLVMVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
+    pub fn LLVMScalableVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
 
     pub fn LLVMGetElementType(Ty: &Type) -> &Type;
     pub fn LLVMGetVectorSize(VectorTy: &Type) -> c_uint;

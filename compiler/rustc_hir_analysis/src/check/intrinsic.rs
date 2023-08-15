@@ -652,5 +652,6 @@ pub fn check_intrinsic_type(
     };
     let sig = tcx.mk_fn_sig(inputs, output, false, unsafety, abi);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
+
     equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, n_lts, n_cts, sig)
 }

@@ -69,6 +69,10 @@ impl<'ll> CodegenCx<'ll, '_> {
         unsafe { llvm::LLVMVectorType(ty, len as c_uint) }
     }
 
+    pub(crate) fn type_scalable_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
+        unsafe { llvm::LLVMScalableVectorType(ty, len as c_uint) }
+    }
+
     pub(crate) fn func_params_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(ty) as usize;

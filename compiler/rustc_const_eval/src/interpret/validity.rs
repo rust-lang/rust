@@ -954,7 +954,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     self.visit_scalar(b, b_layout)?;
                 }
             }
-            Abi::Vector { .. } => {
+            Abi::Vector { .. } | Abi::ScalableVector { .. } => {
                 // No checks here, we assume layout computation gets this right.
                 // (This is harder to check since Miri does not represent these as `Immediate`. We
                 // also cannot use field projections since this might be a newtype around a vector.)

@@ -29,7 +29,7 @@ pub struct PlaceRef<'tcx, V> {
 
 impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn new_sized(llval: V, layout: TyAndLayout<'tcx>) -> PlaceRef<'tcx, V> {
-        assert!(layout.is_sized());
+        assert!(layout.is_runtime_sized() || !layout.is_unsized());
         PlaceRef { llval, llextra: None, layout, align: layout.align.abi }
     }
 
@@ -38,7 +38,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         layout: TyAndLayout<'tcx>,
         align: Align,
     ) -> PlaceRef<'tcx, V> {
-        assert!(layout.is_sized());
+        assert!(layout.is_runtime_sized() || !layout.is_unsized());
         PlaceRef { llval, llextra: None, layout, align }
     }
 
@@ -56,7 +56,10 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         layout: TyAndLayout<'tcx>,
         align: Align,
     ) -> Self {
-        assert!(layout.is_sized(), "tried to statically allocate unsized place");
+        assert!(
+            layout.is_runtime_sized() || !layout.is_unsized(),
+            "tried to statically allocate unsized place"
+        );
         let tmp = bx.alloca(bx.cx().backend_type(layout), align);
         Self::new_sized_aligned(tmp, layout, align)
     }

@@ -108,8 +108,15 @@ pub(super) fn check_fn<'a, 'tcx>(
         hir::FnRetTy::DefaultReturn(_) => body.value.span,
         hir::FnRetTy::Return(ty) => ty.span,
     };
-    fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
+
+    if !declared_ret_ty.is_scalable_simd() {
+        // Unsized locals and fn params have a feature gate to allow them. Return types don't
+        // with scalable vectors we need that feature, for now just remove the check for testing
+        // purposes.
+        fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
+    }
     fcx.is_whole_body.set(true);
+
     fcx.check_return_expr(body.value, false);
 
     // Finalize the return check by taking the LUB of the return types

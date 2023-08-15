@@ -55,7 +55,7 @@ where
             },
 
             Abi::Vector { .. } => Class::Sse,
-
+            Abi::ScalableVector { .. } => panic!("Scalable vectors not supported"),
             Abi::ScalarPair(..) | Abi::Aggregate { .. } => {
                 for i in 0..layout.fields.count() {
                     let field_off = off + layout.fields.offset(i);
