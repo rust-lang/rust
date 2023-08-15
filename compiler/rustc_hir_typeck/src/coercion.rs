@@ -1005,7 +1005,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// adjusted type of the expression, if successful.
     /// Adjustments are only recorded if the coercion succeeded.
     /// The expressions *must not* have any preexisting adjustments.
-    pub fn try_coerce(
+    pub fn coerce(
         &self,
         expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
@@ -1036,7 +1036,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    /// Same as `try_coerce()`, but without side-effects.
+    /// Same as `coerce()`, but without side-effects.
     ///
     /// Returns false if the coercion creates any obligations that result in
     /// errors.
@@ -1494,7 +1494,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 // Special-case the first expression we are coercing.
                 // To be honest, I'm not entirely sure why we do this.
                 // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
-                fcx.try_coerce(
+                fcx.coerce(
                     expression,
                     expression_ty,
                     self.expected_ty,

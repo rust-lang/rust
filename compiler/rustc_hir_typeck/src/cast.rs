@@ -744,7 +744,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     ty::FnDef(..) => {
                         // Attempt a coercion to a fn pointer type.
                         let f = fcx.normalize(self.expr_span, self.expr_ty.fn_sig(fcx.tcx));
-                        let res = fcx.try_coerce(
+                        let res = fcx.coerce(
                             self.expr,
                             self.expr_ty,
                             Ty::new_fn_ptr(fcx.tcx, f),
@@ -844,7 +844,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
             (_, DynStar) => {
                 if fcx.tcx.features().dyn_star {
-                    bug!("should be handled by `try_coerce`")
+                    bug!("should be handled by `coerce`")
                 } else {
                     Err(CastError::IllegalCast)
                 }
@@ -940,7 +940,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
                 // Coerce to a raw pointer so that we generate AddressOf in MIR.
                 let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr);
-                fcx.try_coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
+                fcx.coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
                     .unwrap_or_else(|_| {
                         bug!(
                         "could not cast from reference to array to pointer to array ({:?} to {:?})",
@@ -976,7 +976,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<(), ty::error::TypeError<'tcx>> {
-        match fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No, None) {
+        match fcx.coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No, None) {
             Ok(_) => Ok(()),
             Err(err) => Err(err),
         }
