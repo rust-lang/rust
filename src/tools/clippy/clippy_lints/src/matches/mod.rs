@@ -1038,7 +1038,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 wild_in_or_pats::check(cx, arms);
             }
 
-            if source == MatchSource::TryDesugar {
+            if let MatchSource::TryDesugar(_) = source {
                 try_err::check(cx, expr, ex);
             }
 
