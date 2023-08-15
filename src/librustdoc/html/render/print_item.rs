@@ -581,8 +581,8 @@ fn extra_info_tags<'a, 'tcx: 'a>(
             display_fn(move |f| {
                 write!(
                     f,
-                    r#"<span class="stab {class}" title="{}">{contents}</span>"#,
-                    Escape(title),
+                    r#"<span class="stab {class}" title="{title}">{contents}</span>"#,
+                    title = Escape(title),
                 )
             })
         }
@@ -610,7 +610,12 @@ fn extra_info_tags<'a, 'tcx: 'a>(
             (cfg, _) => cfg.as_deref().cloned(),
         };
 
-        debug!("Portability name={:?} {:?} - {:?} = {cfg:?}", item.name, item.cfg, parent.cfg);
+        debug!(
+            "Portability name={name:?} {cfg:?} - {parent_cfg:?} = {cfg:?}",
+            name = item.name,
+            cfg = item.cfg,
+            parent_cfg = parent.cfg
+        );
         if let Some(ref cfg) = cfg {
             write!(
                 f,
@@ -737,9 +742,10 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                 toggle_open(
                     &mut w,
                     format_args!(
-                        "{count_consts} associated constant{} and {count_methods} method{}",
-                        pluralize(count_consts),
-                        pluralize(count_methods),
+                        "{count_consts} associated constant{plural_const} and \
+                         {count_methods} method{plural_method}",
+                        plural_const = pluralize(count_consts),
+                        plural_method = pluralize(count_methods),
                     ),
                 );
             }
@@ -830,7 +836,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
     fn trait_item(w: &mut Buffer, cx: &mut Context<'_>, m: &clean::Item, t: &clean::Item) {
         let name = m.name.unwrap();
-        info!("Documenting {name} on {:?}", t.name);
+        info!("Documenting {name} on {ty_name:?}", ty_name = t.name);
         let item_type = m.type_();
         let id = cx.derive_id(format!("{item_type}.{name}"));
         let mut content = Buffer::empty_from(w);
@@ -1610,7 +1616,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             for (index, (field, ty)) in fields.enumerate() {
                 let field_name =
                     field.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
-                let id = cx.derive_id(format!("{}.{field_name}", ItemType::StructField));
+                let id = cx.derive_id(format!("{typ}.{field_name}", typ = ItemType::StructField));
                 write!(
                     w,
                     "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
@@ -1907,10 +1913,10 @@ fn render_struct(
                 if let clean::StructFieldItem(ref ty) = *field.kind {
                     write!(
                         w,
-                        "\n{tab}    {}{}: {},",
-                        visibility_print_with_space(field.visibility(tcx), field.item_id, cx),
-                        field.name.unwrap(),
-                        ty.print(cx),
+                        "\n{tab}    {vis}{name}: {ty},",
+                        vis = visibility_print_with_space(field.visibility(tcx), field.item_id, cx),
+                        name = field.name.unwrap(),
+                        ty = ty.print(cx),
                     );
                 }
             }

@@ -206,9 +206,9 @@ impl<'tcx> Context<'tcx> {
             format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
         } else {
             format!(
-                "API documentation for the Rust `{}` {tyname} in crate `{}`.",
-                it.name.as_ref().unwrap(),
-                self.shared.layout.krate
+                "API documentation for the Rust `{name}` {tyname} in crate `{krate}`.",
+                name = it.name.as_ref().unwrap(),
+                krate = self.shared.layout.krate,
             )
         };
         let name;
@@ -263,7 +263,12 @@ impl<'tcx> Context<'tcx> {
                             current_path.push_str(&item_path(ty, names.last().unwrap().as_str()));
                             redirections.borrow_mut().insert(current_path, path);
                         }
-                        None => return layout::redirect(&format!("{}{path}", self.root_path())),
+                        None => {
+                            return layout::redirect(&format!(
+                                "{root}{path}",
+                                root = self.root_path()
+                            ));
+                        }
                     }
                 }
             }

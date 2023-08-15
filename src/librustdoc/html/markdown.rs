@@ -246,9 +246,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                     return Some(Event::Html(
                         format!(
                             "<div class=\"example-wrap\">\
-                                 <pre class=\"language-{lang}\"><code>{}</code></pre>\
+                                 <pre class=\"language-{lang}\"><code>{text}</code></pre>\
                              </div>",
-                            Escape(&original_text),
+                            text = Escape(&original_text),
                         )
                         .into(),
                     ));
@@ -308,7 +308,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         // insert newline to clearly separate it from the
         // previous block so we can shorten the html output
         let mut s = Buffer::new();
-        s.push_str("\n");
+        s.push('\n');
 
         highlight::render_example_with_highlighting(
             &text,
@@ -394,7 +394,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                         l.href == link.href
                             && Some(&**text) == l.original_text.get(1..l.original_text.len() - 1)
                     }) {
-                        debug!("replacing {text} with {}", link.new_text);
+                        debug!("replacing {text} with {new_text}", new_text = link.new_text);
                         *text = CowStr::Borrowed(&link.new_text);
                     }
                 }
@@ -410,7 +410,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                         .iter()
                         .find(|l| l.href == link.href && **text == *l.original_text)
                     {
-                        debug!("replacing {text} with {}", link.new_text);
+                        debug!("replacing {text} with {new_text}", new_text = link.new_text);
                         *text = CowStr::Borrowed(&link.new_text);
                     }
                 }
@@ -1038,7 +1038,7 @@ impl MarkdownWithToc<'_> {
             html::push_html(&mut s, p);
         }
 
-        format!("<nav id=\"TOC\">{}</nav>{s}", toc.into_toc().print())
+        format!("<nav id=\"TOC\">{toc}</nav>{s}", toc = toc.into_toc().print())
     }
 }
 

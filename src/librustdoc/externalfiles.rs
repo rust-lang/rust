@@ -81,7 +81,11 @@ pub(crate) fn load_string<P: AsRef<Path>>(
     let contents = match fs::read(file_path) {
         Ok(bytes) => bytes,
         Err(e) => {
-            diag.struct_err(format!("error reading `{}`: {e}", file_path.display())).emit();
+            diag.struct_err(format!(
+                "error reading `{file_path}`: {e}",
+                file_path = file_path.display()
+            ))
+            .emit();
             return Err(LoadStringError::ReadFail);
         }
     };

@@ -163,9 +163,9 @@ where
     fn get_lifetime(region: Region<'_>, names_map: &FxHashMap<Symbol, Lifetime>) -> Lifetime {
         region_name(region)
             .map(|name| {
-                names_map.get(&name).unwrap_or_else(|| {
-                    panic!("Missing lifetime with name {:?} for {region:?}", name.as_str())
-                })
+                names_map
+                    .get(&name)
+                    .unwrap_or_else(|| panic!("Missing lifetime with name {name:?} for {region:?}"))
             })
             .unwrap_or(&Lifetime::statik())
             .clone()

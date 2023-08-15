@@ -109,6 +109,10 @@ impl Buffer {
         self.buffer
     }
 
+    pub(crate) fn push(&mut self, c: char) {
+        self.buffer.push(c);
+    }
+
     pub(crate) fn push_str(&mut self, s: &str) {
         self.buffer.push_str(s);
     }
@@ -451,9 +455,9 @@ impl clean::GenericBound {
                     hir::TraitBoundModifier::MaybeConst => "",
                 };
                 if f.alternate() {
-                    write!(f, "{modifier_str}{:#}", ty.print(cx))
+                    write!(f, "{modifier_str}{ty:#}", ty = ty.print(cx))
                 } else {
-                    write!(f, "{modifier_str}{}", ty.print(cx))
+                    write!(f, "{modifier_str}{ty}", ty = ty.print(cx))
                 }
             }
         })
@@ -631,14 +635,14 @@ fn generate_macro_def_id_path(
     let url = match cache.extern_locations[&def_id.krate] {
         ExternalLocation::Remote(ref s) => {
             // `ExternalLocation::Remote` always end with a `/`.
-            format!("{s}{}", path.iter().map(|p| p.as_str()).join("/"))
+            format!("{s}{path}", path = path.iter().map(|p| p.as_str()).join("/"))
         }
         ExternalLocation::Local => {
             // `root_path` always end with a `/`.
             format!(
-                "{}{crate_name}/{}",
-                root_path.unwrap_or(""),
-                path.iter().map(|p| p.as_str()).join("/")
+                "{root_path}{crate_name}/{path}",
+                root_path = root_path.unwrap_or(""),
+                path = path.iter().map(|p| p.as_str()).join("/")
             )
         }
         ExternalLocation::Unknown => {
@@ -827,9 +831,9 @@ fn resolved_path<'cx>(
         let path = if use_absolute {
             if let Ok((_, _, fqp)) = href(did, cx) {
                 format!(
-                    "{}::{}",
-                    join_with_double_colon(&fqp[..fqp.len() - 1]),
-                    anchor(did, *fqp.last().unwrap(), cx)
+                    "{path}::{anchor}",
+                    path = join_with_double_colon(&fqp[..fqp.len() - 1]),
+                    anchor = anchor(did, *fqp.last().unwrap(), cx)
                 )
             } else {
                 last.name.to_string()
@@ -837,7 +841,7 @@ fn resolved_path<'cx>(
         } else {
             anchor(did, last.name, cx).to_string()
         };
-        write!(w, "{path}{}", last.args.print(cx))?;
+        write!(w, "{path}{args}", args = last.args.print(cx))?;
     }
     Ok(())
 }
@@ -945,8 +949,8 @@ pub(crate) fn anchor<'a, 'cx: 'a>(
         if let Ok((url, short_ty, fqp)) = parts {
             write!(
                 f,
-                r#"<a class="{short_ty}" href="{url}" title="{short_ty} {}">{text}</a>"#,
-                join_with_double_colon(&fqp),
+                r#"<a class="{short_ty}" href="{url}" title="{short_ty} {path}">{text}</a>"#,
+                path = join_with_double_colon(&fqp),
             )
         } else {
             f.write_str(text.as_str())
@@ -1080,9 +1084,9 @@ fn fmt_type<'cx>(
 
             if matches!(**t, clean::Generic(_)) || t.is_assoc_ty() {
                 let text = if f.alternate() {
-                    format!("*{m} {:#}", t.print(cx))
+                    format!("*{m} {ty:#}", ty = t.print(cx))
                 } else {
-                    format!("*{m} {}", t.print(cx))
+                    format!("*{m} {ty}", ty = t.print(cx))
                 };
                 primitive_link(f, clean::PrimitiveType::RawPointer, &text, cx)
             } else {
@@ -1440,11 +1444,20 @@ impl clean::FnDecl {
                     clean::SelfValue => {
                         write!(f, "self")?;
                     }
-                    clean::SelfBorrowed(Some(ref lt), mtbl) => {
-                        write!(f, "{amp}{} {}self", lt.print(), mtbl.print_with_space())?;
+                    clean::SelfBorrowed(Some(ref lt), mutability) => {
+                        write!(
+                            f,
+                            "{amp}{lifetime} {mutability}self",
+                            lifetime = lt.print(),
+                            mutability = mutability.print_with_space(),
+                        )?;
                     }
-                    clean::SelfBorrowed(None, mtbl) => {
-                        write!(f, "{amp}{}self", mtbl.print_with_space())?;
+                    clean::SelfBorrowed(None, mutability) => {
+                        write!(
+                            f,
+                            "{amp}{mutability}self",
+                            mutability = mutability.print_with_space(),
+                        )?;
                     }
                     clean::SelfExplicit(ref typ) => {
                         write!(f, "self: ")?;
@@ -1627,7 +1640,7 @@ impl clean::Import {
                 if name == self.source.path.last() {
                     write!(f, "use {};", self.source.print(cx))
                 } else {
-                    write!(f, "use {} as {name};", self.source.print(cx))
+                    write!(f, "use {source} as {name};", source = self.source.print(cx))
                 }
             }
             clean::ImportKind::Glob => {

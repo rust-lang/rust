@@ -790,8 +790,8 @@ fn trait_impls_for<'a>(
             // Check if these are the same type.
             let impl_type = trait_ref.skip_binder().self_ty();
             trace!(
-                "comparing type {impl_type} with kind {:?} against type {ty:?}",
-                impl_type.kind(),
+                "comparing type {impl_type} with kind {kind:?} against type {ty:?}",
+                kind = impl_type.kind(),
             );
             // Fast path: if this is a primitive simple `==` will work
             // NOTE: the `match` is necessary; see #92662.
@@ -1876,9 +1876,9 @@ fn resolution_failure(
                     };
                     let name = res.name(tcx);
                     let note = format!(
-                        "the {} `{name}` has no {} named `{unresolved}`",
-                        res.descr(),
-                        disambiguator.map_or(path_description, |d| d.descr()),
+                        "the {res} `{name}` has no {disamb_res} named `{unresolved}`",
+                        res = res.descr(),
+                        disamb_res = disambiguator.map_or(path_description, |d| d.descr()),
                     );
                     if let Some(span) = sp {
                         diag.span_label(span, note);
