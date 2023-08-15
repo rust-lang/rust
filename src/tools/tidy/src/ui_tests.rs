@@ -137,8 +137,8 @@ pub fn check(path: &Path, bad: &mut bool) {
             }
             "rs" => {
                 // FIXME (ui_test): make this configurable somehow
-                // let mode = HeaderCheckMode::Error;
-                let mode = HeaderCheckMode::Fix;
+                let mode = HeaderCheckMode::Error;
+                // let mode = HeaderCheckMode::Fix;
                 check_ui_test_headers(bad, file_path, mode);
             }
             _ => {}
@@ -224,23 +224,25 @@ fn fix_header_errors(file_path: &Path, bad_lines: Vec<HeaderAction>) -> io::Resu
                         let mut new_line =
                             replace_compiletest_comment(header_action.line()).unwrap();
                         // This is always a directive that contains the compiletest name.
-                        let name_start = new_line.find(compiletest_name).unwrap();
+                        let name_start = new_line.find(compiletest_name.as_str()).unwrap();
                         new_line.replace_range(
                             name_start..(name_start + compiletest_name.len()),
-                            ui_test_name,
+                            ui_test_name.as_str(),
                         );
                         new_line
                     }
                     LineAction::UseUITestName { compiletest_name, ui_test_name } => {
                         // This is always a directive that contains the compiletest name.
-                        let name_start = header_action.line().find(compiletest_name).unwrap();
+                        let name_start =
+                            header_action.line().find(compiletest_name.as_str()).unwrap();
                         let mut new_line = header_action.line().to_string();
                         new_line.replace_range(
                             name_start..(name_start + compiletest_name.len()),
-                            ui_test_name,
+                            ui_test_name.as_str(),
                         );
                         new_line
                     }
+                    LineAction::Error { message } => todo!(),
                 },
             )
         })

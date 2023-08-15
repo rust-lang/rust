@@ -13,6 +13,7 @@ pub struct TestComment<'line> {
 }
 
 impl<'line> TestComment<'line> {
+    #[must_use]
     pub const fn new(
         line: &'line str,
         revision: Option<&'line str>,
@@ -22,23 +23,28 @@ impl<'line> TestComment<'line> {
         Self { revision, comment, line_num, full_line: line }
     }
 
+    #[must_use]
     pub const fn revision(&self) -> Option<&str> {
         self.revision
     }
 
-    pub const fn comment(&self) -> CommentKind<'_> {
+    #[must_use]
+    pub const fn comment(&'line self) -> CommentKind<'line> {
         self.comment
     }
 
+    #[must_use]
     pub const fn line_num(&self) -> usize {
         self.line_num
     }
 
+    #[must_use]
     pub const fn comment_str(&self) -> &str {
         self.comment.line()
     }
 
     /// The full line that contains the comment. You almost never want this.
+    #[must_use]
     pub const fn full_line(&self) -> &str {
         self.full_line
     }
@@ -54,11 +60,26 @@ pub enum CommentKind<'line> {
     UiTest(&'line str),
 }
 
-impl CommentKind<'_> {
-    pub const fn line(&self) -> &str {
-        match self {
+impl<'line> CommentKind<'line> {
+    #[must_use]
+    pub const fn line(&'line self) -> &'line str {
+        match *self {
             CommentKind::Compiletest(line) | CommentKind::UiTest(line) => line,
         }
+    }
+
+    /// If the comment is of the form `name:extra` or `name extra`, returns the name and returns
+    /// the rest of the line as a "comment", if it exists.
+    #[must_use]
+    pub fn parse_name_comment(&'line self) -> Option<(&'line str, Option<&'line str>)> {
+        let line = self.line();
+        // If there is a ':' or a ' ' (space), split the name off, and consider the rest of the
+        // line to be a "comment" that is ignored.
+        let (name, comment) =
+            line.split_once(&[':', ' ']).map(|(l, c)| (l.trim(), Some(c))).unwrap_or((line, None));
+
+        // Reject empty names
+        if name == "" { None } else { Some((name, comment)) }
     }
 }
 

@@ -42,56 +42,38 @@ pub(super) fn handle_only(config: &Config, comment: TestComment<'_>) -> IgnoreDe
 
 /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
 /// or `normalize-stderr-32bit`.
-pub(super) fn parse_cfg_name_directive<'line>(
+pub(super) fn parse_cfg_name_directive(
     config: &Config,
-    comment: &'line TestComment<'line>,
+    comment: &TestComment<'_>,
     prefix: &str,
-) -> MatchOutcome<'line> {
-    match comment.comment() {
-        CommentKind::Compiletest(line) => {
-            parse_cfg_name_directive_compiletest(config, line, prefix)
+) -> MatchOutcome {
+    let comment_kind = comment.comment();
+    let Some((name, comment)) = comment_kind.parse_name_comment().and_then(|(name, comment)| {
+        name.strip_prefix(format!("{}-", prefix).as_str()).map(|stripped| (stripped, comment))
+    }) else {
+        return MatchOutcome::NotADirective;
+    };
+    let comment = comment.map(|c| c.trim().trim_start_matches('-').trim().to_owned());
+
+    match comment_kind {
+        CommentKind::Compiletest(_) => {
+            parse_cfg_name_directive_compiletest(config, name, comment, prefix)
         }
-        CommentKind::UiTest(line) => parse_cfg_name_directive_ui_test(config, line, prefix),
+        CommentKind::UiTest(_) => parse_cfg_name_directive_ui_test(config, name, comment),
     }
 }
 
-fn directive_name_for_line<'line, 'p>(
-    line: &'line str,
-    prefix: &'p str,
-) -> Option<(&'line str, Option<&'line str>)> {
-    // Directives start with a specified prefix, and are immediately followed by a '-'.
-    let expected_start = format!("{}-", prefix);
-    let after_prefix = if line.starts_with(expected_start.as_str()) {
-        &line[expected_start.len()..]
-    } else {
-        return None;
-    };
-
-    // If there is a ':' or a ' ' (space), split the name off, and consider the rest of the line to
-    // be a "comment" that is ignored.
-    let (name, comment) = after_prefix
-        .split_once(&[':', ' '])
-        .map(|(l, c)| (l.trim(), Some(c)))
-        .unwrap_or((after_prefix, None));
-
-    // Some of the matchers might be "" depending on what the target information is. To avoid
-    // problems we outright reject empty directives.
-    if name == "" { None } else { Some((name, comment)) }
-}
-
-fn parse_cfg_name_directive_ui_test<'line>(
+fn parse_cfg_name_directive_ui_test(
     config: &Config,
-    line: &'line str,
-    prefix: &str,
-) -> MatchOutcome<'line> {
-    let Some((name, comment)) = directive_name_for_line(line, prefix) else {
-        return MatchOutcome::NotADirective;
-    };
-    let comment = comment.map(|c| c.trim().trim_start_matches('-').trim());
-
+    name: &str,
+    comment: Option<String>,
+) -> MatchOutcome {
     let target_cfg = config.target_cfg();
 
-    if name == "on-host" {
+    // Parsing copied from ui_test: https://github.com/oli-obk/ui_test/blob/a18ef37bf3dcccf5a1a631eddd55759fe0b89617/src/parser.rs#L187
+    if name == "test" {
+        MatchOutcome::Match { message: String::from("always"), comment }
+    } else if name == "on-host" {
         unimplemented!("idk what to do about this yet")
     } else if let Some(bits) = name.strip_suffix("bit") {
         let Ok(bits) = bits.parse::<u32>() else {
@@ -126,16 +108,12 @@ fn parse_cfg_name_directive_ui_test<'line>(
     }
 }
 
-fn parse_cfg_name_directive_compiletest<'a>(
+fn parse_cfg_name_directive_compiletest(
     config: &Config,
-    line: &'a str,
+    name: &str,
+    comment: Option<String>,
     prefix: &str,
-) -> MatchOutcome<'a> {
-    let Some((name, comment)) = directive_name_for_line(line, prefix) else {
-        return MatchOutcome::NotADirective;
-    };
-    let comment = comment.map(|c| c.trim().trim_start_matches('-').trim());
-
+) -> MatchOutcome {
     macro_rules! condition {
         (
             name: $name:expr,
@@ -315,11 +293,11 @@ fn parse_cfg_name_directive_compiletest<'a>(
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub(super) enum MatchOutcome<'a> {
+pub(super) enum MatchOutcome {
     /// No match.
-    NoMatch { message: String, comment: Option<&'a str> },
+    NoMatch { message: String, comment: Option<String> },
     /// Match.
-    Match { message: String, comment: Option<&'a str> },
+    Match { message: String, comment: Option<String> },
     /// The directive was invalid.
     Invalid,
     /// The directive is handled by other parts of our tooling.
