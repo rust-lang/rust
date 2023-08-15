@@ -50,8 +50,7 @@ pub(crate) fn wrap_return_type_in_result(acc: &mut Assists, ctx: &AssistContext<
 
     let new_result_ty =
         make::ext::ty_result(type_ref.clone(), make::ty_placeholder()).clone_for_update();
-    let generic_args =
-        new_result_ty.syntax().descendants().find_map(ast::GenericArgList::cast).unwrap();
+    let generic_args = new_result_ty.syntax().descendants().find_map(ast::GenericArgList::cast)?;
     let last_genarg = generic_args.generic_args().last()?;
 
     acc.add(
