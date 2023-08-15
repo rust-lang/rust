@@ -34,38 +34,39 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
         .map(|(_name, arg)| arg)
         .next();
 
-    let (derive, delimiter) = match &derive_attr {
-        None => {
-            let derive = make::attr_outer(make::meta_token_tree(
-                make::ext::ident_path("derive"),
-                make::token_tree(T!['('], vec![]).clone_for_update(),
-            ))
-            .clone_for_update();
-            let delimiter = derive.meta()?.token_tree()?.r_paren_token()?;
-            (derive, delimiter)
-        }
-        Some(tt) => {
-            // Create an outer attribute just so that we avoid using
-            // unwrap in edit closure.
-            let _derive = make::attr_outer(make::meta_token_tree(
-                make::ext::ident_path("derive"),
-                make::token_tree(T!['('], vec![]),
-            ));
-            (_derive, tt.right_delimiter_token()?)
-        }
+    let delimiter = match &derive_attr {
+        None => None,
+        Some(tt) => Some(tt.right_delimiter_token()?),
     };
 
     acc.add(AssistId("generate_derive", AssistKind::Generate), "Add `#[derive]`", target, |edit| {
         match derive_attr {
             None => {
+                let derive = make::attr_outer(make::meta_token_tree(
+                    make::ext::ident_path("derive"),
+                    make::token_tree(T!['('], vec![]).clone_for_update(),
+                ))
+                .clone_for_update();
+
                 let nominal = edit.make_mut(nominal);
                 nominal.add_attr(derive.clone());
+
+                let delimiter = derive
+                    .meta()
+                    .expect("make::attr_outer was expected to have Meta")
+                    .token_tree()
+                    .expect("failed to get token tree out of Meta")
+                    .r_paren_token()
+                    .expect("make::attr_outer was expected to have a R_PAREN");
 
                 edit.add_tabstop_before_token(cap, delimiter);
             }
             Some(_) => {
                 // Just move the cursor.
-                edit.add_tabstop_before_token(cap, delimiter);
+                edit.add_tabstop_before_token(
+                    cap,
+                    delimiter.expect("Right delim token could not be found."),
+                );
             }
         };
     })
