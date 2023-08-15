@@ -338,7 +338,7 @@ impl LinkerFlavor {
             || stem == "clang++"
             || stem.ends_with("-clang++")
         {
-            (Some(Cc::Yes), None)
+            (Some(Cc::Yes), Some(Lld::No))
         } else if stem == "wasm-ld"
             || stem.ends_with("-wasm-ld")
             || stem == "ld.lld"
