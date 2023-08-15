@@ -86,7 +86,7 @@ The Rust testsuite could presumably be run natively.
 
 For the systems where the maintainer can build natively, the rust
 compiler itself is re-built natively.  This involves the rust compiler
-being re-built with the newly self-built rust compiler, so excercises
+being re-built with the newly self-built rust compiler, so exercises
 the result quite extensively.
 
 Additionally, for some systems we build `librsvg`, and for the more
