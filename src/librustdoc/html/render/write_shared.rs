@@ -73,7 +73,7 @@ pub(super) fn write_shared(
         }
 
         let bytes = try_err!(fs::read(&entry.path), &entry.path);
-        let filename = format!("{theme}{}.{extension}", cx.shared.resource_suffix);
+        let filename = format!("{theme}{suffix}.{extension}", suffix = cx.shared.resource_suffix);
         cx.shared.fs.write(cx.dst.join(filename), bytes)?;
     }
 
@@ -349,8 +349,8 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
                     .iter()
                     .map(|s| {
                         format!(
-                            "<li><a href=\"{}index.html\">{s}</a></li>",
-                            ensure_trailing_slash(s),
+                            "<li><a href=\"{trailing_slash}index.html\">{s}</a></li>",
+                            trailing_slash = ensure_trailing_slash(s),
                         )
                     })
                     .collect::<String>()

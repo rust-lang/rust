@@ -146,8 +146,10 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
             examples_percentage: f64,
         ) {
             println!(
-                "| {name:<35} | {:>10} | {percentage:>9.1}% | {:>10} | {:>9.1}% |",
-                count.with_docs, count.with_examples, examples_percentage,
+                "| {name:<35} | {with_docs:>10} | {percentage:>9.1}% | {with_examples:>10} | \
+                {examples_percentage:>9.1}% |",
+                with_docs = count.with_docs,
+                with_examples = count.with_examples,
             );
         }
 

@@ -565,10 +565,10 @@ fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<Strin
     };
 
     debug!(
-        "Portability {:?} {:?} (parent: {parent:?}) - {:?} = {cfg:?}",
-        item.name,
-        item.cfg,
-        parent.and_then(|p| p.cfg.as_ref()),
+        "Portability {name:?} {item_cfg:?} (parent: {parent:?}) - {parent_cfg:?} = {cfg:?}",
+        name = item.name,
+        item_cfg = item.cfg,
+        parent_cfg = parent.and_then(|p| p.cfg.as_ref()),
     );
 
     Some(cfg?.render_long_html())
@@ -1243,7 +1243,10 @@ fn render_deref_methods(
             _ => None,
         })
         .expect("Expected associated type binding");
-    debug!("Render deref methods for {:#?}, target {target:#?}", impl_.inner_impl().for_);
+    debug!(
+        "Render deref methods for {for_:#?}, target {target:#?}",
+        for_ = impl_.inner_impl().for_
+    );
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
     if let Some(did) = target.def_id(cache) {

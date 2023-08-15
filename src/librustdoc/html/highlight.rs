@@ -937,7 +937,7 @@ fn string_without_closing_tag<T: Display>(
             write!(out, "{text}").unwrap();
             return None;
         }
-        write!(out, "<span class=\"{}\">{text}", klass.as_html()).unwrap();
+        write!(out, "<span class=\"{klass}\">{text}", klass = klass.as_html()).unwrap();
         return Some("</span>");
     };
 
@@ -947,11 +947,15 @@ fn string_without_closing_tag<T: Display>(
             match t {
                 "self" | "Self" => write!(
                     &mut path,
-                    "<span class=\"{}\">{t}</span>",
-                    Class::Self_(DUMMY_SP).as_html(),
+                    "<span class=\"{klass}\">{t}</span>",
+                    klass = Class::Self_(DUMMY_SP).as_html(),
                 ),
                 "crate" | "super" => {
-                    write!(&mut path, "<span class=\"{}\">{t}</span>", Class::KeyWord.as_html())
+                    write!(
+                        &mut path,
+                        "<span class=\"{klass}\">{t}</span>",
+                        klass = Class::KeyWord.as_html(),
+                    )
                 }
                 t => write!(&mut path, "{t}"),
             }

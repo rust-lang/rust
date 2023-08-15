@@ -529,7 +529,7 @@ fn get_methods<'a>(
             Some(ref name) if !name.is_empty() && item.is_method() => {
                 if !for_deref || super::should_render_item(item, deref_mut, tcx) {
                     Some(Link::new(
-                        get_next_url(used_links, format!("{}.{name}", ItemType::Method)),
+                        get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::Method)),
                         name.as_str(),
                     ))
                 } else {
@@ -549,7 +549,7 @@ fn get_associated_constants<'a>(
         .iter()
         .filter_map(|item| match item.name {
             Some(ref name) if !name.is_empty() && item.is_associated_const() => Some(Link::new(
-                get_next_url(used_links, format!("{}.{name}", ItemType::AssocConst)),
+                get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocConst)),
                 name.as_str(),
             )),
             _ => None,

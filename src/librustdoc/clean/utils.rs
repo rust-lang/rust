@@ -601,8 +601,12 @@ pub(super) fn render_macro_arms<'a>(
 ) -> String {
     let mut out = String::new();
     for matcher in matchers {
-        writeln!(out, "    {} => {{ ... }}{arm_delim}", render_macro_matcher(tcx, matcher))
-            .unwrap();
+        writeln!(
+            out,
+            "    {matcher} => {{ ... }}{arm_delim}",
+            matcher = render_macro_matcher(tcx, matcher),
+        )
+        .unwrap();
     }
     out
 }
@@ -618,19 +622,21 @@ pub(super) fn display_macro_source(
     let matchers = def.body.tokens.chunks(4).map(|arm| &arm[0]);
 
     if def.macro_rules {
-        format!("macro_rules! {name} {{\n{}}}", render_macro_arms(cx.tcx, matchers, ";"))
+        format!("macro_rules! {name} {{\n{arms}}}", arms = render_macro_arms(cx.tcx, matchers, ";"))
     } else {
         if matchers.len() <= 1 {
             format!(
-                "{}macro {name}{} {{\n    ...\n}}",
-                visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
-                matchers.map(|matcher| render_macro_matcher(cx.tcx, matcher)).collect::<String>(),
+                "{vis}macro {name}{matchers} {{\n    ...\n}}",
+                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
+                matchers = matchers
+                    .map(|matcher| render_macro_matcher(cx.tcx, matcher))
+                    .collect::<String>(),
             )
         } else {
             format!(
-                "{}macro {name} {{\n{}}}",
-                visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
-                render_macro_arms(cx.tcx, matchers, ","),
+                "{vis}macro {name} {{\n{arms}}}",
+                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
+                arms = render_macro_arms(cx.tcx, matchers, ","),
             )
         }
     }
