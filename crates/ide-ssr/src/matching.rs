@@ -560,8 +560,10 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                         placeholder_value.autoref_kind = self
                             .sema
                             .resolve_method_call_as_callable(code)
-                            .and_then(|callable| callable.receiver_param(self.sema.db))
-                            .map(|(self_param, _)| self_param.kind())
+                            .and_then(|callable| {
+                                let (self_param, _) = callable.receiver_param(self.sema.db)?;
+                                Some(self_param.source(self.sema.db)?.value.kind())
+                            })
                             .unwrap_or(ast::SelfParamKind::Owned);
                     }
                 }

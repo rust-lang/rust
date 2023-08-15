@@ -2090,14 +2090,6 @@ impl SelfParam {
             .unwrap_or(Access::Owned)
     }
 
-    pub fn display(self, db: &dyn HirDatabase) -> &'static str {
-        match self.access(db) {
-            Access::Shared => "&self",
-            Access::Exclusive => "&mut self",
-            Access::Owned => "self",
-        }
-    }
-
     pub fn source(&self, db: &dyn HirDatabase) -> Option<InFile<ast::SelfParam>> {
         let InFile { file_id, value } = Function::from(self.func).source(db)?;
         value
@@ -4406,14 +4398,13 @@ impl Callable {
             Other => CallableKind::Other,
         }
     }
-    pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<(ast::SelfParam, Type)> {
+    pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<(SelfParam, Type)> {
         let func = match self.callee {
             Callee::Def(CallableDefId::FunctionId(it)) if self.is_bound_method => it,
             _ => return None,
         };
-        let src = func.lookup(db.upcast()).source(db.upcast());
-        let param_list = src.value.param_list()?;
-        Some((param_list.self_param()?, self.ty.derived(self.sig.params()[0].clone())))
+        let func = Function { id: func };
+        Some((func.self_param(db)?, self.ty.derived(self.sig.params()[0].clone())))
     }
     pub fn n_params(&self) -> usize {
         self.sig.params().len() - if self.is_bound_method { 1 } else { 0 }
