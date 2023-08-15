@@ -1220,7 +1220,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// This method guarantees that for the purpose of the aliasing model, this method
     /// does not materialize a reference to the underlying slice, and thus the returned pointer
-    /// will remain valid when mixed with other calls to [`as_ptr`] and [`as_mut_ptr`],
+    /// will remain valid when mixed with other calls to [`as_ptr`] and [`as_mut_ptr`].
     /// Note that calling other methods that materialize mutable references to the slice,
     /// or references to specific elements you are planning on accessing through this pointer,
     /// may still invalidate this pointer.
