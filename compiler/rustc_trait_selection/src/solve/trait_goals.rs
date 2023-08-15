@@ -552,16 +552,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             self.walk_vtable(
                 a_principal.with_self_ty(tcx, a_ty),
                 |ecx, new_a_principal, _, vtable_vptr_slot| {
-                    if let Ok(resp) = ecx.consider_builtin_upcast_to_principal(
-                        goal,
-                        a_data,
-                        a_region,
-                        b_data,
-                        b_region,
-                        Some(new_a_principal.map_bound(|trait_ref| {
-                            ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
-                        })),
-                    ) {
+                    if let Ok(resp) = ecx.probe_candidate("dyn upcast").enter(|ecx| {
+                        ecx.consider_builtin_upcast_to_principal(
+                            goal,
+                            a_data,
+                            a_region,
+                            b_data,
+                            b_region,
+                            Some(new_a_principal.map_bound(|trait_ref| {
+                                ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
+                            })),
+                        )
+                    }) {
                         responses
                             .push((resp, BuiltinImplSource::TraitUpcasting { vtable_vptr_slot }));
                     }
