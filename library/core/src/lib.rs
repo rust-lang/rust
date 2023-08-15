@@ -29,6 +29,10 @@
 //!   (Note that these are [standard assumptions](https://reviews.llvm.org/D86993) among compilers.)
 //!   These functions are often provided by the system libc, but can also be provided by the
 //!   [compiler-builtins crate](https://crates.io/crates/compiler_builtins).
+//!   Note that the library does not guarantee that it will always make these assumptions, so Rust
+//!   user code directly calling the C functions should follow the C specification! The advice for
+//!   Rust user code is to call the functions provided by this library instead (such as
+//!   `ptr::copy`).
 //!
 //! * `rust_begin_panic` - This function takes four arguments, a
 //!   `fmt::Arguments`, a `&'static str`, and two `u32`'s. These four arguments
