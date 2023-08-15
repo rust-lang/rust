@@ -24,10 +24,9 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// coherence and elsewhere -- see #56105 and #59490 for more details. The
     /// eventual fate of the leak checker is not yet settled.
     ///
-    /// The leak checker works by searching for the following error patterns:
+    /// The leak checker works by searching for the following error pattern:
     ///
-    /// * P1: P2, where P1 != P2
-    /// * P1: R, where R is in some universe that cannot name P1
+    /// * P: R, where R is in some universe that cannot name P
     ///
     /// The idea here is that each of these patterns represents something that
     /// the region solver would eventually report as an error, so we can detect
@@ -45,16 +44,16 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// For each SCC S, we compute:
     ///
     /// * what placeholder P it must be equal to, if any
-    ///   * if there are multiple placeholders that must be equal, report an error because `P1: P2`
+    ///   * if there are multiple placeholders that must be equal, we pick the one with the higher
+    ///     universe. It will eventually be an error in the next step if the placeholders are in
+    ///     different universes.
     /// * the minimum universe of its constituents
     ///
     /// Then we walk the SCCs in dependency order and compute
     ///
-    /// * what placeholder they must outlive transitively
-    ///   * if they must also be equal to a placeholder, report an error because `P1: P2`
     /// * minimum universe U of all SCCs they must outlive
-    ///   * if they must also be equal to a placeholder P, and U cannot name P, report an error, as that
-    ///     indicates `P: R` and `R` is in an incompatible universe
+    ///   * if the SCC must also be equal to a placeholder P, and U cannot name P, report an error,
+    ///     as that indicates `P: R` and `R` is in a universe that cannot name P
     ///
     /// To improve performance and for the old trait solver caching to be sound, this takes
     /// an optional snapshot in which case we only look at region constraints added in that
@@ -69,6 +68,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ///
     /// * R: P1, even if R cannot name P1, because R = 'static is a valid sol'n
     /// * R: P1, R: P2, as above
+    /// * P1: P2, when P2 lives in a universe that *can* name P1.
     #[instrument(level = "debug", skip(self, tcx, only_consider_snapshot), ret)]
     pub fn leak_check(
         &mut self,
@@ -83,26 +83,18 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
         let mini_graph = &MiniGraph::new(tcx, &self, only_consider_snapshot);
 
-        let mut leak_check = LeakCheck::new(tcx, outer_universe, max_universe, mini_graph, self);
-        leak_check.assign_placeholder_values()?;
-        leak_check.propagate_scc_value()?;
-        Ok(())
+        let mut leak_check = LeakCheck::new(mini_graph, self);
+        leak_check.assign_placeholder_values();
+        leak_check.propagate_scc_value()
     }
 }
 
 struct LeakCheck<'me, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    outer_universe: ty::UniverseIndex,
     mini_graph: &'me MiniGraph<'tcx>,
     rcc: &'me RegionConstraintCollector<'me, 'tcx>,
 
     // Initially, for each SCC S, stores a placeholder `P` such that `S = P`
     // must hold.
-    //
-    // Later, during the [`LeakCheck::propagate_scc_value`] function, this array
-    // is repurposed to store some placeholder `P` such that the weaker
-    // condition `S: P` must hold. (This is true if `S: S1` transitively and `S1
-    // = P`.)
     scc_placeholders: IndexVec<LeakCheckScc, Option<ty::PlaceholderRegion>>,
 
     // For each SCC S, track the minimum universe that flows into it. Note that
@@ -119,16 +111,11 @@ struct LeakCheck<'me, 'tcx> {
 
 impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
     fn new(
-        tcx: TyCtxt<'tcx>,
-        outer_universe: ty::UniverseIndex,
-        max_universe: ty::UniverseIndex,
         mini_graph: &'me MiniGraph<'tcx>,
         rcc: &'me RegionConstraintCollector<'me, 'tcx>,
     ) -> Self {
-        let dummy_scc_universe = SccUniverse { universe: max_universe, region: None };
+        let dummy_scc_universe = SccUniverse { universe: ty::UniverseIndex::MAX, region: None };
         Self {
-            tcx,
-            outer_universe,
             mini_graph,
             rcc,
             scc_placeholders: IndexVec::from_elem_n(None, mini_graph.sccs.num_sccs()),
@@ -138,7 +125,7 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
 
     /// Compute what placeholders (if any) each SCC must be equal to.
     /// Also compute the minimum universe of all the regions in each SCC.
-    fn assign_placeholder_values(&mut self) -> RelateResult<'tcx, ()> {
+    fn assign_placeholder_values(&mut self) {
         // First walk: find each placeholder that is from a newly created universe.
         for (region, leak_check_node) in &self.mini_graph.nodes {
             let scc = self.mini_graph.sccs.scc(*leak_check_node);
@@ -152,34 +139,14 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
             self.scc_universes[scc].take_min(universe, *region);
 
             // Detect those SCCs that directly contain a placeholder
-            if let ty::RePlaceholder(placeholder) = **region {
-                if self.outer_universe.cannot_name(placeholder.universe) {
-                    self.assign_scc_value(scc, placeholder)?;
-                }
+            if let ty::RePlaceholder(p1) = **region {
+                let max_placeholder = match self.scc_placeholders[scc] {
+                    Some(p2) => std::cmp::max_by_key(p1, p2, |p| p.universe),
+                    None => p1,
+                };
+                self.scc_placeholders[scc] = Some(max_placeholder);
             }
         }
-
-        Ok(())
-    }
-
-    // assign_scc_value(S, P): Update `scc_values` to account for the fact that `P: S` must hold.
-    // This may create an error.
-    fn assign_scc_value(
-        &mut self,
-        scc: LeakCheckScc,
-        placeholder: ty::PlaceholderRegion,
-    ) -> RelateResult<'tcx, ()> {
-        match self.scc_placeholders[scc] {
-            Some(p) => {
-                assert_ne!(p, placeholder);
-                return Err(self.placeholder_error(p, placeholder));
-            }
-            None => {
-                self.scc_placeholders[scc] = Some(placeholder);
-            }
-        };
-
-        Ok(())
     }
 
     /// For each SCC S, iterate over each successor S1 where `S: S1`:
@@ -201,8 +168,6 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
         //
         // For each successor `scc2` where `scc1: scc2`:
         //
-        // * `scc_placeholder[scc2]` stores some placeholder `P` where
-        //   `scc2: P` (if any)
         // * `scc_universes[scc2]` contains the minimum universe of the
         //   constituents of `scc2` and any of its successors
         for scc1 in self.mini_graph.sccs.all_sccs() {
@@ -214,19 +179,12 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
             // Walk over each `scc2` such that `scc1: scc2` and compute:
             //
             // * `scc1_universe`: the minimum universe of `scc2` and the constituents of `scc1`
-            // * `succ_bound`: placeholder `P` that the successors must outlive, if any (if there are multiple,
-            //   we pick one arbitrarily)
             let mut scc1_universe = self.scc_universes[scc1];
-            let mut succ_bound = None;
             for &scc2 in self.mini_graph.sccs.successors(scc1) {
                 let SccUniverse { universe: scc2_universe, region: scc2_region } =
                     self.scc_universes[scc2];
 
                 scc1_universe.take_min(scc2_universe, scc2_region.unwrap());
-
-                if let Some(b) = self.scc_placeholders[scc2] {
-                    succ_bound = Some(b);
-                }
             }
 
             // Update minimum universe of scc1.
@@ -245,30 +203,9 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
                 if scc1_universe.universe.cannot_name(scc1_placeholder.universe) {
                     return Err(self.error(scc1_placeholder, scc1_universe.region.unwrap()));
                 }
-
-                // Check if we have some placeholder where `S: P2`
-                // (transitively). In that case, since `S = P1`, that implies
-                // `P1: P2`, which is an error condition.
-                if let Some(scc2_placeholder) = succ_bound {
-                    assert_ne!(scc1_placeholder, scc2_placeholder);
-                    return Err(self.placeholder_error(scc1_placeholder, scc2_placeholder));
-                }
-            } else {
-                // Otherwise, we can reach a placeholder if some successor can.
-                self.scc_placeholders[scc1] = succ_bound;
             }
-
-            // At this point, `scc_placeholder[scc1]` stores some placeholder that `scc1` must outlive (if any).
         }
         Ok(())
-    }
-
-    fn placeholder_error(
-        &self,
-        placeholder1: ty::PlaceholderRegion,
-        placeholder2: ty::PlaceholderRegion,
-    ) -> TypeError<'tcx> {
-        self.error(placeholder1, ty::Region::new_placeholder(self.tcx, placeholder2))
     }
 
     fn error(
