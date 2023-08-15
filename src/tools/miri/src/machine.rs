@@ -141,9 +141,9 @@ impl MiriMemoryKind {
         use self::MiriMemoryKind::*;
         match self {
             // Heap allocations are fine since the `Allocation` is created immediately.
-            Rust | Miri | C | Mmap => true,
+            Rust | Miri | C | WinHeap | Mmap => true,
             // Everything else is unclear, let's not show potentially confusing spans.
-            Machine | Global | ExternStatic | Tls | WinHeap | Runtime => false,
+            Machine | Global | ExternStatic | Tls | Runtime => false,
         }
     }
 }
@@ -513,7 +513,7 @@ pub struct MiriMachine<'mir, 'tcx> {
 
     /// The spans we will use to report where an allocation was created and deallocated in
     /// diagnostics.
-    pub(crate) allocation_spans: RefCell<FxHashMap<AllocId, (Option<Span>, Option<Span>)>>,
+    pub(crate) allocation_spans: RefCell<FxHashMap<AllocId, (Span, Option<Span>)>>,
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
@@ -765,8 +765,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         self.allocation_spans
             .borrow()
             .get(&alloc_id)
-            .and_then(|(allocated, _deallocated)| *allocated)
-            .map(Span::data)
+            .map(|(allocated, _deallocated)| allocated.data())
     }
 
     pub(crate) fn deallocated_span(&self, alloc_id: AllocId) -> Option<SpanData> {
@@ -1087,13 +1086,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             |ptr| ecx.global_base_pointer(ptr),
         )?;
 
-        if let MemoryKind::Machine(kind) = kind {
-            if kind.should_save_allocation_span() {
-                ecx.machine
-                    .allocation_spans
-                    .borrow_mut()
-                    .insert(id, (Some(ecx.machine.current_span()), None));
-            }
+        if matches!(kind, MemoryKind::Machine(kind) if kind.should_save_allocation_span()) {
+            ecx.machine
+                .allocation_spans
+                .borrow_mut()
+                .insert(id, (ecx.machine.current_span(), None));
         }
 
         Ok(Cow::Owned(alloc))
