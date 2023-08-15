@@ -22,6 +22,11 @@ impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
         assert!(!ty.is_ty_var(), "should have resolved vars before calling");
 
         if self.infcx.next_trait_solver() {
+            // FIXME(-Ztrait-solver=next): some calls to this function expect it to
+            // also try to normalize opaque types. We should probably make this
+            // configurable via an fn arg.
+            //
+            // Also, do we not have to deal with potential overflow here?
             while let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, projection_ty) =
                 *ty.kind()
             {

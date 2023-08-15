@@ -45,6 +45,7 @@ pub use eval_ctxt::{
 };
 pub use fulfill::FulfillmentCtxt;
 pub(crate) use inspect::analyse::compute_intercrate_ambiguity_causes;
+pub use inspect::analyse::{InspectCandidate, InspectGoal, ProofTreeInferCtxtExt};
 pub(crate) use normalize::{deeply_normalize, deeply_normalize_with_skipped_universes};
 
 #[derive(Debug, Clone, Copy)]
