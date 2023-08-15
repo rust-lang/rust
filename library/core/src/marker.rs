@@ -634,7 +634,7 @@ impl<T: ?Sized> Copy for &T {}
     on(_Self = "std::rc::Rc<T, A>", note = "use `std::sync::Arc` instead of `std::rc::Rc`"),
     message = "`{Self}` cannot be shared between threads safely",
     label = "`{Self}` cannot be shared between threads safely",
-    note = "consider using `std::sync::Arc<{Self}>`; for more information visit \
+    note = "consider whether `std::sync::Arc<{Self}>` could be incorporated to share this value between threads; for more information visit \
             <https://doc.rust-lang.org/book/ch16-03-shared-state.html>"
 )]
 pub unsafe auto trait Sync {

@@ -26,7 +26,7 @@ LL |     assert_send(non_sync_with_method_call());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `non_sync_with_method_call` is not `Send`
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `dyn std::fmt::Write`
-   = note: consider using `std::sync::Arc<dyn std::fmt::Write>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
+   = note: consider whether `std::sync::Arc<dyn std::fmt::Write>` could be incorporated to share this value between threads; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: future is not `Send` as this value is used across an await
   --> $DIR/async-fn-nonsend.rs:49:15
    |

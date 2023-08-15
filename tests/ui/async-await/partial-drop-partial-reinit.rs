@@ -12,7 +12,7 @@ fn main() {
     //~| NOTE bound introduced by
     //~| NOTE appears within the type
     //~| NOTE captures the following types
-    //~| NOTE consider using `std::sync::Arc<NotSend>`
+    //~| NOTE consider whether `std::sync::Arc<NotSend>`
 }
 
 fn gimme_send<T: Send>(t: T) {
