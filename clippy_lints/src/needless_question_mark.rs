@@ -122,7 +122,7 @@ fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         } else {
             return;
         };
-        if let ExprKind::Match(inner_expr_with_q, _, MatchSource::TryDesugar) = &arg.kind;
+        if let ExprKind::Match(inner_expr_with_q, _, MatchSource::TryDesugar(_)) = &arg.kind;
         if let ExprKind::Call(called, [inner_expr]) = &inner_expr_with_q.kind;
         if let ExprKind::Path(QPath::LangItem(LangItem::TryTraitBranch, ..)) = &called.kind;
         if expr.span.ctxt() == inner_expr.span.ctxt();

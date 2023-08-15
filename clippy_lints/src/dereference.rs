@@ -802,7 +802,8 @@ fn in_postfix_position<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> boo
         match parent.kind {
             ExprKind::Call(child, _) | ExprKind::MethodCall(_, child, _, _) | ExprKind::Index(child, _, _)
                 if child.hir_id == e.hir_id => true,
-            ExprKind::Field(_, _) | ExprKind::Match(_, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar) => true,
+            ExprKind::Match(.., MatchSource::TryDesugar(_) | MatchSource::AwaitDesugar)
+                | ExprKind::Field(_, _) => true,
             _ => false,
         }
     } else {
