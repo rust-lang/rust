@@ -366,6 +366,11 @@ fn write_generic_params(
                     delim(f)?;
                     write!(f, "const {}: ", name.display(f.db.upcast()))?;
                     c.ty.hir_fmt(f)?;
+
+                    if let Some(default) = &c.default {
+                        f.write_str(" = ")?;
+                        write!(f, "{}", default.display(f.db.upcast()))?;
+                    }
                 }
             }
         }

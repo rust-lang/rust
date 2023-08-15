@@ -3335,7 +3335,50 @@ struct S$0T<const C: usize = 1, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize, T = Foo>
+            struct ST<const C: usize = 1, T = Foo>
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn const_generic_default_value() {
+    check(
+        r#"
+struct Foo;
+struct S$0T<const C: usize = {40 + 2}, T = Foo>(T);
+"#,
+        expect![[r#"
+            *ST*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            struct ST<const C: usize = {const}, T = Foo>
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn const_generic_default_value_2() {
+    check(
+        r#"
+struct Foo;
+const VAL = 1;
+struct S$0T<const C: usize = VAL, T = Foo>(T);
+"#,
+        expect![[r#"
+            *ST*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            struct ST<const C: usize = VAL, T = Foo>
             ```
         "#]],
     );
