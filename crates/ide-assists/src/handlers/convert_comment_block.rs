@@ -164,7 +164,8 @@ pub(crate) fn relevant_line_comments(comment: &ast::Comment) -> Vec<Comment> {
 //
 // But since such comments aren't idiomatic we're okay with this.
 pub(crate) fn line_comment_text(indentation: IndentLevel, comm: ast::Comment) -> Option<String> {
-    let contents_without_prefix = comm.text().strip_prefix(comm.prefix())?;
+    let text = comm.text();
+    let contents_without_prefix = text.strip_prefix(comm.prefix()).unwrap_or(text);
     let contents = contents_without_prefix.strip_prefix(' ').unwrap_or(contents_without_prefix);
 
     // Don't add the indentation if the line is empty
