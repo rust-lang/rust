@@ -12,12 +12,6 @@ error: implicitly cloning a `Vec` by calling `to_vec` on its dereferenced type
 LL |     let _ = vec.to_vec();
    |             ^^^^^^^^^^^^ help: consider using: `vec.clone()`
 
-error: implicitly cloning a `Vec` by calling `to_owned` on its dereferenced type
-  --> $DIR/implicit_clone.rs:70:13
-   |
-LL |     let _ = vec_ref.to_owned();
-   |             ^^^^^^^^^^^^^^^^^^ help: consider using: `vec_ref.clone()`
-
 error: implicitly cloning a `Vec` by calling `to_vec` on its dereferenced type
   --> $DIR/implicit_clone.rs:71:13
    |
@@ -72,5 +66,5 @@ error: implicitly cloning a `PathBuf` by calling `to_path_buf` on its dereferenc
 LL |     let _ = pathbuf_ref.to_path_buf();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(**pathbuf_ref).clone()`
 
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 
