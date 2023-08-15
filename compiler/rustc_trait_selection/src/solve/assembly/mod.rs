@@ -826,6 +826,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Dynamic(bounds, ..) => bounds,
         };
 
+        // Do not consider built-in object impls for non-object-safe types.
+        if bounds.principal_def_id().is_some_and(|def_id| !tcx.check_is_object_safe(def_id)) {
+            return;
+        }
+
         // Consider all of the auto-trait and projection bounds, which don't
         // need to be recorded as a `BuiltinImplSource::Object` since they don't
         // really have a vtable base...
