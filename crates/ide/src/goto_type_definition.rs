@@ -16,13 +16,13 @@ use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 // image::https://user-images.githubusercontent.com/48062697/113020657-b560f500-917a-11eb-9007-0f809733a338.gif[]
 pub(crate) fn goto_type_definition(
     db: &RootDatabase,
-    position: FilePosition,
+    FilePosition { file_id, offset }: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = hir::Semantics::new(db);
 
-    let file: ast::SourceFile = sema.parse(position.file_id);
+    let file: ast::SourceFile = sema.parse(file_id);
     let token: SyntaxToken =
-        pick_best_token(file.syntax().token_at_offset(position.offset), |kind| match kind {
+        pick_best_token(file.syntax().token_at_offset(offset), |kind| match kind {
             IDENT | INT_NUMBER | T![self] => 2,
             kind if kind.is_trivia() => 0,
             _ => 1,
@@ -37,7 +37,7 @@ pub(crate) fn goto_type_definition(
         }
     };
     let range = token.text_range();
-    sema.descend_into_macros(token)
+    sema.descend_into_macros(token, offset)
         .into_iter()
         .filter_map(|token| {
             let ty = sema

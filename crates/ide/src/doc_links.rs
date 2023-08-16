@@ -131,19 +131,19 @@ pub(crate) fn remove_links(markdown: &str) -> String {
 // |===
 pub(crate) fn external_docs(
     db: &RootDatabase,
-    position: &FilePosition,
+    FilePosition { file_id, offset }: FilePosition,
     target_dir: Option<&OsStr>,
     sysroot: Option<&OsStr>,
 ) -> Option<DocumentationLinks> {
     let sema = &Semantics::new(db);
-    let file = sema.parse(position.file_id).syntax().clone();
-    let token = pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
+    let file = sema.parse(file_id).syntax().clone();
+    let token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT | INT_NUMBER | T![self] => 3,
         T!['('] | T![')'] => 2,
         kind if kind.is_trivia() => 0,
         _ => 1,
     })?;
-    let token = sema.descend_into_macros_single(token);
+    let token = sema.descend_into_macros_single(token, offset);
 
     let node = token.parent()?;
     let definition = match_ast! {
@@ -285,7 +285,7 @@ impl DocCommentToken {
         let original_start = doc_token.text_range().start();
         let relative_comment_offset = offset - original_start - prefix_len;
 
-        sema.descend_into_macros(doc_token).into_iter().find_map(|t| {
+        sema.descend_into_macros(doc_token, offset).into_iter().find_map(|t| {
             let (node, descended_prefix_len) = match_ast! {
                 match t {
                     ast::Comment(comment) => (t.parent()?, TextSize::try_from(comment.prefix().len()).ok()?),

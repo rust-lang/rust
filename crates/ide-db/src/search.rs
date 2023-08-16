@@ -456,14 +456,14 @@ impl<'a> FindUsages<'a> {
                     it.text().trim_start_matches("r#") == name
                 })
                 .into_iter()
-                .flat_map(|token| {
+                .flat_map(move |token| {
                     // FIXME: There should be optimization potential here
                     // Currently we try to descend everything we find which
                     // means we call `Semantics::descend_into_macros` on
                     // every textual hit. That function is notoriously
                     // expensive even for things that do not get down mapped
                     // into macros.
-                    sema.descend_into_macros(token).into_iter().filter_map(|it| it.parent())
+                    sema.descend_into_macros(token, offset).into_iter().filter_map(|it| it.parent())
                 })
         };
 

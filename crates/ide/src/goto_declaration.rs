@@ -20,16 +20,16 @@ use crate::{
 // - fields in patterns will navigate to the field declaration of the struct, union or variant
 pub(crate) fn goto_declaration(
     db: &RootDatabase,
-    position: FilePosition,
+    position @ FilePosition { file_id, offset }: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = Semantics::new(db);
-    let file = sema.parse(position.file_id).syntax().clone();
+    let file = sema.parse(file_id).syntax().clone();
     let original_token = file
-        .token_at_offset(position.offset)
+        .token_at_offset(offset)
         .find(|it| matches!(it.kind(), IDENT | T![self] | T![super] | T![crate] | T![Self]))?;
     let range = original_token.text_range();
     let info: Vec<NavigationTarget> = sema
-        .descend_into_macros(original_token)
+        .descend_into_macros(original_token, offset)
         .iter()
         .filter_map(|token| {
             let parent = token.parent()?;

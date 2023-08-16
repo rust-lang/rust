@@ -40,28 +40,33 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // struct Bar;
     // ```
 
-    let derive = sema.descend_into_macros(tok.clone()).into_iter().find_map(|descended| {
-        let hir_file = sema.hir_file_for(&descended.parent()?);
-        if !hir_file.is_derive_attr_pseudo_expansion(db) {
-            return None;
-        }
+    let derive =
+        sema.descend_into_macros(tok.clone(), 0.into()).into_iter().find_map(|descended| {
+            let hir_file = sema.hir_file_for(&descended.parent()?);
+            if !hir_file.is_derive_attr_pseudo_expansion(db) {
+                return None;
+            }
 
-        let name = descended.parent_ancestors().filter_map(ast::Path::cast).last()?.to_string();
-        // up map out of the #[derive] expansion
-        let token = hir::InFile::new(hir_file, descended).upmap(db)?.value;
-        let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
-        let expansions = sema.expand_derive_macro(&attr)?;
-        let idx = attr
-            .token_tree()?
-            .token_trees_and_tokens()
-            .filter_map(NodeOrToken::into_token)
-            .take_while(|it| it != &token)
-            .filter(|it| it.kind() == T![,])
-            .count();
-        let expansion =
-            format(db, SyntaxKind::MACRO_ITEMS, position.file_id, expansions.get(idx).cloned()?);
-        Some(ExpandedMacro { name, expansion })
-    });
+            let name = descended.parent_ancestors().filter_map(ast::Path::cast).last()?.to_string();
+            // up map out of the #[derive] expansion
+            let token = hir::InFile::new(hir_file, descended).upmap(db)?.value;
+            let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
+            let expansions = sema.expand_derive_macro(&attr)?;
+            let idx = attr
+                .token_tree()?
+                .token_trees_and_tokens()
+                .filter_map(NodeOrToken::into_token)
+                .take_while(|it| it != &token)
+                .filter(|it| it.kind() == T![,])
+                .count();
+            let expansion = format(
+                db,
+                SyntaxKind::MACRO_ITEMS,
+                position.file_id,
+                expansions.get(idx).cloned()?,
+            );
+            Some(ExpandedMacro { name, expansion })
+        });
 
     if derive.is_some() {
         return derive;
