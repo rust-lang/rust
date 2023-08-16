@@ -15,6 +15,7 @@ use syntax::{
     SyntaxKind::{self, IDENT, INT_NUMBER},
     SyntaxNode, SyntaxToken, TextRange, T,
 };
+use text_edit::TextSize;
 
 use crate::{navigation_target::ToNav, references, NavigationTarget, TryToNav};
 
@@ -51,7 +52,7 @@ pub struct HighlightRelatedConfig {
 pub(crate) fn highlight_related(
     sema: &Semantics<'_, RootDatabase>,
     config: HighlightRelatedConfig,
-    FilePosition { offset, file_id }: FilePosition,
+    pos @ FilePosition { offset, file_id }: FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
     let _p = profile::span("highlight_related");
     let syntax = sema.parse(file_id).syntax().clone();
@@ -79,7 +80,7 @@ pub(crate) fn highlight_related(
         }
         T![|] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
         T![move] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
-        _ if config.references => highlight_references(sema, &syntax, token, file_id),
+        _ if config.references => highlight_references(sema, &syntax, token, pos),
         _ => None,
     }
 }
@@ -129,9 +130,9 @@ fn highlight_references(
     sema: &Semantics<'_, RootDatabase>,
     node: &SyntaxNode,
     token: SyntaxToken,
-    file_id: FileId,
+    FilePosition { file_id, offset }: FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
-    let defs = find_defs(sema, token.clone());
+    let defs = find_defs(sema, token.clone(), offset);
     let usages = defs
         .iter()
         .filter_map(|&d| {
@@ -455,8 +456,12 @@ fn cover_range(r0: Option<TextRange>, r1: Option<TextRange>) -> Option<TextRange
     }
 }
 
-fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSet<Definition> {
-    sema.descend_into_macros(token)
+fn find_defs(
+    sema: &Semantics<'_, RootDatabase>,
+    token: SyntaxToken,
+    offset: TextSize,
+) -> FxHashSet<Definition> {
+    sema.descend_into_macros(token, offset)
         .into_iter()
         .filter_map(|token| IdentClass::classify_token(sema, &token))
         .map(IdentClass::definitions_no_ops)

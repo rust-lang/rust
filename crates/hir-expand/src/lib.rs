@@ -37,7 +37,7 @@ use either::Either;
 use syntax::{
     algo::{self, skip_trivia_token},
     ast::{self, AstNode, HasDocComments},
-    AstPtr, Direction, SyntaxNode, SyntaxNodePtr, SyntaxToken,
+    AstPtr, Direction, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextSize,
 };
 
 use crate::{
@@ -642,6 +642,8 @@ impl ExpansionInfo {
         db: &dyn db::ExpandDatabase,
         item: Option<ast::Item>,
         token: InFile<&SyntaxToken>,
+        // FIXME: use this for range mapping, so that we can resolve inline format args
+        _relative_token_offset: Option<TextSize>,
     ) -> Option<impl Iterator<Item = InFile<SyntaxToken>> + '_> {
         assert_eq!(token.file_id, self.arg.file_id);
         let token_id_in_attr_input = if let Some(item) = item {
@@ -1050,16 +1052,6 @@ impl InFile<SyntaxToken> {
                 Some(FileRange { file_id: original_file, range: value.text_range() })
             }
         }
-    }
-
-    pub fn ancestors_with_macros(
-        self,
-        db: &dyn db::ExpandDatabase,
-    ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
-        self.value.parent().into_iter().flat_map({
-            let file_id = self.file_id;
-            move |parent| InFile::new(file_id, &parent).ancestors_with_macros(db)
-        })
     }
 }
 

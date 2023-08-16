@@ -126,7 +126,7 @@ pub(crate) fn find_defs<'a>(
         )
     });
     token.map(|token| {
-        sema.descend_into_macros_with_same_text(token)
+        sema.descend_into_macros_with_same_text(token, offset)
             .into_iter()
             .filter_map(|it| ast::NameLike::cast(it.parent()?))
             .filter_map(move |name_like| {
