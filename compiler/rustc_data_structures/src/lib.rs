@@ -38,6 +38,8 @@
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
+extern crate hashbrown;
+
 use std::fmt;
 
 pub use atomic_ref::AtomicRef;
