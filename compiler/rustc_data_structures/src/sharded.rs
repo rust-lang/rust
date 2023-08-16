@@ -49,7 +49,7 @@ impl<T> Sharded<T> {
         match self {
             Self::Single(single) => &single,
             #[cfg(parallel_compiler)]
-            Self::Shards(shards) => self.get_shard_by_hash(make_hash(_val)),
+            Self::Shards(..) => self.get_shard_by_hash(make_hash(_val)),
         }
     }
 
@@ -70,21 +70,20 @@ impl<T> Sharded<T> {
         }
     }
 
-    #[inline]
-    fn count(&self) -> usize {
+    pub fn lock_shards(&self) -> Vec<LockGuard<'_, T>> {
         match self {
-            Self::Single(..) => 1,
+            Self::Single(single) => vec![single.lock()],
             #[cfg(parallel_compiler)]
-            Self::Shards(..) => SHARDS,
+            Self::Shards(shards) => shards.iter().map(|shard| shard.0.lock()).collect(),
         }
     }
 
-    pub fn lock_shards(&self) -> Vec<LockGuard<'_, T>> {
-        (0..self.count()).map(|i| self.get_shard_by_index(i).lock()).collect()
-    }
-
     pub fn try_lock_shards(&self) -> Option<Vec<LockGuard<'_, T>>> {
-        (0..self.count()).map(|i| self.get_shard_by_index(i).try_lock()).collect()
+        match self {
+            Self::Single(single) => Some(vec![single.try_lock()?]),
+            #[cfg(parallel_compiler)]
+            Self::Shards(shards) => shards.iter().map(|shard| shard.0.try_lock()).collect(),
+        }
     }
 }
 
