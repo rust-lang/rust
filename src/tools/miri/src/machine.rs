@@ -25,7 +25,7 @@ use rustc_middle::{
     },
 };
 use rustc_span::def_id::{CrateNum, DefId};
-use rustc_span::Symbol;
+use rustc_span::{Span, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
@@ -131,6 +131,19 @@ impl MayLeak for MiriMemoryKind {
         match self {
             Rust | Miri | C | WinHeap | Runtime => false,
             Machine | Global | ExternStatic | Tls | Mmap => true,
+        }
+    }
+}
+
+impl MiriMemoryKind {
+    /// Whether we have a useful allocation span for an allocation of this kind.
+    fn should_save_allocation_span(self) -> bool {
+        use self::MiriMemoryKind::*;
+        match self {
+            // Heap allocations are fine since the `Allocation` is created immediately.
+            Rust | Miri | C | WinHeap | Mmap => true,
+            // Everything else is unclear, let's not show potentially confusing spans.
+            Machine | Global | ExternStatic | Tls | Runtime => false,
         }
     }
 }
@@ -497,6 +510,10 @@ pub struct MiriMachine<'mir, 'tcx> {
 
     /// Whether to collect a backtrace when each allocation is created, just in case it leaks.
     pub(crate) collect_leak_backtraces: bool,
+
+    /// The spans we will use to report where an allocation was created and deallocated in
+    /// diagnostics.
+    pub(crate) allocation_spans: RefCell<FxHashMap<AllocId, (Span, Option<Span>)>>,
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
@@ -621,6 +638,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             stack_addr,
             stack_size,
             collect_leak_backtraces: config.collect_leak_backtraces,
+            allocation_spans: RefCell::new(FxHashMap::default()),
         }
     }
 
@@ -742,6 +760,21 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub(crate) fn page_align(&self) -> Align {
         Align::from_bytes(self.page_size).unwrap()
     }
+
+    pub(crate) fn allocated_span(&self, alloc_id: AllocId) -> Option<SpanData> {
+        self.allocation_spans
+            .borrow()
+            .get(&alloc_id)
+            .map(|(allocated, _deallocated)| allocated.data())
+    }
+
+    pub(crate) fn deallocated_span(&self, alloc_id: AllocId) -> Option<SpanData> {
+        self.allocation_spans
+            .borrow()
+            .get(&alloc_id)
+            .and_then(|(_allocated, deallocated)| *deallocated)
+            .map(Span::data)
+    }
 }
 
 impl VisitTags for MiriMachine<'_, '_> {
@@ -791,6 +824,7 @@ impl VisitTags for MiriMachine<'_, '_> {
             stack_addr: _,
             stack_size: _,
             collect_leak_backtraces: _,
+            allocation_spans: _,
         } = self;
 
         threads.visit_tags(visit);
@@ -1051,6 +1085,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             },
             |ptr| ecx.global_base_pointer(ptr),
         )?;
+
+        if matches!(kind, MemoryKind::Machine(kind) if kind.should_save_allocation_span()) {
+            ecx.machine
+                .allocation_spans
+                .borrow_mut()
+                .insert(id, (ecx.machine.current_span(), None));
+        }
+
         Ok(Cow::Owned(alloc))
     }
 
@@ -1180,6 +1222,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         }
         if let Some(borrow_tracker) = &mut alloc_extra.borrow_tracker {
             borrow_tracker.before_memory_deallocation(alloc_id, prove_extra, range, machine)?;
+        }
+        if let Some((_, deallocated_at)) = machine.allocation_spans.borrow_mut().get_mut(&alloc_id)
+        {
+            *deallocated_at = Some(machine.current_span());
         }
         Ok(())
     }
