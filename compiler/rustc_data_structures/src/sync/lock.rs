@@ -51,6 +51,20 @@ impl<T> Lock<T> {
 
     #[inline(always)]
     #[track_caller]
+    // This is unsafe to match the API for the `parallel_compiler` case.
+    pub unsafe fn lock_assume_no_sync(&self) -> LockGuard<'_, T> {
+        self.0.borrow_mut()
+    }
+
+    #[inline(always)]
+    #[track_caller]
+    // This is unsafe to match the API for the `parallel_compiler` case.
+    pub unsafe fn lock_assume_sync(&self) -> LockGuard<'_, T> {
+        self.0.borrow_mut()
+    }
+
+    #[inline(always)]
+    #[track_caller]
     pub fn lock(&self) -> LockGuard<'_, T> {
         self.0.borrow_mut()
     }
@@ -150,21 +164,42 @@ impl LockRaw {
 
     #[inline(always)]
     fn lock(&self) {
-        if super::ERROR_CHECKING {
-            // We're in the debugging mode, so assert that the lock is not held so we
-            // get a panic instead of waiting for the lock.
-            assert_eq!(self.try_lock(), true, "lock must not be hold");
-        } else {
-            // SAFETY: This is safe since the union fields are used in accordance with `self.sync`.
-            unsafe {
-                if likely(!self.sync) {
-                    if unlikely(self.opt.cell.replace(true)) {
-                        cold_path(|| panic!("lock was already held"))
-                    }
-                } else {
-                    self.opt.lock.lock();
-                }
+        // SAFETY: This is safe since `self.sync` is used in accordance with the preconditions of
+        // `lock_assume_no_sync` and `lock_assume_sync`.
+        unsafe {
+            if likely(!self.sync) {
+                self.lock_assume_no_sync()
+            } else {
+                self.lock_assume_sync();
             }
+        }
+    }
+
+    /// This acquires the lock assuming no syncronization is required.
+    ///
+    /// Safety
+    /// This method must only be called if `might_be_dyn_thread_safe` was false on lock creation.
+    #[inline(always)]
+    unsafe fn lock_assume_no_sync(&self) {
+        // SAFETY: This is safe since `self.opt.cell` is the union field used due to the
+        // precondition on this function.
+        unsafe {
+            if unlikely(self.opt.cell.replace(true)) {
+                cold_path(|| panic!("lock was already held"))
+            }
+        }
+    }
+
+    /// This acquires the lock assuming syncronization is required.
+    ///
+    /// Safety
+    /// This method must only be called if `might_be_dyn_thread_safe` was true on lock creation.
+    #[inline(always)]
+    unsafe fn lock_assume_sync(&self) {
+        // SAFETY: This is safe since `self.opt.lock` is the union field used due to the
+        // precondition on this function.
+        unsafe {
+            self.opt.lock.lock();
         }
     }
 
@@ -215,6 +250,30 @@ impl<T> Lock<T> {
     #[inline(always)]
     pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
         if self.raw.try_lock() { Some(LockGuard { lock: self, marker: PhantomData }) } else { None }
+    }
+
+    /// This acquires the lock assuming no syncronization is required.
+    ///
+    /// Safety
+    /// This method must only be called if `might_be_dyn_thread_safe` was false on lock creation.
+    #[inline(always)]
+    pub(crate) unsafe fn lock_assume_no_sync(&self) -> LockGuard<'_, T> {
+        unsafe {
+            self.raw.lock_assume_no_sync();
+        }
+        LockGuard { lock: self, marker: PhantomData }
+    }
+
+    /// This acquires the lock assuming syncronization is required.
+    ///
+    /// Safety
+    /// This method must only be called if `might_be_dyn_thread_safe` was true on lock creation.
+    #[inline(always)]
+    pub(crate) unsafe fn lock_assume_sync(&self) -> LockGuard<'_, T> {
+        unsafe {
+            self.raw.lock_assume_sync();
+        }
+        LockGuard { lock: self, marker: PhantomData }
     }
 
     #[inline(always)]

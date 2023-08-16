@@ -158,7 +158,7 @@ where
         cache.complete(key, result, dep_node_index);
 
         let job = {
-            let mut lock = state.active.get_shard_by_value(&key).lock();
+            let mut lock = state.active.lock_shard_by_value(&key);
             match lock.remove(&key).unwrap() {
                 QueryResult::Started(job) => job,
                 QueryResult::Poisoned => panic!(),
@@ -180,7 +180,7 @@ where
         // Poison the query so jobs waiting on it panic.
         let state = self.state;
         let job = {
-            let mut shard = state.active.get_shard_by_value(&self.key).lock();
+            let mut shard = state.active.lock_shard_by_value(&self.key);
             let job = match shard.remove(&self.key).unwrap() {
                 QueryResult::Started(job) => job,
                 QueryResult::Poisoned => panic!(),
@@ -303,7 +303,7 @@ where
     Qcx: QueryContext,
 {
     let state = query.query_state(qcx);
-    let mut state_lock = state.active.get_shard_by_value(&key).lock();
+    let mut state_lock = state.active.lock_shard_by_value(&key);
 
     // For the parallel compiler we need to check both the query cache and query state structures
     // while holding the state lock to ensure that 1) the query has not yet completed and 2) the
