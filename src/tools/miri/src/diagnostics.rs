@@ -309,7 +309,7 @@ pub fn report_error<'tcx, 'mir>(
                     (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
                     (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
                 ];
-                if let UndefinedBehaviorInfo::PointerUseAfterFree(alloc_id, _) = info {
+                if let UndefinedBehaviorInfo::PointerUseAfterFree(alloc_id, _) | UndefinedBehaviorInfo::PointerOutOfBounds { alloc_id, .. } = info {
                     if let Some(span) = ecx.machine.allocated_span(*alloc_id) {
                         helps.push((Some(span), format!("{:?} was allocated here:", alloc_id)));
                     }
