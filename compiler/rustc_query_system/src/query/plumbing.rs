@@ -14,7 +14,7 @@ use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use crate::HandleCycleError;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sharded::Sharded;
+use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
 #[cfg(parallel_compiler)]
@@ -22,7 +22,7 @@ use rustc_data_structures::{cold_path, sync};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
-use std::collections::hash_map::Entry;
+use std::collections::hash_map::RawEntryMut;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
@@ -142,7 +142,7 @@ where
 {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
-    fn complete<C>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
+    fn complete<C>(self, cache: &C, key_hash: u64, result: C::Value, dep_node_index: DepNodeIndex)
     where
         C: QueryCache<Key = K>,
     {
@@ -154,13 +154,17 @@ where
 
         // Mark as complete before we remove the job from the active state
         // so no other thread can re-execute this query.
-        cache.complete(key, result, dep_node_index);
+        cache.complete(key, key_hash, result, dep_node_index);
 
         let job = {
-            let mut lock = state.active.lock_shard_by_value(&key);
-            match lock.remove(&key).unwrap() {
-                QueryResult::Started(job) => job,
-                QueryResult::Poisoned => panic!(),
+            let mut lock = state.active.lock_shard_by_hash(key_hash);
+
+            match lock.raw_entry_mut().from_key_hashed_nocheck(key_hash, &key) {
+                RawEntryMut::Vacant(_) => panic!(),
+                RawEntryMut::Occupied(occupied) => match occupied.remove() {
+                    QueryResult::Started(job) => job,
+                    QueryResult::Poisoned => panic!(),
+                },
             }
         };
 
@@ -209,7 +213,8 @@ where
     C: QueryCache,
     Tcx: DepContext,
 {
-    match cache.lookup(&key) {
+    let key_hash = sharded::make_hash(key);
+    match cache.lookup(&key, key_hash) {
         Some((value, index)) => {
             tcx.profiler().query_cache_hit(index.into());
             tcx.dep_graph().read_index(index);
@@ -246,6 +251,7 @@ fn wait_for_query<Q, Qcx>(
     qcx: Qcx,
     span: Span,
     key: Q::Key,
+    key_hash: u64,
     latch: QueryLatch,
     current: Option<QueryJobId>,
 ) -> (Q::Value, Option<DepNodeIndex>)
@@ -264,7 +270,7 @@ where
 
     match result {
         Ok(()) => {
-            let Some((v, index)) = query.query_cache(qcx).lookup(&key) else {
+            let Some((v, index)) = query.query_cache(qcx).lookup(&key, key_hash) else {
                 cold_path(|| {
                     // We didn't find the query result in the query cache. Check if it was
                     // poisoned due to a panic instead.
@@ -301,7 +307,8 @@ where
     Qcx: QueryContext,
 {
     let state = query.query_state(qcx);
-    let mut state_lock = state.active.lock_shard_by_value(&key);
+    let key_hash = sharded::make_hash(&key);
+    let mut state_lock = state.active.lock_shard_by_hash(key_hash);
 
     // For the parallel compiler we need to check both the query cache and query state structures
     // while holding the state lock to ensure that 1) the query has not yet completed and 2) the
@@ -310,7 +317,7 @@ where
     // executing, but another thread may have already completed the query and stores it result
     // in the query cache.
     if cfg!(parallel_compiler) && qcx.dep_context().sess().threads() > 1 {
-        if let Some((value, index)) = query.query_cache(qcx).lookup(&key) {
+        if let Some((value, index)) = query.query_cache(qcx).lookup(&key, key_hash) {
             qcx.dep_context().profiler().query_cache_hit(index.into());
             return (value, Some(index));
         }
@@ -318,20 +325,20 @@ where
 
     let current_job_id = qcx.current_query_job();
 
-    match state_lock.entry(key) {
-        Entry::Vacant(entry) => {
+    match state_lock.raw_entry_mut().from_key_hashed_nocheck(key_hash, &key) {
+        RawEntryMut::Vacant(entry) => {
             // Nothing has computed or is computing the query, so we start a new job and insert it in the
             // state map.
             let id = qcx.next_job_id();
             let job = QueryJob::new(id, span, current_job_id);
-            entry.insert(QueryResult::Started(job));
+            entry.insert_hashed_nocheck(key_hash, key, QueryResult::Started(job));
 
             // Drop the lock before we start executing the query
             drop(state_lock);
 
-            execute_job::<_, _, INCR>(query, qcx, state, key, id, dep_node)
+            execute_job::<_, _, INCR>(query, qcx, state, key, key_hash, id, dep_node)
         }
-        Entry::Occupied(mut entry) => {
+        RawEntryMut::Occupied(mut entry) => {
             match entry.get_mut() {
                 QueryResult::Started(job) => {
                     #[cfg(parallel_compiler)]
@@ -342,7 +349,15 @@ where
 
                         // Only call `wait_for_query` if we're using a Rayon thread pool
                         // as it will attempt to mark the worker thread as blocked.
-                        return wait_for_query(query, qcx, span, key, latch, current_job_id);
+                        return wait_for_query(
+                            query,
+                            qcx,
+                            span,
+                            key,
+                            key_hash,
+                            latch,
+                            current_job_id,
+                        );
                     }
 
                     let id = job.id;
@@ -364,6 +379,7 @@ fn execute_job<Q, Qcx, const INCR: bool>(
     qcx: Qcx,
     state: &QueryState<Q::Key>,
     key: Q::Key,
+    key_hash: u64,
     id: QueryJobId,
     dep_node: Option<DepNode>,
 ) -> (Q::Value, Option<DepNodeIndex>)
@@ -395,7 +411,7 @@ where
         // This can't happen, as query feeding adds the very dependencies to the fed query
         // as its feeding query had. So if the fed query is red, so is its feeder, which will
         // get evaluated first, and re-feed the query.
-        if let Some((cached_result, _)) = cache.lookup(&key) {
+        if let Some((cached_result, _)) = cache.lookup(&key, key_hash) {
             let Some(hasher) = query.hash_result() else {
                 panic!(
                     "no_hash fed query later has its value computed.\n\
@@ -427,7 +443,7 @@ where
             }
         }
     }
-    job_owner.complete(cache, result, dep_node_index);
+    job_owner.complete(cache, key_hash, result, dep_node_index);
 
     (result, Some(dep_node_index))
 }
@@ -826,7 +842,7 @@ where
 {
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
-    if let Some((_, index)) = query.query_cache(qcx).lookup(&key) {
+    if let Some((_, index)) = query.query_cache(qcx).lookup(&key, sharded::make_hash(&key)) {
         qcx.dep_context().profiler().query_cache_hit(index.into());
         return;
     }

@@ -1,7 +1,7 @@
 use crate::dep_graph::DepNodeIndex;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sharded::{self, Sharded};
+use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::OnceLock;
 use rustc_index::{Idx, IndexVec};
 use std::fmt::Debug;
@@ -19,9 +19,9 @@ pub trait QueryCache: Sized {
     type Value: Copy;
 
     /// Checks if the query is already computed and in the cache.
-    fn lookup(&self, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)>;
+    fn lookup(&self, key: &Self::Key, key_hash: u64) -> Option<(Self::Value, DepNodeIndex)>;
 
-    fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex);
+    fn complete(&self, key: Self::Key, key_hash: u64, value: Self::Value, index: DepNodeIndex);
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
 }
@@ -53,8 +53,7 @@ where
     type Value = V;
 
     #[inline(always)]
-    fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
-        let key_hash = sharded::make_hash(key);
+    fn lookup(&self, key: &K, key_hash: u64) -> Option<(V, DepNodeIndex)> {
         let lock = self.cache.lock_shard_by_hash(key_hash);
         let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
@@ -62,10 +61,8 @@ where
     }
 
     #[inline]
-    fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        let mut lock = self.cache.lock_shard_by_value(&key);
-        // We may be overwriting another value. This is all right, since the dep-graph
-        // will check that the fingerprint matches.
+    fn complete(&self, key: K, key_hash: u64, value: V, index: DepNodeIndex) {
+        let mut lock = self.cache.lock_shard_by_hash(key_hash);
         lock.insert(key, (value, index));
     }
 
@@ -104,12 +101,12 @@ where
     type Value = V;
 
     #[inline(always)]
-    fn lookup(&self, _key: &()) -> Option<(V, DepNodeIndex)> {
+    fn lookup(&self, _key: &(), _key_hash: u64) -> Option<(V, DepNodeIndex)> {
         self.cache.get().copied()
     }
 
     #[inline]
-    fn complete(&self, _key: (), value: V, index: DepNodeIndex) {
+    fn complete(&self, _key: (), _key_hash: u64, value: V, index: DepNodeIndex) {
         self.cache.set((value, index)).ok();
     }
 
@@ -147,13 +144,13 @@ where
     type Value = V;
 
     #[inline(always)]
-    fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
+    fn lookup(&self, key: &K, _key_hash: u64) -> Option<(V, DepNodeIndex)> {
         let lock = self.cache.lock_shard_by_hash(key.index() as u64);
         if let Some(Some(value)) = lock.get(*key) { Some(*value) } else { None }
     }
 
     #[inline]
-    fn complete(&self, key: K, value: V, index: DepNodeIndex) {
+    fn complete(&self, key: K, _key_hash: u64, value: V, index: DepNodeIndex) {
         let mut lock = self.cache.lock_shard_by_hash(key.index() as u64);
         lock.insert(key, (value, index));
     }

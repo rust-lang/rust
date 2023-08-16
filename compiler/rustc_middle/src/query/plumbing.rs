@@ -524,7 +524,8 @@ macro_rules! define_feedable {
                             &value,
                             hash_result!([$($modifiers)*]),
                         );
-                        cache.complete(key, erased, dep_node_index);
+                        let key_hash = rustc_data_structures::sharded::make_hash(&key);
+                        cache.complete(key, key_hash, erased, dep_node_index);
                     }
                 }
             }
