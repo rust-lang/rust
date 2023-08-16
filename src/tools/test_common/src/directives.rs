@@ -363,7 +363,7 @@ macro_rules! name_val_or_name_directive {
 // Macros are in the form (name, compiletest_name, ui_test_name).
 // If ui_test_name does not exist, ui_test does not support that directive.
 // ========================================================================
-name_value_directive!(ErrorPatternDirective, "error-in-other-file", "error-pattern");
+name_value_directive!(ErrorPatternDirective, "error-pattern", "error-in-other-file");
 name_value_directive!(CompileFlagsDirective, "compile-flags", "compile-flags");
 name_value_directive!(RunFlagsDirective, "run-flags"); // UNUSED IN UI TESTS
 name_value_directive!(PrettyModeDirective, "pretty-mode"); // UNUSED IN UI TESTS

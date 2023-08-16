@@ -40,7 +40,7 @@ pub(super) fn check_file_headers(file_path: &Path) -> Result<(), HeaderError> {
                 DirectiveMatchResult::UseUiTestComment => {
                     errors.push(HeaderAction {
                         line_num,
-                        line: comment.full_line().to_string(),
+                        line: comment.full_line().to_owned(),
                         action: LineAction::UseUiTestComment,
                     });
                     break;
@@ -48,10 +48,10 @@ pub(super) fn check_file_headers(file_path: &Path) -> Result<(), HeaderError> {
                 DirectiveMatchResult::MigrateToUiTest => {
                     errors.push(HeaderAction {
                         line_num,
-                        line: comment.full_line().to_string(),
+                        line: comment.full_line().to_owned(),
                         action: LineAction::MigrateToUiTest {
-                            compiletest_name: directive.compiletest_name().to_string(),
-                            ui_test_name: directive.ui_test_name().unwrap().to_string(),
+                            compiletest_name: directive.compiletest_name().to_owned(),
+                            ui_test_name: directive.ui_test_name().unwrap().to_owned(),
                         },
                     });
                     break;
@@ -59,10 +59,10 @@ pub(super) fn check_file_headers(file_path: &Path) -> Result<(), HeaderError> {
                 DirectiveMatchResult::UseUITestName => {
                     errors.push(HeaderAction {
                         line_num,
-                        line: comment.full_line().to_string(),
+                        line: comment.full_line().to_owned(),
                         action: LineAction::UseUITestName {
-                            compiletest_name: directive.compiletest_name().to_string(),
-                            ui_test_name: directive.ui_test_name().unwrap().to_string(),
+                            compiletest_name: directive.compiletest_name().to_owned(),
+                            ui_test_name: directive.ui_test_name().unwrap().to_owned(),
                         },
                     });
                     break;
@@ -75,14 +75,14 @@ pub(super) fn check_file_headers(file_path: &Path) -> Result<(), HeaderError> {
             Err(ConditionError::ConvertToUiTest { compiletest_name, ui_test_name }) => {
                 errors.push(HeaderAction {
                     line_num,
-                    line: comment.full_line().to_string(),
+                    line: comment.full_line().to_owned(),
                     action: LineAction::MigrateToUiTest { compiletest_name, ui_test_name },
                 })
             }
             Err(ConditionError::UiTestUnknownTarget { target_substr }) => {
                 errors.push(HeaderAction {
                     line_num,
-                    line: comment.full_line().to_string(),
+                    line: comment.full_line().to_owned(),
                     action: LineAction::Error {
                         message: format!("invalid target substring: {}", target_substr),
                     },
@@ -90,8 +90,13 @@ pub(super) fn check_file_headers(file_path: &Path) -> Result<(), HeaderError> {
             }
             Err(ConditionError::UseUiTestComment) => errors.push(HeaderAction {
                 line_num,
-                line: comment.full_line().to_string(),
+                line: comment.full_line().to_owned(),
                 action: LineAction::UseUiTestComment,
+            }),
+            Err(ConditionError::UnknownCondition { name }) => errors.push(HeaderAction {
+                line_num,
+                line: comment.full_line().to_owned(),
+                action: LineAction::Error { message: format!("unknown condition {}", name) },
             }),
         }
     });
@@ -182,6 +187,8 @@ enum ConditionError {
     ConvertToUiTest { compiletest_name: String, ui_test_name: String },
     /// The target substring in the comment is not known.
     UiTestUnknownTarget { target_substr: String },
+    /// The comment looked like a condition, but was not known.
+    UnknownCondition { name: String },
 }
 
 /// Checks that a test comment uses the ui_test style only or ignore directives, and that
@@ -213,19 +220,16 @@ fn check_condition(comment: &TestComment<'_>) -> Result<(), ConditionError> {
                 // wasm32-bare is an alias for wasm32-unknown-unknown
                 Err(ConditionError::ConvertToUiTest {
                     compiletest_name: String::from("wasm32-bare"),
-                    ui_test_name: String::from("wasm32-unknown-unknown"),
+                    ui_test_name: String::from("target-wasm32-unknown-unknown"),
                 })
-            } else if condition.starts_with("tidy-")
-                || ["stable", "beta", "nightly", "stage1", "cross-compile", "remote"]
-                    .contains(&condition)
-            {
-                // Ignore tidy directives, and a few other unknown comment types
-                // FIXME (ui_test): make ui_test know about all of these
+            } else if condition.starts_with("tidy-") {
+                // Ignore tidy directives
+                Ok(())
+            } else if UNSUPPORTED_CONDITIONS.contains(&condition) {
                 Ok(())
             } else {
-                // Unknown only/ignore directive, or the target is not known, do nothing.
-                eprintln!("unknown comment: {:#?}", comment);
-                Ok(())
+                // Unknown only/ignore directive, or the target is not known.
+                Err(ConditionError::UnknownCondition { name: condition.to_owned() })
             }
         }
 
@@ -320,6 +324,30 @@ impl From<io::Error> for HeaderError {
         Self::IoError(value)
     }
 }
+
+/// Directives that ui_test does not yet support. Used for emitting a warning instead of an error
+/// in tidy.
+// FIXME (ui_test): This should ideally be empty/removed by supporting everything.
+const UNSUPPORTED_CONDITIONS: &[&str] = [
+    "stable",
+    "beta",
+    "nightly",
+    "stage1",
+    "remote",
+    "cross-compile",
+    "debug", // When building with debug assertions enabled. Primarily used for codegen tests.
+    // `ignore-pass` is sorta like ui_test's `check-pass` but not really, compiletest instead
+    // Falls back to a pass-mode which can be set by headers.
+    "pass",
+    "endian-big",
+    "compare-mode-polonius",
+    "compare-mode-next-solver",
+    "compare-mode-next-solver-coherence",
+    "compare-mode-split-dwarf",
+    "compare-mode-split-dwarf-single",
+    "llvm-version",
+]
+.as_slice();
 
 // All components of target triples (including the whole triple) that were known by compiletest
 // at the time of writing (2023-08-13). This list is used to guide migration to ui_test style
@@ -556,6 +584,7 @@ const KNOWN_TARGET_COMPONENTS: &[&str] = [
     "tvos",
     "uefi",
     "unknown",
+    "uwp",
     "vita",
     "vxworks",
     "wasi",

@@ -192,18 +192,21 @@ fn check_ui_test_headers(bad: &mut bool, file_path: &Path, mode: HeaderCheckMode
     }
 }
 
+fn emit_error(file_path: &Path, action: &HeaderAction) {
+    tidy_error!(
+        &mut false,
+        "invalid test header\n    {}:{}\n    {}",
+        file_path.display(),
+        action.line_num(),
+        action.error_message()
+    );
+}
 /// Emits errors for the header lines specified. Returns whether any errors were emitted
 fn emit_header_errors(file_path: &Path, bad_lines: Vec<HeaderAction>) -> bool {
     let mut bad = false;
     for action in bad_lines {
-        let err = action.error_message();
-        tidy_error!(
-            &mut bad,
-            "invalid test header\n    {}:{}\n    {}",
-            file_path.display(),
-            action.line_num(),
-            err
-        );
+        emit_error(file_path, &action);
+        bad = true;
     }
     bad
 }
@@ -212,61 +215,65 @@ fn fix_header_errors(file_path: &Path, bad_lines: Vec<HeaderAction>) -> io::Resu
     // Process each header error into a replacement for a line.
     let line_replacements = bad_lines
         .into_iter()
-        .map(|header_action| {
-            (
-                header_action.line_num(),
-                match header_action.action() {
-                    LineAction::UseUiTestComment => {
-                        replace_compiletest_comment(header_action.line()).unwrap()
-                    }
-                    LineAction::MigrateToUiTest { compiletest_name, ui_test_name } => {
-                        // Replace comment type first, then the name range specified.
-                        let mut new_line =
-                            replace_compiletest_comment(header_action.line()).unwrap();
-                        // This is always a directive that contains the compiletest name.
-                        let name_start = new_line.find(compiletest_name.as_str()).unwrap();
-                        new_line.replace_range(
-                            name_start..(name_start + compiletest_name.len()),
-                            ui_test_name.as_str(),
-                        );
-                        new_line
-                    }
-                    LineAction::UseUITestName { compiletest_name, ui_test_name } => {
-                        // This is always a directive that contains the compiletest name.
-                        let name_start =
-                            header_action.line().find(compiletest_name.as_str()).unwrap();
-                        let mut new_line = header_action.line().to_string();
-                        new_line.replace_range(
-                            name_start..(name_start + compiletest_name.len()),
-                            ui_test_name.as_str(),
-                        );
-                        new_line
-                    }
-                    LineAction::Error { message } => todo!(),
-                },
-            )
+        .filter_map(|header_action| {
+            match header_action.action() {
+                LineAction::UseUiTestComment => Some((
+                    header_action.line_num(),
+                    replace_compiletest_comment(header_action.line()).unwrap(),
+                )),
+                LineAction::MigrateToUiTest { compiletest_name, ui_test_name } => {
+                    // Replace comment type first, then the name range specified.
+                    let mut new_line = replace_compiletest_comment(header_action.line()).unwrap();
+                    // This is always a directive that contains the compiletest name.
+                    let name_start = new_line.find(compiletest_name.as_str()).unwrap();
+                    new_line.replace_range(
+                        name_start..(name_start + compiletest_name.len()),
+                        ui_test_name.as_str(),
+                    );
+                    Some((header_action.line_num(), new_line))
+                }
+                LineAction::UseUITestName { compiletest_name, ui_test_name } => {
+                    // This is always a directive that contains the compiletest name.
+                    let name_start = header_action.line().find(compiletest_name.as_str()).unwrap();
+                    let mut new_line = header_action.line().to_string();
+                    new_line.replace_range(
+                        name_start..(name_start + compiletest_name.len()),
+                        ui_test_name.as_str(),
+                    );
+                    Some((header_action.line_num(), new_line))
+                }
+                LineAction::Error { .. } => {
+                    emit_error(file_path, &header_action);
+                    // No line to replace
+                    None
+                }
+            }
         })
         .collect::<HashMap<_, _>>();
 
-    let file_contents = fs::read_to_string(file_path)?;
+    if line_replacements.len() > 0 {
+        let file_contents = fs::read_to_string(file_path)?;
 
-    // Replace each line in the contents of the file that there is an entry for.
-    let replaced_contents = file_contents
-        // split_inclusive here because we want each line to still have its newline to be
-        // joined. The line replacements also keep their newline.
-        .split_inclusive('\n')
-        .enumerate()
-        .map(|(line_num_zero_idx, line)| {
-            // enumerate is 0-indexed, but the entries for line numbers are 1-indexed.
-            line_replacements.get(&(line_num_zero_idx + 1)).map(|s| s.as_str()).unwrap_or(line)
-        })
-        .collect::<String>();
-    // dbg!(&replaced_contents);
+        // Replace each line in the contents of the file that there is an entry for.
+        let replaced_contents = file_contents
+            // split_inclusive here because we want each line to still have its newline to be
+            // joined. The line replacements also keep their newline.
+            .split_inclusive('\n')
+            .enumerate()
+            .map(|(line_num_zero_idx, line)| {
+                // enumerate is 0-indexed, but the entries for line numbers are 1-indexed.
+                line_replacements.get(&(line_num_zero_idx + 1)).map(|s| s.as_str()).unwrap_or(line)
+            })
+            .collect::<String>();
+        // dbg!(&replaced_contents);
 
-    println!("Writing fixed file {}", file_path.display());
+        println!("Writing fixed file {}", file_path.display());
 
-    // Return whether the file was successfully written.
-    fs::write(file_path, replaced_contents)
+        // Return whether the file was successfully written.
+        fs::write(file_path, replaced_contents)
+    } else {
+        Ok(())
+    }
 }
 
 /// Replace the comment portion of a compiletest style header with a ui_test style comment.
