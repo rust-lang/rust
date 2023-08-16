@@ -106,7 +106,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
     }
 }
 
-/// Removes unwind edges which are known to be unreachable, because they are in `drop` terminators
+/// Records unwind edges which are known to be unreachable, because they are in `drop` terminators
 /// that can't drop anything.
 #[instrument(level = "trace", skip(body, flow_inits), ret)]
 fn compute_dead_unwinds<'mir, 'tcx>(
