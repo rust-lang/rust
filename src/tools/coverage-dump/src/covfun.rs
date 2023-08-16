@@ -2,7 +2,7 @@ use crate::parser::{unescape_llvm_string_contents, Parser};
 use anyhow::{anyhow, Context};
 use regex::Regex;
 use std::collections::HashMap;
-use std::fmt::{self, Debug};
+use std::fmt::{self, Debug, Write as _};
 use std::sync::OnceLock;
 
 pub(crate) fn dump_covfun_mappings(
@@ -46,10 +46,12 @@ pub(crate) fn dump_covfun_mappings(
         let num_expressions = parser.read_uleb128_u32()?;
         println!("Number of expressions: {num_expressions}");
 
+        let mut expression_resolver = ExpressionResolver::new();
         for i in 0..num_expressions {
             let lhs = parser.read_simple_operand()?;
             let rhs = parser.read_simple_operand()?;
             println!("- expression {i} operands: lhs = {lhs:?}, rhs = {rhs:?}");
+            expression_resolver.push_operands(lhs, rhs);
         }
 
         for i in 0..num_files {
@@ -59,6 +61,16 @@ pub(crate) fn dump_covfun_mappings(
             for _ in 0..num_mappings {
                 let (kind, region) = parser.read_mapping_kind_and_region()?;
                 println!("- {kind:?} at {region:?}");
+
+                // If the mapping contains expressions, also print the resolved
+                // form of those expressions
+                kind.for_each_operand(|label, operand| {
+                    if matches!(operand, Operand::Expression { .. }) {
+                        let pad = if label.is_empty() { "" } else { " " };
+                        let resolved = expression_resolver.format_operand(operand);
+                        println!("    {label}{pad}= {resolved}");
+                    }
+                });
             }
         }
 
@@ -163,7 +175,7 @@ impl<'a> Parser<'a> {
 
 // Represents an expression operand (lhs/rhs), branch region operand (true/false),
 // or the value used by a code region or gap region.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum Operand {
     Zero,
     Counter(u32),
@@ -171,7 +183,7 @@ pub(crate) enum Operand {
 }
 
 /// Operator (addition or subtraction) used by an expression.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum Op {
     Sub,
     Add,
@@ -201,12 +213,24 @@ enum MappingKind {
     Gap(Operand),
     Expansion(u32),
     Skip,
-    Branch {
-        #[allow(dead_code)]
-        true_: Operand,
-        #[allow(dead_code)]
-        false_: Operand,
-    },
+    Branch { true_: Operand, false_: Operand },
+}
+
+impl MappingKind {
+    /// Visits each operand directly contained in this mapping, along with
+    /// a string label (possibly empty).
+    fn for_each_operand(&self, mut func: impl FnMut(&str, Operand)) {
+        match *self {
+            Self::Code(operand) => func("", operand),
+            Self::Gap(operand) => func("", operand),
+            Self::Expansion(_) => (),
+            Self::Skip => (),
+            Self::Branch { true_, false_ } => {
+                func("true_ ", true_);
+                func("false_", false_);
+            }
+        }
+    }
 }
 
 struct MappingRegion {
@@ -232,5 +256,47 @@ impl Debug for MappingRegion {
             "(prev + {}, {}) to (start + {}, {})",
             self.start_line_offset, self.start_column, self.end_line_offset, self.end_column
         )
+    }
+}
+
+/// Helper type that prints expressions in a "resolved" form, so that
+/// developers reading the dump don't need to resolve expressions by hand.
+struct ExpressionResolver {
+    operands: Vec<(Operand, Operand)>,
+}
+
+impl ExpressionResolver {
+    fn new() -> Self {
+        Self { operands: Vec::new() }
+    }
+
+    fn push_operands(&mut self, lhs: Operand, rhs: Operand) {
+        self.operands.push((lhs, rhs));
+    }
+
+    fn format_operand(&self, operand: Operand) -> String {
+        let mut output = String::new();
+        self.write_operand(&mut output, operand);
+        output
+    }
+
+    fn write_operand(&self, output: &mut String, operand: Operand) {
+        match operand {
+            Operand::Zero => output.push_str("Zero"),
+            Operand::Counter(id) => write!(output, "c{id}").unwrap(),
+            Operand::Expression(id, op) => {
+                let (lhs, rhs) = self.operands[id as usize];
+                let op = match op {
+                    Op::Sub => "-",
+                    Op::Add => "+",
+                };
+
+                output.push('(');
+                self.write_operand(output, lhs);
+                write!(output, " {op} ").unwrap();
+                self.write_operand(output, rhs);
+                output.push(')');
+            }
+        }
     }
 }
