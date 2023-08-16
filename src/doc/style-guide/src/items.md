@@ -367,14 +367,14 @@ where
 ## Type aliases
 
 Keep type aliases on one line when they fit. If necessary to break the line, do
-so after the `=`, and block-indent the right-hand side:
+so before the `=`, and block-indent the right-hand side:
 
 ```rust
 pub type Foo = Bar<T>;
 
 // If multi-line is required
-type VeryLongType<T, U: SomeBound> =
-    AnEvenLongerType<T, U, Foo<T>>;
+type VeryLongType<T, U: SomeBound>
+    = AnEvenLongerType<T, U, Foo<T>>;
 ```
 
 Where possible avoid `where` clauses and keep type constraints inline. Where
