@@ -17,7 +17,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
         let param_env = cx.tcx.param_env(item_def_id);
         let ty = cx.tcx.type_of(item_def_id);
 
-        trace!("get_blanket_impls({:?})", ty);
+        trace!("get_blanket_impls({ty:?})");
         let mut impls = Vec::new();
         for trait_def_id in cx.tcx.all_traits() {
             if !cx.cache.effective_visibilities.is_reachable(cx.tcx, trait_def_id)
@@ -72,7 +72,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     .into_iter()
                     .chain(Some(ty::Binder::dummy(impl_trait_ref).to_predicate(infcx.tcx)));
                 for predicate in predicates {
-                    debug!("testing predicate {:?}", predicate);
+                    debug!("testing predicate {predicate:?}");
                     let obligation = traits::Obligation::new(
                         infcx.tcx,
                         traits::ObligationCause::dummy(),

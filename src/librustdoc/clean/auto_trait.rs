@@ -46,7 +46,7 @@ where
         let tcx = self.cx.tcx;
         let trait_ref = ty::Binder::dummy(ty::TraitRef::new(tcx, trait_def_id, [ty]));
         if !self.cx.generated_synthetics.insert((ty, trait_def_id)) {
-            debug!("get_auto_trait_impl_for({:?}): already generated, aborting", trait_ref);
+            debug!("get_auto_trait_impl_for({trait_ref:?}): already generated, aborting");
             return None;
         }
 
@@ -140,7 +140,7 @@ where
         let ty = tcx.type_of(item_def_id).instantiate_identity();
         let f = auto_trait::AutoTraitFinder::new(tcx);
 
-        debug!("get_auto_trait_impls({:?})", ty);
+        debug!("get_auto_trait_impls({ty:?})");
         let auto_traits: Vec<_> = self.cx.auto_traits.to_vec();
         let mut auto_traits: Vec<Item> = auto_traits
             .into_iter()
@@ -163,9 +163,9 @@ where
     fn get_lifetime(region: Region<'_>, names_map: &FxHashMap<Symbol, Lifetime>) -> Lifetime {
         region_name(region)
             .map(|name| {
-                names_map.get(&name).unwrap_or_else(|| {
-                    panic!("Missing lifetime with name {:?} for {:?}", name.as_str(), region)
-                })
+                names_map
+                    .get(&name)
+                    .unwrap_or_else(|| panic!("Missing lifetime with name {name:?} for {region:?}"))
             })
             .unwrap_or(&Lifetime::statik())
             .clone()
@@ -372,7 +372,7 @@ where
 
                     let output = output.as_ref().cloned().map(Box::new);
                     if old_output.is_some() && old_output != output {
-                        panic!("Output mismatch for {:?} {:?} {:?}", ty, old_output, output);
+                        panic!("Output mismatch for {ty:?} {old_output:?} {output:?}");
                     }
 
                     let new_params = GenericArgs::Parenthesized { inputs: old_input, output };
@@ -462,7 +462,7 @@ where
         );
         let mut generic_params = raw_generics.params;
 
-        debug!("param_env_to_generics({:?}): generic_params={:?}", item_def_id, generic_params);
+        debug!("param_env_to_generics({item_def_id:?}): generic_params={generic_params:?}");
 
         let mut has_sized = FxHashSet::default();
         let mut ty_to_bounds: FxHashMap<_, FxHashSet<_>> = Default::default();
@@ -623,7 +623,7 @@ where
                             // loop
                             ty_to_traits.entry(ty.clone()).or_default().insert(trait_.clone());
                         }
-                        _ => panic!("Unexpected LHS {:?} for {:?}", lhs, item_def_id),
+                        _ => panic!("Unexpected LHS {lhs:?} for {item_def_id:?}"),
                     }
                 }
             };
@@ -710,7 +710,7 @@ where
     /// involved (impls rarely have more than a few bounds) means that it
     /// shouldn't matter in practice.
     fn unstable_debug_sort<T: Debug>(&self, vec: &mut [T]) {
-        vec.sort_by_cached_key(|x| format!("{:?}", x))
+        vec.sort_by_cached_key(|x| format!("{x:?}"))
     }
 
     fn is_fn_trait(&self, path: &Path) -> bool {

@@ -192,7 +192,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
                     // The allow lint level is not expected,
                     // as if allow is specified, no message
                     // is to be emitted.
-                    v => unreachable!("Invalid lint level '{}'", v),
+                    v => unreachable!("Invalid lint level '{v}'"),
                 })
                 .unwrap_or("warn")
                 .to_string();
@@ -404,7 +404,7 @@ fn run_test(
     compiler.stdin(Stdio::piped());
     compiler.stderr(Stdio::piped());
 
-    debug!("compiler invocation for doctest: {:?}", compiler);
+    debug!("compiler invocation for doctest: {compiler:?}");
 
     let mut child = compiler.spawn().expect("Failed to spawn rustc process");
     {
@@ -933,7 +933,7 @@ impl Collector {
         if !item_path.is_empty() {
             item_path.push(' ');
         }
-        format!("{} - {}(line {})", filename.prefer_local(), item_path, line)
+        format!("{} - {item_path}(line {line})", filename.prefer_local())
     }
 
     pub(crate) fn set_position(&mut self, position: Span) {
@@ -1010,7 +1010,7 @@ impl Tester for Collector {
             path.push(&test_id);
 
             if let Err(err) = std::fs::create_dir_all(&path) {
-                eprintln!("Couldn't create directory for doctest executables: {}", err);
+                eprintln!("Couldn't create directory for doctest executables: {err}");
                 panic::resume_unwind(Box::new(()));
             }
 
@@ -1079,7 +1079,7 @@ impl Tester for Collector {
                             eprint!("Test executable succeeded, but it's marked `should_panic`.");
                         }
                         TestFailure::MissingErrorCodes(codes) => {
-                            eprint!("Some expected error codes were not found: {:?}", codes);
+                            eprint!("Some expected error codes were not found: {codes:?}");
                         }
                         TestFailure::ExecutionError(err) => {
                             eprint!("Couldn't run the test: {err}");
