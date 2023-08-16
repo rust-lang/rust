@@ -1,6 +1,6 @@
 //@aux-build:common.rs
 // ignore-tidy-linelength
-// only-x86_64
+//@only-target-x86_64
 //@run
 // needs-unwind Asserting on contents of error message
 

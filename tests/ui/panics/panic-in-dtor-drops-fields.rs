@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 
 use std::thread;
 

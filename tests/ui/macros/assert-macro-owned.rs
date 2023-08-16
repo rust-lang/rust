@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:panicked at 'test-assert-owned'
-// ignore-emscripten no processes
+//@error-in-other-file:panicked at 'test-assert-owned'
+//@ignore-target-emscripten no processes
 
 #![allow(non_fmt_panics)]
 

@@ -3,9 +3,9 @@
 
 // run-fail
 // needs-unwind
-//@error-pattern: thread 'main' panicked at '`async fn` resumed after panicking'
+//@error-in-other-file: thread 'main' panicked at '`async fn` resumed after panicking'
 //@edition:2018
-// ignore-wasm no panic or subprocess support
+//@ignore-target-wasm no panic or subprocess support
 
 #![feature(generators, generator_trait)]
 

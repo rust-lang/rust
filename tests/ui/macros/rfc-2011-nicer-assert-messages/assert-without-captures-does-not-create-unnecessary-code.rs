@@ -1,5 +1,5 @@
 //@aux-build:common.rs
-// only-x86_64
+//@only-target-x86_64
 //@run
 // needs-unwind Asserting on contents of error message
 

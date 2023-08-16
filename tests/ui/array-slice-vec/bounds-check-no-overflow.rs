@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:index out of bounds
-// ignore-emscripten no processes
+//@error-in-other-file:index out of bounds
+//@ignore-target-emscripten no processes
 
 use std::mem::size_of;
 

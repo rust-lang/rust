@@ -2,8 +2,8 @@
 // error message.
 
 //@compile-flags: --target=thumbv6m-none-eabi
-// ignore-arm
+//@ignore-target-arm
 // needs-llvm-components: arm
 
-//@error-pattern:target may not be installed
+//@error-in-other-file:target may not be installed
 fn main() { }

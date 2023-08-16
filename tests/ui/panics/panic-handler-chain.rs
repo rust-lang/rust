@@ -2,7 +2,7 @@
 // needs-unwind
 #![allow(stable_features)]
 
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 
 #![feature(std_panic)]
 

@@ -1,5 +1,5 @@
 //@run
-// ignore-emscripten
+//@ignore-target-emscripten
 
 #![feature(extern_types)]
 #![feature(repr_simd)]

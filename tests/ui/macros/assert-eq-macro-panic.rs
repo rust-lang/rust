@@ -1,8 +1,8 @@
 // run-fail
-//@error-pattern:assertion failed: `(left == right)`
-//@error-pattern: left: `14`
-//@error-pattern:right: `15`
-// ignore-emscripten no processes
+//@error-in-other-file:assertion failed: `(left == right)`
+//@error-in-other-file: left: `14`
+//@error-in-other-file:right: `15`
+//@ignore-target-emscripten no processes
 
 fn main() {
     assert_eq!(14, 15);

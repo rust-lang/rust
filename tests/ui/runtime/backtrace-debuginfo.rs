@@ -9,9 +9,9 @@
 //@compile-flags:-g -Copt-level=0 -Cllvm-args=-enable-tail-merge=0
 //@compile-flags:-Cforce-frame-pointers=yes
 //@compile-flags:-Cstrip=none
-// ignore-emscripten spawning processes is not supported
-// ignore-sgx no processes
-// ignore-fuchsia Backtrace not symbolized, trace different line alignment
+//@ignore-target-emscripten spawning processes is not supported
+//@ignore-target-sgx no processes
+//@ignore-target-fuchsia Backtrace not symbolized, trace different line alignment
 
 use std::env;
 

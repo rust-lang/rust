@@ -1,5 +1,5 @@
 //@run
-// ignore-emscripten
+//@ignore-target-emscripten
 
 #![allow(non_camel_case_types)]
 #![feature(repr_simd, platform_intrinsics)]

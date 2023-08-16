@@ -1,7 +1,7 @@
 //@run
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-fuchsia Needs directory creation privilege
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
+//@ignore-target-fuchsia Needs directory creation privilege
 
 use std::env;
 use std::fs;

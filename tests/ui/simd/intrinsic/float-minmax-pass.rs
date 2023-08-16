@@ -1,5 +1,5 @@
 //@run
-// ignore-emscripten
+//@ignore-target-emscripten
 
 // Test that the simd_f{min,max} intrinsics produce the correct results.
 

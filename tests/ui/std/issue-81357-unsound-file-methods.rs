@@ -1,5 +1,5 @@
 // run-fail
-// only-windows
+//@only-target-windows
 
 fn main() {
     use std::fs;

@@ -3,7 +3,7 @@
 //! Unfortunately we don't even reach opaque type collection, as we ICE in typeck before that.
 // known-bug: #109281
 // failure-status: 101
-//@error-pattern:internal compiler error
+//@error-in-other-file:internal compiler error
 // normalize-stderr-test "internal compiler error.*" -> ""
 // normalize-stderr-test "DefId\([^)]*\)" -> "..."
 // normalize-stderr-test "\nerror: internal compiler error.*\n\n" -> ""

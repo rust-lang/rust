@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:thread 'owned name' panicked at 'test'
-// ignore-emscripten Needs threads.
+//@error-in-other-file:thread 'owned name' panicked at 'test'
+//@ignore-target-emscripten Needs threads.
 
 use std::thread::Builder;
 

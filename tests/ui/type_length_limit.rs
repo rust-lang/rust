@@ -1,5 +1,5 @@
 // build-fail
-//@error-pattern: reached the type-length limit while instantiating
+//@error-in-other-file: reached the type-length limit while instantiating
 //@compile-flags: -Copt-level=0
 // normalize-stderr-test: ".nll/" -> "/"
 

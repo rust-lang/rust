@@ -5,8 +5,8 @@
 //@compile-flags: -Z sanitizer=address -O -g
 //
 // run-fail
-//@error-pattern: AddressSanitizer: stack-buffer-overflow
-//@error-pattern: 'xs' (line 14) <== Memory access at offset
+//@error-in-other-file: AddressSanitizer: stack-buffer-overflow
+//@error-in-other-file: 'xs' (line 14) <== Memory access at offset
 
 use std::hint::black_box;
 

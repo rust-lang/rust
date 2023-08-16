@@ -1,6 +1,6 @@
 //@run
 //@aux-build:test-macros.rs
-// ignore-wasm32
+//@ignore-target-wasm32
 
 #[macro_use]
 extern crate test_macros;

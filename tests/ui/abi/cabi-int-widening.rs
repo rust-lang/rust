@@ -1,5 +1,5 @@
 //@run
-// ignore-wasm32-bare no libc to test ffi with
+//@ignore-target-wasm32-unknown-unknown no libc to test ffi with
 
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
@@ -7,9 +7,7 @@ extern "C" {
 }
 
 fn main() {
-    let x = unsafe {
-        rust_int8_to_int32(-1)
-    };
+    let x = unsafe { rust_int8_to_int32(-1) };
 
     assert!(x == -1);
 }

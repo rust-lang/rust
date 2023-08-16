@@ -1,4 +1,4 @@
-//@error-pattern:expected
+//@error-in-other-file:expected
 
 use foo::* as baz;
 

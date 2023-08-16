@@ -1,7 +1,7 @@
 //~ ERROR
 
 // build-fail
-// ignore-32bit
+//@ignore-32bit
 
 struct S<T> {
     x: [T; !0],

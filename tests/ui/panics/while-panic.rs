@@ -1,8 +1,8 @@
 #![allow(while_true)]
 
 // run-fail
-//@error-pattern:giraffe
-// ignore-emscripten no processes
+//@error-in-other-file:giraffe
+//@ignore-target-emscripten no processes
 
 fn main() {
     panic!("{}", {

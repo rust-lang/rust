@@ -1,4 +1,4 @@
-// only-aarch64
+//@only-target-aarch64
 //@run
 #![allow(dead_code)]
 use std::arch::*;

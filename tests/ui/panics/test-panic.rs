@@ -1,7 +1,7 @@
 // run-fail
 // check-stdout
 //@compile-flags: --test
-// ignore-emscripten
+//@ignore-target-emscripten
 
 #[test]
 fn test_foo() {

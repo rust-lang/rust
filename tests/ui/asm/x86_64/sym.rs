@@ -1,5 +1,5 @@
-// only-x86_64
-// only-linux
+//@only-target-x86_64
+//@only-target-linux
 //@needs-asm-support
 //@run
 

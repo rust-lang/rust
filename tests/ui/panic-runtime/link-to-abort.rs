@@ -2,7 +2,7 @@
 
 //@compile-flags:-C panic=abort
 // no-prefer-dynamic
-// ignore-macos
+//@ignore-target-macos
 
 #![feature(panic_abort)]
 

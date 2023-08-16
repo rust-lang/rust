@@ -1,6 +1,6 @@
 //@compile-flags:-D bogus
 
-//@error-pattern:E0602
-//@error-pattern:requested on the command line with `-D bogus`
+//@error-in-other-file:E0602
+//@error-in-other-file:requested on the command line with `-D bogus`
 
 fn main() {}

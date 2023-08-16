@@ -1,8 +1,8 @@
 //@run
-// ignore-android needs extra network permissions
-// ignore-emscripten no threads or sockets support
-// ignore-netbsd system ulimit (Too many open files)
-// ignore-openbsd system ulimit (Too many open files)
+//@ignore-target-android needs extra network permissions
+//@ignore-target-emscripten no threads or sockets support
+//@ignore-target-netbsd system ulimit (Too many open files)
+//@ignore-target-openbsd system ulimit (Too many open files)
 
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};

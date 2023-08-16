@@ -1,12 +1,12 @@
 //@run
 // Ignore this test on Android, because it segfaults there.
 
-// ignore-android
-// ignore-windows
-// ignore-emscripten no execve
-// ignore-sgx no execve
-// ignore-vxworks no execve
-// ignore-fuchsia no 'execve'
+//@ignore-target-android
+//@ignore-target-windows
+//@ignore-target-emscripten no execve
+//@ignore-target-sgx no execve
+//@ignore-target-vxworks no execve
+//@ignore-target-fuchsia no 'execve'
 // no-prefer-dynamic
 
 #![feature(rustc_private)]

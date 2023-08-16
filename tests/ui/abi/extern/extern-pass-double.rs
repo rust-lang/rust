@@ -1,5 +1,5 @@
 //@run
-// ignore-wasm32-bare no libc for ffi testing
+//@ignore-target-wasm32-unknown-unknown no libc for ffi testing
 
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {

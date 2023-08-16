@@ -1,7 +1,7 @@
 //@run
 // exec-env:TEST_EXEC_ENV=22
-// ignore-emscripten FIXME: issue #31622
-// ignore-sgx unsupported
+//@ignore-target-emscripten FIXME: issue #31622
+//@ignore-target-sgx unsupported
 
 use std::env;
 

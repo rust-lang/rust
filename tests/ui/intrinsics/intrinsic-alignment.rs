@@ -1,5 +1,5 @@
 //@run
-// ignore-wasm32-bare seems not important to test here
+//@ignore-target-wasm32-unknown-unknown seems not important to test here
 
 #![feature(intrinsics)]
 
@@ -11,19 +11,20 @@ mod rusti {
     }
 }
 
-#[cfg(any(target_os = "android",
-          target_os = "dragonfly",
-          target_os = "emscripten",
-          target_os = "freebsd",
-          target_os = "fuchsia",
-          target_os = "illumos",
-          target_os = "linux",
-          target_os = "macos",
-          target_os = "netbsd",
-          target_os = "openbsd",
-          target_os = "solaris",
-          target_os = "vxworks",
-          target_os = "nto",
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "fuchsia",
+    target_os = "illumos",
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "solaris",
+    target_os = "vxworks",
+    target_os = "nto",
 ))]
 mod m {
     #[cfg(target_arch = "x86")]

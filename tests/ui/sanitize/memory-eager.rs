@@ -7,9 +7,9 @@
 //@[unoptimized] compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins
 //
 // run-fail
-//@error-pattern: MemorySanitizer: use-of-uninitialized-value
-//@error-pattern: Uninitialized value was created by an allocation
-//@error-pattern: in the stack frame
+//@error-in-other-file: MemorySanitizer: use-of-uninitialized-value
+//@error-in-other-file: Uninitialized value was created by an allocation
+//@error-in-other-file: in the stack frame
 //
 // This test case intentionally limits the usage of the std,
 // since it will be linked with an uninstrumented version of it.

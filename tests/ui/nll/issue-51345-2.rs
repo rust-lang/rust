@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern: thread 'main' panicked at 'explicit panic'
-// ignore-emscripten no processes
+//@error-in-other-file: thread 'main' panicked at 'explicit panic'
+//@ignore-target-emscripten no processes
 
 fn main() {
     let mut vec = vec![];

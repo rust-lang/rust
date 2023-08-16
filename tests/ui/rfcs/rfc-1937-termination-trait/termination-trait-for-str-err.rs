@@ -1,7 +1,7 @@
 // run-fail
-//@error-pattern: An error message for you
+//@error-in-other-file: An error message for you
 // failure-status: 1
-// ignore-emscripten no processes
+//@ignore-target-emscripten no processes
 
 fn main() -> Result<(), &'static str> {
     Err("An error message for you")

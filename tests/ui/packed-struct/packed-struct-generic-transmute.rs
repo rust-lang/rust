@@ -4,7 +4,7 @@
 // transmute
 
 // ignore-tidy-linelength
-//@error-pattern: cannot transmute between types of different sizes, or dependently-sized types
+//@error-in-other-file: cannot transmute between types of different sizes, or dependently-sized types
 
 use std::mem;
 

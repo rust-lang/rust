@@ -1,6 +1,6 @@
 // Ensure inout asm! operands are marked as used by the liveness pass
 
-// only-x86_64
+//@only-target-x86_64
 //@check-pass
 
 #![allow(dead_code)]

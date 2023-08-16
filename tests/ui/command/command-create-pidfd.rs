@@ -1,5 +1,5 @@
 //@run
-// only-linux - pidfds are a linux-specific concept
+//@only-target-linux - pidfds are a linux-specific concept
 
 #![feature(linux_pidfd)]
 #![feature(rustc_private)]

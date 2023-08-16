@@ -1,5 +1,5 @@
-// only-x86_64
-// only-windows
+//@only-target-x86_64
+//@only-target-windows
 //@compile-flags: --crate-type lib --emit link
 #[link(name = "foo", kind = "raw-dylib")]
 extern "stdcall" {

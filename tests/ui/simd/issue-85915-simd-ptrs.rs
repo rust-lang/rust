@@ -1,5 +1,5 @@
 //@run
-// ignore-emscripten
+//@ignore-target-emscripten
 
 // Short form of the generic gather/scatter tests,
 // verifying simd([*const T; N]) and simd([*mut T; N]) pass typeck and work.

@@ -1,9 +1,9 @@
 //@run
-// ignore-windows
-// ignore-android
-// ignore-emscripten no processes
-// ignore-haiku
-// ignore-sgx no processes
+//@ignore-target-windows
+//@ignore-target-android
+//@ignore-target-emscripten no processes
+//@ignore-target-haiku
+//@ignore-target-sgx no processes
 
 #![feature(rustc_private)]
 

@@ -1,6 +1,6 @@
 //@edition:2018
 //@run
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 
 use std::thread;
 use std::time::Duration;

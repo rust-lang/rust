@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:explicit panic
-// ignore-emscripten no processes
+//@error-in-other-file:explicit panic
+//@ignore-target-emscripten no processes
 
 #![allow(unreachable_code)]
 #![allow(unused_variables)]

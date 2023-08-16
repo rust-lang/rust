@@ -1,7 +1,7 @@
 //@run
 // needs-unwind
 
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 
 // Test that if a slicing expr[..] fails, the correct cleanups happen.
 

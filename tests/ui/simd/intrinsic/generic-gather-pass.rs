@@ -1,5 +1,5 @@
 //@run
-// ignore-emscripten
+//@ignore-target-emscripten
 
 // Test that the simd_{gather,scatter} intrinsics produce the correct results.
 

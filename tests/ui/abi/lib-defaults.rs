@@ -1,7 +1,7 @@
 //@run
 // dont-check-compiler-stderr (rust-lang/rust#54222)
 
-// ignore-wasm32-bare no libc to test ffi with
+//@ignore-target-wasm32-unknown-unknown no libc to test ffi with
 
 //@compile-flags: -lrust_test_helpers
 

@@ -1,4 +1,4 @@
-//@error-pattern: invalid windows subsystem `wrong`, only `windows` and `console` are allowed
+//@error-in-other-file: invalid windows subsystem `wrong`, only `windows` and `console` are allowed
 
 #![windows_subsystem = "wrong"]
 

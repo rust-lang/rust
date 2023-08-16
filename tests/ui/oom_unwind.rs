@@ -2,7 +2,7 @@
 //@run
 // no-prefer-dynamic
 // needs-unwind
-// only-linux
+//@only-target-linux
 
 use std::hint::black_box;
 use std::mem::forget;

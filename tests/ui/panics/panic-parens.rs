@@ -2,8 +2,8 @@
 // certain positions
 
 // run-fail
-//@error-pattern:oops
-// ignore-emscripten no processes
+//@error-in-other-file:oops
+//@ignore-target-emscripten no processes
 
 fn bigpanic() {
     while (panic!("oops")) {

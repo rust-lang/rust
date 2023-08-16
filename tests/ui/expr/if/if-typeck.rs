@@ -1,4 +1,4 @@
-//@error-pattern:mismatched types
+//@error-in-other-file:mismatched types
 // issue #513
 
 fn f() { }

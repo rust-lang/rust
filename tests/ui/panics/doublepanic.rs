@@ -1,8 +1,8 @@
 #![allow(unreachable_code)]
 
 // run-fail
-//@error-pattern:One
-// ignore-emscripten no processes
+//@error-in-other-file:One
+//@ignore-target-emscripten no processes
 
 fn main() {
     panic!("One");

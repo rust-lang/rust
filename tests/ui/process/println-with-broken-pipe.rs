@@ -1,10 +1,10 @@
 // run-pass
 // check-run-results
-// ignore-windows
-// ignore-emscripten
-// ignore-fuchsia
-// ignore-horizon
-// ignore-android
+//@ignore-target-windows
+//@ignore-target-emscripten
+//@ignore-target-fuchsia
+//@ignore-target-horizon
+//@ignore-target-android
 // normalize-stderr-test ".rs:\d+:\d+" -> ".rs:LL:CC"
 
 // Test what the error message looks like when `println!()` panics because of

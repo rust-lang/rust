@@ -2,11 +2,11 @@
 
 #![allow(unused_must_use)]
 #![allow(unconditional_recursion)]
-// ignore-android: FIXME (#20004)
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-fuchsia must translate zircon signal to SIGABRT, FIXME (#58590)
-// ignore-nto no stack overflow handler used (no alternate stack available)
+//@ignore-target-android: FIXME (#20004)
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
+//@ignore-target-fuchsia must translate zircon signal to SIGABRT, FIXME (#58590)
+//@ignore-target-nto no stack overflow handler used (no alternate stack available)
 
 #![feature(core_intrinsics)]
 #![feature(rustc_private)]

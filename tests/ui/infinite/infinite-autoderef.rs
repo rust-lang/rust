@@ -1,4 +1,4 @@
-//@error-pattern: reached the recursion limit while auto-dereferencing
+//@error-in-other-file: reached the recursion limit while auto-dereferencing
 //@compile-flags: -Zdeduplicate-diagnostics=yes
 
 use std::ops::Deref;

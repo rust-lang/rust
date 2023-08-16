@@ -5,8 +5,8 @@
 // compile. To sidestep this by using one that *is* defined.
 
 //@run-rustfix
-// ignore-wasm32-bare no external library to link to.
-// ignore-asmjs wasm2js does not support source maps yet
+//@ignore-target-wasm32-unknown-unknown no external library to link to.
+//@ignore-target-asmjs wasm2js does not support source maps yet
 //@compile-flags: -g
 #![feature(rustc_private)]
 extern crate libc;

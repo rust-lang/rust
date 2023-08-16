@@ -1,4 +1,4 @@
-// only-aarch64
+//@only-target-aarch64
 //@run
 //@needs-asm-support
 // needs-unwind

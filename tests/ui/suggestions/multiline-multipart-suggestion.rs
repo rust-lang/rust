@@ -1,5 +1,5 @@
 //@compile-flags: --error-format=human --color=always
-// ignore-windows
+//@ignore-target-windows
 
 fn short(foo_bar: &Vec<&i32>) -> &i32 { //~ ERROR missing lifetime specifier
     &12

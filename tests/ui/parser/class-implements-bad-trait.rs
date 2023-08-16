@@ -1,4 +1,4 @@
-//@error-pattern:nonexistent
+//@error-in-other-file:nonexistent
 class cat : nonexistent {
   let meows: usize;
   new(in_x : usize) { self.meows = in_x; }

@@ -1,8 +1,8 @@
 // Test bounds checking for DST raw slices
 
 // run-fail
-//@error-pattern:index out of bounds
-// ignore-emscripten no processes
+//@error-in-other-file:index out of bounds
+//@ignore-target-emscripten no processes
 
 #[allow(unconditional_panic)]
 fn main() {

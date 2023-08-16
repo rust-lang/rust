@@ -1,7 +1,7 @@
 //@run
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-fuchsia ErrorKind not translated
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
+//@ignore-target-fuchsia ErrorKind not translated
 
 use std::io::ErrorKind;
 use std::process::Command;

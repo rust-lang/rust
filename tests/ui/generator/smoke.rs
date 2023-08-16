@@ -3,7 +3,7 @@
 //@revisions: default nomiropt
 //@[nomiropt] compile-flags: -Z mir-opt-level=0
 
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 //@compile-flags: --test
 
 #![feature(generators, generator_trait)]

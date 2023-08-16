@@ -1,6 +1,6 @@
 //@run
 // needs-unwind
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 
 // Make sure the destructor is run for unit-like structs.
 

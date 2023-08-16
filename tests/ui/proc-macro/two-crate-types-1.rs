@@ -1,4 +1,4 @@
-//@error-pattern: cannot mix `proc-macro` crate type with others
+//@error-in-other-file: cannot mix `proc-macro` crate type with others
 
 // force-host
 // no-prefer-dynamic

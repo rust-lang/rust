@@ -1,7 +1,7 @@
 // run-fail
-//@error-pattern:returned Box<dyn Error> from main()
+//@error-in-other-file:returned Box<dyn Error> from main()
 // failure-status: 1
-// ignore-emscripten no processes
+//@ignore-target-emscripten no processes
 
 use std::error::Error;
 use std::io;

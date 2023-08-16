@@ -5,8 +5,8 @@
 // C compilers have very inconsistent views on how the ABI
 // should look like.
 
-// ignore-windows
-// ignore-32bit
+//@ignore-target-windows
+//@ignore-32bit
 
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {

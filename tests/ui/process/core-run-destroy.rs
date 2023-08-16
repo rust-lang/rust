@@ -5,10 +5,10 @@
 #![allow(deprecated)]
 #![allow(unused_imports)]
 //@compile-flags:--test
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-vxworks no 'cat' and 'sleep'
-// ignore-fuchsia no 'cat'
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
+//@ignore-target-vxworks no 'cat' and 'sleep'
+//@ignore-target-fuchsia no 'cat'
 
 // N.B., these tests kill child processes. Valgrind sees these children as leaking
 // memory, which makes for some *confusing* logs. That's why these are here

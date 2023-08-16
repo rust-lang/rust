@@ -1,8 +1,8 @@
 //@run
 
-// ignore-windows - this is a unix-specific test
-// ignore-emscripten no processes
-// ignore-sgx no processes
+//@ignore-target-windows - this is a unix-specific test
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
 use std::env;
 use std::os::unix::process::CommandExt;
 use std::process::Command;

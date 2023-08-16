@@ -1,6 +1,6 @@
 // This test has been spuriously failing a lot recently (#92000).
 // Ignore it until the underlying issue is fixed.
-// ignore-test (#92000)
+//@ignore-test (#92000)
 
 // Regression test for #87481: short backtrace formatting cut off the entire stack trace.
 
@@ -20,7 +20,7 @@
 // normalize-stderr-test: "5: .*" -> "5: some Rust fn"
 
 // Backtraces are pretty broken in general on i686-pc-windows-msvc (#62897).
-// only-x86_64-pc-windows-msvc
+//@only-target-x86_64-pc-windows-msvc
 
 fn main() {
     a();

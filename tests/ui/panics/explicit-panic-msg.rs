@@ -3,8 +3,8 @@
 #![allow(non_fmt_panics)]
 
 // run-fail
-//@error-pattern:wooooo
-// ignore-emscripten no processes
+//@error-in-other-file:wooooo
+//@ignore-target-emscripten no processes
 
 fn main() {
     let mut a = 1;

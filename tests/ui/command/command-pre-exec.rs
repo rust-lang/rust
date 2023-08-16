@@ -3,10 +3,10 @@
 //@[thir] compile-flags: -Zthir-unsafeck
 
 #![allow(stable_features)]
-// ignore-windows - this is a unix-specific test
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-fuchsia no execvp syscall
+//@ignore-target-windows - this is a unix-specific test
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
+//@ignore-target-fuchsia no execvp syscall
 #![feature(process_exec, rustc_private)]
 
 extern crate libc;

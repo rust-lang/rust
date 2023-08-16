@@ -1,5 +1,5 @@
 //@run
-// ignore-fuchsia Test must be run out-of-process
+//@ignore-target-fuchsia Test must be run out-of-process
 
 #![feature(test)]
 

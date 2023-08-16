@@ -1,7 +1,7 @@
 //@needs-asm-support
-// ignore-nvptx64
-// ignore-spirv
-// ignore-wasm32
+//@ignore-target-nvptx64
+//@ignore-target-spirv
+//@ignore-target-wasm32
 
 #![feature(asm_const)]
 

@@ -1,16 +1,16 @@
 //@run
-// ignore-arm
-// ignore-aarch64
-// ignore-mips
-// ignore-mips64
-// ignore-sparc
-// ignore-sparc64
-// ignore-loongarch64
-// ignore-wasm
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-fuchsia no exception handler registered for segfault
-// ignore-nto Crash analysis impossible at SIGSEGV in QNX Neutrino
+//@ignore-target-arm
+//@ignore-target-aarch64
+//@ignore-target-mips
+//@ignore-target-mips64
+//@ignore-target-sparc
+//@ignore-target-sparc64
+//@ignore-target-loongarch64
+//@ignore-target-wasm
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
+//@ignore-target-fuchsia no exception handler registered for segfault
+//@ignore-target-nto Crash analysis impossible at SIGSEGV in QNX Neutrino
 
 use std::env;
 use std::mem::MaybeUninit;

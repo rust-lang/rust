@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:diverging_fn called
-//@error-pattern:0 dropped
+//@error-in-other-file:diverging_fn called
+//@error-in-other-file:0 dropped
 // needs-unwind this test checks that a destructor is called after panicking
 
 struct Droppable(u8);

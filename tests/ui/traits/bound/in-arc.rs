@@ -3,7 +3,7 @@
 // Tests that a heterogeneous list of existential `dyn` types can be put inside an Arc
 // and shared between threads as long as all types fulfill Send.
 
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 
 use std::sync::Arc;
 use std::sync::mpsc::channel;

@@ -1,6 +1,6 @@
 //@run
 // needs-unwind
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 
 // rust-lang/rust#64655: with panic=unwind, a panic from a subroutine
 // should still run destructors as it unwinds the stack. However,

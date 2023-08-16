@@ -1,5 +1,5 @@
 //@run
-// ignore-wasm32-bare no libc to test ffi with
+//@ignore-target-wasm32-unknown-unknown no libc to test ffi with
 #![feature(c_variadic)]
 
 use std::ffi::VaList;

@@ -1,5 +1,5 @@
 //@run
-// ignore-emscripten fma not implemented in emscripten
+//@ignore-target-emscripten fma not implemented in emscripten
 
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => ({

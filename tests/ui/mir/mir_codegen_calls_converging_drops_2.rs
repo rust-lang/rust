@@ -1,8 +1,8 @@
 // run-fail
-//@error-pattern:complex called
-//@error-pattern:dropped
-//@error-pattern:exit
-// ignore-emscripten no processes
+//@error-in-other-file:complex called
+//@error-in-other-file:dropped
+//@error-in-other-file:exit
+//@ignore-target-emscripten no processes
 
 struct Droppable;
 impl Drop for Droppable {

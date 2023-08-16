@@ -1,4 +1,4 @@
-// only-wasm32
+//@only-target-wasm32
 //@check-pass
 
 #![feature(wasm_target_feature)]

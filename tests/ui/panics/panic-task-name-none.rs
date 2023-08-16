@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:thread '<unnamed>' panicked at 'test'
-// ignore-emscripten Needs threads
+//@error-in-other-file:thread '<unnamed>' panicked at 'test'
+//@ignore-target-emscripten Needs threads
 
 use std::thread;
 

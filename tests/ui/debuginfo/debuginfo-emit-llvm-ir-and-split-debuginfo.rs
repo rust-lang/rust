@@ -1,5 +1,5 @@
 // build-pass
-// only-linux
+//@only-target-linux
 //
 //@compile-flags: -g --emit=llvm-ir -Csplit-debuginfo=unpacked
 //

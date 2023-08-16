@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:Number is odd
-// ignore-emscripten no processes
+//@error-in-other-file:Number is odd
+//@ignore-target-emscripten no processes
 
 fn even(x: usize) -> bool {
     if x < 2 {

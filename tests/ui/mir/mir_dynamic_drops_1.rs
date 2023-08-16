@@ -1,7 +1,7 @@
 // run-fail
-//@error-pattern:drop 1
-//@error-pattern:drop 2
-// ignore-emscripten no processes
+//@error-in-other-file:drop 1
+//@error-in-other-file:drop 2
+//@ignore-target-emscripten no processes
 
 /// Structure which will not allow to be dropped twice.
 struct Droppable<'a>(&'a mut bool, u32);

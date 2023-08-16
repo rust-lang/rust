@@ -1,6 +1,6 @@
 //@run
-// ignore-emscripten no processes
-// ignore-sgx no processes
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
 
 use std::alloc::{Layout, handle_alloc_error};
 use std::env;

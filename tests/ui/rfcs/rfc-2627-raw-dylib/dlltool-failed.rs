@@ -1,7 +1,7 @@
 // Tests that dlltool failing to generate an import library will raise an error.
 
-// only-gnu
-// only-windows
+//@only-target-gnu
+//@only-target-windows
 // needs-dlltool
 //@compile-flags: --crate-type lib --emit link
 // normalize-stderr-test: "[^ ']*/dlltool.exe" -> "$$DLLTOOL"

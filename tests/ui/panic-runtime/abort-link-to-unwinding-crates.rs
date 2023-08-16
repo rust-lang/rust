@@ -3,9 +3,9 @@
 //@compile-flags:-C panic=abort
 //@aux-build:exit-success-if-unwind.rs
 // no-prefer-dynamic
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-macos
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
+//@ignore-target-macos
 
 extern crate exit_success_if_unwind;
 

@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:Ensure that the child thread runs by panicking
-// ignore-emscripten Needs threads.
+//@error-in-other-file:Ensure that the child thread runs by panicking
+//@ignore-target-emscripten Needs threads.
 
 use std::thread;
 

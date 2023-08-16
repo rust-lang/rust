@@ -1,9 +1,9 @@
 //@run
-// ignore-android no libc
-// ignore-emscripten no libc
-// ignore-sgx no libc
-// ignore-wasm32 no libc
-// only-linux
+//@ignore-target-android no libc
+//@ignore-target-emscripten no libc
+//@ignore-target-sgx no libc
+//@ignore-target-wasm32 no libc
+//@only-target-linux
 //@compile-flags:-C panic=abort
 //@aux-build:helper.rs
 

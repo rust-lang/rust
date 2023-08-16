@@ -1,5 +1,5 @@
 //@run
-// ignore-wasm32-bare no libc for ffi testing
+//@ignore-target-wasm32-unknown-unknown no libc for ffi testing
 
 // Test a function that takes/returns a u32.
 

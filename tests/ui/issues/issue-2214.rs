@@ -1,6 +1,6 @@
 //@run
-// ignore-wasm32-bare no libc to test ffi with
-// ignore-sgx no libc
+//@ignore-target-wasm32-unknown-unknown no libc to test ffi with
+//@ignore-target-sgx no libc
 #![feature(rustc_private)]
 
 extern crate libc;
@@ -23,7 +23,7 @@ mod m {
 
     extern "C" {
         #[cfg(all(unix, not(target_os = "vxworks")))]
-        #[link_name="lgamma_r"]
+        #[link_name = "lgamma_r"]
         pub fn lgamma(n: c_double, sign: &mut c_int) -> c_double;
         #[cfg(windows)]
         #[link_name = "lgamma"]

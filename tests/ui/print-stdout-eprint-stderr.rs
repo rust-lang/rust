@@ -1,6 +1,6 @@
 //@run
-// ignore-emscripten spawning processes is not supported
-// ignore-sgx no processes
+//@ignore-target-emscripten spawning processes is not supported
+//@ignore-target-sgx no processes
 
 use std::{env, process};
 

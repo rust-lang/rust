@@ -1,4 +1,4 @@
-// only-x86_64
+//@only-target-x86_64
 //@compile-flags: -C target-feature=+avx512f
 
 #![feature(asm_const)]

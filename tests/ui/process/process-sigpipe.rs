@@ -2,7 +2,7 @@
 #![allow(unused_imports)]
 #![allow(deprecated)]
 
-// ignore-android since the dynamic linker sets a SIGPIPE handler (to do
+//@ignore-target-android since the dynamic linker sets a SIGPIPE handler (to do
 // a crash report) so inheritance is moot on the entire platform
 
 // libstd ignores SIGPIPE, and other libraries may set signal masks.
@@ -13,9 +13,9 @@
 // (instead of running forever), and that it does not print an error
 // message about a broken pipe.
 
-// ignore-emscripten no threads support
-// ignore-vxworks no 'sh'
-// ignore-fuchsia no 'sh'
+//@ignore-target-emscripten no threads support
+//@ignore-target-vxworks no 'sh'
+//@ignore-target-fuchsia no 'sh'
 
 use std::process;
 use std::thread;

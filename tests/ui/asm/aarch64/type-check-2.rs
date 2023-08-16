@@ -1,4 +1,4 @@
-// only-aarch64
+//@only-target-aarch64
 
 #![feature(repr_simd, never_type)]
 

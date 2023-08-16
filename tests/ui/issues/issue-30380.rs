@@ -2,8 +2,8 @@
 // destroyed values lying around for other destructors to observe.
 
 // run-fail
-//@error-pattern:panicking destructors ftw!
-// ignore-emscripten no processes
+//@error-in-other-file:panicking destructors ftw!
+//@ignore-target-emscripten no processes
 
 struct Observer<'a>(&'a mut FilledOnDrop);
 

@@ -5,7 +5,7 @@
 //@aux-build:wants-panic-runtime-unwind.rs
 //@aux-build:wants-panic-runtime-abort.rs
 //@aux-build:panic-runtime-lang-items.rs
-//@error-pattern: is not compiled with this crate's panic strategy `unwind`
+//@error-in-other-file: is not compiled with this crate's panic strategy `unwind`
 
 #![no_std]
 #![no_main]

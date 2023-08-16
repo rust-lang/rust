@@ -10,8 +10,8 @@
 // See issue #59123 for a full explanation.
 
 //@edition:2018
-// ignore-wasm32 issue #62807
-// ignore-asmjs issue #62807
+//@ignore-target-wasm32 issue #62807
+//@ignore-target-asmjs issue #62807
 // needs-unwind Size of Closures change on panic=abort
 
 #![feature(generators, generator_trait)]

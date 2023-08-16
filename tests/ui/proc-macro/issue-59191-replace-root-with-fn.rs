@@ -3,7 +3,7 @@
 
 //@edition:2018
 // aux-crate:issue_59191=issue-59191.rs
-//@error-pattern: requires `sized` lang_item
+//@error-in-other-file: requires `sized` lang_item
 
 #![feature(custom_inner_attributes)]
 #![issue_59191::no_main]

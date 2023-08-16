@@ -1,7 +1,7 @@
 //@run
-// ignore-android
-// ignore-emscripten no processes
-// ignore-sgx no processes
+//@ignore-target-android
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
 //@revisions: mir thir
 //@[thir] compile-flags: -Zthir-unsafeck
 

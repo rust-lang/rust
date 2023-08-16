@@ -1,5 +1,5 @@
 //@run
-// only-i686-pc-windows-msvc
+//@only-target-i686-pc-windows-msvc
 //@compile-flags: -Copt-level=0 -Cdebug-assertions=yes
 
 // MSVC isn't sure if on 32-bit Windows its u64 type is 8-byte-aligned or 4-byte-aligned.

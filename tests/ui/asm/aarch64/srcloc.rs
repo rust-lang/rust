@@ -1,4 +1,4 @@
-// only-aarch64
+//@only-target-aarch64
 // build-fail
 //@needs-asm-support
 //@compile-flags: -Ccodegen-units=1

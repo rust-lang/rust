@@ -1,7 +1,7 @@
 //@run
 
 //@compile-flags: -C codegen-units=8 -Z thinlto
-// ignore-windows
+//@ignore-target-windows
 
 #![feature(linkage)]
 

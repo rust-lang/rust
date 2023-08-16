@@ -1,4 +1,4 @@
-// ignore-wasm32
+//@ignore-target-wasm32
 // dont-check-compiler-stderr
 #![feature(cfg_target_thread_local, thread_local_internals)]
 

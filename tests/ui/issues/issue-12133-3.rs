@@ -2,8 +2,8 @@
 //@aux-build:issue-12133-rlib.rs
 //@aux-build:issue-12133-dylib.rs
 //@aux-build:issue-12133-dylib2.rs
-// ignore-emscripten no dylib support
-// ignore-musl
+//@ignore-target-emscripten no dylib support
+//@ignore-target-musl
 // needs-dynamic-linking
 
 // pretty-expanded FIXME #23616

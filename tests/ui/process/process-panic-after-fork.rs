@@ -1,24 +1,23 @@
 //@run
 // no-prefer-dynamic
-// ignore-wasm32-bare no libc
-// ignore-windows
-// ignore-sgx no libc
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-fuchsia no fork
+//@ignore-target-wasm32-unknown-unknown no libc
+//@ignore-target-windows
+//@ignore-target-sgx no libc
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
+//@ignore-target-fuchsia no fork
 
 #![feature(rustc_private)]
 #![feature(never_type)]
 #![feature(panic_always_abort)]
-
 #![allow(invalid_from_utf8)]
 
 extern crate libc;
 
 use std::alloc::{GlobalAlloc, Layout};
 use std::fmt;
-use std::panic::{self, panic_any};
 use std::os::unix::process::{CommandExt, ExitStatusExt};
+use std::panic::{self, panic_any};
 use std::process::{self, Command, ExitStatus};
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -31,10 +30,8 @@ struct PidChecking<A> {
 }
 
 #[global_allocator]
-static ALLOCATOR: PidChecking<std::alloc::System> = PidChecking {
-    parent: std::alloc::System,
-    require_pid: AtomicU32::new(0),
-};
+static ALLOCATOR: PidChecking<std::alloc::System> =
+    PidChecking { parent: std::alloc::System, require_pid: AtomicU32::new(0) };
 
 impl<A> PidChecking<A> {
     fn engage(&self) {
@@ -55,7 +52,7 @@ impl<A> PidChecking<A> {
     }
 }
 
-unsafe impl<A:GlobalAlloc> GlobalAlloc for PidChecking<A> {
+unsafe impl<A: GlobalAlloc> GlobalAlloc for PidChecking<A> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         self.check();
         self.parent.alloc(layout)
@@ -116,8 +113,10 @@ fn expect_aborted(status: ExitStatus) {
 
             println!("Content of tombstone:\n{tombstone}");
 
-            assert!(tombstone
-                .contains("signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr deadbaad"));
+            assert!(
+                tombstone
+                    .contains("signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr deadbaad")
+            );
             let abort_on_top = tombstone
                 .lines()
                 .skip_while(|l| !l.contains("backtrace:"))
@@ -158,8 +157,8 @@ fn main() {
     one(&|| panic!("message with argument: {}", 42));
 
     #[derive(Debug)]
-    struct Wotsit { }
-    one(&|| panic_any(Wotsit { }));
+    struct Wotsit {}
+    one(&|| panic_any(Wotsit {}));
 
     let mut c = Command::new("echo");
     unsafe {
@@ -181,9 +180,15 @@ fn main() {
     // otherwise these facilities become impossible to use in the
     // child after fork, which is really quite awkward.
 
-    one(&|| { None::<DisplayWithHeap>.unwrap(); });
-    one(&|| { None::<DisplayWithHeap>.expect("unwrapped a none"); });
-    one(&|| { std::str::from_utf8(b"\xff").unwrap(); });
+    one(&|| {
+        None::<DisplayWithHeap>.unwrap();
+    });
+    one(&|| {
+        None::<DisplayWithHeap>.expect("unwrapped a none");
+    });
+    one(&|| {
+        std::str::from_utf8(b"\xff").unwrap();
+    });
     one(&|| {
         let x = [0, 1, 2, 3];
         let y = x[std::hint::black_box(4)];

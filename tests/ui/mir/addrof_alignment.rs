@@ -1,5 +1,5 @@
 //@run
-// ignore-wasm32-bare: No panic messages
+//@ignore-target-wasm32-unknown-unknown: No panic messages
 //@compile-flags: -C debug-assertions
 
 struct Misalignment {

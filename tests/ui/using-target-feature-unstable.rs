@@ -1,5 +1,5 @@
 //@run
-// only-x86_64
+//@only-target-x86_64
 //@aux-build:using-target-feature-unstable.rs
 
 extern crate using_target_feature_unstable;

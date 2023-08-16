@@ -1,4 +1,4 @@
-// only-x86_64
+//@only-target-x86_64
 // build-pass
 
 use std::arch::x86_64::*;

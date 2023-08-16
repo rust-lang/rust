@@ -1,7 +1,7 @@
 // build-fail
 // dont-check-compiler-stderr
 // ignore-tidy-linelength
-//@error-pattern:cannot link together two panic runtimes: panic_runtime_unwind and panic_runtime_unwind2
+//@error-in-other-file:cannot link together two panic runtimes: panic_runtime_unwind and panic_runtime_unwind2
 //@aux-build:panic-runtime-unwind.rs
 //@aux-build:panic-runtime-unwind2.rs
 //@aux-build:panic-runtime-lang-items.rs

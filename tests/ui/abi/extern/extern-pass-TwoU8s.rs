@@ -1,7 +1,7 @@
 //@run
 #![allow(improper_ctypes)]
 
-// ignore-wasm32-bare no libc for ffi testing
+//@ignore-target-wasm32-unknown-unknown no libc for ffi testing
 
 // Test a foreign function that accepts and returns a struct
 // by value.

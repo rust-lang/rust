@@ -1,5 +1,5 @@
 //@run
-// ignore-wasm
+//@ignore-target-wasm
 #![allow(dead_code)]
 #![allow(improper_ctypes)]
 

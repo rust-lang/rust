@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-// ignore-emscripten weird assertion?
+//@ignore-target-emscripten weird assertion?
 
 #[repr(packed)]
 struct Foo1 {

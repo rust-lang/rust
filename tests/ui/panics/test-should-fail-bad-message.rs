@@ -1,7 +1,7 @@
 // run-fail
 // check-stdout
 //@compile-flags: --test
-// ignore-emscripten
+//@ignore-target-emscripten
 
 #[test]
 #[should_panic(expected = "foobar")]

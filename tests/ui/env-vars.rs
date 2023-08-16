@@ -1,5 +1,5 @@
 //@run
-// ignore-wasm32-bare no env vars
+//@ignore-target-wasm32-unknown-unknown no env vars
 
 use std::env::*;
 
@@ -14,7 +14,12 @@ fn main() {
         }
 
         let v2 = var_os(&k);
-        assert!(v2.as_ref().map(|s| &**s) == Some(&*v),
-                "bad vars->var transition: {:?} {:?} {:?}", k, v, v2);
+        assert!(
+            v2.as_ref().map(|s| &**s) == Some(&*v),
+            "bad vars->var transition: {:?} {:?} {:?}",
+            k,
+            v,
+            v2
+        );
     }
 }

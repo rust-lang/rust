@@ -1,7 +1,7 @@
 //@compile-flags: -Z span-debug
-//@error-pattern:custom inner attributes are unstable
-//@error-pattern:inner macro attributes are unstable
-//@error-pattern:this was previously accepted
+//@error-in-other-file:custom inner attributes are unstable
+//@error-in-other-file:inner macro attributes are unstable
+//@error-in-other-file:this was previously accepted
 //@aux-build:test-macros.rs
 
 #![no_std] // Don't load unnecessary hygiene information from std

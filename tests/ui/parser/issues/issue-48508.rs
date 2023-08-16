@@ -7,7 +7,7 @@
 // issue-48508-aux.rs
 
 //@compile-flags:-g
-// ignore-asmjs wasm2js does not support source maps yet
+//@ignore-target-asmjs wasm2js does not support source maps yet
 
 #![allow(uncommon_codepoints)]
 

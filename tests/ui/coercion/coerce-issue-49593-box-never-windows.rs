@@ -1,5 +1,5 @@
 //@revisions: nofallback fallback
-// only-windows - the number of `Error` impls is platform-dependent
+//@only-target-windows - the number of `Error` impls is platform-dependent
 //@[fallback] check-pass
 //[nofallback] check-fail
 

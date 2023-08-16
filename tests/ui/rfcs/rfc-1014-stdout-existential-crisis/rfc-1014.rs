@@ -1,8 +1,7 @@
 //@run
 #![allow(dead_code)]
-// ignore-wasm32-bare no libc
-// ignore-sgx no libc
-
+//@ignore-target-wasm32-unknown-unknown no libc
+//@ignore-target-sgx no libc
 #![feature(rustc_private)]
 
 extern crate libc;
@@ -19,12 +18,16 @@ extern "system" {
 #[cfg(windows)]
 fn close_stdout() {
     const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
-    unsafe { CloseHandle(GetStdHandle(STD_OUTPUT_HANDLE)); }
+    unsafe {
+        CloseHandle(GetStdHandle(STD_OUTPUT_HANDLE));
+    }
 }
 
 #[cfg(not(windows))]
 fn close_stdout() {
-    unsafe { libc::close(1); }
+    unsafe {
+        libc::close(1);
+    }
 }
 
 fn main() {

@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:so long
-// ignore-emscripten no processes
+//@error-in-other-file:so long
+//@ignore-target-emscripten no processes
 
 #![allow(unreachable_code)]
 

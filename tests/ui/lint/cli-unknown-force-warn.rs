@@ -2,6 +2,6 @@
 // `--force-warn`. This is a regression test for issue #86958.
 //
 //@compile-flags: --force-warn foo-qux
-//@error-pattern: unknown lint: `foo_qux`
+//@error-in-other-file: unknown lint: `foo_qux`
 
 fn main() {}

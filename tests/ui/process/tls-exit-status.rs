@@ -1,7 +1,7 @@
 // run-fail
-//@error-pattern:nonzero
+//@error-in-other-file:nonzero
 // exec-env:RUST_NEWRT=1
-// ignore-emscripten no processes
+//@ignore-target-emscripten no processes
 
 use std::env;
 

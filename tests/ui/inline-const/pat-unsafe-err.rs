@@ -1,4 +1,4 @@
-// ignore-test This is currently broken
+//@ignore-test This is currently broken
 //@revisions: mir thir
 //@[thir] compile-flags: -Z thir-unsafeck
 

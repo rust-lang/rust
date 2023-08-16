@@ -2,7 +2,7 @@
 
 //@compile-flags: --error-format=human --cfg ""
 
-//@error-pattern: invalid `--cfg` argument: `""` (expected `key` or `key="value"`)
+//@error-in-other-file: invalid `--cfg` argument: `""` (expected `key` or `key="value"`)
 
 pub fn main() {
 }

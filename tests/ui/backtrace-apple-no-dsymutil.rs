@@ -2,7 +2,7 @@
 
 //@compile-flags:-Cstrip=none
 //@compile-flags:-g -Csplit-debuginfo=unpacked
-// only-macos
+//@only-target-macos
 
 use std::process::Command;
 use std::str;

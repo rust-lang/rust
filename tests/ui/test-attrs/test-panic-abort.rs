@@ -6,9 +6,9 @@
 // exec-env:RUST_BACKTRACE=0
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 
-// ignore-wasm no panic or subprocess support
-// ignore-emscripten no panic or subprocess support
-// ignore-sgx no subprocess support
+//@ignore-target-wasm no panic or subprocess support
+//@ignore-target-emscripten no panic or subprocess support
+//@ignore-target-sgx no subprocess support
 
 #![cfg(test)]
 #![feature(test)]

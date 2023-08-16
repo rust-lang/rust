@@ -1,6 +1,6 @@
 //@compile-flags: -Ztreat-err-as-bug
 // dont-check-failure-status
-//@error-pattern: aborting due to `-Z treat-err-as-bug=1`
+//@error-in-other-file: aborting due to `-Z treat-err-as-bug=1`
 // dont-check-compiler-stderr
 //@rustc-env:RUST_BACKTRACE=0
 

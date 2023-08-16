@@ -1,7 +1,7 @@
 //@run
 //@compile-flags: -C lto
 // no-prefer-dynamic
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 //@revisions: mir thir
 //@[thir] compile-flags: -Zthir-unsafeck
 

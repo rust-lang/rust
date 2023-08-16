@@ -1,4 +1,4 @@
-// only-wasm32
+//@only-target-wasm32
 //@compile-flags: -C opt-level=2
 // build-pass
 

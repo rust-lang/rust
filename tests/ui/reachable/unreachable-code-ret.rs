@@ -1,4 +1,4 @@
-//@error-pattern: unreachable statement
+//@error-in-other-file: unreachable statement
 
 #![deny(unreachable_code)]
 

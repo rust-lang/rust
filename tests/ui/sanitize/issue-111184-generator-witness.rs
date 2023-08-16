@@ -4,7 +4,7 @@
 // needs-sanitizer-cfi
 //@compile-flags: -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi --edition=2021
 // no-prefer-dynamic
-// only-x86_64-unknown-linux-gnu
+//@only-target-x86_64-unknown-linux-gnu
 //@run
 
 use std::future::Future;

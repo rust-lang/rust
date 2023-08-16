@@ -1,6 +1,6 @@
 //@run
 // needs-unwind
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 
 // Issue #787
 // Don't try to clean up uninitialized locals

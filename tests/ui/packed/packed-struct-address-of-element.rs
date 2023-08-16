@@ -1,7 +1,7 @@
 //@run
 #![allow(dead_code)]
 #![feature(raw_ref_op)]
-// ignore-emscripten weird assertion?
+//@ignore-target-emscripten weird assertion?
 
 #[repr(packed)]
 struct Foo1 {

@@ -1,4 +1,4 @@
-//@error-pattern:import
+//@error-in-other-file:import
 
 mod a {
     pub use b::x;

@@ -1,7 +1,7 @@
 //@run
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 //@compile-flags: -O
-// ignore-nto Doesn't work without emulated TLS enabled (in LLVM)
+//@ignore-target-nto Doesn't work without emulated TLS enabled (in LLVM)
 
 #![feature(thread_local)]
 

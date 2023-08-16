@@ -5,8 +5,8 @@
 //@revisions: foo bar
 // should-fail
 // needs-run-enabled
-//@[foo] error-pattern:bar
-//@[bar] error-pattern:foo
+//@[foo] error-in-other-file:bar
+//@[bar] error-in-other-file:foo
 
 #[cfg(foo)]
 fn die() {

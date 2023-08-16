@@ -1,4 +1,4 @@
-//@error-pattern: borrow of moved value
+//@error-in-other-file: borrow of moved value
 
 use std::sync::Arc;
 use std::thread;

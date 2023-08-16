@@ -4,7 +4,7 @@
 //
 //@run
 // dont-check-compiler-stderr
-// only-linux
+//@only-target-linux
 // no-prefer-dynamic
 //@compile-flags: -Ctarget-feature=+crt-static -Crpath=no -Crelocation-model=static
 #![feature(exit_status_error)]

@@ -3,6 +3,6 @@
 // needs-xray
 //@compile-flags: -Z instrument-xray=ignore-loops,ignore-loops
 // ignore-tidy-linelength
-//@error-pattern: incorrect value `ignore-loops,ignore-loops` for unstable option `instrument-xray`
+//@error-in-other-file: incorrect value `ignore-loops,ignore-loops` for unstable option `instrument-xray`
 
 fn main() {}

@@ -6,6 +6,6 @@
 #[lang="copy"] pub trait Copy { }
 #[lang="sized"] pub trait Sized { }
 
-//@error-pattern:requires `start` lang_item
+//@error-in-other-file:requires `start` lang_item
 
 fn main() {}

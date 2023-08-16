@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:explicit panic
-// ignore-emscripten no processes
+//@error-in-other-file:explicit panic
+//@ignore-target-emscripten no processes
 
 fn a() {}
 

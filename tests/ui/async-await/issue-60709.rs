@@ -3,7 +3,7 @@
 //@compile-flags: -Copt-level=z -Cdebuginfo=2 --edition=2018
 
 //@run
-// ignore-asmjs wasm2js does not support source maps yet
+//@ignore-target-asmjs wasm2js does not support source maps yet
 
 use std::future::Future;
 use std::task::Poll;

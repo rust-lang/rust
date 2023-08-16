@@ -1,6 +1,6 @@
 //@run
 #![allow(non_camel_case_types)]
-// ignore-emscripten FIXME(#45351) hits an LLVM assert
+//@ignore-target-emscripten FIXME(#45351) hits an LLVM assert
 #![feature(repr_simd, platform_intrinsics)]
 
 #[repr(simd)]

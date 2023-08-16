@@ -1,4 +1,4 @@
-// ignore-32bit
+//@ignore-32bit
 // This test gives a different error on 32-bit architectures.
 //@stderr-per-bitwidth
 

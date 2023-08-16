@@ -4,7 +4,7 @@
 //@run
 // check-run-results
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
-// ignore-wasm32 no support for `Instant`
+//@ignore-target-wasm32 no support for `Instant`
 
 // Tests the output of the test harness with only passed tests.
 

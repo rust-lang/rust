@@ -1,8 +1,8 @@
 //@run
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-vxworks no 'env'
-// ignore-fuchsia no 'env'
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
+//@ignore-target-vxworks no 'env'
+//@ignore-target-fuchsia no 'env'
 
 use std::process::Command;
 use std::env;

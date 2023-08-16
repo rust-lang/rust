@@ -1,5 +1,5 @@
 // build-pass
-// ignore-sgx
+//@ignore-target-sgx
 
 // pretty-expanded FIXME #23616
 

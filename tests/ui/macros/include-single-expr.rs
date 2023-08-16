@@ -1,4 +1,4 @@
-//@error-pattern:include macro expected single expression
+//@error-in-other-file:include macro expected single expression
 
 fn main() {
     include!("include-single-expr-helper.rs");

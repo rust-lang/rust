@@ -2,9 +2,9 @@
 // Checks if the correct registers are being used to pass arguments
 // when the sysv64 ABI is specified.
 
-// ignore-android
-// ignore-arm
-// ignore-aarch64
+//@ignore-target-android
+//@ignore-target-arm
+//@ignore-target-aarch64
 //@needs-asm-support
 
 #[cfg(target_arch = "x86_64")]

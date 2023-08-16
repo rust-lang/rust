@@ -1,6 +1,6 @@
 //@run
 //@compile-flags: -g
-// ignore-asmjs wasm2js does not support source maps yet
+//@ignore-target-asmjs wasm2js does not support source maps yet
 
 #![feature(generators, generator_trait)]
 

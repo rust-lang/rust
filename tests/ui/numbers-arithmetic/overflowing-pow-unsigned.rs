@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:thread 'main' panicked at 'attempt to multiply with overflow'
-// ignore-emscripten no processes
+//@error-in-other-file:thread 'main' panicked at 'attempt to multiply with overflow'
+//@ignore-target-emscripten no processes
 //@compile-flags: -C debug-assertions
 
 fn main() {

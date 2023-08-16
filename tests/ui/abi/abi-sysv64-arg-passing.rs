@@ -24,10 +24,10 @@
 // issue-62350-sysv-neg-reg-counts
 // struct-return
 
-// ignore-android
-// ignore-arm
-// ignore-aarch64
-// ignore-windows
+//@ignore-target-android
+//@ignore-target-arm
+//@ignore-target-aarch64
+//@ignore-target-windows
 
 // note: windows is ignored as rust_test_helpers does not have the sysv64 abi on windows
 

@@ -2,10 +2,10 @@
 // be talking about `async fn`s instead.
 
 // run-fail
-//@error-pattern: thread 'main' panicked at '`async fn` resumed after completion'
+//@error-in-other-file: thread 'main' panicked at '`async fn` resumed after completion'
 //@edition:2018
-// ignore-wasm no panic or subprocess support
-// ignore-emscripten no panic or subprocess support
+//@ignore-target-wasm no panic or subprocess support
+//@ignore-target-emscripten no panic or subprocess support
 
 #![feature(generators, generator_trait)]
 

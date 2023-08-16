@@ -3,9 +3,9 @@
 #![allow(stable_features)]
 #![allow(overflowing_literals)]
 
-// ignore-emscripten
-// ignore-sgx no processes
-// ignore-fuchsia must translate zircon signal to SIGILL, FIXME (#58590)
+//@ignore-target-emscripten
+//@ignore-target-sgx no processes
+//@ignore-target-fuchsia must translate zircon signal to SIGILL, FIXME (#58590)
 
 #![feature(repr_simd, target_feature, cfg_target_feature)]
 #![feature(avx512_target_feature)]

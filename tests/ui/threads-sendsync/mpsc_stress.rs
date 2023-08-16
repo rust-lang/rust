@@ -1,6 +1,6 @@
 //@run
 //@compile-flags:--test
-// ignore-emscripten
+//@ignore-target-emscripten
 
 use std::sync::mpsc::channel;
 use std::sync::mpsc::TryRecvError;

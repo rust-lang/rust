@@ -1,7 +1,7 @@
 //@run
 #![allow(non_camel_case_types)]
 
-// ignore-emscripten
+//@ignore-target-emscripten
 // ignore-endian-big behavior of simd_bitmask is endian-specific
 
 // Test that the simd_bitmask intrinsic produces correct results.

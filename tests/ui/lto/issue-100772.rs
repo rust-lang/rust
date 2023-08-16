@@ -2,7 +2,7 @@
 // needs-sanitizer-cfi
 //@compile-flags: -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi
 // no-prefer-dynamic
-// only-x86_64-unknown-linux-gnu
+//@only-target-x86_64-unknown-linux-gnu
 
 #![feature(allocator_api)]
 

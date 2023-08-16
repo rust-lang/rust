@@ -1,5 +1,5 @@
 //@run
-// ignore-emscripten
+//@ignore-target-emscripten
 
 #[repr(C)]
 pub struct Foo(i128);

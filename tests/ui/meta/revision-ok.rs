@@ -3,9 +3,9 @@
 
 // run-fail
 //@revisions: foo bar
-//@[foo] error-pattern:foo
-//@[bar] error-pattern:bar
-// ignore-emscripten no processes
+//@[foo] error-in-other-file:foo
+//@[bar] error-in-other-file:bar
+//@ignore-target-emscripten no processes
 
 #[cfg(foo)]
 fn die() {

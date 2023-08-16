@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:panic evaluated
-// ignore-emscripten no processes
+//@error-in-other-file:panic evaluated
+//@ignore-target-emscripten no processes
 
 #[allow(unused_variables)]
 fn main() {

@@ -2,8 +2,8 @@
 #![allow(unused_variables)]
 //@compile-flags:-C lto -C panic=abort
 // no-prefer-dynamic
-// ignore-emscripten no processes
-// ignore-sgx no processes
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
 
 use std::process::Command;
 use std::env;

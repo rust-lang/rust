@@ -2,10 +2,10 @@
 // properly.
 
 // run-fail
-//@error-pattern:should be a positive integer
+//@error-in-other-file:should be a positive integer
 //@compile-flags: --test
 // exec-env:RUST_TEST_THREADS=foo
-// ignore-emscripten
+//@ignore-target-emscripten
 
 #[test]
 fn do_nothing() {}

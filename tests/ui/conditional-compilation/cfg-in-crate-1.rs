@@ -1,3 +1,3 @@
-//@error-pattern: `main` function not found
+//@error-in-other-file: `main` function not found
 
 #![cfg(bar)]

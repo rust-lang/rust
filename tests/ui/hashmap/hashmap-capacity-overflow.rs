@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:capacity overflow
-// ignore-emscripten no processes
+//@error-in-other-file:capacity overflow
+//@ignore-target-emscripten no processes
 
 use std::collections::hash_map::HashMap;
 use std::mem::size_of;

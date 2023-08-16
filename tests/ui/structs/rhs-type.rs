@@ -2,8 +2,8 @@
 // as a _|_-typed thing, not a str-typed thing
 
 // run-fail
-//@error-pattern:bye
-// ignore-emscripten no processes
+//@error-in-other-file:bye
+//@ignore-target-emscripten no processes
 
 #![allow(unreachable_code)]
 #![allow(unused_variables)]

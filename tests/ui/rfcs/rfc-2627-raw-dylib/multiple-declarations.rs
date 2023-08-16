@@ -1,5 +1,5 @@
-// only-x86
-// only-windows
+//@only-target-x86
+//@only-target-windows
 //@compile-flags: --crate-type lib --emit link
 #![allow(clashing_extern_declarations)]
 #[link(name = "foo", kind = "raw-dylib")]

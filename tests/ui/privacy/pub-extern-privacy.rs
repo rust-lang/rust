@@ -1,5 +1,5 @@
 //@run
-// ignore-wasm32-bare no libc to test ffi with
+//@ignore-target-wasm32-unknown-unknown no libc to test ffi with
 
 // pretty-expanded FIXME #23616
 

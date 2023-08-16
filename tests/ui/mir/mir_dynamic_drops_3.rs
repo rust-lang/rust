@@ -1,10 +1,10 @@
 // run-fail
 // needs-unwind
-//@error-pattern:unwind happens
-//@error-pattern:drop 3
-//@error-pattern:drop 2
-//@error-pattern:drop 1
-// ignore-emscripten no processes
+//@error-in-other-file:unwind happens
+//@error-in-other-file:drop 3
+//@error-in-other-file:drop 2
+//@error-in-other-file:drop 1
+//@ignore-target-emscripten no processes
 
 /// Structure which will not allow to be dropped twice.
 struct Droppable<'a>(&'a mut bool, u32);

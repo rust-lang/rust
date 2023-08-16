@@ -1,8 +1,8 @@
 //@run
-// ignore-windows
-// ignore-macos
-// ignore-emscripten doesn't support this linkage
-// ignore-sgx weak linkage not permitted
+//@ignore-target-windows
+//@ignore-target-macos
+//@ignore-target-emscripten doesn't support this linkage
+//@ignore-target-sgx weak linkage not permitted
 //@aux-build:linkage1.rs
 
 #![feature(linkage)]

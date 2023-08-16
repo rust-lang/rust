@@ -6,7 +6,7 @@
 // the alignment of elements into account.
 
 // pretty-expanded FIXME #23616
-// ignore-wasm32-bare no libc to test with
+//@ignore-target-wasm32-unknown-unknown no libc to test with
 #![feature(rustc_private)]
 
 extern crate libc;

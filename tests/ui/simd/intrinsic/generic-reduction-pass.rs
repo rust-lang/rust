@@ -1,7 +1,7 @@
 //@run
 #![allow(non_camel_case_types)]
 
-// ignore-emscripten
+//@ignore-target-emscripten
 
 // Test that the simd_reduce_{op} intrinsics produce the correct results.
 

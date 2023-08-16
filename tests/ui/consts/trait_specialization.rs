@@ -1,4 +1,4 @@
-// ignore-wasm32-bare which doesn't support `std::process:exit()`
+//@ignore-target-wasm32-unknown-unknown which doesn't support `std::process:exit()`
 //@compile-flags: -Zmir-opt-level=3
 //@run
 
@@ -14,7 +14,7 @@ trait SpecializedTrait {
     const CONST_STR: &'static str;
     fn method() -> &'static str;
 }
-impl <T> SpecializedTrait for T {
+impl<T> SpecializedTrait for T {
     default const CONST_BOOL: bool = false;
     default const CONST_STR: &'static str = "in default impl";
     #[inline(always)]
@@ -22,7 +22,7 @@ impl <T> SpecializedTrait for T {
         "in default impl"
     }
 }
-impl <T: Marker> SpecializedTrait for T {
+impl<T: Marker> SpecializedTrait for T {
     const CONST_BOOL: bool = true;
     const CONST_STR: &'static str = "in specialized impl";
     fn method() -> &'static str {
@@ -31,11 +31,7 @@ impl <T: Marker> SpecializedTrait for T {
 }
 
 fn const_bool<T>() -> &'static str {
-    if <T as SpecializedTrait>::CONST_BOOL {
-        "in specialized impl"
-    } else {
-        "in default impl"
-    }
+    if <T as SpecializedTrait>::CONST_BOOL { "in specialized impl" } else { "in default impl" }
 }
 fn const_str<T>() -> &'static str {
     <T as SpecializedTrait>::CONST_STR

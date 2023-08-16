@@ -1,6 +1,6 @@
 //@run
-// ignore-wasm32-bare can't block the thread
-// ignore-sgx not supported
+//@ignore-target-wasm32-unknown-unknown can't block the thread
+//@ignore-target-sgx not supported
 #![allow(deprecated)]
 
 use std::thread;

@@ -1,5 +1,5 @@
 //@run
-// ignore-wasm32
+//@ignore-target-wasm32
 
 #![feature(decl_macro)]
 

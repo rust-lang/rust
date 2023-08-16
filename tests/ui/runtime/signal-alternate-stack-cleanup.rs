@@ -3,11 +3,11 @@
 // main thread exit while still being in use by signal handlers. This test
 // triggers this situation by sending signal from atexit handler.
 //
-// ignore-wasm32-bare no libc
-// ignore-windows
-// ignore-sgx no libc
-// ignore-vxworks no SIGWINCH in user space
-// ignore-nto no SA_ONSTACK
+//@ignore-target-wasm32-unknown-unknown no libc
+//@ignore-target-windows
+//@ignore-target-sgx no libc
+//@ignore-target-vxworks no SIGWINCH in user space
+//@ignore-target-nto no SA_ONSTACK
 
 #![feature(rustc_private)]
 extern crate libc;

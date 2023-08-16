@@ -1,5 +1,5 @@
 //@run
-// only-x86_64
+//@only-target-x86_64
 
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]

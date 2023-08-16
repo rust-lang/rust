@@ -1,5 +1,5 @@
-// only-aarch64
-// only-linux
+//@only-target-aarch64
+//@only-target-linux
 //@needs-asm-support
 //@run
 

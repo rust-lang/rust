@@ -1,7 +1,7 @@
 //@run
-// ignore-windows
-// ignore-macos
-// ignore-emscripten common linkage not implemented right now
+//@ignore-target-windows
+//@ignore-target-macos
+//@ignore-target-emscripten common linkage not implemented right now
 
 #![feature(linkage)]
 

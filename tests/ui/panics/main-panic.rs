@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:thread 'main' panicked at
-// ignore-emscripten no processes
+//@error-in-other-file:thread 'main' panicked at
+//@ignore-target-emscripten no processes
 
 fn main() {
     panic!()

@@ -3,7 +3,7 @@
 // run-flags: --test-threads=1
 //@run
 // check-run-results
-// only-wasm32
+//@only-target-wasm32
 
 // Tests the output of the test harness with only passed tests.
 

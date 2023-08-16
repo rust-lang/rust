@@ -4,7 +4,7 @@
 // check-run-results
 // exec-env:RUST_BACKTRACE=0
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 // needs-unwind
 
 #[test]

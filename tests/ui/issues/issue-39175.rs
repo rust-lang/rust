@@ -3,9 +3,9 @@
 // the fix to suggested paths is not platform-dependent and will apply on
 // these platforms also.
 
-// ignore-windows
-// ignore-emscripten
-// ignore-sgx no processes
+//@ignore-target-windows
+//@ignore-target-emscripten
+//@ignore-target-sgx no processes
 
 use std::process::Command;
 // use std::os::unix::process::CommandExt;

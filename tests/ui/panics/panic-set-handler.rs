@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:greetings from the panic handler
-// ignore-emscripten no processes
+//@error-in-other-file:greetings from the panic handler
+//@ignore-target-emscripten no processes
 
 use std::panic;
 

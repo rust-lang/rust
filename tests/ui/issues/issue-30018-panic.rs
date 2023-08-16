@@ -5,7 +5,7 @@
 // SIGTRAP injected by the drop-flag consistency checking.
 
 // needs-unwind
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 
 struct Foo;
 

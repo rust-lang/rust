@@ -1,16 +1,16 @@
-// ignore-arm
-// ignore-aarch64
-// ignore-wasm
-// ignore-emscripten
-// ignore-mips
-// ignore-mips64
-// ignore-powerpc
-// ignore-powerpc64
-// ignore-riscv64
-// ignore-s390x
-// ignore-sparc
-// ignore-sparc64
-// ignore-loongarch64
+//@ignore-target-arm
+//@ignore-target-aarch64
+//@ignore-target-wasm
+//@ignore-target-emscripten
+//@ignore-target-mips
+//@ignore-target-mips64
+//@ignore-target-powerpc
+//@ignore-target-powerpc64
+//@ignore-target-riscv64
+//@ignore-target-s390x
+//@ignore-target-sparc
+//@ignore-target-sparc64
+//@ignore-target-loongarch64
 
 #![warn(unused_attributes)]
 

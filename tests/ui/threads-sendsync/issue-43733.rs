@@ -1,4 +1,4 @@
-// ignore-wasm32
+//@ignore-target-wasm32
 //@revisions: mir thir
 //@[thir] compile-flags: -Z thir-unsafeck
 #![feature(thread_local)]

@@ -1,5 +1,5 @@
 //@run
-// only-x86_64-unknown-linux-gnu
+//@only-target-x86_64-unknown-linux-gnu
 //@revisions: ssp no-ssp
 //@[ssp] compile-flags: -Z stack-protector=all
 //@compile-flags: -C opt-level=2

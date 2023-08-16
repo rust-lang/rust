@@ -1,5 +1,5 @@
-// only-x86
-// only-linux
+//@only-target-x86
+//@only-target-linux
 
 fn main() {
     core::sync::atomic::AtomicU64::from_mut(&mut 0u64);

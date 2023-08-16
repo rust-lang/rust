@@ -1,5 +1,5 @@
 //@run
-// only-x86
+//@only-target-x86
 // min-system-llvm-version: 16
 //@compile-flags: -Ctarget-feature=+sse2
 

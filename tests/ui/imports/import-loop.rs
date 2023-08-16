@@ -1,4 +1,4 @@
-//@error-pattern:import
+//@error-in-other-file:import
 
 use y::x;
 

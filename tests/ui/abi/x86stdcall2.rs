@@ -1,5 +1,5 @@
 //@run
-// only-windows
+//@only-target-windows
 
 #![allow(non_camel_case_types)]
 pub type HANDLE = usize;

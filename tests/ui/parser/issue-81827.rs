@@ -1,5 +1,5 @@
-//@error-pattern: this file contains an unclosed delimiter
-//@error-pattern: mismatched closing delimiter: `]`
+//@error-in-other-file: this file contains an unclosed delimiter
+//@error-in-other-file: mismatched closing delimiter: `]`
 
 #![crate_name="0"]
 

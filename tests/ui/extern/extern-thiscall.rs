@@ -1,5 +1,5 @@
 //@run
-// only-x86
+//@only-target-x86
 
 #![feature(abi_thiscall)]
 

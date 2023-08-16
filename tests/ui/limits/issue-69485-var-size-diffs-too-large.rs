@@ -1,5 +1,5 @@
 // build-fail
-// only-x86_64
+//@only-target-x86_64
 //@compile-flags: -Zmir-opt-level=0
 
 fn main() {

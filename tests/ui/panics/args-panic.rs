@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:meep
-// ignore-emscripten no processes
+//@error-in-other-file:meep
+//@ignore-target-emscripten no processes
 
 fn f(_a: isize, _b: isize, _c: Box<isize>) {
     panic!("moop");

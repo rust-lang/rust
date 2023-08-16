@@ -1,5 +1,5 @@
 //@run
-// ignore-emscripten FIXME(#45351)
+//@ignore-target-emscripten FIXME(#45351)
 
 #![feature(repr_simd, platform_intrinsics)]
 

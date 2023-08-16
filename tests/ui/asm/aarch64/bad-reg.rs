@@ -1,4 +1,4 @@
-// only-aarch64
+//@only-target-aarch64
 //@compile-flags: -C target-feature=+neon
 
 #![feature(asm_const)]

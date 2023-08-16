@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:overflow
-// ignore-emscripten no processes
+//@error-in-other-file:overflow
+//@ignore-target-emscripten no processes
 
 use std::time::{Duration, SystemTime};
 

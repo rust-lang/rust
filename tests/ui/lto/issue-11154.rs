@@ -1,6 +1,6 @@
 // build-fail
 //@compile-flags: -C lto -C prefer-dynamic
 
-//@error-pattern: cannot prefer dynamic linking
+//@error-in-other-file: cannot prefer dynamic linking
 
 fn main() {}

@@ -1,4 +1,4 @@
-//@error-pattern: can't capture dynamic environment in a fn item
+//@error-in-other-file: can't capture dynamic environment in a fn item
 
 fn main() {
     let bar: isize = 5;

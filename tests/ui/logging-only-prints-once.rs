@@ -1,6 +1,6 @@
 //@run
-// ignore-windows
-// ignore-emscripten no threads support
+//@ignore-target-windows
+//@ignore-target-emscripten no threads support
 
 use std::cell::Cell;
 use std::fmt;

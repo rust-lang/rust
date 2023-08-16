@@ -1,8 +1,8 @@
 // unset-rustc-env:RUST_BACKTRACE
 //@compile-flags:-Z treat-err-as-bug=1
-//@error-pattern:stack backtrace:
+//@error-in-other-file:stack backtrace:
 // failure-status:101
-// ignore-msvc
+//@ignore-target-msvc
 // normalize-stderr-test "note: .*" -> ""
 // normalize-stderr-test "thread 'rustc' .*" -> ""
 // normalize-stderr-test " +\d+:.*__rust_begin_short_backtrace.*" -> "(begin_short_backtrace)"

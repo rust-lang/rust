@@ -1,4 +1,4 @@
-// only-aarch64
+//@only-target-aarch64
 //@needs-asm-support
 //@run-rustfix
 

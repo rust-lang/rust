@@ -6,13 +6,13 @@
 // check-run-results
 // exec-env:RUST_BACKTRACE=0
 
-// ignore-msvc see #62897 and `backtrace-debuginfo.rs` test
-// ignore-android FIXME #17520
-// ignore-openbsd no support for libbacktrace without filename
-// ignore-wasm no panic or subprocess support
-// ignore-emscripten no panic or subprocess support
-// ignore-sgx no subprocess support
-// ignore-fuchsia Backtrace not symbolized
+//@ignore-target-msvc see #62897 and `backtrace-debuginfo.rs` test
+//@ignore-target-android FIXME #17520
+//@ignore-target-openbsd no support for libbacktrace without filename
+//@ignore-target-wasm no panic or subprocess support
+//@ignore-target-emscripten no panic or subprocess support
+//@ignore-target-sgx no subprocess support
+//@ignore-target-fuchsia Backtrace not symbolized
 
 // NOTE(eddyb) output differs between symbol mangling schemes
 //@revisions: legacy v0

@@ -1,6 +1,6 @@
 // run-fail
-//@error-pattern:stop
-// ignore-emscripten no processes
+//@error-in-other-file:stop
+//@ignore-target-emscripten no processes
 
 // #18576
 // Make sure that calling an extern function pointer in an unreachable

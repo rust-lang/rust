@@ -1,10 +1,10 @@
 //@run
-// ignore-android FIXME #17520
-// ignore-emscripten spawning processes is not supported
-// ignore-openbsd no support for libbacktrace without filename
-// ignore-sgx no processes
-// ignore-msvc see #62897 and `backtrace-debuginfo.rs` test
-// ignore-fuchsia Backtraces not symbolized
+//@ignore-target-android FIXME #17520
+//@ignore-target-emscripten spawning processes is not supported
+//@ignore-target-openbsd no support for libbacktrace without filename
+//@ignore-target-sgx no processes
+//@ignore-target-msvc see #62897 and `backtrace-debuginfo.rs` test
+//@ignore-target-fuchsia Backtraces not symbolized
 //@compile-flags:-g
 //@compile-flags:-Cstrip=none
 

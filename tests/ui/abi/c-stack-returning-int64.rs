@@ -1,6 +1,6 @@
 //@run
-// ignore-wasm32-bare no libc to test with
-// ignore-sgx no libc
+//@ignore-target-wasm32-unknown-unknown no libc to test with
+//@ignore-target-sgx no libc
 
 #![feature(rustc_private)]
 

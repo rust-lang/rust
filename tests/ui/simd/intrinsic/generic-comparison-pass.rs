@@ -1,5 +1,5 @@
 //@run
-// ignore-emscripten FIXME(#45351) hits an LLVM assert
+//@ignore-target-emscripten FIXME(#45351) hits an LLVM assert
 //@revisions: mir thir
 //@[thir] compile-flags: -Zthir-unsafeck
 

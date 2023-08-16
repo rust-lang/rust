@@ -1,9 +1,9 @@
 //@run
 
 #![allow(deprecated)]
-// ignore-wasm32-bare no files or I/O
-// ignore-emscripten no files
-// ignore-sgx no files
+//@ignore-target-wasm32-unknown-unknown no files or I/O
+//@ignore-target-emscripten no files
+//@ignore-target-sgx no files
 
 use std::fs;
 use std::io;
@@ -12,8 +12,12 @@ fn assert_invalid_input<T>(on: &str, result: io::Result<T>) {
     fn inner(on: &str, result: io::Result<()>) {
         match result {
             Ok(()) => panic!("{} didn't return an error on a path with NUL", on),
-            Err(e) => assert!(e.kind() == io::ErrorKind::InvalidInput,
-                              "{} returned a strange {:?} on a path with NUL", on, e.kind()),
+            Err(e) => assert!(
+                e.kind() == io::ErrorKind::InvalidInput,
+                "{} returned a strange {:?} on a path with NUL",
+                on,
+                e.kind()
+            ),
         }
     }
     inner(on, result.map(drop))
@@ -44,6 +48,8 @@ fn main() {
     assert_invalid_input("remove_dir", fs::remove_dir("\0"));
     assert_invalid_input("remove_dir_all", fs::remove_dir_all("\0"));
     assert_invalid_input("read_dir", fs::read_dir("\0"));
-    assert_invalid_input("set_permissions",
-                         fs::set_permissions("\0", fs::metadata(".").unwrap().permissions()));
+    assert_invalid_input(
+        "set_permissions",
+        fs::set_permissions("\0", fs::metadata(".").unwrap().permissions()),
+    );
 }

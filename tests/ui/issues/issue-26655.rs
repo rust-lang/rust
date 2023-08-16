@@ -1,6 +1,6 @@
 //@run
 // needs-unwind
-// ignore-emscripten no threads support
+//@ignore-target-emscripten no threads support
 
 // Check that the destructors of simple enums are run on unwinding
 

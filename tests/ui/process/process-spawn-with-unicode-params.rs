@@ -7,9 +7,9 @@
 // non-ASCII characters.  The child process ensures all the strings are
 // intact.
 
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-fuchsia Filesystem manipulation privileged
+//@ignore-target-emscripten no processes
+//@ignore-target-sgx no processes
+//@ignore-target-fuchsia Filesystem manipulation privileged
 
 use std::io::prelude::*;
 use std::io;

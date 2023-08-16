@@ -1,5 +1,5 @@
 // build-fail
-//@error-pattern: entry symbol `main` declared multiple times
+//@error-in-other-file: entry symbol `main` declared multiple times
 //
 // See #67946.
 

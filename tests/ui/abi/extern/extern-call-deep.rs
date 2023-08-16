@@ -1,6 +1,6 @@
 //@run
-// ignore-wasm32-bare no libc to test ffi with
-// ignore-emscripten blows the JS stack
+//@ignore-target-wasm32-unknown-unknown no libc to test ffi with
+//@ignore-target-emscripten blows the JS stack
 
 #![feature(rustc_private)]
 

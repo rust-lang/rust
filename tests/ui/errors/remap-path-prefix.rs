@@ -6,7 +6,7 @@
 
 // The remapped paths aren't recognized by compiletest, so we
 // cannot use line-specific patterns.
-//@error-pattern: E0425
+//@error-in-other-file: E0425
 
 fn main() {
     // We cannot actually put an ERROR marker here because

@@ -1,5 +1,5 @@
 //@compile-flags: -l foo:bar -l foo:baz
-//@error-pattern: multiple renamings were specified for library
+//@error-in-other-file: multiple renamings were specified for library
 
 #![crate_type = "lib"]
 

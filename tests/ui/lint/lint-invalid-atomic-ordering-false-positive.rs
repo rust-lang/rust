@@ -1,4 +1,4 @@
-// only-x86_64
+//@only-target-x86_64
 //@check-pass
 use std::sync::atomic::{AtomicUsize, Ordering};
 

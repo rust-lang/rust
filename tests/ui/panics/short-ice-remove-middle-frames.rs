@@ -2,13 +2,13 @@
 // run-fail
 // check-run-results
 // exec-env:RUST_BACKTRACE=1
-// ignore-android FIXME #17520
-// ignore-wasm no panic support
-// ignore-openbsd no support for libbacktrace without filename
-// ignore-emscripten no panic
-// ignore-sgx Backtraces not symbolized
-// ignore-fuchsia Backtraces not symbolized
-// ignore-msvc the `__rust_{begin,end}_short_backtrace` symbols aren't reliable.
+//@ignore-target-android FIXME #17520
+//@ignore-target-wasm no panic support
+//@ignore-target-openbsd no support for libbacktrace without filename
+//@ignore-target-emscripten no panic
+//@ignore-target-sgx Backtraces not symbolized
+//@ignore-target-fuchsia Backtraces not symbolized
+//@ignore-target-msvc the `__rust_{begin,end}_short_backtrace` symbols aren't reliable.
 
 
 #[inline(never)]
