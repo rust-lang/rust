@@ -10,9 +10,10 @@ use std::mem;
 // 32 shards is sufficient to reduce contention on an 8-core Ryzen 7 1700,
 // but this should be tested on higher core count CPUs. How the `Sharded` type gets used
 // may also affect the ideal number of shards.
-const SHARD_BITS: usize = if cfg!(parallel_compiler) { 5 } else { 0 };
+const SHARD_BITS: usize = 5;
 
-pub const SHARDS: usize = 1 << SHARD_BITS;
+#[cfg(parallel_compiler)]
+const SHARDS: usize = 1 << SHARD_BITS;
 
 /// An array of cache-line aligned inner locked structures with convenience methods.
 /// A single field is used when the compiler uses only one thread.
@@ -44,8 +45,12 @@ impl<T> Sharded<T> {
 
     /// The shard is selected by hashing `val` with `FxHasher`.
     #[inline]
-    pub fn get_shard_by_value<K: Hash + ?Sized>(&self, val: &K) -> &Lock<T> {
-        self.get_shard_by_hash(if SHARDS == 1 { 0 } else { make_hash(val) })
+    pub fn get_shard_by_value<K: Hash + ?Sized>(&self, _val: &K) -> &Lock<T> {
+        match self {
+            Self::Single(single) => &single,
+            #[cfg(parallel_compiler)]
+            Self::Shards(shards) => self.get_shard_by_hash(make_hash(_val)),
+        }
     }
 
     #[inline]
@@ -81,6 +86,16 @@ impl<T> Sharded<T> {
     pub fn try_lock_shards(&self) -> Option<Vec<LockGuard<'_, T>>> {
         (0..self.count()).map(|i| self.get_shard_by_index(i).try_lock()).collect()
     }
+}
+
+#[inline]
+pub fn shards() -> usize {
+    #[cfg(parallel_compiler)]
+    if is_dyn_thread_safe() {
+        return SHARDS;
+    }
+
+    1
 }
 
 pub type ShardedHashMap<K, V> = Sharded<FxHashMap<K, V>>;
