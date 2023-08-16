@@ -1332,7 +1332,7 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
 fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::Enum) {
     let tcx = cx.tcx();
     let count_variants = e.variants().count();
-    wrap_item(w, |mut w| {
+    wrap_item(w, |w| {
         render_attributes_in_code(w, it, tcx);
         write!(
             w,
@@ -1341,148 +1341,179 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             it.name.unwrap(),
             e.generics.print(cx),
         );
-        if !print_where_clause_and_check(w, &e.generics, cx) {
-            // If there wasn't a `where` clause, we add a whitespace.
-            w.write_str(" ");
-        }
-
-        let variants_stripped = e.has_stripped_entries();
-        if count_variants == 0 && !variants_stripped {
-            w.write_str("{}");
-        } else {
-            w.write_str("{\n");
-            let toggle = should_hide_fields(count_variants);
-            if toggle {
-                toggle_open(&mut w, format_args!("{count_variants} variants"));
-            }
-            for v in e.variants() {
-                w.write_str("    ");
-                let name = v.name.unwrap();
-                match *v.kind {
-                    // FIXME(#101337): Show discriminant
-                    clean::VariantItem(ref var) => match var.kind {
-                        clean::VariantKind::CLike => w.write_str(name.as_str()),
-                        clean::VariantKind::Tuple(ref s) => {
-                            write!(w, "{name}({})", print_tuple_struct_fields(cx, s),);
-                        }
-                        clean::VariantKind::Struct(ref s) => {
-                            render_struct(w, v, None, None, &s.fields, "    ", false, cx);
-                        }
-                    },
-                    _ => unreachable!(),
-                }
-                w.write_str(",\n");
-            }
-
-            if variants_stripped && !it.is_non_exhaustive() {
-                w.write_str("    // some variants omitted\n");
-            }
-            if toggle {
-                toggle_close(&mut w);
-            }
-            w.write_str("}");
-        }
+        render_enum_fields(
+            w,
+            cx,
+            Some(&e.generics),
+            e.variants(),
+            count_variants,
+            e.has_stripped_entries(),
+            it.is_non_exhaustive(),
+        );
     });
 
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     if count_variants != 0 {
-        write!(
-            w,
-            "<h2 id=\"variants\" class=\"variants small-section-header\">\
-                Variants{}<a href=\"#variants\" class=\"anchor\">§</a>\
-            </h2>\
-            {}\
-            <div class=\"variants\">",
-            document_non_exhaustive_header(it),
-            document_non_exhaustive(it)
-        );
-        for variant in e.variants() {
-            let id = cx.derive_id(format!("{}.{}", ItemType::Variant, variant.name.unwrap()));
-            write!(
-                w,
-                "<section id=\"{id}\" class=\"variant\">\
-                    <a href=\"#{id}\" class=\"anchor\">§</a>",
-            );
-            render_stability_since_raw_with_extra(
-                w,
-                variant.stable_since(tcx),
-                variant.const_stability(tcx),
-                it.stable_since(tcx),
-                it.const_stable_since(tcx),
-                " rightside",
-            );
-            write!(w, "<h3 class=\"code-header\">{name}", name = variant.name.unwrap());
-
-            let clean::VariantItem(variant_data) = &*variant.kind else { unreachable!() };
-
-            if let clean::VariantKind::Tuple(ref s) = variant_data.kind {
-                write!(w, "({})", print_tuple_struct_fields(cx, s));
-            }
-            w.write_str("</h3></section>");
-
-            let heading_and_fields = match &variant_data.kind {
-                clean::VariantKind::Struct(s) => Some(("Fields", &s.fields)),
-                clean::VariantKind::Tuple(fields) => {
-                    // Documentation on tuple variant fields is rare, so to reduce noise we only emit
-                    // the section if at least one field is documented.
-                    if fields.iter().any(|f| !f.doc_value().is_empty()) {
-                        Some(("Tuple Fields", fields))
-                    } else {
-                        None
-                    }
-                }
-                clean::VariantKind::CLike => None,
-            };
-
-            if let Some((heading, fields)) = heading_and_fields {
-                let variant_id =
-                    cx.derive_id(format!("{}.{}.fields", ItemType::Variant, variant.name.unwrap()));
-                write!(
-                    w,
-                    "<div class=\"sub-variant\" id=\"{variant_id}\">\
-                        <h4>{heading}</h4>\
-                        {}",
-                    document_non_exhaustive(variant)
-                );
-                for field in fields {
-                    match *field.kind {
-                        clean::StrippedItem(box clean::StructFieldItem(_)) => {}
-                        clean::StructFieldItem(ref ty) => {
-                            let id = cx.derive_id(format!(
-                                "variant.{}.field.{}",
-                                variant.name.unwrap(),
-                                field.name.unwrap()
-                            ));
-                            write!(
-                                w,
-                                "<div class=\"sub-variant-field\">\
-                                 <span id=\"{id}\" class=\"small-section-header\">\
-                                     <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                                     <code>{f}: {t}</code>\
-                                 </span>",
-                                f = field.name.unwrap(),
-                                t = ty.print(cx),
-                            );
-                            write!(
-                                w,
-                                "{}</div>",
-                                document(cx, field, Some(variant), HeadingOffset::H5)
-                            );
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                w.write_str("</div>");
-            }
-
-            write!(w, "{}", document(cx, variant, Some(it), HeadingOffset::H4));
-        }
-        write!(w, "</div>");
+        item_variants(w, cx, it, e.variants());
     }
     let def_id = it.item_id.expect_def_id();
     write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
     write!(w, "{}", document_type_layout(cx, def_id));
+}
+
+fn render_enum_fields<'a>(
+    mut w: &mut Buffer,
+    cx: &mut Context<'_>,
+    g: Option<&clean::Generics>,
+    variants: impl Iterator<Item = &'a clean::Item>,
+    count_variants: usize,
+    has_stripped_entries: bool,
+    is_non_exhaustive: bool,
+) {
+    if !g.is_some_and(|g| print_where_clause_and_check(w, g, cx)) {
+        // If there wasn't a `where` clause, we add a whitespace.
+        w.write_str(" ");
+    }
+
+    let variants_stripped = has_stripped_entries;
+    if count_variants == 0 && !variants_stripped {
+        w.write_str("{}");
+    } else {
+        w.write_str("{\n");
+        let toggle = should_hide_fields(count_variants);
+        if toggle {
+            toggle_open(&mut w, format_args!("{count_variants} variants"));
+        }
+        const TAB: &str = "    ";
+        for v in variants {
+            w.write_str(TAB);
+            let name = v.name.unwrap();
+            match *v.kind {
+                // FIXME(#101337): Show discriminant
+                clean::VariantItem(ref var) => match var.kind {
+                    clean::VariantKind::CLike => w.write_str(name.as_str()),
+                    clean::VariantKind::Tuple(ref s) => {
+                        write!(w, "{name}({})", print_tuple_struct_fields(cx, s),);
+                    }
+                    clean::VariantKind::Struct(ref s) => {
+                        render_struct(w, v, None, None, &s.fields, TAB, false, cx);
+                    }
+                },
+                _ => unreachable!(),
+            }
+            w.write_str(",\n");
+        }
+
+        if variants_stripped && !is_non_exhaustive {
+            w.write_str("    // some variants omitted\n");
+        }
+        if toggle {
+            toggle_close(&mut w);
+        }
+        w.write_str("}");
+    }
+}
+
+fn item_variants<'a>(
+    w: &mut Buffer,
+    cx: &mut Context<'_>,
+    it: &clean::Item,
+    variants: impl Iterator<Item = &'a clean::Item>,
+) {
+    let tcx = cx.tcx();
+    write!(
+        w,
+        "<h2 id=\"variants\" class=\"variants small-section-header\">\
+            Variants{}<a href=\"#variants\" class=\"anchor\">§</a>\
+        </h2>\
+        {}\
+        <div class=\"variants\">",
+        document_non_exhaustive_header(it),
+        document_non_exhaustive(it)
+    );
+    for variant in variants {
+        let id = cx.derive_id(format!("{}.{}", ItemType::Variant, variant.name.unwrap()));
+        write!(
+            w,
+            "<section id=\"{id}\" class=\"variant\">\
+                <a href=\"#{id}\" class=\"anchor\">§</a>",
+        );
+        render_stability_since_raw_with_extra(
+            w,
+            variant.stable_since(tcx),
+            variant.const_stability(tcx),
+            it.stable_since(tcx),
+            it.const_stable_since(tcx),
+            " rightside",
+        );
+        write!(w, "<h3 class=\"code-header\">{name}", name = variant.name.unwrap());
+
+        let clean::VariantItem(variant_data) = &*variant.kind else { unreachable!() };
+
+        if let clean::VariantKind::Tuple(ref s) = variant_data.kind {
+            write!(w, "({})", print_tuple_struct_fields(cx, s));
+        }
+        w.write_str("</h3></section>");
+
+        let heading_and_fields = match &variant_data.kind {
+            clean::VariantKind::Struct(s) => Some(("Fields", &s.fields)),
+            clean::VariantKind::Tuple(fields) => {
+                // Documentation on tuple variant fields is rare, so to reduce noise we only emit
+                // the section if at least one field is documented.
+                if fields.iter().any(|f| !f.doc_value().is_empty()) {
+                    Some(("Tuple Fields", fields))
+                } else {
+                    None
+                }
+            }
+            clean::VariantKind::CLike => None,
+        };
+
+        if let Some((heading, fields)) = heading_and_fields {
+            let variant_id =
+                cx.derive_id(format!("{}.{}.fields", ItemType::Variant, variant.name.unwrap()));
+            write!(
+                w,
+                "<div class=\"sub-variant\" id=\"{variant_id}\">\
+                    <h4>{heading}</h4>\
+                    {}",
+                document_non_exhaustive(variant)
+            );
+            for field in fields {
+                match *field.kind {
+                    clean::StrippedItem(box clean::StructFieldItem(_)) => {}
+                    clean::StructFieldItem(ref ty) => {
+                        let id = cx.derive_id(format!(
+                            "variant.{}.field.{}",
+                            variant.name.unwrap(),
+                            field.name.unwrap()
+                        ));
+                        write!(
+                            w,
+                            "<div class=\"sub-variant-field\">\
+                                 <span id=\"{id}\" class=\"small-section-header\">\
+                                     <a href=\"#{id}\" class=\"anchor field\">§</a>\
+                                     <code>{f}: {t}</code>\
+                                 </span>",
+                            f = field.name.unwrap(),
+                            t = ty.print(cx),
+                        );
+                        write!(
+                            w,
+                            "{}</div>",
+                            document(cx, field, Some(variant), HeadingOffset::H5)
+                        );
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            w.write_str("</div>");
+        }
+
+        write!(w, "{}", document(cx, variant, Some(it), HeadingOffset::H4));
+    }
+    write!(w, "</div>");
 }
 
 fn item_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Macro) {
@@ -1593,15 +1624,28 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
 
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
-    let mut fields = s
-        .fields
+    item_fields(w, cx, it, &s.fields, s.ctor_kind);
+
+    let def_id = it.item_id.expect_def_id();
+    write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
+    write!(w, "{}", document_type_layout(cx, def_id));
+}
+
+fn item_fields(
+    w: &mut Buffer,
+    cx: &mut Context<'_>,
+    it: &clean::Item,
+    fields: &Vec<clean::Item>,
+    ctor_kind: Option<CtorKind>,
+) {
+    let mut fields = fields
         .iter()
         .filter_map(|f| match *f.kind {
             clean::StructFieldItem(ref ty) => Some((f, ty)),
             _ => None,
         })
         .peekable();
-    if let None | Some(CtorKind::Fn) = s.ctor_kind {
+    if let None | Some(CtorKind::Fn) = ctor_kind {
         if fields.peek().is_some() {
             write!(
                 w,
@@ -1609,7 +1653,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
                      {}{}<a href=\"#fields\" class=\"anchor\">§</a>\
                  </h2>\
                  {}",
-                if s.ctor_kind.is_none() { "Fields" } else { "Tuple Fields" },
+                if ctor_kind.is_none() { "Fields" } else { "Tuple Fields" },
                 document_non_exhaustive_header(it),
                 document_non_exhaustive(it)
             );
@@ -1630,9 +1674,6 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             }
         }
     }
-    let def_id = it.item_id.expect_def_id();
-    write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
-    write!(w, "{}", document_type_layout(cx, def_id));
 }
 
 fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
@@ -1871,7 +1912,7 @@ fn render_union<'a, 'cx: 'a>(
 }
 
 fn render_struct(
-    mut w: &mut Buffer,
+    w: &mut Buffer,
     it: &clean::Item,
     g: Option<&clean::Generics>,
     ty: Option<CtorKind>,
@@ -1891,6 +1932,29 @@ fn render_struct(
     if let Some(g) = g {
         write!(w, "{}", g.print(cx))
     }
+    render_struct_fields(
+        w,
+        g,
+        ty,
+        fields,
+        tab,
+        structhead,
+        it.has_stripped_entries().unwrap_or(false),
+        cx,
+    )
+}
+
+fn render_struct_fields(
+    mut w: &mut Buffer,
+    g: Option<&clean::Generics>,
+    ty: Option<CtorKind>,
+    fields: &[clean::Item],
+    tab: &str,
+    structhead: bool,
+    has_stripped_entries: bool,
+    cx: &Context<'_>,
+) {
+    let tcx = cx.tcx();
     match ty {
         None => {
             let where_displayed =
@@ -1922,11 +1986,11 @@ fn render_struct(
             }
 
             if has_visible_fields {
-                if it.has_stripped_entries().unwrap() {
+                if has_stripped_entries {
                     write!(w, "\n{tab}    /* private fields */");
                 }
                 write!(w, "\n{tab}");
-            } else if it.has_stripped_entries().unwrap() {
+            } else if has_stripped_entries {
                 write!(w, " /* private fields */ ");
             }
             if toggle {
