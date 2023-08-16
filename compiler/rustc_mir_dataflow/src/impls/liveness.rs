@@ -292,7 +292,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
         TransferFunction(trans).visit_terminator(terminator, location);
-        TerminatorEdges::None
+        terminator.edges()
     }
 
     fn apply_call_return_effect(
