@@ -109,6 +109,10 @@ impl Buffer {
         self.buffer
     }
 
+    pub(crate) fn push(&mut self, c: char) {
+        self.buffer.push(c);
+    }
+
     pub(crate) fn push_str(&mut self, s: &str) {
         self.buffer.push_str(s);
     }
@@ -228,9 +232,9 @@ impl clean::GenericParamDef {
 
                 if let Some(default) = default {
                     if f.alternate() {
-                        write!(f, " = {:#}", default)?;
+                        write!(f, " = {default:#}")?;
                     } else {
-                        write!(f, " = {}", default)?;
+                        write!(f, " = {default}")?;
                     }
                 }
 
@@ -451,9 +455,9 @@ impl clean::GenericBound {
                     hir::TraitBoundModifier::MaybeConst => "",
                 };
                 if f.alternate() {
-                    write!(f, "{}{:#}", modifier_str, ty.print(cx))
+                    write!(f, "{modifier_str}{ty:#}", ty = ty.print(cx))
                 } else {
-                    write!(f, "{}{}", modifier_str, ty.print(cx))
+                    write!(f, "{modifier_str}{ty}", ty = ty.print(cx))
                 }
             }
         })
@@ -599,7 +603,7 @@ fn generate_macro_def_id_path(
     let cstore = CStore::from_tcx(tcx);
     // We need this to prevent a `panic` when this function is used from intra doc links...
     if !cstore.has_crate_data(def_id.krate) {
-        debug!("No data for crate {}", crate_name);
+        debug!("No data for crate {crate_name}");
         return Err(HrefError::NotInExternalCache);
     }
     // Check to see if it is a macro 2.0 or built-in macro.
@@ -631,19 +635,18 @@ fn generate_macro_def_id_path(
     let url = match cache.extern_locations[&def_id.krate] {
         ExternalLocation::Remote(ref s) => {
             // `ExternalLocation::Remote` always end with a `/`.
-            format!("{}{}", s, path.iter().map(|p| p.as_str()).join("/"))
+            format!("{s}{path}", path = path.iter().map(|p| p.as_str()).join("/"))
         }
         ExternalLocation::Local => {
             // `root_path` always end with a `/`.
             format!(
-                "{}{}/{}",
-                root_path.unwrap_or(""),
-                crate_name,
-                path.iter().map(|p| p.as_str()).join("/")
+                "{root_path}{crate_name}/{path}",
+                root_path = root_path.unwrap_or(""),
+                path = path.iter().map(|p| p.as_str()).join("/")
             )
         }
         ExternalLocation::Unknown => {
-            debug!("crate {} not in cache when linkifying macros", crate_name);
+            debug!("crate {crate_name} not in cache when linkifying macros");
             return Err(HrefError::NotInExternalCache);
         }
     };
@@ -732,7 +735,7 @@ pub(crate) fn href_with_root_path(
         _ => {
             let prefix = shortty.as_str();
             let last = fqp.last().unwrap();
-            url_parts.push_fmt(format_args!("{}.{}.html", prefix, last));
+            url_parts.push_fmt(format_args!("{prefix}.{last}.html"));
         }
     }
     Ok((url_parts.finish(), shortty, fqp.to_vec()))
@@ -828,9 +831,9 @@ fn resolved_path<'cx>(
         let path = if use_absolute {
             if let Ok((_, _, fqp)) = href(did, cx) {
                 format!(
-                    "{}::{}",
-                    join_with_double_colon(&fqp[..fqp.len() - 1]),
-                    anchor(did, *fqp.last().unwrap(), cx)
+                    "{path}::{anchor}",
+                    path = join_with_double_colon(&fqp[..fqp.len() - 1]),
+                    anchor = anchor(did, *fqp.last().unwrap(), cx)
                 )
             } else {
                 last.name.to_string()
@@ -838,7 +841,7 @@ fn resolved_path<'cx>(
         } else {
             anchor(did, last.name, cx).to_string()
         };
-        write!(w, "{}{}", path, last.args.print(cx))?;
+        write!(w, "{path}{args}", args = last.args.print(cx))?;
     }
     Ok(())
 }
@@ -906,7 +909,7 @@ fn primitive_link_fragment(
             None => {}
         }
     }
-    write!(f, "{}", name)?;
+    f.write_str(name)?;
     if needs_termination {
         write!(f, "</a>")?;
     }
@@ -946,15 +949,11 @@ pub(crate) fn anchor<'a, 'cx: 'a>(
         if let Ok((url, short_ty, fqp)) = parts {
             write!(
                 f,
-                r#"<a class="{}" href="{}" title="{} {}">{}</a>"#,
-                short_ty,
-                url,
-                short_ty,
-                join_with_double_colon(&fqp),
-                text.as_str()
+                r#"<a class="{short_ty}" href="{url}" title="{short_ty} {path}">{text}</a>"#,
+                path = join_with_double_colon(&fqp),
             )
         } else {
-            write!(f, "{}", text)
+            f.write_str(text.as_str())
         }
     })
 }
@@ -965,10 +964,10 @@ fn fmt_type<'cx>(
     use_absolute: bool,
     cx: &'cx Context<'_>,
 ) -> fmt::Result {
-    trace!("fmt_type(t = {:?})", t);
+    trace!("fmt_type(t = {t:?})");
 
     match *t {
-        clean::Generic(name) => write!(f, "{}", name),
+        clean::Generic(name) => f.write_str(name.as_str()),
         clean::Type::Path { ref path } => {
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             let did = path.def_id();
@@ -1085,13 +1084,13 @@ fn fmt_type<'cx>(
 
             if matches!(**t, clean::Generic(_)) || t.is_assoc_ty() {
                 let text = if f.alternate() {
-                    format!("*{} {:#}", m, t.print(cx))
+                    format!("*{m} {ty:#}", ty = t.print(cx))
                 } else {
-                    format!("*{} {}", m, t.print(cx))
+                    format!("*{m} {ty}", ty = t.print(cx))
                 };
                 primitive_link(f, clean::PrimitiveType::RawPointer, &text, cx)
             } else {
-                primitive_link(f, clean::PrimitiveType::RawPointer, &format!("*{} ", m), cx)?;
+                primitive_link(f, clean::PrimitiveType::RawPointer, &format!("*{m} "), cx)?;
                 fmt::Display::fmt(&t.print(cx), f)
             }
         }
@@ -1445,11 +1444,20 @@ impl clean::FnDecl {
                     clean::SelfValue => {
                         write!(f, "self")?;
                     }
-                    clean::SelfBorrowed(Some(ref lt), mtbl) => {
-                        write!(f, "{}{} {}self", amp, lt.print(), mtbl.print_with_space())?;
+                    clean::SelfBorrowed(Some(ref lt), mutability) => {
+                        write!(
+                            f,
+                            "{amp}{lifetime} {mutability}self",
+                            lifetime = lt.print(),
+                            mutability = mutability.print_with_space(),
+                        )?;
                     }
-                    clean::SelfBorrowed(None, mtbl) => {
-                        write!(f, "{}{}self", amp, mtbl.print_with_space())?;
+                    clean::SelfBorrowed(None, mutability) => {
+                        write!(
+                            f,
+                            "{amp}{mutability}self",
+                            mutability = mutability.print_with_space(),
+                        )?;
                     }
                     clean::SelfExplicit(ref typ) => {
                         write!(f, "self: ")?;
@@ -1523,7 +1531,7 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
                 "pub(super) ".into()
             } else {
                 let path = cx.tcx().def_path(vis_did);
-                debug!("path={:?}", path);
+                debug!("path={path:?}");
                 // modified from `resolved_path()` to work with `DefPathData`
                 let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
                 let anchor = anchor(vis_did, last_name, cx);
@@ -1532,12 +1540,12 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
                 for seg in &path.data[..path.data.len() - 1] {
                     let _ = write!(s, "{}::", seg.data.get_opt_name().unwrap());
                 }
-                let _ = write!(s, "{}) ", anchor);
+                let _ = write!(s, "{anchor}) ");
                 s.into()
             }
         }
     };
-    display_fn(move |f| write!(f, "{}", to_print))
+    display_fn(move |f| f.write_str(&to_print))
 }
 
 /// This function is the same as print_with_space, except that it renders no links.
@@ -1632,7 +1640,7 @@ impl clean::Import {
                 if name == self.source.path.last() {
                     write!(f, "use {};", self.source.print(cx))
                 } else {
-                    write!(f, "use {} as {};", self.source.print(cx), name)
+                    write!(f, "use {source} as {name};", source = self.source.print(cx))
                 }
             }
             clean::ImportKind::Glob => {
@@ -1661,7 +1669,7 @@ impl clean::ImportSource {
                 if let hir::def::Res::PrimTy(p) = self.path.res {
                     primitive_link(f, PrimitiveType::from(p), name.as_str(), cx)?;
                 } else {
-                    write!(f, "{}", name)?;
+                    f.write_str(name.as_str())?;
                 }
                 Ok(())
             }

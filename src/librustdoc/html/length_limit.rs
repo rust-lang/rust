@@ -78,8 +78,7 @@ impl HtmlWithLimit {
     pub(super) fn open_tag(&mut self, tag_name: &'static str) {
         assert!(
             tag_name.chars().all(|c| ('a'..='z').contains(&c)),
-            "tag_name contained non-alphabetic chars: {:?}",
-            tag_name
+            "tag_name contained non-alphabetic chars: {tag_name:?}",
         );
         self.queued_tags.push(tag_name);
     }
@@ -88,7 +87,7 @@ impl HtmlWithLimit {
     pub(super) fn close_tag(&mut self) {
         match self.unclosed_tags.pop() {
             // Close the most recently opened tag.
-            Some(tag_name) => write!(self.buf, "</{}>", tag_name).unwrap(),
+            Some(tag_name) => write!(self.buf, "</{tag_name}>").unwrap(),
             // There are valid cases where `close_tag()` is called without
             // there being any tags to close. For example, this occurs when
             // a tag is opened after the length limit is exceeded;
@@ -101,7 +100,7 @@ impl HtmlWithLimit {
     /// Write all queued tags and add them to the `unclosed_tags` list.
     fn flush_queue(&mut self) {
         for tag_name in self.queued_tags.drain(..) {
-            write!(self.buf, "<{}>", tag_name).unwrap();
+            write!(self.buf, "<{tag_name}>").unwrap();
 
             self.unclosed_tags.push(tag_name);
         }

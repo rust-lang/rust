@@ -43,7 +43,7 @@ pub(crate) fn render<P: AsRef<Path>>(
     edition: Edition,
 ) -> Result<(), String> {
     if let Err(e) = create_dir_all(&options.output) {
-        return Err(format!("{}: {}", options.output.display(), e));
+        return Err(format!("{output}: {e}", output = options.output.display()));
     }
 
     let input = input.as_ref();
@@ -57,11 +57,13 @@ pub(crate) fn render<P: AsRef<Path>>(
             .expect("Writing to a String can't fail");
     }
 
-    let input_str = read_to_string(input).map_err(|err| format!("{}: {}", input.display(), err))?;
+    let input_str =
+        read_to_string(input).map_err(|err| format!("{input}: {err}", input = input.display()))?;
     let playground_url = options.markdown_playground_url.or(options.playground_url);
     let playground = playground_url.map(|url| markdown::Playground { crate_name: None, url });
 
-    let mut out = File::create(&output).map_err(|e| format!("{}: {}", output.display(), e))?;
+    let mut out =
+        File::create(&output).map_err(|e| format!("{output}: {e}", output = output.display()))?;
 
     let (metadata, text) = extract_leading_metadata(&input_str);
     if metadata.is_empty() {
@@ -129,7 +131,7 @@ pub(crate) fn render<P: AsRef<Path>>(
     );
 
     match err {
-        Err(e) => Err(format!("cannot write to `{}`: {}", output.display(), e)),
+        Err(e) => Err(format!("cannot write to `{output}`: {e}", output = output.display())),
         Ok(_) => Ok(()),
     }
 }
@@ -137,7 +139,7 @@ pub(crate) fn render<P: AsRef<Path>>(
 /// Runs any tests/code examples in the markdown file `input`.
 pub(crate) fn test(options: Options) -> Result<(), String> {
     let input_str = read_to_string(&options.input)
-        .map_err(|err| format!("{}: {}", options.input.display(), err))?;
+        .map_err(|err| format!("{input}: {err}", input = options.input.display()))?;
     let mut opts = GlobalTestOptions::default();
     opts.no_crate_inject = true;
     let mut collector = Collector::new(

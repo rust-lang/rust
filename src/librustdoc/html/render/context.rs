@@ -206,15 +206,14 @@ impl<'tcx> Context<'tcx> {
             format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
         } else {
             format!(
-                "API documentation for the Rust `{}` {} in crate `{}`.",
-                it.name.as_ref().unwrap(),
-                tyname,
-                self.shared.layout.krate
+                "API documentation for the Rust `{name}` {tyname} in crate `{krate}`.",
+                name = it.name.as_ref().unwrap(),
+                krate = self.shared.layout.krate,
             )
         };
         let name;
         let tyname_s = if it.is_crate() {
-            name = format!("{} crate", tyname);
+            name = format!("{tyname} crate");
             name.as_str()
         } else {
             tyname.as_str()
@@ -264,7 +263,12 @@ impl<'tcx> Context<'tcx> {
                             current_path.push_str(&item_path(ty, names.last().unwrap().as_str()));
                             redirections.borrow_mut().insert(current_path, path);
                         }
-                        None => return layout::redirect(&format!("{}{}", self.root_path(), path)),
+                        None => {
+                            return layout::redirect(&format!(
+                                "{root}{path}",
+                                root = self.root_path()
+                            ));
+                        }
                     }
                 }
             }
@@ -382,11 +386,7 @@ impl<'tcx> Context<'tcx> {
             let hiline = span.hi(self.sess()).line;
             format!(
                 "#{}",
-                if loline == hiline {
-                    loline.to_string()
-                } else {
-                    format!("{}-{}", loline, hiline)
-                }
+                if loline == hiline { loline.to_string() } else { format!("{loline}-{hiline}") }
             )
         } else {
             "".to_string()
@@ -855,12 +855,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             // If the item is a macro, redirect from the old macro URL (with !)
             // to the new one (without).
             if item_type == ItemType::Macro {
-                let redir_name = format!("{}.{}!.html", item_type, name);
+                let redir_name = format!("{item_type}.{name}!.html");
                 if let Some(ref redirections) = self.shared.redirections {
                     let crate_name = &self.shared.layout.krate;
                     redirections.borrow_mut().insert(
-                        format!("{}/{}", crate_name, redir_name),
-                        format!("{}/{}", crate_name, file_name),
+                        format!("{crate_name}/{redir_name}"),
+                        format!("{crate_name}/{file_name}"),
                     );
                 } else {
                     let v = layout::redirect(file_name);
