@@ -37,26 +37,24 @@ impl<'tcx> LateLintPass<'tcx> for OurFancyMethodLint {
 ```
 
 Take a closer look at the `ExprKind` enum variant [`MethodCall`] for more
-information on the pattern matching.
-As mentioned in [Define Lints](define_lints.md#lint-types),
-the `methods` lint type is full of pattern matching with `Methodcall`
-in case the reader wishes to explore more.
+information on the pattern matching. As mentioned in [Define
+Lints](define_lints.md#lint-types), the `methods` lint type is full of pattern
+matching with `MethodCall` in case the reader wishes to explore more.
 
-Additionally, we use the [`clippy_utils::sym!`][sym] macro to conveniently convert
-an input `our_fancy_method` into a `Symbol` and compare that symbol to the [`ident`][Ident]'s name in the [`PathSegment`]
-in the [`MethodCall`].
+Additionally, we use the [`clippy_utils::sym!`][sym] macro to conveniently
+convert an input `our_fancy_method` into a `Symbol` and compare that symbol to
+the [`Ident`]'s name in the [`PathSegment`] in the [`MethodCall`].
 
 ## Checking if a `impl` block implements a method
 
-While sometimes we want to check whether a method is being called or not,
-other times we want to know if our `Ty` defines a method.
+While sometimes we want to check whether a method is being called or not, other
+times we want to know if our `Ty` defines a method.
 
-To check if our `impl` block defines a method `our_fancy_method`,
-we will utilize the [`check_impl_item`] method that is available
-in our beloved [`LateLintPass`] (for more information, refer to the
-["Lint Passes"](lint_passes.md) chapter in Clippy book).
-This method provides us with an [`ImplItem`] struct, which represents
-anything within an `impl` block.
+To check if our `impl` block defines a method `our_fancy_method`, we will
+utilize the [`check_impl_item`] method that is available in our beloved
+[`LateLintPass`] (for more information, refer to the ["Lint
+Passes"](lint_passes.md) chapter in the Clippy book). This method provides us
+with an [`ImplItem`] struct, which represents anything within an `impl` block.
 
 Let us take a look at how we might check for the implementation of
 `our_fancy_method` on a type:
@@ -67,6 +65,7 @@ use clippy_utils::return_ty;
 use rustc_hir::{ImplItem, ImplItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_span::symbol::sym;
+
 impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         // Check if item is a method/function
@@ -86,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
 
 [`check_impl_item`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_lint/trait.LateLintPass.html#method.check_impl_item
 [`ExprKind`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_hir/hir/enum.ExprKind.html
-[Ident]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_span/symbol/struct.Ident.html
+[`Ident`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_span/symbol/struct.Ident.html
 [`ImplItem`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_hir/hir/struct.ImplItem.html
 [`LateLintPass`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_lint/trait.LateLintPass.html
 [`MethodCall`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_hir/hir/enum.ExprKind.html#variant.MethodCall
