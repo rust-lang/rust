@@ -54,8 +54,12 @@
       }
   
       bb4 (cleanup): {
++         _7 = const true;
++         _8 = const true;
++         _9 = const true;
           _1 = move _3;
-          drop(_3) -> [return: bb11, unwind terminate];
+-         drop(_3) -> [return: bb11, unwind terminate];
++         goto -> bb11;
       }
   
       bb5: {

@@ -74,12 +74,6 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 .iterate_to_fixpoint()
                 .into_results_cursor(body);
             let dead_unwinds = compute_dead_unwinds(&body, &mut inits);
-            let mut reachable = BitSet::new_empty(body.basic_blocks.len());
-            for bb in body.basic_blocks.indices() {
-                if inits.results().entry_set_for_block(bb).is_reachable() {
-                    reachable.insert(bb);
-                }
-            }
 
             let uninits = MaybeUninitializedPlaces::new(tcx, body, &env)
                 .mark_inactive_variants_as_uninit()
@@ -97,7 +91,6 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 init_data: InitializationData { inits, uninits },
                 drop_flags,
                 patch: MirPatch::new(body),
-                reachable,
             }
             .elaborate()
         };
@@ -262,7 +255,6 @@ struct ElaborateDropsCtxt<'a, 'tcx> {
     init_data: InitializationData<'a, 'tcx>,
     drop_flags: IndexVec<MovePathIndex, Option<Local>>,
     patch: MirPatch<'tcx>,
-    reachable: BitSet<BasicBlock>,
 }
 
 impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
@@ -302,9 +294,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn collect_drop_flags(&mut self) {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
-            if !self.reachable.contains(bb) {
-                continue;
-            }
             let terminator = data.terminator();
             let place = match terminator.kind {
                 TerminatorKind::Drop { ref place, .. } => place,
@@ -356,9 +345,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn elaborate_drops(&mut self) {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
-            if !self.reachable.contains(bb) {
-                continue;
-            }
             let loc = Location { block: bb, statement_index: data.statements.len() };
             let terminator = data.terminator();
 
@@ -437,9 +423,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn drop_flags_for_fn_rets(&mut self) {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
-            if !self.reachable.contains(bb) {
-                continue;
-            }
             if let TerminatorKind::Call {
                 destination,
                 target: Some(tgt),
@@ -478,9 +461,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         // clobbered before they are read.
 
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
-            if !self.reachable.contains(bb) {
-                continue;
-            }
             debug!("drop_flags_for_locs({:?})", data);
             for i in 0..(data.statements.len() + 1) {
                 debug!("drop_flag_for_locs: stmt {}", i);
