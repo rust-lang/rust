@@ -13,7 +13,7 @@ use crate::astconv::{
     AstConv, ConvertedBinding, ConvertedBindingKind, OnlySelfBounds, PredicateFilter,
 };
 use crate::bounds::Bounds;
-use crate::errors::{MultipleRelaxedDefaultBounds, ValueOfAssociatedStructAlreadySpecified};
+use crate::errors;
 
 impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// Sets `implicitly_sized` to true on `Bounds` if necessary
@@ -35,7 +35,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     if unbound.is_none() {
                         unbound = Some(&ptr.trait_ref);
                     } else {
-                        tcx.sess.emit_err(MultipleRelaxedDefaultBounds { span });
+                        tcx.sess.emit_err(errors::MultipleRelaxedDefaultBounds { span });
                     }
                 }
             }
@@ -326,7 +326,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             dup_bindings
                 .entry(assoc_item.def_id)
                 .and_modify(|prev_span| {
-                    tcx.sess.emit_err(ValueOfAssociatedStructAlreadySpecified {
+                    tcx.sess.emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
                         span: binding.span,
                         prev_span: *prev_span,
                         item_name: binding.item_name,
@@ -488,6 +488,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             }
         }
 
+        let assoc_item_def_id = projection_ty.skip_binder().def_id;
+        let def_kind = tcx.def_kind(assoc_item_def_id);
         match binding.kind {
             ConvertedBindingKind::Equality(..) if return_type_notation => {
                 return Err(self.tcx().sess.emit_err(
@@ -499,11 +501,9 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 // the "projection predicate" for:
                 //
                 // `<T as Iterator>::Item = u32`
-                let assoc_item_def_id = projection_ty.skip_binder().def_id;
-                let def_kind = tcx.def_kind(assoc_item_def_id);
                 match (def_kind, term.unpack()) {
-                    (hir::def::DefKind::AssocTy, ty::TermKind::Ty(_))
-                    | (hir::def::DefKind::AssocConst, ty::TermKind::Const(_)) => (),
+                    (DefKind::AssocTy, ty::TermKind::Ty(_))
+                    | (DefKind::AssocConst, ty::TermKind::Const(_)) => (),
                     (_, _) => {
                         let got = if let Some(_) = term.ty() { "type" } else { "constant" };
                         let expected = tcx.def_descr(assoc_item_def_id);
@@ -516,7 +516,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                             format!("{expected} defined here"),
                         );
 
-                        if let hir::def::DefKind::AssocConst = def_kind
+                        if let DefKind::AssocConst = def_kind
                           && let Some(t) = term.ty() && (t.is_enum() || t.references_error())
                           && tcx.features().associated_const_equality {
                             err.span_suggestion(
@@ -528,8 +528,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         }
                         let reported = err.emit();
                         term = match def_kind {
-                            hir::def::DefKind::AssocTy => Ty::new_error(tcx, reported).into(),
-                            hir::def::DefKind::AssocConst => ty::Const::new_error(
+                            DefKind::AssocTy => Ty::new_error(tcx, reported).into(),
+                            DefKind::AssocConst => ty::Const::new_error(
                                 tcx,
                                 reported,
                                 tcx.type_of(assoc_item_def_id)
@@ -548,6 +548,15 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 );
             }
             ConvertedBindingKind::Constraint(ast_bounds) => {
+                match def_kind {
+                    DefKind::AssocTy => {}
+                    _ => {
+                        return Err(tcx.sess.emit_err(errors::AssocBoundOnConst {
+                            span: assoc_ident.span,
+                            descr: tcx.def_descr(assoc_item_def_id),
+                        }));
+                    }
+                }
                 // "Desugar" a constraint like `T: Iterator<Item: Debug>` to
                 //
                 // `<T as Iterator>::Item: Debug`

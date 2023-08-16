@@ -918,3 +918,12 @@ pub struct UnusedAssociatedTypeBounds {
     #[suggestion(code = "")]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_assoc_bound_on_const)]
+#[note]
+pub struct AssocBoundOnConst {
+    #[primary_span]
+    pub span: Span,
+    pub descr: &'static str,
+}

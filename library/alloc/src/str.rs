@@ -612,7 +612,7 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
 }
 
 /// Converts the bytes while the bytes are still ascii.
-/// For better average performance, this is happens in chunks of `2*size_of::<usize>()`.
+/// For better average performance, this happens in chunks of `2*size_of::<usize>()`.
 /// Returns a vec with the converted bytes.
 #[inline]
 #[cfg(not(test))]

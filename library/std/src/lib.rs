@@ -190,7 +190,7 @@
 
 // To run std tests without x.py without ending up with two copies of std, Miri needs to be
 // able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
-// rustc itself never sets the feature, so this line has no affect there.
+// rustc itself never sets the feature, so this line has no effect there.
 #![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
 // miri-test-libstd also prefers to make std use the sysroot versions of the dependencies.
 #![cfg_attr(feature = "miri-test-libstd", feature(rustc_private))]
