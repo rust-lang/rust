@@ -117,7 +117,7 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
 
     if tests.found_tests == 0 && cx.tcx.features().rustdoc_missing_doc_code_examples {
         if should_have_doc_example(cx, item) {
-            debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
+            debug!("reporting error for {item:?} (hir_id={hir_id:?})");
             let sp = item.attr_span(cx.tcx);
             cx.tcx.struct_span_lint_hir(
                 crate::lint::MISSING_DOC_CODE_EXAMPLES,

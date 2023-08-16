@@ -246,10 +246,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                     return Some(Event::Html(
                         format!(
                             "<div class=\"example-wrap\">\
-                                 <pre class=\"language-{}\"><code>{}</code></pre>\
+                                 <pre class=\"language-{lang}\"><code>{text}</code></pre>\
                              </div>",
-                            lang,
-                            Escape(&original_text),
+                            text = Escape(&original_text),
                         )
                         .into(),
                     ));
@@ -288,8 +287,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 
             let test_escaped = small_url_encode(test);
             Some(format!(
-                r#"<a class="test-arrow" target="_blank" href="{}?code={}{}&amp;edition={}">Run</a>"#,
-                url, test_escaped, channel, edition,
+                "<a class=\"test-arrow\" \
+                    target=\"_blank\" \
+                    href=\"{url}?code={test_escaped}{channel}&amp;edition={edition}\">Run</a>",
             ))
         });
 
@@ -308,7 +308,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         // insert newline to clearly separate it from the
         // previous block so we can shorten the html output
         let mut s = Buffer::new();
-        s.push_str("\n");
+        s.push('\n');
 
         highlight::render_example_with_highlighting(
             &text,
@@ -349,7 +349,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                 dest,
                 title,
             ))) => {
-                debug!("saw start of shortcut link to {} with title {}", dest, title);
+                debug!("saw start of shortcut link to {dest} with title {title}");
                 // If this is a shortcut link, it was resolved by the broken_link_callback.
                 // So the URL will already be updated properly.
                 let link = self.links.iter().find(|&link| *link.href == **dest);
@@ -370,7 +370,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                 dest,
                 _,
             ))) => {
-                debug!("saw end of shortcut link to {}", dest);
+                debug!("saw end of shortcut link to {dest}");
                 if self.links.iter().any(|link| *link.href == **dest) {
                     assert!(self.shortcut_link.is_some(), "saw closing link without opening tag");
                     self.shortcut_link = None;
@@ -379,7 +379,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             // Handle backticks in inline code blocks, but only if we're in the middle of a shortcut link.
             // [`fn@f`]
             Some(Event::Code(text)) => {
-                trace!("saw code {}", text);
+                trace!("saw code {text}");
                 if let Some(link) = self.shortcut_link {
                     // NOTE: this only replaces if the code block is the *entire* text.
                     // If only part of the link has code highlighting, the disambiguator will not be removed.
@@ -394,7 +394,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                         l.href == link.href
                             && Some(&**text) == l.original_text.get(1..l.original_text.len() - 1)
                     }) {
-                        debug!("replacing {} with {}", text, link.new_text);
+                        debug!("replacing {text} with {new_text}", new_text = link.new_text);
                         *text = CowStr::Borrowed(&link.new_text);
                     }
                 }
@@ -402,7 +402,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             // Replace plain text in links, but only in the middle of a shortcut link.
             // [fn@f]
             Some(Event::Text(text)) => {
-                trace!("saw text {}", text);
+                trace!("saw text {text}");
                 if let Some(link) = self.shortcut_link {
                     // NOTE: same limitations as `Event::Code`
                     if let Some(link) = self
@@ -410,7 +410,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                         .iter()
                         .find(|l| l.href == link.href && **text == *l.original_text)
                     {
-                        debug!("replacing {} with {}", text, link.new_text);
+                        debug!("replacing {text} with {new_text}", new_text = link.new_text);
                         *text = CowStr::Borrowed(&link.new_text);
                     }
                 }
@@ -522,12 +522,12 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
                 let mut html_header = String::new();
                 html::push_html(&mut html_header, self.buf.iter().map(|(ev, _)| ev.clone()));
                 let sec = builder.push(level as u32, html_header, id.clone());
-                self.buf.push_front((Event::Html(format!("{} ", sec).into()), 0..0));
+                self.buf.push_front((Event::Html(format!("{sec} ").into()), 0..0));
             }
 
             let level =
                 std::cmp::min(level as u32 + (self.heading_offset as u32), MAX_HEADER_LEVEL);
-            self.buf.push_back((Event::Html(format!("</a></h{}>", level).into()), 0..0));
+            self.buf.push_back((Event::Html(format!("</a></h{level}>").into()), 0..0));
 
             let start_tags = format!(
                 "<h{level} id=\"{id}\">\
@@ -681,14 +681,14 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
                         v.sort_by(|a, b| a.1.cmp(&b.1));
                         let mut ret = String::from("<div class=\"footnotes\"><hr><ol>");
                         for (mut content, id) in v {
-                            write!(ret, "<li id=\"fn{}\">", id).unwrap();
+                            write!(ret, "<li id=\"fn{id}\">").unwrap();
                             let mut is_paragraph = false;
                             if let Some(&Event::End(Tag::Paragraph)) = content.last() {
                                 content.pop();
                                 is_paragraph = true;
                             }
                             html::push_html(&mut ret, content.into_iter());
-                            write!(ret, "&nbsp;<a href=\"#fnref{}\">↩</a>", id).unwrap();
+                            write!(ret, "&nbsp;<a href=\"#fnref{id}\">↩</a>").unwrap();
                             if is_paragraph {
                                 ret.push_str("</p>");
                             }
@@ -959,7 +959,7 @@ impl LangString {
                     } {
                         if let Some(extra) = extra {
                             extra.error_invalid_codeblock_attr(
-                                format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
+                                format!("unknown attribute `{x}`. Did you mean `{flag}`?"),
                                 help,
                             );
                         }
@@ -1038,7 +1038,7 @@ impl MarkdownWithToc<'_> {
             html::push_html(&mut s, p);
         }
 
-        format!("<nav id=\"TOC\">{}</nav>{}", toc.into_toc().print(), s)
+        format!("<nav id=\"TOC\">{toc}</nav>{s}", toc = toc.into_toc().print())
     }
 }
 
