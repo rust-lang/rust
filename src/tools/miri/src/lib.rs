@@ -7,7 +7,6 @@
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
-#![feature(local_key_cell_methods)]
 #![feature(round_ties_even)]
 #![feature(os_str_bytes)]
 #![feature(lint_reasons)]
