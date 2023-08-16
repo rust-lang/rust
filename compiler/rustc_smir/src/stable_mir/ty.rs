@@ -432,12 +432,14 @@ pub struct UnevaluatedConst {
     pub promoted: Option<Promoted>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TraitSpecializationKind {
     None,
     Marker,
     AlwaysApplicable,
 }
 
+#[derive(Clone, Debug)]
 pub struct TraitDecl {
     pub def_id: TraitDef,
     pub unsafety: Safety,
@@ -454,6 +456,7 @@ pub struct TraitDecl {
 
 pub type ImplTrait = EarlyBinder<TraitRef>;
 
+#[derive(Clone, Debug)]
 pub struct TraitRef {
     pub def_id: TraitDef,
     pub args: GenericArgs,
