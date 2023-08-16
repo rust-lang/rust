@@ -20,10 +20,10 @@ use crate::str;
 /// in each pair are borrowed references; the latter are owned
 /// strings.
 ///
-/// Note that this structure is **not** `repr(C)` and is not recommended to be
-/// placed in the signatures of FFI functions. Instead, safe wrappers of FFI
-/// functions may leverage the unsafe [`CStr::from_ptr`] constructor to provide
-/// a safe interface to other consumers.
+/// Note that this structure does **not** have a guaranteed layout (the `repr(transparent)`
+/// notwithstanding) and is not recommended to be placed in the signatures of FFI functions.
+/// Instead, safe wrappers of FFI functions may leverage the unsafe [`CStr::from_ptr`] constructor
+/// to provide a safe interface to other consumers.
 ///
 /// [`CString`]: ../../std/ffi/struct.CString.html
 /// [`String`]: ../../std/string/struct.String.html
