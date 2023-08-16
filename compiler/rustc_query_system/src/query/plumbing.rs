@@ -3,14 +3,13 @@
 //! manage the caches, and so forth.
 
 use std::cell::Cell;
-use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 
+use hashbrown::hash_table::Entry;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sharded::Sharded;
+use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::{outline, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
@@ -25,8 +24,13 @@ use crate::query::caches::QueryCache;
 use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryLatch, report_cycle};
 use crate::query::{QueryContext, QueryMap, QueryStackFrame, SerializedDepNodeIndex};
 
+#[inline]
+fn equivalent_key<K: Eq, V>(k: &K) -> impl Fn(&(K, V)) -> bool + '_ {
+    move |x| x.0 == *k
+}
+
 pub struct QueryState<K> {
-    active: Sharded<FxHashMap<K, QueryResult>>,
+    active: Sharded<hashbrown::HashTable<(K, QueryResult)>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
@@ -159,7 +163,7 @@ where
 {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
-    fn complete<C>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
+    fn complete<C>(self, cache: &C, key_hash: u64, result: C::Value, dep_node_index: DepNodeIndex)
     where
         C: QueryCache<Key = K>,
     {
@@ -174,16 +178,17 @@ where
         cache.complete(key, result, dep_node_index);
 
         let job = {
-            let val = {
-                // don't keep the lock during the `unwrap()` of the retrieved value, or we taint the
-                // underlying shard.
-                // since unwinding also wants to look at this map, this can also prevent a double
-                // panic.
-                let mut lock = state.active.lock_shard_by_value(&key);
-                lock.remove(&key)
-            };
-            val.unwrap().expect_job()
+            // don't keep the lock during the `unwrap()` of the retrieved value, or we taint the
+            // underlying shard.
+            // since unwinding also wants to look at this map, this can also prevent a double
+            // panic.
+            let mut shard = state.active.lock_shard_by_hash(key_hash);
+            match shard.find_entry(key_hash, equivalent_key(&key)) {
+                Err(_) => None,
+                Ok(occupied) => Some(occupied.remove().0.1),
+            }
         };
+        let job = job.expect("active query job entry").expect_job();
 
         job.signal_complete();
     }
@@ -199,11 +204,16 @@ where
         // Poison the query so jobs waiting on it panic.
         let state = self.state;
         let job = {
-            let mut shard = state.active.lock_shard_by_value(&self.key);
-            let job = shard.remove(&self.key).unwrap().expect_job();
-
-            shard.insert(self.key, QueryResult::Poisoned);
-            job
+            let key_hash = sharded::make_hash(&self.key);
+            let mut shard = state.active.lock_shard_by_hash(key_hash);
+            match shard.find_entry(key_hash, equivalent_key(&self.key)) {
+                Err(_) => panic!(),
+                Ok(occupied) => {
+                    let ((key, value), vacant) = occupied.remove();
+                    vacant.insert((key, QueryResult::Poisoned));
+                    value.expect_job()
+                }
+            }
         };
         // Also signal the completion of the job, so waiters
         // will continue execution.
@@ -283,11 +293,11 @@ where
                 outline(|| {
                     // We didn't find the query result in the query cache. Check if it was
                     // poisoned due to a panic instead.
-                    let lock = query.query_state(qcx).active.get_shard_by_value(&key).lock();
-
-                    match lock.get(&key) {
+                    let key_hash = sharded::make_hash(&key);
+                    let shard = query.query_state(qcx).active.lock_shard_by_hash(key_hash);
+                    match shard.find(key_hash, equivalent_key(&key)) {
                         // The query we waited on panicked. Continue unwinding here.
-                        Some(QueryResult::Poisoned) => FatalError.raise(),
+                        Some((_, QueryResult::Poisoned)) => FatalError.raise(),
                         _ => panic!(
                             "query '{}' result must be in the cache or the query must be poisoned after a wait",
                             query.name()
@@ -318,7 +328,8 @@ where
     Qcx: QueryContext,
 {
     let state = query.query_state(qcx);
-    let mut state_lock = state.active.lock_shard_by_value(&key);
+    let key_hash = sharded::make_hash(&key);
+    let mut state_lock = state.active.lock_shard_by_hash(key_hash);
 
     // For the parallel compiler we need to check both the query cache and query state structures
     // while holding the state lock to ensure that 1) the query has not yet completed and 2) the
@@ -335,21 +346,21 @@ where
 
     let current_job_id = qcx.current_query_job();
 
-    match state_lock.entry(key) {
+    match state_lock.entry(key_hash, equivalent_key(&key), |(k, _)| sharded::make_hash(k)) {
         Entry::Vacant(entry) => {
             // Nothing has computed or is computing the query, so we start a new job and insert it in the
             // state map.
             let id = qcx.next_job_id();
             let job = QueryJob::new(id, span, current_job_id);
-            entry.insert(QueryResult::Started(job));
+            entry.insert((key, QueryResult::Started(job)));
 
             // Drop the lock before we start executing the query
             drop(state_lock);
 
-            execute_job::<_, _, INCR>(query, qcx, state, key, id, dep_node)
+            execute_job::<_, _, INCR>(query, qcx, state, key, key_hash, id, dep_node)
         }
         Entry::Occupied(mut entry) => {
-            match entry.get_mut() {
+            match &mut entry.get_mut().1 {
                 QueryResult::Started(job) => {
                     if sync::is_dyn_thread_safe() {
                         // Get the latch out
@@ -380,6 +391,7 @@ fn execute_job<Q, Qcx, const INCR: bool>(
     qcx: Qcx,
     state: &QueryState<Q::Key>,
     key: Q::Key,
+    key_hash: u64,
     id: QueryJobId,
     dep_node: Option<DepNode>,
 ) -> (Q::Value, Option<DepNodeIndex>)
@@ -440,7 +452,7 @@ where
             }
         }
     }
-    job_owner.complete(cache, result, dep_node_index);
+    job_owner.complete(cache, key_hash, result, dep_node_index);
 
     (result, Some(dep_node_index))
 }
