@@ -24,7 +24,7 @@ mod struct_union {
     static union: union = union { union: 0 };
 
     impl union {
-        pub fn union() -> &'static union {
+        pub fn union<'union>() -> &'union union {
             &union
         }
     }
@@ -56,6 +56,10 @@ mod trait_union {
     impl union for () {}
 }
 
+macro_rules! ty {
+    ($ty:ty { $($field:ident:$field_ty:ty)* }) => {};
+}
+
 fn main() {
     let union = union::union();
     let _ = union.union;
@@ -63,4 +67,6 @@ fn main() {
     let union = union_union::union::union();
     let _ = unsafe { union.union };
     <() as trait_union::union>::union();
+    ty!(union {});
+    ty!(union { union: union });
 }

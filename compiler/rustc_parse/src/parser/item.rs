@@ -1,5 +1,5 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
-use super::ty::{AllowPlus, MaybeRecoverAnonStructOrUnion, RecoverQPath, RecoverReturnSign};
+use super::ty::{AllowAnonStructOrUnion, AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
@@ -562,103 +562,42 @@ impl<'a> Parser<'a> {
 
         let polarity = self.parse_polarity();
 
-        let mut snapshot_before_last_ty = self.create_snapshot_for_diagnostic();
         // Parse both types and traits as a type, then reinterpret if necessary.
         let err_path = |span| ast::Path::from_ident(Ident::new(kw::Empty, span));
-        let mut ty_first =
-            if self.token.is_keyword(kw::For) && self.look_ahead(1, |t| t != &token::Lt) {
-                let span = self.prev_token.span.between(self.token.span);
-                self.struct_span_err(span, "missing trait in a trait impl")
-                    .span_suggestion(
-                        span,
-                        "add a trait here",
-                        " Trait ",
-                        Applicability::HasPlaceholders,
-                    )
-                    .span_suggestion(
-                        span.to(self.token.span),
-                        "for an inherent impl, drop this `for`",
-                        "",
-                        Applicability::MaybeIncorrect,
-                    )
-                    .emit();
-                P(Ty {
-                    kind: TyKind::Path(None, err_path(span)),
-                    span,
-                    id: DUMMY_NODE_ID,
-                    tokens: None,
-                })
-            } else {
-                self.parse_ty_with_generics_recovery(&generics)?
-            };
+        let ty_first = if self.token.is_keyword(kw::For) && self.look_ahead(1, |t| t != &token::Lt)
+        {
+            let span = self.prev_token.span.between(self.token.span);
+            self.sess.emit_err(errors::MissingTraitInTraitImpl {
+                span,
+                for_span: span.to(self.token.span),
+            });
+            P(Ty {
+                kind: TyKind::Path(None, err_path(span)),
+                span,
+                id: DUMMY_NODE_ID,
+                tokens: None,
+            })
+        } else {
+            self.parse_ty_with_generics_recovery(&generics)?
+        };
 
         // If `for` is missing we try to recover.
         let has_for = self.eat_keyword(kw::For);
         let missing_for_span = self.prev_token.span.between(self.token.span);
 
-        let mut ty_second = if self.token == token::DotDot {
+        let ty_second = if self.token == token::DotDot {
             // We need to report this error after `cfg` expansion for compatibility reasons
             self.bump(); // `..`, do not add it to expected tokens
             Some(self.mk_ty(self.prev_token.span, TyKind::Err))
         } else if has_for || self.token.can_begin_type() {
-            snapshot_before_last_ty = self.create_snapshot_for_diagnostic();
-            Some(self.parse_ty()?)
+            Some(self.parse_second_ty_for_item_impl()?)
         } else {
             None
         };
 
         generics.where_clause = self.parse_where_clause()?;
 
-        let (mut impl_items, err) =
-            self.parse_item_list(attrs, |p| p.parse_impl_item(ForceCollect::No))?;
-
-        if let Some(mut err) = err {
-            let mut snapshot = snapshot_before_last_ty;
-
-            if snapshot.can_start_anonymous_union() {
-                let recover_result = {
-                    let recover_last_ty = match snapshot.parse_ty() {
-                        Ok(ty) => Some(ty),
-                        Err(snapshot_err) => {
-                            snapshot_err.cancel();
-                            None
-                        }
-                    };
-
-                    let impl_items = match snapshot
-                        .parse_item_list(attrs, |p| p.parse_impl_item(ForceCollect::No))
-                    {
-                        Ok((impl_items, None)) => Some(impl_items),
-                        Ok((_, Some(snapshot_err))) => {
-                            snapshot_err.cancel();
-                            None
-                        }
-                        Err(snapshot_err) => {
-                            snapshot_err.cancel();
-                            None
-                        }
-                    };
-
-                    (recover_last_ty, impl_items)
-                };
-
-                if let (Some(recover_last_ty), Some(new_impl_items)) = recover_result {
-                    err.delay_as_bug();
-                    self.restore_snapshot(snapshot);
-
-                    if ty_second.is_some() {
-                        ty_second = Some(recover_last_ty);
-                    } else {
-                        ty_first = recover_last_ty;
-                    }
-                    impl_items = new_impl_items;
-                } else {
-                    err.emit();
-                }
-            } else {
-                err.emit();
-            }
-        }
+        let impl_items = self.parse_item_list(attrs, |p| p.parse_impl_item(ForceCollect::No))?;
 
         let item_kind = match ty_second {
             Some(ty_second) => {
@@ -727,21 +666,20 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: &mut AttrVec,
         mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
-    ) -> PResult<'a, (ThinVec<T>, Option<DiagnosticBuilder<'a, ErrorGuaranteed>>)> {
+    ) -> PResult<'a, ThinVec<T>> {
         let open_brace_span = self.token.span;
 
         // Recover `impl Ty;` instead of `impl Ty {}`
         if self.token == TokenKind::Semi {
             self.sess.emit_err(errors::UseEmptyBlockNotSemi { span: self.token.span });
             self.bump();
-            return Ok((ThinVec::new(), None));
+            return Ok(ThinVec::new());
         }
 
         self.expect(&token::OpenDelim(Delimiter::Brace))?;
         attrs.extend(self.parse_inner_attributes()?);
 
         let mut items = ThinVec::new();
-        let mut delayed_err = None;
         while !self.eat(&token::CloseDelim(Delimiter::Brace)) {
             if self.recover_doc_comment_before_brace() {
                 continue;
@@ -803,21 +741,21 @@ impl<'a> Parser<'a> {
                             Applicability::MaybeIncorrect,
                         );
                     }
-                    delayed_err = Some(err);
+                    err.emit();
                     break;
                 }
                 Ok(Some(item)) => items.extend(item),
                 Err(mut err) => {
                     self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
                     err.span_label(open_brace_span, "while parsing this item list starting here")
-                        .span_label(self.prev_token.span, "the item list ends here");
+                        .span_label(self.prev_token.span, "the item list ends here")
+                        .emit();
 
-                    delayed_err = Some(err);
                     break;
                 }
             }
         }
-        Ok((items, delayed_err))
+        Ok(items)
     }
 
     /// Recover on a doc comment before `}`.
@@ -908,13 +846,7 @@ impl<'a> Parser<'a> {
         } else {
             // It's a normal trait.
             generics.where_clause = self.parse_where_clause()?;
-            let (items, err) =
-                self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
-
-            if let Some(mut err) = err {
-                err.emit();
-            }
-
+            let items = self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
             Ok((
                 ident,
                 ItemKind::Trait(Box::new(Trait { is_auto, unsafety, generics, bounds, items })),
@@ -1182,13 +1114,11 @@ impl<'a> Parser<'a> {
             self.eat_keyword(kw::Unsafe);
         }
 
-        let (items, err) =
-            self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?;
-        if let Some(mut err) = err {
-            err.emit();
-        }
-
-        let module = ast::ForeignMod { unsafety, abi, items };
+        let module = ast::ForeignMod {
+            unsafety,
+            abi,
+            items: self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?,
+        };
         Ok((Ident::empty(), ItemKind::ForeignMod(module)))
     }
 
@@ -1675,7 +1605,7 @@ impl<'a> Parser<'a> {
             adt_ty,
             ident_span,
             parsed_where,
-            MaybeRecoverAnonStructOrUnion::Parse,
+            AllowAnonStructOrUnion::Yes,
         )
     }
 
@@ -1684,7 +1614,7 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         ident_span: Span,
         parsed_where: bool,
-        maybe_recover_anon_struct_or_union: MaybeRecoverAnonStructOrUnion,
+        allow_anon_struct_or_union: AllowAnonStructOrUnion<'a>,
     ) -> PResult<'a, (ThinVec<FieldDef>, /* recovered */ bool)> {
         let mut fields = ThinVec::new();
         let mut recovered = false;
@@ -1704,9 +1634,9 @@ impl<'a> Parser<'a> {
                         // record struct body but an `impl` body.
                         //
                         // Instead, the error should be thrown and handled by the caller
-                        // `parse_anonymous_struct_or_union`.
-                        if maybe_recover_anon_struct_or_union
-                            == MaybeRecoverAnonStructOrUnion::Recover
+                        // `parse_anon_struct_or_union`.
+                        if let AllowAnonStructOrUnion::RecoverNonEmptyOrElse(_) =
+                            allow_anon_struct_or_union
                         {
                             return Err(err);
                         }

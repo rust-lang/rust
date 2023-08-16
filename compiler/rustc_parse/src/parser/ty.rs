@@ -62,36 +62,98 @@ pub(super) enum RecoverQuestionMark {
     No,
 }
 
-/// When there is an anonymous struct or union, whether we should parse it, e.g.
-/// ```ignore (the feature `unnamed_field` is not fully implemented yet)
-/// #[repr(C)]
-/// struct Foo {
-///     _: struct {
-///         a: u32,
-///         b: u64,
-///         _: union {
-///             c: f64,
-///             d: char,
-///         }
-///     },
-/// }
-/// ```
-/// or recover it, e.g.
-/// ```compile_fail
-/// // This will be recovered as an anonymous struct
-/// impl struct { foo: Foo } {
-///     fn foo() {}
-/// }
-/// // This will be first recovered as an anonymous union (but will fail)
-/// // and then parsed as a type named `union` followed by a `fn` block.
-/// fn bar() -> union {
-///     let _i = 0;
-/// }
-/// ```
-#[derive(PartialEq, Clone, Copy)]
-pub(crate) enum MaybeRecoverAnonStructOrUnion {
-    Parse,
-    Recover,
+/// Whether allowed to parse or recover an anonymous struct or union.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum AllowAnonStructOrUnion<'a> {
+    /// Parse the anonymous structs or unions regularly.
+    ///
+    /// It is always okay to parse it in fields definitions, and nice to
+    /// recover.
+    /// ```ignore (feature-not-ready)
+    /// #[repr(C)]
+    /// struct Foo {
+    ///     _: struct {
+    ///         a: u32,
+    ///         b: u64,
+    ///         _: union {
+    ///             c: f64,
+    ///             d: char,
+    ///         }
+    ///     },
+    /// }
+    /// ```
+    /// Similarly, for types of parameters, where there is no second way to parse
+    /// the anonymous structs or unions, we can parse it and report an error that
+    /// anonymous structs or unions are not allowed here.
+    Yes,
+    /// Recover an anonymous struct or union for diagnostic, but be more
+    /// conservative than `Yes` if there are other ways to parse it.
+    ///
+    /// This mode is preferred where types are allowed to be followed by a block
+    ///  `{` ... `}`, where the block cannot contain field definitions. Such as:
+    /// - `impl $(Trait for)? Type {}`
+    /// - `fn foo() -> Type {}`
+    ///
+    /// Except for some special cases (will discuss below), anonymous structs or
+    /// unions with empty fields are always ambiguous since the empty block `{}`
+    /// can also be valid `impl` bodies or `fn` bodies, so we usually shouldn't
+    /// allow recovery of empty anonymous structs or unions.
+    ///
+    /// # Examples
+    /// ## Empty blocks
+    /// ```
+    /// # #![allow(non_camel_case_types)]
+    /// # trait Foo {}
+    /// # struct union {}
+    /// impl union {}
+    /// impl Foo for union {}
+    /// fn foo() -> union {
+    ///     union {}
+    /// }
+    /// ```
+    /// ## Non-empty blocks
+    /// ```compile_fail
+    /// // This will be recovered as an anonymous struct
+    /// impl struct { foo: Foo } {
+    ///     fn foo() {}
+    /// }
+    /// // This will be first recovered as an anonymous union (but will fail)
+    /// // and then parsed as a type named `union` followed by an `fn` block.
+    /// fn bar() -> union {
+    ///     let _i = 0;
+    /// }
+    /// ```
+    /// # A Special Case
+    /// In `impl` items, even if for an anonymous struct or union with
+    /// empty fields, we can still allow recovering it as long as it is followed by
+    /// some tokens such as `where`, `for`, or `{`.
+    /// ```compile_fail
+    /// impl union {} for union {} where union: union {}
+    /// ```
+    RecoverNonEmptyOrElse(/* allow_followed_by */ Option<fn(&Parser<'a>) -> bool>),
+    /// Disallow parsing of anonymous structs or unions.
+    ///
+    /// Generally, we should avoid parsing or recovering anonymous structs or unions
+    /// if we have no information of what can appear in a block `{` ... `}` followed
+    /// by a type, (such as a `$ty:ty { /* any macro rules */ }` in macros), or
+    /// otherwise the following codes will be broken.
+    /// ```
+    /// macro_rules! ty {
+    ///     ($ty:ty { $($field:ident : $field_ty:ty)* }) => {};
+    /// }
+    /// ty!(union { union: union });
+    /// ty!(union {});
+    /// ```
+    No,
+}
+
+impl<'a> AllowAnonStructOrUnion<'a> {
+    fn recover_non_empty_or_else(allow_followed_by: fn(&Parser<'a>) -> bool) -> Self {
+        Self::RecoverNonEmptyOrElse(Some(allow_followed_by))
+    }
+    fn recover_non_empty() -> Self {
+        Self::RecoverNonEmptyOrElse(None)
+    }
 }
 
 /// Signals whether parsing a type should recover `->`.
@@ -151,7 +213,29 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::Yes,
-            MaybeRecoverAnonStructOrUnion::Recover,
+            AllowAnonStructOrUnion::recover_non_empty(),
+        )
+    }
+
+    fn can_follow_first_ty_in_item_impl(&self) -> bool {
+        self.token.is_keyword(kw::For) || self.can_follow_second_ty_in_item_impl()
+    }
+
+    fn can_follow_second_ty_in_item_impl(&self) -> bool {
+        self.token.is_keyword(kw::Where) || self.token == token::OpenDelim(Delimiter::Brace)
+    }
+
+    pub(super) fn parse_second_ty_for_item_impl(&mut self) -> PResult<'a, P<Ty>> {
+        self.parse_ty_common(
+            AllowPlus::Yes,
+            AllowCVariadic::No,
+            RecoverQPath::Yes,
+            RecoverReturnSign::Yes,
+            None,
+            RecoverQuestionMark::Yes,
+            AllowAnonStructOrUnion::recover_non_empty_or_else(
+                Self::can_follow_second_ty_in_item_impl,
+            ),
         )
     }
 
@@ -166,7 +250,9 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             Some(ty_params),
             RecoverQuestionMark::Yes,
-            MaybeRecoverAnonStructOrUnion::Recover,
+            AllowAnonStructOrUnion::recover_non_empty_or_else(
+                Self::can_follow_first_ty_in_item_impl,
+            ),
         )
     }
 
@@ -181,7 +267,7 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::Yes,
-            MaybeRecoverAnonStructOrUnion::Parse,
+            AllowAnonStructOrUnion::Yes,
         )
     }
 
@@ -196,7 +282,7 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::Yes,
-            MaybeRecoverAnonStructOrUnion::Recover,
+            AllowAnonStructOrUnion::Yes,
         )
     }
 
@@ -214,7 +300,7 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::Yes,
-            MaybeRecoverAnonStructOrUnion::Recover,
+            AllowAnonStructOrUnion::No,
         )
     }
 
@@ -228,7 +314,7 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::No,
-            MaybeRecoverAnonStructOrUnion::Recover,
+            AllowAnonStructOrUnion::No,
         )
     }
 
@@ -240,7 +326,8 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::No,
-            MaybeRecoverAnonStructOrUnion::Recover,
+            // Disable the entry of parsing `$ty:ty` in macros
+            AllowAnonStructOrUnion::No,
         )
     }
 
@@ -253,7 +340,8 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::OnlyFatArrow,
             None,
             RecoverQuestionMark::Yes,
-            MaybeRecoverAnonStructOrUnion::Recover,
+            // The `where` clause can be followed by a valid empty block `{}`.
+            AllowAnonStructOrUnion::recover_non_empty(),
         )
     }
 
@@ -273,7 +361,8 @@ impl<'a> Parser<'a> {
                 recover_return_sign,
                 None,
                 RecoverQuestionMark::Yes,
-                MaybeRecoverAnonStructOrUnion::Recover,
+                // Return types can be followed by a valid empty block `{}`.
+                AllowAnonStructOrUnion::recover_non_empty(),
             )?;
             FnRetTy::Ty(ty)
         } else if recover_return_sign.can_recover(&self.token.kind) {
@@ -288,7 +377,8 @@ impl<'a> Parser<'a> {
                 recover_return_sign,
                 None,
                 RecoverQuestionMark::Yes,
-                MaybeRecoverAnonStructOrUnion::Recover,
+                // Return types can be followed by a valid empty block `{}`.
+                AllowAnonStructOrUnion::recover_non_empty(),
             )?;
             FnRetTy::Ty(ty)
         } else {
@@ -304,7 +394,7 @@ impl<'a> Parser<'a> {
         recover_return_sign: RecoverReturnSign,
         ty_generics: Option<&Generics>,
         recover_question_mark: RecoverQuestionMark,
-        maybe_recover_anon_struct_or_union: MaybeRecoverAnonStructOrUnion,
+        allow_anon_struct_or_union: AllowAnonStructOrUnion<'a>,
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
@@ -360,8 +450,8 @@ impl<'a> Parser<'a> {
             TyKind::Path(Some(qself), path)
         } else if self.check_path() {
             // `union` is a weak keyword, so it can possibly be a path
-            if self.can_start_anonymous_union()
-                    && let Some(ty_kind) = self.parse_anon_struct_or_union(lo, maybe_recover_anon_struct_or_union)? {
+            if self.can_start_anon_union()
+                    && let Some(ty_kind) = self.parse_anon_struct_or_union(lo, allow_anon_struct_or_union)? {
                 ty_kind
             } else {
                 self.parse_path_start_ty(lo, allow_plus, ty_generics)?
@@ -379,8 +469,8 @@ impl<'a> Parser<'a> {
                 }
             }
         } else {
-            if self.can_start_anonymous_struct()
-                    && let Some(ty_kind) = self.parse_anon_struct_or_union(lo, maybe_recover_anon_struct_or_union)? {
+            if self.can_start_anon_struct()
+                    && let Some(ty_kind) = self.parse_anon_struct_or_union(lo, allow_anon_struct_or_union)? {
                 ty_kind
             } else {
                 let msg = format!("expected type, found {}", super::token_descr(&self.token));
@@ -406,18 +496,20 @@ impl<'a> Parser<'a> {
 
     /// Parse an anonymous struct or union, and returns:
     /// - `Ok(Some(ty_kind))`, when successful.
-    /// - `Ok(None)`, when failed, we restore the snapshot before parsing.
-    ///   This may happen during recovery. We have to be converative because
-    ///   the following block is more likely to be an `impl` block or `fn` block
-    ///   instead of an anonymous struct or union.
+    /// - `Ok(None)`, when failed and recovery is diabled.
     /// - `Err(err)`, a parse error which should be handled by the caller.
     ///   This will only happen when we are actually parsing instead of recovering
     ///   from an anonymous struct or union.
+    ///
+    /// See also [`AllowAnonStructOrUnion`].
     fn parse_anon_struct_or_union(
         &mut self,
         lo: Span,
-        maybe_recover_anon_struct_or_union: MaybeRecoverAnonStructOrUnion,
+        allow_anon_struct_or_union: AllowAnonStructOrUnion<'a>,
     ) -> PResult<'a, Option<TyKind>> {
+        if let AllowAnonStructOrUnion::No = allow_anon_struct_or_union {
+            return Ok(None);
+        }
         assert!(self.token.is_keyword(kw::Union) || self.token.is_keyword(kw::Struct));
         let is_union = self.token.is_keyword(kw::Union);
 
@@ -429,26 +521,24 @@ impl<'a> Parser<'a> {
         match self.parse_anon_struct_or_union_body(
             if is_union { "union" } else { "struct" },
             span,
-            maybe_recover_anon_struct_or_union,
+            allow_anon_struct_or_union,
         ) {
-            Ok(fields) => {
-                // During recovery, an empty anonymous struct or union is more likely to be
-                // a (maybe-wrong) identifier followed by an empty block, so we should
-                // give up this recovery. e.g.:
-                // ```
-                // impl struct {}
-                // impl union {}
-                // impl Foo for struct {}
-                // impl Foo for union {}
-                // fn foo() -> struct {}
-                // fn foo() -> union {}
-                // ```
-                if maybe_recover_anon_struct_or_union == MaybeRecoverAnonStructOrUnion::Recover
-                    && fields.is_empty()
+            Ok(fields) => match allow_anon_struct_or_union {
+                // Don't recover an anonymous struct or union followed by an empty block
+                AllowAnonStructOrUnion::RecoverNonEmptyOrElse(None) if fields.is_empty() => {
+                    self.restore_snapshot(snapshot);
+                    Ok(None)
+                }
+                // Don't recover an anonymous struct or union followed by an empty block,
+                // except it is followed by some specific tokens.
+                AllowAnonStructOrUnion::RecoverNonEmptyOrElse(Some(allow_followed_by))
+                    if fields.is_empty() && !allow_followed_by(self) =>
                 {
                     self.restore_snapshot(snapshot);
                     Ok(None)
-                } else {
+                }
+                // Parse the anonymous struct or union and return.
+                _ => {
                     let span = lo.to(self.prev_token.span);
                     self.sess.gated_spans.gate(sym::unnamed_fields, span);
                     // These can be rejected during AST validation in `deny_anon_struct_or_union`.
@@ -458,9 +548,11 @@ impl<'a> Parser<'a> {
                         Ok(Some(TyKind::AnonStruct(fields)))
                     }
                 }
-            }
+            },
             Err(err) => {
-                if maybe_recover_anon_struct_or_union == MaybeRecoverAnonStructOrUnion::Recover {
+                // Don't recover an anonymous struct or union with errors.
+                if let AllowAnonStructOrUnion::RecoverNonEmptyOrElse(_) = allow_anon_struct_or_union
+                {
                     err.cancel();
                     self.restore_snapshot(snapshot);
                     Ok(None)
@@ -475,15 +567,32 @@ impl<'a> Parser<'a> {
         &mut self,
         adt_ty: &str,
         ident_span: Span,
-        maybe_recover_anon_struct_or_union: MaybeRecoverAnonStructOrUnion,
+        allow_anon_struct_or_union: AllowAnonStructOrUnion<'a>,
     ) -> PResult<'a, ThinVec<ast::FieldDef>> {
         self.parse_record_struct_body_common(
             adt_ty,
             ident_span,
             false,
-            maybe_recover_anon_struct_or_union,
+            allow_anon_struct_or_union,
         )
-        .map(|(fields, _recovered)| fields)
+        .map(|(mut fields, recovered)| {
+            // Don't recover an anonymous struct or union if it is already recovered.
+            //
+            // If it is a recovered struct or union, we should not accept it in case that
+            // the non-empty block happens to be a valid block. e.g.:
+            // ```
+            // type union = u32;
+            // static union: union = 0;
+            // fn foo() -> union {
+            //     union
+            // }
+            // ```
+            // here the `union { union }` will be recovered as a single field union.
+            if let AllowAnonStructOrUnion::RecoverNonEmptyOrElse(_) = allow_anon_struct_or_union && recovered {
+                fields.clear();
+            }
+            fields
+        })
     }
 
     /// Parses either:
@@ -846,12 +955,12 @@ impl<'a> Parser<'a> {
         Ok(bounds)
     }
 
-    pub(super) fn can_start_anonymous_union(&mut self) -> bool {
+    pub(super) fn can_start_anon_union(&mut self) -> bool {
         self.token.is_keyword(kw::Union)
             && self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace))
     }
 
-    pub(super) fn can_start_anonymous_struct(&mut self) -> bool {
+    pub(super) fn can_start_anon_struct(&mut self) -> bool {
         self.token.is_keyword(kw::Struct)
             && self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace))
     }
