@@ -2,15 +2,15 @@
 
 The first step in the journey of a new lint is the definition
 and registration of the lint in Clippy's codebase.
-We can use the Clippy dev tools to handle this step since setting up the 
+We can use the Clippy dev tools to handle this step since setting up the
 lint involves some boilerplate code.
 
 #### Lint types
 
 A lint type is the category of items and expressions in which your lint focuses on.
 
-As of the writing of this documentation update, there are 12 groups (a.k.a. _types_)
-of lints besides the numerous standalone lints living under `clippy_lints/src/`:
+As of the writing of this documentation update, there are 12 _types_ of lints
+besides the numerous standalone lints living under `clippy_lints/src/`:
 
 - `cargo`
 - `casts`
@@ -25,33 +25,35 @@ of lints besides the numerous standalone lints living under `clippy_lints/src/`:
 - `unit_types`
 - `utils / internal` (Clippy internal lints)
 
-These types group together lints that share some common behaviors.
-For instance, `functions` groups together lints
-that deal with some aspects of function calls in Rust.
+These types group together lints that share some common behaviors. For instance,
+`functions` groups together lints that deal with some aspects of functions in
+Rust, like definitions, signatures and attributes.
 
 For more information, feel free to compare the lint files under any category
-with [All Clippy lints][all_lints] or
-ask one of the maintainers.
+with [All Clippy lints][all_lints] or ask one of the maintainers.
 
 ## Lint name
 
-A good lint name is important, make sure to check the [lint naming guidelines][lint_naming]. Don't worry, if
-the lint name doesn't fit, a Clippy team member will alert you in the PR process.
+A good lint name is important, make sure to check the [lint naming
+guidelines][lint_naming]. Don't worry, if the lint name doesn't fit, a Clippy
+team member will alert you in the PR process.
 
 ---
 
-We'll name our example lint that detects functions named "foo" `foo_functions`. Check the
-[lint naming guidelines][lint_naming] to see why this name makes sense.
+We'll name our example lint that detects functions named "foo" `foo_functions`.
+Check the [lint naming guidelines][lint_naming] to see why this name makes
+sense.
 
 ## Add and Register the Lint
 
-Now that a name is chosen, we shall register `foo_functions` as a lint to the codebase.
-There are two ways to register a lint.
+Now that a name is chosen, we shall register `foo_functions` as a lint to the
+codebase. There are two ways to register a lint.
 
 ### Standalone
 
-If you believe that this new lint is a standalone lint (that doesn't belong to any specific [type](#lint-types) like `functions` or `loops`), you can run the following
-command in your Clippy project:
+If you believe that this new lint is a standalone lint (that doesn't belong to
+any specific [type](#lint-types) like `functions` or `loops`), you can run the
+following command in your Clippy project:
 
 ```sh
 $ cargo dev new_lint --name=lint_name --pass=late --category=pedantic
@@ -59,13 +61,16 @@ $ cargo dev new_lint --name=lint_name --pass=late --category=pedantic
 
 There are two things to note here:
 
-1. We set `--pass=late` in this command to do a late lint pass. The alternative
-is an `early` lint pass. We will discuss this difference in a later chapter.
-<!-- FIXME: Link that "later chapter" when lint_passes.md is merged -->
-2. If not provided, the `category` of this new lint will default to `nursery`.
+1. `--pass`: We set `--pass=late` in this command to do a late lint pass. The
+   alternative is an `early` lint pass. We will discuss this difference in a
+   later chapter.
+   <!-- FIXME: Link that "later chapter" when lint_passes.md is merged -->
+2. `--category`: If not provided, the `category` of this new lint will default
+   to `nursery`.
 
-The `cargo dev new_lint` command will create a new file: `clippy_lints/src/foo_functions.rs`
-as well as [register the lint](#lint-registration).
+The `cargo dev new_lint` command will create a new file:
+`clippy_lints/src/foo_functions.rs` as well as [register the
+lint](#lint-registration).
 
 Overall, you should notice that the following files are modified or created:
 
@@ -115,7 +120,6 @@ call your lint from within the type's lint pass, found in `clippy_lints/src/{typ
 A _type_ is just the name of a directory in `clippy_lints/src`, like `functions` in
 the example command. Clippy groups together some lints that share common behaviors,
 so if your lint falls into one, it would be best to add it to that type.
-Read more about [lint types](#lint-types) below.
 
 Overall, you should notice that the following files are modified or created:
 
@@ -138,24 +142,25 @@ Untracked files:
 
 ## The `define_clippy_lints` macro
 
-After `cargo dev new_lint`, you should see a macro with the name `define_clippy_lints`. It will be in the same file
-if you defined a standalone lint, and it will be in `mod.rs` if you defined a type-specific lint.
+After `cargo dev new_lint`, you should see a macro with the name
+`define_clippy_lints`. It will be in the same file if you defined a standalone
+lint, and it will be in `mod.rs` if you defined a type-specific lint.
 
 The macro looks something like this:
 
 ```rust
 declare_clippy_lint! {
-	/// ### What it does
+    /// ### What it does
     ///
-	/// // Describe here what does the lint do.
-	/// 
-	/// Triggers when detects...
-	/// 
+    /// // Describe here what does the lint do.
+    ///
+    /// Triggers when detects...
+    ///
     /// ### Why is this bad?
-	/// 
-	/// // Describe why this pattern would be bad
-	/// 
-	/// It can lead to...
+    ///
+    /// // Describe why this pattern would be bad
+    ///
+    /// It can lead to...
     ///
     /// ### Example
     /// ```rust
@@ -174,25 +179,26 @@ declare_clippy_lint! {
 
 ## Lint registration
 
-If we run the `cargo dev new_lint` command for a new lint,
-the lint will be automatically registered and there is nothing more to do.
+If we run the `cargo dev new_lint` command for a new lint, the lint will be
+automatically registered and there is nothing more to do.
 
-However, sometimes we might want to declare a new lint by hand.
-In this case, we'd use `cargo dev update_lints` command afterwards.
+However, sometimes we might want to declare a new lint by hand. In this case,
+we'd use `cargo dev update_lints` command afterwards.
 
 When a lint is manually declared, we might need to register the lint pass
 manually in the `register_plugins` function in `clippy_lints/src/lib.rs`:
 
 ```rust
-store.register_late_pass(|| Box::new(foo_functions::FooFunctions));
+store.register_late_pass(|_| Box::new(foo_functions::FooFunctions));
 ```
 
-As you might have guessed, where there's something late, there is something early:
-in Clippy there is a `register_early_pass` method as well.
-More on early vs. late passes in a later chapter.
+As you might have guessed, where there's something late, there is something
+early: in Clippy there is a `register_early_pass` method as well. More on early
+vs. late passes in a later chapter.
+<!-- FIXME: Link that "later chapter" when lint_passes.md is merged -->
 
-Without a call to one of `register_early_pass` or `register_late_pass`,
-the lint pass in question will not be run.
+Without a call to one of `register_early_pass` or `register_late_pass`, the lint
+pass in question will not be run.
 
 
 [all_lints]: https://rust-lang.github.io/rust-clippy/master/
