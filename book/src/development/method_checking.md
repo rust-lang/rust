@@ -38,7 +38,7 @@ impl<'tcx> LateLintPass<'tcx> for OurFancyMethodLint {
 
 Take a closer look at the `ExprKind` enum variant [`MethodCall`] for more
 information on the pattern matching. As mentioned in [Define
-Lints](define_lints.md#lint-types), the `methods` lint type is full of pattern
+Lints](defining_lints.md#lint-types), the `methods` lint type is full of pattern
 matching with `MethodCall` in case the reader wishes to explore more.
 
 Additionally, we use the [`clippy_utils::sym!`][sym] macro to conveniently
