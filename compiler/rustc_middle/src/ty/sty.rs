@@ -2827,11 +2827,11 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Adt(def, _args) => def.sized_constraint(tcx).skip_binder().is_empty(),
 
-            ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => false,
+            ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
 
             ty::Infer(ty::TyVar(_)) => false,
 
-            ty::Bound(..) | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
             }
         }
