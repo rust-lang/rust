@@ -608,6 +608,29 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
+        match operand {
+            Operand::Copy(place) | Operand::Move(place) => {
+                if let Some(stmt) = self.body.stmt_at(location).left() {
+                    match &stmt.kind {
+                        StatementKind::Assign(box (lval, rvalue)) => {
+                            let place_ty = place.ty(&self.body.local_decls, self.tcx).ty;
+                            let lval_ty = lval.ty(&self.body.local_decls, self.tcx).ty;
+
+                            if !place.is_subtype()
+                                && place_ty != lval_ty
+                                && rvalue.ty(&self.body.local_decls, self.tcx) != lval_ty
+                                && (rvalue.ty(&self.body.local_decls, self.tcx).is_closure()
+                                    != lval_ty.is_closure())
+                            {
+                                self.fail(location, format!("Subtyping is not allowed between types {place_ty:#?} and {lval_ty:#?}"))
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            }
+            _ => (),
+        }
         // This check is somewhat expensive, so only run it when -Zvalidate-mir is passed.
         if self.tcx.sess.opts.unstable_opts.validate_mir
             && self.mir_phase < MirPhase::Runtime(RuntimePhase::Initial)
@@ -1088,6 +1111,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // LHS and RHS of the assignment must have the same type.
                 let left_ty = dest.ty(&self.body.local_decls, self.tcx).ty;
                 let right_ty = rvalue.ty(&self.body.local_decls, self.tcx);
+
                 if !self.mir_assign_valid_types(right_ty, left_ty) {
                     self.fail(
                         location,

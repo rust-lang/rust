@@ -1075,6 +1075,8 @@ pub enum ProjectionElem<V, T> {
     /// Like an explicit cast from an opaque type to a concrete type, but without
     /// requiring an intermediate variable.
     OpaqueCast(T),
+
+    Subtype(T),
 }
 
 /// Alias for projections as they appear in places, where the base is a place

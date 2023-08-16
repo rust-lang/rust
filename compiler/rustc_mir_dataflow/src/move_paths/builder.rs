@@ -112,6 +112,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         let mut union_path = None;
 
         for (place_ref, elem) in data.rev_lookup.un_derefer.iter_projections(place.as_ref()) {
+            if elem.is_subtype() {
+                continue;
+            }
             let body = self.builder.body;
             let tcx = self.builder.tcx;
             let place_ty = place_ref.ty(body, tcx).ty;

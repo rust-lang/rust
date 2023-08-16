@@ -22,6 +22,7 @@ fn main() -> () {
     let _24: i32;
     let mut _26: *const i32;
     let _27: ();
+    let mut _29: [closure@main::{closure#0}];
     scope 1 {
         debug x => _1;
         let _3: &mut i32;
@@ -105,7 +106,7 @@ fn main() -> () {
         StorageLive(_14);
         _14 = {closure@main::{closure#0}};
         Retag(_14);
-        _13 = move _14 as for<'a> fn(&'a i32) -> &'a i32 (PointerCoercion(ClosureFnPointer(Normal)));
+        _13 = move (_14 Subtyped as for<'a> fn(&'a i32) -> &'a i32 as for<'a> fn(&'a i32) -> &'a i32 (PointerCoercion(ClosureFnPointer(Normal)));
         StorageDead(_14);
         StorageLive(_15);
         StorageLive(_16);
