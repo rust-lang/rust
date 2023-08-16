@@ -54,6 +54,7 @@ mod check_packed_ref;
 pub mod check_unsafety;
 mod remove_place_mention;
 // This pass is public to allow external drivers to perform MIR cleanup
+mod add_subtyping_projections;
 pub mod cleanup_post_borrowck;
 mod const_debuginfo;
 mod const_goto;
@@ -466,6 +467,7 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
 /// After this series of passes, no lifetime analysis based on borrowing can be done.
 fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
+        &add_subtyping_projections::Subtyper,
         &cleanup_post_borrowck::CleanupPostBorrowck,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::EarlyOpt,

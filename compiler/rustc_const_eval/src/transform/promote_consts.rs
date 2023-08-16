@@ -357,7 +357,9 @@ impl<'tcx> Validator<'_, 'tcx> {
                         return Err(Unpromotable);
                     }
 
-                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {}
+                    ProjectionElem::ConstantIndex { .. }
+                    | ProjectionElem::Subtype(_)
+                    | ProjectionElem::Subslice { .. } => {}
 
                     ProjectionElem::Index(local) => {
                         let mut promotable = false;

@@ -243,6 +243,7 @@ fn place_components_conflict<'tcx>(
                 }
 
                 (ProjectionElem::Deref, _, Deep)
+                | (ProjectionElem::Subtype(_), _, _)
                 | (ProjectionElem::Deref, _, AccessDepth::Drop)
                 | (ProjectionElem::Field { .. }, _, _)
                 | (ProjectionElem::Index { .. }, _, _)
@@ -359,6 +360,7 @@ fn place_projection_conflict<'tcx>(
         (
             ProjectionElem::Index(..),
             ProjectionElem::Index(..)
+            | ProjectionElem::Subtype(..)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. },
         )
@@ -503,6 +505,7 @@ fn place_projection_conflict<'tcx>(
             debug!("place_element_conflict: DISJOINT-OR-EQ-SLICE-SUBSLICES");
             Overlap::EqualOrDisjoint
         }
+        (ProjectionElem::Subtype(_), _) => Overlap::EqualOrDisjoint,
         (
             ProjectionElem::Deref
             | ProjectionElem::Field(..)

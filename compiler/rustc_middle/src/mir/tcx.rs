@@ -111,6 +111,7 @@ impl<'tcx> PlaceTy<'tcx> {
             }
             ProjectionElem::Field(f, fty) => PlaceTy::from_ty(handle_field(&self, f, fty)),
             ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(handle_opaque_cast(&self, ty)),
+            ProjectionElem::Subtype(_) => PlaceTy::from_ty(self.ty),
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
         answer

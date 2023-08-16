@@ -1110,6 +1110,7 @@ macro_rules! visit_place_fns {
                     if ty != new_ty { Some(PlaceElem::OpaqueCast(new_ty)) } else { None }
                 }
                 PlaceElem::Deref
+                | PlaceElem::Subtype { .. }
                 | PlaceElem::ConstantIndex { .. }
                 | PlaceElem::Subslice { .. }
                 | PlaceElem::Downcast(..) => None,
@@ -1175,7 +1176,9 @@ macro_rules! visit_place_fns {
             location: Location,
         ) {
             match elem {
-                ProjectionElem::OpaqueCast(ty) | ProjectionElem::Field(_, ty) => {
+                ProjectionElem::OpaqueCast(ty)
+                | ProjectionElem::Subtype(ty)
+                | ProjectionElem::Field(_, ty) => {
                     self.visit_ty(ty, TyContext::Location(location));
                 }
                 ProjectionElem::Index(local) => {

@@ -89,6 +89,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                             cursor = cursor_base;
                             continue 'cursor;
                         }
+                        ProjectionElem::Subtype(..) => continue 'cursor,
                         ProjectionElem::Deref => {
                             // (handled below)
                         }

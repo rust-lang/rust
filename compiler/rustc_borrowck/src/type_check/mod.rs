@@ -621,6 +621,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     span_mirbug_and_err!(self, place, "deref of non-pointer {:?}", base_ty)
                 }))
             }
+            ProjectionElem::Subtype(ty) => PlaceTy::from_ty(ty),
             ProjectionElem::Index(i) => {
                 let index_ty = Place::from(i).ty(self.body(), tcx).ty;
                 if index_ty != tcx.types.usize {
@@ -2556,6 +2557,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 }
                 ProjectionElem::Field(..)
+                | ProjectionElem::Subtype(..)
                 | ProjectionElem::Downcast(..)
                 | ProjectionElem::OpaqueCast(..)
                 | ProjectionElem::Index(..)
