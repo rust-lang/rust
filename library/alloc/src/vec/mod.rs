@@ -1223,7 +1223,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// will remain valid when mixed with other calls to [`as_ptr`] and [`as_mut_ptr`].
     /// Note that calling other methods that materialize mutable references to the slice,
     /// or mutable references to specific elements you are planning on accessing through this pointer,
-    /// may still invalidate this pointer.
+    /// as well as writing to those elements, may still invalidate this pointer.
     /// See the second example below for how this guarantee can be used.
     ///
     ///
