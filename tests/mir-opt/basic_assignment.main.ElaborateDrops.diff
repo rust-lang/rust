@@ -47,7 +47,8 @@
   
       bb2 (cleanup): {
           _5 = move _6;
-          drop(_6) -> [return: bb6, unwind terminate];
+-         drop(_6) -> [return: bb6, unwind terminate];
++         goto -> bb6;
       }
   
       bb3: {
@@ -70,7 +71,8 @@
       }
   
       bb6 (cleanup): {
-          drop(_5) -> [return: bb7, unwind terminate];
+-         drop(_5) -> [return: bb7, unwind terminate];
++         goto -> bb7;
       }
   
       bb7 (cleanup): {
@@ -80,10 +82,6 @@
   
       bb8 (cleanup): {
           resume;
-+     }
-+ 
-+     bb9 (cleanup): {
-+         unreachable;
       }
   }
   

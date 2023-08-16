@@ -13,9 +13,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{
     Map, State, TrackElem, ValueAnalysis, ValueAnalysisWrapper, ValueOrPlace,
 };
-use rustc_mir_dataflow::{
-    lattice::FlatSet, Analysis, Results, ResultsVisitor, SwitchIntEdgeEffects,
-};
+use rustc_mir_dataflow::{lattice::FlatSet, Analysis, Results, ResultsVisitor};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, FieldIdx, VariantIdx};
 
@@ -249,49 +247,27 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
             .unwrap_or(FlatSet::Top)
     }
 
-    fn handle_switch_int(
+    fn handle_switch_int<'mir>(
         &self,
-        discr: &Operand<'tcx>,
-        apply_edge_effects: &mut impl SwitchIntEdgeEffects<State<Self::Value>>,
-    ) {
-        // FIXME: The dataflow framework only provides the state if we call `apply()`, which makes
-        // this more inefficient than it has to be.
-        let mut discr_value = None;
-        let mut handled = false;
-        apply_edge_effects.apply(|state, target| {
-            let discr_value = match discr_value {
-                Some(value) => value,
-                None => {
-                    let value = match self.handle_operand(discr, state) {
-                        ValueOrPlace::Value(value) => value,
-                        ValueOrPlace::Place(place) => state.get_idx(place, self.map()),
-                    };
-                    let result = match value {
-                        FlatSet::Top => FlatSet::Top,
-                        FlatSet::Elem(ScalarTy(scalar, _)) => {
-                            let int = scalar.assert_int();
-                            FlatSet::Elem(int.assert_bits(int.size()))
-                        }
-                        FlatSet::Bottom => FlatSet::Bottom,
-                    };
-                    discr_value = Some(result);
-                    result
-                }
-            };
-
-            let FlatSet::Elem(choice) = discr_value else {
-                // Do nothing if we don't know which branch will be taken.
-                return;
-            };
-
-            if target.value.map(|n| n == choice).unwrap_or(!handled) {
-                // Branch is taken. Has no effect on state.
-                handled = true;
-            } else {
-                // Branch is not taken.
-                state.mark_unreachable();
+        discr: &'mir Operand<'tcx>,
+        targets: &'mir SwitchTargets,
+        state: &mut State<Self::Value>,
+    ) -> TerminatorEdges<'mir, 'tcx> {
+        let value = match self.handle_operand(discr, state) {
+            ValueOrPlace::Value(value) => value,
+            ValueOrPlace::Place(place) => state.get_idx(place, self.map()),
+        };
+        match value {
+            // We are branching on uninitialized data, this is UB, treat it as unreachable.
+            // This allows the set of visited edges to grow monotonically with the lattice.
+            FlatSet::Bottom => TerminatorEdges::None,
+            FlatSet::Elem(ScalarTy(scalar, _)) => {
+                let int = scalar.assert_int();
+                let choice = int.assert_bits(int.size());
+                TerminatorEdges::Single(targets.target_for_value(choice))
             }
-        })
+            FlatSet::Top => TerminatorEdges::SwitchInt { discr, targets },
+        }
     }
 }
 

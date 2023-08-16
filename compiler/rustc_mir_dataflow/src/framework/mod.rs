@@ -34,7 +34,7 @@ use std::cmp::Ordering;
 
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::Idx;
-use rustc_middle::mir::{self, BasicBlock, Location};
+use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
 use rustc_middle::ty::TyCtxt;
 
 mod cursor;
@@ -48,23 +48,18 @@ mod visitor;
 pub use self::cursor::{AnalysisResults, ResultsClonedCursor, ResultsCursor, ResultsRefCursor};
 pub use self::direction::{Backward, Direction, Forward};
 pub use self::engine::{Engine, EntrySets, Results, ResultsCloned};
-pub use self::lattice::{JoinSemiLattice, MeetSemiLattice};
+pub use self::lattice::{JoinSemiLattice, MaybeReachable, MeetSemiLattice};
 pub use self::visitor::{visit_results, ResultsVisitable, ResultsVisitor};
 
 /// Analysis domains are all bitsets of various kinds. This trait holds
 /// operations needed by all of them.
 pub trait BitSetExt<T> {
-    fn domain_size(&self) -> usize;
     fn contains(&self, elem: T) -> bool;
     fn union(&mut self, other: &HybridBitSet<T>);
     fn subtract(&mut self, other: &HybridBitSet<T>);
 }
 
 impl<T: Idx> BitSetExt<T> for BitSet<T> {
-    fn domain_size(&self) -> usize {
-        self.domain_size()
-    }
-
     fn contains(&self, elem: T) -> bool {
         self.contains(elem)
     }
@@ -79,10 +74,6 @@ impl<T: Idx> BitSetExt<T> for BitSet<T> {
 }
 
 impl<T: Idx> BitSetExt<T> for ChunkedBitSet<T> {
-    fn domain_size(&self) -> usize {
-        self.domain_size()
-    }
-
     fn contains(&self, elem: T) -> bool {
         self.contains(elem)
     }
@@ -172,12 +163,12 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// in this function. That should go in `apply_call_return_effect`. For example, in the
     /// `InitializedPlaces` analyses, the return place for a function call is not marked as
     /// initialized here.
-    fn apply_terminator_effect(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         state: &mut Self::Domain,
-        terminator: &mir::Terminator<'tcx>,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    );
+    ) -> TerminatorEdges<'mir, 'tcx>;
 
     /// Updates the current dataflow state with an effect that occurs immediately *before* the
     /// given terminator.
@@ -206,20 +197,6 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     );
-
-    /// Updates the current dataflow state with the effect of resuming from a `Yield` terminator.
-    ///
-    /// This is similar to `apply_call_return_effect` in that it only takes place after the
-    /// generator is resumed, not when it is dropped.
-    ///
-    /// By default, no effects happen.
-    fn apply_yield_resume_effect(
-        &mut self,
-        _state: &mut Self::Domain,
-        _resume_block: BasicBlock,
-        _resume_place: mir::Place<'tcx>,
-    ) {
-    }
 
     /// Updates the current dataflow state with the effect of taking a particular branch in a
     /// `SwitchInt` terminator.
@@ -295,6 +272,8 @@ where
 pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     type Idx: Idx;
 
+    fn domain_size(&self, body: &mir::Body<'tcx>) -> usize;
+
     /// See `Analysis::apply_statement_effect`.
     fn statement_effect(
         &mut self,
@@ -313,12 +292,12 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     }
 
     /// See `Analysis::apply_terminator_effect`.
-    fn terminator_effect(
+    fn terminator_effect<'mir>(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        terminator: &mir::Terminator<'tcx>,
+        trans: &mut Self::Domain,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    );
+    ) -> TerminatorEdges<'mir, 'tcx>;
 
     /// See `Analysis::apply_before_terminator_effect`.
     fn before_terminator_effect(
@@ -338,15 +317,6 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
         block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     );
-
-    /// See `Analysis::apply_yield_resume_effect`.
-    fn yield_resume_effect(
-        &mut self,
-        _trans: &mut impl GenKill<Self::Idx>,
-        _resume_block: BasicBlock,
-        _resume_place: mir::Place<'tcx>,
-    ) {
-    }
 
     /// See `Analysis::apply_switch_int_edge_effects`.
     fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
@@ -381,13 +351,13 @@ where
         self.before_statement_effect(state, statement, location);
     }
 
-    fn apply_terminator_effect(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         state: &mut A::Domain,
-        terminator: &mir::Terminator<'tcx>,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) {
-        self.terminator_effect(state, terminator, location);
+    ) -> TerminatorEdges<'mir, 'tcx> {
+        self.terminator_effect(state, terminator, location)
     }
 
     fn apply_before_terminator_effect(
@@ -408,15 +378,6 @@ where
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         self.call_return_effect(state, block, return_places);
-    }
-
-    fn apply_yield_resume_effect(
-        &mut self,
-        state: &mut A::Domain,
-        resume_block: BasicBlock,
-        resume_place: mir::Place<'tcx>,
-    ) {
-        self.yield_resume_effect(state, resume_block, resume_place);
     }
 
     fn apply_switch_int_edge_effects(
@@ -531,6 +492,24 @@ impl<T: Idx> GenKill<T> for ChunkedBitSet<T> {
     }
 }
 
+impl<T, S: GenKill<T>> GenKill<T> for MaybeReachable<S> {
+    fn gen(&mut self, elem: T) {
+        match self {
+            // If the state is not reachable, adding an element does nothing.
+            MaybeReachable::Unreachable => {}
+            MaybeReachable::Reachable(set) => set.gen(elem),
+        }
+    }
+
+    fn kill(&mut self, elem: T) {
+        match self {
+            // If the state is not reachable, killing an element does nothing.
+            MaybeReachable::Unreachable => {}
+            MaybeReachable::Reachable(set) => set.kill(elem),
+        }
+    }
+}
+
 impl<T: Idx> GenKill<T> for lattice::Dual<BitSet<T>> {
     fn gen(&mut self, elem: T) {
         self.0.insert(elem);
@@ -610,30 +589,6 @@ pub trait SwitchIntEdgeEffects<D> {
     /// Calls `apply_edge_effect` for each outgoing edge from a `SwitchInt` terminator and
     /// records the results.
     fn apply(&mut self, apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget));
-}
-
-/// List of places that are written to after a successful (non-unwind) return
-/// from a `Call` or `InlineAsm`.
-pub enum CallReturnPlaces<'a, 'tcx> {
-    Call(mir::Place<'tcx>),
-    InlineAsm(&'a [mir::InlineAsmOperand<'tcx>]),
-}
-
-impl<'tcx> CallReturnPlaces<'_, 'tcx> {
-    pub fn for_each(&self, mut f: impl FnMut(mir::Place<'tcx>)) {
-        match *self {
-            Self::Call(place) => f(place),
-            Self::InlineAsm(operands) => {
-                for op in operands {
-                    match *op {
-                        mir::InlineAsmOperand::Out { place: Some(place), .. }
-                        | mir::InlineAsmOperand::InOut { out_place: Some(place), .. } => f(place),
-                        _ => {}
-                    }
-                }
-            }
-        }
-    }
 }
 
 #[cfg(test)]

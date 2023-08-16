@@ -144,7 +144,7 @@ where
     // gen/kill problems on cyclic CFGs. This is not ideal, but it doesn't seem to degrade
     // performance in practice. I've tried a few ways to avoid this, but they have downsides. See
     // the message for the commit that added this FIXME for more information.
-    apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
+    apply_statement_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
 }
 
 impl<'a, 'tcx, A, D, T> Engine<'a, 'tcx, A>
@@ -165,12 +165,17 @@ where
 
         // Otherwise, compute and store the cumulative transfer function for each block.
 
-        let identity = GenKillSet::identity(analysis.bottom_value(body).domain_size());
+        let identity = GenKillSet::identity(analysis.domain_size(body));
         let mut trans_for_block = IndexVec::from_elem(identity, &body.basic_blocks);
 
         for (block, block_data) in body.basic_blocks.iter_enumerated() {
             let trans = &mut trans_for_block[block];
-            A::Direction::gen_kill_effects_in_block(&mut analysis, trans, block, block_data);
+            A::Direction::gen_kill_statement_effects_in_block(
+                &mut analysis,
+                trans,
+                block,
+                block_data,
+            );
         }
 
         let apply_trans = Box::new(move |bb: BasicBlock, state: &mut A::Domain| {
@@ -199,17 +204,18 @@ where
         tcx: TyCtxt<'tcx>,
         body: &'a mir::Body<'tcx>,
         analysis: A,
-        apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
+        apply_statement_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
     ) -> Self {
-        let bottom_value = analysis.bottom_value(body);
-        let mut entry_sets = IndexVec::from_elem(bottom_value.clone(), &body.basic_blocks);
+        let mut entry_sets =
+            IndexVec::from_fn_n(|_| analysis.bottom_value(body), body.basic_blocks.len());
         analysis.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
 
-        if A::Direction::IS_BACKWARD && entry_sets[mir::START_BLOCK] != bottom_value {
+        if A::Direction::IS_BACKWARD && entry_sets[mir::START_BLOCK] != analysis.bottom_value(body)
+        {
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
 
-        Engine { analysis, tcx, body, pass_name: None, entry_sets, apply_trans_for_block }
+        Engine { analysis, tcx, body, pass_name: None, entry_sets, apply_statement_trans_for_block }
     }
 
     /// Adds an identifier to the graphviz output for this particular run of a dataflow analysis.
@@ -231,7 +237,7 @@ where
             body,
             mut entry_sets,
             tcx,
-            apply_trans_for_block,
+            apply_statement_trans_for_block,
             pass_name,
             ..
         } = self;
@@ -263,19 +269,20 @@ where
             state.clone_from(&entry_sets[bb]);
 
             // Apply the block transfer function, using the cached one if it exists.
-            match &apply_trans_for_block {
-                Some(apply) => apply(bb, &mut state),
-                None => {
-                    A::Direction::apply_effects_in_block(&mut analysis, &mut state, bb, bb_data)
-                }
-            }
+            let edges = A::Direction::apply_effects_in_block(
+                &mut analysis,
+                &mut state,
+                bb,
+                bb_data,
+                apply_statement_trans_for_block.as_deref(),
+            );
 
             A::Direction::join_state_into_successors_of(
                 &mut analysis,
-                tcx,
                 body,
                 &mut state,
-                (bb, bb_data),
+                bb,
+                edges,
                 |target: BasicBlock, state: &A::Domain| {
                     let set_changed = entry_sets[target].join(state);
                     if set_changed {

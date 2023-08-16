@@ -10,6 +10,7 @@ use std::iter;
 use std::slice;
 
 pub use super::query::*;
+use super::*;
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 pub struct SwitchTargets {
@@ -427,6 +428,111 @@ impl<'tcx> TerminatorKind<'tcx> {
                 vec!["unwind".into()]
             }
             InlineAsm { destination: None, unwind: _, .. } => vec![],
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum TerminatorEdges<'mir, 'tcx> {
+    /// For terminators that have no successor, like `return`.
+    None,
+    /// For terminators that a single successor, like `goto`, and `assert` without cleanup block.
+    Single(BasicBlock),
+    /// For terminators that two successors, `assert` with cleanup block and `falseEdge`.
+    Double(BasicBlock, BasicBlock),
+    /// Special action for `Yield`, `Call` and `InlineAsm` terminators.
+    AssignOnReturn {
+        return_: Option<BasicBlock>,
+        unwind: UnwindAction,
+        place: CallReturnPlaces<'mir, 'tcx>,
+    },
+    /// Special edge for `SwitchInt`.
+    SwitchInt { targets: &'mir SwitchTargets, discr: &'mir Operand<'tcx> },
+}
+
+/// List of places that are written to after a successful (non-unwind) return
+/// from a `Call`, `Yield` or `InlineAsm`.
+#[derive(Copy, Clone, Debug)]
+pub enum CallReturnPlaces<'a, 'tcx> {
+    Call(Place<'tcx>),
+    Yield(Place<'tcx>),
+    InlineAsm(&'a [InlineAsmOperand<'tcx>]),
+}
+
+impl<'tcx> CallReturnPlaces<'_, 'tcx> {
+    pub fn for_each(&self, mut f: impl FnMut(Place<'tcx>)) {
+        match *self {
+            Self::Call(place) | Self::Yield(place) => f(place),
+            Self::InlineAsm(operands) => {
+                for op in operands {
+                    match *op {
+                        InlineAsmOperand::Out { place: Some(place), .. }
+                        | InlineAsmOperand::InOut { out_place: Some(place), .. } => f(place),
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<'tcx> Terminator<'tcx> {
+    pub fn edges(&self) -> TerminatorEdges<'_, 'tcx> {
+        self.kind.edges()
+    }
+}
+
+impl<'tcx> TerminatorKind<'tcx> {
+    pub fn edges(&self) -> TerminatorEdges<'_, 'tcx> {
+        use TerminatorKind::*;
+        match *self {
+            Return | Resume | Terminate | GeneratorDrop | Unreachable => TerminatorEdges::None,
+
+            Goto { target } => TerminatorEdges::Single(target),
+
+            Assert { target, unwind, expected: _, msg: _, cond: _ }
+            | Drop { target, unwind, place: _, replace: _ }
+            | FalseUnwind { real_target: target, unwind } => match unwind {
+                UnwindAction::Cleanup(unwind) => TerminatorEdges::Double(target, unwind),
+                UnwindAction::Continue | UnwindAction::Terminate | UnwindAction::Unreachable => {
+                    TerminatorEdges::Single(target)
+                }
+            },
+
+            FalseEdge { real_target, imaginary_target } => {
+                TerminatorEdges::Double(real_target, imaginary_target)
+            }
+
+            Yield { resume: target, drop, resume_arg, value: _ } => {
+                TerminatorEdges::AssignOnReturn {
+                    return_: Some(target),
+                    unwind: drop.map_or(UnwindAction::Terminate, UnwindAction::Cleanup),
+                    place: CallReturnPlaces::Yield(resume_arg),
+                }
+            }
+
+            Call { unwind, destination, target, func: _, args: _, fn_span: _, call_source: _ } => {
+                TerminatorEdges::AssignOnReturn {
+                    return_: target,
+                    unwind,
+                    place: CallReturnPlaces::Call(destination),
+                }
+            }
+
+            InlineAsm {
+                template: _,
+                ref operands,
+                options: _,
+                line_spans: _,
+                destination,
+                unwind,
+            } => TerminatorEdges::AssignOnReturn {
+                return_: destination,
+                unwind,
+                place: CallReturnPlaces::InlineAsm(operands),
+            },
+
+            SwitchInt { ref targets, ref discr } => TerminatorEdges::SwitchInt { targets, discr },
         }
     }
 }
