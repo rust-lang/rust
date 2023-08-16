@@ -2183,7 +2183,7 @@ impl dyn Error + Send {
         let err: Box<dyn Error> = self;
         <dyn Error>::downcast(err).map_err(|s| unsafe {
             // Reapply the `Send` marker.
-            mem::transmute::<Box<dyn Error>, Box<dyn Error + Send>>(s)
+            Box::from_raw(Box::into_raw(s) as *mut (dyn Error + Send))
         })
     }
 }
@@ -2197,7 +2197,7 @@ impl dyn Error + Send + Sync {
         let err: Box<dyn Error> = self;
         <dyn Error>::downcast(err).map_err(|s| unsafe {
             // Reapply the `Send + Sync` marker.
-            mem::transmute::<Box<dyn Error>, Box<dyn Error + Send + Sync>>(s)
+            Box::from_raw(Box::into_raw(s) as *mut (dyn Error + Send + Sync))
         })
     }
 }
