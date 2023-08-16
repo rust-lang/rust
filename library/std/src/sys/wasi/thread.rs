@@ -54,6 +54,13 @@ cfg_if::cfg_if! {
         pub struct Thread {
             id: libc::pthread_t,
         }
+
+        impl Drop for Thread {
+            fn drop(&mut self) {
+                let ret = unsafe { libc::pthread_detach(self.id) };
+                debug_assert_eq!(ret, 0);
+            }
+        }
     } else {
         pub struct Thread(!);
     }
@@ -174,17 +181,6 @@ impl Thread {
                 }
             } else {
                 self.0
-            }
-        }
-    }
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(target_feature = "atomics")] {
-        impl Drop for Thread {
-            fn drop(&mut self) {
-                let ret = unsafe { libc::pthread_detach(self.id) };
-                debug_assert_eq!(ret, 0);
             }
         }
     }
