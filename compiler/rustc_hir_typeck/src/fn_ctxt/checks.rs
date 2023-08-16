@@ -519,7 +519,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // suggestions and labels are (more) correct when an arg is a
         // macro invocation.
         let normalize_span = |span: Span| -> Span {
-            let normalized_span = span.find_ancestor_inside(error_span).unwrap_or(span);
+            let normalized_span = span.find_ancestor_inside_same_ctxt(error_span).unwrap_or(span);
             // Sometimes macros mess up the spans, so do not normalize the
             // arg span to equal the error span, because that's less useful
             // than pointing out the arg expr in the wrong context.
@@ -929,7 +929,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     };
                     labels.push((provided_span, format!("unexpected argument{provided_ty_name}")));
                     let mut span = provided_span;
-                    if span.can_be_used_for_suggestions() {
+                    if span.can_be_used_for_suggestions()
+                        && error_span.can_be_used_for_suggestions()
+                    {
                         if arg_idx.index() > 0
                         && let Some((_, prev)) = provided_arg_tys
                             .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
@@ -1220,22 +1222,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         if let Some(suggestion_text) = suggestion_text {
             let source_map = self.sess().source_map();
-            let (mut suggestion, suggestion_span) =
-                if let Some(call_span) = full_call_span.find_ancestor_inside(error_span) {
-                    ("(".to_string(), call_span.shrink_to_hi().to(error_span.shrink_to_hi()))
-                } else {
-                    (
-                        format!(
-                            "{}(",
-                            source_map.span_to_snippet(full_call_span).unwrap_or_else(|_| {
-                                fn_def_id.map_or("".to_string(), |fn_def_id| {
-                                    tcx.item_name(fn_def_id).to_string()
-                                })
+            let (mut suggestion, suggestion_span) = if let Some(call_span) =
+                full_call_span.find_ancestor_inside_same_ctxt(error_span)
+            {
+                ("(".to_string(), call_span.shrink_to_hi().to(error_span.shrink_to_hi()))
+            } else {
+                (
+                    format!(
+                        "{}(",
+                        source_map.span_to_snippet(full_call_span).unwrap_or_else(|_| {
+                            fn_def_id.map_or("".to_string(), |fn_def_id| {
+                                tcx.item_name(fn_def_id).to_string()
                             })
-                        ),
-                        error_span,
-                    )
-                };
+                        })
+                    ),
+                    error_span,
+                )
+            };
             let mut needs_comma = false;
             for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
                 if needs_comma {
