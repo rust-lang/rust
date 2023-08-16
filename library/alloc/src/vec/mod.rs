@@ -1249,7 +1249,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///     let _ = ptr1.read();
     ///     let ptr2 = v.as_mut_ptr().offset(2);
     ///     ptr2.write(2);
-    ///     // Notably, the write to `ptr2` did *not* invalidate `ptr1`:
+    ///     // Notably, the write to `ptr2` did *not* invalidate `ptr1`
+    ///     // because it mutated a different element:
     ///     let _ = ptr1.read();
     /// }
     /// ```
