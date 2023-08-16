@@ -1,4 +1,10 @@
+// This test checks different combinations of structs, enums, and unions
+// for the "Show Aliased Type" feature on type definition.
+
 #![crate_name = "inner_variants"]
+
+// aux-build:cross_crate_generic_typedef.rs
+extern crate cross_crate_generic_typedef;
 
 pub struct Adt;
 pub struct Ty;
@@ -78,3 +84,8 @@ pub struct HighlyGenericStruct<A, B, C, D> {
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 0
 pub type HighlyGenericAABB<A, B> = HighlyGenericStruct<A, A, B, B>;
+
+// @has 'inner_variants/type.InlineU64.html'
+// @count - '//*[@id="variants"]' 0
+// @count - '//*[@id="fields"]' 1
+pub use cross_crate_generic_typedef::InlineU64;
