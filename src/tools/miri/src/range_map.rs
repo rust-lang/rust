@@ -27,11 +27,8 @@ impl<T> RangeMap<T> {
     #[inline(always)]
     pub fn new(size: Size, init: T) -> RangeMap<T> {
         let size = size.bytes();
-        let mut map = RangeMap { v: Vec::new() };
-        if size > 0 {
-            map.v.push(Elem { range: 0..size, data: init });
-        }
-        map
+        let v = if size > 0 { vec![Elem { range: 0..size, data: init }] } else { Vec::new() };
+        RangeMap { v }
     }
 
     /// Finds the index containing the given offset.
