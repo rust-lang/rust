@@ -9,6 +9,8 @@ use crate::fmt::{self, Write};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::error::Error;
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+pub use core::error::{request_ref, Request};
 
 mod private {
     // This is a hack to prevent `type_id` from being overridden by `Error`
@@ -371,11 +373,10 @@ impl<E> Report<E> {
     ///
     /// ```rust
     /// #![feature(error_reporter)]
-    /// #![feature(provide_any)]
     /// #![feature(error_generic_member_access)]
     /// # use std::error::Error;
     /// # use std::fmt;
-    /// use std::any::Demand;
+    /// use std::error::Request;
     /// use std::error::Report;
     /// use std::backtrace::Backtrace;
     ///
@@ -405,8 +406,8 @@ impl<E> Report<E> {
     /// }
     ///
     /// impl Error for SuperErrorSideKick {
-    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
-    ///         demand.provide_ref::<Backtrace>(&self.backtrace);
+    ///     fn provide<'a>(&'a self, request: &mut Request<'a>) {
+    ///         request.provide_ref::<Backtrace>(&self.backtrace);
     ///     }
     /// }
     ///
@@ -459,11 +460,11 @@ where
     fn backtrace(&self) -> Option<&Backtrace> {
         // have to grab the backtrace on the first error directly since that error may not be
         // 'static
-        let backtrace = (&self.error as &dyn Error).request_ref();
+        let backtrace = request_ref(&self.error);
         let backtrace = backtrace.or_else(|| {
             self.error
                 .source()
-                .map(|source| source.sources().find_map(|source| source.request_ref()))
+                .map(|source| source.sources().find_map(|source| request_ref(source)))
                 .flatten()
         });
         backtrace

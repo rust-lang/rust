@@ -209,6 +209,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         "hexagon" => Architecture::Hexagon,
         "bpf" => Architecture::Bpf,
         "loongarch64" => Architecture::LoongArch64,
+        "csky" => Architecture::Csky,
         // Unsupported architecture.
         _ => return None,
     };
@@ -306,6 +307,13 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             // Resolve the ISA revision and set
             // the appropriate EF_AVR_ARCH flag.
             ef_avr_arch(&sess.target.options.cpu)
+        }
+        Architecture::Csky => {
+            let e_flags = match sess.target.options.abi.as_ref() {
+                "abiv2" => elf::EF_CSKY_ABIV2,
+                _ => elf::EF_CSKY_ABIV1,
+            };
+            e_flags
         }
         _ => 0,
     };

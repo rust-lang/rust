@@ -94,7 +94,7 @@ changelog-seen = 2
 # the same format as above, but since these targets are experimental, they are
 # not built by default and the experimental Rust compilation targets that depend
 # on them will not work unless the user opts in to building them.
-#experimental-targets = "AVR;M68k"
+#experimental-targets = "AVR;M68k;CSKY"
 
 # Cap the number of parallel linker invocations when compiling LLVM.
 # This can be useful when building LLVM with debug info, which significantly
@@ -758,8 +758,10 @@ changelog-seen = 2
 # This option will override the same option under [build] section.
 #sanitizers = build.sanitizers (bool)
 
-# Build the profiler runtime for this target(required when compiling with options that depend
-# on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
+# When true, build the profiler runtime for this target (required when compiling
+# with options that depend on this runtime, such as `-C profile-generate` or
+# `-C instrument-coverage`). This may also be given a path to an existing build
+# of the profiling runtime library from LLVM's compiler-rt.
 # This option will override the same option under [build] section.
 #profiler = build.profiler (bool)
 

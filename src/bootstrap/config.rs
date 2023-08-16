@@ -534,7 +534,7 @@ pub struct Target {
     pub linker: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
     pub sanitizers: Option<bool>,
-    pub profiler: Option<bool>,
+    pub profiler: Option<StringOrBool>,
     pub rpath: Option<bool>,
     pub crt_static: Option<bool>,
     pub musl_root: Option<PathBuf>,
@@ -863,9 +863,9 @@ define_config! {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
-enum StringOrBool {
+pub enum StringOrBool {
     String(String),
     Bool(bool),
 }
@@ -873,6 +873,12 @@ enum StringOrBool {
 impl Default for StringOrBool {
     fn default() -> StringOrBool {
         StringOrBool::Bool(false)
+    }
+}
+
+impl StringOrBool {
+    fn is_string_or_true(&self) -> bool {
+        matches!(self, Self::String(_) | Self::Bool(true))
     }
 }
 
@@ -1038,7 +1044,7 @@ define_config! {
         llvm_libunwind: Option<String> = "llvm-libunwind",
         android_ndk: Option<String> = "android-ndk",
         sanitizers: Option<bool> = "sanitizers",
-        profiler: Option<bool> = "profiler",
+        profiler: Option<StringOrBool> = "profiler",
         rpath: Option<bool> = "rpath",
         crt_static: Option<bool> = "crt-static",
         musl_root: Option<String> = "musl-root",
@@ -1957,12 +1963,24 @@ impl Config {
         self.target_config.values().any(|t| t.sanitizers == Some(true)) || self.sanitizers
     }
 
+    pub fn profiler_path(&self, target: TargetSelection) -> Option<&str> {
+        match self.target_config.get(&target)?.profiler.as_ref()? {
+            StringOrBool::String(s) => Some(s),
+            StringOrBool::Bool(_) => None,
+        }
+    }
+
     pub fn profiler_enabled(&self, target: TargetSelection) -> bool {
-        self.target_config.get(&target).map(|t| t.profiler).flatten().unwrap_or(self.profiler)
+        self.target_config
+            .get(&target)
+            .and_then(|t| t.profiler.as_ref())
+            .map(StringOrBool::is_string_or_true)
+            .unwrap_or(self.profiler)
     }
 
     pub fn any_profiler_enabled(&self) -> bool {
-        self.target_config.values().any(|t| t.profiler == Some(true)) || self.profiler
+        self.target_config.values().any(|t| matches!(&t.profiler, Some(p) if p.is_string_or_true()))
+            || self.profiler
     }
 
     pub fn rpath_enabled(&self, target: TargetSelection) -> bool {

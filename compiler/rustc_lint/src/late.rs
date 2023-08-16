@@ -19,7 +19,7 @@ use rustc_ast as ast;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::join;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit as hir_visit;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
@@ -338,7 +338,7 @@ crate::late_lint_methods!(impl_late_lint_pass, []);
 
 pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     tcx: TyCtxt<'tcx>,
-    module_def_id: LocalDefId,
+    module_def_id: LocalModDefId,
     builtin_lints: T,
 ) {
     let context = LateContext {
@@ -369,7 +369,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
 
 fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
     tcx: TyCtxt<'tcx>,
-    module_def_id: LocalDefId,
+    module_def_id: LocalModDefId,
     context: LateContext<'tcx>,
     pass: T,
 ) {

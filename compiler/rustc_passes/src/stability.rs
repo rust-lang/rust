@@ -9,7 +9,7 @@ use rustc_attr::{
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{LocalDefId, LocalModDefId, CRATE_DEF_ID};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{FieldDef, Item, ItemKind, TraitRef, Ty, TyKind, Variant};
@@ -115,7 +115,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let attrs = self.tcx.hir().attrs(self.tcx.hir().local_def_id_to_hir_id(def_id));
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
 
-        let depr = attr::find_deprecation(&self.tcx.sess, attrs);
+        let depr = attr::find_deprecation(self.tcx.sess, self.tcx.features(), attrs);
         let mut is_deprecated = false;
         if let Some((depr, span)) = &depr {
             is_deprecated = true;
@@ -682,7 +682,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
 
 /// Cross-references the feature names of unstable APIs with enabled
 /// features and possibly prints errors.
-fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
+fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut Checker { tcx });
 }
 

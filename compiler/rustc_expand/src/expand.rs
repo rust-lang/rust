@@ -796,7 +796,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             | Annotatable::FieldDef(..)
             | Annotatable::Variant(..) => panic!("unexpected annotatable"),
         };
-        if self.cx.ecfg.proc_macro_hygiene() {
+        if self.cx.ecfg.features.proc_macro_hygiene {
             return;
         }
         feature_err(
@@ -834,7 +834,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
         }
 
-        if !self.cx.ecfg.proc_macro_hygiene() {
+        if !self.cx.ecfg.features.proc_macro_hygiene {
             annotatable
                 .visit_with(&mut GateProcMacroInput { parse_sess: &self.cx.sess.parse_sess });
         }
@@ -1122,6 +1122,7 @@ impl InvocationCollectorNode for P<ast::Item> {
                 if let Some(lint_store) = ecx.lint_store {
                     lint_store.pre_expansion_lint(
                         ecx.sess,
+                        ecx.ecfg.features,
                         ecx.resolver.registered_tools(),
                         ecx.current_expansion.lint_node_id,
                         &attrs,
@@ -1580,7 +1581,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn cfg(&self) -> StripUnconfigured<'_> {
         StripUnconfigured {
             sess: &self.cx.sess,
-            features: self.cx.ecfg.features,
+            features: Some(self.cx.ecfg.features),
             config_tokens: false,
             lint_node_id: self.cx.current_expansion.lint_node_id,
         }
@@ -1676,7 +1677,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     // Detect use of feature-gated or invalid attributes on macro invocations
     // since they will not be detected after macro expansion.
     fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall) {
-        let features = self.cx.ecfg.features.unwrap();
+        let features = self.cx.ecfg.features;
         let mut attrs = attrs.iter().peekable();
         let mut span: Option<Span> = None;
         while let Some(attr) = attrs.next() {
@@ -1976,7 +1977,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
 pub struct ExpansionConfig<'feat> {
     pub crate_name: String,
-    pub features: Option<&'feat Features>,
+    pub features: &'feat Features,
     pub recursion_limit: Limit,
     pub trace_mac: bool,
     /// If false, strip `#[test]` nodes
@@ -1987,20 +1988,16 @@ pub struct ExpansionConfig<'feat> {
     pub proc_macro_backtrace: bool,
 }
 
-impl<'feat> ExpansionConfig<'feat> {
-    pub fn default(crate_name: String) -> ExpansionConfig<'static> {
+impl ExpansionConfig<'_> {
+    pub fn default(crate_name: String, features: &Features) -> ExpansionConfig<'_> {
         ExpansionConfig {
             crate_name,
-            features: None,
+            features,
             recursion_limit: Limit::new(1024),
             trace_mac: false,
             should_test: false,
             span_debug: false,
             proc_macro_backtrace: false,
         }
-    }
-
-    fn proc_macro_hygiene(&self) -> bool {
-        self.features.is_some_and(|features| features.proc_macro_hygiene)
     }
 }

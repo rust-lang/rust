@@ -423,7 +423,55 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx.evaluate_added_goals_and_make_canonical_response(certainty)
     }
 
-    fn consider_builtin_unsize_candidates(
+    fn consider_unsize_to_dyn_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        ecx.probe(|_| CandidateKind::UnsizeAssembly).enter(|ecx| {
+            let a_ty = goal.predicate.self_ty();
+            // We need to normalize the b_ty since it's destructured as a `dyn Trait`.
+            let Some(b_ty) =
+                ecx.try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))?
+            else {
+                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW);
+            };
+
+            let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else {
+                return Err(NoSolution);
+            };
+
+            let tcx = ecx.tcx();
+
+            // Can only unsize to an object-safe trait.
+            if b_data.principal_def_id().is_some_and(|def_id| !tcx.check_is_object_safe(def_id)) {
+                return Err(NoSolution);
+            }
+
+            // Check that the type implements all of the predicates of the trait object.
+            // (i.e. the principal, all of the associated types match, and any auto traits)
+            ecx.add_goals(b_data.iter().map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty))));
+
+            // The type must be `Sized` to be unsized.
+            if let Some(sized_def_id) = tcx.lang_items().sized_trait() {
+                ecx.add_goal(goal.with(tcx, ty::TraitRef::new(tcx, sized_def_id, [a_ty])));
+            } else {
+                return Err(NoSolution);
+            }
+
+            // The type must outlive the lifetime of the `dyn` we're unsizing into.
+            ecx.add_goal(goal.with(tcx, ty::OutlivesPredicate(a_ty, b_region)));
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
+    }
+
+    /// ```ignore (builtin impl example)
+    /// trait Trait {
+    ///     fn foo(&self);
+    /// }
+    /// // results in the following builtin impl
+    /// impl<'a, T: Trait + 'a> Unsize<dyn Trait + 'a> for T {}
+    /// ```
+    fn consider_structural_builtin_unsize_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)> {
@@ -448,7 +496,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             // We need to normalize the b_ty since it's matched structurally
             // in the other functions below.
             let b_ty = match ecx
-                .normalize_non_self_ty(goal.predicate.trait_ref.args.type_at(1), goal.param_env)
+                .try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))
             {
                 Ok(Some(b_ty)) => b_ty,
                 Ok(None) => return vec![misc_candidate(ecx, Certainty::OVERFLOW)],
@@ -468,11 +516,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     goal, a_data, a_region, b_data, b_region,
                 ),
 
-                // `T` -> `dyn Trait` unsizing
-                (_, &ty::Dynamic(b_data, b_region, ty::Dyn)) => result_to_single(
-                    ecx.consider_builtin_unsize_to_dyn(goal, b_data, b_region),
-                    BuiltinImplSource::Misc,
-                ),
+                // `T` -> `dyn Trait` unsizing is handled separately in `consider_unsize_to_dyn_candidate`
+                (_, &ty::Dynamic(..)) => vec![],
 
                 // `[T; N]` -> `[T]` unsizing
                 (&ty::Array(a_elem_ty, ..), &ty::Slice(b_elem_ty)) => result_to_single(
@@ -552,16 +597,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             self.walk_vtable(
                 a_principal.with_self_ty(tcx, a_ty),
                 |ecx, new_a_principal, _, vtable_vptr_slot| {
-                    if let Ok(resp) = ecx.consider_builtin_upcast_to_principal(
-                        goal,
-                        a_data,
-                        a_region,
-                        b_data,
-                        b_region,
-                        Some(new_a_principal.map_bound(|trait_ref| {
-                            ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
-                        })),
-                    ) {
+                    if let Ok(resp) = ecx.probe_candidate("dyn upcast").enter(|ecx| {
+                        ecx.consider_builtin_upcast_to_principal(
+                            goal,
+                            a_data,
+                            a_region,
+                            b_data,
+                            b_region,
+                            Some(new_a_principal.map_bound(|trait_ref| {
+                                ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
+                            })),
+                        )
+                    }) {
                         responses
                             .push((resp, BuiltinImplSource::TraitUpcasting { vtable_vptr_slot }));
                     }
@@ -570,43 +617,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
 
         responses
-    }
-
-    /// ```ignore (builtin impl example)
-    /// trait Trait {
-    ///     fn foo(&self);
-    /// }
-    /// // results in the following builtin impl
-    /// impl<'a, T: Trait + 'a> Unsize<dyn Trait + 'a> for T {}
-    /// ```
-    fn consider_builtin_unsize_to_dyn(
-        &mut self,
-        goal: Goal<'tcx, (Ty<'tcx>, Ty<'tcx>)>,
-        b_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-        b_region: ty::Region<'tcx>,
-    ) -> QueryResult<'tcx> {
-        let tcx = self.tcx();
-        let Goal { predicate: (a_ty, _b_ty), .. } = goal;
-
-        // Can only unsize to an object-safe trait
-        if b_data.principal_def_id().is_some_and(|def_id| !tcx.check_is_object_safe(def_id)) {
-            return Err(NoSolution);
-        }
-
-        // Check that the type implements all of the predicates of the trait object.
-        // (i.e. the principal, all of the associated types match, and any auto traits)
-        self.add_goals(b_data.iter().map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty))));
-
-        // The type must be `Sized` to be unsized.
-        if let Some(sized_def_id) = tcx.lang_items().sized_trait() {
-            self.add_goal(goal.with(tcx, ty::TraitRef::new(tcx, sized_def_id, [a_ty])));
-        } else {
-            return Err(NoSolution);
-        }
-
-        // The type must outlive the lifetime of the `dyn` we're unsizing into.
-        self.add_goal(goal.with(tcx, ty::OutlivesPredicate(a_ty, b_region)));
-        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
     fn consider_builtin_upcast_to_principal(
@@ -926,42 +936,5 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> QueryResult<'tcx> {
         let candidates = self.assemble_and_evaluate_candidates(goal);
         self.merge_candidates(candidates)
-    }
-
-    /// Normalize a non-self type when it is structually matched on when solving
-    /// a built-in goal.
-    ///
-    /// This is handled already through `assemble_candidates_after_normalizing_self_ty`
-    /// for the self type, but for other goals, additional normalization of other
-    /// arguments may be needed to completely implement the semantics of the trait.
-    ///
-    /// This is required when structurally matching on any trait argument that is
-    /// not the self type.
-    fn normalize_non_self_ty(
-        &mut self,
-        mut ty: Ty<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Result<Option<Ty<'tcx>>, NoSolution> {
-        if !matches!(ty.kind(), ty::Alias(..)) {
-            return Ok(Some(ty));
-        }
-
-        for _ in 0..self.local_overflow_limit() {
-            let ty::Alias(_, projection_ty) = *ty.kind() else {
-                return Ok(Some(ty));
-            };
-
-            let normalized_ty = self.next_ty_infer();
-            let normalizes_to_goal = Goal::new(
-                self.tcx(),
-                param_env,
-                ty::ProjectionPredicate { projection_ty, term: normalized_ty.into() },
-            );
-            self.add_goal(normalizes_to_goal);
-            self.try_evaluate_added_goals()?;
-            ty = self.resolve_vars_if_possible(normalized_ty);
-        }
-
-        Ok(None)
     }
 }

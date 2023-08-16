@@ -24,7 +24,6 @@
 #![feature(staged_api)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
-#![feature(local_key_cell_methods)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(negative_impls)]
 #![feature(new_uninit)]

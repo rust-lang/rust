@@ -2438,10 +2438,7 @@ fn ceil_char_boundary() {
     check_many("🇯🇵", 0..=0, 0);
     check_many("🇯🇵", 1..=4, 4);
     check_many("🇯🇵", 5..=8, 8);
-}
 
-#[test]
-#[should_panic]
-fn ceil_char_boundary_above_len_panic() {
-    let _ = "x".ceil_char_boundary(2);
+    // above len
+    check_many("hello", 5..=10, 5);
 }

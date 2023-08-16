@@ -40,7 +40,6 @@ macro_rules! arena_types {
                 rustc_data_structures::sync::Lrc<rustc_ast::Crate>,
             )>,
             [] output_filenames: std::sync::Arc<rustc_session::config::OutputFilenames>,
-            [] metadata_loader: rustc_data_structures::steal::Steal<Box<rustc_session::cstore::MetadataLoaderDyn>>,
             [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
@@ -131,6 +130,7 @@ macro_rules! arena_types {
             [] closure_kind_origin: (rustc_span::Span, rustc_middle::hir::place::Place<'tcx>),
             [] stripped_cfg_items: rustc_ast::expand::StrippedCfgItem,
             [] mod_child: rustc_middle::metadata::ModChild,
+            [] features: rustc_feature::Features,
         ]);
     )
 }

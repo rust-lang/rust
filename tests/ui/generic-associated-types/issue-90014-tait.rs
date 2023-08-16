@@ -13,7 +13,6 @@ struct Foo<'a>(&'a mut ());
 
 impl Foo<'_> {
     type Fut<'a> = impl Future<Output = ()>;
-    //^ ERROR: the type `&mut ()` does not fulfill the required lifetime
 
     fn make_fut<'a>(&'a self) -> Self::Fut<'a> {
         async { () }

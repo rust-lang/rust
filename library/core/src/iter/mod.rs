@@ -440,6 +440,8 @@ pub use self::adapters::Copied;
 pub use self::adapters::Flatten;
 #[stable(feature = "iter_map_while", since = "1.57.0")]
 pub use self::adapters::MapWhile;
+#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+pub use self::adapters::MapWindows;
 #[unstable(feature = "inplace_iteration", issue = "none")]
 pub use self::adapters::SourceIter;
 #[stable(feature = "iterator_step_by", since = "1.28.0")]

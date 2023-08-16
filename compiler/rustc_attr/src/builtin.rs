@@ -800,18 +800,15 @@ pub struct Deprecation {
 }
 
 /// Finds the deprecation attribute. `None` if none exists.
-pub fn find_deprecation(sess: &Session, attrs: &[Attribute]) -> Option<(Deprecation, Span)> {
-    find_deprecation_generic(sess, attrs.iter())
-}
-
-fn find_deprecation_generic<'a, I>(sess: &Session, attrs_iter: I) -> Option<(Deprecation, Span)>
-where
-    I: Iterator<Item = &'a Attribute>,
-{
+pub fn find_deprecation(
+    sess: &Session,
+    features: &Features,
+    attrs: &[Attribute],
+) -> Option<(Deprecation, Span)> {
     let mut depr: Option<(Deprecation, Span)> = None;
-    let is_rustc = sess.features_untracked().staged_api;
+    let is_rustc = features.staged_api;
 
-    'outer: for attr in attrs_iter {
+    'outer: for attr in attrs {
         if !attr.has_name(sym::deprecated) {
             continue;
         }
@@ -872,7 +869,7 @@ where
                                 }
                             }
                             sym::suggestion => {
-                                if !sess.features_untracked().deprecated_suggestion {
+                                if !features.deprecated_suggestion {
                                     sess.emit_err(session_diagnostics::DeprecatedItemSuggestion {
                                         span: mi.span,
                                         is_nightly: sess.is_nightly_build().then_some(()),
@@ -890,7 +887,7 @@ where
                                     meta.span(),
                                     AttrError::UnknownMetaItem(
                                         pprust::path_to_string(&mi.path),
-                                        if sess.features_untracked().deprecated_suggestion {
+                                        if features.deprecated_suggestion {
                                             &["since", "note", "suggestion"]
                                         } else {
                                             &["since", "note"]

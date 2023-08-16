@@ -920,7 +920,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         item: &ast::Item,
         edition: Edition,
     ) -> (SyntaxExtension, Vec<(usize, Span)>) {
-        let (mut result, mut rule_spans) = compile_declarative_macro(self.tcx.sess, item, edition);
+        let (mut result, mut rule_spans) =
+            compile_declarative_macro(self.tcx.sess, self.tcx.features(), item, edition);
 
         if let Some(builtin_name) = result.builtin_name {
             // The macro was marked with `#[rustc_builtin_macro]`.

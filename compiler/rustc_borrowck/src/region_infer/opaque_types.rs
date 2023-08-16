@@ -371,40 +371,27 @@ fn check_opaque_type_parameter_valid(
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
     let opaque_ty_hir = tcx.hir().expect_item(opaque_type_key.def_id);
-    match opaque_ty_hir.expect_opaque_ty().origin {
-        // No need to check return position impl trait (RPIT)
-        // because for type and const parameters they are correct
-        // by construction: we convert
-        //
-        // fn foo<P0..Pn>() -> impl Trait
-        //
-        // into
-        //
-        // type Foo<P0...Pn>
-        // fn foo<P0..Pn>() -> Foo<P0...Pn>.
-        //
-        // For lifetime parameters we convert
-        //
-        // fn foo<'l0..'ln>() -> impl Trait<'l0..'lm>
-        //
-        // into
-        //
-        // type foo::<'p0..'pn>::Foo<'q0..'qm>
-        // fn foo<l0..'ln>() -> foo::<'static..'static>::Foo<'l0..'lm>.
-        //
-        // which would error here on all of the `'static` args.
-        OpaqueTyOrigin::FnReturn(..) | OpaqueTyOrigin::AsyncFn(..) => return Ok(()),
-        // Check these
-        OpaqueTyOrigin::TyAlias { .. } => {}
-    }
+    let is_ty_alias = match opaque_ty_hir.expect_opaque_ty().origin {
+        OpaqueTyOrigin::TyAlias { .. } => true,
+        OpaqueTyOrigin::AsyncFn(..) | OpaqueTyOrigin::FnReturn(..) => false,
+    };
+
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
     let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
     for (i, arg) in opaque_type_key.args.iter().enumerate() {
+        if let Err(guar) = arg.error_reported() {
+            return Err(guar);
+        }
+
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
-            GenericArgKind::Lifetime(lt) => {
+            GenericArgKind::Lifetime(lt) if is_ty_alias => {
                 matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
             }
+            // FIXME(#113916): we can't currently check for unique lifetime params,
+            // see that issue for more. We will also have to ignore unused lifetime
+            // params for RPIT, but that's comparatively trivial ✨
+            GenericArgKind::Lifetime(_) => continue,
             GenericArgKind::Const(ct) => matches!(ct.kind(), ty::ConstKind::Param(_)),
         };
 

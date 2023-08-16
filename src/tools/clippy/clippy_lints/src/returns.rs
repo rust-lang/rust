@@ -164,7 +164,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         if !in_external_macro(cx.sess(), stmt.span)
             && let StmtKind::Semi(expr) = stmt.kind
             && let ExprKind::Ret(Some(ret)) = expr.kind
-            && let ExprKind::Match(.., MatchSource::TryDesugar) = ret.kind
+            && let ExprKind::Match(.., MatchSource::TryDesugar(_)) = ret.kind
             // Ensure this is not the final stmt, otherwise removing it would cause a compile error
             && let OwnerNode::Item(item) = cx.tcx.hir().owner(cx.tcx.hir().get_parent_item(expr.hir_id))
             && let ItemKind::Fn(_, _, body) = item.kind

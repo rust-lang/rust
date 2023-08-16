@@ -299,7 +299,7 @@ impl Step for Llvm {
 
         let llvm_exp_targets = match builder.config.llvm_experimental_targets {
             Some(ref s) => s,
-            None => "AVR;M68k",
+            None => "AVR;M68k;CSKY",
         };
 
         let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
@@ -374,12 +374,12 @@ impl Step for Llvm {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
-        if target.starts_with("riscv")
+        if (target.starts_with("riscv") || target.starts_with("csky"))
             && !target.contains("freebsd")
             && !target.contains("openbsd")
             && !target.contains("netbsd")
         {
-            // RISC-V GCC erroneously requires linking against
+            // RISC-V and CSKY GCC erroneously requires linking against
             // `libatomic` when using 1-byte and 2-byte C++
             // atomics but the LLVM build system check cannot
             // detect this. Therefore it is set manually here.

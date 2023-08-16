@@ -346,6 +346,7 @@ pub enum ExprKind<'tcx> {
     /// A `match` expression.
     Match {
         scrutinee: ExprId,
+        scrutinee_hir_id: hir::HirId,
         arms: Box<[ArmId]>,
     },
     /// A block.
