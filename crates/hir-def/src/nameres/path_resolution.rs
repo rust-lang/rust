@@ -65,7 +65,7 @@ impl PerNs {
         db: &dyn DefDatabase,
         expected: Option<MacroSubNs>,
     ) -> Self {
-        self.macros = self.macros.filter(|&(id, _)| {
+        self.macros = self.macros.filter(|&(id, _, _)| {
             let this = MacroSubNs::from_id(db, id);
             sub_namespace_match(Some(this), expected)
         });

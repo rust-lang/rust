@@ -864,13 +864,13 @@ impl ScopeNames {
         }
     }
     fn add_per_ns(&mut self, name: &Name, def: PerNs) {
-        if let &Some((ty, _)) = &def.types {
+        if let &Some((ty, _, _)) = &def.types {
             self.add(name, ScopeDef::ModuleDef(ty))
         }
-        if let &Some((def, _)) = &def.values {
+        if let &Some((def, _, _)) = &def.values {
             self.add(name, ScopeDef::ModuleDef(def))
         }
-        if let &Some((mac, _)) = &def.macros {
+        if let &Some((mac, _, _)) = &def.macros {
             self.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(mac)))
         }
         if def.is_none() {

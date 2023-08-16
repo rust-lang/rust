@@ -33,7 +33,7 @@ use crate::{
     attr_macro_as_call_id,
     db::DefDatabase,
     derive_macro_as_call_id,
-    item_scope::{ImportType, PerNsGlobImports},
+    item_scope::{ImportOrExternCrate, ImportType, PerNsGlobImports},
     item_tree::{
         self, ExternCrate, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode,
         MacroCall, MacroDef, MacroRules, Mod, ModItem, ModKind, TreeId,
@@ -546,8 +546,8 @@ impl DefCollector<'_> {
             self.def_map.resolve_path(self.db, DefMap::ROOT, &path, BuiltinShadowMode::Other, None);
 
         match per_ns.types {
-            Some((ModuleDefId::ModuleId(m), _)) => {
-                self.def_map.prelude = Some((m, None));
+            Some((ModuleDefId::ModuleId(m), _, import)) => {
+                self.def_map.prelude = Some((m, import.and_then(ImportOrExternCrate::into_glob)));
             }
             types => {
                 tracing::debug!(
@@ -714,7 +714,6 @@ impl DefCollector<'_> {
         &mut self,
         krate: CrateId,
         names: Option<Vec<Name>>,
-
         extern_crate: Option<ExternCrateId>,
     ) {
         let def_map = self.db.crate_def_map(krate);

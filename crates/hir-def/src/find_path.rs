@@ -1293,4 +1293,22 @@ pub mod prelude {
             "None",
         );
     }
+
+    #[test]
+    fn different_crate_renamed_through_dep() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:intermediate
+$0
+//- /intermediate.rs crate:intermediate deps:std
+pub extern crate std as std_renamed;
+//- /std.rs crate:std
+pub struct S;
+    "#,
+            "intermediate::std_renamed::S",
+            "intermediate::std_renamed::S",
+            "intermediate::std_renamed::S",
+            "intermediate::std_renamed::S",
+        );
+    }
 }
