@@ -1,4 +1,4 @@
-use crate::traits::specialization_graph;
+use crate::traits::{check_args_compatible, specialization_graph};
 
 use super::assembly::{self, structural_traits};
 use super::EvalCtxt;
@@ -190,11 +190,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
             };
 
-            if !assoc_def.item.defaultness(tcx).has_value() {
-                let guar = tcx.sess.delay_span_bug(
-                    tcx.def_span(assoc_def.item.def_id),
-                    "missing value for assoc item in impl",
-                );
+            let error_response = |ecx: &mut EvalCtxt<'_, 'tcx>, reason| {
+                let guar = tcx.sess.delay_span_bug(tcx.def_span(assoc_def.item.def_id), reason);
                 let error_term = match assoc_def.item.kind {
                     ty::AssocKind::Const => ty::Const::new_error(
                         tcx,
@@ -208,7 +205,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 };
                 ecx.eq(goal.param_env, goal.predicate.term, error_term)
                     .expect("expected goal term to be fully unconstrained");
-                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            };
+
+            if !assoc_def.item.defaultness(tcx).has_value() {
+                return error_response(ecx, "missing value for assoc item in impl");
             }
 
             // Getting the right args here is complex, e.g. given:
@@ -232,6 +233,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 impl_args_with_gat,
                 assoc_def.defining_node,
             );
+
+            if !check_args_compatible(tcx, assoc_def.item, args) {
+                return error_response(
+                    ecx,
+                    "associated item has mismatched generic item arguments",
+                );
+            }
 
             // Finally we construct the actual value of the associated type.
             let term = match assoc_def.item.kind {
@@ -497,7 +505,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         )
     }
 
-    fn consider_builtin_unsize_candidates(
+    fn consider_unsize_to_dyn_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`Unsize` does not have an associated type: {:?}", goal)
+    }
+
+    fn consider_structural_builtin_unsize_candidates(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)> {

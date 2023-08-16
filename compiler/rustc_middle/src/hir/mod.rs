@@ -11,7 +11,7 @@ use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{par_for_each_in, DynSend, DynSync};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::{ExpnId, DUMMY_SP};
@@ -101,22 +101,22 @@ impl<'tcx> TyCtxt<'tcx> {
         map::Map { tcx: self }
     }
 
-    pub fn parent_module(self, id: HirId) -> LocalDefId {
+    pub fn parent_module(self, id: HirId) -> LocalModDefId {
         if !id.is_owner() && self.def_kind(id.owner) == DefKind::Mod {
-            id.owner.def_id
+            LocalModDefId::new_unchecked(id.owner.def_id)
         } else {
             self.parent_module_from_def_id(id.owner.def_id)
         }
     }
 
-    pub fn parent_module_from_def_id(self, mut id: LocalDefId) -> LocalDefId {
+    pub fn parent_module_from_def_id(self, mut id: LocalDefId) -> LocalModDefId {
         while let Some(parent) = self.opt_local_parent(id) {
             id = parent;
             if self.def_kind(id) == DefKind::Mod {
                 break;
             }
         }
-        id
+        LocalModDefId::new_unchecked(id)
     }
 
     pub fn impl_subject(self, def_id: DefId) -> EarlyBinder<ImplSubject<'tcx>> {

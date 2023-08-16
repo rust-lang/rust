@@ -42,7 +42,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
             if cx.typeck_results().expr_ty(arg).is_unit() && !utils::is_unit_literal(arg) {
                 !matches!(
                     &arg.kind,
-                    ExprKind::Match(.., MatchSource::TryDesugar) | ExprKind::Path(..)
+                    ExprKind::Match(.., MatchSource::TryDesugar(_)) | ExprKind::Path(..)
                 )
             } else {
                 false

@@ -74,7 +74,6 @@ pub(crate) fn parse_token_trees<'a>(
             // because the delimiter mismatch is more likely to be the root cause of error
 
             let mut buffer = Vec::with_capacity(1);
-            // Not using `emit_unclosed_delims` to use `db.buffer`
             for unmatched in unmatched_delims {
                 if let Some(err) = make_unclosed_delims_error(unmatched, &sess) {
                     err.buffer(&mut buffer);

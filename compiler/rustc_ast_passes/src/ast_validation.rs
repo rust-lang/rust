@@ -13,6 +13,7 @@ use rustc_ast::*;
 use rustc_ast::{walk_list, StaticItem};
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_feature::Features;
 use rustc_macros::Subdiagnostic;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
@@ -45,6 +46,7 @@ enum DisallowTildeConstContext<'a> {
 
 struct AstValidator<'a> {
     session: &'a Session,
+    features: &'a Features,
 
     /// The span of the `extern` in an `extern { ... }` block, if any.
     extern_mod: Option<&'a Item>,
@@ -1023,7 +1025,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 self.check_type_no_bounds(bounds, "this context");
 
-                if self.session.features_untracked().lazy_type_alias {
+                if self.features.lazy_type_alias {
                     if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
                         self.err_handler().emit_err(err);
                     }
@@ -1500,9 +1502,15 @@ fn deny_equality_constraints(
     this.err_handler().emit_err(err);
 }
 
-pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> bool {
+pub fn check_crate(
+    session: &Session,
+    features: &Features,
+    krate: &Crate,
+    lints: &mut LintBuffer,
+) -> bool {
     let mut validator = AstValidator {
         session,
+        features,
         extern_mod: None,
         in_trait_impl: false,
         in_const_trait_impl: false,

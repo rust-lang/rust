@@ -445,7 +445,6 @@ impl<'tcx> Cx<'tcx> {
                     let rhs = self.mirror_expr(rhs);
                     self.overloaded_operator(expr, Box::new([lhs, rhs]))
                 } else {
-                    // FIXME overflow
                     match op.node {
                         hir::BinOpKind::And => ExprKind::LogicalOp {
                             op: LogicalOp::And,
@@ -733,6 +732,7 @@ impl<'tcx> Cx<'tcx> {
             },
             hir::ExprKind::Match(ref discr, ref arms, _) => ExprKind::Match {
                 scrutinee: self.mirror_expr(discr),
+                scrutinee_hir_id: discr.hir_id,
                 arms: arms.iter().map(|a| self.convert_arm(a)).collect(),
             },
             hir::ExprKind::Loop(ref body, ..) => {

@@ -842,7 +842,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .decode((self, sess))
     }
 
-    fn load_proc_macro(self, id: DefIndex, sess: &Session) -> SyntaxExtension {
+    fn load_proc_macro(self, id: DefIndex, tcx: TyCtxt<'tcx>) -> SyntaxExtension {
         let (name, kind, helper_attrs) = match *self.raw_proc_macro(id) {
             ProcMacro::CustomDerive { trait_name, attributes, client } => {
                 let helper_attrs =
@@ -861,9 +861,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         };
 
+        let sess = tcx.sess;
         let attrs: Vec<_> = self.get_item_attrs(id, sess).collect();
         SyntaxExtension::new(
             sess,
+            tcx.features(),
             kind,
             self.get_span(id, sess),
             helper_attrs,

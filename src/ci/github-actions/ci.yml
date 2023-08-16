@@ -316,10 +316,10 @@ jobs:
       matrix:
         include:
           - name: mingw-check
-            <<: *job-linux-16c
+            <<: *job-linux-4c
 
           - name: mingw-check-tidy
-            <<: *job-linux-16c
+            <<: *job-linux-4c
 
           - name: x86_64-gnu-llvm-15
             <<: *job-linux-16c

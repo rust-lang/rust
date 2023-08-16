@@ -70,7 +70,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
             visitor.visit_expr(&visitor.thir()[expr]);
         }
         Loop { body } => visitor.visit_expr(&visitor.thir()[body]),
-        Match { scrutinee, ref arms } => {
+        Match { scrutinee, ref arms, .. } => {
             visitor.visit_expr(&visitor.thir()[scrutinee]);
             for &arm in &**arms {
                 visitor.visit_arm(&visitor.thir()[arm]);

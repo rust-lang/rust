@@ -68,7 +68,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         let asm_ty = match *ty.kind() {
             // `!` is allowed for input but not for output (issue #87802)
             ty::Never if is_input => return None,
-            ty::Error(_) => return None,
+            _ if ty.references_error() => return None,
             ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Some(InlineAsmType::I8),
             ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Some(InlineAsmType::I16),
             ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Some(InlineAsmType::I32),

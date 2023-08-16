@@ -134,9 +134,13 @@ impl<'tcx> SearchGraph<'tcx> {
     /// Resets `encountered_overflow` of the current goal.
     ///
     /// This should only be used for the check in `evaluate_goal`.
-    pub(super) fn reset_encountered_overflow(&mut self, encountered_overflow: bool) {
-        if encountered_overflow {
-            self.stack.raw.last_mut().unwrap().encountered_overflow = true;
+    pub(super) fn reset_encountered_overflow(&mut self, encountered_overflow: bool) -> bool {
+        if let Some(last) = self.stack.raw.last_mut() {
+            let prev = last.encountered_overflow;
+            last.encountered_overflow = encountered_overflow;
+            prev
+        } else {
+            false
         }
     }
 

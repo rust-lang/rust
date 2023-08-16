@@ -338,7 +338,7 @@ impl LinkerFlavor {
             || stem == "clang++"
             || stem.ends_with("-clang++")
         {
-            (Some(Cc::Yes), None)
+            (Some(Cc::Yes), Some(Lld::No))
         } else if stem == "wasm-ld"
             || stem.ends_with("-wasm-ld")
             || stem == "ld.lld"
@@ -1246,6 +1246,7 @@ supported_targets! {
     ("i586-unknown-linux-gnu", i586_unknown_linux_gnu),
     ("loongarch64-unknown-linux-gnu", loongarch64_unknown_linux_gnu),
     ("m68k-unknown-linux-gnu", m68k_unknown_linux_gnu),
+    ("csky-unknown-linux-gnuabiv2", csky_unknown_linux_gnuabiv2),
     ("mips-unknown-linux-gnu", mips_unknown_linux_gnu),
     ("mips64-unknown-linux-gnuabi64", mips64_unknown_linux_gnuabi64),
     ("mips64el-unknown-linux-gnuabi64", mips64el_unknown_linux_gnuabi64),

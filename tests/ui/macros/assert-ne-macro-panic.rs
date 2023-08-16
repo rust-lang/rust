@@ -1,7 +1,7 @@
 // run-fail
-// error-pattern:assertion failed: `(left != right)`
-// error-pattern: left: `14`
-// error-pattern:right: `14`
+// error-pattern:assertion `left != right` failed
+// error-pattern:  left: 14
+// error-pattern: right: 14
 // ignore-emscripten no processes
 
 fn main() {

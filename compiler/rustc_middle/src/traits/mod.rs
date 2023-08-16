@@ -402,7 +402,7 @@ pub enum ObligationCauseCode<'tcx> {
     OpaqueReturnType(Option<(Ty<'tcx>, Span)>),
 
     /// Block implicit return
-    BlockTailExpression(hir::HirId),
+    BlockTailExpression(hir::HirId, hir::MatchSource),
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
@@ -543,7 +543,6 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub scrut_span: Span,
     pub source: hir::MatchSource,
     pub prior_arms: Vec<Span>,
-    pub scrut_hir_id: hir::HirId,
     pub opt_suggest_box_span: Option<Span>,
 }
 
@@ -649,7 +648,7 @@ pub enum ImplSource<'tcx, N> {
     /// for some type parameter. The `Vec<N>` represents the
     /// obligations incurred from normalizing the where-clause (if
     /// any).
-    Param(ty::BoundConstness, Vec<N>),
+    Param(Vec<N>),
 
     /// Successful resolution for a builtin impl.
     Builtin(BuiltinImplSource, Vec<N>),
@@ -659,21 +658,21 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn nested_obligations(self) -> Vec<N> {
         match self {
             ImplSource::UserDefined(i) => i.nested,
-            ImplSource::Param(_, n) | ImplSource::Builtin(_, n) => n,
+            ImplSource::Param(n) | ImplSource::Builtin(_, n) => n,
         }
     }
 
     pub fn borrow_nested_obligations(&self) -> &[N] {
         match self {
             ImplSource::UserDefined(i) => &i.nested,
-            ImplSource::Param(_, n) | ImplSource::Builtin(_, n) => &n,
+            ImplSource::Param(n) | ImplSource::Builtin(_, n) => &n,
         }
     }
 
     pub fn borrow_nested_obligations_mut(&mut self) -> &mut [N] {
         match self {
             ImplSource::UserDefined(i) => &mut i.nested,
-            ImplSource::Param(_, n) | ImplSource::Builtin(_, n) => n,
+            ImplSource::Param(n) | ImplSource::Builtin(_, n) => n,
         }
     }
 
@@ -687,7 +686,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                 args: i.args,
                 nested: i.nested.into_iter().map(f).collect(),
             }),
-            ImplSource::Param(ct, n) => ImplSource::Param(ct, n.into_iter().map(f).collect()),
+            ImplSource::Param(n) => ImplSource::Param(n.into_iter().map(f).collect()),
             ImplSource::Builtin(source, n) => {
                 ImplSource::Builtin(source, n.into_iter().map(f).collect())
             }

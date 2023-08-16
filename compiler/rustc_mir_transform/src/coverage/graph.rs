@@ -1,12 +1,8 @@
-use super::Error;
-
 use itertools::Itertools;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock, BasicBlockData, Terminator, TerminatorKind};
 
 use std::cmp::Ordering;
@@ -15,10 +11,7 @@ use std::ops::{Index, IndexMut};
 const ID_SEPARATOR: &str = ",";
 
 /// A coverage-specific simplification of the MIR control flow graph (CFG). The `CoverageGraph`s
-/// nodes are `BasicCoverageBlock`s, which encompass one or more MIR `BasicBlock`s, plus a
-/// `CoverageKind` counter (to be added by `CoverageCounters::make_bcb_counters`), and an optional
-/// set of additional counters--if needed--to count incoming edges, if there are more than one.
-/// (These "edge counters" are eventually converted into new MIR `BasicBlock`s.)
+/// nodes are `BasicCoverageBlock`s, which encompass one or more MIR `BasicBlock`s.
 #[derive(Debug)]
 pub(super) struct CoverageGraph {
     bcbs: IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
@@ -196,13 +189,6 @@ impl CoverageGraph {
     }
 
     #[inline(always)]
-    pub fn iter_enumerated_mut(
-        &mut self,
-    ) -> impl Iterator<Item = (BasicCoverageBlock, &mut BasicCoverageBlockData)> {
-        self.bcbs.iter_enumerated_mut()
-    }
-
-    #[inline(always)]
     pub fn bcb_from_bb(&self, bb: BasicBlock) -> Option<BasicCoverageBlock> {
         if bb.index() < self.bb_to_bcb.len() { self.bb_to_bcb[bb] } else { None }
     }
@@ -320,14 +306,12 @@ rustc_index::newtype_index! {
 #[derive(Debug, Clone)]
 pub(super) struct BasicCoverageBlockData {
     pub basic_blocks: Vec<BasicBlock>,
-    pub counter_kind: Option<CoverageKind>,
-    edge_from_bcbs: Option<FxHashMap<BasicCoverageBlock, CoverageKind>>,
 }
 
 impl BasicCoverageBlockData {
     pub fn from(basic_blocks: Vec<BasicBlock>) -> Self {
         assert!(basic_blocks.len() > 0);
-        Self { basic_blocks, counter_kind: None, edge_from_bcbs: None }
+        Self { basic_blocks }
     }
 
     #[inline(always)]
@@ -343,80 +327,6 @@ impl BasicCoverageBlockData {
     #[inline(always)]
     pub fn terminator<'a, 'tcx>(&self, mir_body: &'a mir::Body<'tcx>) -> &'a Terminator<'tcx> {
         &mir_body[self.last_bb()].terminator()
-    }
-
-    pub fn set_counter(&mut self, counter_kind: CoverageKind) -> Result<Operand, Error> {
-        debug_assert!(
-            // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
-            // have an expression (to be injected into an existing `BasicBlock` represented by this
-            // `BasicCoverageBlock`).
-            self.edge_from_bcbs.is_none() || counter_kind.is_expression(),
-            "attempt to add a `Counter` to a BCB target with existing incoming edge counters"
-        );
-        let operand = counter_kind.as_operand();
-        if let Some(replaced) = self.counter_kind.replace(counter_kind) {
-            Error::from_string(format!(
-                "attempt to set a BasicCoverageBlock coverage counter more than once; \
-                {self:?} already had counter {replaced:?}",
-            ))
-        } else {
-            Ok(operand)
-        }
-    }
-
-    #[inline(always)]
-    pub fn counter(&self) -> Option<&CoverageKind> {
-        self.counter_kind.as_ref()
-    }
-
-    #[inline(always)]
-    pub fn take_counter(&mut self) -> Option<CoverageKind> {
-        self.counter_kind.take()
-    }
-
-    pub fn set_edge_counter_from(
-        &mut self,
-        from_bcb: BasicCoverageBlock,
-        counter_kind: CoverageKind,
-    ) -> Result<Operand, Error> {
-        if level_enabled!(tracing::Level::DEBUG) {
-            // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
-            // have an expression (to be injected into an existing `BasicBlock` represented by this
-            // `BasicCoverageBlock`).
-            if self.counter_kind.as_ref().is_some_and(|c| !c.is_expression()) {
-                return Error::from_string(format!(
-                    "attempt to add an incoming edge counter from {from_bcb:?} when the target BCB already \
-                    has a `Counter`"
-                ));
-            }
-        }
-        let operand = counter_kind.as_operand();
-        if let Some(replaced) =
-            self.edge_from_bcbs.get_or_insert_default().insert(from_bcb, counter_kind)
-        {
-            Error::from_string(format!(
-                "attempt to set an edge counter more than once; from_bcb: \
-                {from_bcb:?} already had counter {replaced:?}",
-            ))
-        } else {
-            Ok(operand)
-        }
-    }
-
-    #[inline]
-    pub fn edge_counter_from(&self, from_bcb: BasicCoverageBlock) -> Option<&CoverageKind> {
-        if let Some(edge_from_bcbs) = &self.edge_from_bcbs {
-            edge_from_bcbs.get(&from_bcb)
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    pub fn take_edge_counters(
-        &mut self,
-    ) -> Option<impl Iterator<Item = (BasicCoverageBlock, CoverageKind)>> {
-        self.edge_from_bcbs.take().map(|m| m.into_iter())
     }
 
     pub fn id(&self) -> String {
@@ -446,17 +356,6 @@ impl BcbBranch {
             None
         };
         Self { edge_from_bcb, target_bcb: to_bcb }
-    }
-
-    pub fn counter<'a>(
-        &self,
-        basic_coverage_blocks: &'a CoverageGraph,
-    ) -> Option<&'a CoverageKind> {
-        if let Some(from_bcb) = self.edge_from_bcb {
-            basic_coverage_blocks[self.target_bcb].edge_counter_from(from_bcb)
-        } else {
-            basic_coverage_blocks[self.target_bcb].counter()
-        }
     }
 
     pub fn is_only_path_to_target(&self) -> bool {

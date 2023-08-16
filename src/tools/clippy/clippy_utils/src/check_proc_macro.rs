@@ -149,7 +149,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
             (Pat::Str("for"), Pat::Str("}"))
         },
         ExprKind::Match(_, _, MatchSource::Normal) => (Pat::Str("match"), Pat::Str("}")),
-        ExprKind::Match(e, _, MatchSource::TryDesugar) => (expr_search_pat(tcx, e).0, Pat::Str("?")),
+        ExprKind::Match(e, _, MatchSource::TryDesugar(_)) => (expr_search_pat(tcx, e).0, Pat::Str("?")),
         ExprKind::Match(e, _, MatchSource::AwaitDesugar) | ExprKind::Yield(e, YieldSource::Await { .. }) => {
             (expr_search_pat(tcx, e).0, Pat::Str("await"))
         },

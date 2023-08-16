@@ -1717,13 +1717,7 @@ impl<'a> Parser<'a> {
             self.recover_await_prefix(await_sp)?
         };
         let sp = self.error_on_incorrect_await(lo, hi, &expr, is_question);
-        let kind = match expr.kind {
-            // Avoid knock-down errors as we don't know whether to interpret this as `foo().await?`
-            // or `foo()?.await` (the very reason we went with postfix syntax 😅).
-            ExprKind::Try(_) => ExprKind::Err,
-            _ => ExprKind::Await(expr, await_sp),
-        };
-        let expr = self.mk_expr(lo.to(sp), kind);
+        let expr = self.mk_expr(lo.to(sp), ExprKind::Err);
         self.maybe_recover_from_bad_qpath(expr)
     }
 

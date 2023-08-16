@@ -415,7 +415,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
 
         if !matches!(
             impl_src,
-            ImplSource::Builtin(BuiltinImplSource::Misc, _) | ImplSource::Param(ty::BoundConstness::ConstIfConst, _)
+            ImplSource::Builtin(BuiltinImplSource::Misc, _) | ImplSource::Param(_)
         ) {
             return false;
         }
