@@ -265,7 +265,6 @@ fn compute_replacement<'tcx>(
         targets,
         storage_to_remove,
         allowed_replacements,
-        fully_replacable_locals,
         any_replacement: false,
     };
 
@@ -346,7 +345,6 @@ struct Replacer<'tcx> {
     storage_to_remove: BitSet<Local>,
     allowed_replacements: FxHashSet<(Local, Location)>,
     any_replacement: bool,
-    fully_replacable_locals: BitSet<Local>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
@@ -365,12 +363,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
         {
             if let Some((&PlaceElem::Deref, rest)) = target.projection.split_last() {
                 *place = Place::from(target.local).project_deeper(rest, self.tcx);
-                self.any_replacement = true;
-            } else if self.fully_replacable_locals.contains(place.local)
-                && let Some(references) = debuginfo.references.checked_add(1)
-            {
-                debuginfo.references = references;
-                *place = target;
                 self.any_replacement = true;
             } else {
                 break

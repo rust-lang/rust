@@ -22,27 +22,23 @@
       let _24: &mut u8;
       let mut _25: debuginfo::T;
       scope 1 {
--         debug ref_mut_u8 => _1;
-+         debug ref_mut_u8 => &_2;
+          debug ref_mut_u8 => _1;
           let _3: &u8;
           let mut _28: &debuginfo::T;
           scope 2 {
--             debug field => _3;
-+             debug field => &((*_28).0: u8);
+              debug field => _3;
               let _5: &u8;
               scope 3 {
 -                 debug reborrow => _5;
-+                 debug reborrow => &_2;
++                 debug reborrow => _1;
                   let _9: &i32;
                   let _22: &&&mut u8;
                   let mut _27: &std::option::Option<i32>;
                   scope 4 {
--                     debug variant_field => _9;
-+                     debug variant_field => &(((*_27) as Some).0: i32);
+                      debug variant_field => _9;
                   }
                   scope 5 {
--                     debug constant_index => _19;
-+                     debug constant_index => &(*_11)[1 of 3];
+                      debug constant_index => _19;
                       debug subslice => _20;
                       debug constant_index_from_end => _21;
                       let _19: &i32;
@@ -51,21 +47,20 @@
                       let mut _26: &[i32; 10];
                   }
                   scope 6 {
--                     debug multiple_borrow => _22;
-+                     debug multiple_borrow => &&&(_25.0: u8);
+                      debug multiple_borrow => _22;
                   }
               }
           }
       }
   
       bb0: {
--         StorageLive(_1);
+          StorageLive(_1);
           StorageLive(_2);
           _2 = const 5_u8;
--         _1 = &mut _2;
--         StorageLive(_3);
+          _1 = &mut _2;
+          StorageLive(_3);
           _28 = const _;
--         _3 = &((*_28).0: u8);
+          _3 = &((*_28).0: u8);
 -         StorageLive(_5);
 -         _5 = &(*_1);
 -         StorageLive(_6);
@@ -76,11 +71,11 @@
       }
   
       bb1: {
--         StorageLive(_9);
+          StorageLive(_9);
           _27 = const _;
--         _9 = &(((*_27) as Some).0: i32);
+          _9 = &(((*_27) as Some).0: i32);
 -         _6 = const ();
--         StorageDead(_9);
+          StorageDead(_9);
           goto -> bb4;
       }
   
@@ -118,8 +113,8 @@
       }
   
       bb6: {
--         StorageLive(_19);
--         _19 = &(*_11)[1 of 3];
+          StorageLive(_19);
+          _19 = &(*_11)[1 of 3];
           StorageLive(_20);
           _20 = &(*_11)[2:-1];
           StorageLive(_21);
@@ -127,7 +122,7 @@
 -         _10 = const ();
           StorageDead(_21);
           StorageDead(_20);
--         StorageDead(_19);
+          StorageDead(_19);
           goto -> bb8;
       }
   
@@ -140,23 +135,23 @@
           StorageDead(_12);
           StorageDead(_11);
 -         StorageDead(_10);
--         StorageLive(_22);
--         StorageLive(_23);
--         StorageLive(_24);
+          StorageLive(_22);
+          StorageLive(_23);
+          StorageLive(_24);
           StorageLive(_25);
           _25 = T(const 6_u8);
--         _24 = &mut (_25.0: u8);
--         _23 = &_24;
--         _22 = &_23;
+          _24 = &mut (_25.0: u8);
+          _23 = &_24;
+          _22 = &_23;
           _0 = const ();
           StorageDead(_25);
--         StorageDead(_24);
--         StorageDead(_23);
--         StorageDead(_22);
+          StorageDead(_24);
+          StorageDead(_23);
+          StorageDead(_22);
 -         StorageDead(_5);
--         StorageDead(_3);
+          StorageDead(_3);
           StorageDead(_2);
--         StorageDead(_1);
+          StorageDead(_1);
           return;
       }
   }
