@@ -450,7 +450,7 @@ impl<T> Cell<T> {
         // either of these `Cell`s. We also excluded shenanigans like partially overlapping `Cell`s,
         // so `swap` will just properly copy two full values of type `T` back and forth.
         unsafe {
-            ptr::swap_nonoverlapping(self.value.get(), other.value.get(), 1);
+            mem::swap(&mut *self.value.get(), &mut *other.value.get());
         }
     }
 
