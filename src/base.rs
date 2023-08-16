@@ -872,6 +872,9 @@ pub(crate) fn codegen_place<'tcx>(
 
     for elem in place.projection {
         match elem {
+            PlaceElem::Subtype(_) => {
+                continue;
+            }
             PlaceElem::Deref => {
                 cplace = cplace.place_deref(fx);
             }
