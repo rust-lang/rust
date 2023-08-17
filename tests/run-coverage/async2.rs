@@ -1,11 +1,5 @@
 // compile-flags: --edition=2018
 
-use core::{
-    future::Future,
-    marker::Send,
-    pin::Pin,
-};
-
 fn non_async_func() {
     println!("non_async_func was covered");
     let b = true;

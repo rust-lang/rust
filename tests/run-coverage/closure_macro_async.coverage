@@ -42,7 +42,7 @@
    LL|       |
    LL|       |#[no_coverage]
    LL|       |fn main() {
-   LL|       |    executor::block_on(test());
+   LL|       |    executor::block_on(test()).unwrap();
    LL|       |}
    LL|       |
    LL|       |mod executor {

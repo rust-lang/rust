@@ -42,6 +42,7 @@ pub fn unused_function() {
     }
 }
 
+#[allow(dead_code)]
 fn unused_private_function() {
     let is_true = std::env::args().len() == 1;
     let mut countdown = 2;

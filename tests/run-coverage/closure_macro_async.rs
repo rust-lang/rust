@@ -41,7 +41,7 @@ pub async fn test() -> Result<(), String> {
 
 #[no_coverage]
 fn main() {
-    executor::block_on(test());
+    executor::block_on(test()).unwrap();
 }
 
 mod executor {
