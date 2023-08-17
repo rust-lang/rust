@@ -6,6 +6,14 @@ RUN sh /scripts/cross-apt-packages.sh
 COPY scripts/crosstool-ng.sh /scripts/
 RUN sh /scripts/crosstool-ng.sh
 
+WORKDIR /build
+
+COPY scripts/musl-toolchain.sh /build/
+# We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
+RUN CFLAGS="-Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
+    CXXFLAGS="-Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
+    bash musl-toolchain.sh armv7 eabihf && rm -rf build
+
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
 WORKDIR /tmp
@@ -21,9 +29,18 @@ ENV PATH=$PATH:/x-tools/armv7-unknown-linux-gnueabihf/bin
 
 ENV CC_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-gcc \
     AR_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-ar \
-    CXX_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-g++
+    CXX_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-g++ \
+    CC_armv7_unknown_linux_musleabihf=armv7-unknown-linux-gnueabihf-gcc \
+    AR_armv7_unknown_linux_musleabihf=armv7-unknown-linux-gnueabihf-ar \
+    CXX_armv7_unknown_linux_musleabihf=armv7-unknown-linux-gnueabihf-g++
 
-ENV HOSTS=armv7-unknown-linux-gnueabihf
+ENV HOSTS=armv7-unknown-linux-gnueabihf,armv7-unknown-linux-musleabihf
 
-ENV RUST_CONFIGURE_ARGS --enable-full-tools --disable-docs
+ENV RUST_CONFIGURE_ARGS \
+      --enable-full-tools \
+      --disable-docs \
+      --musl-root-armv7hf=/usr/local/armv7-linux-musleabihf \
+      --enable-sanitizers \
+      --enable-profiler \
+      --set target.armv7-unknown-linux-musleabihf.crt-static=false
 ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
