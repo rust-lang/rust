@@ -15,7 +15,7 @@ use crate::{
     db::DefDatabase,
     generics::{GenericParams, TypeOrConstParamData},
     hir::{BindingId, ExprId, LabelId},
-    item_scope::{BuiltinShadowMode, BUILTIN_SCOPE},
+    item_scope::{BuiltinShadowMode, ImportId, ImportOrExternCrate, BUILTIN_SCOPE},
     lang_item::LangItemTarget,
     nameres::{DefMap, MacroSubNs},
     path::{ModPath, Path, PathKind},
@@ -100,8 +100,8 @@ pub enum TypeNs {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResolveValueResult {
-    ValueNs(ValueNs),
-    Partial(TypeNs, usize),
+    ValueNs(ValueNs, Option<ImportId>),
+    Partial(TypeNs, usize, Option<ImportOrExternCrate>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -152,7 +152,7 @@ impl Resolver {
         &self,
         db: &dyn DefDatabase,
         path: &Path,
-    ) -> Option<(TypeNs, Option<usize>)> {
+    ) -> Option<(TypeNs, Option<usize>, Option<ImportOrExternCrate>)> {
         let path = match path {
             Path::Normal { mod_path, .. } => mod_path,
             Path::LangItem(l) => {
@@ -168,6 +168,7 @@ impl Resolver {
                         | LangItemTarget::ImplDef(_)
                         | LangItemTarget::Static(_) => return None,
                     },
+                    None,
                     None,
                 ))
             }
@@ -185,17 +186,17 @@ impl Resolver {
                 Scope::ExprScope(_) => continue,
                 Scope::GenericParams { params, def } => {
                     if let Some(id) = params.find_type_by_name(first_name, *def) {
-                        return Some((TypeNs::GenericParam(id), remaining_idx()));
+                        return Some((TypeNs::GenericParam(id), remaining_idx(), None));
                     }
                 }
                 &Scope::ImplDefScope(impl_) => {
                     if first_name == &name![Self] {
-                        return Some((TypeNs::SelfType(impl_), remaining_idx()));
+                        return Some((TypeNs::SelfType(impl_), remaining_idx(), None));
                     }
                 }
                 &Scope::AdtScope(adt) => {
                     if first_name == &name![Self] {
-                        return Some((TypeNs::AdtSelfType(adt), remaining_idx()));
+                        return Some((TypeNs::AdtSelfType(adt), remaining_idx(), None));
                     }
                 }
                 Scope::BlockScope(m) => {
@@ -208,12 +209,24 @@ impl Resolver {
         self.module_scope.resolve_path_in_type_ns(db, path)
     }
 
+    pub fn resolve_path_in_type_ns_fully_with_imports(
+        &self,
+        db: &dyn DefDatabase,
+        path: &Path,
+    ) -> Option<(TypeNs, Option<ImportOrExternCrate>)> {
+        let (res, unresolved, imp) = self.resolve_path_in_type_ns(db, path)?;
+        if unresolved.is_some() {
+            return None;
+        }
+        Some((res, imp))
+    }
+
     pub fn resolve_path_in_type_ns_fully(
         &self,
         db: &dyn DefDatabase,
         path: &Path,
     ) -> Option<TypeNs> {
-        let (res, unresolved) = self.resolve_path_in_type_ns(db, path)?;
+        let (res, unresolved, _) = self.resolve_path_in_type_ns(db, path)?;
         if unresolved.is_some() {
             return None;
         }
@@ -235,7 +248,6 @@ impl Resolver {
             RawVisibility::Public => Some(Visibility::Public),
         }
     }
-
     pub fn resolve_path_in_value_ns(
         &self,
         db: &dyn DefDatabase,
@@ -244,17 +256,20 @@ impl Resolver {
         let path = match path {
             Path::Normal { mod_path, .. } => mod_path,
             Path::LangItem(l) => {
-                return Some(ResolveValueResult::ValueNs(match *l {
-                    LangItemTarget::Function(it) => ValueNs::FunctionId(it),
-                    LangItemTarget::Static(it) => ValueNs::StaticId(it),
-                    LangItemTarget::Struct(it) => ValueNs::StructId(it),
-                    LangItemTarget::EnumVariant(it) => ValueNs::EnumVariantId(it),
-                    LangItemTarget::Union(_)
-                    | LangItemTarget::ImplDef(_)
-                    | LangItemTarget::TypeAlias(_)
-                    | LangItemTarget::Trait(_)
-                    | LangItemTarget::EnumId(_) => return None,
-                }))
+                return Some(ResolveValueResult::ValueNs(
+                    match *l {
+                        LangItemTarget::Function(it) => ValueNs::FunctionId(it),
+                        LangItemTarget::Static(it) => ValueNs::StaticId(it),
+                        LangItemTarget::Struct(it) => ValueNs::StructId(it),
+                        LangItemTarget::EnumVariant(it) => ValueNs::EnumVariantId(it),
+                        LangItemTarget::Union(_)
+                        | LangItemTarget::ImplDef(_)
+                        | LangItemTarget::TypeAlias(_)
+                        | LangItemTarget::Trait(_)
+                        | LangItemTarget::EnumId(_) => return None,
+                    },
+                    None,
+                ))
             }
         };
         let n_segments = path.segments().len();
@@ -276,20 +291,24 @@ impl Resolver {
                             .find(|entry| entry.name() == first_name);
 
                         if let Some(e) = entry {
-                            return Some(ResolveValueResult::ValueNs(ValueNs::LocalBinding(
-                                e.binding(),
-                            )));
+                            return Some(ResolveValueResult::ValueNs(
+                                ValueNs::LocalBinding(e.binding()),
+                                None,
+                            ));
                         }
                     }
                     Scope::GenericParams { params, def } => {
                         if let Some(id) = params.find_const_by_name(first_name, *def) {
                             let val = ValueNs::GenericParam(id);
-                            return Some(ResolveValueResult::ValueNs(val));
+                            return Some(ResolveValueResult::ValueNs(val, None));
                         }
                     }
                     &Scope::ImplDefScope(impl_) => {
                         if first_name == &name![Self] {
-                            return Some(ResolveValueResult::ValueNs(ValueNs::ImplSelf(impl_)));
+                            return Some(ResolveValueResult::ValueNs(
+                                ValueNs::ImplSelf(impl_),
+                                None,
+                            ));
                         }
                     }
                     // bare `Self` doesn't work in the value namespace in a struct/enum definition
@@ -308,18 +327,22 @@ impl Resolver {
                     Scope::GenericParams { params, def } => {
                         if let Some(id) = params.find_type_by_name(first_name, *def) {
                             let ty = TypeNs::GenericParam(id);
-                            return Some(ResolveValueResult::Partial(ty, 1));
+                            return Some(ResolveValueResult::Partial(ty, 1, None));
                         }
                     }
                     &Scope::ImplDefScope(impl_) => {
                         if first_name == &name![Self] {
-                            return Some(ResolveValueResult::Partial(TypeNs::SelfType(impl_), 1));
+                            return Some(ResolveValueResult::Partial(
+                                TypeNs::SelfType(impl_),
+                                1,
+                                None,
+                            ));
                         }
                     }
                     Scope::AdtScope(adt) => {
                         if first_name == &name![Self] {
                             let ty = TypeNs::AdtSelfType(*adt);
-                            return Some(ResolveValueResult::Partial(ty, 1));
+                            return Some(ResolveValueResult::Partial(ty, 1, None));
                         }
                     }
                     Scope::BlockScope(m) => {
@@ -340,7 +363,7 @@ impl Resolver {
         // `use core::u16;`.
         if path.kind == PathKind::Plain && n_segments > 1 {
             if let Some(builtin) = BuiltinType::by_name(first_name) {
-                return Some(ResolveValueResult::Partial(TypeNs::BuiltinType(builtin), 1));
+                return Some(ResolveValueResult::Partial(TypeNs::BuiltinType(builtin), 1, None));
             }
         }
 
@@ -353,7 +376,7 @@ impl Resolver {
         path: &Path,
     ) -> Option<ValueNs> {
         match self.resolve_path_in_value_ns(db, path)? {
-            ResolveValueResult::ValueNs(it) => Some(it),
+            ResolveValueResult::ValueNs(it, _) => Some(it),
             ResolveValueResult::Partial(..) => None,
         }
     }
@@ -363,12 +386,12 @@ impl Resolver {
         db: &dyn DefDatabase,
         path: &ModPath,
         expected_macro_kind: Option<MacroSubNs>,
-    ) -> Option<MacroId> {
+    ) -> Option<(MacroId, Option<ImportId>)> {
         let (item_map, module) = self.item_scope();
         item_map
             .resolve_path(db, module, path, BuiltinShadowMode::Other, expected_macro_kind)
             .0
-            .take_macros()
+            .take_macros_import()
     }
 
     /// Returns a set of names available in the current scope.
@@ -776,11 +799,12 @@ impl ModuleItemMap {
             self.def_map.resolve_path_locally(db, self.module_id, path, BuiltinShadowMode::Other);
         match idx {
             None => {
-                let value = to_value_ns(module_def)?;
-                Some(ResolveValueResult::ValueNs(value))
+                let (value, import) = to_value_ns(module_def)?;
+                Some(ResolveValueResult::ValueNs(value, import))
             }
             Some(idx) => {
-                let ty = match module_def.take_types()? {
+                let (def, _, import) = module_def.take_types_full()?;
+                let ty = match def {
                     ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
                     ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
                     ModuleDefId::TraitAliasId(it) => TypeNs::TraitAliasId(it),
@@ -794,7 +818,7 @@ impl ModuleItemMap {
                     | ModuleDefId::MacroId(_)
                     | ModuleDefId::StaticId(_) => return None,
                 };
-                Some(ResolveValueResult::Partial(ty, idx))
+                Some(ResolveValueResult::Partial(ty, idx, import))
             }
         }
     }
@@ -803,16 +827,17 @@ impl ModuleItemMap {
         &self,
         db: &dyn DefDatabase,
         path: &ModPath,
-    ) -> Option<(TypeNs, Option<usize>)> {
+    ) -> Option<(TypeNs, Option<usize>, Option<ImportOrExternCrate>)> {
         let (module_def, idx) =
             self.def_map.resolve_path_locally(db, self.module_id, path, BuiltinShadowMode::Other);
-        let res = to_type_ns(module_def)?;
-        Some((res, idx))
+        let (res, import) = to_type_ns(module_def)?;
+        Some((res, idx, import))
     }
 }
 
-fn to_value_ns(per_ns: PerNs) -> Option<ValueNs> {
-    let res = match per_ns.take_values()? {
+fn to_value_ns(per_ns: PerNs) -> Option<(ValueNs, Option<ImportId>)> {
+    let (def, import) = per_ns.take_values_import()?;
+    let res = match def {
         ModuleDefId::FunctionId(it) => ValueNs::FunctionId(it),
         ModuleDefId::AdtId(AdtId::StructId(it)) => ValueNs::StructId(it),
         ModuleDefId::EnumVariantId(it) => ValueNs::EnumVariantId(it),
@@ -827,11 +852,12 @@ fn to_value_ns(per_ns: PerNs) -> Option<ValueNs> {
         | ModuleDefId::MacroId(_)
         | ModuleDefId::ModuleId(_) => return None,
     };
-    Some(res)
+    Some((res, import))
 }
 
-fn to_type_ns(per_ns: PerNs) -> Option<TypeNs> {
-    let res = match per_ns.take_types()? {
+fn to_type_ns(per_ns: PerNs) -> Option<(TypeNs, Option<ImportOrExternCrate>)> {
+    let (def, _, import) = per_ns.take_types_full()?;
+    let res = match def {
         ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
         ModuleDefId::EnumVariantId(it) => TypeNs::EnumVariantId(it),
 
@@ -847,7 +873,7 @@ fn to_type_ns(per_ns: PerNs) -> Option<TypeNs> {
         | ModuleDefId::StaticId(_)
         | ModuleDefId::ModuleId(_) => return None,
     };
-    Some(res)
+    Some((res, import))
 }
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<rustc_hash::FxHasher>>;
@@ -864,13 +890,13 @@ impl ScopeNames {
         }
     }
     fn add_per_ns(&mut self, name: &Name, def: PerNs) {
-        if let &Some((ty, _)) = &def.types {
+        if let &Some((ty, _, _)) = &def.types {
             self.add(name, ScopeDef::ModuleDef(ty))
         }
-        if let &Some((def, _)) = &def.values {
+        if let &Some((def, _, _)) = &def.values {
             self.add(name, ScopeDef::ModuleDef(def))
         }
-        if let &Some((mac, _)) = &def.macros {
+        if let &Some((mac, _, _)) = &def.macros {
             self.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(mac)))
         }
         if def.is_none() {

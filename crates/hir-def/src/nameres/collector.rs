@@ -33,7 +33,7 @@ use crate::{
     attr_macro_as_call_id,
     db::DefDatabase,
     derive_macro_as_call_id,
-    item_scope::{ImportType, PerNsGlobImports},
+    item_scope::{ImportId, ImportOrExternCrate, ImportType, PerNsGlobImports},
     item_tree::{
         self, ExternCrate, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode,
         MacroCall, MacroDef, MacroRules, Mod, ModItem, ModKind, TreeId,
@@ -146,7 +146,7 @@ impl PartialResolvedImport {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum ImportSource {
-    Use { use_tree: Idx<ast::UseTree>, id: UseId, is_prelude: bool },
+    Use { use_tree: Idx<ast::UseTree>, id: UseId, is_prelude: bool, kind: ImportKind },
     ExternCrate { id: ExternCrateId },
 }
 
@@ -155,7 +155,6 @@ struct Import {
     path: ModPath,
     alias: Option<ImportAlias>,
     visibility: RawVisibility,
-    kind: ImportKind,
     source: ImportSource,
 }
 
@@ -174,8 +173,7 @@ impl Import {
                 path,
                 alias,
                 visibility: visibility.clone(),
-                kind,
-                source: ImportSource::Use { use_tree: idx, id, is_prelude },
+                source: ImportSource::Use { use_tree: idx, id, is_prelude, kind },
             });
         });
     }
@@ -191,7 +189,6 @@ impl Import {
             path: ModPath::from_segments(PathKind::Plain, iter::once(it.name.clone())),
             alias: it.alias.clone(),
             visibility: visibility.clone(),
-            kind: ImportKind::Plain,
             source: ImportSource::ExternCrate { id },
         }
     }
@@ -225,7 +222,7 @@ struct DefCollector<'a> {
     db: &'a dyn DefDatabase,
     def_map: DefMap,
     deps: FxHashMap<Name, Dependency>,
-    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility)>>,
+    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility, UseId)>>,
     unresolved_imports: Vec<ImportDirective>,
     indeterminate_imports: Vec<ImportDirective>,
     unresolved_macros: Vec<MacroDirective>,
@@ -546,8 +543,12 @@ impl DefCollector<'_> {
             self.def_map.resolve_path(self.db, DefMap::ROOT, &path, BuiltinShadowMode::Other, None);
 
         match per_ns.types {
-            Some((ModuleDefId::ModuleId(m), _)) => {
-                self.def_map.prelude = Some((m, None));
+            Some((ModuleDefId::ModuleId(m), _, import)) => {
+                // FIXME: This should specifically look for a glob import somehow and record that here
+                self.def_map.prelude = Some((
+                    m,
+                    import.and_then(ImportOrExternCrate::into_import).map(|it| it.import),
+                ));
             }
             types => {
                 tracing::debug!(
@@ -647,9 +648,9 @@ impl DefCollector<'_> {
             self.def_map.modules[module_id].scope.declare(macro_.into());
             self.update(
                 module_id,
-                &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public))],
+                &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public, None))],
                 Visibility::Public,
-                ImportType::Named,
+                None,
             );
         }
     }
@@ -683,9 +684,9 @@ impl DefCollector<'_> {
         self.def_map.modules[module_id].scope.declare(macro_.into());
         self.update(
             module_id,
-            &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public))],
+            &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public, None))],
             vis,
-            ImportType::Named,
+            None,
         );
     }
 
@@ -698,9 +699,9 @@ impl DefCollector<'_> {
         self.def_map.modules[module_id].scope.declare(macro_.into());
         self.update(
             module_id,
-            &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public))],
+            &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public, None))],
             Visibility::Public,
-            ImportType::Named,
+            None,
         );
     }
 
@@ -714,23 +715,25 @@ impl DefCollector<'_> {
         &mut self,
         krate: CrateId,
         names: Option<Vec<Name>>,
-
         extern_crate: Option<ExternCrateId>,
     ) {
         let def_map = self.db.crate_def_map(krate);
         // `#[macro_use]` brings macros into macro_use prelude. Yes, even non-`macro_rules!`
         // macros.
         let root_scope = &def_map[DefMap::ROOT].scope;
-        if let Some(names) = names {
-            for name in names {
-                // FIXME: Report diagnostic on 404.
-                if let Some(def) = root_scope.get(&name).take_macros() {
-                    self.def_map.macro_use_prelude.insert(name, (def, extern_crate));
+        match names {
+            Some(names) => {
+                for name in names {
+                    // FIXME: Report diagnostic on 404.
+                    if let Some(def) = root_scope.get(&name).take_macros() {
+                        self.def_map.macro_use_prelude.insert(name, (def, extern_crate));
+                    }
                 }
             }
-        } else {
-            for (name, def) in root_scope.macros() {
-                self.def_map.macro_use_prelude.insert(name.clone(), (def, extern_crate));
+            None => {
+                for (name, def) in root_scope.macros() {
+                    self.def_map.macro_use_prelude.insert(name.clone(), (def, extern_crate));
+                }
             }
         }
     }
@@ -780,6 +783,7 @@ impl DefCollector<'_> {
                     Some(res) => PartialResolvedImport::Resolved(PerNs::types(
                         res.into(),
                         Visibility::Public,
+                        None,
                     )),
                     None => PartialResolvedImport::Unresolved,
                 }
@@ -837,8 +841,9 @@ impl DefCollector<'_> {
             .resolve_visibility(self.db, module_id, &directive.import.visibility, false)
             .unwrap_or(Visibility::Public);
 
-        match import.kind {
-            ImportKind::Plain | ImportKind::TypeOnly => {
+        match import.source {
+            ImportSource::ExternCrate { .. }
+            | ImportSource::Use { kind: ImportKind::Plain | ImportKind::TypeOnly, .. } => {
                 let name = match &import.alias {
                     Some(ImportAlias::Alias(name)) => Some(name),
                     Some(ImportAlias::Underscore) => None,
@@ -851,32 +856,36 @@ impl DefCollector<'_> {
                     },
                 };
 
-                if import.kind == ImportKind::TypeOnly {
-                    def.values = None;
-                    def.macros = None;
-                }
-
-                tracing::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
-
-                // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
-                if let ImportSource::ExternCrate { id, .. } = import.source {
-                    if self.def_map.block.is_none() && module_id == DefMap::ROOT {
-                        if let (Some(ModuleDefId::ModuleId(def)), Some(name)) =
-                            (def.take_types(), name)
-                        {
-                            if let Ok(def) = def.try_into() {
-                                Arc::get_mut(&mut self.def_map.data)
-                                    .unwrap()
-                                    .extern_prelude
-                                    .insert(name.clone(), (def, Some(id)));
+                let imp = match import.source {
+                    // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
+                    ImportSource::ExternCrate { id, .. } => {
+                        if self.def_map.block.is_none() && module_id == DefMap::ROOT {
+                            if let (Some(ModuleDefId::ModuleId(def)), Some(name)) =
+                                (def.take_types(), name)
+                            {
+                                if let Ok(def) = def.try_into() {
+                                    Arc::get_mut(&mut self.def_map.data)
+                                        .unwrap()
+                                        .extern_prelude
+                                        .insert(name.clone(), (def, Some(id)));
+                                }
                             }
                         }
+                        ImportType::ExternCrate(id)
                     }
-                }
+                    ImportSource::Use { kind, id, use_tree, .. } => {
+                        if kind == ImportKind::TypeOnly {
+                            def.values = None;
+                            def.macros = None;
+                        }
+                        ImportType::Import(ImportId { import: id, idx: use_tree })
+                    }
+                };
+                tracing::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
-                self.update(module_id, &[(name.cloned(), def)], vis, ImportType::Named);
+                self.update(module_id, &[(name.cloned(), def)], vis, Some(imp));
             }
-            ImportKind::Glob => {
+            ImportSource::Use { kind: ImportKind::Glob, id, .. } => {
                 tracing::debug!("glob import: {:?}", import);
                 match def.take_types() {
                     Some(ModuleDefId::ModuleId(m)) => {
@@ -901,7 +910,7 @@ impl DefCollector<'_> {
                                 .filter(|(_, res)| !res.is_none())
                                 .collect::<Vec<_>>();
 
-                            self.update(module_id, &items, vis, ImportType::Glob);
+                            self.update(module_id, &items, vis, Some(ImportType::Glob(id)));
                         } else {
                             // glob import from same crate => we do an initial
                             // import, and then need to propagate any further
@@ -933,11 +942,11 @@ impl DefCollector<'_> {
                                 .filter(|(_, res)| !res.is_none())
                                 .collect::<Vec<_>>();
 
-                            self.update(module_id, &items, vis, ImportType::Glob);
+                            self.update(module_id, &items, vis, Some(ImportType::Glob(id)));
                             // record the glob import in case we add further items
                             let glob = self.glob_imports.entry(m.local_id).or_default();
-                            if !glob.iter().any(|(mid, _)| *mid == module_id) {
-                                glob.push((module_id, vis));
+                            if !glob.iter().any(|(mid, _, _)| *mid == module_id) {
+                                glob.push((module_id, vis, id));
                             }
                         }
                     }
@@ -959,11 +968,11 @@ impl DefCollector<'_> {
                             .map(|(local_id, variant_data)| {
                                 let name = variant_data.name.clone();
                                 let variant = EnumVariantId { parent: e, local_id };
-                                let res = PerNs::both(variant.into(), variant.into(), vis);
+                                let res = PerNs::both(variant.into(), variant.into(), vis, None);
                                 (Some(name), res)
                             })
                             .collect::<Vec<_>>();
-                        self.update(module_id, &resolutions, vis, ImportType::Glob);
+                        self.update(module_id, &resolutions, vis, Some(ImportType::Glob(id)));
                     }
                     Some(d) => {
                         tracing::debug!("glob import {:?} from non-module/enum {:?}", import, d);
@@ -983,10 +992,10 @@ impl DefCollector<'_> {
         resolutions: &[(Option<Name>, PerNs)],
         // Visibility this import will have
         vis: Visibility,
-        import_type: ImportType,
+        import: Option<ImportType>,
     ) {
         self.db.unwind_if_cancelled();
-        self.update_recursive(module_id, resolutions, vis, import_type, 0)
+        self.update_recursive(module_id, resolutions, vis, import, 0)
     }
 
     fn update_recursive(
@@ -997,7 +1006,7 @@ impl DefCollector<'_> {
         // All resolutions are imported with this visibility; the visibilities in
         // the `PerNs` values are ignored and overwritten
         vis: Visibility,
-        import_type: ImportType,
+        import: Option<ImportType>,
         depth: usize,
     ) {
         if GLOB_RECURSION_LIMIT.check(depth).is_err() {
@@ -1014,7 +1023,7 @@ impl DefCollector<'_> {
                         &mut self.from_glob_import,
                         (module_id, name.clone()),
                         res.with_visibility(vis),
-                        import_type,
+                        import,
                     );
                 }
                 None => {
@@ -1059,7 +1068,7 @@ impl DefCollector<'_> {
             .get(&module_id)
             .into_iter()
             .flatten()
-            .filter(|(glob_importing_module, _)| {
+            .filter(|(glob_importing_module, _, _)| {
                 // we know all resolutions have the same visibility (`vis`), so we
                 // just need to check that once
                 vis.is_visible_from_def_map(self.db, &self.def_map, *glob_importing_module)
@@ -1067,12 +1076,12 @@ impl DefCollector<'_> {
             .cloned()
             .collect::<Vec<_>>();
 
-        for (glob_importing_module, glob_import_vis) in glob_imports {
+        for (glob_importing_module, glob_import_vis, use_) in glob_imports {
             self.update_recursive(
                 glob_importing_module,
                 resolutions,
                 glob_import_vis,
-                ImportType::Glob,
+                Some(ImportType::Glob(use_)),
                 depth + 1,
             );
         }
@@ -1475,7 +1484,9 @@ impl DefCollector<'_> {
         }
 
         for directive in &self.unresolved_imports {
-            if let ImportSource::Use { use_tree, id, is_prelude: _ } = directive.import.source {
+            if let ImportSource::Use { use_tree, id, is_prelude: _, kind: _ } =
+                directive.import.source
+            {
                 if matches!(
                     (directive.import.path.segments().first(), &directive.import.path.kind),
                     (Some(krate), PathKind::Plain | PathKind::Abs) if diagnosed_extern_crates.contains(krate)
@@ -1537,9 +1548,9 @@ impl ModCollector<'_, '_> {
                 def_collector.def_map.modules[module_id].scope.declare(id);
                 def_collector.update(
                     module_id,
-                    &[(Some(name.clone()), PerNs::from_def(id, vis, has_constructor))],
+                    &[(Some(name.clone()), PerNs::from_def(id, vis, has_constructor, None))],
                     vis,
-                    ImportType::Named,
+                    None,
                 )
             };
         let resolve_vis = |def_map: &DefMap, visibility| {
@@ -1967,9 +1978,9 @@ impl ModCollector<'_, '_> {
         def_map.modules[self.module_id].scope.declare(def);
         self.def_collector.update(
             self.module_id,
-            &[(Some(name), PerNs::from_def(def, vis, false))],
+            &[(Some(name), PerNs::from_def(def, vis, false, None))],
             vis,
-            ImportType::Named,
+            None,
         );
         res
     }

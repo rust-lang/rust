@@ -114,6 +114,9 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
 
         for (name, per_ns) in visible_items {
             for item in per_ns.iter_items() {
+                // FIXME: Not yet used, but will be once we handle doc(hidden) import sources
+                let is_doc_hidden = false;
+
                 let import_info = ImportInfo {
                     name: name.clone(),
                     container: module,
@@ -121,15 +124,17 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
                 };
 
                 match depth_map.entry(item) {
-                    Entry::Vacant(entry) => {
-                        entry.insert(depth);
-                    }
+                    Entry::Vacant(entry) => _ = entry.insert((depth, is_doc_hidden)),
                     Entry::Occupied(mut entry) => {
-                        if depth < *entry.get() {
-                            entry.insert(depth);
-                        } else {
+                        let &(occ_depth, occ_is_doc_hidden) = entry.get();
+                        // Prefer the one that is not doc(hidden),
+                        // Otherwise, if both have the same doc(hidden)-ness and the new path is shorter, prefer that one.
+                        let overwrite_entry = occ_is_doc_hidden && !is_doc_hidden
+                            || occ_is_doc_hidden == is_doc_hidden && depth < occ_depth;
+                        if !overwrite_entry {
                             continue;
                         }
+                        entry.insert((depth, is_doc_hidden));
                     }
                 }
 

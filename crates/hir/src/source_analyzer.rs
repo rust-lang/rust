@@ -487,7 +487,7 @@ impl SourceAnalyzer {
         let path = macro_call.value.path().and_then(|ast| Path::from_src(ast, &ctx))?;
         self.resolver
             .resolve_path_as_macro(db.upcast(), path.mod_path()?, Some(MacroSubNs::Bang))
-            .map(|it| it.into())
+            .map(|(it, _)| it.into())
     }
 
     pub(crate) fn resolve_bind_pat_to_const(
@@ -760,7 +760,7 @@ impl SourceAnalyzer {
         let macro_call_id = macro_call.as_call_id(db.upcast(), krate, |path| {
             self.resolver
                 .resolve_path_as_macro(db.upcast(), &path, Some(MacroSubNs::Bang))
-                .map(|it| macro_id_to_def_id(db.upcast(), it))
+                .map(|(it, _)| macro_id_to_def_id(db.upcast(), it))
         })?;
         Some(macro_call_id.as_file()).filter(|it| it.expansion_level(db.upcast()) < 64)
     }
@@ -966,6 +966,7 @@ pub(crate) fn resolve_hir_path_as_attr_macro(
 ) -> Option<Macro> {
     resolver
         .resolve_path_as_macro(db.upcast(), path.mod_path()?, Some(MacroSubNs::Attr))
+        .map(|(it, _)| it)
         .map(Into::into)
 }
 
@@ -983,7 +984,7 @@ fn resolve_hir_path_(
                 res.map(|ty_ns| (ty_ns, path.segments().first()))
             }
             None => {
-                let (ty, remaining_idx) = resolver.resolve_path_in_type_ns(db.upcast(), path)?;
+                let (ty, remaining_idx, _) = resolver.resolve_path_in_type_ns(db.upcast(), path)?;
                 match remaining_idx {
                     Some(remaining_idx) => {
                         if remaining_idx + 1 == path.segments().len() {
@@ -1067,7 +1068,7 @@ fn resolve_hir_path_(
     let macros = || {
         resolver
             .resolve_path_as_macro(db.upcast(), path.mod_path()?, None)
-            .map(|def| PathResolution::Def(ModuleDef::Macro(def.into())))
+            .map(|(def, _)| PathResolution::Def(ModuleDef::Macro(def.into())))
     };
 
     if prefer_value_ns { values().or_else(types) } else { types().or_else(values) }

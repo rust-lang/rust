@@ -623,7 +623,7 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call_id = macro_call.as_call_id(self.db.upcast(), krate, |path| {
             resolver
                 .resolve_path_as_macro(self.db.upcast(), &path, Some(MacroSubNs::Bang))
-                .map(|it| macro_id_to_def_id(self.db.upcast(), it))
+                .map(|(it, _)| macro_id_to_def_id(self.db.upcast(), it))
         })?;
         hir_expand::db::expand_speculative(
             self.db.upcast(),
