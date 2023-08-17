@@ -1,7 +1,8 @@
 // compile-flags: -Ztrait-solver=next -Zdrop-tracking-mir
 // edition: 2021
 // revisions: pass fail
-//[pass] check-pass
+//[pass] check-fail
+// WARN new-solver BUG.
 
 #![feature(negative_impls)]
 
@@ -9,6 +10,7 @@ struct NotSync;
 impl !Sync for NotSync {}
 
 async fn foo() {
+//[pass]~^ ERROR type mismatch
     #[cfg(pass)]
     let x = &();
     #[cfg(fail)]
@@ -19,6 +21,7 @@ async fn foo() {
 }
 
 async fn bar() {}
+//[pass]~^ ERROR type mismatch
 
 fn main() {
     fn is_send(_: impl Send) {}

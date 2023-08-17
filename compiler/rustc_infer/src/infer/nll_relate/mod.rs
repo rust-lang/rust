@@ -254,6 +254,10 @@ where
             .handle_opaque_type(a, b, true, &cause, self.delegate.param_env())?
             .obligations;
         self.delegate.register_obligations(obligations);
+        self.register_predicates([
+            ty::ClauseKind::WellFormed(a.into()),
+            ty::ClauseKind::WellFormed(b.into()),
+        ]);
         trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
         Ok(a)
     }
@@ -687,6 +691,10 @@ where
     }
 
     fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+        self.register_predicates([
+            ty::ClauseKind::WellFormed(a.into()),
+            ty::ClauseKind::WellFormed(b.into()),
+        ]);
         self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
             ty::Variance::Covariant => ty::PredicateKind::AliasRelate(
                 a.into(),

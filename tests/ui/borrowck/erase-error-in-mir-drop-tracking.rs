@@ -18,6 +18,7 @@ where
 {
     async move { c.connect().await }
     //~^ ERROR `C` does not live long enough
+    //~| ERROR `C` may not live long enough
 }
 
 fn main() {}

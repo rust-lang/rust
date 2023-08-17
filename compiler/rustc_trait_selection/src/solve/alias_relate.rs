@@ -134,6 +134,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     Invert::Yes => (other, fresh),
                 };
                 self.sub(param_env, sub, sup)?;
+                self.add_goal(Goal::new(
+                    self.tcx(),
+                    param_env,
+                    ty::ClauseKind::WellFormed(fresh.into()),
+                ));
                 fresh
             }
         };

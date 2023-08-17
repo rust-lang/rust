@@ -32,6 +32,8 @@ mod pass {
     use super::*;
     type OuterOpaque<T> = impl Trait<&'static T, Out = impl Sized>;
     fn define<T>() -> OuterOpaque<T> {}
+
+    fn define_rpit<T>() -> impl Trait<&'static T, Out = impl Sized> {}
 }
 
 // Test the soundness of `pass` - We should require `T: 'static` at the use site.
