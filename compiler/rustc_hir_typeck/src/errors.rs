@@ -253,7 +253,7 @@ impl HelpUseLatestEdition {
 }
 
 #[derive(Subdiagnostic)]
-pub enum OptionResultRefMismatch<'tcx> {
+pub enum OptionResultRefMismatch {
     #[suggestion(
         hir_typeck_option_result_copied,
         code = ".copied()",
@@ -276,19 +276,20 @@ pub enum OptionResultRefMismatch<'tcx> {
         span: Span,
         def_path: String,
     },
-    #[suggestion(
-        hir_typeck_option_result_asref,
-        code = ".as_ref()",
-        style = "verbose",
-        applicability = "machine-applicable"
-    )]
-    AsRef {
-        #[primary_span]
-        span: Span,
-        def_path: String,
-        expected_ty: Ty<'tcx>,
-        expr_ty: Ty<'tcx>,
-    },
+    // FIXME: #114050
+    // #[suggestion(
+    //     hir_typeck_option_result_asref,
+    //     code = ".as_ref()",
+    //     style = "verbose",
+    //     applicability = "machine-applicable"
+    // )]
+    // AsRef {
+    //     #[primary_span]
+    //     span: Span,
+    //     def_path: String,
+    //     expected_ty: Ty<'tcx>,
+    //     expr_ty: Ty<'tcx>,
+    // },
 }
 
 #[derive(Diagnostic)]

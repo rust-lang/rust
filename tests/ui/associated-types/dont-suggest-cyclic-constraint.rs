@@ -1,5 +1,3 @@
-// run-rustfix
-
 use std::fmt::Debug;
 
 pub fn foo<I: Iterator>(mut iter: I, value: &I::Item)
