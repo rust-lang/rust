@@ -68,17 +68,31 @@ mod transition {
     fn foreign_read(state: PermissionPriv, protected: bool) -> Option<PermissionPriv> {
         use Option::*;
         Some(match state {
+            // Non-writeable states just ignore foreign reads.
+            non_writeable @ (Frozen | Disabled) => non_writeable,
+            // Writeable states are more tricky, and depend on whether things are protected.
             // The inner data `ty_is_freeze` of `Reserved` is always irrelevant for Read
             // accesses, since the data is not being mutated. Hence the `{ .. }`
-            res @ Reserved { .. } if !protected => res,
-            Reserved { .. } => Frozen, // protected reserved
+            res @ Reserved { .. } =>
+                if protected {
+                    // Someone else read, make sure we won't write.
+                    // We could make this `Disabled` but it doesn't look like we get anything out of that extra UB.
+                    Frozen
+                } else {
+                    // Before activation and without protectors, foreign reads are fine.
+                    // That's the entire point of 2-phase borrows.
+                    res
+                },
             Active =>
                 if protected {
+                    // We wrote, someone else reads -- that's bad.
+                    // (If this is initialized, this move-to-protected will mean insta-UB.)
                     Disabled
                 } else {
+                    // We don't want to disable here to allow read-read reordering: it is crucial
+                    // that the foreign read does not invalidate future reads through this tag.
                     Frozen
                 },
-            non_writeable @ (Frozen | Disabled) => non_writeable,
         })
     }
 
