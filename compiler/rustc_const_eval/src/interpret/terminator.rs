@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::mem;
 
 use either::Either;
 use rustc_ast::ast::InlineAsmOptions;
@@ -15,8 +14,8 @@ use rustc_target::abi::{self, FieldIdx};
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    AllocId, FnVal, ImmTy, InterpCx, InterpResult, LocalValue, MPlaceTy, Machine, MemoryKind, OpTy,
-    Operand, PlaceTy, Provenance, Scalar, StackPopCleanup,
+    AllocId, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Projectable,
+    Provenance, Scalar, StackPopCleanup,
 };
 use crate::fluent_generated as fluent;
 
@@ -394,28 +393,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // did in-place of by-copy argument passing, except for pointer equality tests.
         let caller_arg_copy = self.copy_fn_arg(&caller_arg)?;
         if !already_live {
-            // Special handling for unsized parameters: they are harder to make live.
-            if caller_arg_copy.layout.is_unsized() {
-                // `check_argument_compat` ensures that both have the same type, so we know they will use the metadata the same way.
-                assert_eq!(caller_arg_copy.layout.ty, callee_ty);
-                // We have to properly pre-allocate the memory for the callee.
-                // So let's tear down some abstractions.
-                // This all has to be in memory, there are no immediate unsized values.
-                let src = caller_arg_copy.assert_mem_place();
-                // The destination cannot be one of these "spread args".
-                let dest_local = callee_arg.as_local().expect("unsized arguments cannot be spread");
-                // Allocate enough memory to hold `src`.
-                let dest_place = self.allocate_dyn(src.layout, MemoryKind::Stack, src.meta)?;
-                // Update the local to be that new place. This is essentially a "dyn-sized StorageLive".
-                let old = mem::replace(
-                    &mut self.frame_mut().locals[dest_local].value,
-                    LocalValue::Live(Operand::Indirect(*dest_place)),
-                );
-                assert!(matches!(old, LocalValue::Dead));
-            } else {
-                // Just make the local live.
-                self.storage_live(callee_arg.as_local().unwrap())?;
-            }
+            let local = callee_arg.as_local().unwrap();
+            let meta = caller_arg_copy.meta();
+            // `check_argument_compat` ensures that if metadata is needed, both have the same type,
+            // so we know they will use the metadata the same way.
+            assert!(!meta.has_meta() || caller_arg_copy.layout.ty == callee_ty);
+
+            self.storage_live_dyn(local, meta)?;
         }
         // Now we can finally actually evaluate the callee place.
         let callee_arg = self.eval_place(*callee_arg)?;

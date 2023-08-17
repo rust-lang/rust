@@ -912,6 +912,32 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
+    pub fn storage_live_dyn(
+        &mut self,
+        local: mir::Local,
+        meta: MemPlaceMeta<M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        trace!("{:?} is now live", local);
+
+        let layout = self.layout_of_local(self.frame(), local, None)?;
+        let local_val = LocalValue::Live(if layout.is_sized() {
+            assert!(matches!(meta, MemPlaceMeta::None)); // we're dropping the metadata
+            // Just make this an efficient immediate.
+            Operand::Immediate(Immediate::Uninit)
+        } else {
+            // Need to allocate some memory.
+            let dest_place = self.allocate_dyn(layout, MemoryKind::Stack, meta)?;
+            Operand::Indirect(*dest_place)
+        });
+
+        // StorageLive expects the local to be dead, and marks it live.
+        let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
+        if !matches!(old, LocalValue::Dead) {
+            throw_ub_custom!(fluent::const_eval_double_storage_live);
+        }
+        Ok(())
+    }
+
     /// Mark a storage as live, killing the previous content.
     pub fn storage_live(&mut self, local: mir::Local) -> InterpResult<'tcx> {
         trace!("{:?} is now live", local);
@@ -920,13 +946,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             throw_unsup!(UnsizedLocal);
         }
 
-        let local_val = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
-        // StorageLive expects the local to be dead, and marks it live.
-        let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
-        if !matches!(old, LocalValue::Dead) {
-            throw_ub_custom!(fluent::const_eval_double_storage_live);
-        }
-        Ok(())
+        self.storage_live_dyn(local, MemPlaceMeta::None)
     }
 
     pub fn storage_dead(&mut self, local: mir::Local) -> InterpResult<'tcx> {
