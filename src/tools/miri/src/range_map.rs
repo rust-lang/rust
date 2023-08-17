@@ -27,35 +27,27 @@ impl<T> RangeMap<T> {
     #[inline(always)]
     pub fn new(size: Size, init: T) -> RangeMap<T> {
         let size = size.bytes();
-        let mut map = RangeMap { v: Vec::new() };
-        if size > 0 {
-            map.v.push(Elem { range: 0..size, data: init });
-        }
-        map
+        let v = if size > 0 { vec![Elem { range: 0..size, data: init }] } else { Vec::new() };
+        RangeMap { v }
     }
 
     /// Finds the index containing the given offset.
     fn find_offset(&self, offset: u64) -> usize {
-        // We do a binary search.
-        let mut left = 0usize; // inclusive
-        let mut right = self.v.len(); // exclusive
-        loop {
-            debug_assert!(left < right, "find_offset: offset {offset} is out-of-bounds");
-            let candidate = left.checked_add(right).unwrap() / 2;
-            let elem = &self.v[candidate];
-            if offset < elem.range.start {
-                // We are too far right (offset is further left).
-                debug_assert!(candidate < right); // we are making progress
-                right = candidate;
-            } else if offset >= elem.range.end {
-                // We are too far left (offset is further right).
-                debug_assert!(candidate >= left); // we are making progress
-                left = candidate + 1;
-            } else {
-                // This is it!
-                return candidate;
-            }
-        }
+        self.v
+            .binary_search_by(|elem| -> std::cmp::Ordering {
+                if offset < elem.range.start {
+                    // We are too far right (offset is further left).
+                    // (`Greater` means that `elem` is greater than the desired target.)
+                    std::cmp::Ordering::Greater
+                } else if offset >= elem.range.end {
+                    // We are too far left (offset is further right).
+                    std::cmp::Ordering::Less
+                } else {
+                    // This is it!
+                    std::cmp::Ordering::Equal
+                }
+            })
+            .unwrap()
     }
 
     /// Provides read-only iteration over everything in the given range. This does
