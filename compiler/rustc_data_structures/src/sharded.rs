@@ -2,9 +2,12 @@ use crate::fx::{FxHashMap, FxHasher};
 #[cfg(parallel_compiler)]
 use crate::sync::{is_dyn_thread_safe, CacheAligned};
 use crate::sync::{Lock, LockGuard};
+#[cfg(parallel_compiler)]
+use itertools::Either;
 use std::borrow::Borrow;
 use std::collections::hash_map::RawEntryMut;
 use std::hash::{Hash, Hasher};
+use std::iter;
 use std::mem;
 
 // 32 shards is sufficient to reduce contention on an 8-core Ryzen 7 1700,
@@ -70,19 +73,27 @@ impl<T> Sharded<T> {
         }
     }
 
-    pub fn lock_shards(&self) -> Vec<LockGuard<'_, T>> {
+    #[inline]
+    pub fn lock_shards(&self) -> impl Iterator<Item = LockGuard<'_, T>> {
         match self {
-            Self::Single(single) => vec![single.lock()],
+            #[cfg(not(parallel_compiler))]
+            Self::Single(single) => iter::once(single.lock()),
             #[cfg(parallel_compiler)]
-            Self::Shards(shards) => shards.iter().map(|shard| shard.0.lock()).collect(),
+            Self::Single(single) => Either::Left(iter::once(single.lock())),
+            #[cfg(parallel_compiler)]
+            Self::Shards(shards) => Either::Right(shards.iter().map(|shard| shard.0.lock())),
         }
     }
 
-    pub fn try_lock_shards(&self) -> Option<Vec<LockGuard<'_, T>>> {
+    #[inline]
+    pub fn try_lock_shards(&self) -> impl Iterator<Item = Option<LockGuard<'_, T>>> {
         match self {
-            Self::Single(single) => Some(vec![single.try_lock()?]),
+            #[cfg(not(parallel_compiler))]
+            Self::Single(single) => iter::once(single.try_lock()),
             #[cfg(parallel_compiler)]
-            Self::Shards(shards) => shards.iter().map(|shard| shard.0.try_lock()).collect(),
+            Self::Single(single) => Either::Left(iter::once(single.try_lock())),
+            #[cfg(parallel_compiler)]
+            Self::Shards(shards) => Either::Right(shards.iter().map(|shard| shard.0.try_lock())),
         }
     }
 }
@@ -101,7 +112,7 @@ pub type ShardedHashMap<K, V> = Sharded<FxHashMap<K, V>>;
 
 impl<K: Eq, V> ShardedHashMap<K, V> {
     pub fn len(&self) -> usize {
-        self.lock_shards().iter().map(|shard| shard.len()).sum()
+        self.lock_shards().map(|shard| shard.len()).sum()
     }
 }
 

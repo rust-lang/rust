@@ -50,8 +50,7 @@ where
     D: DepKind,
 {
     pub fn all_inactive(&self) -> bool {
-        let shards = self.active.lock_shards();
-        shards.iter().all(|shard| shard.is_empty())
+        self.active.lock_shards().all(|shard| shard.is_empty())
     }
 
     pub fn try_collect_active_jobs<Qcx: Copy>(
@@ -64,9 +63,8 @@ where
 
         // We use try_lock_shards here since we are called from the
         // deadlock handler, and this shouldn't be locked.
-        let shards = self.active.try_lock_shards()?;
-        for shard in shards.iter() {
-            for (k, v) in shard.iter() {
+        for shard in self.active.try_lock_shards() {
+            for (k, v) in shard?.iter() {
                 if let QueryResult::Started(ref job) = *v {
                     active.push((*k, job.clone()));
                 }

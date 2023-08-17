@@ -70,8 +70,7 @@ where
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        let shards = self.cache.lock_shards();
-        for shard in shards.iter() {
+        for shard in self.cache.lock_shards() {
             for (k, v) in shard.iter() {
                 f(k, &v.0, v.1);
             }
@@ -160,8 +159,7 @@ where
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        let shards = self.cache.lock_shards();
-        for shard in shards.iter() {
+        for shard in self.cache.lock_shards() {
             for (k, v) in shard.iter_enumerated() {
                 if let Some(v) = v {
                     f(&k, &v.0, v.1);
