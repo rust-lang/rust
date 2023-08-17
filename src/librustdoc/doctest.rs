@@ -469,7 +469,9 @@ fn run_test(
     // Run the code!
     let mut cmd;
 
+    let output_file = make_maybe_absolute_path(output_file);
     if let Some(tool) = runtool {
+        let tool = make_maybe_absolute_path(tool.into());
         cmd = Command::new(tool);
         cmd.args(runtool_args);
         cmd.arg(output_file);
@@ -501,6 +503,20 @@ fn run_test(
     }
 
     Ok(())
+}
+
+/// Converts a path intended to use as a command to absolute if it is
+/// relative, and not a single component.
+///
+/// This is needed to deal with relative paths interacting with
+/// `Command::current_dir` in a platform-specific way.
+fn make_maybe_absolute_path(path: PathBuf) -> PathBuf {
+    if path.components().count() == 1 {
+        // Look up process via PATH.
+        path
+    } else {
+        std::env::current_dir().map(|c| c.join(&path)).unwrap_or_else(|_| path)
+    }
 }
 
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
