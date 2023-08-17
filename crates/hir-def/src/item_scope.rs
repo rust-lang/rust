@@ -34,7 +34,7 @@ pub enum ImportOrExternCrate {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum ImportType {
+pub(crate) enum ImportType {
     Import(ImportId),
     Glob(UseId),
     ExternCrate(ExternCrateId),
@@ -118,7 +118,7 @@ struct DeriveMacroInvocation {
 pub(crate) static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
     BuiltinType::ALL
         .iter()
-        .map(|(name, ty)| (name.clone(), PerNs::types((*ty).into(), Visibility::Public)))
+        .map(|(name, ty)| (name.clone(), PerNs::types((*ty).into(), Visibility::Public, None)))
         .collect()
 });
 
@@ -234,9 +234,16 @@ impl ItemScope {
 
     pub(crate) fn resolutions(&self) -> impl Iterator<Item = (Option<Name>, PerNs)> + '_ {
         self.entries().map(|(name, res)| (Some(name.clone()), res)).chain(
-            self.unnamed_trait_imports
-                .iter()
-                .map(|(tr, (vis, _))| (None, PerNs::types(ModuleDefId::TraitId(*tr), *vis))),
+            self.unnamed_trait_imports.iter().map(|(tr, (vis, i))| {
+                (
+                    None,
+                    PerNs::types(
+                        ModuleDefId::TraitId(*tr),
+                        *vis,
+                        i.map(ImportOrExternCrate::Import),
+                    ),
+                )
+            }),
         )
     }
 }
@@ -327,11 +334,13 @@ impl ItemScope {
         })
     }
 
+    // FIXME: This is only used in collection, we should move the relevant parts of it out of ItemScope
     pub(crate) fn unnamed_trait_vis(&self, tr: TraitId) -> Option<Visibility> {
         self.unnamed_trait_imports.get(&tr).copied().map(|(a, _)| a)
     }
 
     pub(crate) fn push_unnamed_trait(&mut self, tr: TraitId, vis: Visibility) {
+        // FIXME: import
         self.unnamed_trait_imports.insert(tr, (vis, None));
     }
 
@@ -343,6 +352,8 @@ impl ItemScope {
         import: Option<ImportType>,
     ) -> bool {
         let mut changed = false;
+
+        // FIXME: Document and simplify this
 
         if let Some(mut fld) = def.types {
             let existing = self.types.entry(lookup.1.clone());
@@ -626,28 +637,39 @@ impl ItemScope {
 }
 
 impl PerNs {
-    pub(crate) fn from_def(def: ModuleDefId, v: Visibility, has_constructor: bool) -> PerNs {
+    pub(crate) fn from_def(
+        def: ModuleDefId,
+        v: Visibility,
+        has_constructor: bool,
+        import: Option<ImportOrExternCrate>,
+    ) -> PerNs {
         match def {
-            ModuleDefId::ModuleId(_) => PerNs::types(def, v),
-            ModuleDefId::FunctionId(_) => PerNs::values(def, v),
+            ModuleDefId::ModuleId(_) => PerNs::types(def, v, import),
+            ModuleDefId::FunctionId(_) => {
+                PerNs::values(def, v, import.and_then(ImportOrExternCrate::into_import))
+            }
             ModuleDefId::AdtId(adt) => match adt {
-                AdtId::UnionId(_) => PerNs::types(def, v),
-                AdtId::EnumId(_) => PerNs::types(def, v),
+                AdtId::UnionId(_) => PerNs::types(def, v, import),
+                AdtId::EnumId(_) => PerNs::types(def, v, import),
                 AdtId::StructId(_) => {
                     if has_constructor {
-                        PerNs::both(def, def, v)
+                        PerNs::both(def, def, v, import)
                     } else {
-                        PerNs::types(def, v)
+                        PerNs::types(def, v, import)
                     }
                 }
             },
-            ModuleDefId::EnumVariantId(_) => PerNs::both(def, def, v),
-            ModuleDefId::ConstId(_) | ModuleDefId::StaticId(_) => PerNs::values(def, v),
-            ModuleDefId::TraitId(_) => PerNs::types(def, v),
-            ModuleDefId::TraitAliasId(_) => PerNs::types(def, v),
-            ModuleDefId::TypeAliasId(_) => PerNs::types(def, v),
-            ModuleDefId::BuiltinType(_) => PerNs::types(def, v),
-            ModuleDefId::MacroId(mac) => PerNs::macros(mac, v),
+            ModuleDefId::EnumVariantId(_) => PerNs::both(def, def, v, import),
+            ModuleDefId::ConstId(_) | ModuleDefId::StaticId(_) => {
+                PerNs::values(def, v, import.and_then(ImportOrExternCrate::into_import))
+            }
+            ModuleDefId::TraitId(_) => PerNs::types(def, v, import),
+            ModuleDefId::TraitAliasId(_) => PerNs::types(def, v, import),
+            ModuleDefId::TypeAliasId(_) => PerNs::types(def, v, import),
+            ModuleDefId::BuiltinType(_) => PerNs::types(def, v, import),
+            ModuleDefId::MacroId(mac) => {
+                PerNs::macros(mac, v, import.and_then(ImportOrExternCrate::into_import))
+            }
         }
     }
 }

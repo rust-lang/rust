@@ -390,11 +390,9 @@ impl<'a> TyLoweringContext<'a> {
                 let ty = {
                     let macro_call = macro_call.to_node(self.db.upcast());
                     let resolver = |path| {
-                        self.resolver.resolve_path_as_macro(
-                            self.db.upcast(),
-                            &path,
-                            Some(MacroSubNs::Bang),
-                        )
+                        self.resolver
+                            .resolve_path_as_macro(self.db.upcast(), &path, Some(MacroSubNs::Bang))
+                            .map(|(it, _)| it)
                     };
                     match expander.enter_expand::<ast::Type>(self.db.upcast(), macro_call, resolver)
                     {
@@ -446,7 +444,7 @@ impl<'a> TyLoweringContext<'a> {
             return None;
         }
         let resolution = match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path) {
-            Some((it, None)) => it,
+            Some((it, None, _)) => it,
             _ => return None,
         };
         match resolution {
@@ -626,7 +624,7 @@ impl<'a> TyLoweringContext<'a> {
             return self.lower_ty_relative_path(ty, res, path.segments());
         }
 
-        let (resolution, remaining_index) =
+        let (resolution, remaining_index, _) =
             match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path) {
                 Some(it) => it,
                 None => return (TyKind::Error.intern(Interner), None),

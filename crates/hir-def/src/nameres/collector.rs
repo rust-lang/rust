@@ -648,7 +648,7 @@ impl DefCollector<'_> {
             self.def_map.modules[module_id].scope.declare(macro_.into());
             self.update(
                 module_id,
-                &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public))],
+                &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public, None))],
                 Visibility::Public,
                 None,
             );
@@ -684,7 +684,7 @@ impl DefCollector<'_> {
         self.def_map.modules[module_id].scope.declare(macro_.into());
         self.update(
             module_id,
-            &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public))],
+            &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public, None))],
             vis,
             None,
         );
@@ -699,7 +699,7 @@ impl DefCollector<'_> {
         self.def_map.modules[module_id].scope.declare(macro_.into());
         self.update(
             module_id,
-            &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public))],
+            &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public, None))],
             Visibility::Public,
             None,
         );
@@ -783,6 +783,7 @@ impl DefCollector<'_> {
                     Some(res) => PartialResolvedImport::Resolved(PerNs::types(
                         res.into(),
                         Visibility::Public,
+                        None,
                     )),
                     None => PartialResolvedImport::Unresolved,
                 }
@@ -967,7 +968,7 @@ impl DefCollector<'_> {
                             .map(|(local_id, variant_data)| {
                                 let name = variant_data.name.clone();
                                 let variant = EnumVariantId { parent: e, local_id };
-                                let res = PerNs::both(variant.into(), variant.into(), vis);
+                                let res = PerNs::both(variant.into(), variant.into(), vis, None);
                                 (Some(name), res)
                             })
                             .collect::<Vec<_>>();
@@ -1547,7 +1548,7 @@ impl ModCollector<'_, '_> {
                 def_collector.def_map.modules[module_id].scope.declare(id);
                 def_collector.update(
                     module_id,
-                    &[(Some(name.clone()), PerNs::from_def(id, vis, has_constructor))],
+                    &[(Some(name.clone()), PerNs::from_def(id, vis, has_constructor, None))],
                     vis,
                     None,
                 )
@@ -1977,7 +1978,7 @@ impl ModCollector<'_, '_> {
         def_map.modules[self.module_id].scope.declare(def);
         self.def_collector.update(
             self.module_id,
-            &[(Some(name), PerNs::from_def(def, vis, false))],
+            &[(Some(name), PerNs::from_def(def, vis, false, None))],
             vis,
             None,
         );

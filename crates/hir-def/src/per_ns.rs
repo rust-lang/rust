@@ -27,20 +27,29 @@ impl PerNs {
         PerNs { types: None, values: None, macros: None }
     }
 
-    pub fn values(t: ModuleDefId, v: Visibility) -> PerNs {
-        PerNs { types: None, values: Some((t, v, None)), macros: None }
+    pub fn values(t: ModuleDefId, v: Visibility, i: Option<ImportId>) -> PerNs {
+        PerNs { types: None, values: Some((t, v, i)), macros: None }
     }
 
-    pub fn types(t: ModuleDefId, v: Visibility) -> PerNs {
-        PerNs { types: Some((t, v, None)), values: None, macros: None }
+    pub fn types(t: ModuleDefId, v: Visibility, i: Option<ImportOrExternCrate>) -> PerNs {
+        PerNs { types: Some((t, v, i)), values: None, macros: None }
     }
 
-    pub fn both(types: ModuleDefId, values: ModuleDefId, v: Visibility) -> PerNs {
-        PerNs { types: Some((types, v, None)), values: Some((values, v, None)), macros: None }
+    pub fn both(
+        types: ModuleDefId,
+        values: ModuleDefId,
+        v: Visibility,
+        i: Option<ImportOrExternCrate>,
+    ) -> PerNs {
+        PerNs {
+            types: Some((types, v, i)),
+            values: Some((values, v, i.and_then(ImportOrExternCrate::into_import))),
+            macros: None,
+        }
     }
 
-    pub fn macros(macro_: MacroId, v: Visibility) -> PerNs {
-        PerNs { types: None, values: None, macros: Some((macro_, v, None)) }
+    pub fn macros(macro_: MacroId, v: Visibility, i: Option<ImportId>) -> PerNs {
+        PerNs { types: None, values: None, macros: Some((macro_, v, i)) }
     }
 
     pub fn is_none(&self) -> bool {
@@ -55,16 +64,24 @@ impl PerNs {
         self.types.map(|it| it.0)
     }
 
-    pub fn take_types_vis(self) -> Option<(ModuleDefId, Visibility)> {
-        self.types.map(|(a, b, _)| (a, b))
+    pub fn take_types_full(self) -> Option<(ModuleDefId, Visibility, Option<ImportOrExternCrate>)> {
+        self.types
     }
 
     pub fn take_values(self) -> Option<ModuleDefId> {
         self.values.map(|it| it.0)
     }
 
+    pub fn take_values_import(self) -> Option<(ModuleDefId, Option<ImportId>)> {
+        self.values.map(|it| (it.0, it.2))
+    }
+
     pub fn take_macros(self) -> Option<MacroId> {
         self.macros.map(|it| it.0)
+    }
+
+    pub fn take_macros_import(self) -> Option<(MacroId, Option<ImportId>)> {
+        self.macros.map(|it| (it.0, it.2))
     }
 
     pub fn filter_visibility(self, mut f: impl FnMut(Visibility) -> bool) -> PerNs {
