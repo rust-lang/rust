@@ -13,7 +13,7 @@ use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_target::abi::{self, Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
+use rustc_target::abi::{Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
 
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
@@ -46,27 +46,6 @@ impl<Prov: Provenance> MemPlaceMeta<Prov> {
         match self {
             Self::Meta(_) => true,
             Self::None => false,
-        }
-    }
-
-    pub(crate) fn len<'tcx>(
-        &self,
-        layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, u64> {
-        if layout.is_unsized() {
-            // We need to consult `meta` metadata
-            match layout.ty.kind() {
-                ty::Slice(..) | ty::Str => self.unwrap_meta().to_target_usize(cx),
-                _ => bug!("len not supported on unsized type {:?}", layout.ty),
-            }
-        } else {
-            // Go through the layout. There are lots of types that support a length,
-            // e.g., SIMD types. (But not all repr(simd) types even have FieldsShape::Array!)
-            match layout.fields {
-                abi::FieldsShape::Array { count, .. } => Ok(count),
-                _ => bug!("len not supported on sized type {:?}", layout.ty),
-            }
         }
     }
 }
@@ -224,8 +203,8 @@ impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for MPlaceTy<'tcx
     }
 
     #[inline(always)]
-    fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
-        Ok(self.meta)
+    fn meta(&self) -> MemPlaceMeta<Prov> {
+        self.meta
     }
 
     fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
@@ -257,14 +236,14 @@ impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for PlaceTy<'tcx,
     }
 
     #[inline]
-    fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
-        Ok(match self.as_mplace_or_local() {
+    fn meta(&self) -> MemPlaceMeta<Prov> {
+        match self.as_mplace_or_local() {
             Left(mplace) => mplace.meta,
             Right(_) => {
                 debug_assert!(self.layout.is_sized(), "unsized locals should live in memory");
                 MemPlaceMeta::None
             }
-        })
+        }
     }
 
     fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(

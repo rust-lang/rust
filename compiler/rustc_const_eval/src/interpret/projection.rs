@@ -25,13 +25,28 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
     fn layout(&self) -> TyAndLayout<'tcx>;
 
     /// Get the metadata of a wide value.
-    fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>>;
+    fn meta(&self) -> MemPlaceMeta<Prov>;
 
+    /// Get the length of a slice/string/array stored here.
     fn len<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, u64> {
-        self.meta()?.len(self.layout(), ecx)
+        let layout = self.layout();
+        if layout.is_unsized() {
+            // We need to consult `meta` metadata
+            match layout.ty.kind() {
+                ty::Slice(..) | ty::Str => self.meta().unwrap_meta().to_target_usize(ecx),
+                _ => bug!("len not supported on unsized type {:?}", layout.ty),
+            }
+        } else {
+            // Go through the layout. There are lots of types that support a length,
+            // e.g., SIMD types. (But not all repr(simd) types even have FieldsShape::Array!)
+            match layout.fields {
+                abi::FieldsShape::Array { count, .. } => Ok(count),
+                _ => bug!("len not supported on sized type {:?}", layout.ty),
+            }
+        }
     }
 
     /// Offset the value by the given amount, replacing the layout and metadata.
@@ -43,6 +58,7 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self>;
 
+    #[inline]
     fn offset<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
@@ -53,6 +69,7 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
         self.offset_with_meta(offset, MemPlaceMeta::None, layout, ecx)
     }
 
+    #[inline]
     fn transmute<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         layout: TyAndLayout<'tcx>,
@@ -125,7 +142,7 @@ where
                 // But const-prop actually feeds us such nonsense MIR! (see test `const_prop/issue-86351.rs`)
                 throw_inval!(ConstPropNonsense);
             }
-            let base_meta = base.meta()?;
+            let base_meta = base.meta();
             // Re-use parent metadata to determine dynamic field layout.
             // With custom DSTS, this *will* execute user-defined code, but the same
             // happens at run-time so that's okay.
@@ -153,7 +170,7 @@ where
         base: &P,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, P> {
-        assert!(!base.meta()?.has_meta());
+        assert!(!base.meta().has_meta());
         // Downcasts only change the layout.
         // (In particular, no check about whether this is even the active variant -- that's by design,
         // see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)

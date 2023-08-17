@@ -295,9 +295,9 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
     }
 
     #[inline(always)]
-    fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
+    fn meta(&self) -> MemPlaceMeta<Prov> {
         debug_assert!(self.layout.is_sized()); // unsized ImmTy can only exist temporarily and should never reach this here
-        Ok(MemPlaceMeta::None)
+        MemPlaceMeta::None
     }
 
     fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
@@ -326,14 +326,14 @@ impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for OpTy<'tcx, Pr
     }
 
     #[inline]
-    fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
-        Ok(match self.as_mplace_or_imm() {
+    fn meta(&self) -> MemPlaceMeta<Prov> {
+        match self.as_mplace_or_imm() {
             Left(mplace) => mplace.meta,
             Right(_) => {
                 debug_assert!(self.layout.is_sized(), "unsized immediates are not a thing");
                 MemPlaceMeta::None
             }
-        })
+        }
     }
 
     fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
