@@ -2636,21 +2636,24 @@ pub(crate) struct MissingPlusBounds {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_incorrect_braces_trait_bounds)]
-pub(crate) struct IncorrectBracesTraitBounds {
+#[diag(parse_incorrect_parens_trait_bounds)]
+pub(crate) struct IncorrectParensTraitBounds {
     #[primary_span]
     pub span: Vec<Span>,
     #[subdiagnostic]
-    pub sugg: IncorrectBracesTraitBoundsSugg,
+    pub sugg: IncorrectParensTraitBoundsSugg,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
-pub(crate) struct IncorrectBracesTraitBoundsSugg {
+#[multipart_suggestion(
+    parse_incorrect_parens_trait_bounds_sugg,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct IncorrectParensTraitBoundsSugg {
     #[suggestion_part(code = " ")]
-    pub l: Span,
-    #[suggestion_part(code = "")]
-    pub r: Span,
+    pub wrong_span: Span,
+    #[suggestion_part(code = "(")]
+    pub new_span: Span,
 }
 
 #[derive(Diagnostic)]
