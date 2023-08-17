@@ -77,12 +77,16 @@ $ ./test.sh --release
 
 ## Usage
 
-`$cg_gccjit_dir` is the directory you cloned this repo into in the following instructions.
+`$CG_GCCJIT_DIR` is the directory you cloned this repo into in the following instructions:
+
+```bash
+export CG_GCCJIT_DIR=[the full path to rustc_codegen_gcc]
+```
 
 ### Cargo
 
 ```bash
-$ CHANNEL="release" $cg_gccjit_dir/cargo.sh run
+$ CHANNEL="release" $CG_GCCJIT_DIR/cargo.sh run
 ```
 
 If you compiled cg_gccjit in debug mode (aka you didn't pass `--release` to `./test.sh`) you should use `CHANNEL="debug"` instead or omit `CHANNEL="release"` completely.
@@ -92,7 +96,7 @@ If you compiled cg_gccjit in debug mode (aka you didn't pass `--release` to `./t
 > You should prefer using the Cargo method.
 
 ```bash
-$ rustc +$(cat $cg_gccjit_dir/rust-toolchain) -Cpanic=abort -Zcodegen-backend=$cg_gccjit_dir/target/release/librustc_codegen_gcc.so --sysroot $cg_gccjit_dir/build_sysroot/sysroot my_crate.rs
+$ LIBRARY_PATH=$(cat gcc_path) LD_LIBRARY_PATH=$(cat gcc_path) rustc +$(cat $CG_GCCJIT_DIR/rust-toolchain | grep 'channel' | cut -d '=' -f 2 | sed 's/"//g' | sed 's/ //g') -Cpanic=abort -Zcodegen-backend=$CG_GCCJIT_DIR/target/release/librustc_codegen_gcc.so --sysroot $CG_GCCJIT_DIR/build_sysroot/sysroot my_crate.rs
 ```
 
 ## Env vars
