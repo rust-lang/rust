@@ -221,6 +221,10 @@ extern "system" {
 }
 #[link(name = "kernel32")]
 extern "system" {
+    pub fn GetActiveProcessorCount(groupnumber: u16) -> u32;
+}
+#[link(name = "kernel32")]
+extern "system" {
     pub fn GetCommandLineW() -> PCWSTR;
 }
 #[link(name = "kernel32")]
@@ -844,6 +848,7 @@ impl ::core::clone::Clone for ADDRINFOA {
 pub const AF_INET: ADDRESS_FAMILY = 2u16;
 pub const AF_INET6: ADDRESS_FAMILY = 23u16;
 pub const AF_UNSPEC: ADDRESS_FAMILY = 0u16;
+pub const ALL_PROCESSOR_GROUPS: u32 = 65535u32;
 #[repr(C)]
 pub union ARM64_NT_NEON128 {
     pub Anonymous: ARM64_NT_NEON128_0,
