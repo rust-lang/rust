@@ -156,6 +156,20 @@ fn main() {
 }
 
 #[allow(dead_code)]
+fn issue11065_fp() {
+    use std::option::IntoIter;
+    fn takes_into_iter(_: impl IntoIterator<Item = i32>) {}
+
+    macro_rules! x {
+        ($e:expr) => {
+            takes_into_iter($e);
+            let _: IntoIter<i32> = $e; // removing `.into_iter()` leads to a type error here
+        };
+    }
+    x!(Some(5).into_iter());
+}
+
+#[allow(dead_code)]
 fn explicit_into_iter_fn_arg() {
     fn a<T>(_: T) {}
     fn b<T: IntoIterator<Item = i32>>(_: T) {}
