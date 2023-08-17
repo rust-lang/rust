@@ -212,7 +212,7 @@ fn resolve_doc_path(
             Some(Namespace::Types) => resolved.take_types(),
             Some(Namespace::Values) => resolved.take_values(),
             Some(Namespace::Macros) => resolved.take_macros().map(ModuleDefId::MacroId),
-            None => resolved.iter_items().next().map(|it| match it {
+            None => resolved.iter_items().next().map(|(it, _)| match it {
                 ItemInNs::Types(it) => it,
                 ItemInNs::Values(it) => it,
                 ItemInNs::Macros(it) => ModuleDefId::MacroId(it),

@@ -11,6 +11,7 @@ use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 use triomphe::Arc;
 
+use crate::item_scope::ImportOrExternCrate;
 use crate::{
     db::DefDatabase, item_scope::ItemInNs, nameres::DefMap, visibility::Visibility, AssocItemId,
     ModuleDefId, ModuleId, TraitId,
@@ -29,6 +30,8 @@ pub struct ImportInfo {
     pub container: ModuleId,
     /// Whether the import is a trait associated item or not.
     pub is_trait_assoc_item: bool,
+    /// Whether this item is annotated with `#[doc(hidden)]`.
+    pub is_doc_hidden: bool,
 }
 
 /// A map from publicly exported items to its name.
@@ -113,14 +116,27 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
         });
 
         for (name, per_ns) in visible_items {
-            for item in per_ns.iter_items() {
+            for (item, import) in per_ns.iter_items() {
                 // FIXME: Not yet used, but will be once we handle doc(hidden) import sources
-                let is_doc_hidden = false;
+                let attr_id = if let Some(import) = import {
+                    match import {
+                        ImportOrExternCrate::ExternCrate(id) => Some(id.into()),
+                        ImportOrExternCrate::Import(id) => Some(id.import.into()),
+                    }
+                } else {
+                    match item {
+                        ItemInNs::Types(id) | ItemInNs::Values(id) => id.try_into().ok(),
+                        ItemInNs::Macros(id) => Some(id.into()),
+                    }
+                };
+                let is_doc_hidden =
+                    attr_id.map_or(false, |attr_id| db.attrs(attr_id).has_doc_hidden());
 
                 let import_info = ImportInfo {
                     name: name.clone(),
                     container: module,
                     is_trait_assoc_item: false,
+                    is_doc_hidden,
                 };
 
                 match depth_map.entry(item) {
@@ -171,10 +187,10 @@ fn collect_trait_assoc_items(
     trait_import_info: &ImportInfo,
 ) {
     let _p = profile::span("collect_trait_assoc_items");
-    for (assoc_item_name, item) in &db.trait_data(tr).items {
+    for &(ref assoc_item_name, item) in &db.trait_data(tr).items {
         let module_def_id = match item {
-            AssocItemId::FunctionId(f) => ModuleDefId::from(*f),
-            AssocItemId::ConstId(c) => ModuleDefId::from(*c),
+            AssocItemId::FunctionId(f) => ModuleDefId::from(f),
+            AssocItemId::ConstId(c) => ModuleDefId::from(c),
             // cannot use associated type aliases directly: need a `<Struct as Trait>::TypeAlias`
             // qualifier, ergo no need to store it for imports in import_map
             AssocItemId::TypeAliasId(_) => {
@@ -192,6 +208,7 @@ fn collect_trait_assoc_items(
             container: trait_import_info.container,
             name: assoc_item_name.clone(),
             is_trait_assoc_item: true,
+            is_doc_hidden: db.attrs(item.into()).has_doc_hidden(),
         };
         map.insert(assoc_item, assoc_item_info);
     }

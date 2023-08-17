@@ -117,12 +117,20 @@ impl PerNs {
         }
     }
 
-    pub fn iter_items(self) -> impl Iterator<Item = ItemInNs> {
+    pub fn iter_items(self) -> impl Iterator<Item = (ItemInNs, Option<ImportOrExternCrate>)> {
         let _p = profile::span("PerNs::iter_items");
         self.types
-            .map(|it| ItemInNs::Types(it.0))
+            .map(|it| (ItemInNs::Types(it.0), it.2))
             .into_iter()
-            .chain(self.values.map(|it| ItemInNs::Values(it.0)).into_iter())
-            .chain(self.macros.map(|it| ItemInNs::Macros(it.0)).into_iter())
+            .chain(
+                self.values
+                    .map(|it| (ItemInNs::Values(it.0), it.2.map(ImportOrExternCrate::Import)))
+                    .into_iter(),
+            )
+            .chain(
+                self.macros
+                    .map(|it| (ItemInNs::Macros(it.0), it.2.map(ImportOrExternCrate::Import)))
+                    .into_iter(),
+            )
     }
 }
