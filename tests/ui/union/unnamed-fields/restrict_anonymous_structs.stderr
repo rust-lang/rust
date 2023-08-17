@@ -13,93 +13,105 @@ LL | fn f2(a: struct { field: u8 } ) {}
 error: anonymous structs are not allowed outside of unnamed struct or union fields
   --> $DIR/restrict_anonymous_structs.rs:12:12
    |
-LL |     field: struct { field: u8 }
+LL |     field: struct { field: u8 },
    |            ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
 
-error: anonymous structs are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_structs.rs:17:13
+error: unnamed fields can only have struct or union types
+  --> $DIR/restrict_anonymous_structs.rs:19:5
    |
-LL |     field1: struct { field: u8 }
-   |             ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
+LL |     _: (u8, u8),
+   |     ^  -------- not a struct or union
 
 error: anonymous structs are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_structs.rs:21:10
+  --> $DIR/restrict_anonymous_structs.rs:23:12
    |
-LL | struct I(struct { field: u8 }, u8);
+LL |     field: struct { field: u8 },
+   |            ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
+
+error: unnamed fields can only have struct or union types
+  --> $DIR/restrict_anonymous_structs.rs:30:5
+   |
+LL |     _: (u8, u8),
+   |     ^  -------- not a struct or union
+
+error: anonymous structs are not allowed outside of unnamed struct or union fields
+  --> $DIR/restrict_anonymous_structs.rs:33:10
+   |
+LL | struct J(struct { field: u8 }, u8);
    |          ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
 
 error: anonymous structs are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_structs.rs:25:7
+  --> $DIR/restrict_anonymous_structs.rs:37:7
    |
-LL |     K(struct { field: u8 }),
+LL |     L(struct { field: u8 }),
    |       ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
 
-error: anonymous fields are not allowed outside of structs or unions
-  --> $DIR/restrict_anonymous_structs.rs:28:9
+error: unnamed fields are not allowed outside of structs or unions
+  --> $DIR/restrict_anonymous_structs.rs:40:9
    |
-LL |         _ : struct { field: u8 }
+LL |         _ : struct { field: u8 },
    |         -^^^^^^^^^^^^^^^^^^^^^^^
    |         |
-   |         anonymous field declared here
+   |         unnamed field declared here
 
 error: anonymous structs are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_structs.rs:28:13
+  --> $DIR/restrict_anonymous_structs.rs:40:13
    |
-LL |         _ : struct { field: u8 }
+LL |         _ : struct { field: u8 },
    |             ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
 
-error: anonymous fields are not allowed outside of structs or unions
-  --> $DIR/restrict_anonymous_structs.rs:33:9
+error: unnamed fields are not allowed outside of structs or unions
+  --> $DIR/restrict_anonymous_structs.rs:45:9
    |
-LL |         _ : u8
+LL |         _ : u8,
    |         -^^^^^
    |         |
-   |         anonymous field declared here
+   |         unnamed field declared here
 
 error: anonymous structs are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_structs.rs:37:10
+  --> $DIR/restrict_anonymous_structs.rs:49:10
    |
 LL | const L: struct { field: u8 } = 0;
    |          ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
 
 error: anonymous structs are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_structs.rs:40:11
+  --> $DIR/restrict_anonymous_structs.rs:52:11
    |
 LL | static M: struct { field: u8 } = 0;
    |           ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
 
 error: anonymous structs are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_structs.rs:43:10
+  --> $DIR/restrict_anonymous_structs.rs:55:10
    |
 LL | type N = struct { field: u8 };
    |          ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
 
 error: anonymous structs are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_structs.rs:46:6
+  --> $DIR/restrict_anonymous_structs.rs:58:6
    |
 LL | impl struct { field: u8 } {}
    |      ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
 
 error: anonymous structs are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_structs.rs:51:14
+  --> $DIR/restrict_anonymous_structs.rs:63:14
    |
 LL | impl Foo for struct { field: u8 } {}
    |              ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
 
 error: anonymous structs are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_structs.rs:55:13
+  --> $DIR/restrict_anonymous_structs.rs:67:13
    |
 LL |     let p: [struct { field: u8 }; 1];
    |             ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
 
 error: anonymous structs are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_structs.rs:58:13
+  --> $DIR/restrict_anonymous_structs.rs:70:13
    |
 LL |     let q: (struct { field: u8 }, u8);
    |             ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
 
 error: anonymous structs are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_structs.rs:61:19
+  --> $DIR/restrict_anonymous_structs.rs:73:19
    |
 LL |     let c = || -> struct { field: u8 } {};
    |                   ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
@@ -119,80 +131,92 @@ LL | fn f2(a: struct { field: u8 } ) {}
 error: anonymous structs are unimplemented
   --> $DIR/restrict_anonymous_structs.rs:12:12
    |
-LL |     field: struct { field: u8 }
+LL |     field: struct { field: u8 },
    |            ^^^^^^^^^^^^^^^^^^^^
 
 error: anonymous structs are unimplemented
-  --> $DIR/restrict_anonymous_structs.rs:17:13
+  --> $DIR/restrict_anonymous_structs.rs:14:8
    |
-LL |     field1: struct { field: u8 }
-   |             ^^^^^^^^^^^^^^^^^^^^
+LL |     _: struct { field: u8 },
+   |        ^^^^^^^^^^^^^^^^^^^^
 
 error: anonymous structs are unimplemented
-  --> $DIR/restrict_anonymous_structs.rs:21:10
+  --> $DIR/restrict_anonymous_structs.rs:23:12
    |
-LL | struct I(struct { field: u8 }, u8);
+LL |     field: struct { field: u8 },
+   |            ^^^^^^^^^^^^^^^^^^^^
+
+error: anonymous structs are unimplemented
+  --> $DIR/restrict_anonymous_structs.rs:25:8
+   |
+LL |     _: struct { field: u8 },
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: anonymous structs are unimplemented
+  --> $DIR/restrict_anonymous_structs.rs:33:10
+   |
+LL | struct J(struct { field: u8 }, u8);
    |          ^^^^^^^^^^^^^^^^^^^^
 
 error: anonymous structs are unimplemented
-  --> $DIR/restrict_anonymous_structs.rs:25:7
+  --> $DIR/restrict_anonymous_structs.rs:37:7
    |
-LL |     K(struct { field: u8 }),
+LL |     L(struct { field: u8 }),
    |       ^^^^^^^^^^^^^^^^^^^^
 
 error: anonymous structs are unimplemented
-  --> $DIR/restrict_anonymous_structs.rs:28:13
+  --> $DIR/restrict_anonymous_structs.rs:40:13
    |
-LL |         _ : struct { field: u8 }
+LL |         _ : struct { field: u8 },
    |             ^^^^^^^^^^^^^^^^^^^^
 
 error: anonymous structs are unimplemented
-  --> $DIR/restrict_anonymous_structs.rs:37:10
+  --> $DIR/restrict_anonymous_structs.rs:49:10
    |
 LL | const L: struct { field: u8 } = 0;
    |          ^^^^^^^^^^^^^^^^^^^^
 
 error: anonymous structs are unimplemented
-  --> $DIR/restrict_anonymous_structs.rs:40:11
+  --> $DIR/restrict_anonymous_structs.rs:52:11
    |
 LL | static M: struct { field: u8 } = 0;
    |           ^^^^^^^^^^^^^^^^^^^^
 
 error: anonymous structs are unimplemented
-  --> $DIR/restrict_anonymous_structs.rs:43:10
+  --> $DIR/restrict_anonymous_structs.rs:55:10
    |
 LL | type N = struct { field: u8 };
    |          ^^^^^^^^^^^^^^^^^^^^
 
 error: anonymous structs are unimplemented
-  --> $DIR/restrict_anonymous_structs.rs:46:6
+  --> $DIR/restrict_anonymous_structs.rs:58:6
    |
 LL | impl struct { field: u8 } {}
    |      ^^^^^^^^^^^^^^^^^^^^
 
 error: anonymous structs are unimplemented
-  --> $DIR/restrict_anonymous_structs.rs:51:14
+  --> $DIR/restrict_anonymous_structs.rs:63:14
    |
 LL | impl Foo for struct { field: u8 } {}
    |              ^^^^^^^^^^^^^^^^^^^^
 
 error: anonymous structs are unimplemented
-  --> $DIR/restrict_anonymous_structs.rs:55:13
+  --> $DIR/restrict_anonymous_structs.rs:67:13
    |
 LL |     let p: [struct { field: u8 }; 1];
    |             ^^^^^^^^^^^^^^^^^^^^
 
 error: anonymous structs are unimplemented
-  --> $DIR/restrict_anonymous_structs.rs:58:13
+  --> $DIR/restrict_anonymous_structs.rs:70:13
    |
 LL |     let q: (struct { field: u8 }, u8);
    |             ^^^^^^^^^^^^^^^^^^^^
 
 error: anonymous structs are unimplemented
-  --> $DIR/restrict_anonymous_structs.rs:61:19
+  --> $DIR/restrict_anonymous_structs.rs:73:19
    |
 LL |     let c = || -> struct { field: u8 } {};
    |                   ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 32 previous errors
+error: aborting due to 36 previous errors
 

@@ -13,93 +13,105 @@ LL | fn f2(a: union { field: u8 } ) {}
 error: anonymous unions are not allowed outside of unnamed struct or union fields
   --> $DIR/restrict_anonymous_unions.rs:11:12
    |
-LL |     field: union { field: u8 }
+LL |     field: union { field: u8 },
    |            ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
-error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:16:12
+error: unnamed fields can only have struct or union types
+  --> $DIR/restrict_anonymous_unions.rs:18:5
    |
-LL |     field: union { field: u8 }
-   |            ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
+LL |     _: (u8, u8),
+   |     ^  -------- not a struct or union
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:20:10
+  --> $DIR/restrict_anonymous_unions.rs:22:12
    |
-LL | struct I(union { field: u8 }, u8);
+LL |     field: union { field: u8 },
+   |            ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
+
+error: unnamed fields can only have struct or union types
+  --> $DIR/restrict_anonymous_unions.rs:29:5
+   |
+LL |     _: (u8, u8),
+   |     ^  -------- not a struct or union
+
+error: anonymous unions are not allowed outside of unnamed struct or union fields
+  --> $DIR/restrict_anonymous_unions.rs:32:10
+   |
+LL | struct J(union { field: u8 }, u8);
    |          ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:24:7
+  --> $DIR/restrict_anonymous_unions.rs:36:7
    |
-LL |     K(union { field: u8 }),
+LL |     L(union { field: u8 }),
    |       ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
-error: anonymous fields are not allowed outside of structs or unions
-  --> $DIR/restrict_anonymous_unions.rs:27:9
+error: unnamed fields are not allowed outside of structs or unions
+  --> $DIR/restrict_anonymous_unions.rs:39:9
    |
-LL |         _ : union { field: u8 }
+LL |         _ : union { field: u8 },
    |         -^^^^^^^^^^^^^^^^^^^^^^
    |         |
-   |         anonymous field declared here
+   |         unnamed field declared here
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:27:13
+  --> $DIR/restrict_anonymous_unions.rs:39:13
    |
-LL |         _ : union { field: u8 }
+LL |         _ : union { field: u8 },
    |             ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
-error: anonymous fields are not allowed outside of structs or unions
-  --> $DIR/restrict_anonymous_unions.rs:32:9
+error: unnamed fields are not allowed outside of structs or unions
+  --> $DIR/restrict_anonymous_unions.rs:44:9
    |
-LL |         _ : u8
+LL |         _ : u8,
    |         -^^^^^
    |         |
-   |         anonymous field declared here
+   |         unnamed field declared here
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:36:10
+  --> $DIR/restrict_anonymous_unions.rs:48:10
    |
 LL | const L: union { field: u8 } = 0;
    |          ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:39:11
+  --> $DIR/restrict_anonymous_unions.rs:51:11
    |
 LL | static M: union { field: u8 } = 0;
    |           ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:42:10
+  --> $DIR/restrict_anonymous_unions.rs:54:10
    |
 LL | type N = union { field: u8 };
    |          ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:45:6
+  --> $DIR/restrict_anonymous_unions.rs:57:6
    |
 LL | impl union { field: u8 } {}
    |      ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:50:14
+  --> $DIR/restrict_anonymous_unions.rs:62:14
    |
 LL | impl Foo for union { field: u8 } {}
    |              ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:54:13
+  --> $DIR/restrict_anonymous_unions.rs:66:13
    |
 LL |     let p: [union { field: u8 }; 1];
    |             ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:57:13
+  --> $DIR/restrict_anonymous_unions.rs:69:13
    |
 LL |     let q: (union { field: u8 }, u8);
    |             ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:60:19
+  --> $DIR/restrict_anonymous_unions.rs:72:19
    |
 LL |     let c = || -> union { field: u8 } {};
    |                   ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
@@ -119,80 +131,92 @@ LL | fn f2(a: union { field: u8 } ) {}
 error: anonymous unions are unimplemented
   --> $DIR/restrict_anonymous_unions.rs:11:12
    |
-LL |     field: union { field: u8 }
+LL |     field: union { field: u8 },
    |            ^^^^^^^^^^^^^^^^^^^
 
 error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:16:12
+  --> $DIR/restrict_anonymous_unions.rs:13:8
    |
-LL |     field: union { field: u8 }
+LL |     _: union { field: u8 },
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error: anonymous unions are unimplemented
+  --> $DIR/restrict_anonymous_unions.rs:22:12
+   |
+LL |     field: union { field: u8 },
    |            ^^^^^^^^^^^^^^^^^^^
 
 error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:20:10
+  --> $DIR/restrict_anonymous_unions.rs:24:8
    |
-LL | struct I(union { field: u8 }, u8);
+LL |     _: union { field: u8 },
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error: anonymous unions are unimplemented
+  --> $DIR/restrict_anonymous_unions.rs:32:10
+   |
+LL | struct J(union { field: u8 }, u8);
    |          ^^^^^^^^^^^^^^^^^^^
 
 error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:24:7
+  --> $DIR/restrict_anonymous_unions.rs:36:7
    |
-LL |     K(union { field: u8 }),
+LL |     L(union { field: u8 }),
    |       ^^^^^^^^^^^^^^^^^^^
 
 error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:27:13
+  --> $DIR/restrict_anonymous_unions.rs:39:13
    |
-LL |         _ : union { field: u8 }
+LL |         _ : union { field: u8 },
    |             ^^^^^^^^^^^^^^^^^^^
 
 error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:36:10
+  --> $DIR/restrict_anonymous_unions.rs:48:10
    |
 LL | const L: union { field: u8 } = 0;
    |          ^^^^^^^^^^^^^^^^^^^
 
 error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:39:11
+  --> $DIR/restrict_anonymous_unions.rs:51:11
    |
 LL | static M: union { field: u8 } = 0;
    |           ^^^^^^^^^^^^^^^^^^^
 
 error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:42:10
+  --> $DIR/restrict_anonymous_unions.rs:54:10
    |
 LL | type N = union { field: u8 };
    |          ^^^^^^^^^^^^^^^^^^^
 
 error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:45:6
+  --> $DIR/restrict_anonymous_unions.rs:57:6
    |
 LL | impl union { field: u8 } {}
    |      ^^^^^^^^^^^^^^^^^^^
 
 error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:50:14
+  --> $DIR/restrict_anonymous_unions.rs:62:14
    |
 LL | impl Foo for union { field: u8 } {}
    |              ^^^^^^^^^^^^^^^^^^^
 
 error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:54:13
+  --> $DIR/restrict_anonymous_unions.rs:66:13
    |
 LL |     let p: [union { field: u8 }; 1];
    |             ^^^^^^^^^^^^^^^^^^^
 
 error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:57:13
+  --> $DIR/restrict_anonymous_unions.rs:69:13
    |
 LL |     let q: (union { field: u8 }, u8);
    |             ^^^^^^^^^^^^^^^^^^^
 
 error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:60:19
+  --> $DIR/restrict_anonymous_unions.rs:72:19
    |
 LL |     let c = || -> union { field: u8 } {};
    |                   ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 32 previous errors
+error: aborting due to 36 previous errors
 

@@ -221,7 +221,7 @@ impl<'a> AstValidator<'a> {
             }
             TyKind::AnonStruct(ref fields, ..) | TyKind::AnonUnion(ref fields, ..) => {
                 // self.with_banned_assoc_ty_bound(|this| {
-                walk_list!(self, visit_struct_field_def, fields)
+                walk_list!(self, visit_field_def, fields)
                 // });
             }
             _ => visit::walk_ty(self, t),
@@ -231,7 +231,7 @@ impl<'a> AstValidator<'a> {
     fn visit_struct_field_def(&mut self, field: &'a FieldDef) {
         if let Some(ident) = field.ident &&
             ident.name == kw::Underscore {
-                self.check_unnamed_field_ty(&field.ty, field.span);
+                self.check_unnamed_field_ty(&field.ty, ident.span);
                 self.visit_vis(&field.vis);
                 self.visit_ident(ident);
                 self.visit_ty_common(&field.ty);
@@ -279,6 +279,8 @@ impl<'a> AstValidator<'a> {
         }
     }
 
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     fn check_unnamed_field_ty(&self, ty: &Ty, span: Span) {
         if matches!(
             &ty.kind,
@@ -296,6 +298,8 @@ impl<'a> AstValidator<'a> {
         self.err_handler().struct_span_err(span, msg).span_label(ty.span, label).emit();
     }
 
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     fn deny_anon_struct_or_union(&self, ty: &Ty) {
         let struct_or_union = match &ty.kind {
             TyKind::AnonStruct(..) => "struct",
@@ -311,15 +315,17 @@ impl<'a> AstValidator<'a> {
                     .emit();
     }
 
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     fn deny_unnamed_field(&self, field: &FieldDef) {
         if let Some(ident) = field.ident &&
             ident.name == kw::Underscore {
                 self.err_handler()
                     .struct_span_err(
                         field.span,
-                        "anonymous fields are not allowed outside of structs or unions",
+                        "unnamed fields are not allowed outside of structs or unions",
                     )
-                    .span_label(ident.span, "anonymous field declared here")
+                    .span_label(ident.span, "unnamed field declared here")
                     .emit();
         }
     }
@@ -849,7 +855,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         self.visit_ty_common(ty);
-        tracing::info!(?ty);
         self.deny_anon_struct_or_union(ty);
         self.walk_ty(ty)
     }

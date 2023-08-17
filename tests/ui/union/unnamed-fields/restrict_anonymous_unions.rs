@@ -8,28 +8,40 @@ fn f2(a: union { field: u8 } ) {} //~ ERROR anonymous unions are not allowed out
 //~^ ERROR anonymous unions are unimplemented
 
 struct F {
-    field: union { field: u8 } //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
+    field: union { field: u8 }, //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
+    //~^ ERROR anonymous unions are unimplemented
+    _: union { field: u8 },
     //~^ ERROR anonymous unions are unimplemented
 }
 
-union G {
-    field: union { field: u8 } //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
+struct G {
+    _: (u8, u8), //~ ERROR unnamed fields can only have struct or union types
+}
+
+union H {
+    field: union { field: u8 }, //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
+    //~^ ERROR anonymous unions are unimplemented
+    _: union { field: u8 },
     //~^ ERROR anonymous unions are unimplemented
 }
 
-struct I(union { field: u8 }, u8); //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
+union I {
+    _: (u8, u8), //~ ERROR unnamed fields can only have struct or union types
+}
+
+struct J(union { field: u8 }, u8); //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
 //~^ ERROR anonymous unions are unimplemented
 
-enum J {
-    K(union { field: u8 }), //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
+enum K {
+    L(union { field: u8 }), //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
     //~^ ERROR anonymous unions are unimplemented
-    L {
-        _ : union { field: u8 } //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
-        //~^ ERROR anonymous fields are not allowed outside of structs or unions
+    M {
+        _ : union { field: u8 }, //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
+        //~^ ERROR unnamed fields are not allowed outside of structs or unions
         //~| ERROR anonymous unions are unimplemented
     },
-    M {
-        _ : u8 //~ ERROR anonymous fields are not allowed outside of structs or unions
+    N {
+        _ : u8, //~ ERROR unnamed fields are not allowed outside of structs or unions
     }
 }
 
