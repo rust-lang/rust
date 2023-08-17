@@ -28,7 +28,8 @@ exit 1
 }
 
 ARCH=$1
-TARGET=$ARCH-linux-musl
+ABI=$2
+TARGET=$ARCH-linux-musl$ABI
 
 # Don't depend on the mirrors of sabotage linux that musl-cross-make uses.
 LINUX_HEADERS_SITE=https://ci-mirrors.rust-lang.org/rustc/sabotage-linux-tarballs
