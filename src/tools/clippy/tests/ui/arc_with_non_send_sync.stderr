@@ -1,11 +1,34 @@
-error: usage of `Arc<T>` where `T` is not `Send` or `Sync`
-  --> $DIR/arc_with_non_send_sync.rs:16:13
+error: usage of an `Arc` that is not `Send` or `Sync`
+  --> $DIR/arc_with_non_send_sync.rs:18:13
    |
-LL |     let b = Arc::new(RefCell::new(42));
+LL |     let _ = Arc::new(RefCell::new(42));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider using `Rc<T>` instead or wrapping `T` in a std::sync type like `Mutex<T>`
+   = note: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: required for `Arc<RefCell<i32>>` to implement `Send` and `Sync`
+   = help: consider using an `Rc` instead or wrapping the inner type with a `Mutex`
    = note: `-D clippy::arc-with-non-send-sync` implied by `-D warnings`
 
-error: aborting due to previous error
+error: usage of an `Arc` that is not `Send` or `Sync`
+  --> $DIR/arc_with_non_send_sync.rs:21:13
+   |
+LL |     let _ = Arc::new(mutex.lock().unwrap());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the trait `Send` is not implemented for `MutexGuard<'_, i32>`
+   = note: required for `Arc<MutexGuard<'_, i32>>` to implement `Send` and `Sync`
+   = help: consider using an `Rc` instead or wrapping the inner type with a `Mutex`
+
+error: usage of an `Arc` that is not `Send` or `Sync`
+  --> $DIR/arc_with_non_send_sync.rs:23:13
+   |
+LL |     let _ = Arc::new(&42 as *const i32);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the trait `Send` is not implemented for `*const i32`
+   = note: the trait `Sync` is not implemented for `*const i32`
+   = note: required for `Arc<*const i32>` to implement `Send` and `Sync`
+   = help: consider using an `Rc` instead or wrapping the inner type with a `Mutex`
+
+error: aborting due to 3 previous errors
 

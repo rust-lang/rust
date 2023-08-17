@@ -7,11 +7,18 @@ fn foo<T>(x: T) {
     // Should not lint - purposefully ignoring generic args.
     let a = Arc::new(x);
 }
+fn issue11076<T>() {
+    let a: Arc<Vec<T>> = Arc::new(Vec::new());
+}
 
 fn main() {
-    // This is safe, as `i32` implements `Send` and `Sync`.
-    let a = Arc::new(42);
+    let _ = Arc::new(42);
 
-    // This is not safe, as `RefCell` does not implement `Sync`.
-    let b = Arc::new(RefCell::new(42));
+    // !Sync
+    let _ = Arc::new(RefCell::new(42));
+    let mutex = Mutex::new(1);
+    // !Send
+    let _ = Arc::new(mutex.lock().unwrap());
+    // !Send + !Sync
+    let _ = Arc::new(&42 as *const i32);
 }

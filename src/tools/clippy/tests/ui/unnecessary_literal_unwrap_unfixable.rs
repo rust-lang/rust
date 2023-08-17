@@ -21,6 +21,8 @@ fn unwrap_option_none() {
     let val = None::<()>;
     let _val2 = val.unwrap();
     let _val2 = val.expect("this always happens");
+    let _val3: u8 = None.unwrap_or_default();
+    None::<()>.unwrap_or_default();
 }
 
 fn unwrap_result_ok() {
