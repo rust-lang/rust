@@ -10,7 +10,7 @@ fn main() {
     // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
     // dependent conditions.
     let is_true = std::env::args().len() == 1;
-    let is_false = ! is_true;
+    let is_false = !is_true;
 
     let mut some_string = Some(String::from("the string content"));
     println!(

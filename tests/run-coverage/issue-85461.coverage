@@ -5,9 +5,9 @@ $DIR/auxiliary/inline_always_with_dead_code.rs:
    LL|       |
    LL|       |mod foo {
    LL|       |    #[inline(always)]
-   LL|      2|    pub fn called() { }
+   LL|      2|    pub fn called() {}
    LL|       |
-   LL|      0|    fn uncalled() { }
+   LL|      0|    fn uncalled() {}
    LL|       |}
    LL|       |
    LL|       |pub mod bar {

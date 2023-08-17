@@ -8,9 +8,6 @@ fn non_async_func() {
     }
 }
 
-
-
-
 async fn async_func() {
     println!("async_func was covered");
     let b = true;
@@ -18,9 +15,6 @@ async fn async_func() {
         println!("async_func println in block");
     }
 }
-
-
-
 
 async fn async_func_just_println() {
     println!("async_func_just_println was covered");

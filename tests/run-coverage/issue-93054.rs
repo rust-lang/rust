@@ -6,25 +6,25 @@
 
 // compile-flags: --edition=2021
 
-enum Never { }
+enum Never {}
 
 impl Never {
     fn foo(self) {
-        match self { }
-        make().map(|never| match never { });
+        match self {}
+        make().map(|never| match never {});
     }
 
     fn bar(&self) {
-        match *self { }
+        match *self {}
     }
 }
 
 async fn foo2(never: Never) {
-    match never { }
+    match never {}
 }
 
 fn make() -> Option<Never> {
     None
 }
 
-fn main() { }
+fn main() {}

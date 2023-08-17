@@ -9,9 +9,6 @@
                    ^0
    LL|      1|}
    LL|       |
-   LL|       |
-   LL|       |
-   LL|       |
    LL|      1|async fn async_func() {
    LL|      1|    println!("async_func was covered");
    LL|      1|    let b = true;
@@ -20,9 +17,6 @@
    LL|      1|    }
                    ^0
    LL|      1|}
-   LL|       |
-   LL|       |
-   LL|       |
    LL|       |
    LL|      1|async fn async_func_just_println() {
    LL|      1|    println!("async_func_just_println was covered");

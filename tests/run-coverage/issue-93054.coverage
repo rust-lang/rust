@@ -6,26 +6,26 @@
    LL|       |
    LL|       |// compile-flags: --edition=2021
    LL|       |
-   LL|       |enum Never { }
+   LL|       |enum Never {}
    LL|       |
    LL|       |impl Never {
    LL|       |    fn foo(self) {
-   LL|       |        match self { }
-   LL|       |        make().map(|never| match never { });
+   LL|       |        match self {}
+   LL|       |        make().map(|never| match never {});
    LL|       |    }
    LL|       |
    LL|       |    fn bar(&self) {
-   LL|       |        match *self { }
+   LL|       |        match *self {}
    LL|       |    }
    LL|       |}
    LL|       |
    LL|      0|async fn foo2(never: Never) {
-   LL|       |    match never { }
+   LL|       |    match never {}
    LL|       |}
    LL|       |
    LL|      0|fn make() -> Option<Never> {
    LL|      0|    None
    LL|      0|}
    LL|       |
-   LL|      1|fn main() { }
+   LL|      1|fn main() {}
 

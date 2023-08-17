@@ -56,16 +56,12 @@ mod executor {
         let mut future = unsafe { Pin::new_unchecked(&mut future) };
         use std::hint::unreachable_unchecked;
         static VTABLE: RawWakerVTable = RawWakerVTable::new(
-
             #[no_coverage]
             |_| unsafe { unreachable_unchecked() }, // clone
-
             #[no_coverage]
             |_| unsafe { unreachable_unchecked() }, // wake
-
             #[no_coverage]
             |_| unsafe { unreachable_unchecked() }, // wake_by_ref
-
             #[no_coverage]
             |_| (),
         );

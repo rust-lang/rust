@@ -19,7 +19,7 @@ impl<T> Drop for Firework<T> where T: Copy + std::fmt::Display {
     }
 }
 
-fn main() -> Result<(),u8> {
+fn main() -> Result<(), u8> {
     let mut firecracker = Firework { strength: 1 };
     firecracker.set_strength(2);
 
@@ -31,10 +31,6 @@ fn main() -> Result<(),u8> {
         println!("Exiting with error...");
         return Err(1);
     }
-
-
-
-
 
     let _ = Firework { strength: 1000 };
 
