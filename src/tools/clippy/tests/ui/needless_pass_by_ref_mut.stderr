@@ -94,5 +94,17 @@ LL |     fn cfg_warn(s: &mut u32) {}
    |
    = note: this is cfg-gated and may require further changes
 
-error: aborting due to 15 previous errors
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:208:39
+   |
+LL | async fn inner_async2(x: &mut i32, y: &mut u32) {
+   |                                       ^^^^^^^^ help: consider changing to: `&u32`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:216:26
+   |
+LL | async fn inner_async3(x: &mut i32, y: &mut u32) {
+   |                          ^^^^^^^^ help: consider changing to: `&i32`
+
+error: aborting due to 17 previous errors
 
