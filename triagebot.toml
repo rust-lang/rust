@@ -386,7 +386,6 @@ cc = ["@camelid"]
 message = "Some changes occurred in HTML/CSS/JS."
 cc = [
     "@GuillaumeGomez",
-    "@Folyd",
     "@jsha",
 ]
 
