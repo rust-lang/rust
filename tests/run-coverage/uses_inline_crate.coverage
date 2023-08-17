@@ -1,8 +1,8 @@
 $DIR/auxiliary/used_inline_crate.rs:
    LL|       |#![allow(unused_assignments, unused_variables)]
-   LL|       |
+   LL|       |// Verify that coverage works with optimizations:
    LL|       |// compile-flags: -C opt-level=3
-   LL|       |// ^^ validates coverage now works with optimizations
+   LL|       |
    LL|       |use std::fmt::Debug;
    LL|       |
    LL|      1|pub fn used_function() {

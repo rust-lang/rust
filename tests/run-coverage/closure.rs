@@ -1,6 +1,11 @@
 #![allow(unused_assignments, unused_variables)]
 // compile-flags: -C opt-level=2
-fn main() { // ^^ fix described in rustc_middle/mir/mono.rs
+
+// This test used to be sensitive to certain coverage-specific hacks in
+// `rustc_middle/mir/mono.rs`, but those hacks were later cleaned up by
+// <https://github.com/rust-lang/rust/pull/83666>.
+
+fn main() {
     // Initialize test constants in a way that cannot be determined at compile time, to ensure
     // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
     // dependent conditions.

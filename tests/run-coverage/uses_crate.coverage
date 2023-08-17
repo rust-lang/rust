@@ -1,7 +1,9 @@
 $DIR/auxiliary/used_crate.rs:
    LL|       |#![allow(unused_assignments, unused_variables)]
+   LL|       |// Verify that coverage works with optimizations:
    LL|       |// compile-flags: -C opt-level=3
-   LL|       |use std::fmt::Debug; // ^^ validates coverage now works with optimizations
+   LL|       |
+   LL|       |use std::fmt::Debug;
    LL|       |
    LL|      1|pub fn used_function() {
    LL|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure

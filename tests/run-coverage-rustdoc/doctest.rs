@@ -1,3 +1,5 @@
+// aux-build:doctest_crate.rs
+
 //! This test ensures that code from doctests is properly re-mapped.
 //! See <https://github.com/rust-lang/rust/issues/79417> for more info.
 //!
@@ -63,7 +65,7 @@
 //!     doctest_main()
 //! }
 //! ```
-// aux-build:doctest_crate.rs
+
 /// doctest attached to fn testing external code:
 /// ```
 /// extern crate doctest_crate;
