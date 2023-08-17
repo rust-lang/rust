@@ -52,8 +52,7 @@
           debug a => _4;
           let _5: &usize;
           scope 2 {
--             debug b => _5;
-+             debug b => &_4;
+              debug b => _5;
               let _6: usize;
               scope 3 {
                   debug c => _6;
@@ -158,12 +157,10 @@
           debug a => _60;
           let _61: &usize;
           scope 30 {
--             debug b => _61;
-+             debug b => &_60;
+              debug b => _61;
               let _62: &&usize;
               scope 31 {
--                 debug d => _62;
-+                 debug d => &&_60;
+                  debug d => _62;
                   let _63: usize;
                   scope 32 {
                       debug c => _63;
@@ -175,12 +172,10 @@
           debug a => _66;
           let mut _67: &usize;
           scope 34 {
--             debug b => _67;
-+             debug b => &_66;
+              debug b => _67;
               let _68: &mut &usize;
               scope 35 {
--                 debug d => _68;
-+                 debug d => &&_66;
+                  debug d => _68;
                   let _69: usize;
                   scope 36 {
                       debug c => _69;
@@ -193,8 +188,8 @@
 -         StorageLive(_3);
           StorageLive(_4);
           _4 = const 5_usize;
--         StorageLive(_5);
--         _5 = &_4;
+          StorageLive(_5);
+          _5 = &_4;
           StorageLive(_6);
 -         _6 = (*_5);
 +         _6 = _4;
@@ -209,7 +204,7 @@
           StorageDead(_7);
 -         _3 = const ();
           StorageDead(_6);
--         StorageDead(_5);
+          StorageDead(_5);
           StorageDead(_4);
 -         StorageDead(_3);
 -         StorageLive(_9);
@@ -394,13 +389,12 @@
 -         StorageLive(_59);
           StorageLive(_60);
           _60 = const 5_usize;
--         StorageLive(_61);
--         _61 = &_60;
--         StorageLive(_62);
--         _62 = &_61;
+          StorageLive(_61);
+          _61 = &_60;
+          StorageLive(_62);
+          _62 = &_61;
           StorageLive(_63);
--         _63 = (*_61);
-+         _63 = _60;
+          _63 = (*_61);
           StorageLive(_64);
           StorageLive(_65);
           _65 = ();
@@ -412,19 +406,18 @@
           StorageDead(_64);
 -         _59 = const ();
           StorageDead(_63);
--         StorageDead(_62);
--         StorageDead(_61);
+          StorageDead(_62);
+          StorageDead(_61);
           StorageDead(_60);
 -         StorageDead(_59);
           StorageLive(_66);
           _66 = const 5_usize;
--         StorageLive(_67);
--         _67 = &_66;
--         StorageLive(_68);
--         _68 = &mut _67;
+          StorageLive(_67);
+          _67 = &_66;
+          StorageLive(_68);
+          _68 = &mut _67;
           StorageLive(_69);
--         _69 = (*_67);
-+         _69 = _66;
+          _69 = (*_67);
           StorageLive(_70);
           StorageLive(_71);
           _71 = ();
@@ -436,8 +429,8 @@
           StorageDead(_70);
           _0 = const ();
           StorageDead(_69);
--         StorageDead(_68);
--         StorageDead(_67);
+          StorageDead(_68);
+          StorageDead(_67);
           StorageDead(_66);
           return;
       }
