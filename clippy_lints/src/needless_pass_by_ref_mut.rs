@@ -305,7 +305,7 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
         }
     }
 
-    fn borrow(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, id: HirId, borrow: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, _id: HirId, borrow: ty::BorrowKind) {
         self.prev_bind = None;
         if let euv::Place {
             base: euv::PlaceBase::Local(vid),
@@ -338,7 +338,7 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                         ],
                     ),
                 ..
-            }) = self.tcx.hir().get(id)
+            }) = self.tcx.hir().get(cmt.hir_id)
             {
                 self.async_closures.insert(*def_id);
             }
