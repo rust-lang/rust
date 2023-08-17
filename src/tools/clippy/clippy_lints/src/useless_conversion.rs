@@ -5,6 +5,7 @@ use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{get_parent_expr, is_trait_method, is_ty_alias, match_def_path, path_to_local, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, MatchSource, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -39,6 +40,7 @@ declare_clippy_lint! {
 #[derive(Default)]
 pub struct UselessConversion {
     try_desugar_arm: Vec<HirId>,
+    expn_depth: u32,
 }
 
 impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
@@ -105,6 +107,7 @@ fn into_iter_deep_call<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>) -
 impl<'tcx> LateLintPass<'tcx> for UselessConversion {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {
+            self.expn_depth += 1;
             return;
         }
 
@@ -150,9 +153,14 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 {
                     if let Some(parent) = get_parent_expr(cx, e) {
                         let parent_fn = match parent.kind {
-                            ExprKind::Call(recv, args) if let ExprKind::Path(ref qpath) = recv.kind => {
-                                cx.qpath_res(qpath, recv.hir_id).opt_def_id()
-                                    .map(|did| (did, args, MethodOrFunction::Function))
+                            ExprKind::Call(recv, args)
+                                if let ExprKind::Path(ref qpath) = recv.kind
+                                    && let Some(did) = cx.qpath_res(qpath, recv.hir_id).opt_def_id()
+                                    // make sure that the path indeed points to a fn-like item, so that
+                                    // `fn_sig` does not ICE. (see #11065)
+                                    && cx.tcx.opt_def_kind(did).is_some_and(DefKind::is_fn_like) =>
+                            {
+                                    Some((did, args, MethodOrFunction::Function))
                             }
                             ExprKind::MethodCall(.., args, _) => {
                                 cx.typeck_results().type_dependent_def_id(parent.hir_id)
@@ -168,6 +176,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             && let Some(&into_iter_param) = sig.inputs().get(kind.param_pos(arg_pos))
                             && let ty::Param(param) = into_iter_param.kind()
                             && let Some(span) = into_iter_bound(cx, parent_fn_did, into_iter_did, param.index)
+                            && self.expn_depth == 0
                         {
                             // Get the "innermost" `.into_iter()` call, e.g. given this expression:
                             // `foo.into_iter().into_iter()`
@@ -302,6 +311,9 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
     fn check_expr_post(&mut self, _: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if Some(&e.hir_id) == self.try_desugar_arm.last() {
             self.try_desugar_arm.pop();
+        }
+        if e.span.from_expansion() {
+            self.expn_depth -= 1;
         }
     }
 }
