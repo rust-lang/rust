@@ -221,6 +221,16 @@ async fn inner_async3(x: &mut i32, y: &mut u32) {
     .await;
 }
 
+// Should not warn.
+async fn async_vec(b: &mut Vec<bool>) {
+    b.append(&mut vec![]);
+}
+
+// Should not warn.
+async fn async_vec2(b: &mut Vec<bool>) {
+    b.push(true);
+}
+
 fn main() {
     let mut u = 0;
     let mut v = vec![0];
