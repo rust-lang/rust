@@ -870,7 +870,8 @@ impl_from!(
     MacroId(Macro2Id, MacroRulesId, ProcMacroId),
     ImplId,
     GenericParamId,
-    ExternCrateId
+    ExternCrateId,
+    UseId
     for AttrDefId
 );
 
@@ -901,6 +902,15 @@ impl From<ItemContainerId> for AttrDefId {
             ItemContainerId::ImplId(iid) => AttrDefId::ImplId(iid),
             ItemContainerId::TraitId(tid) => AttrDefId::TraitId(tid),
             ItemContainerId::ExternBlockId(id) => AttrDefId::ExternBlockId(id),
+        }
+    }
+}
+impl From<AssocItemId> for AttrDefId {
+    fn from(assoc: AssocItemId) -> Self {
+        match assoc {
+            AssocItemId::FunctionId(it) => AttrDefId::FunctionId(it),
+            AssocItemId::ConstId(it) => AttrDefId::ConstId(it),
+            AssocItemId::TypeAliasId(it) => AttrDefId::TypeAliasId(it),
         }
     }
 }

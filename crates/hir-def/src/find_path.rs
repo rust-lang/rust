@@ -224,6 +224,7 @@ fn find_path_for_module(
     )
 }
 
+// FIXME: Do we still need this now that we record import origins, and hence aliases?
 fn find_in_scope(
     db: &dyn DefDatabase,
     def_map: &DefMap,
@@ -346,6 +347,11 @@ fn calculate_best_path(
         let extern_paths = crate_graph[from.krate].dependencies.iter().filter_map(|dep| {
             let import_map = db.import_map(dep.crate_id);
             import_map.import_info_for(item).and_then(|info| {
+                if info.is_doc_hidden {
+                    // the item or import is `#[doc(hidden)]`, so skip it as it is in an external crate
+                    return None;
+                }
+
                 // Determine best path for containing module and append last segment from `info`.
                 // FIXME: we should guide this to look up the path locally, or from the same crate again?
                 let mut path = find_path_for_module(
@@ -1309,6 +1315,49 @@ pub struct S;
             "intermediate::std_renamed::S",
             "intermediate::std_renamed::S",
             "intermediate::std_renamed::S",
+        );
+    }
+
+    #[test]
+    fn different_crate_doc_hidden() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:intermediate
+$0
+//- /intermediate.rs crate:intermediate deps:std
+#[doc(hidden)]
+pub extern crate std;
+pub extern crate std as longer;
+//- /std.rs crate:std
+pub struct S;
+    "#,
+            "intermediate::longer::S",
+            "intermediate::longer::S",
+            "intermediate::longer::S",
+            "intermediate::longer::S",
+        );
+    }
+
+    #[test]
+    fn respect_doc_hidden() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:std,lazy_static
+$0
+//- /lazy_static.rs crate:lazy_static deps:core
+#[doc(hidden)]
+pub use core::ops::Deref as __Deref;
+//- /std.rs crate:std deps:core
+pub use core::ops;
+//- /core.rs crate:core
+pub mod ops {
+    pub trait Deref {}
+}
+    "#,
+            "std::ops::Deref",
+            "std::ops::Deref",
+            "std::ops::Deref",
+            "std::ops::Deref",
         );
     }
 }

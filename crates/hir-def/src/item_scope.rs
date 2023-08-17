@@ -66,7 +66,8 @@ pub struct ItemScope {
     _c: Count<Self>,
 
     /// Defs visible in this scope. This includes `declarations`, but also
-    /// imports.
+    /// imports. The imports belong to this module and can be resolved by using them on
+    /// the `use_imports_*` fields.
     types: FxHashMap<Name, (ModuleDefId, Visibility, Option<ImportOrExternCrate>)>,
     values: FxHashMap<Name, (ModuleDefId, Visibility, Option<ImportId>)>,
     macros: FxHashMap<Name, (MacroId, Visibility, Option<ImportId>)>,
@@ -375,8 +376,8 @@ impl ItemScope {
                         None | Some(ImportType::Glob(_)) => None,
                     };
                     let prev = std::mem::replace(&mut fld.2, import);
-                    if let Some(ImportOrExternCrate::Import(import)) = import {
-                        self.use_imports_values.insert(
+                    if let Some(import) = import {
+                        self.use_imports_types.insert(
                             import,
                             match prev {
                                 Some(ImportOrExternCrate::Import(import)) => {
@@ -404,8 +405,8 @@ impl ItemScope {
                             None | Some(ImportType::Glob(_)) => None,
                         };
                         let prev = std::mem::replace(&mut fld.2, import);
-                        if let Some(ImportOrExternCrate::Import(import)) = import {
-                            self.use_imports_values.insert(
+                        if let Some(import) = import {
+                            self.use_imports_types.insert(
                                 import,
                                 match prev {
                                     Some(ImportOrExternCrate::Import(import)) => {
