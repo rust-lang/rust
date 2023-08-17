@@ -255,6 +255,7 @@ fn rewrite_macro_inner(
             &macro_name,
             shape,
             style,
+            original_style,
             position,
             mac.span(),
         );
@@ -295,20 +296,19 @@ fn rewrite_macro_inner(
                 // If we are rewriting `vec!` macro or other special macros,
                 // then we can rewrite this as a usual array literal.
                 // Otherwise, we must preserve the original existence of trailing comma.
-                let macro_name = &macro_name.as_str();
                 let mut force_trailing_comma = if trailing_comma {
                     Some(SeparatorTactic::Always)
                 } else {
                     Some(SeparatorTactic::Never)
                 };
-                if FORCED_BRACKET_MACROS.contains(macro_name) && !is_nested_macro {
+                if is_forced_bracket && !is_nested_macro {
                     context.leave_macro();
                     if context.use_block_indent() {
                         force_trailing_comma = Some(SeparatorTactic::Vertical);
                     };
                 }
                 let rewrite = rewrite_array(
-                    macro_name,
+                    &macro_name,
                     arg_vec.iter(),
                     mac.span(),
                     context,
@@ -1402,15 +1402,19 @@ fn rewrite_macro_with_items(
     macro_name: &str,
     shape: Shape,
     style: Delimiter,
+    original_style: Delimiter,
     position: MacroPosition,
     span: Span,
 ) -> Option<String> {
-    let (opener, closer) = match style {
-        Delimiter::Parenthesis => ("(", ")"),
-        Delimiter::Bracket => ("[", "]"),
-        Delimiter::Brace => (" {", "}"),
-        _ => return None,
+    let style_to_delims = |style| match style {
+        Delimiter::Parenthesis => Some(("(", ")")),
+        Delimiter::Bracket => Some(("[", "]")),
+        Delimiter::Brace => Some((" {", "}")),
+        _ => None,
     };
+
+    let (opener, closer) = style_to_delims(style)?;
+    let (original_opener, _) = style_to_delims(original_style)?;
     let trailing_semicolon = match style {
         Delimiter::Parenthesis | Delimiter::Bracket if position == MacroPosition::Item => ";",
         _ => "",
@@ -1418,7 +1422,13 @@ fn rewrite_macro_with_items(
 
     let mut visitor = FmtVisitor::from_context(context);
     visitor.block_indent = shape.indent.block_indent(context.config);
-    visitor.last_pos = context.snippet_provider.span_after(span, opener.trim());
+
+    // The current opener may be different from the original opener. This can happen
+    // if our macro is a forced bracket macro originally written with non-bracket
+    // delimiters. We need to use the original opener to locate the span after it.
+    visitor.last_pos = context
+        .snippet_provider
+        .span_after(span, original_opener.trim());
     for item in items {
         let item = match item {
             MacroArg::Item(item) => item,
