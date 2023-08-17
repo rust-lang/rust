@@ -10,6 +10,7 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
     let mut _8: std::option::Option<U>;
     let mut _9: isize;
     let _11: ();
+    let mut _12: &mut std::iter::FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>>;
     scope 1 {
         debug iter => _5;
         let _10: U;
@@ -17,7 +18,7 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
             debug x => _10;
         }
         scope 4 (inlined <FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>> as Iterator>::next) {
-            debug self => &_5;
+            debug self => _12;
             let mut _6: &mut impl Iterator<Item = T>;
             let mut _7: &mut impl Fn(T) -> Option<U>;
         }

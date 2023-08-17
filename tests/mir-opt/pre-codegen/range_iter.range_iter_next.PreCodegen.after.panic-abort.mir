@@ -10,14 +10,16 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
             let mut _4: bool;
             let _5: u32;
             let mut _6: u32;
+            let mut _7: &u32;
+            let mut _8: &u32;
             scope 3 {
                 debug old => _5;
                 scope 4 {
                 }
             }
             scope 5 (inlined cmp::impls::<impl PartialOrd for u32>::lt) {
-                debug self => &((*_1).0: u32);
-                debug other => &((*_1).1: u32);
+                debug self => _7;
+                debug other => _8;
                 let mut _2: u32;
                 let mut _3: u32;
             }
@@ -27,6 +29,8 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
     bb0: {
         StorageLive(_5);
         StorageLive(_4);
+        StorageLive(_7);
+        StorageLive(_8);
         StorageLive(_2);
         _2 = ((*_1).0: u32);
         StorageLive(_3);
@@ -34,6 +38,8 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
         _4 = Lt(move _2, move _3);
         StorageDead(_3);
         StorageDead(_2);
+        StorageDead(_8);
+        StorageDead(_7);
         switchInt(move _4) -> [0: bb1, otherwise: bb2];
     }
 
