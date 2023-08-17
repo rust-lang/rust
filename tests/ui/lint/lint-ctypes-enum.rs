@@ -72,14 +72,12 @@ extern "C" {
    fn nonzero_u32(x: Option<num::NonZeroU32>);
    fn nonzero_u64(x: Option<num::NonZeroU64>);
    fn nonzero_u128(x: Option<num::NonZeroU128>);
-   //~^ ERROR `extern` block uses type `u128`
    fn nonzero_usize(x: Option<num::NonZeroUsize>);
    fn nonzero_i8(x: Option<num::NonZeroI8>);
    fn nonzero_i16(x: Option<num::NonZeroI16>);
    fn nonzero_i32(x: Option<num::NonZeroI32>);
    fn nonzero_i64(x: Option<num::NonZeroI64>);
    fn nonzero_i128(x: Option<num::NonZeroI128>);
-   //~^ ERROR `extern` block uses type `i128`
    fn nonzero_isize(x: Option<num::NonZeroIsize>);
    fn transparent_struct(x: Option<TransparentStruct<num::NonZeroU8>>);
    fn transparent_enum(x: Option<TransparentEnum<num::NonZeroU8>>);
