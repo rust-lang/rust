@@ -830,6 +830,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                             None,
                             path.span,
                             None,
+                            #[cfg(bootstrap)]
+                            AllowUnstable::No,
+                            #[cfg(not(bootstrap))]
                             if is_unstable_reexport(self.tcx, id) {
                                 AllowUnstable::Yes
                             } else {
