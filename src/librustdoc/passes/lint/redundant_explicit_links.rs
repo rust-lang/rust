@@ -13,7 +13,7 @@ use crate::clean::Item;
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 use crate::passes::source_span_for_markdown_range;
-use crate::visit_ast::inherits_doc_hidden;
+use crate::clean::utils::inherits_doc_hidden;
 
 #[derive(Debug)]
 struct LinkData {
