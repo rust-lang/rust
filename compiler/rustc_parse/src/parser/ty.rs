@@ -180,7 +180,7 @@ impl<'a> Parser<'a> {
         )
     }
 
-    pub(super) fn parse_no_question_mark_recover(&mut self) -> PResult<'a, P<Ty>> {
+    pub(super) fn parse_ty_no_question_mark_recover(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
             AllowCVariadic::No,
