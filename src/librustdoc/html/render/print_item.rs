@@ -1270,30 +1270,34 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
         }
 
         match &t.inner_type {
-            Some(clean::TypeAliasInnerType::Enum {
-                variants,
-                has_stripped_variants: has_stripped_entries,
-                is_non_exhaustive,
-            }) => {
+            Some(clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive }) => {
                 toggle(w, |w| {
+                    let variants_iter = || variants.iter().filter(|i| !i.is_stripped());
                     wrap_item(w, |w| {
+                        let variants_len = variants.len();
+                        let variants_count = variants_iter().count();
+                        let has_stripped_entries = variants_len != variants_count;
+
                         write!(w, "enum {}{}", it.name.unwrap(), t.generics.print(cx));
                         render_enum_fields(
                             w,
                             cx,
                             None,
-                            variants.iter(),
-                            variants.len(),
-                            *has_stripped_entries,
+                            variants_iter(),
+                            variants_count,
+                            has_stripped_entries,
                             *is_non_exhaustive,
                         )
                     });
-                    item_variants(w, cx, it, variants.iter());
+                    item_variants(w, cx, it, variants_iter());
                 });
             }
-            Some(clean::TypeAliasInnerType::Union { fields, has_stripped_fields }) => {
+            Some(clean::TypeAliasInnerType::Union { fields }) => {
                 toggle(w, |w| {
                     wrap_item(w, |w| {
+                        let fields_count = fields.iter().filter(|i| !i.is_stripped()).count();
+                        let has_stripped_fields = fields.len() != fields_count;
+
                         write!(w, "union {}{}", it.name.unwrap(), t.generics.print(cx));
                         render_struct_fields(
                             w,
@@ -1302,16 +1306,19 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
                             fields,
                             "",
                             true,
-                            *has_stripped_fields,
+                            has_stripped_fields,
                             cx,
                         );
                     });
                     item_fields(w, cx, it, fields, None);
                 });
             }
-            Some(clean::TypeAliasInnerType::Struct { ctor_kind, fields, has_stripped_fields }) => {
+            Some(clean::TypeAliasInnerType::Struct { ctor_kind, fields }) => {
                 toggle(w, |w| {
                     wrap_item(w, |w| {
+                        let fields_count = fields.iter().filter(|i| !i.is_stripped()).count();
+                        let has_stripped_fields = fields.len() != fields_count;
+
                         write!(w, "struct {}{}", it.name.unwrap(), t.generics.print(cx));
                         render_struct_fields(
                             w,
@@ -1320,7 +1327,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
                             fields,
                             "",
                             true,
-                            *has_stripped_fields,
+                            has_stripped_fields,
                             cx,
                         );
                     });

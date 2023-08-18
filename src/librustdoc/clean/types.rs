@@ -2231,20 +2231,9 @@ pub(crate) struct PathSegment {
 
 #[derive(Clone, Debug)]
 pub(crate) enum TypeAliasInnerType {
-    Enum {
-        variants: IndexVec<VariantIdx, Item>,
-        has_stripped_variants: bool,
-        is_non_exhaustive: bool,
-    },
-    Union {
-        fields: Vec<Item>,
-        has_stripped_fields: bool,
-    },
-    Struct {
-        ctor_kind: Option<CtorKind>,
-        fields: Vec<Item>,
-        has_stripped_fields: bool,
-    },
+    Enum { variants: IndexVec<VariantIdx, Item>, is_non_exhaustive: bool },
+    Union { fields: Vec<Item> },
+    Struct { ctor_kind: Option<CtorKind>, fields: Vec<Item> },
 }
 
 #[derive(Clone, Debug)]

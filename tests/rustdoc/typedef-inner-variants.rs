@@ -22,6 +22,8 @@ pub enum IrTyKind<A, B> {
     TyKind(A, B),
     // no comment
     StructKind { a: A, },
+    #[doc(hidden)]
+    Unspecified,
 }
 
 // @has 'inner_variants/type.NearlyTyKind.html'
@@ -52,7 +54,9 @@ pub type OneOrF64 = OneOr<f64>;
 // @has 'inner_variants/struct.One.html'
 pub struct One<T> {
     pub val: T,
-    __hidden: T,
+    #[doc(hidden)]
+    pub __hidden: T,
+    __private: T,
 }
 
 // @has 'inner_variants/type.OneU64.html'

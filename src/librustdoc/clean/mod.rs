@@ -971,10 +971,8 @@ fn clean_ty_alias_inner_type<'tcx>(
             .map(|variant| clean_variant_def_with_args(variant, args, cx))
             .collect();
 
-        let has_stripped_variants = adt_def.variants().len() != variants.len();
         TypeAliasInnerType::Enum {
             variants,
-            has_stripped_variants,
             is_non_exhaustive: adt_def.is_variant_list_non_exhaustive(),
         }
     } else {
@@ -987,11 +985,10 @@ fn clean_ty_alias_inner_type<'tcx>(
         let fields: Vec<_> =
             clean_variant_def_with_args(variant, args, cx).kind.inner_items().cloned().collect();
 
-        let has_stripped_fields = variant.fields.len() != fields.len();
         if adt_def.is_struct() {
-            TypeAliasInnerType::Struct { ctor_kind: variant.ctor_kind(), fields, has_stripped_fields }
+            TypeAliasInnerType::Struct { ctor_kind: variant.ctor_kind(), fields }
         } else {
-            TypeAliasInnerType::Union { fields, has_stripped_fields }
+            TypeAliasInnerType::Union { fields }
         }
     })
 }
@@ -2415,7 +2412,6 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
             variant
                 .fields
                 .iter()
-                .filter(|field| field.vis.is_public())
                 .map(|field| {
                     let ty = cx.tcx.type_of(field.did).instantiate(cx.tcx, args);
                     clean_field_with_def_id(
@@ -2431,7 +2427,6 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
             fields: variant
                 .fields
                 .iter()
-                .filter(|field| field.vis.is_public())
                 .map(|field| {
                     let ty = cx.tcx.type_of(field.did).instantiate(cx.tcx, args);
                     clean_field_with_def_id(
