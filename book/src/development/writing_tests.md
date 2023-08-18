@@ -94,7 +94,6 @@ As our `foo_functions` lint is tested, the output would look something like this
 
 ```
 failures:
-
 ---- compile_test stdout ----
 normalized stderr:
 error: function called "foo"
@@ -104,19 +103,16 @@ LL |     pub fn foo(&self) {}
    |            ^^^
    |
    = note: `-D clippy::foo-functions` implied by `-D warnings`
-
 error: function called "foo"
   --> $DIR/foo_functions.rs:13:8
    |
 LL |     fn foo(&self) {}
    |        ^^^
-
 error: function called "foo"
   --> $DIR/foo_functions.rs:19:4
    |
 LL | fn foo() {}
    |    ^^^
-
 error: aborting due to 3 previous errors
 ```
 
@@ -202,8 +198,7 @@ Should `span_lint_and_sugg` be used to generate a suggestion, but not all
 suggestions lead to valid code, you can use the `//@no-rustfix` comment on top
 of the test file, to not run `rustfix` on that file.
 
-We'll talk about suggestions more in depth in a later chapter.
-<!-- FIXME: (blyxyas) Link to "Emitting lints" when that gets merged -->
+We'll talk about suggestions more in depth in a [later chapter](emitting_lints.md).
 
 Use `cargo bless` to automatically generate the `.fixed` file after running
 the tests.
