@@ -538,9 +538,13 @@ where
             continue;
         }
 
-        let timestamp = extract_timestamp_from_session_dir(&directory_name).unwrap_or_else(|e| {
-            bug!("unexpected incr-comp session dir: {}: {}", session_dir.display(), e)
-        });
+        let timestamp = match extract_timestamp_from_session_dir(&directory_name) {
+            Ok(timestamp) => timestamp,
+            Err(e) => {
+                debug!("unexpected incr-comp session dir: {}: {}", session_dir.display(), e);
+                continue;
+            }
+        };
 
         if timestamp > best_candidate.0 {
             best_candidate = (timestamp, Some(session_dir.clone()));
