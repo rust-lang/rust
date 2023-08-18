@@ -279,8 +279,6 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     fn check_unnamed_field_ty(&self, ty: &Ty, span: Span) {
         if matches!(
             &ty.kind,
@@ -293,13 +291,9 @@ impl<'a> AstValidator<'a> {
         ) {
             return;
         }
-        let msg = "unnamed fields can only have struct or union types";
-        let label = "not a struct or union";
-        self.err_handler().struct_span_err(span, msg).span_label(ty.span, label).emit();
+        self.err_handler().emit_err(errors::InvalidUnnamedFieldTy { span, ty_span: ty.span });
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     fn deny_anon_struct_or_union(&self, ty: &Ty) {
         let struct_or_union = match &ty.kind {
             TyKind::AnonStruct(..) => "struct",
@@ -307,26 +301,17 @@ impl<'a> AstValidator<'a> {
             _ => return,
         };
         self.err_handler()
-                    .struct_span_err(
-                        ty.span,
-                        format!("anonymous {struct_or_union}s are not allowed outside of unnamed struct or union fields"),
-                    )
-                    .span_label(ty.span, format!("anonymous {struct_or_union} declared here"))
-                    .emit();
+            .emit_err(errors::AnonStructOrUnionNotAllowed { struct_or_union, span: ty.span });
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     fn deny_unnamed_field(&self, field: &FieldDef) {
         if let Some(ident) = field.ident &&
             ident.name == kw::Underscore {
                 self.err_handler()
-                    .struct_span_err(
-                        field.span,
-                        "unnamed fields are not allowed outside of structs or unions",
-                    )
-                    .span_label(ident.span, "unnamed field declared here")
-                    .emit();
+                    .emit_err(errors::InvalidUnnamedField {
+                        span: field.span,
+                        ident_span: ident.span
+                    });
         }
     }
 
