@@ -2406,6 +2406,11 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
         ty::VariantDiscr::Relative(_) => None,
     };
 
+    use rustc_middle::traits::ObligationCause;
+    use rustc_trait_selection::infer::TyCtxtInferExt;
+    use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
+
+    let infcx = cx.tcx.infer_ctxt().build();
     let kind = match variant.ctor_kind() {
         Some(CtorKind::Const) => VariantKind::CLike,
         Some(CtorKind::Fn) => VariantKind::Tuple(
@@ -2414,6 +2419,16 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
                 .iter()
                 .map(|field| {
                     let ty = cx.tcx.type_of(field.did).instantiate(cx.tcx, args);
+
+                    // normalize the type to only show concrete types
+                    // note: we do not use try_normalize_erasing_regions since we
+                    // do care about showing the regions
+                    let ty = infcx
+                        .at(&ObligationCause::dummy(), cx.param_env)
+                        .query_normalize(ty)
+                        .map(|normalized| normalized.value)
+                        .unwrap_or(ty);
+
                     clean_field_with_def_id(
                         field.did,
                         field.name,
@@ -2429,6 +2444,16 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
                 .iter()
                 .map(|field| {
                     let ty = cx.tcx.type_of(field.did).instantiate(cx.tcx, args);
+
+                    // normalize the type to only show concrete types
+                    // note: we do not use try_normalize_erasing_regions since we
+                    // do care about showing the regions
+                    let ty = infcx
+                        .at(&ObligationCause::dummy(), cx.param_env)
+                        .query_normalize(ty)
+                        .map(|normalized| normalized.value)
+                        .unwrap_or(ty);
+
                     clean_field_with_def_id(
                         field.did,
                         field.name,

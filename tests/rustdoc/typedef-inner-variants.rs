@@ -8,6 +8,17 @@ extern crate cross_crate_generic_typedef;
 
 pub struct Adt;
 pub struct Ty;
+pub struct TyCtxt;
+
+pub trait Interner {
+    type Adt;
+    type Ty;
+}
+
+impl Interner for TyCtxt {
+    type Adt = Adt;
+    type Ty = Ty;
+}
 
 // @has 'inner_variants/type.AliasTy.html'
 // @count - '//*[@id="variants"]' 0
@@ -15,11 +26,11 @@ pub struct Ty;
 pub type AliasTy = Ty;
 
 // @has 'inner_variants/enum.IrTyKind.html'
-pub enum IrTyKind<A, B> {
+pub enum IrTyKind<A, I: Interner> {
     /// Doc comment for AdtKind
-    AdtKind(A),
+    AdtKind(I::Adt),
     /// and another one for TyKind
-    TyKind(A, B),
+    TyKind(I::Adt, <I as Interner>::Ty),
     // no comment
     StructKind { a: A, },
     #[doc(hidden)]
@@ -29,14 +40,18 @@ pub enum IrTyKind<A, B> {
 // @has 'inner_variants/type.NearlyTyKind.html'
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 0
-pub type NearlyTyKind<B> = IrTyKind<Adt, B>;
+pub type NearlyTyKind<A> = IrTyKind<A, TyCtxt>;
 
 // @has 'inner_variants/type.TyKind.html'
 // @count - '//*[@id="variants"]' 1
 // @count - '//*[@id="fields"]' 0
 // @count - '//*[@class="variant"]' 3
 // @matches - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code' "enum TyKind"
-pub type TyKind = IrTyKind<Adt, Ty>;
+// @has - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code/a[1]' "Adt"
+// @has - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code/a[2]' "Adt"
+// @has - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code/a[3]' "Ty"
+// @has - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code/a[4]' "i64"
+pub type TyKind = IrTyKind<i64, TyCtxt>;
 
 // @has 'inner_variants/union.OneOr.html'
 pub union OneOr<A: Copy> {
@@ -68,13 +83,14 @@ pub type OneU64 = One<u64>;
 
 // @has 'inner_variants/struct.OnceA.html'
 pub struct OnceA<'a, A> {
-    a: &'a A, // private
+    pub a: &'a A,
 }
 
 // @has 'inner_variants/type.Once.html'
 // @count - '//*[@id="variants"]' 0
-// @count - '//*[@id="fields"]' 0
+// @count - '//*[@id="fields"]' 1
 // @matches - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code' "struct Once<'a>"
+// @matches - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code' "&'a"
 pub type Once<'a> = OnceA<'a, i64>;
 
 // @has 'inner_variants/struct.HighlyGenericStruct.html'
