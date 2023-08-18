@@ -1922,6 +1922,9 @@ pub struct TargetOptions {
     /// Use platform dependent mcount function
     pub mcount: StaticCow<str>,
 
+    /// Use LLVM intrinsic for mcount function name
+    pub llvm_mcount_intrinsic: Option<StaticCow<str>>,
+
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
     pub llvm_abiname: StaticCow<str>,
 
@@ -2183,6 +2186,7 @@ impl Default for TargetOptions {
             override_export_symbols: None,
             merge_functions: MergeFunctions::Aliases,
             mcount: "mcount".into(),
+            llvm_mcount_intrinsic: None,
             llvm_abiname: "".into(),
             relax_elf_relocations: false,
             llvm_args: cvs![],
@@ -2840,6 +2844,7 @@ impl Target {
         key!(override_export_symbols, opt_list);
         key!(merge_functions, MergeFunctions)?;
         key!(mcount = "target-mcount");
+        key!(llvm_mcount_intrinsic, optional);
         key!(llvm_abiname);
         key!(relax_elf_relocations, bool);
         key!(llvm_args, list);
@@ -3096,6 +3101,7 @@ impl ToJson for Target {
         target_option_val!(override_export_symbols);
         target_option_val!(merge_functions);
         target_option_val!(mcount, "target-mcount");
+        target_option_val!(llvm_mcount_intrinsic);
         target_option_val!(llvm_abiname);
         target_option_val!(relax_elf_relocations);
         target_option_val!(llvm_args);
