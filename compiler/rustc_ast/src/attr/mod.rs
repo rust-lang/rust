@@ -5,7 +5,7 @@ use crate::ast::{DelimArgs, Expr, ExprKind, LitKind, MetaItemLit};
 use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem, NormalAttr};
 use crate::ast::{Path, PathSegment, DUMMY_NODE_ID};
 use crate::ptr::P;
-use crate::token::{self, CommentKind, Delimiter, Token};
+use crate::token::{self, CommentKind, Delimiter, InvisibleSource, NonterminalKind, Token};
 use crate::tokenstream::{DelimSpan, Spacing, TokenTree};
 use crate::tokenstream::{LazyAttrTokenStream, TokenStream};
 use crate::util::comments;
@@ -326,11 +326,16 @@ impl MetaItem {
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments, tokens: None }
             }
-            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &**nt {
-                token::Nonterminal::NtMeta(item) => return item.meta(item.path.span),
-                token::Nonterminal::NtPath(path) => (**path).clone(),
-                _ => return None,
-            },
+            Some(TokenTree::Delimited(
+                _span,
+                Delimiter::Invisible(InvisibleSource::MetaVar(
+                    NonterminalKind::Meta | NonterminalKind::Path,
+                )),
+                _stream,
+            )) => {
+                // njn: these pre-existing (equivalent) paths are unreachable in the test suite
+                unreachable!()
+            }
             _ => return None,
         };
         let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());
@@ -371,7 +376,7 @@ impl MetaItemKind {
         tokens: &mut impl Iterator<Item = &'a TokenTree>,
     ) -> Option<MetaItemKind> {
         match tokens.next() {
-            Some(TokenTree::Delimited(_, Delimiter::Invisible, inner_tokens)) => {
+            Some(TokenTree::Delimited(_, Delimiter::Invisible(_), inner_tokens)) => {
                 MetaItemKind::name_value_from_tokens(&mut inner_tokens.trees())
             }
             Some(TokenTree::Token(token, _)) => {
@@ -510,7 +515,7 @@ impl NestedMetaItem {
                 tokens.next();
                 return Some(NestedMetaItem::Lit(lit));
             }
-            Some(TokenTree::Delimited(_, Delimiter::Invisible, inner_tokens)) => {
+            Some(TokenTree::Delimited(_, Delimiter::Invisible(_), inner_tokens)) => {
                 tokens.next();
                 return NestedMetaItem::from_tokens(&mut inner_tokens.trees().peekable());
             }

@@ -1,12 +1,15 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
+use super::{
+    AttrWrapper, FollowedByType, ForceCollect, ParseNtResult, Parser, PathStyle, TrailingToken,
+};
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
+use crate::maybe_reparse_metavar_seq;
 use ast::StaticItem;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleSource, NonterminalKind, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast::MacCall;
@@ -116,15 +119,16 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
-        // Don't use `maybe_whole` so that we have precise control
-        // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind && let token::NtItem(item) = &**nt {
-            let mut item = item.clone();
-            self.bump();
-
+        if let Some(mut item) = maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::Item,
+            NonterminalKind::Item,
+            ParseNtResult::Item(item),
+            item
+        ) {
             attrs.prepend_to_nt_inner(&mut item.attrs);
             return Ok(Some(item.into_inner()));
-        };
+        }
 
         let item =
             self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {
@@ -1159,6 +1163,8 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Unsafe)
             && self.is_keyword_ahead(1, &[kw::Extern])
             && self.look_ahead(
+                // njn: won't work with interpolate?
+                // njn: need to check all look_ahead calls for problems?
                 2 + self.look_ahead(2, |t| t.can_begin_literal_maybe_minus() as usize),
                 |t| t.kind == token::OpenDelim(Delimiter::Brace),
             )
@@ -2245,7 +2251,7 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
             *sig_hi = self.prev_token.span;
             (AttrVec::new(), None)
-        } else if self.check(&token::OpenDelim(Delimiter::Brace)) || self.token.is_whole_block() {
+        } else if self.check(&token::OpenDelim(Delimiter::Brace)) || self.token.is_metavar_block() {
             self.parse_block_common(self.token.span, BlockCheckMode::Default, false)
                 .map(|(attrs, body)| (attrs, Some(body)))?
         } else if self.token.kind == token::Eq {
@@ -2318,12 +2324,15 @@ impl<'a> Parser<'a> {
                 })
             // `extern ABI fn`
             || self.check_keyword_case(kw::Extern, case)
+                // njn: explain tree_look_ahead
                 && self.look_ahead(1, |t| t.can_begin_literal_maybe_minus())
-                && (self.look_ahead(2, |t| t.is_keyword_case(kw::Fn, case)) ||
+                && (self.tree_look_ahead(2, |t| t.is_keyword_case(kw::Fn, case)) == Some(true) ||
                     // this branch is only for better diagnostic in later, `pub` is not allowed here
                     (self.may_recover()
-                        && self.look_ahead(2, |t| t.is_keyword(kw::Pub))
-                        && self.look_ahead(3, |t| t.is_keyword_case(kw::Fn, case))))
+                        && self.tree_look_ahead(2, |t| t.is_keyword(kw::Pub)) == Some(true)
+                        && self.tree_look_ahead(3, |t| t.is_keyword_case(kw::Fn, case)) == Some(true)
+                    )
+                   )
     }
 
     /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,
@@ -2680,8 +2689,10 @@ impl<'a> Parser<'a> {
 
     fn is_named_param(&self) -> bool {
         let offset = match &self.token.kind {
-            token::Interpolated(nt) => match **nt {
-                token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
+            token::OpenDelim(Delimiter::Invisible(source)) => match source {
+                InvisibleSource::MetaVar(
+                    NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr,
+                ) => return self.check_noexpect_past_close_delim(&token::Colon),
                 _ => 0,
             },
             token::BinOp(token::And) | token::AndAnd => 1,

@@ -50,7 +50,7 @@ LL |     my_recursive_macro!();
    = note: expanding `my_recursive_macro! {  }`
    = note: to `my_recursive_macro! () ;`
 
-error: expected expression, found `A { a: a, b: 0, c: _, .. }`
+error: expected expression, found invisible open delimiter
   --> $DIR/trace_faulty_macros.rs:16:9
    |
 LL |         $a
@@ -78,7 +78,7 @@ LL |     let a = pat_macro!();
    = note: expanding `pat_macro! {  }`
    = note: to `pat_macro! (A { a : a, b : 0, c : _, .. }) ;`
    = note: expanding `pat_macro! { A { a : a, b : 0, c : _, .. } }`
-   = note: to `A { a: a, b: 0, c: _, .. }`
+   = note: to `A { a : a, b : 0, c : _, .. }`
 
 error: aborting due to 4 previous errors
 

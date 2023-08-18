@@ -10,7 +10,7 @@ LL |     mac1! { does_not_exist!() }
    = note: `mut` may be followed by `variable` and `variable @ pattern`
    = note: this error originates in the macro `mac1` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: expected identifier, found `does_not_exist!()`
+error: expected identifier, found invisible open delimiter
   --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:13:17
    |
 LL |         let mut $eval = ();

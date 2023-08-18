@@ -5,7 +5,7 @@ use crate::mbe;
 use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
 use crate::mbe::macro_check;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success, TtParser};
-use crate::mbe::macro_parser::{MatchedSeq, MatchedTokenTree, MatcherLoc};
+use crate::mbe::macro_parser::{MatcherLoc, NamedMatch::*};
 use crate::mbe::transcribe::transcribe;
 
 use rustc_ast as ast;
@@ -21,7 +21,7 @@ use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
 };
 use rustc_lint_defs::BuiltinLintDiagnostics;
-use rustc_parse::parser::{Parser, Recovery};
+use rustc_parse::parser::{ParseNtResult, Parser, Recovery};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -500,7 +500,7 @@ pub fn compile_declarative_macro(
         MatchedSeq(s) => s
             .iter()
             .map(|m| {
-                if let MatchedTokenTree(tt) = m {
+                if let MatchedSingle(ParseNtResult::Tt(tt)) = m {
                     let tt = mbe::quoted::parse(
                         &TokenStream::new(vec![tt.clone()]),
                         true,
@@ -524,7 +524,7 @@ pub fn compile_declarative_macro(
         MatchedSeq(s) => s
             .iter()
             .map(|m| {
-                if let MatchedTokenTree(tt) = m {
+                if let MatchedSingle(ParseNtResult::Tt(tt)) = m {
                     return mbe::quoted::parse(
                         &TokenStream::new(vec![tt.clone()]),
                         false,
@@ -722,7 +722,7 @@ fn has_compile_error_macro(rhs: &mbe::TokenTree) -> bool {
                         let mbe::TokenTree::Token(bang) = bang &&
                         let TokenKind::Not = bang.kind &&
                         let mbe::TokenTree::Delimited(_, del) = args &&
-                        del.delim != Delimiter::Invisible
+                        !del.delim.skip()
                     {
                         true
                     } else {
@@ -1328,7 +1328,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            NonterminalKind::PatWithOr { .. } => {
+            NonterminalKind::PatWithOr => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {

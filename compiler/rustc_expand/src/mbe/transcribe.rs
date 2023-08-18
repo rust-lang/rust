@@ -3,14 +3,16 @@ use crate::errors::{
     CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
     NoSyntaxVarsExprRepeat, VarStillRepeating,
 };
-use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
+use crate::mbe::macro_parser::{NamedMatch, NamedMatch::*};
 use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleSource, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::StmtKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, PResult};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
+use rustc_parse::parser::ParseNtResult;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
@@ -210,32 +212,87 @@ pub(super) fn transcribe<'a>(
                 }
             }
 
-            // Replace the meta-var with the matched token tree from the invocation.
             mbe::TokenTree::MetaVar(mut sp, mut original_ident) => {
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
                 let ident = MacroRulesNormalizedIdent::new(original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
-                    match cur_matched {
-                        MatchedTokenTree(tt) => {
+                    let mut mk_delimited = |nt_kind, stream| {
+                        // Emit as a token stream within `Delimiter::Invisible` to maintain parsing
+                        // priorities.
+                        marker.visit_span(&mut sp);
+                        // njn: `sp` usage here means that both the open delim
+                        // and close delim end up with the same span, which
+                        // covers the `$foo` in the decl macro RHS
+                        TokenTree::Delimited(
+                            DelimSpan::from_single(sp),
+                            Delimiter::Invisible(InvisibleSource::MetaVar(nt_kind)),
+                            stream,
+                        )
+                    };
+                    let tt = match cur_matched {
+                        MatchedSingle(ParseNtResult::Tt(tt)) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            let token = tt.clone();
-                            result.push(token);
+                            tt.clone()
                         }
-                        MatchedNonterminal(nt) => {
-                            // Other variables are emitted into the output stream as groups with
-                            // `Delimiter::Invisible` to maintain parsing priorities.
-                            // `Interpolated` is currently used for such groups in rustc parser.
+                        // njn: remove all the `ref`s
+                        MatchedSingle(ParseNtResult::Item(ref item)) => {
+                            mk_delimited(NonterminalKind::Item, TokenStream::from_ast(item))
+                        }
+                        MatchedSingle(ParseNtResult::Block(ref block)) => {
+                            mk_delimited(NonterminalKind::Block, TokenStream::from_ast(block))
+                        }
+                        MatchedSingle(ParseNtResult::Stmt(ref stmt)) => {
+                            let stream = if let StmtKind::Empty = stmt.kind {
+                                // FIXME: Properly collect tokens for empty statements.
+                                TokenStream::token_alone(token::Semi, stmt.span)
+                            } else {
+                                TokenStream::from_ast(stmt)
+                            };
+                            mk_delimited(NonterminalKind::Stmt, stream)
+                        }
+                        MatchedSingle(ParseNtResult::PatParam(ref pat, inferred)) => mk_delimited(
+                            NonterminalKind::PatParam { inferred: *inferred },
+                            TokenStream::from_ast(pat),
+                        ),
+                        MatchedSingle(ParseNtResult::PatWithOr(ref pat)) => {
+                            mk_delimited(NonterminalKind::PatWithOr, TokenStream::from_ast(pat))
+                        }
+                        MatchedSingle(ParseNtResult::Expr(ref expr)) => {
+                            mk_delimited(NonterminalKind::Expr, TokenStream::from_ast(expr))
+                        }
+                        MatchedSingle(ParseNtResult::Literal(ref expr)) => {
+                            mk_delimited(NonterminalKind::Literal, TokenStream::from_ast(expr))
+                        }
+                        MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
                             marker.visit_span(&mut sp);
-                            let token = TokenTree::token_alone(token::Interpolated(nt.clone()), sp);
-                            result.push(token);
+                            let kind = token::InterpolatedIdent(ident.name, *is_raw, ident.span);
+                            TokenTree::token_alone(kind, sp)
+                        }
+                        MatchedSingle(ParseNtResult::Lifetime(ref ident)) => {
+                            marker.visit_span(&mut sp);
+                            let kind = token::InterpolatedLifetime(ident.name, ident.span);
+                            TokenTree::token_alone(kind, sp)
+                        }
+                        MatchedSingle(ParseNtResult::Ty(ref ty)) => {
+                            mk_delimited(NonterminalKind::Ty, TokenStream::from_ast(ty))
+                        }
+                        MatchedSingle(ParseNtResult::Meta(ref meta)) => {
+                            mk_delimited(NonterminalKind::Meta, TokenStream::from_ast(meta))
+                        }
+                        MatchedSingle(ParseNtResult::Path(ref path)) => {
+                            mk_delimited(NonterminalKind::Path, TokenStream::from_ast(path))
+                        }
+                        MatchedSingle(ParseNtResult::Vis(ref vis)) => {
+                            mk_delimited(NonterminalKind::Vis, TokenStream::from_ast(vis))
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
                             return Err(cx.create_err(VarStillRepeating { span: sp, ident }));
                         }
-                    }
+                    };
+                    result.push(tt);
                 } else {
                     // If we aren't able to match the meta-var, we push it back into the result but
                     // with modified syntax context. (I believe this supports nested macros).
@@ -299,7 +356,7 @@ fn lookup_cur_matched<'a>(
     interpolations.get(&ident).map(|mut matched| {
         for &(idx, _) in repeats {
             match matched {
-                MatchedTokenTree(_) | MatchedNonterminal(_) => break,
+                MatchedSingle(_) => break,
                 MatchedSeq(ads) => matched = ads.get(idx).unwrap(),
             }
         }
@@ -389,7 +446,7 @@ fn lockstep_iter_size(
             let name = MacroRulesNormalizedIdent::new(*name);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
-                    MatchedTokenTree(_) | MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
+                    MatchedSingle(_) => LockstepIterSize::Unconstrained,
                     MatchedSeq(ads) => LockstepIterSize::Constraint(ads.len(), name),
                 },
                 _ => LockstepIterSize::Unconstrained,
@@ -438,7 +495,7 @@ fn count_repetitions<'a>(
         sp: &DelimSpan,
     ) -> PResult<'a, usize> {
         match matched {
-            MatchedTokenTree(_) | MatchedNonterminal(_) => {
+            MatchedSingle(_) => {
                 if declared_lhs_depth == 0 {
                     return Err(cx.create_err(CountRepetitionMisplaced { span: sp.entire() }));
                 }

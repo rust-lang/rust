@@ -6,7 +6,7 @@ use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
@@ -150,6 +150,8 @@ pub fn print_crate<'a>(
 /// and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
     if let TokenTree::Token(token, _) = prev {
+        // No space after these tokens, e.g. `x.y`, `$e`
+        // (The carets point to `prev`.)       ^     ^
         if matches!(token.kind, token::Dot | token::Dollar) {
             return false;
         }
@@ -158,10 +160,14 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
         }
     }
     match tt {
+        // No space before these tokens, e.g. `foo,`, `println!`, `x.y`
+        // (The carets point to `token`.)         ^           ^     ^
         TokenTree::Token(token, _) => !matches!(token.kind, token::Comma | token::Not | token::Dot),
+        // No space before parentheses if preceded by these tokens, e.g. `foo(...)`
         TokenTree::Delimited(_, Delimiter::Parenthesis, _) => {
             !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }, _))
         }
+        // No space before brackets if preceded by these tokens, e.g. `#[...]`
         TokenTree::Delimited(_, Delimiter::Bracket, _) => {
             !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }, _))
         }
@@ -718,23 +724,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn nonterminal_to_string(&self, nt: &Nonterminal) -> String {
-        match nt {
-            token::NtExpr(e) => self.expr_to_string(e),
-            token::NtMeta(e) => self.attr_item_to_string(e),
-            token::NtTy(e) => self.ty_to_string(e),
-            token::NtPath(e) => self.path_to_string(e),
-            token::NtItem(e) => self.item_to_string(e),
-            token::NtBlock(e) => self.block_to_string(e),
-            token::NtStmt(e) => self.stmt_to_string(e),
-            token::NtPat(e) => self.pat_to_string(e),
-            token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(*e, *is_raw).to_string(),
-            token::NtLifetime(e) => e.to_string(),
-            token::NtLiteral(e) => self.expr_to_string(e),
-            token::NtVis(e) => self.vis_to_string(e),
-        }
-    }
-
     /// Print the token kind precisely, without converting `$crate` into its respective crate name.
     fn token_kind_to_string(&self, tok: &TokenKind) -> Cow<'static, str> {
         self.token_kind_to_string_ext(tok, None)
@@ -779,9 +768,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::CloseDelim(Delimiter::Bracket) => "]".into(),
             token::OpenDelim(Delimiter::Brace) => "{".into(),
             token::CloseDelim(Delimiter::Brace) => "}".into(),
-            token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible) => {
-                "".into()
-            }
+            token::OpenDelim(Delimiter::Invisible(_))
+            | token::CloseDelim(Delimiter::Invisible(_)) => "".into(),
             token::Pound => "#".into(),
             token::Dollar => "$".into(),
             token::Question => "?".into(),
@@ -791,18 +779,16 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::Literal(lit) => literal_to_string(lit).into(),
 
             /* Name components */
-            token::Ident(s, is_raw) => {
+            token::Ident(s, is_raw) | token::InterpolatedIdent(s, is_raw, _) => {
                 IdentPrinter::new(s, is_raw, convert_dollar_crate).to_string().into()
             }
-            token::Lifetime(s) => s.to_string().into(),
+            token::Lifetime(s) | token::InterpolatedLifetime(s, _) => s.to_string().into(),
 
             /* Other */
             token::DocComment(comment_kind, attr_style, data) => {
                 doc_comment_to_string(comment_kind, attr_style, data).into()
             }
             token::Eof => "<eof>".into(),
-
-            token::Interpolated(ref nt) => self.nonterminal_to_string(nt).into(),
         }
     }
 

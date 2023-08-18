@@ -3,7 +3,6 @@
 //! The traits are not implemented exhaustively, only when actually necessary.
 
 use crate::ptr::P;
-use crate::token::Nonterminal;
 use crate::tokenstream::LazyAttrTokenStream;
 use crate::{Arm, Crate, ExprField, FieldDef, GenericParam, Param, PatField, Variant};
 use crate::{AssocItem, Expr, ForeignItem, Item, NodeId};
@@ -225,37 +224,6 @@ impl HasTokens for Attribute {
                 panic!("Called tokens_mut on doc comment attr {kind:?}")
             }
         })
-    }
-}
-
-impl HasTokens for Nonterminal {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
-        match self {
-            Nonterminal::NtItem(item) => item.tokens(),
-            Nonterminal::NtStmt(stmt) => stmt.tokens(),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens(),
-            Nonterminal::NtPat(pat) => pat.tokens(),
-            Nonterminal::NtTy(ty) => ty.tokens(),
-            Nonterminal::NtMeta(attr_item) => attr_item.tokens(),
-            Nonterminal::NtPath(path) => path.tokens(),
-            Nonterminal::NtVis(vis) => vis.tokens(),
-            Nonterminal::NtBlock(block) => block.tokens(),
-            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
-        }
-    }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
-        match self {
-            Nonterminal::NtItem(item) => item.tokens_mut(),
-            Nonterminal::NtStmt(stmt) => stmt.tokens_mut(),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens_mut(),
-            Nonterminal::NtPat(pat) => pat.tokens_mut(),
-            Nonterminal::NtTy(ty) => ty.tokens_mut(),
-            Nonterminal::NtMeta(attr_item) => attr_item.tokens_mut(),
-            Nonterminal::NtPath(path) => path.tokens_mut(),
-            Nonterminal::NtVis(vis) => vis.tokens_mut(),
-            Nonterminal::NtBlock(block) => block.tokens_mut(),
-            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
-        }
     }
 }
 

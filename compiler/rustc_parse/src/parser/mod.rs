@@ -18,7 +18,7 @@ pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleSource, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{AttributesData, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
@@ -85,16 +85,46 @@ pub enum TrailingToken {
     MaybeComma,
 }
 
-/// Like `maybe_whole_expr`, but for things other than expressions.
+// njn: hmm, will need to match InvisibleSource::ProcMacro eventually?
+/// Reparses an invisible-delimited sequence produced by expansion of a
+/// declarative macro metavariable. Will panic if called with a `self.token`
+/// that is not an `InvisibleSource::Metavar` invisible open delimiter.
 #[macro_export]
-macro_rules! maybe_whole {
-    ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
-        if let token::Interpolated(nt) = &$p.token.kind {
-            if let token::$constructor(x) = &**nt {
-                let $x = x.clone();
-                $p.bump();
-                return Ok($e);
-            }
+macro_rules! reparse_metavar_seq {
+    ($p:expr, $nt_kind:expr, $nt_res:pat, $ret:expr) => {{
+        let delim = token::Delimiter::Invisible(token::InvisibleSource::MetaVar($nt_kind));
+        $p.expect(&token::OpenDelim(delim)).expect("no open delim when reparsing");
+        // njn: parse_nonterminal collects token. Should this reparsing call
+        // not do that?
+        let Ok($nt_res) = $p.parse_nonterminal($nt_kind) else {
+            panic!("failed to reparse");
+        };
+        //$p.expect(&token::CloseDelim(delim)).expect("no close delim when reparsing");
+        // njn: failures here somehow related to TrailingToken::MaybeComma?
+        // Sometimes see a trailing comma here. See the FIXME in
+        // collect_tokens_for_expr
+        let res = $p.expect(&token::CloseDelim(delim));
+        match res {
+            Ok(_) => {}
+            Err(_) => panic!("no close delim when reparsing: {:?}", $p.token),
+        }
+        $ret
+    }};
+}
+
+/// Reparses an an invisible-delimited sequence produced by expansion of a
+/// declarative macro metavariable, if present.
+///
+/// `$nt_kind_pat` and `$nt_kind` are always syntactically identical in
+/// practice, but must be specified separately because one is a pattern and one
+/// is an expression. Which is annoying but hard to avoid.
+#[macro_export]
+macro_rules! maybe_reparse_metavar_seq {
+    ($p:expr, $nt_kind_pat:pat, $nt_kind:expr, $nt_res:pat, $ret:expr) => {
+        if let Some($nt_kind_pat) = $p.token.is_metavar_seq() {
+            Some(crate::reparse_metavar_seq!($p, $nt_kind, $nt_res, $ret))
+        } else {
+            None
         }
     };
 }
@@ -105,12 +135,17 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
         if $allow_qpath_recovery
                     && $self.may_recover()
-                    && $self.look_ahead(1, |t| t == &token::ModSep)
-                    && let token::Interpolated(nt) = &$self.token.kind
-                    && let token::NtTy(ty) = &**nt
+                    && let Some(token::NonterminalKind::Ty) = $self.token.is_metavar_seq()
+                    && $self.check_noexpect_past_close_delim(&token::ModSep)
                 {
-                    let ty = ty.clone();
-                    $self.bump();
+                    // Reparse the type, then move to recovery. `unwrap` is
+                    // safe because we found `InvisibleSource::MetaVar` above.
+                    let ty = crate::reparse_metavar_seq!(
+                        $self,
+                        token::NonterminalKind::Ty,
+                        super::ParseNtResult::Ty(ty),
+                        ty
+                    );
                     return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
                 }
     };
@@ -263,7 +298,7 @@ impl TokenCursor {
                     &TokenTree::Delimited(sp, delim, ref tts) => {
                         let trees = tts.clone().into_trees();
                         self.stack.push((mem::replace(&mut self.tree_cursor, trees), delim, sp));
-                        if delim != Delimiter::Invisible {
+                        if !delim.skip() {
                             return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);
                         }
                         // No open delimiter to return; continue on to the next iteration.
@@ -272,7 +307,7 @@ impl TokenCursor {
             } else if let Some((tree_cursor, delim, span)) = self.stack.pop() {
                 // We have exhausted this token stream. Move back to its parent token stream.
                 self.tree_cursor = tree_cursor;
-                if delim != Delimiter::Invisible {
+                if !delim.skip() {
                     return (Token::new(token::CloseDelim(delim), span.close), Spacing::Alone);
                 }
                 // No close delimiter to return; continue on to the next iteration.
@@ -346,6 +381,15 @@ pub enum TokenDescription {
     Keyword,
     ReservedKeyword,
     DocComment,
+
+    // Invisible delimiters aren't pretty-printed. But in error messages we
+    // want to print something, otherwise we get confusing things in messages
+    // like "expected `(`, found ``". It's better to say "expected `(`, found
+    // invisible open delimiter".
+    //
+    // There has been no need for an `InvisibleCloseDelim` entry yet, but one
+    // could be added if necessary.
+    InvisibleOpenDelim,
 }
 
 impl TokenDescription {
@@ -355,22 +399,29 @@ impl TokenDescription {
             _ if token.is_used_keyword() => Some(TokenDescription::Keyword),
             _ if token.is_unused_keyword() => Some(TokenDescription::ReservedKeyword),
             token::DocComment(..) => Some(TokenDescription::DocComment),
+            token::OpenDelim(Delimiter::Invisible(_)) => Some(TokenDescription::InvisibleOpenDelim),
             _ => None,
         }
     }
 }
 
-pub(super) fn token_descr(token: &Token) -> String {
-    let name = pprust::token_to_string(token).to_string();
+/// Provide a description of a token for error messages. In most cases the
+/// result is the same as pretty-printing it, but for a few token kinds we can
+/// do better.
+pub fn token_descr(token: &Token) -> String {
+    use TokenDescription::*;
 
-    let kind = TokenDescription::from_token(token).map(|kind| match kind {
-        TokenDescription::ReservedIdentifier => "reserved identifier",
-        TokenDescription::Keyword => "keyword",
-        TokenDescription::ReservedKeyword => "reserved keyword",
-        TokenDescription::DocComment => "doc comment",
-    });
+    let s = pprust::token_to_string(token).to_string();
 
-    if let Some(kind) = kind { format!("{kind} `{name}`") } else { format!("`{name}`") }
+    match TokenDescription::from_token(token) {
+        Some(ReservedIdentifier) => format!("reserved identifier `{s}`"),
+        Some(Keyword) => format!("keyword `{s}`"),
+        Some(ReservedKeyword) => format!("reserved keyword `{s}`"),
+        Some(DocComment) => format!("doc comment `{s}`"),
+        // Deliberately doesn't print `s`, which is empty.
+        Some(InvisibleOpenDelim) => "invisible open delimiter".to_string(),
+        None => format!("`{s}`"),
+    }
 }
 
 impl<'a> Parser<'a> {
@@ -522,6 +573,24 @@ impl<'a> Parser<'a> {
         self.token == *tok
     }
 
+    // Check the first token after the delimiter that closes the current
+    // delimited sequence. (Panics if used in the outermost token stream, which
+    // has no delimiters.) It uses a clone of the relevant tree cursor to skip
+    // past the entire `TokenTree::Delimited` in a single step, avoiding the
+    // need for unbounded token lookahead.
+    //
+    // Primarily used when `self.token` matches
+    // `OpenDelim(Delimiter::Invisible(_))`, to look ahead through the current
+    // metavar expansion.
+    fn check_noexpect_past_close_delim(&self, tok: &TokenKind) -> bool {
+        let mut tree_cursor = self.token_cursor.stack.last().unwrap().0.clone();
+        let tt = tree_cursor.next_ref();
+        matches!(
+            tt,
+            Some(ast::tokenstream::TokenTree::Token(token::Token { kind, .. }, _)) if kind == tok
+        )
+    }
+
     /// Consumes a token 'tok' if it exists. Returns whether the given token was present.
     ///
     /// the main purpose of this function is to reduce the cluttering of the suggestions list
@@ -658,8 +727,10 @@ impl<'a> Parser<'a> {
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
             && self.look_ahead(dist + 1, |t| match &t.kind {
-                token::Interpolated(nt) => matches!(**nt, token::NtBlock(..)),
                 token::OpenDelim(Delimiter::Brace) => true,
+                token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
+                    NonterminalKind::Block,
+                ))) => true,
                 _ => false,
             })
     }
@@ -695,7 +766,7 @@ impl<'a> Parser<'a> {
                 self.break_last_token = true;
                 // Use the spacing of the glued token as the spacing
                 // of the unglued second token.
-                self.bump_with((Token::new(second, second_span), self.token_spacing));
+                self.bump_with(6, (Token::new(second, second_span), self.token_spacing));
                 true
             }
             _ => {
@@ -1014,15 +1085,16 @@ impl<'a> Parser<'a> {
     }
 
     /// Advance the parser by one token using provided token as the next one.
-    fn bump_with(&mut self, next: (Token, Spacing)) {
-        self.inlined_bump_with(next)
+    fn bump_with(&mut self, x: u32, next: (Token, Spacing)) {
+        self.inlined_bump_with(x, next)
     }
 
     /// This always-inlined version should only be used on hot code paths.
     #[inline(always)]
-    fn inlined_bump_with(&mut self, (next_token, next_spacing): (Token, Spacing)) {
+    fn inlined_bump_with(&mut self, _x: u32, (next_token, next_spacing): (Token, Spacing)) {
         // Update the current and previous tokens.
         self.prev_token = mem::replace(&mut self.token, next_token);
+        //eprintln!("bump `{:?}`", self.token);
         self.token_spacing = next_spacing;
 
         // Diagnostics.
@@ -1043,42 +1115,59 @@ impl<'a> Parser<'a> {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
             let fallback_span = self.token.span;
             next.0.span = fallback_span.with_ctxt(next.0.span.ctxt());
+            //eprintln!("fallback {:?}", next.0.span);
         }
         debug_assert!(!matches!(
             next.0.kind,
-            token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible)
+            token::OpenDelim(delim) | token::CloseDelim(delim) if delim.skip()
         ));
-        self.inlined_bump_with(next)
+        self.inlined_bump_with(1, next)
     }
 
     /// Look-ahead `dist` tokens of `self.token` and get access to that token there.
     /// When `dist == 0` then the current token is looked at.
+    /// njn: comment about behaviour is dist is too large -- Eof
     pub fn look_ahead<R>(&self, dist: usize, looker: impl FnOnce(&Token) -> R) -> R {
         if dist == 0 {
             return looker(&self.token);
         }
 
-        let tree_cursor = &self.token_cursor.tree_cursor;
         if let Some(&(_, delim, span)) = self.token_cursor.stack.last()
-            && delim != Delimiter::Invisible
+            && !delim.skip()
         {
-            let all_normal = (0..dist).all(|i| {
+            // We are not in the outermost token stream, and the token stream
+            // we are in has non-skipped delimiters. Look for skipped
+            // delimiters in the lookahead range.
+            let tree_cursor = &self.token_cursor.tree_cursor;
+            let any_skip = (0..dist).any(|i| {
+                // There were no skipped delimiters. Do lookahead by plain indexing.
                 let token = tree_cursor.look_ahead(i);
-                !matches!(token, Some(TokenTree::Delimited(_, Delimiter::Invisible, _)))
+                matches!(token, Some(TokenTree::Delimited(_, delim, _)) if delim.skip())
             });
-            if all_normal {
+            if !any_skip {
+                // There were no skipped delimiters. Do lookahead by plain indexing.
                 return match tree_cursor.look_ahead(dist - 1) {
-                    Some(tree) => match tree {
-                        TokenTree::Token(token, _) => looker(token),
-                        TokenTree::Delimited(dspan, delim, _) => {
-                            looker(&Token::new(token::OpenDelim(*delim), dspan.open))
+                    Some(tree) => {
+                        // Indexing stayed within the current token stream.
+                        match tree {
+                            TokenTree::Token(token, _) => looker(token),
+                            TokenTree::Delimited(dspan, delim, _) => {
+                                looker(&Token::new(token::OpenDelim(*delim), dspan.open))
+                            }
                         }
-                    },
-                    None => looker(&Token::new(token::CloseDelim(delim), span.close)),
+                    }
+                    None => {
+                        // Indexing went past the end of the current token
+                        // stream. Use the close delimiter, no matter how far
+                        // ahead `dist` went.
+                        looker(&Token::new(token::CloseDelim(delim), span.close))
+                    }
                 };
             }
         }
 
+        // We are in a more complex case. Just clone the token cursor and use
+        // `next`, skipping delimiters as necessary. Slow but simple.
         let mut cursor = self.token_cursor.clone();
         let mut i = 0;
         let mut token = Token::dummy();
@@ -1086,13 +1175,39 @@ impl<'a> Parser<'a> {
             token = cursor.next().0;
             if matches!(
                 token.kind,
-                token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible)
+                token::OpenDelim(delim) | token::CloseDelim(delim) if delim.skip()
             ) {
                 continue;
             }
             i += 1;
         }
         looker(&token)
+    }
+
+    /// njn: comment, explain non-zero dist requirements
+    pub fn tree_look_ahead<R: std::fmt::Debug>(
+        // njn: remove Debug
+        &self,
+        dist: usize,
+        looker: impl FnOnce(&Token) -> R,
+    ) -> Option<R> {
+        assert_ne!(dist, 0);
+
+        let tree_cursor = self.token_cursor.tree_cursor.clone();
+        // njn: remove x and y
+        let x = tree_cursor.look_ahead(dist - 1);
+        //eprintln!("x = `{x:#?}`");
+        match x {
+            Some(TokenTree::Token(token, _)) => {
+                let y = Some(looker(token));
+                //eprintln!("=> {y:?}");
+                y
+            }
+            _ => {
+                //eprintln!("=> None");
+                None
+            }
+        }
     }
 
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
@@ -1137,7 +1252,7 @@ impl<'a> Parser<'a> {
         // Avoid const blocks and const closures to be parsed as const items
         if (self.check_const_closure() == is_closure)
             && !self
-                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
+                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block())
             && self.eat_keyword_case(kw::Const, case)
         {
             Const::Yes(self.prev_token.uninterpolated_span())
@@ -1298,7 +1413,15 @@ impl<'a> Parser<'a> {
     /// so emit a proper diagnostic.
     // Public for rustfmt usage.
     pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
-        maybe_whole!(self, NtVis, |x| x.into_inner());
+        if let Some(vis) = maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::Vis,
+            NonterminalKind::Vis,
+            ParseNtResult::Vis(vis),
+            vis
+        ) {
+            return Ok(vis.into_inner());
+        }
 
         if !self.eat_keyword(kw::Pub) {
             // We need a span for our `Spanned<VisibilityKind>`, but there's inherently no
@@ -1430,6 +1553,20 @@ impl<'a> Parser<'a> {
     pub fn approx_token_stream_pos(&self) -> usize {
         self.num_bump_calls
     }
+
+    // njn: comment
+    // njn: rename?
+    pub fn uninterpolated_token_span(&self) -> Span {
+        match self.token.kind {
+            token::InterpolatedIdent(_, _, uninterpolated_span)
+            | token::InterpolatedLifetime(_, uninterpolated_span) => uninterpolated_span,
+            token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(_))) => {
+                // njn: explain
+                self.token_cursor.tree_cursor.span()
+            }
+            _ => self.token.span,
+        }
+    }
 }
 
 pub(crate) fn make_unclosed_delims_error(
@@ -1475,8 +1612,26 @@ pub enum FlatToken {
     Empty,
 }
 
-#[derive(Debug)]
-pub enum NtOrTt {
-    Nt(Nonterminal),
+// Metavar captures of various kinds.
+//
+// njn: I'm worried about the `Clone` here when new variants are added for all
+// the metavar kinds... do they need to be Lrc<> instead of P<>? Or should
+// `MatchedSingle` wrap its `ParseNtResult` in Lrc?
+#[derive(Clone, Debug)]
+pub enum ParseNtResult {
     Tt(TokenTree),
+
+    Item(P<ast::Item>),
+    Block(P<ast::Block>),
+    Stmt(P<ast::Stmt>),
+    PatParam(P<ast::Pat>, /* inferred */ bool),
+    PatWithOr(P<ast::Pat>),
+    Expr(P<ast::Expr>), // njn: combine with Literal?
+    Literal(P<ast::Expr>),
+    Ident(Ident, /* is_raw */ bool),
+    Lifetime(Ident),
+    Ty(P<ast::Ty>),
+    Meta(P<ast::AttrItem>),
+    Path(P<ast::Path>),
+    Vis(P<ast::Visibility>),
 }

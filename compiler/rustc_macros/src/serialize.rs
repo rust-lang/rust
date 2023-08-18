@@ -59,14 +59,14 @@ fn decodable_body(
                 })
                 .collect();
             let message = format!(
-                "invalid enum variant tag while decoding `{}`, expected 0..{}",
+                "invalid enum variant tag while decoding `{}`, expected 0..{}, actual {{}}",
                 ty_name,
                 variants.len()
             );
             quote! {
                 match ::rustc_serialize::Decoder::read_usize(__decoder) {
                     #match_inner
-                    _ => panic!(#message),
+                    n => panic!(#message, n),
                 }
             }
         }

@@ -1,10 +1,11 @@
 use crate::errors::{InvalidMetaItem, SuffixedLiteralInAttribute};
 use crate::fluent_generated as fluent;
+use crate::maybe_reparse_metavar_seq;
 
-use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
+use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, ParseNtResult, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
-use rustc_ast::token::{self, Delimiter, Nonterminal};
+use rustc_ast::token::{self, Delimiter, NonterminalKind};
 use rustc_errors::{error_code, Diagnostic, IntoDiagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
 use std::convert::TryInto;
@@ -248,25 +249,23 @@ impl<'a> Parser<'a> {
     ///     PATH `=` UNSUFFIXED_LIT
     /// The delimiters or `=` are still put into the resulting token stream.
     pub fn parse_attr_item(&mut self, capture_tokens: bool) -> PResult<'a, ast::AttrItem> {
-        let item = match &self.token.kind {
-            token::Interpolated(nt) => match &**nt {
-                Nonterminal::NtMeta(item) => Some(item.clone().into_inner()),
-                _ => None,
-            },
-            _ => None,
-        };
-        Ok(if let Some(item) = item {
-            self.bump();
+        if let Some(item) = maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::Meta,
+            NonterminalKind::Meta,
+            ParseNtResult::Meta(item),
             item
-        } else {
-            let do_parse = |this: &mut Self| {
-                let path = this.parse_path(PathStyle::Mod)?;
-                let args = this.parse_attr_args()?;
-                Ok(ast::AttrItem { path, args, tokens: None })
-            };
-            // Attr items don't have attributes
-            if capture_tokens { self.collect_tokens_no_attrs(do_parse) } else { do_parse(self) }?
-        })
+        ) {
+            return Ok(item.into_inner());
+        }
+
+        let do_parse = |this: &mut Self| {
+            let path = this.parse_path(PathStyle::Mod)?;
+            let args = this.parse_attr_args()?;
+            Ok(ast::AttrItem { path, args, tokens: None })
+        };
+        // Attr items don't have attributes
+        if capture_tokens { self.collect_tokens_no_attrs(do_parse) } else { do_parse(self) }
     }
 
     /// Parses attributes that appear after the opening of an item. These should
@@ -368,20 +367,15 @@ impl<'a> Parser<'a> {
     /// meta_item_inner : (meta_item | UNSUFFIXED_LIT) (',' meta_item_inner)? ;
     /// ```
     pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
-        let nt_meta = match &self.token.kind {
-            token::Interpolated(nt) => match &**nt {
-                token::NtMeta(e) => Some(e.clone()),
-                _ => None,
-            },
-            _ => None,
-        };
-
-        if let Some(item) = nt_meta {
+        if let Some(item) = maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::Meta,
+            NonterminalKind::Meta,
+            ParseNtResult::Meta(item),
+            item
+        ) {
             return match item.meta(item.path.span) {
-                Some(meta) => {
-                    self.bump();
-                    Ok(meta)
-                }
+                Some(meta) => Ok(meta),
                 None => self.unexpected(),
             };
         }

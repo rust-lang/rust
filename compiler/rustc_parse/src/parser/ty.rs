@@ -1,4 +1,4 @@
-use super::{Parser, PathStyle, TokenType};
+use super::{ParseNtResult, Parser, PathStyle, TokenType};
 
 use crate::errors::{
     self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
@@ -6,11 +6,11 @@ use crate::errors::{
     InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, NestedCVariadicType,
     ReturnTypesUseThinArrow,
 };
-use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
+use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_reparse_metavar_seq};
 
 use ast::DUMMY_NODE_ID;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundPolarity, FnRetTy, GenericBound, GenericBounds, GenericParam,
@@ -180,7 +180,7 @@ impl<'a> Parser<'a> {
         )
     }
 
-    pub(super) fn parse_no_question_mark_recover(&mut self) -> PResult<'a, P<Ty>> {
+    pub(super) fn parse_ty_no_question_mark_recover(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
             AllowCVariadic::No,
@@ -191,7 +191,8 @@ impl<'a> Parser<'a> {
         )
     }
 
-    /// Parse a type without recovering `:` as `->` to avoid breaking code such as `where fn() : for<'a>`
+    /// Parse a type without recovering `:` as `->` to avoid breaking code such
+    /// as `where fn() : for<'a>`.
     pub(super) fn parse_ty_for_where_clause(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
@@ -251,7 +252,16 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
-        maybe_whole!(self, NtTy, |x| x);
+
+        if let Some(ty) = maybe_reparse_metavar_seq!(
+            self,
+            NonterminalKind::Ty,
+            NonterminalKind::Ty,
+            ParseNtResult::Ty(ty),
+            ty
+        ) {
+            return Ok(ty);
+        }
 
         let lo = self.token.span;
         let mut impl_dyn_multi = false;
@@ -485,7 +495,7 @@ impl<'a> Parser<'a> {
             mutbl = Mutability::Mut;
             let (dyn_tok, dyn_tok_sp) = (self.token.clone(), self.token_spacing);
             self.bump();
-            self.bump_with((dyn_tok, dyn_tok_sp));
+            self.bump_with(5, (dyn_tok, dyn_tok_sp));
         }
         let ty = self.parse_ty_no_plus()?;
         Ok(TyKind::Ref(opt_lifetime, MutTy { ty, mutbl }))

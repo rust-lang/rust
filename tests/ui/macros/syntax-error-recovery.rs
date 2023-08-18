@@ -9,8 +9,8 @@ macro_rules! values {
         }
     };
 }
-//~^^^^^ ERROR expected one of `(`, `,`, `=`, `{`, or `}`, found `(String)`
-//~| ERROR macro expansion ignores token `(String)` and any following
+//~^^^^^ ERROR expected one of `(`, `,`, `=`, `{`, or `}`, found invisible open delimiter
+//~| ERROR macro expansion ignores invisible open delimiter and any tokens following
 
 values!(STRING(1) as (String) => cfg(test),);
 //~^ ERROR expected one of `!` or `::`, found `<eof>`

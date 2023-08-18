@@ -204,6 +204,9 @@ parse_expected_identifier = expected identifier
 
 parse_expected_identifier_found_doc_comment = expected identifier, found doc comment
 parse_expected_identifier_found_doc_comment_str = expected identifier, found doc comment `{$token}`
+parse_expected_identifier_found_invisible_open_delim = expected identifier, found invisible open delimiter
+# Deliberately doesn't print `$token`, which is empty.
+parse_expected_identifier_found_invisible_open_delim_str = expected identifier, found invisible open delimiter
 parse_expected_identifier_found_keyword = expected identifier, found keyword
 parse_expected_identifier_found_keyword_str = expected identifier, found keyword `{$token}`
 parse_expected_identifier_found_reserved_identifier = expected identifier, found reserved identifier
@@ -216,6 +219,8 @@ parse_expected_mut_or_const_in_raw_pointer_type = expected `mut` or `const` keyw
     .suggestion = add `mut` or `const` here
 
 parse_expected_semi_found_doc_comment_str = expected `;`, found doc comment `{$token}`
+# Deliberately doesn't print `$token`, which is empty.
+parse_expected_semi_found_invisible_open_delim_str = expected `;`, found invisible open delimiter
 parse_expected_semi_found_keyword_str = expected `;`, found keyword `{$token}`
 parse_expected_semi_found_reserved_identifier_str = expected `;`, found reserved identifier `{$token}`
 parse_expected_semi_found_reserved_keyword_str = expected `;`, found reserved keyword `{$token}`
@@ -797,6 +802,8 @@ parse_unexpected_token_after_not_default = use `!` to perform logical negation o
 parse_unexpected_token_after_not_logical = use `!` to perform logical negation
 parse_unexpected_token_after_struct_name = expected `where`, `{"{"}`, `(`, or `;` after struct name
 parse_unexpected_token_after_struct_name_found_doc_comment = expected `where`, `{"{"}`, `(`, or `;` after struct name, found doc comment `{$token}`
+# Deliberately doesn't print `$token`, which is empty.
+parse_unexpected_token_after_struct_name_found_invisible_open_delim = expected `where`, `{"{"}`, `(`, or `;` after struct name, found invisible open delim
 parse_unexpected_token_after_struct_name_found_keyword = expected `where`, `{"{"}`, `(`, or `;` after struct name, found keyword `{$token}`
 parse_unexpected_token_after_struct_name_found_other = expected `where`, `{"{"}`, `(`, or `;` after struct name, found `{$token}`
 
