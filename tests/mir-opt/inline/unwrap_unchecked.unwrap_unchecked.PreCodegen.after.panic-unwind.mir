@@ -6,7 +6,6 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
     scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) {
         debug self => _1;
         let mut _2: isize;
-        let mut _3: &std::option::Option<T>;
         scope 2 {
             debug val => _0;
         }
@@ -19,19 +18,17 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
             }
         }
         scope 4 (inlined Option::<T>::is_some) {
-            debug self => _3;
+            debug self => &_1;
         }
     }
 
     bb0: {
-        StorageLive(_3);
         _2 = discriminant(_1);
         switchInt(move _2) -> [1: bb1, otherwise: bb2];
     }
 
     bb1: {
         _0 = move ((_1 as Some).0: T);
-        StorageDead(_3);
         return;
     }
 
