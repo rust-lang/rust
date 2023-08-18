@@ -885,8 +885,14 @@ impl<'a> NameBindingData<'a> {
 
 #[derive(Default, Clone)]
 struct ExternPreludeEntry<'a> {
-    extern_crate_item: Option<NameBinding<'a>>,
+    binding: Option<NameBinding<'a>>,
     introduced_by_item: bool,
+}
+
+impl ExternPreludeEntry<'_> {
+    fn is_import(&self) -> bool {
+        self.binding.is_some_and(|binding| binding.is_import())
+    }
 }
 
 /// Used for better errors for E0773
@@ -1742,7 +1748,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // but not introduce it, as used if they are accessed from lexical scope.
             if is_lexical_scope {
                 if let Some(entry) = self.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
-                    if !entry.introduced_by_item && entry.extern_crate_item == Some(used_binding) {
+                    if !entry.introduced_by_item && entry.binding == Some(used_binding) {
                         return;
                     }
                 }
@@ -1900,12 +1906,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // Make sure `self`, `super` etc produce an error when passed to here.
             return None;
         }
-        self.extern_prelude.get(&ident.normalize_to_macros_2_0()).cloned().and_then(|entry| {
-            if let Some(binding) = entry.extern_crate_item {
-                if finalize && entry.introduced_by_item {
-                    self.record_use(ident, binding, false);
+
+        let norm_ident = ident.normalize_to_macros_2_0();
+        let binding = self.extern_prelude.get(&norm_ident).cloned().and_then(|entry| {
+            Some(if let Some(binding) = entry.binding {
+                if finalize {
+                    if !entry.is_import() {
+                        self.crate_loader(|c| c.process_path_extern(ident.name, ident.span));
+                    } else if entry.introduced_by_item {
+                        self.record_use(ident, binding, false);
+                    }
                 }
-                Some(binding)
+                binding
             } else {
                 let crate_id = if finalize {
                     let Some(crate_id) =
@@ -1918,10 +1930,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.crate_loader(|c| c.maybe_process_path_extern(ident.name))?
                 };
                 let crate_root = self.expect_module(crate_id.as_def_id());
-                let vis = ty::Visibility::<LocalDefId>::Public;
-                Some((crate_root, vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(self.arenas))
-            }
-        })
+                let vis = ty::Visibility::<DefId>::Public;
+                (crate_root, vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(self.arenas)
+            })
+        });
+
+        if let Some(entry) = self.extern_prelude.get_mut(&norm_ident) {
+            entry.binding = binding;
+        }
+
+        binding
     }
 
     /// Rustdoc uses this to resolve doc link paths in a recoverable way. `PathResult<'a>`
