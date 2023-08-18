@@ -50,16 +50,16 @@ jobs:
       matrix:
         include:
           - name: mingw-check
-            os: ubuntu-20.04-4core-16gb
+            os: self-hosted
             env: {}
           - name: mingw-check-tidy
-            os: ubuntu-20.04-4core-16gb
+            os: self-hosted
             env: {}
           - name: x86_64-gnu-llvm-15
-            os: ubuntu-20.04-16core-64gb
+            os: self-hosted
             env: {}
           - name: x86_64-gnu-tools
-            os: ubuntu-20.04-16core-64gb
+            os: self-hosted
             env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
@@ -71,7 +71,7 @@ jobs:
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
-        run: "echo \"[CI_PR_NUMBER=$num]\""
+        run: 'echo "[CI_PR_NUMBER=$num]"'
         env:
           num: "${{ github.event.number }}"
         if: "success() && !env.SKIP_JOB && github.event_name == 'pull_request'"
@@ -450,7 +450,7 @@ jobs:
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
-        run: "echo \"[CI_PR_NUMBER=$num]\""
+        run: 'echo "[CI_PR_NUMBER=$num]"'
         env:
           num: "${{ github.event.number }}"
         if: "success() && !env.SKIP_JOB && github.event_name == 'pull_request'"
@@ -558,7 +558,7 @@ jobs:
       matrix:
         include:
           - name: dist-x86_64-linux
-            os: ubuntu-20.04-16core-64gb
+            os: self-hosted
             env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
@@ -570,7 +570,7 @@ jobs:
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
-        run: "echo \"[CI_PR_NUMBER=$num]\""
+        run: 'echo "[CI_PR_NUMBER=$num]"'
         env:
           num: "${{ github.event.number }}"
         if: "success() && !env.SKIP_JOB && github.event_name == 'pull_request'"
@@ -659,7 +659,7 @@ jobs:
         if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
   master:
     name: master
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
@@ -691,7 +691,7 @@ jobs:
         run: exit 0
         shell: bash
     name: bors build finished
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
   try-failure:
     needs:
       - try
@@ -701,7 +701,7 @@ jobs:
         run: exit 1
         shell: bash
     name: bors build finished
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
   auto-success:
     needs:
       - auto
@@ -711,7 +711,7 @@ jobs:
         run: exit 0
         shell: bash
     name: bors build finished
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
   auto-failure:
     needs:
       - auto
@@ -721,4 +721,4 @@ jobs:
         run: exit 1
         shell: bash
     name: bors build finished
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
