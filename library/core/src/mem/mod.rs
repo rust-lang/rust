@@ -413,7 +413,7 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(note = "use `align_of` instead", since = "1.2.0")]
+#[deprecated(note = "use `align_of` instead", since = "1.2.0", suggestion = "align_of")]
 pub fn min_align_of<T>() -> usize {
     intrinsics::min_align_of::<T>()
 }
@@ -436,7 +436,7 @@ pub fn min_align_of<T>() -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(note = "use `align_of_val` instead", since = "1.2.0")]
+#[deprecated(note = "use `align_of_val` instead", since = "1.2.0", suggestion = "align_of_val")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: val is a reference, so it's a valid raw pointer
     unsafe { intrinsics::min_align_of_val(val) }
