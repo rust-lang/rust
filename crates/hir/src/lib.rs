@@ -88,7 +88,7 @@ use triomphe::Arc;
 use crate::db::{DefDatabase, HirDatabase};
 
 pub use crate::{
-    attrs::{DocLinkDef, HasAttrs, Namespace},
+    attrs::{DocLinkDef, HasAttrs},
     diagnostics::{
         AnyDiagnostic, BreakOutsideOfLoop, CaseType, ExpectedFunction, InactiveCode,
         IncoherentImpl, IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError,
@@ -122,6 +122,7 @@ pub use {
         lang_item::LangItem,
         nameres::{DefMap, ModuleSource},
         path::{ModPath, PathKind},
+        per_ns::Namespace,
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
         // FIXME: This is here since some queries take it as input that are used

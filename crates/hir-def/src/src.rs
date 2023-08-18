@@ -5,8 +5,8 @@ use la_arena::ArenaMap;
 use syntax::ast;
 
 use crate::{
-    db::DefDatabase, item_tree::ItemTreeNode, AssocItemLoc, ItemLoc, Macro2Loc, MacroRulesLoc,
-    ProcMacroLoc,
+    db::DefDatabase, item_tree::ItemTreeNode, AssocItemLoc, ItemLoc, Lookup, Macro2Loc,
+    MacroRulesLoc, ProcMacroLoc, UseId,
 };
 
 pub trait HasSource {
@@ -82,4 +82,19 @@ impl HasSource for ProcMacroLoc {
 pub trait HasChildSource<ChildId> {
     type Value;
     fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<ChildId, Self::Value>>;
+}
+
+impl HasChildSource<la_arena::Idx<ast::UseTree>> for UseId {
+    type Value = ast::UseTree;
+    fn child_source(
+        &self,
+        db: &dyn DefDatabase,
+    ) -> InFile<ArenaMap<la_arena::Idx<ast::UseTree>, Self::Value>> {
+        let loc = &self.lookup(db);
+        let use_ = &loc.id.item_tree(db)[loc.id.value];
+        InFile::new(
+            loc.id.file_id(),
+            use_.use_tree_source_map(db, loc.id.file_id()).into_iter().collect(),
+        )
+    }
 }

@@ -4,6 +4,7 @@ use hir_def::{
     attr::{AttrsWithOwner, Documentation},
     item_scope::ItemInNs,
     path::{ModPath, Path},
+    per_ns::Namespace,
     resolver::{HasResolver, Resolver, TypeNs},
     AssocItemId, AttrDefId, GenericParamId, ModuleDefId,
 };
@@ -26,13 +27,6 @@ pub trait HasAttrs {
         link: &str,
         ns: Option<Namespace>,
     ) -> Option<DocLinkDef>;
-}
-
-#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
-pub enum Namespace {
-    Types,
-    Values,
-    Macros,
 }
 
 /// Subset of `ide_db::Definition` that doc links can resolve to.

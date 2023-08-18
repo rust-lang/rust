@@ -9,6 +9,13 @@ use crate::{
     MacroId, ModuleDefId,
 };
 
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+pub enum Namespace {
+    Types,
+    Values,
+    Macros,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PerNs {
     pub types: Option<(ModuleDefId, Visibility, Option<ImportOrExternCrate>)>,
