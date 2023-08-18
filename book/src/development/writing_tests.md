@@ -191,15 +191,16 @@ and prepending the `TESTNAME` variable to `cargo uitest` works for Cargo lints t
 
 ## Rustfix Tests
 
-If the lint you are working on is making use of structured suggestions, the test
-file should include a `// run-rustfix` comment at the top.
+If the lint you are working on is making use of structured suggestions,
+[`rustfix`] will apply the suggestions from the lint to the test file code and
+compare that to the contents of a `.fixed` file.
 
 Structured suggestions tell a user how to fix or re-write certain code that has
 been linted with [`span_lint_and_sugg`].
 
-The `// run-rustfix` comment will additionally run [rustfix] for our test.
-Rustfix will apply the suggestions from the lint to the test file code and
-compare that to the contents of a `.fixed` file.
+Should `span_lint_and_sugg` be used to generate a suggestion, but not all
+suggestions lead to valid code, you can use the `//@no-rustfix` comment on top
+of the test file, to not run `rustfix` on that file.
 
 We'll talk about suggestions more in depth in a later chapter.
 <!-- FIXME: (blyxyas) Link to "Emitting lints" when that gets merged -->
@@ -207,7 +208,7 @@ We'll talk about suggestions more in depth in a later chapter.
 Use `cargo bless` to automatically generate the `.fixed` file after running
 the tests.
 
-[rustfix]: https://github.com/rust-lang/rustfix
+[`rustfix`]: https://github.com/rust-lang/rustfix
 [`span_lint_and_sugg`]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_sugg.html
 
 ## Testing Manually
