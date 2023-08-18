@@ -1,5 +1,20 @@
 error[E0308]: mismatched types
-  --> $DIR/copied-and-cloned.rs:7:26
+  --> $DIR/copied-and-cloned.rs:10:13
+   |
+LL |     lol.x = x.clone();
+   |     -----   ^^^^^^^^^ expected `Option<String>`, found `Option<&String>`
+   |     |
+   |     expected due to the type of this binding
+   |
+   = note: expected enum `Option<String>`
+              found enum `Option<&String>`
+help: use `Option::cloned` to clone the value inside the `Option`
+   |
+LL |     lol.x = x.clone().cloned();
+   |                      +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/copied-and-cloned.rs:17:26
    |
 LL |     expect::<Option<()>>(x);
    |     -------------------- ^ expected `Option<()>`, found `Option<&()>`
@@ -19,7 +34,7 @@ LL |     expect::<Option<()>>(x.copied());
    |                           +++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/copied-and-cloned.rs:11:30
+  --> $DIR/copied-and-cloned.rs:21:30
    |
 LL |     expect::<Result<(), ()>>(x);
    |     ------------------------ ^ expected `Result<(), ()>`, found `Result<&(), _>`
@@ -39,7 +54,7 @@ LL |     expect::<Result<(), ()>>(x.copied());
    |                               +++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/copied-and-cloned.rs:16:30
+  --> $DIR/copied-and-cloned.rs:26:30
    |
 LL |     expect::<Option<String>>(x);
    |     ------------------------ ^ expected `Option<String>`, found `Option<&String>`
@@ -59,7 +74,7 @@ LL |     expect::<Option<String>>(x.cloned());
    |                               +++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/copied-and-cloned.rs:20:34
+  --> $DIR/copied-and-cloned.rs:30:34
    |
 LL |     expect::<Result<String, ()>>(x);
    |     ---------------------------- ^ expected `Result<String, ()>`, found `Result<&String, _>`
@@ -79,20 +94,20 @@ LL |     expect::<Result<String, ()>>(x.cloned());
    |                                   +++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/copied-and-cloned.rs:27:25
+  --> $DIR/copied-and-cloned.rs:37:25
    |
 LL |     println!("{}", x == y);
    |                         ^ expected `Option<String>`, found `Option<&String>`
    |
    = note: expected enum `Option<String>`
               found enum `Option<&String>`
-help: use `Option::as_ref` to convert `Option<String>` to `Option<&String>`
+help: use `Option::cloned` to clone the value inside the `Option`
    |
-LL |     println!("{}", x.as_ref() == y);
-   |                     +++++++++
+LL |     println!("{}", x == y.cloned());
+   |                          +++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/copied-and-cloned.rs:35:25
+  --> $DIR/copied-and-cloned.rs:45:25
    |
 LL |     println!("{}", x == y);
    |                         ^ expected `Option<()>`, found `Option<&mut ()>`
@@ -105,7 +120,7 @@ LL |     println!("{}", x == y.copied());
    |                          +++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/copied-and-cloned.rs:42:25
+  --> $DIR/copied-and-cloned.rs:52:25
    |
 LL |     println!("{}", x == y);
    |                         ^ expected `Option<String>`, found `Option<&mut String>`
@@ -117,6 +132,6 @@ help: use `Option::cloned` to clone the value inside the `Option`
 LL |     println!("{}", x == y.cloned());
    |                          +++++++++
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
