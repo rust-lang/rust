@@ -301,7 +301,7 @@ declare_clippy_lint! {
     /// let val2 = 1;
     /// let val3 = 1;
     /// ```
-    #[clippy::version = "1.69.0"]
+    #[clippy::version = "1.72.0"]
     pub UNNECESSARY_LITERAL_UNWRAP,
     complexity,
     "using `unwrap()` related calls on `Result` and `Option` constructors"
@@ -3328,7 +3328,7 @@ declare_clippy_lint! {
     ///     mem::take(v)
     /// }
     /// ```
-    #[clippy::version = "1.71.0"]
+    #[clippy::version = "1.72.0"]
     pub DRAIN_COLLECT,
     perf,
     "calling `.drain(..).collect()` to move all elements into a new collection"

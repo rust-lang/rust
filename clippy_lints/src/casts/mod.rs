@@ -418,7 +418,7 @@ declare_clippy_lint! {
     /// let mut_ptr = ptr.cast_mut();
     /// let ptr = mut_ptr.cast_const();
     /// ```
-    #[clippy::version = "1.71.0"]
+    #[clippy::version = "1.72.0"]
     pub PTR_CAST_CONSTNESS,
     pedantic,
     "casting using `as` from and to raw pointers to change constness when specialized methods apply"
