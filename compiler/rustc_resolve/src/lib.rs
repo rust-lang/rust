@@ -519,7 +519,7 @@ struct ModuleData<'a> {
 
 /// All modules are unique and allocated on a same arena,
 /// so we can use referential equality to compare them.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[rustc_pass_by_value]
 struct Module<'a>(Interned<'a, ModuleData<'a>>);
 
@@ -1007,6 +1007,9 @@ pub struct Resolver<'a, 'tcx> {
     builtin_types_bindings: FxHashMap<Symbol, NameBinding<'a>>,
     builtin_attrs_bindings: FxHashMap<Symbol, NameBinding<'a>>,
     registered_tool_bindings: FxHashMap<Ident, NameBinding<'a>>,
+    /// Binding for implicitly declared names that come with a module,
+    /// like `self` (not yet used), or `crate`/`$crate` (for root modules).
+    module_self_bindings: FxHashMap<Module<'a>, NameBinding<'a>>,
 
     used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
@@ -1122,6 +1125,7 @@ impl<'a> ResolverArenas<'a> {
         span: Span,
         no_implicit_prelude: bool,
         module_map: &mut FxHashMap<DefId, Module<'a>>,
+        module_self_bindings: &mut FxHashMap<Module<'a>, NameBinding<'a>>,
     ) -> Module<'a> {
         let module = Module(Interned::new_unchecked(self.modules.alloc(ModuleData::new(
             parent,
@@ -1136,6 +1140,9 @@ impl<'a> ResolverArenas<'a> {
         }
         if let Some(def_id) = def_id {
             module_map.insert(def_id, module);
+            let vis = ty::Visibility::<DefId>::Public;
+            let binding = (module, vis, module.span, LocalExpnId::ROOT).to_name_binding(self);
+            module_self_bindings.insert(module, binding);
         }
         module
     }
@@ -1247,6 +1254,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) -> Resolver<'a, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
         let mut module_map = FxHashMap::default();
+        let mut module_self_bindings = FxHashMap::default();
         let graph_root = arenas.new_module(
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
@@ -1254,6 +1262,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             crate_span,
             attr::contains_name(attrs, sym::no_implicit_prelude),
             &mut module_map,
+            &mut module_self_bindings,
         );
         let empty_module = arenas.new_module(
             None,
@@ -1261,6 +1270,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ExpnId::root(),
             DUMMY_SP,
             true,
+            &mut FxHashMap::default(),
             &mut FxHashMap::default(),
         );
 
@@ -1368,6 +1378,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     (*ident, binding)
                 })
                 .collect(),
+            module_self_bindings,
 
             used_extern_options: Default::default(),
             macro_names: FxHashSet::default(),
@@ -1437,7 +1448,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         no_implicit_prelude: bool,
     ) -> Module<'a> {
         let module_map = &mut self.module_map;
-        self.arenas.new_module(parent, kind, expn_id, span, no_implicit_prelude, module_map)
+        let module_self_bindings = &mut self.module_self_bindings;
+        self.arenas.new_module(
+            parent,
+            kind,
+            expn_id,
+            span,
+            no_implicit_prelude,
+            module_map,
+            module_self_bindings,
+        )
     }
 
     fn next_node_id(&mut self) -> NodeId {
