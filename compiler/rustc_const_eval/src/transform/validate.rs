@@ -699,7 +699,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 return;
                             };
 
-                            f_ty.ty
+                            ty::EarlyBinder::bind(f_ty.ty).instantiate(self.tcx, args)
                         } else {
                             let Some(&f_ty) = args.as_generator().prefix_tys().get(f.index())
                             else {
