@@ -24,7 +24,7 @@ that contains the code we want to check.
 
 The output of Clippy is compared against a `.stderr` file. Note that you don't
 have to create this file yourself. We'll get to generating the `.stderr` files
-with the command [`cargo dev bless`](#cargo-dev-bless) (seen later on).
+with the command [`cargo bless`](#cargo-bless) (seen later on).
 
 ### Write Test Cases
 
@@ -41,20 +41,20 @@ Update the file with some examples to get started:
 struct A;
 impl A {
     pub fn fo(&self) {}
-    pub fn foo(&self) {}
+    pub fn foo(&self) {} //~ ERROR: function called "foo"
     pub fn food(&self) {}
 }
 
 // Default trait methods
 trait B {
     fn fo(&self) {}
-    fn foo(&self) {}
+    fn foo(&self) {} //~ ERROR: function called "foo"
     fn food(&self) {}
 }
 
 // Plain functions
 fn fo() {}
-fn foo() {}
+fn foo() {} //~ ERROR: function called "foo"
 fn food() {}
 
 fn main() {
@@ -126,27 +126,22 @@ Note the *failures* label at the top of the fragment, we'll get rid of it
 > _Note:_ You can run multiple test files by specifying a comma separated list:
 > `TESTNAME=foo_functions,bar_methods,baz_structs`.
 
-### `cargo dev bless`
+### `cargo bless`
 
 Once we are satisfied with the output, we need to run this command to
 generate or update the `.stderr` file for our lint:
 
 ```sh
-$ TESTNAME=foo_functions cargo uitest
-# (Output is as we want it to be)
-$ cargo dev bless
+$ TESTNAME=foo_functions cargo uibless
 ```
 
-This write the emitted lint suggestions and fixes to the `.stderr` file,
-with the reason for the lint, suggested fixes, and line numbers, etc.
-
-> _Note:_ we need to run `TESTNAME=foo_functions cargo uitest` every time before
-> we run `cargo dev bless`.
+This writes the emitted lint suggestions and fixes to the `.stderr` file, with
+the reason for the lint, suggested fixes, and line numbers, etc.
 
 Running `TESTNAME=foo_functions cargo uitest` should pass then. When we commit
 our lint, we need to commit the generated `.stderr` files, too.
 
-In general, you should only commit files changed by `cargo dev bless` for the
+In general, you should only commit files changed by `cargo bless` for the
 specific lint you are creating/editing.
 
 > _Note:_ If the generated `.stderr`, and `.fixed` files are empty,
@@ -165,7 +160,7 @@ To add a new test there, create a new directory and add the files:
   `clippy.toml` file.
 
 The potential `.stderr` and `.fixed` files can again be generated with `cargo
-dev bless`.
+bless`.
 
 ## Cargo Lints
 
@@ -209,7 +204,7 @@ compare that to the contents of a `.fixed` file.
 We'll talk about suggestions more in depth in a later chapter.
 <!-- FIXME: (blyxyas) Link to "Emitting lints" when that gets merged -->
 
-Use `cargo dev bless` to automatically generate the `.fixed` file after running
+Use `cargo bless` to automatically generate the `.fixed` file after running
 the tests.
 
 [rustfix]: https://github.com/rust-lang/rustfix
