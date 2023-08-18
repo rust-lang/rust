@@ -51,7 +51,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `NewNotEqualToDerive`
-  --> $DIR/new_without_default.rs:177:5
+  --> $DIR/new_without_default.rs:176:5
    |
 LL | /     pub fn new() -> Self {
 LL | |         NewNotEqualToDerive { foo: 1 }
@@ -68,7 +68,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `FooGenerics<T>`
-  --> $DIR/new_without_default.rs:185:5
+  --> $DIR/new_without_default.rs:184:5
    |
 LL | /     pub fn new() -> Self {
 LL | |         Self(Default::default())
@@ -85,7 +85,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `BarGenerics<T>`
-  --> $DIR/new_without_default.rs:192:5
+  --> $DIR/new_without_default.rs:191:5
    |
 LL | /     pub fn new() -> Self {
 LL | |         Self(Default::default())
@@ -102,7 +102,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `Foo<T>`
-  --> $DIR/new_without_default.rs:203:9
+  --> $DIR/new_without_default.rs:202:9
    |
 LL | /         pub fn new() -> Self {
 LL | |             todo!()
@@ -120,5 +120,25 @@ LL +
 LL ~     impl<T> Foo<T> {
    |
 
-error: aborting due to 7 previous errors
+error: you should consider adding a `Default` implementation for `MyStruct<K, V>`
+  --> $DIR/new_without_default.rs:247:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |         Self { _kv: None }
+LL | |     }
+   | |_____^
+   |
+help: try adding this
+   |
+LL + impl<K, V> Default for MyStruct<K, V>
+LL + where
+LL +     K: std::hash::Hash + Eq + PartialEq,
+LL +  {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+   |
+
+error: aborting due to 8 previous errors
 

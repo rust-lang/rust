@@ -84,7 +84,6 @@ impl<'c> LtKo<'c> {
     pub fn new() -> LtKo<'c> {
         unimplemented!()
     }
-    // FIXME: that suggestion is missing lifetimes
 }
 
 struct Private;
@@ -229,5 +228,23 @@ pub struct IgnoreLifetimeNew;
 impl IgnoreLifetimeNew {
     pub fn new<'a>() -> Self {
         Self
+    }
+}
+
+// From issue #11267
+
+pub struct MyStruct<K, V>
+where
+    K: std::hash::Hash + Eq + PartialEq,
+{
+    _kv: Option<(K, V)>,
+}
+
+impl<K, V> MyStruct<K, V>
+where
+    K: std::hash::Hash + Eq + PartialEq,
+{
+    pub fn new() -> Self {
+        Self { _kv: None }
     }
 }
