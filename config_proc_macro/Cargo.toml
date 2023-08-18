@@ -3,7 +3,7 @@ name = "rustfmt-config_proc_macro"
 version = "0.3.0"
 edition = "2018"
 description = "A collection of procedural macros for rustfmt"
-license = "Apache-2.0/MIT"
+license = "Apache-2.0 OR MIT"
 categories = ["development-tools::procedural-macro-helpers"]
 repository = "https://github.com/rust-lang/rustfmt"
 
