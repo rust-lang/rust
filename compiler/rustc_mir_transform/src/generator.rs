@@ -1151,8 +1151,11 @@ fn create_generator_drop_shim<'tcx>(
     simplify::remove_dead_blocks(tcx, &mut body);
 
     // Update the body's def to become the drop glue.
+    // This needs to be updated before the AbortUnwindingCalls pass.
+    let gen_instance = body.source.instance;
     let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, None);
-    body.source.instance = InstanceDef::DropGlue(drop_in_place, Some(gen_ty));
+    let drop_instance = InstanceDef::DropGlue(drop_in_place, Some(gen_ty));
+    body.source.instance = drop_instance;
 
     pm::run_passes_no_validate(
         tcx,
@@ -1161,7 +1164,11 @@ fn create_generator_drop_shim<'tcx>(
         None,
     );
 
+    // Temporary change MirSource to generator's instance so that dump_mir produces more sensible
+    // filename.
+    body.source.instance = gen_instance;
     dump_mir(tcx, false, "generator_drop", &0, &body, |_, _| Ok(()));
+    body.source.instance = drop_instance;
 
     body
 }
