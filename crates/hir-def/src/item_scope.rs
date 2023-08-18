@@ -16,8 +16,8 @@ use syntax::ast;
 
 use crate::{
     db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ConstId,
-    ExternCrateId, HasModule, ImplId, LocalModuleId, MacroId, ModuleDefId, ModuleId, TraitId,
-    UseId,
+    ExternCrateId, HasModule, ImplId, LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId,
+    TraitId, UseId,
 };
 
 #[derive(Debug, Default)]
@@ -55,7 +55,7 @@ pub enum ImportOrDef {
     ExternCrate(ExternCrateId),
     Def(ModuleDefId),
 }
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ImportId {
     pub import: UseId,
     pub idx: Idx<ast::UseTree>,
@@ -142,9 +142,75 @@ impl ItemScope {
             .chain(self.values.keys())
             .chain(self.macros.keys())
             .chain(self.unresolved.iter())
-            .sorted()
             .unique()
+            .sorted()
             .map(move |name| (name, self.get(name)))
+    }
+
+    pub fn imports(&self) -> impl Iterator<Item = ImportId> + '_ {
+        self.use_imports_types
+            .keys()
+            .copied()
+            .filter_map(ImportOrExternCrate::into_import)
+            .chain(self.use_imports_values.keys().copied())
+            .chain(self.use_imports_macros.keys().copied())
+            .unique()
+            .sorted()
+    }
+
+    pub fn fully_resolve_import(&self, db: &dyn DefDatabase, mut import: ImportId) -> PerNs {
+        let mut res = PerNs::none();
+
+        let mut def_map;
+        let mut scope = self;
+        while let Some(&m) = scope.use_imports_macros.get(&import) {
+            match m {
+                ImportOrDef::Import(i) => {
+                    let module_id = i.import.lookup(db).container;
+                    def_map = module_id.def_map(db);
+                    scope = &def_map[module_id.local_id].scope;
+                    import = i;
+                }
+                ImportOrDef::Def(ModuleDefId::MacroId(def)) => {
+                    res.macros = Some((def, Visibility::Public, None));
+                    break;
+                }
+                _ => break,
+            }
+        }
+        let mut scope = self;
+        while let Some(&m) = scope.use_imports_types.get(&ImportOrExternCrate::Import(import)) {
+            match m {
+                ImportOrDef::Import(i) => {
+                    let module_id = i.import.lookup(db).container;
+                    def_map = module_id.def_map(db);
+                    scope = &def_map[module_id.local_id].scope;
+                    import = i;
+                }
+                ImportOrDef::Def(def) => {
+                    res.types = Some((def, Visibility::Public, None));
+                    break;
+                }
+                _ => break,
+            }
+        }
+        let mut scope = self;
+        while let Some(&m) = scope.use_imports_values.get(&import) {
+            match m {
+                ImportOrDef::Import(i) => {
+                    let module_id = i.import.lookup(db).container;
+                    def_map = module_id.def_map(db);
+                    scope = &def_map[module_id.local_id].scope;
+                    import = i;
+                }
+                ImportOrDef::Def(def) => {
+                    res.values = Some((def, Visibility::Public, None));
+                    break;
+                }
+                _ => break,
+            }
+        }
+        res
     }
 
     pub fn declarations(&self) -> impl Iterator<Item = ModuleDefId> + '_ {

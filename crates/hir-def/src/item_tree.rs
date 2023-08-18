@@ -773,6 +773,19 @@ impl Use {
             lower::lower_use_tree(db, &hygiene, ast_use_tree).expect("failed to lower use tree");
         source_map[index].clone()
     }
+    /// Maps a `UseTree` contained in this import back to its AST node.
+    pub fn use_tree_source_map(
+        &self,
+        db: &dyn DefDatabase,
+        file_id: HirFileId,
+    ) -> Arena<ast::UseTree> {
+        // Re-lower the AST item and get the source map.
+        // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
+        let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
+        let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
+        let hygiene = Hygiene::new(db.upcast(), file_id);
+        lower::lower_use_tree(db, &hygiene, ast_use_tree).expect("failed to lower use tree").1
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

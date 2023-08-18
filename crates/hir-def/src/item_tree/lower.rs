@@ -780,7 +780,7 @@ impl UseTreeLowering<'_> {
     }
 }
 
-pub(super) fn lower_use_tree(
+pub(crate) fn lower_use_tree(
     db: &dyn DefDatabase,
     hygiene: &Hygiene,
     tree: ast::UseTree,
