@@ -65,7 +65,7 @@ $ export RUST_COMPILER_RT_ROOT="$PWD/llvm/compiler-rt"
 Then you can run commands like this:
 
 ```bash
-$ ./prepare.sh # download and patch sysroot src and install hyperfine for benchmarking
+$ ./y.sh prepare # download and patch sysroot src and install hyperfine for benchmarking
 $ LIBRARY_PATH=$(cat gcc_path) LD_LIBRARY_PATH=$(cat gcc_path) ./build.sh --release
 ```
 
