@@ -6,18 +6,105 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[435a8ad8...master](https://github.com/rust-lang/rust-clippy/compare/435a8ad8...master)
+[37f4c172...master](https://github.com/rust-lang/rust-clippy/compare/37f4c172...master)
+
+## Rust 1.72
+
+Current beta, released 2023-08-24
+
+[View all 131 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-05-22T14%3A53%3A59Z..2023-07-01T22%3A57%3A20Z+base%3Amaster)
+
+### New Lints
+
+* [`manual_try_fold`]
+  [#11012](https://github.com/rust-lang/rust-clippy/pull/11012)
+* [`tuple_array_conversions`]
+  [#11020](https://github.com/rust-lang/rust-clippy/pull/11020)
+* [`redundant_at_rest_pattern`]
+  [#11013](https://github.com/rust-lang/rust-clippy/pull/11013)
+* [`needless_pub_self`]
+  [#10967](https://github.com/rust-lang/rust-clippy/pull/10967)
+* [`pub_with_shorthand`]
+  [#10967](https://github.com/rust-lang/rust-clippy/pull/10967)
+* [`pub_without_shorthand`]
+  [#10967](https://github.com/rust-lang/rust-clippy/pull/10967)
+* [`manual_range_patterns`]
+  [#10968](https://github.com/rust-lang/rust-clippy/pull/10968)
+* [`needless_raw_string_hashes`]
+  [#10884](https://github.com/rust-lang/rust-clippy/pull/10884)
+* [`needless_raw_strings`]
+  [#10884](https://github.com/rust-lang/rust-clippy/pull/10884)
+* [`incorrect_clone_impl_on_copy_type`]
+  [#10925](https://github.com/rust-lang/rust-clippy/pull/10925)
+* [`drain_collect`]
+  [#10835](https://github.com/rust-lang/rust-clippy/pull/10835)
+* [`single_range_in_vec_init`]
+  [#10934](https://github.com/rust-lang/rust-clippy/pull/10934)
+* [`unnecessary_literal_unwrap`]
+  [#10358](https://github.com/rust-lang/rust-clippy/pull/10358)
+* [`large_stack_frames`]
+  [#10827](https://github.com/rust-lang/rust-clippy/pull/10827)
+* [`min_ident_chars`]
+  [#10916](https://github.com/rust-lang/rust-clippy/pull/10916)
+* [`needless_if`]
+  [#10921](https://github.com/rust-lang/rust-clippy/pull/10921)
+* [`excessive_nesting`]
+  [#10672](https://github.com/rust-lang/rust-clippy/pull/10672)
+* [`arc_with_non_send_sync`]
+  [#10898](https://github.com/rust-lang/rust-clippy/pull/10898)
+* [`redundant_type_annotations`]
+  [#10570](https://github.com/rust-lang/rust-clippy/pull/10570)
+* [`host_endian_bytes`]
+  [#10826](https://github.com/rust-lang/rust-clippy/pull/10826)
+* [`little_endian_bytes`]
+  [#10826](https://github.com/rust-lang/rust-clippy/pull/10826)
+* [`big_endian_bytes`]
+  [#10826](https://github.com/rust-lang/rust-clippy/pull/10826)
+* [`ptr_cast_constness`]
+  [#10779](https://github.com/rust-lang/rust-clippy/pull/10779)
+* [`needless_else`]
+  [#10810](https://github.com/rust-lang/rust-clippy/pull/10810)
+
+### Moves and Deprecations
+
+* Moved [`redundant_clone`] to `nursery` (Now allow-by-default)
+  [#10873](https://github.com/rust-lang/rust-clippy/pull/10873)
+
+### Enhancements
+
+* [`undocumented_unsafe_blocks`]: Added [`accept-comment-above-attributes`] configuration
+  [#10986](https://github.com/rust-lang/rust-clippy/pull/10986)
+* [`undocumented_unsafe_blocks`]: Added [`accept-comment-above-statement`] configuration.
+  [#10886](https://github.com/rust-lang/rust-clippy/pull/10886)
+* [`missing_panics_doc`]: No longer lints on `todo!()`
+  [#10976](https://github.com/rust-lang/rust-clippy/pull/10976)
+* [`module_inception`]: Added `allow-private-module-inception` configuration.
+  [#10917](https://github.com/rust-lang/rust-clippy/pull/10917)
+* Errors and warnings generated while parsing `clippy.toml` now point to the location in the TOML
+  file the error/warning occurred in.
+  [#10607](https://github.com/rust-lang/rust-clippy/pull/10607)
+
+### False Positive Fixes
+
+* [`excessive_precision`]: No longer lints overflowing literals
+  [#10952](https://github.com/rust-lang/rust-clippy/pull/10952)
+
+### Suggestion Fixes/Improvements
+
+* [`option_map_unwrap_or`]: The suggestion now considers the set [`msrv`] config value
+  [#11030](https://github.com/rust-lang/rust-clippy/pull/11030)
+
+### Documentation Improvements
+
+* [Clippy's lint list] now stores filter parameters in the URL, to allow easy sharing
+  [#10834](https://github.com/rust-lang/rust-clippy/pull/10834)
 
 ## Rust 1.71
 
 Current stable, released 2023-07-13
 
-<!-- FIXME: Remove the request for feedback, with the next changelog -->
-
-We're trying out a new shorter changelog format, that only contains significant changes.
-You can check out the list of merged pull requests for a list of all changes.
-If you have any feedback related to the new format, please share it in 
-[#10847](https://github.com/rust-lang/rust-clippy/issues/10847)
+Note: Clippy will use a shorter changelog format from now on, if you want a detailed list of
+all changes, please check out the list of merged pull requests.
 
 [View all 78 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-04-11T20%3A05%3A26Z..2023-05-20T13%3A48%3A17Z+base%3Amaster)
 
@@ -4677,6 +4764,7 @@ Released 2018-09-13
 [pull3665]: https://github.com/rust-lang/rust-clippy/pull/3665
 [adding_lints]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/adding_lints.md
 [`README.md`]: https://github.com/rust-lang/rust-clippy/blob/master/README.md
+[Clippy's lint list]: https://rust-lang.github.io/rust-clippy/master/index.html
 
 <!-- lint disable no-unused-definitions -->
 <!-- begin autogenerated links to lint list -->
