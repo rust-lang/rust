@@ -1006,6 +1006,7 @@ pub struct Resolver<'a, 'tcx> {
     dummy_binding: NameBinding<'a>,
     builtin_types_bindings: FxHashMap<Symbol, NameBinding<'a>>,
     builtin_attrs_bindings: FxHashMap<Symbol, NameBinding<'a>>,
+    registered_tool_bindings: FxHashMap<Ident, NameBinding<'a>>,
 
     used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
@@ -1357,6 +1358,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let binding =
                         (res, pub_vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(arenas);
                     (builtin_attr.name, binding)
+                })
+                .collect(),
+            registered_tool_bindings: registered_tools
+                .iter()
+                .map(|ident| {
+                    let binding = (Res::ToolMod, pub_vis, ident.span, LocalExpnId::ROOT)
+                        .to_name_binding(arenas);
+                    (*ident, binding)
                 })
                 .collect(),
 
