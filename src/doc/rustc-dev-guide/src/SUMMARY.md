@@ -139,6 +139,7 @@
     - [Tracking moves and initialization](./borrow_check/moves_and_initialization.md)
         - [Move paths](./borrow_check/moves_and_initialization/move_paths.md)
     - [MIR type checker](./borrow_check/type_check.md)
+    - [Drop check](./borrow_check/drop_check.md)
     - [Region inference](./borrow_check/region_inference.md)
         - [Constraint propagation](./borrow_check/region_inference/constraint_propagation.md)
         - [Lifetime parameters](./borrow_check/region_inference/lifetime_parameters.md)
