@@ -4001,9 +4001,11 @@ impl Methods {
                     manual_try_fold::check(cx, expr, init, acc, call_span, &self.msrv);
                     unnecessary_fold::check(cx, expr, init, acc, span);
                 },
-                ("for_each", [_]) => {
-                    if let Some(("inspect", _, [_], span2, _)) = method_call(recv) {
-                        inspect_for_each::check(cx, expr, span2);
+                ("for_each", [arg]) => {
+                    match method_call(recv) {
+                        Some(("inspect", _, [_], span2, _)) => inspect_for_each::check(cx, expr, span2),
+                        Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(cx, expr, recv, recv2, iter_overeager_cloned::Op::NeedlessMove(name, arg), false),
+                        _ => {}
                     }
                 },
                 ("get", [arg]) => {
@@ -4038,8 +4040,10 @@ impl Methods {
                 (name @ ("map" | "map_err"), [m_arg]) => {
                     if name == "map" {
                         map_clone::check(cx, expr, recv, m_arg, &self.msrv);
-                        if let Some((map_name @ ("iter" | "into_iter"), recv2, _, _, _)) = method_call(recv) {
-                            iter_kv_map::check(cx, map_name, expr, recv2, m_arg);
+                        match method_call(recv) {
+                            Some((map_name @ ("iter" | "into_iter"), recv2, _, _, _)) => iter_kv_map::check(cx, map_name, expr, recv2, m_arg),
+                            Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(cx, expr, recv, recv2, iter_overeager_cloned::Op::NeedlessMove(name, m_arg), false),
+                            _ => {}
                         }
                     } else {
                         map_err_ignore::check(cx, expr, m_arg);
