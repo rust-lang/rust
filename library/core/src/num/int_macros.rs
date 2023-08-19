@@ -2126,6 +2126,7 @@ macro_rules! int_impl {
         /// assert_eq!(a.rem_euclid(-b), 3);
         /// assert_eq!((-a).rem_euclid(-b), 1);
         /// ```
+        #[doc(alias = "modulo", alias = "mod")]
         #[stable(feature = "euclidean_division", since = "1.38.0")]
         #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \

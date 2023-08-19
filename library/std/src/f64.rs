@@ -323,6 +323,7 @@ impl f64 {
     /// // limitation due to round-off error
     /// assert!((-f64::EPSILON).rem_euclid(3.0) != 0.0);
     /// ```
+    #[doc(alias = "modulo", alias = "mod")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
