@@ -1,0 +1,16 @@
+error: this bound is implied by another bound and can be removed
+  --> $DIR/implied_bounds_in_impl.rs:16:36
+   |
+LL | fn deref_derefmut<T>(x: T) -> impl Deref<Target = T> + DerefMut<Target = T> {
+   |                                    ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::implied-bounds-in-impl` implied by `-D warnings`
+
+error: this bound is implied by another bound and can be removed
+  --> $DIR/implied_bounds_in_impl.rs:41:22
+   |
+LL | fn normal2() -> impl NonGenericTrait1 + NonGenericTrait2 {
+   |                      ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
