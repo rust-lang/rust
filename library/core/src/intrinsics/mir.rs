@@ -104,17 +104,18 @@
 //! }
 //!
 //! #[custom_mir(dialect = "runtime", phase = "optimized")]
+#![cfg_attr(bootstrap, doc = "#[cfg(any())]")] // disable the following function in doctests when `bootstrap` is set
 //! fn push_and_pop<T>(v: &mut Vec<T>, value: T) {
 //!     mir!(
-//!         let unused;
+//!         let _unused;
 //!         let popped;
 //!
 //!         {
-//!             Call(unused, pop, Vec::push(v, value))
+//!             Call(_unused = Vec::push(v, value), pop)
 //!         }
 //!
 //!         pop = {
-//!             Call(popped, drop, Vec::pop(v))
+//!             Call(popped = Vec::pop(v), drop)
 //!         }
 //!
 //!         drop = {
@@ -275,7 +276,7 @@ define!("mir_return", fn Return() -> BasicBlock);
 define!("mir_goto", fn Goto(destination: BasicBlock) -> BasicBlock);
 define!("mir_unreachable", fn Unreachable() -> BasicBlock);
 define!("mir_drop", fn Drop<T>(place: T, goto: BasicBlock));
-define!("mir_call", fn Call<T>(place: T, goto: BasicBlock, call: T));
+define!("mir_call", fn Call(call: (), goto: BasicBlock));
 define!("mir_storage_live", fn StorageLive<T>(local: T));
 define!("mir_storage_dead", fn StorageDead<T>(local: T));
 define!("mir_deinit", fn Deinit<T>(place: T));

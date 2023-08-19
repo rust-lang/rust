@@ -9,12 +9,12 @@ pub struct S(i32);
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 fn main() {
     mir! {
-        let unit: ();
+        let _unit: ();
         {
             let non_copy = S(42);
             let ptr = std::ptr::addr_of_mut!(non_copy);
             // This could change `non_copy` in-place
-            Call(unit, after_call, change_arg(Move(*ptr), ptr))
+            Call(_unit = change_arg(Move(*ptr), ptr), after_call)
         }
         after_call = {
             Return()
