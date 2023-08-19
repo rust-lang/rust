@@ -203,7 +203,7 @@ cfg_if! {
 
         #[macro_export]
         macro_rules! parallel {
-            ($($blocks:block),*) => {
+            ($($blocks:block),*) => {{
                 // We catch panics here ensuring that all the blocks execute.
                 // This makes behavior consistent with the parallel compiler.
                 let mut panic = None;
@@ -219,7 +219,7 @@ cfg_if! {
                 if let Some(panic) = panic {
                     ::std::panic::resume_unwind(panic);
                 }
-            }
+            }}
         }
 
         pub fn par_for_each_in<T: IntoIterator>(t: T, mut for_each: impl FnMut(T::Item) + Sync + Send) {
