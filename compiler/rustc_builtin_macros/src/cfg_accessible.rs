@@ -10,7 +10,7 @@ use rustc_span::Span;
 
 pub(crate) struct Expander;
 
-fn validate_input<'a>(ecx: &mut ExtCtxt<'_>, mi: &'a ast::MetaItem) -> Option<&'a ast::Path> {
+fn validate_input<'a>(ecx: &ExtCtxt<'_>, mi: &'a ast::MetaItem) -> Option<&'a ast::Path> {
     use errors::CfgAccessibleInvalid::*;
     match mi.meta_item_list() {
         None => {}

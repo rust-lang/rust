@@ -347,7 +347,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
     ///
     /// Supports sized types only.
     pub fn poison<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
-        bx: &mut Bx,
+        bx: &Bx,
         layout: TyAndLayout<'tcx>,
     ) -> OperandValue<V> {
         assert!(layout.is_sized());

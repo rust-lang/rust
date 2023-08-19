@@ -87,7 +87,7 @@ pub(super) fn populate_access_facts<'a, 'tcx>(
     body: &Body<'tcx>,
     location_table: &LocationTable,
     move_data: &MoveData<'tcx>,
-    dropped_at: &mut Vec<(Local, Location)>,
+    dropped_at: &Vec<(Local, Location)>,
 ) {
     debug!("populate_access_facts()");
 

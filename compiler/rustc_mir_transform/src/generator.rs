@@ -1108,7 +1108,7 @@ fn create_generator_drop_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: &TransformVisitor<'tcx>,
     gen_ty: Ty<'tcx>,
-    body: &mut Body<'tcx>,
+    body: &Body<'tcx>,
     drop_clean: BasicBlock,
 ) -> Body<'tcx> {
     let mut body = body.clone();

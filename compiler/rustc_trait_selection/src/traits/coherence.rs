@@ -137,7 +137,7 @@ pub fn overlapping_impls(
 }
 
 fn with_fresh_ty_vars<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
+    selcx: &SelectionContext<'cx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
 ) -> ty::ImplHeader<'tcx> {

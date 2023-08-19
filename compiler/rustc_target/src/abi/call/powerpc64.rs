@@ -13,11 +13,7 @@ enum ABI {
 }
 use ABI::*;
 
-fn is_homogeneous_aggregate<'a, Ty, C>(
-    cx: &C,
-    arg: &mut ArgAbi<'a, Ty>,
-    abi: ABI,
-) -> Option<Uniform>
+fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &ArgAbi<'a, Ty>, abi: ABI) -> Option<Uniform>
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,

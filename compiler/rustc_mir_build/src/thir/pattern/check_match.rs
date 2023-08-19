@@ -209,7 +209,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
     fn lower_pattern(
         &self,
-        cx: &mut MatchCheckCtxt<'p, 'tcx>,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
         pattern: &Pat<'tcx>,
     ) -> &'p DeconstructedPat<'p, 'tcx> {
         cx.pattern_arena.alloc(DeconstructedPat::from_pat(cx, &pattern))
@@ -303,7 +303,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
     fn check_let_reachability(
         &mut self,
-        cx: &mut MatchCheckCtxt<'p, 'tcx>,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
         pat_id: HirId,
         source: LetSource,
         pat: &'p DeconstructedPat<'p, 'tcx>,
@@ -616,7 +616,7 @@ fn irrefutable_let_patterns(
 }
 
 fn is_let_irrefutable<'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'p, 'tcx>,
+    cx: &MatchCheckCtxt<'p, 'tcx>,
     pat_id: HirId,
     pat: &'p DeconstructedPat<'p, 'tcx>,
 ) -> bool {

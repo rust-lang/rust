@@ -96,7 +96,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
     fn llbb_characteristics<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &FunctionCx<'a, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> (bool, bool) {
         if let Some(ref cleanup_kinds) = fx.cleanup_kinds {

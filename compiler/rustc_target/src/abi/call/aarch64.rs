@@ -12,7 +12,7 @@ pub enum AbiKind {
     Win64,
 }
 
-fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>) -> Option<Uniform>
+fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &ArgAbi<'a, Ty>) -> Option<Uniform>
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,

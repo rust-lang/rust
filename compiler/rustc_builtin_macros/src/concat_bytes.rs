@@ -8,7 +8,7 @@ use crate::errors;
 
 /// Emits errors for literal expressions that are invalid inside and outside of an array.
 fn invalid_type_err(
-    cx: &mut base::ExtCtxt<'_>,
+    cx: &base::ExtCtxt<'_>,
     token_lit: ast::token::Lit,
     span: Span,
     is_nested: bool,
@@ -67,7 +67,7 @@ fn invalid_type_err(
 }
 
 fn handle_array_element(
-    cx: &mut base::ExtCtxt<'_>,
+    cx: &base::ExtCtxt<'_>,
     has_errors: &mut bool,
     missing_literals: &mut Vec<rustc_span::Span>,
     expr: &P<rustc_ast::Expr>,

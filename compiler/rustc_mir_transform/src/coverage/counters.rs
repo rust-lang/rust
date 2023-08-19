@@ -282,7 +282,7 @@ impl<'a> MakeBcbCounters<'a> {
 
     fn make_branch_counters(
         &mut self,
-        traversal: &mut TraverseCoverageGraphWithLoops,
+        traversal: &TraverseCoverageGraphWithLoops,
         branching_bcb: BasicCoverageBlock,
         branching_counter_operand: Operand,
     ) -> Result<(), Error> {

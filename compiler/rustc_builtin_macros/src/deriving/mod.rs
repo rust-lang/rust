@@ -120,7 +120,7 @@ fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> P<ast::Expr> {
 // does *not* add `where T: Structural` for parameters `T` in `...`.
 // (That's the main reason we cannot use TraitDef here.)
 fn inject_impl_of_structural_trait(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     span: Span,
     item: &Annotatable,
     structural_path: generic::ty::Path,
@@ -211,7 +211,7 @@ fn inject_impl_of_structural_trait(
 }
 
 fn assert_ty_bounds(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     stmts: &mut ThinVec<ast::Stmt>,
     ty: P<ast::Ty>,
     span: Span,

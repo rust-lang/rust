@@ -94,7 +94,7 @@ pub fn expand_deriving_clone(
 
 fn cs_clone_simple(
     name: &str,
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
     is_union: bool,

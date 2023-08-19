@@ -538,7 +538,7 @@ fn fn_sig_and_body(
 fn get_body_span<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_body: &rustc_hir::Body<'tcx>,
-    mir_body: &mut mir::Body<'tcx>,
+    mir_body: &mir::Body<'tcx>,
 ) -> Span {
     let mut body_span = hir_body.value.span;
     let def_id = mir_body.source.def_id();

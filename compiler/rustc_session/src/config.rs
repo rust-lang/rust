@@ -2106,7 +2106,7 @@ fn check_thread_count(handler: &EarlyErrorHandler, unstable_opts: &UnstableOptio
 fn collect_print_requests(
     handler: &EarlyErrorHandler,
     cg: &mut CodegenOptions,
-    unstable_opts: &mut UnstableOptions,
+    unstable_opts: &UnstableOptions,
     matches: &getopts::Matches,
 ) -> Vec<PrintRequest> {
     let mut prints = Vec::<PrintRequest>::new();

@@ -62,7 +62,7 @@ struct MacroInput {
 /// ```text
 /// Ok((fmtstr, parsed arguments))
 /// ```
-fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
+fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
     let mut args = FormatArguments::new();
 
     let mut p = ecx.new_parser_from_tts(tts);
@@ -562,7 +562,7 @@ fn invalid_placeholder_type_error(
 }
 
 fn report_missing_placeholders(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_>,
     unused: Vec<(Span, bool)>,
     detect_foreign_fmt: bool,
     str_style: Option<usize>,
@@ -674,7 +674,7 @@ fn report_missing_placeholders(
 /// there are named arguments or numbered positional arguments in the
 /// format string.
 fn report_invalid_references(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_>,
     invalid_refs: &[(usize, Option<Span>, PositionUsedAs, FormatArgPositionKind)],
     template: &[FormatArgsPiece],
     fmt_span: Span,

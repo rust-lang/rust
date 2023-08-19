@@ -23,7 +23,7 @@ pub fn expand_type_ascribe(
     return MacEager::expr(asc_expr);
 }
 
-fn parse_ascribe<'a>(cx: &mut ExtCtxt<'a>, stream: TokenStream) -> PResult<'a, (P<Expr>, P<Ty>)> {
+fn parse_ascribe<'a>(cx: &ExtCtxt<'a>, stream: TokenStream) -> PResult<'a, (P<Expr>, P<Ty>)> {
     let mut parser = cx.new_parser_from_tts(stream);
 
     let expr = parser.parse_expr()?;
