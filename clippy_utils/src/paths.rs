@@ -166,5 +166,3 @@ pub const DEBUG_STRUCT: [&str; 4] = ["core", "fmt", "builders", "DebugStruct"];
 pub const ORD_CMP: [&str; 4] = ["core", "cmp", "Ord", "cmp"];
 #[expect(clippy::invalid_paths)] // not sure why it thinks this, it works so
 pub const BOOL_THEN: [&str; 4] = ["core", "bool", "<impl bool>", "then"];
-#[allow(clippy::invalid_paths, reason = "internal lints do not always know about ::test")]
-pub const TEST_DESC_AND_FN: [&str; 3] = ["test", "types", "TestDescAndFn"];
