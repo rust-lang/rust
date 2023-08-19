@@ -976,6 +976,20 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         throw_machine_stop!(TerminationInfo::Abort(msg))
     }
 
+    fn unwind_terminate(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        // Call the lang item.
+        let panic = ecx.tcx.lang_items().panic_cannot_unwind().unwrap();
+        let panic = ty::Instance::mono(ecx.tcx.tcx, panic);
+        ecx.call_function(
+            panic,
+            Abi::Rust,
+            &[],
+            None,
+            StackPopCleanup::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
+        )?;
+        Ok(())
+    }
+
     #[inline(always)]
     fn binary_ptr_op(
         ecx: &MiriInterpCx<'mir, 'tcx>,

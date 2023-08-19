@@ -197,8 +197,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             UnwindTerminate => {
-                // FIXME: maybe should call `panic_no_unwind` lang item instead.
-                M::abort(self, "panic in a function that cannot unwind".to_owned())?;
+                M::unwind_terminate(self)?;
             }
 
             // When we encounter Resume, we've finished unwinding
