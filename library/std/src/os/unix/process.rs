@@ -109,7 +109,11 @@ pub trait CommandExt: Sealed {
     ///
     /// [`pre_exec`]: CommandExt::pre_exec
     #[stable(feature = "process_exec", since = "1.15.0")]
-    #[deprecated(since = "1.37.0", note = "should be unsafe, use `pre_exec` instead")]
+    #[deprecated(
+        since = "1.37.0",
+        note = "should be unsafe, use `pre_exec` instead",
+        suggestion = "pre_exec"
+    )]
     fn before_exec<F>(&mut self, f: F) -> &mut process::Command
     where
         F: FnMut() -> io::Result<()> + Send + Sync + 'static,

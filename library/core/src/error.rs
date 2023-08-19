@@ -114,7 +114,8 @@ pub trait Error: Debug + Display {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[deprecated(
         since = "1.33.0",
-        note = "replaced by Error::source, which can support downcasting"
+        note = "replaced by Error::source, which can support downcasting",
+        suggestion = "source"
     )]
     #[allow(missing_docs)]
     fn cause(&self) -> Option<&dyn Error> {
