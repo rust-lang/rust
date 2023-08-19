@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 use std::process::{Command, Output};
 
-pub fn run_command(input: &[&dyn AsRef<OsStr>], cwd: Option<&Path>) -> Result<Output, String> {
+fn run_command_inner(input: &[&dyn AsRef<OsStr>], cwd: Option<&Path>) -> Command {
     let (cmd, args) = match input {
         [] => panic!("empty command"),
         [cmd, args @ ..] => (cmd, args),
@@ -13,7 +13,11 @@ pub fn run_command(input: &[&dyn AsRef<OsStr>], cwd: Option<&Path>) -> Result<Ou
     if let Some(cwd) = cwd {
         command.current_dir(cwd);
     }
-    command.output()
+    command
+}
+
+pub fn run_command(input: &[&dyn AsRef<OsStr>], cwd: Option<&Path>) -> Result<Output, String> {
+    run_command_inner(input, cwd).output()
         .map_err(|e| format!(
             "Command `{}` failed to run: {e:?}",
             input.iter()
@@ -21,6 +25,29 @@ pub fn run_command(input: &[&dyn AsRef<OsStr>], cwd: Option<&Path>) -> Result<Ou
                 .collect::<Vec<_>>()
                 .join(" "),
         ))
+}
+
+pub fn run_command_with_output(
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
+) -> Result<(), String> {
+    run_command_inner(input, cwd).spawn()
+        .map_err(|e| format!(
+            "Command `{}` failed to run: {e:?}",
+            input.iter()
+                .map(|s| s.as_ref().to_str().unwrap())
+                .collect::<Vec<_>>()
+                .join(" "),
+        ))?
+        .wait()
+        .map_err(|e| format!(
+            "Failed to wait for command `{}` to run: {e:?}",
+            input.iter()
+                .map(|s| s.as_ref().to_str().unwrap())
+                .collect::<Vec<_>>()
+                .join(" "),
+        ))?;
+    Ok(())
 }
 
 pub fn cargo_install(to_install: &str) -> Result<(), String> {

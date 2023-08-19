@@ -1,5 +1,5 @@
 use crate::rustc_info::get_rustc_path;
-use crate::utils::{cargo_install, git_clone, run_command, walk_dir};
+use crate::utils::{cargo_install, git_clone, run_command, run_command_with_output, walk_dir};
 
 use std::fs;
 use std::path::Path;
@@ -37,9 +37,9 @@ fn prepare_libcore() -> Result<(), String> {
     run_command(&[&"cp", &"-r", &rustlib_dir, &sysroot_library_dir], None)?;
 
     println!("[GIT] init (cwd): `{}`", sysroot_dir.display());
-    run_command(&[&"git", &"init"], Some(&sysroot_dir))?;
+    run_command_with_output(&[&"git", &"init"], Some(&sysroot_dir))?;
     println!("[GIT] add (cwd): `{}`", sysroot_dir.display());
-    run_command(&[&"git", &"add", &"."], Some(&sysroot_dir))?;
+    run_command_with_output(&[&"git", &"add", &"."], Some(&sysroot_dir))?;
     println!("[GIT] commit (cwd): `{}`", sysroot_dir.display());
 
     // This is needed on systems where nothing is configured.
@@ -54,9 +54,9 @@ fn prepare_libcore() -> Result<(), String> {
     walk_dir("patches", |_| Ok(()), |file_path: &Path| {
         println!("[GIT] apply `{}`", file_path.display());
         let path = Path::new("../..").join(file_path);
-        run_command(&[&"git", &"apply", &path], Some(&sysroot_dir))?;
-        run_command(&[&"git", &"add", &"-A"], Some(&sysroot_dir))?;
-        run_command(
+        run_command_with_output(&[&"git", &"apply", &path], Some(&sysroot_dir))?;
+        run_command_with_output(&[&"git", &"add", &"-A"], Some(&sysroot_dir))?;
+        run_command_with_output(
             &[&"git", &"commit", &"--no-gpg-sign", &"-m", &format!("Patch {}", path.display())],
             Some(&sysroot_dir),
         )?;
