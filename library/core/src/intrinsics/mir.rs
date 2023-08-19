@@ -361,6 +361,11 @@ define!(
     #[doc(hidden)]
     fn __internal_make_place<T>(place: T) -> *mut T
 );
+define!(
+    "mir_debuginfo",
+    #[doc(hidden)]
+    fn __debuginfo<T>(name: &'static str, s: T)
+);
 
 /// Macro for generating custom MIR.
 ///
@@ -371,6 +376,7 @@ pub macro mir {
     (
         $(type RET = $ret_ty:ty ;)?
         $(let $local_decl:ident $(: $local_decl_ty:ty)? ;)*
+        $(debug $dbg_name:ident => $dbg_data:expr ;)*
 
         {
             $($entry:tt)*
@@ -394,26 +400,32 @@ pub macro mir {
             $(
                 let $local_decl $(: $local_decl_ty)? ;
             )*
-
             ::core::intrinsics::mir::__internal_extract_let!($($entry)*);
             $(
                 ::core::intrinsics::mir::__internal_extract_let!($($block)*);
             )*
 
             {
-                // Finally, the contents of the basic blocks
-                ::core::intrinsics::mir::__internal_remove_let!({
-                    {}
-                    { $($entry)* }
-                });
+                // Now debuginfo
                 $(
-                    ::core::intrinsics::mir::__internal_remove_let!({
-                        {}
-                        { $($block)* }
-                    });
+                    __debuginfo(stringify!($dbg_name), $dbg_data);
                 )*
 
-                RET
+                {
+                    // Finally, the contents of the basic blocks
+                    ::core::intrinsics::mir::__internal_remove_let!({
+                        {}
+                        { $($entry)* }
+                    });
+                    $(
+                        ::core::intrinsics::mir::__internal_remove_let!({
+                            {}
+                            { $($block)* }
+                        });
+                    )*
+
+                    RET
+                }
             }
         }
     }}

@@ -1,0 +1,10 @@
+// MIR for `structured` after built
+
+fn structured(_1: S) -> () {
+    debug x => (_1.0: f32);
+    let mut _0: ();
+
+    bb0: {
+        return;
+    }
+}

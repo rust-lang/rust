@@ -1,5 +1,6 @@
 use rustc_index::IndexSlice;
-use rustc_middle::{mir::*, thir::*, ty::Ty};
+use rustc_middle::ty::{self, Ty};
+use rustc_middle::{mir::*, thir::*};
 use rustc_span::Span;
 
 use super::{PResult, ParseCtxt, ParseError};
@@ -159,6 +160,14 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         );
         self.parse_local_decls(local_decls.iter().copied())?;
 
+        let (debuginfo, rest) = parse_by_kind!(self, rest, _, "body with debuginfo",
+            ExprKind::Block { block } => {
+                let block = &self.thir[*block];
+                (&block.stmts, block.expr.unwrap())
+            },
+        );
+        self.parse_debuginfo(debuginfo.iter().copied())?;
+
         let block_defs = parse_by_kind!(self, rest, _, "body with block defs",
             ExprKind::Block { block } => &self.thir[*block].stmts,
         );
@@ -190,6 +199,52 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             let decl = LocalDecl::new(ty, span);
             let local = self.body.local_decls.push(decl);
             self.local_map.insert(var, local);
+        }
+
+        Ok(())
+    }
+
+    fn parse_debuginfo(&mut self, stmts: impl Iterator<Item = StmtId>) -> PResult<()> {
+        for stmt in stmts {
+            let stmt = &self.thir[stmt];
+            let expr = match stmt.kind {
+                StmtKind::Let { span, .. } => {
+                    return Err(ParseError {
+                        span,
+                        item_description: format!("{:?}", stmt),
+                        expected: "debuginfo".to_string(),
+                    });
+                }
+                StmtKind::Expr { expr, .. } => expr,
+            };
+            let span = self.thir[expr].span;
+            let (name, operand) = parse_by_kind!(self, expr, _, "debuginfo",
+                @call("mir_debuginfo", args) => {
+                    (args[0], args[1])
+                },
+            );
+            let name = parse_by_kind!(self, name, _, "debuginfo",
+                ExprKind::Literal { lit, neg: false } => lit,
+            );
+            let Some(name) = name.node.str() else {
+                return Err(ParseError {
+                    span,
+                    item_description: format!("{:?}", name),
+                    expected: "string".to_string(),
+                });
+            };
+            let operand = self.parse_operand(operand)?;
+            let value = match operand {
+                Operand::Constant(c) => VarDebugInfoContents::Const(*c),
+                Operand::Copy(p) | Operand::Move(p) => VarDebugInfoContents::Place(p),
+            };
+            let dbginfo = VarDebugInfo {
+                name,
+                source_info: SourceInfo { span, scope: self.source_scope },
+                argument_index: None,
+                value,
+            };
+            self.body.var_debug_info.push(dbginfo);
         }
 
         Ok(())
