@@ -199,9 +199,9 @@ impl DebugOptions {
 
 fn bool_option_val(option: &str, some_strval: Option<&str>) -> bool {
     if let Some(val) = some_strval {
-        if vec!["yes", "y", "on", "true"].contains(&val) {
+        if ["yes", "y", "on", "true"].contains(&val) {
             true
-        } else if vec!["no", "n", "off", "false"].contains(&val) {
+        } else if ["no", "n", "off", "false"].contains(&val) {
             false
         } else {
             bug!(
