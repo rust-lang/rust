@@ -648,8 +648,8 @@ impl<T: ?Sized> *const T {
     /// such large allocations either.)
     ///
     /// The requirement for pointers to be derived from the same allocated object is primarily
-    /// needed for `const`-compatibility: at compile-time, pointers into *different* allocated
-    /// objects do not have a known distance to each other. However, the requirement also exists at
+    /// needed for `const`-compatibility: the distance between pointers into *different* allocated
+    /// objects is not known at compile-time. However, the requirement also exists at
     /// runtime and may be exploited by optimizations. If you wish to compute the difference between
     /// pointers that are not guaranteed to be from the same allocation, use `(self as
     /// usize).sub(origin as usize) / mem::size_of::<T>()`.
