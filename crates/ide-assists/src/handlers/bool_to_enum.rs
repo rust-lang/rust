@@ -369,7 +369,7 @@ fn main() {
             bool_to_enum,
             r#"
 fn main() {
-    let $0foo: bool = false; 
+    let $0foo: bool = false;
 }
 "#,
             r#"
@@ -377,7 +377,7 @@ fn main() {
     #[derive(PartialEq, Eq)]
     enum Bool { True, False }
 
-    let foo: Bool = Bool::False; 
+    let foo: Bool = Bool::False;
 }
 "#,
         )
@@ -389,7 +389,7 @@ fn main() {
             bool_to_enum,
             r#"
 fn main() {
-    let $0foo = 1 == 2; 
+    let $0foo = 1 == 2;
 }
 "#,
             r#"
@@ -397,7 +397,7 @@ fn main() {
     #[derive(PartialEq, Eq)]
     enum Bool { True, False }
 
-    let foo = if 1 == 2 { Bool::True } else { Bool::False }; 
+    let foo = if 1 == 2 { Bool::True } else { Bool::False };
 }
 "#,
         )
@@ -468,7 +468,7 @@ fn main() {
             bool_to_enum,
             r#"
 fn main() {
-    let $0foo: bool; 
+    let $0foo: bool;
     foo = true;
 }
 "#,
@@ -477,7 +477,7 @@ fn main() {
     #[derive(PartialEq, Eq)]
     enum Bool { True, False }
 
-    let foo: Bool; 
+    let foo: Bool;
     foo = Bool::True;
 }
 "#,
