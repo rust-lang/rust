@@ -106,7 +106,7 @@ impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
                 }
             }
 
-            mir::TerminatorKind::Terminate
+            mir::TerminatorKind::UnwindTerminate
             | mir::TerminatorKind::Call { .. }
             | mir::TerminatorKind::Assert { .. }
             | mir::TerminatorKind::FalseEdge { .. }
@@ -114,7 +114,7 @@ impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
             | mir::TerminatorKind::GeneratorDrop
             | mir::TerminatorKind::Goto { .. }
             | mir::TerminatorKind::InlineAsm { .. }
-            | mir::TerminatorKind::Resume
+            | mir::TerminatorKind::UnwindResume
             | mir::TerminatorKind::Return
             | mir::TerminatorKind::SwitchInt { .. }
             | mir::TerminatorKind::Unreachable

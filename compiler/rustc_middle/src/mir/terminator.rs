@@ -155,8 +155,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | InlineAsm { destination: Some(t), unwind: _, .. } => {
                 Some(t).into_iter().chain((&[]).into_iter().copied())
             }
-            Resume
-            | Terminate
+            UnwindResume
+            | UnwindTerminate
             | GeneratorDrop
             | Return
             | Unreachable
@@ -197,8 +197,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | InlineAsm { destination: Some(ref mut t), unwind: _, .. } => {
                 Some(t).into_iter().chain(&mut [])
             }
-            Resume
-            | Terminate
+            UnwindResume
+            | UnwindTerminate
             | GeneratorDrop
             | Return
             | Unreachable
@@ -214,8 +214,8 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn unwind(&self) -> Option<&UnwindAction> {
         match *self {
             TerminatorKind::Goto { .. }
-            | TerminatorKind::Resume
-            | TerminatorKind::Terminate
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
@@ -233,8 +233,8 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn unwind_mut(&mut self) -> Option<&mut UnwindAction> {
         match *self {
             TerminatorKind::Goto { .. }
-            | TerminatorKind::Resume
-            | TerminatorKind::Terminate
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
@@ -311,8 +311,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             SwitchInt { discr, .. } => write!(fmt, "switchInt({discr:?})"),
             Return => write!(fmt, "return"),
             GeneratorDrop => write!(fmt, "generator_drop"),
-            Resume => write!(fmt, "resume"),
-            Terminate => write!(fmt, "abort"),
+            UnwindResume => write!(fmt, "resume"),
+            UnwindTerminate => write!(fmt, "abort"),
             Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
             Unreachable => write!(fmt, "unreachable"),
             Drop { place, .. } => write!(fmt, "drop({place:?})"),
@@ -391,7 +391,7 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::TerminatorKind::*;
         match *self {
-            Return | Resume | Terminate | Unreachable | GeneratorDrop => vec![],
+            Return | UnwindResume | UnwindTerminate | Unreachable | GeneratorDrop => vec![],
             Goto { .. } => vec!["".into()],
             SwitchInt { ref targets, .. } => targets
                 .values
@@ -486,7 +486,9 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn edges(&self) -> TerminatorEdges<'_, 'tcx> {
         use TerminatorKind::*;
         match *self {
-            Return | Resume | Terminate | GeneratorDrop | Unreachable => TerminatorEdges::None,
+            Return | UnwindResume | UnwindTerminate | GeneratorDrop | Unreachable => {
+                TerminatorEdges::None
+            }
 
             Goto { target } => TerminatorEdges::Single(target),
 

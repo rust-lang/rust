@@ -159,7 +159,9 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
 
                 self.mutate_place(location, *resume_arg, Deep);
             }
-            TerminatorKind::Resume | TerminatorKind::Return | TerminatorKind::GeneratorDrop => {
+            TerminatorKind::UnwindResume
+            | TerminatorKind::Return
+            | TerminatorKind::GeneratorDrop => {
                 // Invalidate all borrows of local places
                 let borrow_set = self.borrow_set;
                 let start = self.location_table.start_index(location);
@@ -200,7 +202,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 }
             }
             TerminatorKind::Goto { target: _ }
-            | TerminatorKind::Terminate
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::Unreachable
             | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ } => {

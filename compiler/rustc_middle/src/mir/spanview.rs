@@ -262,8 +262,8 @@ pub fn terminator_kind_name(term: &Terminator<'_>) -> &'static str {
     match term.kind {
         Goto { .. } => "Goto",
         SwitchInt { .. } => "SwitchInt",
-        Resume => "Resume",
-        Terminate => "Terminate",
+        UnwindResume => "Resume",
+        UnwindTerminate => "Terminate",
         Return => "Return",
         Unreachable => "Unreachable",
         Drop { .. } => "Drop",

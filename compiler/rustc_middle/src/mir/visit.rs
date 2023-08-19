@@ -469,8 +469,8 @@ macro_rules! make_mir_visitor {
                 self.visit_source_info(source_info);
                 match kind {
                     TerminatorKind::Goto { .. } |
-                    TerminatorKind::Resume |
-                    TerminatorKind::Terminate |
+                    TerminatorKind::UnwindResume |
+                    TerminatorKind::UnwindTerminate |
                     TerminatorKind::GeneratorDrop |
                     TerminatorKind::Unreachable |
                     TerminatorKind::FalseEdge { .. } |

@@ -593,13 +593,13 @@ pub enum TerminatorKind<'tcx> {
     ///
     /// Only permitted in cleanup blocks. `Resume` is not permitted with `-C unwind=abort` after
     /// deaggregation runs.
-    Resume,
+    UnwindResume,
 
     /// Indicates that the landing pad is finished and that the process should terminate.
     ///
     /// Used to prevent unwinding for foreign items or with `-C unwind=abort`. Only permitted in
     /// cleanup blocks.
-    Terminate,
+    UnwindTerminate,
 
     /// Returns from the function.
     ///
@@ -790,8 +790,8 @@ impl TerminatorKind<'_> {
         match self {
             TerminatorKind::Goto { .. } => "Goto",
             TerminatorKind::SwitchInt { .. } => "SwitchInt",
-            TerminatorKind::Resume => "Resume",
-            TerminatorKind::Terminate => "Terminate",
+            TerminatorKind::UnwindResume => "Resume",
+            TerminatorKind::UnwindTerminate => "Terminate",
             TerminatorKind::Return => "Return",
             TerminatorKind::Unreachable => "Unreachable",
             TerminatorKind::Drop { .. } => "Drop",

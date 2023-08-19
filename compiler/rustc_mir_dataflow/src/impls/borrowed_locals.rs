@@ -131,7 +131,7 @@ where
                 }
             }
 
-            TerminatorKind::Terminate
+            TerminatorKind::UnwindTerminate
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::FalseEdge { .. }
@@ -139,7 +139,7 @@ where
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }
             | TerminatorKind::InlineAsm { .. }
-            | TerminatorKind::Resume
+            | TerminatorKind::UnwindResume
             | TerminatorKind::Return
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Unreachable
