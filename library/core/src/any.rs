@@ -112,6 +112,7 @@ use crate::intrinsics;
 // but we would likely want to indicate as such in documentation).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Any")]
+#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl(implement_via_object = true))]
 pub trait Any: 'static {
     /// Gets the `TypeId` of `self`.
     ///
@@ -132,7 +133,7 @@ pub trait Any: 'static {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: 'static + ?Sized> Any for T {
+impl<T: 'static> Any for T {
     fn type_id(&self) -> TypeId {
         TypeId::of::<T>()
     }
