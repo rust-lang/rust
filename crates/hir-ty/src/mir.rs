@@ -1057,7 +1057,7 @@ impl MirBody {
                     TerminatorKind::FalseEdge { .. }
                     | TerminatorKind::FalseUnwind { .. }
                     | TerminatorKind::Goto { .. }
-                    | TerminatorKind::Resume
+                    | TerminatorKind::UnwindResume
                     | TerminatorKind::GeneratorDrop
                     | TerminatorKind::Abort
                     | TerminatorKind::Return
