@@ -971,9 +971,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx.assert_panic(msg, unwind)
     }
 
-    #[inline(always)]
-    fn abort(_ecx: &mut MiriInterpCx<'mir, 'tcx>, msg: String) -> InterpResult<'tcx, !> {
-        throw_machine_stop!(TerminationInfo::Abort(msg))
+    fn panic_nounwind(ecx: &mut InterpCx<'mir, 'tcx, Self>, msg: &str) -> InterpResult<'tcx> {
+        ecx.start_panic_nounwind(msg)
     }
 
     fn unwind_terminate(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {

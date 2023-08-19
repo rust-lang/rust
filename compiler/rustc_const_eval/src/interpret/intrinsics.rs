@@ -125,15 +125,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, bool> {
         let instance_args = instance.args;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
-
-        // First handle intrinsics without return place.
-        let ret = match ret {
-            None => match intrinsic_name {
-                sym::abort => M::abort(self, "the program aborted execution".to_owned())?,
-                // Unsupported diverging intrinsic.
-                _ => return Ok(false),
-            },
-            Some(p) => p,
+        let Some(ret) = ret else {
+            // We don't support any intrinsic without return place.
+            return Ok(false);
         };
 
         match intrinsic_name {
@@ -410,7 +404,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         ValidityRequirement::Uninit => bug!("assert_uninit_valid doesn't exist"),
                     };
 
-                    M::abort(self, msg)?;
+                    M::panic_nounwind(self, &msg)?;
+                    // Skip the `go_to_block` at the end.
+                    return Ok(true);
                 }
             }
             sym::simd_insert => {

@@ -218,10 +218,8 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
 
-    /// Called to abort evaluation.
-    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _msg: String) -> InterpResult<'tcx, !> {
-        throw_unsup_format!("aborting execution is not supported")
-    }
+    /// Called to trigger a non-unwinding panic.
+    fn panic_nounwind(_ecx: &mut InterpCx<'mir, 'tcx, Self>, msg: &str) -> InterpResult<'tcx>;
 
     /// Called when unwinding reached a state where execution should be terminated.
     fn unwind_terminate(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx>;
