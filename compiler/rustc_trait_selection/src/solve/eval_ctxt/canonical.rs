@@ -215,7 +215,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // created inside of the query directly instead of returning them to the
         // caller.
         let prev_universe = self.infcx.universe();
-        let universes_created_in_query = response.max_universe.index() + 1;
+        let universes_created_in_query = response.max_universe.index();
         for _ in 0..universes_created_in_query {
             self.infcx.create_next_universe();
         }

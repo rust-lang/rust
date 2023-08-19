@@ -14,6 +14,7 @@ use rustc_span::symbol::kw::{Empty, Underscore};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
+use std::fmt::Write;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(super) fn lint_dot_call_from_2018(
@@ -143,16 +144,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let (self_adjusted, precise) = self.adjust_expr(pick, self_expr, sp);
                     if precise {
-                        let args = args
-                            .iter()
-                            .map(|arg| {
-                                let span = arg.span.find_ancestor_inside(sp).unwrap_or_default();
-                                format!(
-                                    ", {}",
-                                    self.sess().source_map().span_to_snippet(span).unwrap()
-                                )
-                            })
-                            .collect::<String>();
+                        let args = args.iter().fold(String::new(), |mut string, arg| {
+                            let span = arg.span.find_ancestor_inside(sp).unwrap_or_default();
+                            write!(
+                                string,
+                                ", {}",
+                                self.sess().source_map().span_to_snippet(span).unwrap()
+                            )
+                            .unwrap();
+                            string
+                        });
 
                         lint.span_suggestion(
                             sp,
