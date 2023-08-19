@@ -5,10 +5,8 @@ show-text: true
 define-function: (
     "check-search-colors",
     (
-        theme, search_input_border, search_input_background, search_input_color,
-        search_input_border_focus, menu_button_border, menu_button_a_color, menu_button_a_border,
-        menu_button_a_background, menu_button_border_hover, menu_button_a_hover,
-        menu_button_a_border_hover, menu_button_a_background_hover, menu_a_color,
+        theme, border, background, search_input_color, search_input_border_focus,
+        menu_button_border, menu_button_a_color, menu_button_a_border_hover, menu_a_color,
     ),
     block {
         set-local-storage: {
@@ -19,8 +17,8 @@ define-function: (
         assert-css: (
             ".search-input",
             {
-                "border-color": |search_input_border|,
-                "background-color": |search_input_background|,
+                "border-color": |border|,
+                "background-color": |background|,
                 "color": |search_input_color|,
             },
         )
@@ -30,7 +28,7 @@ define-function: (
             ".search-input",
             {
                 "border-color": |search_input_border_focus|,
-                "background-color": |search_input_background|,
+                "background-color": |background|,
                 "color": |search_input_color|,
             },
         )
@@ -42,22 +40,22 @@ define-function: (
             "#help-button > a",
             {
                 "color": |menu_button_a_color|,
-                "border-color": |menu_button_a_border|,
-                "background-color": |menu_button_a_background|,
+                "border-color": |border|,
+                "background-color": |background|,
             },
         )
         // Hover help button.
         move-cursor-to: "#help-button"
         assert-css: (
             "#help-button:hover",
-            {"border-color": |menu_button_border_hover|},
+            {"border-color": |menu_button_border|},
         )
         assert-css: (
             "#help-button > a",
             {
-                "color": |menu_button_a_hover|,
+                "color": |menu_button_a_color|,
                 "border-color": |menu_button_a_border_hover|,
-                "background-color": |menu_button_a_background_hover|,
+                "background-color": |background|,
             },
         )
         // Link color inside
@@ -76,8 +74,8 @@ define-function: (
             "#settings-menu > a",
             {
                 "color": |menu_button_a_color|,
-                "border-color": |menu_button_a_border|,
-                "background-color": |menu_button_a_background|,
+                "border-color": |border|,
+                "background-color": |background|,
             },
         )
         // Hover settings menu.
@@ -89,9 +87,9 @@ define-function: (
         assert-css: (
             "#settings-menu:hover > a",
             {
-                "color": |menu_button_a_hover|,
+                "color": |menu_button_a_color|,
                 "border-color": |menu_button_a_border_hover|,
-                "background-color": |menu_button_a_background_hover|,
+                "background-color": |background|,
             },
         )
     },
@@ -101,18 +99,13 @@ call-function: (
     "check-search-colors",
     {
         "theme": "ayu",
-        "search_input_border": "rgb(92, 103, 115)",
-        "search_input_background": "rgb(20, 25, 32)",
+        "border": "rgb(92, 103, 115)",
+        "background": "rgb(20, 25, 32)",
         "search_input_color": "rgb(255, 255, 255)",
         "search_input_border_focus": "rgb(92, 103, 115)",
         "menu_button_border": "rgb(197, 197, 197)",
         "menu_button_a_color": "rgb(255, 255, 255)",
-        "menu_button_a_border": "rgb(92, 103, 115)",
-        "menu_button_a_background": "rgb(20, 25, 32)",
-        "menu_button_border_hover": "rgb(197, 197, 197)",
-        "menu_button_a_hover": "rgb(255, 255, 255)",
         "menu_button_a_border_hover": "rgb(224, 224, 224)",
-        "menu_button_a_background_hover": "rgb(20, 25, 32)",
         "menu_a_color": "rgb(57, 175, 215)",
     }
 )
@@ -120,18 +113,13 @@ call-function: (
     "check-search-colors",
     {
         "theme": "dark",
-        "search_input_border": "rgb(224, 224, 224)",
-        "search_input_background": "rgb(240, 240, 240)",
+        "border": "rgb(224, 224, 224)",
+        "background": "rgb(240, 240, 240)",
         "search_input_color": "rgb(17, 17, 17)",
         "search_input_border_focus": "rgb(0, 141, 253)",
         "menu_button_border": "rgb(221, 221, 221)",
         "menu_button_a_color": "rgb(0, 0, 0)",
-        "menu_button_a_border": "rgb(224, 224, 224)",
-        "menu_button_a_background": "rgb(240, 240, 240)",
-        "menu_button_border_hover": "rgb(221, 221, 221)",
-        "menu_button_a_hover": "rgb(0, 0, 0)",
         "menu_button_a_border_hover": "rgb(255, 185, 0)",
-        "menu_button_a_background_hover": "rgb(240, 240, 240)",
         "menu_a_color": "rgb(210, 153, 29)",
     }
 )
@@ -139,18 +127,13 @@ call-function: (
     "check-search-colors",
     {
         "theme": "light",
-        "search_input_border": "rgb(224, 224, 224)",
-        "search_input_background": "rgb(255, 255, 255)",
+        "border": "rgb(224, 224, 224)",
+        "background": "rgb(255, 255, 255)",
         "search_input_color": "rgb(0, 0, 0)",
         "search_input_border_focus": "rgb(102, 175, 233)",
         "menu_button_border": "rgb(0, 0, 0)",
         "menu_button_a_color": "rgb(0, 0, 0)",
-        "menu_button_a_border": "rgb(224, 224, 224)",
-        "menu_button_a_background": "rgb(255, 255, 255)",
-        "menu_button_border_hover": "rgb(0, 0, 0)",
-        "menu_button_a_hover": "rgb(0, 0, 0)",
         "menu_button_a_border_hover": "rgb(113, 113, 113)",
-        "menu_button_a_background_hover": "rgb(255, 255, 255)",
         "menu_a_color": "rgb(56, 115, 173)",
     }
 )
