@@ -93,7 +93,7 @@ use crate::cell::UnsafeCell;
 use crate::env;
 use crate::ffi::c_void;
 use crate::fmt;
-use crate::panic::UnwindSafe;
+use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 use crate::sync::Once;
 use crate::sys_common::backtrace::{lock, output_filename};
@@ -457,6 +457,9 @@ impl LazilyResolvedCapture {
 // SAFETY: Access to the inner value is synchronized using a thread-safe `Once`
 // So long as `Capture` is `Sync`, `LazilyResolvedCapture` is too
 unsafe impl Sync for LazilyResolvedCapture where Capture: Sync {}
+
+impl UnwindSafe for LazilyResolvedCapture {}
+impl RefUnwindSafe for LazilyResolvedCapture {}
 
 impl Capture {
     fn resolve(&mut self) {
