@@ -141,11 +141,6 @@ struct Capture {
     frames: Vec<BacktraceFrame>,
 }
 
-fn _assert_send_sync() {
-    fn _assert<T: Send + Sync>() {}
-    _assert::<Backtrace>();
-}
-
 /// A single frame of a backtrace.
 #[unstable(feature = "backtrace_frames", issue = "79676")]
 pub struct BacktraceFrame {
@@ -428,7 +423,7 @@ impl fmt::Display for Backtrace {
     }
 }
 
-type LazyResolve = impl (FnOnce() -> Capture) + Send + Sync + UnwindSafe;
+type LazyResolve = impl FnOnce() -> Capture + UnwindSafe;
 
 fn lazy_resolve(mut capture: Capture) -> LazyResolve {
     move || {
