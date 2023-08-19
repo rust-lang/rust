@@ -80,9 +80,13 @@
 
 #![stable(feature = "alloc_ffi", since = "1.64.0")]
 
+#[doc(no_inline)]
 #[stable(feature = "alloc_c_string", since = "1.64.0")]
-pub use self::c_str::FromVecWithNulError;
-#[stable(feature = "alloc_c_string", since = "1.64.0")]
-pub use self::c_str::{CString, IntoStringError, NulError};
+pub use self::c_str::{FromVecWithNulError, IntoStringError, NulError};
 
-mod c_str;
+#[doc(inline)]
+#[stable(feature = "alloc_c_string", since = "1.64.0")]
+pub use self::c_str::CString;
+
+#[unstable(feature = "c_str_module", issue = "112134")]
+pub mod c_str;
