@@ -966,6 +966,14 @@ pub trait LintContext: Sized {
                         Applicability::MachineApplicable
                     );
                 }
+                BuiltinLintDiagnostics::AssociatedConstElidedLifetime { elided, span } => {
+                    db.span_suggestion_verbose(
+                        if elided { span.shrink_to_hi() } else { span },
+                        "use the `'static` lifetime",
+                        if elided { "'static " } else { "'static" },
+                        Applicability::MachineApplicable
+                    );
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(db)
