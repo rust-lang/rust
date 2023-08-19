@@ -2221,7 +2221,7 @@ impl<'a> Formatter<'a> {
     ///
     /// impl fmt::Debug for Foo {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         fmt.debug_map().entries(self.0.iter().map(|&(ref k, ref v)| (k, v))).finish()
+    ///         fmt.debug_map().entries(self.0.iter().copied()).finish()
     ///     }
     /// }
     ///
