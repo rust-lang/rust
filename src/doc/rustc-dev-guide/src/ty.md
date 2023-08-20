@@ -74,9 +74,9 @@ HIR is built, some basic type inference and type checking is done. During the ty
 figure out what the `ty::Ty` of everything is and we also check if the type of something is
 ambiguous. The `ty::Ty` is then used for type checking while making sure everything has the
 expected type. The [`astconv` module][astconv] is where the code responsible for converting a
-`rustc_hir::Ty` into a `ty::Ty` is located. This occurs during the type-checking phase,
-but also in other parts of the compiler that want to ask questions like "what argument types does
-this function expect?"
+`rustc_hir::Ty` into a `ty::Ty` is located. The main routine used is `ast_ty_to_ty`. This occurs
+during the type-checking phase, but also in other parts of the compiler that want to ask
+questions like "what argument types does this function expect?"
 
 [astconv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/astconv/index.html
 
@@ -137,11 +137,13 @@ benefits of interning.
 
 ## Allocating and working with types
 
-To allocate a new type, you can use the various `mk_` methods defined on the `tcx`. These have names
+To allocate a new type, you can use the various `new_*` methods defined on
+[`Ty`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html).
+These have names
 that correspond mostly to the various kinds of types. For example:
 
 ```rust,ignore
-let array_ty = tcx.mk_array(elem_ty, len * 2);
+let array_ty = Ty::new_array_with_const_len(tcx, ty, count);
 ```
 
 These methods all return a `Ty<'tcx>` – note that the lifetime you get back is the lifetime of the
