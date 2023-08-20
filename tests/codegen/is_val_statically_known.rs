@@ -1,4 +1,7 @@
-// compile-flags: --crate-type=lib
+// #[cfg(bootstrap)]
+// ignore-stage1
+// compile-flags: --crate-type=lib -Zmerge-functions=disabled
+
 #![feature(core_intrinsics)]
 
 use std::intrinsics::is_val_statically_known;

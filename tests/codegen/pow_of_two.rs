@@ -1,4 +1,6 @@
-// compile-flags: --crate-type=lib
+// #[cfg(bootstrap)]
+// ignore-stage1
+// compile-flags: --crate-type=lib -Zmerge-functions=disabled
 
 // CHECK-LABEL: @a(
 #[no_mangle]
@@ -10,9 +12,12 @@ pub fn a(exp: u32) -> u64 {
     2u64.pow(exp)
 }
 
-// This is sometimes an alias to `a`, but this isn't guaranteed
 #[no_mangle]
 pub fn b(exp: u32) -> i64 {
+    // CHECK: %[[R:.+]] = and i32 %exp, 63
+    // CHECK: %[[R:.+]] = zext i32 %[[R:.+]] to i64
+    // CHECK: %[[R:.+]] = shl nuw i64 %[[R:.+]].i, %[[R:.+]]
+    // CHECK: ret i64 %[[R:.+]]
     2i64.pow(exp)
 }
 

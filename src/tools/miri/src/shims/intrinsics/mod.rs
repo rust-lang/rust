@@ -139,7 +139,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Would not be considered UB, or the other way around (`is_val_statically_known(0)`).
             "is_val_statically_known" => {
                 let [_] = check_arg_count(args)?;
-                let branch = this.machine.rng.get_mut().gen();
+                let branch: bool = this.machine.rng.get_mut().gen();
                 this.write_scalar(Scalar::from_bool(branch), dest)?;
             }
 
@@ -461,11 +461,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
             // Nothing else
-            _ =>
-                span_bug!(
-                    this.cur_span(),
-                    "`float_to_int_unchecked` called with non-int output type {dest_ty:?}"
-                ),
+            _ => span_bug!(
+                this.cur_span(),
+                "`float_to_int_unchecked` called with non-int output type {dest_ty:?}"
+            ),
         })
     }
 >>>>>>> acbf90a9489 (Make MIRI choose the path randomly and rename the intrinsic)

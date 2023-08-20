@@ -33,11 +33,20 @@ fn main() {
     assert_eq!(intrinsics::likely(false), false);
     assert_eq!(intrinsics::unlikely(true), true);
 
-    if unsafe { intrinsics::is_val_statically_known(&0 as _) } {
-        0
-    } else {
-        0
-    };
+    let mut saw_true = false;
+    let mut saw_false = false;
+
+    for _ in 0..50 {
+        if unsafe { intrinsics::is_val_statically_known(0) } {
+            saw_true = true;
+        } else {
+            saw_false = true;
+        }
+    }
+    assert!(
+        saw_true && saw_false,
+        "`is_val_statically_known` failed to return both true and false. Congrats, you won the lottery!"
+    );
 
     intrinsics::forget(Bomb);
 
