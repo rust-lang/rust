@@ -96,21 +96,6 @@ pub enum CoverageKind {
     Unreachable,
 }
 
-impl CoverageKind {
-    pub fn as_operand(&self) -> Operand {
-        use CoverageKind::*;
-        match *self {
-            Counter { id, .. } => Operand::Counter(id),
-            Expression { id, .. } => Operand::Expression(id),
-            Unreachable => bug!("Unreachable coverage cannot be part of an expression"),
-        }
-    }
-
-    pub fn is_expression(&self) -> bool {
-        matches!(self, Self::Expression { .. })
-    }
-}
-
 impl Debug for CoverageKind {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use CoverageKind::*;
