@@ -464,6 +464,13 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         Ok(Some((ecx.load_mir(instance.def, None)?, orig_instance)))
     }
 
+    fn panic_nounwind(ecx: &mut InterpCx<'mir, 'tcx, Self>, msg: &str) -> InterpResult<'tcx> {
+        let msg = Symbol::intern(msg);
+        let span = ecx.find_closest_untracked_caller_location();
+        let (file, line, col) = ecx.location_triple_for_span(span);
+        Err(ConstEvalErrKind::Panic { msg, file, line, col }.into())
+    }
+
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
@@ -582,10 +589,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             }
         };
         Err(ConstEvalErrKind::AssertFailure(err).into())
-    }
-
-    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>, msg: String) -> InterpResult<'tcx, !> {
-        Err(ConstEvalErrKind::Abort(msg).into())
     }
 
     fn binary_ptr_op(

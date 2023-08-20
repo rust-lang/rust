@@ -583,7 +583,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         I: IntoIterator<Item = Ty<'tcx>>,
     {
         self.block(vec![], TerminatorKind::Goto { target: self.block_index_offset(3) }, false);
-        let unwind = self.block(vec![], TerminatorKind::Resume, true);
+        let unwind = self.block(vec![], TerminatorKind::UnwindResume, true);
         let target = self.block(vec![], TerminatorKind::Return, false);
 
         let _final_cleanup_block = self.clone_fields(dest, src, target, unwind, tys);
@@ -597,7 +597,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         args: GeneratorArgs<'tcx>,
     ) {
         self.block(vec![], TerminatorKind::Goto { target: self.block_index_offset(3) }, false);
-        let unwind = self.block(vec![], TerminatorKind::Resume, true);
+        let unwind = self.block(vec![], TerminatorKind::UnwindResume, true);
         // This will get overwritten with a switch once we know the target blocks
         let switch = self.block(vec![], TerminatorKind::Unreachable, false);
         let unwind = self.clone_fields(dest, src, switch, unwind, args.upvar_tys());
@@ -854,7 +854,7 @@ fn build_call_shim<'tcx>(
         );
 
         // BB #4 - resume
-        block(&mut blocks, vec![], TerminatorKind::Resume, true);
+        block(&mut blocks, vec![], TerminatorKind::UnwindResume, true);
     }
 
     let mut body =

@@ -1224,12 +1224,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         self.set_debug_loc(bx, terminator.source_info);
         match terminator.kind {
-            mir::TerminatorKind::Resume => {
+            mir::TerminatorKind::UnwindResume => {
                 self.codegen_resume_terminator(helper, bx);
                 MergingSucc::False
             }
 
-            mir::TerminatorKind::Terminate => {
+            mir::TerminatorKind::UnwindTerminate => {
                 self.codegen_terminate_terminator(helper, bx, terminator);
                 MergingSucc::False
             }

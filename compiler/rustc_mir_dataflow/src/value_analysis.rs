@@ -269,8 +269,8 @@ pub trait ValueAnalysis<'tcx> {
                 return self.handle_switch_int(discr, targets, state);
             }
             TerminatorKind::Goto { .. }
-            | TerminatorKind::Resume
-            | TerminatorKind::Terminate
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Assert { .. }

@@ -1239,7 +1239,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             // These never unwind.
             TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::Terminate
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
@@ -1248,7 +1248,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
 
             // Resume will *continue* unwinding, but if there's no other unwinding terminator it
             // will never be reached.
-            TerminatorKind::Resume => {}
+            TerminatorKind::UnwindResume => {}
 
             TerminatorKind::Yield { .. } => {
                 unreachable!("`can_unwind` called before generator transform")
@@ -1279,14 +1279,14 @@ fn create_generator_resume_function<'tcx>(
         let source_info = SourceInfo::outermost(body.span);
         let poison_block = body.basic_blocks_mut().push(BasicBlockData {
             statements: vec![transform.set_discr(VariantIdx::new(POISONED), source_info)],
-            terminator: Some(Terminator { source_info, kind: TerminatorKind::Resume }),
+            terminator: Some(Terminator { source_info, kind: TerminatorKind::UnwindResume }),
             is_cleanup: true,
         });
 
         for (idx, block) in body.basic_blocks_mut().iter_enumerated_mut() {
             let source_info = block.terminator().source_info;
 
-            if let TerminatorKind::Resume = block.terminator().kind {
+            if let TerminatorKind::UnwindResume = block.terminator().kind {
                 // An existing `Resume` terminator is redirected to jump to our dedicated
                 // "poisoning block" above.
                 if idx != poison_block {
@@ -1758,8 +1758,8 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             TerminatorKind::Call { .. }
             | TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::Resume
-            | TerminatorKind::Terminate
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }

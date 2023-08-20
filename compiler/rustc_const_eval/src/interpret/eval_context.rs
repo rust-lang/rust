@@ -765,7 +765,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             mir::UnwindAction::Terminate => {
                 self.frame_mut().loc = Right(self.frame_mut().body.span);
-                M::abort(self, "panic in a function that cannot unwind".to_owned())?;
+                M::unwind_terminate(self)?;
+                // This might have pushed a new stack frame, or it terminated execution.
+                // Either way, `loc` will not be updated.
+                return Ok(());
             }
         };
         Ok(())
@@ -865,6 +868,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     panic!("encountered StackPopCleanup::Root when unwinding!")
                 }
             };
+            // This must be the very last thing that happens, since it can in fact push a new stack frame.
             self.unwind_to_block(unwind)
         } else {
             // Follow the normal return edge.

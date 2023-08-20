@@ -108,13 +108,13 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
                         }
 
                         // The following terminators are not allowed
-                        TerminatorKind::Resume
+                        TerminatorKind::UnwindResume
                         | TerminatorKind::Drop { .. }
                         | TerminatorKind::Call { .. }
                         | TerminatorKind::Assert { .. }
                         | TerminatorKind::FalseUnwind { .. }
                         | TerminatorKind::Yield { .. }
-                        | TerminatorKind::Terminate
+                        | TerminatorKind::UnwindTerminate
                         | TerminatorKind::Return
                         | TerminatorKind::Unreachable
                         | TerminatorKind::InlineAsm { .. }
@@ -165,8 +165,8 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
                 });
             }
 
-            TerminatorKind::Resume
-            | TerminatorKind::Terminate
+            TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop

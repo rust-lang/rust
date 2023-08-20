@@ -492,19 +492,19 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::Resume => {
+            TerminatorKind::UnwindResume => {
                 let bb = location.block;
                 if !self.body.basic_blocks[bb].is_cleanup {
-                    self.fail(location, "Cannot `Resume` from non-cleanup basic block")
+                    self.fail(location, "Cannot `UnwindResume` from non-cleanup basic block")
                 }
                 if !self.can_unwind {
-                    self.fail(location, "Cannot `Resume` in a function that cannot unwind")
+                    self.fail(location, "Cannot `UnwindResume` in a function that cannot unwind")
                 }
             }
-            TerminatorKind::Terminate => {
+            TerminatorKind::UnwindTerminate => {
                 let bb = location.block;
                 if !self.body.basic_blocks[bb].is_cleanup {
-                    self.fail(location, "Cannot `Terminate` from non-cleanup basic block")
+                    self.fail(location, "Cannot `UnwindTerminate` from non-cleanup basic block")
                 }
             }
             TerminatorKind::Return => {
@@ -1232,8 +1232,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::Resume
-            | TerminatorKind::Terminate
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable => {}
         }

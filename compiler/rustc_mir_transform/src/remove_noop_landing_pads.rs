@@ -63,7 +63,7 @@ impl RemoveNoopLandingPads {
         let terminator = body[bb].terminator();
         match terminator.kind {
             TerminatorKind::Goto { .. }
-            | TerminatorKind::Resume
+            | TerminatorKind::UnwindResume
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {
@@ -72,7 +72,7 @@ impl RemoveNoopLandingPads {
             TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::Return
-            | TerminatorKind::Terminate
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::Unreachable
             | TerminatorKind::Call { .. }
             | TerminatorKind::Assert { .. }
@@ -88,7 +88,7 @@ impl RemoveNoopLandingPads {
         let has_resume = body
             .basic_blocks
             .iter_enumerated()
-            .any(|(_bb, block)| matches!(block.terminator().kind, TerminatorKind::Resume));
+            .any(|(_bb, block)| matches!(block.terminator().kind, TerminatorKind::UnwindResume));
         if !has_resume {
             debug!("remove_noop_landing_pads: no resume block in MIR");
             return;

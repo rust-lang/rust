@@ -470,7 +470,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             // drop elaboration should handle that by itself
                             continue;
                         }
-                        TerminatorKind::Resume => {
+                        TerminatorKind::UnwindResume => {
                             // It is possible for `Resume` to be patched
                             // (in particular it can be patched to be replaced with
                             // a Goto; see `MirPatch::new`).

@@ -541,6 +541,13 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         unimplemented!()
     }
 
+    fn panic_nounwind(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _msg: &str,
+    ) -> interpret::InterpResult<'tcx> {
+        unimplemented!()
+    }
+
     fn call_intrinsic(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,

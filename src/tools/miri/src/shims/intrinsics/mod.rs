@@ -34,10 +34,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         if this.emulate_intrinsic(instance, args, dest, ret)? {
             return Ok(());
         }
-
-        // All remaining supported intrinsics have a return place.
         let intrinsic_name = this.tcx.item_name(instance.def_id());
         let intrinsic_name = intrinsic_name.as_str();
+
+        // Handle intrinsics without return place.
+        match intrinsic_name {
+            "abort" => {
+                throw_machine_stop!(TerminationInfo::Abort(
+                    "the program aborted execution".to_owned()
+                ))
+            }
+            _ => {},
+        }
+
+        // All remaining supported intrinsics have a return place.
         let ret = match ret {
             None => throw_unsup_format!("unimplemented (diverging) intrinsic: `{intrinsic_name}`"),
             Some(p) => p,
@@ -393,7 +403,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "breakpoint" => {
                 let [] = check_arg_count(args)?;
                 // normally this would raise a SIGTRAP, which aborts if no debugger is connected
-                throw_machine_stop!(TerminationInfo::Abort(format!("Trace/breakpoint trap")))
+                throw_machine_stop!(TerminationInfo::Abort(format!("trace/breakpoint trap")))
             }
 
             name => throw_unsup_format!("unimplemented intrinsic: `{name}`"),
