@@ -2,6 +2,8 @@
 
 fn pointee(_1: &mut Option<i32>) -> () {
     debug foo => (((*_1) as variant#1).0: i32);
+    debug addr => &(((*_1) as variant#1).0: i32);
+    debug biaddr => &&(((*_1) as variant#1).0: i32);
     let mut _0: ();
 
     bb0: {

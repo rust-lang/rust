@@ -218,7 +218,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 StmtKind::Expr { expr, .. } => expr,
             };
             let span = self.thir[expr].span;
-            let (name, operand) = parse_by_kind!(self, expr, _, "debuginfo",
+            let (name, mut operand) = parse_by_kind!(self, expr, _, "debuginfo",
                 @call("mir_debuginfo", args) => {
                     (args[0], args[1])
                 },
@@ -233,6 +233,16 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     expected: "string".to_string(),
                 });
             };
+            let mut references = 0;
+            loop {
+                parse_by_kind!(self, operand, _, "debuginfo",
+                    ExprKind::Borrow { arg, .. } => {
+                        references += 1;
+                        operand = *arg;
+                    },
+                    _ => break,
+                );
+            }
             let operand = self.parse_operand(operand)?;
             let value = match operand {
                 Operand::Constant(c) => VarDebugInfoContents::Const(*c),
@@ -242,6 +252,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 name,
                 source_info: SourceInfo { span, scope: self.source_scope },
                 argument_index: None,
+                references,
                 value,
             };
             self.body.var_debug_info.push(dbginfo);

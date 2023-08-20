@@ -8,6 +8,8 @@ use core::intrinsics::mir::*;
 fn pointee(opt: &mut Option<i32>) {
     mir!(
         debug foo => Field::<i32>(Variant(*opt, 1), 0);
+        debug addr => &Field::<i32>(Variant(*opt, 1), 0);
+        debug biaddr => &&Field::<i32>(Variant(*opt, 1), 0);
         {
             Return()
         }

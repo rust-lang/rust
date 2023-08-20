@@ -508,7 +508,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 };
 
-                self.cx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span)
+                let name = if var.references > 0 {
+                    Symbol::intern(&format!("{0:*<1$}{2}", "", var.references as usize, var.name))
+                } else {
+                    var.name
+                };
+
+                self.cx.create_dbg_var(name, var_ty, dbg_scope, var_kind, span)
             });
 
             match var.value {
