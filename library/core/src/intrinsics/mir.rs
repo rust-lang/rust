@@ -12,7 +12,8 @@
 //!
 //! Typical usage will look like this:
 //!
-//! ```rust
+#![cfg_attr(bootstrap, doc = "```rust,ignore")]
+#![cfg_attr(not(bootstrap), doc = "```rust")]
 //! #![feature(core_intrinsics, custom_mir)]
 #![cfg_attr(not(bootstrap), doc = "#![allow(internal_features)]")]
 //!
@@ -62,7 +63,8 @@
 //!
 //! # Examples
 //!
-//! ```rust
+#![cfg_attr(bootstrap, doc = "```rust,ignore")]
+#![cfg_attr(not(bootstrap), doc = "```rust")]
 //! #![feature(core_intrinsics, custom_mir)]
 #![cfg_attr(not(bootstrap), doc = "#![allow(internal_features)]")]
 //!
@@ -316,9 +318,10 @@ define!(
     ///
     /// # Examples
     ///
-    /// ```rust
-    #[cfg_attr(not(bootstrap), doc = "#![allow(internal_features)]")]
+    #[cfg_attr(bootstrap, doc = "```rust,ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```rust")]
     /// #![feature(custom_mir, core_intrinsics)]
+    #[cfg_attr(not(bootstrap), doc = "#![allow(internal_features)]")]
     ///
     /// use core::intrinsics::mir::*;
     ///
