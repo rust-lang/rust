@@ -380,6 +380,28 @@ pub enum StatementKind<'tcx> {
     Nop,
 }
 
+impl StatementKind<'_> {
+    /// Returns a simple string representation of a `StatementKind` variant, independent of any
+    /// values it might hold (e.g. `StatementKind::Assign` always returns `"Assign"`).
+    pub const fn name(&self) -> &'static str {
+        match self {
+            StatementKind::Assign(..) => "Assign",
+            StatementKind::FakeRead(..) => "FakeRead",
+            StatementKind::SetDiscriminant { .. } => "SetDiscriminant",
+            StatementKind::Deinit(..) => "Deinit",
+            StatementKind::StorageLive(..) => "StorageLive",
+            StatementKind::StorageDead(..) => "StorageDead",
+            StatementKind::Retag(..) => "Retag",
+            StatementKind::PlaceMention(..) => "PlaceMention",
+            StatementKind::AscribeUserType(..) => "AscribeUserType",
+            StatementKind::Coverage(..) => "Coverage",
+            StatementKind::Intrinsic(..) => "Intrinsic",
+            StatementKind::ConstEvalCounter => "ConstEvalCounter",
+            StatementKind::Nop => "Nop",
+        }
+    }
+}
+
 #[derive(
     Clone,
     TyEncodable,
@@ -790,8 +812,8 @@ impl TerminatorKind<'_> {
         match self {
             TerminatorKind::Goto { .. } => "Goto",
             TerminatorKind::SwitchInt { .. } => "SwitchInt",
-            TerminatorKind::UnwindResume => "Resume",
-            TerminatorKind::UnwindTerminate => "Terminate",
+            TerminatorKind::UnwindResume => "UnwindResume",
+            TerminatorKind::UnwindTerminate => "UnwindTerminate",
             TerminatorKind::Return => "Return",
             TerminatorKind::Unreachable => "Unreachable",
             TerminatorKind::Drop { .. } => "Drop",
