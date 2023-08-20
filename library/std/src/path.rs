@@ -2343,7 +2343,7 @@ impl Path {
     /// # Errors
     ///
     /// If `base` is not a prefix of `self` (i.e., [`starts_with`]
-    /// returns `false`), returns [`Err`].
+    /// returns `false`), returns [`StripPrefixError`].
     ///
     /// [`starts_with`]: Path::starts_with
     ///
