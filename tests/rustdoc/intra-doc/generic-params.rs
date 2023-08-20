@@ -1,6 +1,7 @@
 // ignore-tidy-linelength
 
 #![crate_name = "foo"]
+#![allow(rustdoc::redundant_explicit_links)]
 
 //! Here's a link to [`Vec<T>`] and one to [`Box<Vec<Option<T>>>`].
 //! Here's a link to [`Iterator<Box<T>>::Item`].

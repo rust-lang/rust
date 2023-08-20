@@ -994,7 +994,7 @@ impl LinkCollector<'_, '_> {
                 _ => find_nearest_parent_module(self.cx.tcx, item_id).unwrap(),
             };
             for md_link in preprocessed_markdown_links(&doc) {
-                let link = self.resolve_link(item, item_id, module_id, &doc, &md_link);
+                let link = self.resolve_link(&doc, item, item_id, module_id, &md_link);
                 if let Some(link) = link {
                     self.cx.cache.intra_doc_links.entry(item.item_id).or_default().insert(link);
                 }
@@ -1007,13 +1007,12 @@ impl LinkCollector<'_, '_> {
     /// FIXME(jynelson): this is way too many arguments
     fn resolve_link(
         &mut self,
+        dox: &String,
         item: &Item,
         item_id: DefId,
         module_id: DefId,
-        dox: &str,
-        link: &PreprocessedMarkdownLink,
+        PreprocessedMarkdownLink(pp_link, ori_link): &PreprocessedMarkdownLink,
     ) -> Option<ItemLink> {
-        let PreprocessedMarkdownLink(pp_link, ori_link) = link;
         trace!("considering link '{}'", ori_link.link);
 
         let diag_info = DiagnosticInfo {
@@ -1022,7 +1021,6 @@ impl LinkCollector<'_, '_> {
             ori_link: &ori_link.link,
             link_range: ori_link.range.clone(),
         };
-
         let PreprocessingInfo { path_str, disambiguator, extra_fragment, link_text } =
             pp_link.as_ref().map_err(|err| err.report(self.cx, diag_info.clone())).ok()?;
         let disambiguator = *disambiguator;
@@ -1040,7 +1038,23 @@ impl LinkCollector<'_, '_> {
             // resolutions are cached, for other links we want to report an error every
             // time so they are not cached.
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
+            false,
         )?;
+
+        if ori_link.display_text.is_some() {
+            self.resolve_display_text(
+                path_str,
+                ResolutionInfo {
+                    item_id,
+                    module_id,
+                    dis: disambiguator,
+                    path_str: ori_link.display_text.clone()?.into_boxed_str(),
+                    extra_fragment: extra_fragment.clone(),
+                },
+                &ori_link,
+                &diag_info,
+            );
+        }
 
         // Check for a primitive which might conflict with a module
         // Report the ambiguity and require that the user specify which one they meant.
@@ -1221,6 +1235,9 @@ impl LinkCollector<'_, '_> {
         // If errors are cached then they are only reported on first occurrence
         // which we want in some cases but not in others.
         cache_errors: bool,
+        // If this call is intended to be recoverable, then pass true to silence.
+        // This is only recoverable when path is failed to resolved.
+        recoverable: bool,
     ) -> Option<(Res, Option<UrlFragment>)> {
         if let Some(res) = self.visited_links.get(&key) {
             if res.is_some() || cache_errors {
@@ -1228,7 +1245,7 @@ impl LinkCollector<'_, '_> {
             }
         }
 
-        let mut candidates = self.resolve_with_disambiguator(&key, diag.clone());
+        let mut candidates = self.resolve_with_disambiguator(&key, diag.clone(), recoverable);
 
         // FIXME: it would be nice to check that the feature gate was enabled in the original crate, not just ignore it altogether.
         // However I'm not sure how to check that across crates.
@@ -1279,6 +1296,9 @@ impl LinkCollector<'_, '_> {
         &mut self,
         key: &ResolutionInfo,
         diag: DiagnosticInfo<'_>,
+        // If this call is intended to be recoverable, then pass true to silence.
+        // This is only recoverable when path is failed to resolved.
+        recoverable: bool,
     ) -> Vec<(Res, Option<DefId>)> {
         let disambiguator = key.dis;
         let path_str = &key.path_str;
@@ -1308,7 +1328,9 @@ impl LinkCollector<'_, '_> {
                                 }
                             }
                         }
-                        resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
+                        if !recoverable {
+                            resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
+                        }
                         return vec![];
                     }
                 }
@@ -1345,13 +1367,15 @@ impl LinkCollector<'_, '_> {
                     .fold(0, |acc, res| if let Ok(res) = res { acc + res.len() } else { acc });
 
                 if len == 0 {
-                    resolution_failure(
-                        self,
-                        diag,
-                        path_str,
-                        disambiguator,
-                        candidates.into_iter().filter_map(|res| res.err()).collect(),
-                    );
+                    if !recoverable {
+                        resolution_failure(
+                            self,
+                            diag,
+                            path_str,
+                            disambiguator,
+                            candidates.into_iter().filter_map(|res| res.err()).collect(),
+                        );
+                    }
                     return vec![];
                 } else if len == 1 {
                     candidates.into_iter().filter_map(|res| res.ok()).flatten().collect::<Vec<_>>()
@@ -1370,6 +1394,63 @@ impl LinkCollector<'_, '_> {
                     }
                 }
             }
+        }
+    }
+
+    /// Resolve display text if the provided link has separated parts of links.
+    ///
+    /// For example:
+    /// Inline link `[display_text](dest_link)` and reference link `[display_text][reference_link]` has
+    /// separated parts of links.
+    fn resolve_display_text(
+        &mut self,
+        explicit_link: &Box<str>,
+        display_res_info: ResolutionInfo,
+        ori_link: &MarkdownLink,
+        diag_info: &DiagnosticInfo<'_>,
+    ) {
+        // Check if explicit resolution's path is same as resolution of original link's display text path, see
+        // tests/rustdoc-ui/lint/redundant_explicit_links.rs for more cases.
+        //
+        // To avoid disambiguator from panicking, we check if display text path is possible to be disambiguated
+        // into explicit path.
+        if !matches!(
+            ori_link.kind,
+            LinkType::Inline | LinkType::Reference | LinkType::ReferenceUnknown
+        ) {
+            return;
+        }
+
+        // Algorithm to check if display text could possibly be the explicit link:
+        //
+        // Consider 2 links which are display text and explicit link, pick the shorter
+        // one as symbol and longer one as full qualified path, and tries to match symbol
+        // to the full qualified path's last symbol.
+        //
+        // Otherwise, check if 2 links are same, if so, skip the resolve process.
+        //
+        // Notice that this algorithm is passive, might possibly miss actual redudant cases.
+        let explicit_link = &explicit_link.to_string();
+        let display_text = ori_link.display_text.as_ref().unwrap();
+        let display_len = display_text.len();
+        let explicit_len = explicit_link.len();
+
+        if display_len == explicit_len {
+            // Whether they are same or not, skip the resolve process.
+            return;
+        }
+
+        if (explicit_len >= display_len
+            && &explicit_link[(explicit_len - display_len)..] == display_text)
+            || (display_len >= explicit_len
+                && &display_text[(display_len - explicit_len)..] == explicit_link)
+        {
+            self.resolve_with_disambiguator_cached(
+                display_res_info,
+                diag_info.clone(), // this struct should really be Copy, but Range is not :(
+                false,
+                true,
+            );
         }
     }
 }

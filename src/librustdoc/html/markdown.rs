@@ -50,7 +50,7 @@ use crate::html::render::small_url_encode;
 use crate::html::toc::TocBuilder;
 
 use pulldown_cmark::{
-    html, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag,
+    html, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, OffsetIter, Options, Parser, Tag,
 };
 
 #[cfg(test)]
@@ -1240,6 +1240,7 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
 pub(crate) struct MarkdownLink {
     pub kind: LinkType,
     pub link: String,
+    pub display_text: Option<String>,
     pub range: MarkdownLinkRange,
 }
 
@@ -1263,8 +1264,8 @@ impl MarkdownLinkRange {
     }
 }
 
-pub(crate) fn markdown_links<R>(
-    md: &str,
+pub(crate) fn markdown_links<'md, R>(
+    md: &'md str,
     preprocess_link: impl Fn(MarkdownLink) -> Option<R>,
 ) -> Vec<R> {
     if md.is_empty() {
@@ -1375,32 +1376,90 @@ pub(crate) fn markdown_links<R>(
         MarkdownLinkRange::Destination(range.clone())
     };
 
-    Parser::new_with_broken_link_callback(
+    let mut broken_link_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
+    let mut event_iter = Parser::new_with_broken_link_callback(
         md,
         main_body_opts(),
-        Some(&mut |link: BrokenLink<'_>| Some((link.reference, "".into()))),
+        Some(&mut broken_link_callback),
     )
-    .into_offset_iter()
-    .filter_map(|(event, span)| match event {
-        Event::Start(Tag::Link(link_type, dest, _)) if may_be_doc_link(link_type) => {
-            let range = match link_type {
-                // Link is pulled from the link itself.
-                LinkType::ReferenceUnknown | LinkType::ShortcutUnknown => {
-                    span_for_offset_backward(span, b'[', b']')
+    .into_offset_iter();
+    let mut links = Vec::new();
+
+    while let Some((event, span)) = event_iter.next() {
+        match event {
+            Event::Start(Tag::Link(link_type, dest, _)) if may_be_doc_link(link_type) => {
+                let range = match link_type {
+                    // Link is pulled from the link itself.
+                    LinkType::ReferenceUnknown | LinkType::ShortcutUnknown => {
+                        span_for_offset_backward(span, b'[', b']')
+                    }
+                    LinkType::CollapsedUnknown => span_for_offset_forward(span, b'[', b']'),
+                    LinkType::Inline => span_for_offset_backward(span, b'(', b')'),
+                    // Link is pulled from elsewhere in the document.
+                    LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut => {
+                        span_for_link(&dest, span)
+                    }
+                    LinkType::Autolink | LinkType::Email => unreachable!(),
+                };
+
+                let display_text = if matches!(
+                    link_type,
+                    LinkType::Inline
+                        | LinkType::ReferenceUnknown
+                        | LinkType::Reference
+                        | LinkType::Shortcut
+                        | LinkType::ShortcutUnknown
+                ) {
+                    collect_link_data(&mut event_iter)
+                } else {
+                    None
+                };
+
+                if let Some(link) = preprocess_link(MarkdownLink {
+                    kind: link_type,
+                    link: dest.into_string(),
+                    display_text,
+                    range,
+                }) {
+                    links.push(link);
                 }
-                LinkType::CollapsedUnknown => span_for_offset_forward(span, b'[', b']'),
-                LinkType::Inline => span_for_offset_backward(span, b'(', b')'),
-                // Link is pulled from elsewhere in the document.
-                LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut => {
-                    span_for_link(&dest, span)
-                }
-                LinkType::Autolink | LinkType::Email => unreachable!(),
-            };
-            preprocess_link(MarkdownLink { kind: link_type, range, link: dest.into_string() })
+            }
+            _ => {}
         }
-        _ => None,
-    })
-    .collect()
+    }
+
+    links
+}
+
+/// Collects additional data of link.
+fn collect_link_data<'input, 'callback>(
+    event_iter: &mut OffsetIter<'input, 'callback>,
+) -> Option<String> {
+    let mut display_text: Option<String> = None;
+    let mut append_text = |text: CowStr<'_>| {
+        if let Some(display_text) = &mut display_text {
+            display_text.push_str(&text);
+        } else {
+            display_text = Some(text.to_string());
+        }
+    };
+
+    while let Some((event, _span)) = event_iter.next() {
+        match event {
+            Event::Text(text) => {
+                append_text(text);
+            }
+            Event::Code(code) => {
+                append_text(code);
+            }
+            Event::End(_) => {
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    display_text
 }
 
 #[derive(Debug)]

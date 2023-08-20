@@ -153,7 +153,7 @@ macro_rules! acquire {
 ///
 /// ## `Deref` behavior
 ///
-/// `Arc<T>` automatically dereferences to `T` (via the [`Deref`][deref] trait),
+/// `Arc<T>` automatically dereferences to `T` (via the [`Deref`] trait),
 /// so you can call `T`'s methods on a value of type `Arc<T>`. To avoid name
 /// clashes with `T`'s methods, the methods of `Arc<T>` itself are associated
 /// functions, called using [fully qualified syntax]:
@@ -187,7 +187,6 @@ macro_rules! acquire {
 /// [mutex]: ../../std/sync/struct.Mutex.html
 /// [rwlock]: ../../std/sync/struct.RwLock.html
 /// [atomic]: core::sync::atomic
-/// [deref]: core::ops::Deref
 /// [downgrade]: Arc::downgrade
 /// [upgrade]: Weak::upgrade
 /// [RefCell\<T>]: core::cell::RefCell
@@ -1495,7 +1494,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// alignment as `T`. This is trivially true if `U` is `T`.
     /// Note that if `U` is not `T` but has the same size and alignment, this is
     /// basically like transmuting references of different types. See
-    /// [`mem::transmute`][transmute] for more information on what
+    /// [`mem::transmute`] for more information on what
     /// restrictions apply in this case.
     ///
     /// The raw pointer must point to a block of memory allocated by `alloc`
@@ -1507,7 +1506,6 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// even if the returned `Arc<T>` is never accessed.
     ///
     /// [into_raw]: Arc::into_raw
-    /// [transmute]: core::mem::transmute
     ///
     /// # Examples
     ///
