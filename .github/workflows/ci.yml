@@ -323,17 +323,6 @@ jobs:
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
             os: macos-13
-          - name: dist-x86_64-apple-alt
-            env:
-              SCRIPT: "./x.py dist bootstrap --include-default-paths"
-              RUST_CONFIGURE_ARGS: "--enable-extended --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.7
-              SELECT_XCODE: /Applications/Xcode_13.4.1.app
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-              NO_OVERFLOW_CHECKS: 1
-            os: macos-13
           - name: x86_64-apple-1
             env:
               SCRIPT: "./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps"
