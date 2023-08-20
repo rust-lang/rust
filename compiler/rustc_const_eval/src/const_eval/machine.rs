@@ -468,7 +468,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         let msg = Symbol::intern(msg);
         let span = ecx.find_closest_untracked_caller_location();
         let (file, line, col) = ecx.location_triple_for_span(span);
-        return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
+        Err(ConstEvalErrKind::Panic { msg, file, line, col }.into())
     }
 
     fn call_intrinsic(
