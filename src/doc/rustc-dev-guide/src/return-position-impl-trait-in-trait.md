@@ -34,7 +34,7 @@ We record `lifetime_mapping`s for the opaque type, described below.
 lifetimes into new lifetime parameters local to the opaque. The main
 reason we do this is because RPITs need to be able to "reify"[^1] any
 captured late-bound arguments, or make them into early-bound ones. This
-is so they can be used as substs for the opaque, and later to
+is so they can be used as generic args for the opaque, and later to
 instantiate hidden types. Since we don't know which lifetimes are early-
 or late-bound during AST lowering, we just do this for all lifetimes.
 
@@ -355,7 +355,7 @@ error[E0308]: mismatched types
 
 #### Well-formedness checking
 
-We check well-formedness of RPITITs just like regular associated types. 
+We check well-formedness of RPITITs just like regular associated types.
 
 Since we added lifetime bounds in `predicates_of` that link the
 duplicated early-bound lifetimes to their original lifetimes, and we

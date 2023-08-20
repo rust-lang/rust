@@ -26,7 +26,7 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
         | rbv::ResolvedArg::Free(_, node_id),
     ) = def
     {
-        if let Some(lt) = cx.substs.get(&node_id).and_then(|p| p.as_lt()).cloned() {
+        if let Some(lt) = cx.args.get(&node_id).and_then(|p| p.as_lt()).cloned() {
             return lt;
         }
     }
@@ -109,7 +109,7 @@ Here is the list of passes as of <!-- date-check --> March 2023:
     `Go to https://example.com/.` It suggests wrapping the link with angle brackets:
     `Go to <https://example.com/>.` to linkify it. This is the code behind the <!--
     date-check: may 2022 --> `rustdoc::bare_urls` lint.
-  
+
   - `check_code_block_syntax` validates syntax inside Rust code blocks
     (<code>```rust</code>)
 

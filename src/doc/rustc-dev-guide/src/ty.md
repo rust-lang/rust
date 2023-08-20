@@ -200,11 +200,11 @@ the function calls if one is available in some place (like during type checking)
 If no inference context is available at all, then one can be created as described in
 [type-inference]. But this is only useful when the involved types (for example, if
 they came from a query like `tcx.type_of()`) are actually substituted with fresh
-inference variables using [`fresh_substs_for_item`]. This can be used to answer questions
+inference variables using [`fresh_args_for_item`]. This can be used to answer questions
 like "can `Vec<T>` for any `T` be unified with `Vec<u32>`?".
 
 [type-inference]: ./type-inference.md#creating-an-inference-context
-[`fresh_substs_for_item`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.fresh_substs_for_item
+[`fresh_args_for_item`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.fresh_args_for_item
 
 ## `ty::TyKind` Variants
 
@@ -287,7 +287,7 @@ struct MyStruct<T> { x: u32, y: T }
 The type `MyStruct<u32>` would be an instance of `TyKind::Adt`:
 
 ```rust,ignore
-Adt(&'tcx AdtDef, SubstsRef<'tcx>)
+Adt(&'tcx AdtDef, GenericArgsRef<'tcx>)
 //  ------------  ---------------
 //  (1)            (2)
 //
@@ -301,12 +301,12 @@ There are two parts:
   parameters. In our example, this is the `MyStruct` part *without* the argument `u32`.
   (Note that in the HIR, structs, enums and unions are represented differently, but in `ty::Ty`,
   they are all represented using `TyKind::Adt`.)
-- The [`SubstsRef`][substsref] is an interned list of values that are to be substituted for the
-  generic parameters.  In our example of `MyStruct<u32>`, we would end up with a list like `[u32]`.
-  We’ll dig more into generics and substitutions in a little bit.
+- The [`GenericArgsRef`][GenericArgsRef] is an interned list of values that are to be substituted
+for the generic parameters.  In our example of `MyStruct<u32>`, we would end up with a list like
+`[u32]`. We’ll dig more into generics and substitutions in a little bit.
 
 [adtdef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.AdtDef.html
-[substsref]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/type.SubstsRef.html
+[GenericArgsRef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/type.GenericArgsRef.html
 
 **`AdtDef` and `DefId`**
 
@@ -363,13 +363,13 @@ delaying a redundant span bug.
 
 ## Question: Why not substitute “inside” the `AdtDef`?
 
-Recall that we represent a generic struct with `(AdtDef, substs)`. So why bother with this scheme?
+Recall that we represent a generic struct with `(AdtDef, args)`. So why bother with this scheme?
 
 Well, the alternate way we could have chosen to represent types would be to always create a new,
 fully-substituted form of the `AdtDef` where all the types are already substituted. This seems like
-less of a hassle. However, the `(AdtDef, substs)` scheme has some advantages over this.
+less of a hassle. However, the `(AdtDef, args)` scheme has some advantages over this.
 
-First, `(AdtDef, substs)` scheme has an efficiency win:
+First, `(AdtDef, args)` scheme has an efficiency win:
 
 ```rust,ignore
 struct MyStruct<T> {

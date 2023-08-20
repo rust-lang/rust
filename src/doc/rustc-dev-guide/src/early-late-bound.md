@@ -1,8 +1,8 @@
 # Early and Late Bound Parameter Definitions
 
 Understanding this page likely requires a rudimentary understanding of higher ranked
-trait bounds/`for<'a>`and also what types such as `dyn for<'a> Trait<'a>` and 
-`for<'a> fn(&'a u32)` mean. Reading [the nomincon chapter](https://doc.rust-lang.org/nomicon/hrtb.html)
+trait bounds/`for<'a>`and also what types such as `dyn for<'a> Trait<'a>` and
+ `for<'a> fn(&'a u32)` mean. Reading [the nomincon chapter](https://doc.rust-lang.org/nomicon/hrtb.html)
 on HRTB may be useful for understanding this syntax. The meaning of `for<'a> fn(&'a u32)`
 is incredibly similar to the meaning of `T: for<'a> Trait<'a>`.
 
@@ -21,7 +21,7 @@ fn foo<'a>(_: &'a u32) {}
 
 fn main() {
     let b = foo;
-    //  ^ `b` has type `FnDef(foo, [])` (no substs because `'a` is late bound)
+    //  ^ `b` has type `FnDef(foo, [])` (no args because `'a` is late bound)
     assert!(std::mem::size_of_val(&b) == 0);
 }
 ```
@@ -38,7 +38,7 @@ fn main() {
 }
 ```
 
-Because late bound parameters are not part of the `FnDef`'s substs this allows us to prove trait
+Because late bound parameters are not part of the `FnDef`'s args this allows us to prove trait
 bounds such as `F: for<'a> Fn(&'a u32)` where `F` is `foo`'s `FnDef`. e.g.
 ```rust
 fn foo_early<'a, T: Trait<'a>>(_: &'a u32, _: T) {}
@@ -52,7 +52,7 @@ fn main() {
     // of the borrow in the function argument must be the same as the lifetime
     // on the `FnDef`.
     accepts_hr_func(foo_early);
-    
+
     // works, the substituted bound is `for<'a> FnDef: Fn(&'a u32, u32)`
     accepts_hr_func(foo_late);
 }
@@ -85,7 +85,7 @@ making `generics_of` behave this way.
 ## What parameters are currently late bound
 
 Below are the current requirements for determining if a generic parameter is late bound. It is worth
-keeping in mind that these are not necessarily set in stone and it is almost certainly possible to 
+keeping in mind that these are not necessarily set in stone and it is almost certainly possible to
 be more flexible.
 
 ### Must be a lifetime parameter
@@ -161,7 +161,7 @@ this is simpler than the rules for checking impl headers constrain all the param
 We only have to ensure that all late bound parameters appear at least once in the function argument
 types outside of an alias (e.g. an associated type).
 
-The requirement that they not indirectly be in the substs of an alias for it to count is the
+The requirement that they not indirectly be in the args of an alias for it to count is the
 same as why the follow code is forbidden:
 ```rust
 impl<T: Trait> OtherTrait for <T as Trait>::Assoc { type Assoc = T }
@@ -174,13 +174,13 @@ same is true of the builtin `Fn*` impls.
 
 It is generally considered desirable for more parameters to be late bound as it makes
 the builtin `Fn*` impls more flexible. Right now many of the requirements for making
-a parameter late bound are overly restrictive as they are tied to what we can currently 
+a parameter late bound are overly restrictive as they are tied to what we can currently
 (or can ever) do with fn ptrs.
 
-It would be theoretically possible to support late bound params in `where`-clauses in the 
-language by introducing implication types which would allow us to express types such as: 
+It would be theoretically possible to support late bound params in `where`-clauses in the
+language by introducing implication types which would allow us to express types such as:
 `for<'a, 'b: 'a> fn(Inv<&'a u32>, Inv<&'b u32>)` which would ensure `'b: 'a` is upheld when
-calling the function pointer. 
+calling the function pointer.
 
 It would also be theoretically possible to support it by making the coercion to a fn ptr
 instantiate the parameter with an infer var while still allowing the FnDef to not have the
