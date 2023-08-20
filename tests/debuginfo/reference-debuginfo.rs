@@ -8,116 +8,71 @@
 // === GDB TESTS ===================================================================================
 
 // gdb-command:run
-// gdb-command:print *bool_ref
-// gdb-check:$1 = true
-
-// gdb-command:print *int_ref
-// gdb-check:$2 = -1
-
-// gdb-command:print/d *char_ref
-// gdb-check:$3 = 97
-
-// gdb-command:print *i8_ref
-// gdbg-check:$4 = 68 'D'
-// gdbr-check:$4 = 68
-
-// gdb-command:print *i16_ref
-// gdb-check:$5 = -16
-
-// gdb-command:print *i32_ref
-// gdb-check:$6 = -32
-
-// gdb-command:print *i64_ref
-// gdb-check:$7 = -64
-
-// gdb-command:print *uint_ref
-// gdb-check:$8 = 1
-
-// gdb-command:print *u8_ref
-// gdbg-check:$9 = 100 'd'
-// gdbr-check:$9 = 100
-
-// gdb-command:print *u16_ref
-// gdb-check:$10 = 16
-
-// gdb-command:print *u32_ref
-// gdb-check:$11 = 32
-
-// gdb-command:print *u64_ref
-// gdb-check:$12 = 64
-
-// gdb-command:print *f32_ref
-// gdb-check:$13 = 2.5
-
-// gdb-command:print *f64_ref
-// gdb-check:$14 = 3.5
-
-// gdb-command:print *f64_double_ref
-// gdb-check:$15 = 3.5
+// gdb-command:info locals
+// gdb-check:*f64_double_ref = 3.5
+// gdb-check:*f64_ref = 3.5
+// gdb-check:f64_val = 3.5
+// gdb-check:*f32_ref = 2.5
+// gdb-check:f32_val = 2.5
+// gdb-check:*u64_ref = 64
+// gdb-check:u64_val = 64
+// gdb-check:*u32_ref = 32
+// gdb-check:u32_val = 32
+// gdb-check:*u16_ref = 16
+// gdb-check:u16_val = 16
+// gdb-check:*u8_ref = 100
+// gdb-check:u8_val = 100
+// gdb-check:*uint_ref = 1
+// gdb-check:uint_val = 1
+// gdb-check:*i64_ref = -64
+// gdb-check:i64_val = -64
+// gdb-check:*i32_ref = -32
+// gdb-check:*i16_ref = -16
+// gdb-check:i16_val = -16
+// gdb-check:*i8_ref = 68
+// gdb-check:i8_val = 68
+// gdb-check:*char_ref = 97 'a'
+// gdb-check:char_val = 97 'a'
+// gdb-check:*int_ref = -1
+// gdb-check:int_val = -1
+// gdb-check:*bool_ref = true
+// gdb-check:bool_val = true
 
 
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
-// lldb-command:print *bool_ref
-// lldbg-check:[...]$0 = true
+// lldb-command:frame variable
+// lldbr-check:(bool) bool_val = true
 // lldbr-check:(bool) *bool_ref = true
-
-// lldb-command:print *int_ref
-// lldbg-check:[...]$1 = -1
-// lldbr-check:(isize) *int_ref = -1
-
-// NOTE: only rust-enabled lldb supports 32bit chars
-// lldbr-command:print *char_ref
-// lldbr-check:(char) *char_ref = 'a'
-
-// lldb-command:print *i8_ref
-// lldbg-check:[...]$2 = 'D'
-// lldbr-check:(i8) *i8_ref = 68
-
-// lldb-command:print *i16_ref
-// lldbg-check:[...]$3 = -16
-// lldbr-check:(i16) *i16_ref = -16
-
-// lldb-command:print *i32_ref
-// lldbg-check:[...]$4 = -32
-// lldbr-check:(i32) *i32_ref = -32
-
-// lldb-command:print *i64_ref
-// lldbg-check:[...]$5 = -64
-// lldbr-check:(i64) *i64_ref = -64
-
-// lldb-command:print *uint_ref
-// lldbg-check:[...]$6 = 1
-// lldbr-check:(usize) *uint_ref = 1
-
-// lldb-command:print *u8_ref
-// lldbg-check:[...]$7 = 'd'
-// lldbr-check:(u8) *u8_ref = 100
-
-// lldb-command:print *u16_ref
-// lldbg-check:[...]$8 = 16
-// lldbr-check:(u16) *u16_ref = 16
-
-// lldb-command:print *u32_ref
-// lldbg-check:[...]$9 = 32
-// lldbr-check:(u32) *u32_ref = 32
-
-// lldb-command:print *u64_ref
-// lldbg-check:[...]$10 = 64
-// lldbr-check:(u64) *u64_ref = 64
-
-// lldb-command:print *f32_ref
-// lldbg-check:[...]$11 = 2.5
-// lldbr-check:(f32) *f32_ref = 2.5
-
-// lldb-command:print *f64_ref
-// lldbg-check:[...]$12 = 3.5
-// lldbr-check:(f64) *f64_ref = 3.5
-
-// lldb-command:print *f64_double_ref
-// lldbg-check:[...]$13 = 3.5
-// lldbr-check:(f64) **f64_double_ref = 3.5
+// lldbr-check:(long) int_val = -1
+// lldbr-check:(long) *int_ref = -1
+// lldbr-check:(char32_t) char_val = U+0x00000061 U'a'
+// lldbr-check:(char32_t) *char_ref = U+0x00000061 U'a'
+// lldbr-check:(char) i8_val = 'D'
+// lldbr-check:(char) *i8_ref = 'D'
+// lldbr-check:(short) i16_val = -16
+// lldbr-check:(short) *i16_ref = -16
+// lldbr-check:(int) i32_val = -32
+// lldbr-check:(int) *i32_ref = -32
+// lldbr-check:(long) i64_val = -64
+// lldbr-check:(long) *i64_ref = -64
+// lldbr-check:(unsigned long) uint_val = 1
+// lldbr-check:(unsigned long) *uint_ref = 1
+// lldbr-check:(unsigned char) u8_val = 'd'
+// lldbr-check:(unsigned char) *u8_ref = 'd'
+// lldbr-check:(unsigned short) u16_val = 16
+// lldbr-check:(unsigned short) *u16_ref = 16
+// lldbr-check:(unsigned int) u32_val = 32
+// lldbr-check:(unsigned int) *u32_ref = 32
+// lldbr-check:(unsigned long) u64_val = 64
+// lldbr-check:(unsigned long) *u64_ref = 64
+// lldbr-check:(float) f32_val = 2.5
+// lldbr-check:(float) *f32_ref = 2.5
+// lldbr-check:(double) f64_val = 3.5
+// lldbr-check:(double) *f64_ref = 3.5
+// lldbr-check:(double) *f64_double_ref = 3.5
+// lldbr-check:[...]$0 = true
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
