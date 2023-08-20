@@ -2520,7 +2520,8 @@ extern "rust-intrinsic" {
     ///
     /// When calling this in a `const fn`, both paths must be semantically
     /// equivalent, that is, the result of the `true` branch and the `false`
-    /// branch return the same value *no matter what*.
+    /// branch must return the same value and have the same side-effects *no
+    /// matter what*.
     #[rustc_const_unstable(feature = "is_val_statically_known", issue = "none")]
     #[rustc_nounwind]
     #[cfg(not(bootstrap))]
