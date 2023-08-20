@@ -3873,6 +3873,12 @@ impl Methods {
                 ("add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub", [_arg]) => {
                     zst_offset::check(cx, expr, recv);
                 },
+                ("all", [arg]) => {
+                    if let Some(("cloned", recv2, [], _, _)) = method_call(recv) {
+                        iter_overeager_cloned::check(cx, expr, recv, recv2,
+                                iter_overeager_cloned::Op::NeedlessMove(name, arg), false);
+                    }
+                }
                 ("and_then", [arg]) => {
                     let biom_option_linted = bind_instead_of_map::OptionAndThenSome::check(cx, expr, recv, arg);
                     let biom_result_linted = bind_instead_of_map::ResultAndThenOk::check(cx, expr, recv, arg);
@@ -3880,12 +3886,16 @@ impl Methods {
                         unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
                     }
                 },
-                ("any", [arg]) if let ExprKind::Closure(arg) = arg.kind
-                    && let body = cx.tcx.hir().body(arg.body)
-                    && let [param] = body.params
-                    && let Some(("chars", recv, _, _, _)) = method_call(recv) =>
-                {
-                    string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), &self.msrv);
+                ("any", [arg]) => {
+                    match method_call(recv) {
+                        Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(cx, expr, recv, recv2, iter_overeager_cloned::Op::NeedlessMove(name, arg), false),
+                        Some(("chars", recv, _, _, _)) if let ExprKind::Closure(arg) = arg.kind
+                        && let body = cx.tcx.hir().body(arg.body)
+                        && let [param] = body.params => {
+                            string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), &self.msrv);
+                        }
+                        _ => {}
+                    }
                 }
                 ("arg", [arg]) => {
                     suspicious_command_arg_space::check(cx, recv, arg, span);

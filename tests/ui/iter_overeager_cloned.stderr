@@ -146,5 +146,21 @@ LL |     let _ = vec.iter().cloned().for_each(|x| assert!(!x.is_empty()));
    |                       |
    |                       help: try: `.for_each(|x| assert!(!x.is_empty()))`
 
-error: aborting due to 17 previous errors
+error: unneeded cloning of iterator items
+  --> $DIR/iter_overeager_cloned.rs:67:13
+   |
+LL |     let _ = vec.iter().cloned().all(|x| x.len() == 1);
+   |             ^^^^^^^^^^-------------------------------
+   |                       |
+   |                       help: try: `.all(|x| x.len() == 1)`
+
+error: unneeded cloning of iterator items
+  --> $DIR/iter_overeager_cloned.rs:69:13
+   |
+LL |     let _ = vec.iter().cloned().any(|x| x.len() == 1);
+   |             ^^^^^^^^^^-------------------------------
+   |                       |
+   |                       help: try: `.any(|x| x.len() == 1)`
+
+error: aborting due to 19 previous errors
 
