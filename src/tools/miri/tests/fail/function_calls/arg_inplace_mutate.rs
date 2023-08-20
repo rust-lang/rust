@@ -8,13 +8,13 @@ pub struct S(i32);
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 fn main() {
     mir! {
-        let unit: ();
+        let _unit: ();
         {
             let non_copy = S(42);
             let ptr = std::ptr::addr_of_mut!(non_copy);
             // Inside `callee`, the first argument and `*ptr` are basically
             // aliasing places!
-            Call(unit, after_call, callee(Move(*ptr), ptr))
+            Call(_unit = callee(Move(*ptr), ptr), after_call)
         }
         after_call = {
             Return()
