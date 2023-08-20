@@ -260,9 +260,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // fulfillment error to be more accurate.
             let coerced_ty = self.resolve_vars_with_obligations(coerced_ty);
 
-            let coerce_error = self
-                .try_coerce(provided_arg, checked_ty, coerced_ty, AllowTwoPhase::Yes, None)
-                .err();
+            let coerce_error =
+                self.coerce(provided_arg, checked_ty, coerced_ty, AllowTwoPhase::Yes, None).err();
 
             if coerce_error.is_some() {
                 return Compatibility::Incompatible(coerce_error);

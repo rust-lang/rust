@@ -9,11 +9,11 @@ use std::intrinsics::mir::*;
 pub fn main() {
     mir! {
         {
-            let x = 0;
-            let ptr = &raw mut x;
+            let _x = 0;
+            let ptr = &raw mut _x;
             // We arrange for `myfun` to have a pointer that aliases
             // its return place. Even just reading from that pointer is UB.
-            Call(x, after_call, myfun(ptr))
+            Call(_x = myfun(ptr), after_call)
         }
 
         after_call = {

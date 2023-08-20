@@ -12,7 +12,7 @@ help: the accessed tag <TAG> was created here
   --> $DIR/arg_inplace_mutate.rs:LL:CC
    |
 LL | /     mir! {
-LL | |         let unit: ();
+LL | |         let _unit: ();
 LL | |         {
 LL | |             let non_copy = S(42);
 ...  |
@@ -29,8 +29,8 @@ LL |     unsafe { ptr.write(S(0)) };
 note: inside `main`
   --> $DIR/arg_inplace_mutate.rs:LL:CC
    |
-LL |             Call(unit, after_call, callee(Move(*ptr), ptr))
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             Call(_unit = callee(Move(*ptr), ptr), after_call)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

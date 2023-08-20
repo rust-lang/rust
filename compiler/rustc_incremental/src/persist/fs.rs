@@ -538,9 +538,13 @@ where
             continue;
         }
 
-        let timestamp = extract_timestamp_from_session_dir(&directory_name).unwrap_or_else(|_| {
-            bug!("unexpected incr-comp session dir: {}", session_dir.display())
-        });
+        let timestamp = match extract_timestamp_from_session_dir(&directory_name) {
+            Ok(timestamp) => timestamp,
+            Err(e) => {
+                debug!("unexpected incr-comp session dir: {}: {}", session_dir.display(), e);
+                continue;
+            }
+        };
 
         if timestamp > best_candidate.0 {
             best_candidate = (timestamp, Some(session_dir.clone()));
@@ -562,14 +566,14 @@ fn is_session_directory_lock_file(file_name: &str) -> bool {
     file_name.starts_with("s-") && file_name.ends_with(LOCK_FILE_EXT)
 }
 
-fn extract_timestamp_from_session_dir(directory_name: &str) -> Result<SystemTime, ()> {
+fn extract_timestamp_from_session_dir(directory_name: &str) -> Result<SystemTime, &'static str> {
     if !is_session_directory(directory_name) {
-        return Err(());
+        return Err("not a directory");
     }
 
     let dash_indices: Vec<_> = directory_name.match_indices('-').map(|(idx, _)| idx).collect();
     if dash_indices.len() != 3 {
-        return Err(());
+        return Err("not three dashes in name");
     }
 
     string_to_timestamp(&directory_name[dash_indices[0] + 1..dash_indices[1]])
@@ -581,11 +585,11 @@ fn timestamp_to_string(timestamp: SystemTime) -> String {
     base_n::encode(micros as u128, INT_ENCODE_BASE)
 }
 
-fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
+fn string_to_timestamp(s: &str) -> Result<SystemTime, &'static str> {
     let micros_since_unix_epoch = u64::from_str_radix(s, INT_ENCODE_BASE as u32);
 
     if micros_since_unix_epoch.is_err() {
-        return Err(());
+        return Err("timestamp not an int");
     }
 
     let micros_since_unix_epoch = micros_since_unix_epoch.unwrap();
