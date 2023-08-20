@@ -246,7 +246,10 @@ fn default_hook(info: &PanicInfo<'_>) {
 pub fn panic_hook_with_disk_dump(info: &PanicInfo<'_>, path: Option<&crate::path::Path>) {
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
-    let backtrace = if panic_count::get_count() >= 2 {
+    // We do not keep printing for further panics, so that e.g. a "panic inside a drop on an unwind
+    // path", which leads to a triple-panic (the third panic being "cannot unwind here"), doesn't
+    // print *two* backtraces.
+    let backtrace = if panic_count::get_count() == 2 {
         BacktraceStyle::full()
     } else {
         crate::panic::get_backtrace_style()
