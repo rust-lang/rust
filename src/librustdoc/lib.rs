@@ -534,8 +534,8 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optmulti(
                 "",
                 "test-builder-wrapper",
-                "The wrapper program for running rustc",
-                "WRAPPER",
+                "Wrapper program to pass test-builder and arguments",
+                "PATH",
             )
         }),
         unstable("check", |o| o.optflagmulti("", "check", "Run rustdoc checks")),
