@@ -12,7 +12,8 @@
 //!
 //! Typical usage will look like this:
 //!
-//! ```rust
+#![cfg_attr(bootstrap, doc = "```rust,ignore")]
+#![cfg_attr(not(bootstrap), doc = "```rust")]
 //! #![feature(core_intrinsics, custom_mir)]
 //! #![allow(internal_features)]
 //!
@@ -62,7 +63,8 @@
 //!
 //! # Examples
 //!
-//! ```rust
+#![cfg_attr(bootstrap, doc = "```rust,ignore")]
+#![cfg_attr(not(bootstrap), doc = "```rust")]
 //! #![feature(core_intrinsics, custom_mir)]
 //! #![allow(internal_features)]
 //!
@@ -317,7 +319,8 @@ define!(
     ///
     /// # Examples
     ///
-    /// ```rust
+    #[cfg_attr(bootstrap, doc = "```rust,ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```rust")]
     /// #![allow(internal_features)]
     /// #![feature(custom_mir, core_intrinsics)]
     ///
