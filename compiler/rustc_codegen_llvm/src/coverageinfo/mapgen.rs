@@ -142,14 +142,13 @@ impl CoverageMapGenerator {
     /// Using the `expressions` and `counter_regions` collected for the current function, generate
     /// the `mapping_regions` and `virtual_file_mapping`, and capture any new filenames. Then use
     /// LLVM APIs to encode the `virtual_file_mapping`, `expressions`, and `mapping_regions` into
-    /// the given `coverage_mapping` byte buffer, compliant with the LLVM Coverage Mapping format.
-    fn write_coverage_mapping<'a>(
+    /// the given `coverage_mapping_buffer` byte buffer, compliant with the LLVM Coverage Mapping format.
+    fn write_coverage_mapping(
         &mut self,
         expressions: Vec<CounterExpression>,
-        counter_regions: impl Iterator<Item = (Counter, &'a CodeRegion)>,
+        counter_regions: Vec<(Counter, &CodeRegion)>,
         coverage_mapping_buffer: &RustString,
     ) {
-        let mut counter_regions = counter_regions.collect::<Vec<_>>();
         if counter_regions.is_empty() {
             return;
         }
@@ -164,7 +163,6 @@ impl CoverageMapGenerator {
         // `file_id` (indexing files referenced by the current function), and construct the
         // function-specific `virtual_file_mapping` from `file_id` to its index in the module's
         // `filenames` array.
-        counter_regions.sort_unstable_by_key(|(_counter, region)| *region);
         for (counter, region) in counter_regions {
             let CodeRegion { file_name, start_line, start_col, end_line, end_col } = *region;
             let same_file = current_file_name.is_some_and(|p| p == file_name);

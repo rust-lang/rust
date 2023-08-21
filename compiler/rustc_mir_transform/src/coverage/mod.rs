@@ -216,7 +216,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             }
 
             ////////////////////////////////////////////////////
-            // Remove the counter or edge counter from of each `CoverageSpan`s associated
+            // Remove the counter or edge counter from each `CoverageSpan`s associated
             // `BasicCoverageBlock`, and inject a `Coverage` statement into the MIR.
             //
             // `Coverage` statements injected from `CoverageSpan`s will include the code regions

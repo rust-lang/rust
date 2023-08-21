@@ -2,7 +2,7 @@
 //! pass.
 //!
 //! ```shell
-//! ./x.py test --keep-stage 1 compiler/rustc_mir --test-args '--show-output coverage'
+//! ./x.py test --keep-stage 1 compiler/rustc_mir_transform --test-args '--show-output coverage'
 //! ```
 //!
 //! The tests construct a few "mock" objects, as needed, to support the `InstrumentCoverage`

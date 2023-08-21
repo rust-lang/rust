@@ -180,12 +180,12 @@ impl<'tcx> FunctionCoverage<'tcx> {
         self.source_hash
     }
 
-    /// Generate an array of CounterExpressions, and an iterator over all `Counter`s and their
-    /// associated `Regions` (from which the LLVM-specific `CoverageMapGenerator` will create
-    /// `CounterMappingRegion`s.
+    /// Generate an array of CounterExpressions, and an array of all `Counter`s and their
+    /// associated `Regions` sorted by `Region`, from which the LLVM-specific
+    /// `CoverageMapGenerator` will create `CounterMappingRegion`s.
     pub fn get_expressions_and_counter_regions(
         &self,
-    ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &CodeRegion)>) {
+    ) -> (Vec<CounterExpression>, Vec<(Counter, &CodeRegion)>) {
         assert!(
             self.source_hash != 0 || !self.is_used,
             "No counters provided the source_hash for used function: {:?}",
@@ -198,21 +198,31 @@ impl<'tcx> FunctionCoverage<'tcx> {
         // the two vectors should correspond 1:1.
         assert_eq!(self.expressions.len(), counter_expressions.len());
 
-        let counter_regions = self.counter_regions();
-        let expression_regions = self.expression_regions();
-        let unreachable_regions = self.unreachable_regions();
-
-        let counter_regions =
-            counter_regions.chain(expression_regions.into_iter().chain(unreachable_regions));
-        (counter_expressions, counter_regions)
-    }
-
-    fn counter_regions(&self) -> impl Iterator<Item = (Counter, &CodeRegion)> {
-        self.counters.iter_enumerated().filter_map(|(index, entry)| {
+        let counter_regions = self.counters.iter_enumerated().filter_map(|(index, entry)| {
             // Option::map() will return None to filter out missing counters. This may happen
             // if, for example, a MIR-instrumented counter is removed during an optimization.
             entry.as_ref().map(|region| (Counter::counter_value_reference(index), region))
-        })
+        });
+
+        // Find all of the expression IDs that weren't optimized out AND have
+        // an attached code region, and return the corresponding mapping as a
+        // counter/region pair.
+        let expression_regions =
+            self.expressions.iter_enumerated().filter_map(|(id, expression)| {
+                let code_region = expression.as_ref()?.region.as_ref()?;
+                Some((Counter::expression(id), code_region))
+            });
+        let unreachable_regions =
+            self.unreachable_regions.iter().map(|region| (Counter::ZERO, region));
+
+        let mut all_regions: Vec<_> = expression_regions.collect();
+        all_regions.extend(counter_regions);
+        all_regions.extend(unreachable_regions);
+
+        // make sure all the regions are sorted
+        all_regions.sort_unstable_by_key(|(_counter, region)| *region);
+
+        (counter_expressions, all_regions)
     }
 
     /// Convert this function's coverage expression data into a form that can be
@@ -243,22 +253,5 @@ impl<'tcx> FunctionCoverage<'tcx> {
                 ),
             })
             .collect::<Vec<_>>()
-    }
-
-    fn expression_regions(&self) -> Vec<(Counter, &CodeRegion)> {
-        // Find all of the expression IDs that weren't optimized out AND have
-        // an attached code region, and return the corresponding mapping as a
-        // counter/region pair.
-        self.expressions
-            .iter_enumerated()
-            .filter_map(|(id, expression)| {
-                let code_region = expression.as_ref()?.region.as_ref()?;
-                Some((Counter::expression(id), code_region))
-            })
-            .collect::<Vec<_>>()
-    }
-
-    fn unreachable_regions(&self) -> impl Iterator<Item = (Counter, &CodeRegion)> {
-        self.unreachable_regions.iter().map(|region| (Counter::ZERO, region))
     }
 }
