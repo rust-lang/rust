@@ -2077,8 +2077,8 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(7_", stringify!($SelfT), ".div_ceil(4), 2);")]
         /// ```
-        #[stable(feature = "int_roundings1", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "int_roundings1", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "int_roundings1", since = "1.73.0")]
+        #[rustc_const_stable(feature = "int_roundings1", since = "1.73.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2113,8 +2113,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".next_multiple_of(8), 16);")]
         #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".next_multiple_of(8), 24);")]
         /// ```
-        #[stable(feature = "int_roundings1", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "int_roundings1", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "int_roundings1", since = "1.73.0")]
+        #[rustc_const_stable(feature = "int_roundings1", since = "1.73.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2140,8 +2140,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1_", stringify!($SelfT), ".checked_next_multiple_of(0), None);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.checked_next_multiple_of(2), None);")]
         /// ```
-        #[stable(feature = "int_roundings1", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "int_roundings1", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "int_roundings1", since = "1.73.0")]
+        #[rustc_const_stable(feature = "int_roundings1", since = "1.73.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
