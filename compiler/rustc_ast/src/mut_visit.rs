@@ -13,6 +13,7 @@ use crate::tokenstream::*;
 use crate::{ast::*, StaticItem};
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
@@ -1369,7 +1370,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
         ExprKind::If(cond, tr, fl) => {
             vis.visit_expr(cond);
             vis.visit_block(tr);
-            visit_opt(fl, |fl| vis.visit_expr(fl));
+            visit_opt(fl, |fl| ensure_sufficient_stack(|| vis.visit_expr(fl)));
         }
         ExprKind::While(cond, body, label) => {
             vis.visit_expr(cond);

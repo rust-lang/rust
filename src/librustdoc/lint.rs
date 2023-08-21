@@ -185,6 +185,17 @@ declare_rustdoc_lint! {
    "detects unescaped backticks in doc comments"
 }
 
+declare_rustdoc_lint! {
+    /// This lint is **warned by default**. It detects explicit links that are same
+    /// as computed automatic links. This usually means the explicit links is removeable.
+    /// This is a `rustdoc` only lint, see the documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#redundant_explicit_links
+    REDUNDANT_EXPLICIT_LINKS,
+    Warn,
+    "detects redundant explicit links in doc comments"
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -197,6 +208,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         BARE_URLS,
         MISSING_CRATE_LEVEL_DOCS,
         UNESCAPED_BACKTICKS,
+        REDUNDANT_EXPLICIT_LINKS,
     ]
 });
 

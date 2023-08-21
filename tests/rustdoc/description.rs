@@ -1,4 +1,5 @@
 #![crate_name = "foo"]
+#![allow(rustdoc::redundant_explicit_links)]
 //! # Description test crate
 //!
 //! This is the contents of the test crate docstring.

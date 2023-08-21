@@ -61,6 +61,7 @@ impl f32 {
     /// assert_eq!(f.ceil(), 4.0);
     /// assert_eq!(g.ceil(), 4.0);
     /// ```
+    #[doc(alias = "ceiling")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -135,6 +136,7 @@ impl f32 {
     /// assert_eq!(g.trunc(), 3.0);
     /// assert_eq!(h.trunc(), -3.0);
     /// ```
+    #[doc(alias = "truncate")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -321,6 +323,7 @@ impl f32 {
     /// // limitation due to round-off error
     /// assert!((-f32::EPSILON).rem_euclid(3.0) != 0.0);
     /// ```
+    #[doc(alias = "modulo", alias = "mod")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
@@ -672,6 +675,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[doc(alias = "arcsin")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -694,6 +698,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[doc(alias = "arccos")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -715,6 +720,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[doc(alias = "arctan")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -772,6 +778,7 @@ impl f32 {
     /// assert!(abs_difference_0 <= f32::EPSILON);
     /// assert!(abs_difference_1 <= f32::EPSILON);
     /// ```
+    #[doc(alias = "sincos")]
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -904,6 +911,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[doc(alias = "arcsinh")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -926,6 +934,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[doc(alias = "arccosh")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -950,6 +959,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= 1e-5);
     /// ```
+    #[doc(alias = "arctanh")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]

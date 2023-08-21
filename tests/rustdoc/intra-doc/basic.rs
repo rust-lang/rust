@@ -1,3 +1,5 @@
+#![allow(rustdoc::redundant_explicit_links)]
+
 // @has basic/index.html
 // @has - '//a/@href' 'struct.ThisType.html'
 // @has - '//a/@title' 'struct basic::ThisType'

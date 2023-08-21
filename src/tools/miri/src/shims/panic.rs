@@ -188,6 +188,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         )
     }
 
+    /// Start a non-unwinding panic in the interpreter with the given message as payload.
+    fn start_panic_nounwind(&mut self, msg: &str) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        // First arg: message.
+        let msg = this.allocate_str(msg, MiriMemoryKind::Machine.into(), Mutability::Not)?;
+
+        // Call the lang item.
+        let panic = this.tcx.lang_items().panic_nounwind().unwrap();
+        let panic = ty::Instance::mono(this.tcx.tcx, panic);
+        this.call_function(
+            panic,
+            Abi::Rust,
+            &[msg.to_ref(this)],
+            None,
+            StackPopCleanup::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
+        )
+    }
+
     fn assert_panic(
         &mut self,
         msg: &mir::AssertMessage<'tcx>,

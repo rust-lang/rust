@@ -370,8 +370,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             // this that could possibly access the return place, this doesn't
             // need recording.
             | TerminatorKind::Return
-            | TerminatorKind::Resume
-            | TerminatorKind::Terminate
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. } => {}

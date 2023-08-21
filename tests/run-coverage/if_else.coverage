@@ -1,41 +1,41 @@
-    1|       |#![allow(unused_assignments, unused_variables)]
-    2|       |
-    3|      1|fn main() {
-    4|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
-    5|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
-    6|      1|    // dependent conditions.
-    7|      1|    let is_true = std::env::args().len() == 1;
-    8|      1|
-    9|      1|    let mut countdown = 0;
-   10|      1|    if
-   11|      1|        is_true
-   12|      1|    {
-   13|      1|        countdown
-   14|      1|        =
-   15|      1|            10
-   16|      1|        ;
-   17|      1|    }
-   18|       |    else // Note coverage region difference without semicolon
-   19|       |    {
-   20|      0|        countdown
-   21|      0|        =
-   22|      0|            100
-   23|       |    }
-   24|       |
-   25|       |    if
-   26|      1|        is_true
-   27|      1|    {
-   28|      1|        countdown
-   29|      1|        =
-   30|      1|            10
-   31|      1|        ;
-   32|      1|    }
-   33|       |    else
-   34|      0|    {
-   35|      0|        countdown
-   36|      0|        =
-   37|      0|            100
-   38|      0|        ;
-   39|      0|    }
-   40|      1|}
+   LL|       |#![allow(unused_assignments, unused_variables)]
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|      1|    // dependent conditions.
+   LL|      1|    let is_true = std::env::args().len() == 1;
+   LL|      1|
+   LL|      1|    let mut countdown = 0;
+   LL|      1|    if
+   LL|      1|        is_true
+   LL|      1|    {
+   LL|      1|        countdown
+   LL|      1|        =
+   LL|      1|            10
+   LL|      1|        ;
+   LL|      1|    }
+   LL|       |    else // Note coverage region difference without semicolon
+   LL|       |    {
+   LL|      0|        countdown
+   LL|      0|        =
+   LL|      0|            100
+   LL|       |    }
+   LL|       |
+   LL|       |    if
+   LL|      1|        is_true
+   LL|      1|    {
+   LL|      1|        countdown
+   LL|      1|        =
+   LL|      1|            10
+   LL|      1|        ;
+   LL|      1|    }
+   LL|       |    else
+   LL|      0|    {
+   LL|      0|        countdown
+   LL|      0|        =
+   LL|      0|            100
+   LL|      0|        ;
+   LL|      0|    }
+   LL|      1|}
 

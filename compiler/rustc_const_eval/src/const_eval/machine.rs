@@ -427,52 +427,48 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        instance: ty::Instance<'tcx>,
+        orig_instance: ty::Instance<'tcx>,
         _abi: CallAbi,
         args: &[FnArg<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction, // unwinding is not supported in consts
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
-        debug!("find_mir_or_eval_fn: {:?}", instance);
+        debug!("find_mir_or_eval_fn: {:?}", orig_instance);
+
+        // Replace some functions.
+        let Some(instance) = ecx.hook_special_const_fn(orig_instance, args, dest, ret)? else {
+            // Call has already been handled.
+            return Ok(None);
+        };
 
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def) = instance.def {
             // Execution might have wandered off into other crates, so we cannot do a stability-
-            // sensitive check here. But we can at least rule out functions that are not const
-            // at all.
-            if !ecx.tcx.is_const_fn_raw(def) {
-                // allow calling functions inside a trait marked with #[const_trait].
-                if !ecx.tcx.is_const_default_method(def) {
-                    // We certainly do *not* want to actually call the fn
-                    // though, so be sure we return here.
-                    throw_unsup_format!("calling non-const function `{}`", instance)
-                }
-            }
-
-            let Some(new_instance) = ecx.hook_special_const_fn(instance, args, dest, ret)? else {
-                return Ok(None);
-            };
-
-            if new_instance != instance {
-                // We call another const fn instead.
-                // However, we return the *original* instance to make backtraces work out
-                // (and we hope this does not confuse the FnAbi checks too much).
-                return Ok(Self::find_mir_or_eval_fn(
-                    ecx,
-                    new_instance,
-                    _abi,
-                    args,
-                    dest,
-                    ret,
-                    _unwind,
-                )?
-                .map(|(body, _instance)| (body, instance)));
+            // sensitive check here. But we can at least rule out functions that are not const at
+            // all. That said, we have to allow calling functions inside a trait marked with
+            // #[const_trait]. These *are* const-checked!
+            // FIXME: why does `is_const_fn_raw` not classify them as const?
+            if (!ecx.tcx.is_const_fn_raw(def) && !ecx.tcx.is_const_default_method(def))
+                || ecx.tcx.has_attr(def, sym::rustc_do_not_const_check)
+            {
+                // We certainly do *not* want to actually call the fn
+                // though, so be sure we return here.
+                throw_unsup_format!("calling non-const function `{}`", instance)
             }
         }
 
         // This is a const fn. Call it.
-        Ok(Some((ecx.load_mir(instance.def, None)?, instance)))
+        // In case of replacement, we return the *original* instance to make backtraces work out
+        // (and we hope this does not confuse the FnAbi checks too much).
+        Ok(Some((ecx.load_mir(instance.def, None)?, orig_instance)))
+    }
+
+    fn panic_nounwind(ecx: &mut InterpCx<'mir, 'tcx, Self>, msg: &str) -> InterpResult<'tcx> {
+        let msg = Symbol::intern(msg);
+        let span = ecx.find_closest_untracked_caller_location();
+        let (file, line, col) = ecx.location_triple_for_span(span);
+        Err(ConstEvalErrKind::Panic { msg, file, line, col }.into())
     }
 
     fn call_intrinsic(
@@ -593,10 +589,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             }
         };
         Err(ConstEvalErrKind::AssertFailure(err).into())
-    }
-
-    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>, msg: String) -> InterpResult<'tcx, !> {
-        Err(ConstEvalErrKind::Abort(msg).into())
     }
 
     fn binary_ptr_op(

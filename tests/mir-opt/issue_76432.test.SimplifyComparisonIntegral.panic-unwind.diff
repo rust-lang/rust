@@ -13,13 +13,16 @@
       let mut _8: usize;
       let mut _9: usize;
       let mut _10: bool;
-      let mut _11: !;
+      let mut _14: !;
       scope 1 {
           debug v => _2;
+          let _11: &T;
+          let _12: &T;
+          let _13: &T;
           scope 2 {
-              debug v1 => &(*_2)[0 of 3];
-              debug v2 => &(*_2)[1 of 3];
-              debug v3 => &(*_2)[2 of 3];
+              debug v1 => _11;
+              debug v2 => _12;
+              debug v3 => _13;
           }
       }
   
@@ -39,10 +42,19 @@
       }
   
       bb1: {
-          _11 = core::panicking::panic(const "internal error: entered unreachable code") -> unwind continue;
+          _14 = core::panicking::panic(const "internal error: entered unreachable code") -> unwind continue;
       }
   
       bb2: {
+          StorageLive(_11);
+          _11 = &(*_2)[0 of 3];
+          StorageLive(_12);
+          _12 = &(*_2)[1 of 3];
+          StorageLive(_13);
+          _13 = &(*_2)[2 of 3];
+          StorageDead(_13);
+          StorageDead(_12);
+          StorageDead(_11);
           StorageDead(_4);
           return;
       }

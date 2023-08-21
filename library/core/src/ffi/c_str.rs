@@ -20,10 +20,10 @@ use crate::str;
 /// in each pair are borrowed references; the latter are owned
 /// strings.
 ///
-/// Note that this structure is **not** `repr(C)` and is not recommended to be
-/// placed in the signatures of FFI functions. Instead, safe wrappers of FFI
-/// functions may leverage the unsafe [`CStr::from_ptr`] constructor to provide
-/// a safe interface to other consumers.
+/// Note that this structure does **not** have a guaranteed layout (the `repr(transparent)`
+/// notwithstanding) and is not recommended to be placed in the signatures of FFI functions.
+/// Instead, safe wrappers of FFI functions may leverage the unsafe [`CStr::from_ptr`] constructor
+/// to provide a safe interface to other consumers.
 ///
 /// [`CString`]: ../../std/ffi/struct.CString.html
 /// [`String`]: ../../std/string/struct.String.html
@@ -253,7 +253,7 @@ impl CStr {
     /// ```
     ///
     /// [valid]: core::ptr#safety
-    #[inline]
+    #[inline] // inline is necessary for codegen to see strlen.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_cstr_from_ptr", issue = "113219")]
@@ -280,6 +280,8 @@ impl CStr {
                 len
             }
 
+            // `inline` is necessary for codegen to see strlen.
+            #[inline]
             fn strlen_rt(s: *const c_char) -> usize {
                 extern "C" {
                     /// Provided by libc or compiler_builtins.

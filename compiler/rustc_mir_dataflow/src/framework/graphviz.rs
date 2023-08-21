@@ -269,7 +269,11 @@ where
                 self.write_row(w, "", "(on yield resume)", |this, w, fmt| {
                     let state_on_generator_drop = this.results.get().clone();
                     this.results.apply_custom_effect(|analysis, state| {
-                        analysis.apply_yield_resume_effect(state, resume, resume_arg);
+                        analysis.apply_call_return_effect(
+                            state,
+                            resume,
+                            CallReturnPlaces::Yield(resume_arg),
+                        );
                     });
 
                     write!(

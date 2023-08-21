@@ -93,7 +93,17 @@ fn parse_count<'sess>(
     span: Span,
 ) -> PResult<'sess, MetaVarExpr> {
     let ident = parse_ident(iter, sess, span)?;
-    let depth = if try_eat_comma(iter) { Some(parse_depth(iter, sess, span)?) } else { None };
+    let depth = if try_eat_comma(iter) {
+        if iter.look_ahead(0).is_none() {
+            return Err(sess.span_diagnostic.struct_span_err(
+                span,
+                "`count` followed by a comma must have an associated index indicating its depth",
+            ));
+        }
+        Some(parse_depth(iter, sess, span)?)
+    } else {
+        None
+    };
     Ok(MetaVarExpr::Count(ident, depth))
 }
 

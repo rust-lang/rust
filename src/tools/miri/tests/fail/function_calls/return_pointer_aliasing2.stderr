@@ -13,8 +13,8 @@ help: the accessed tag <TAG> was created here
    |
 LL | /     mir! {
 LL | |         {
-LL | |             let x = 0;
-LL | |             let ptr = &raw mut x;
+LL | |             let _x = 0;
+LL | |             let ptr = &raw mut _x;
 ...  |
 LL | |         }
 LL | |     }
@@ -29,8 +29,8 @@ LL |     unsafe { ptr.write(0) };
 note: inside `main`
   --> $DIR/return_pointer_aliasing2.rs:LL:CC
    |
-LL |             Call(x, after_call, myfun(ptr))
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             Call(_x = myfun(ptr), after_call)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

@@ -1109,10 +1109,6 @@ pub struct VarDebugInfo<'tcx> {
     /// originated from (starting from 1). Note, if MIR inlining is enabled, then this is the
     /// argument number in the original function before it was inlined.
     pub argument_index: Option<u16>,
-
-    /// The data represents `name` dereferenced `references` times,
-    /// and not the direct value.
-    pub references: u8,
 }
 
 ///////////////////////////////////////////////////////////////////////////

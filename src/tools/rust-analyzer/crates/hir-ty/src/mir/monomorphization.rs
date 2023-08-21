@@ -265,7 +265,7 @@ impl Filler<'_> {
                         self.fill_operand(discr)?;
                     }
                     TerminatorKind::Goto { .. }
-                    | TerminatorKind::Resume
+                    | TerminatorKind::UnwindResume
                     | TerminatorKind::Abort
                     | TerminatorKind::Return
                     | TerminatorKind::Unreachable

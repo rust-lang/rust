@@ -218,7 +218,7 @@ pub(crate) fn build_deref_target_impls(
 
 pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     use rustc_hir::*;
-    debug!("trying to get a name from pattern: {:?}", p);
+    debug!("trying to get a name from pattern: {p:?}");
 
     Symbol::intern(&match p.kind {
         PatKind::Wild | PatKind::Struct(..) => return kw::Underscore,
@@ -461,7 +461,7 @@ pub(crate) fn print_const_expr(tcx: TyCtxt<'_>, body: hir::BodyId) -> String {
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
 pub(crate) fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
-    debug!("resolve_type({:?})", path);
+    debug!("resolve_type({path:?})");
 
     match path.res {
         Res::PrimTy(p) => Primitive(PrimitiveType::from(p)),
@@ -500,7 +500,7 @@ pub(crate) fn get_auto_trait_and_blanket_impls(
 /// [`href()`]: crate::html::format::href
 pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
     use DefKind::*;
-    debug!("register_res({:?})", res);
+    debug!("register_res({res:?})");
 
     let (kind, did) = match res {
         Res::Def(
@@ -523,7 +523,7 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
             did,
         ) => (kind.into(), did),
 
-        _ => panic!("register_res: unexpected {:?}", res),
+        _ => panic!("register_res: unexpected {res:?}"),
     };
     if did.is_local() {
         return did;
@@ -601,8 +601,12 @@ pub(super) fn render_macro_arms<'a>(
 ) -> String {
     let mut out = String::new();
     for matcher in matchers {
-        writeln!(out, "    {} => {{ ... }}{}", render_macro_matcher(tcx, matcher), arm_delim)
-            .unwrap();
+        writeln!(
+            out,
+            "    {matcher} => {{ ... }}{arm_delim}",
+            matcher = render_macro_matcher(tcx, matcher),
+        )
+        .unwrap();
     }
     out
 }
@@ -618,21 +622,21 @@ pub(super) fn display_macro_source(
     let matchers = def.body.tokens.chunks(4).map(|arm| &arm[0]);
 
     if def.macro_rules {
-        format!("macro_rules! {} {{\n{}}}", name, render_macro_arms(cx.tcx, matchers, ";"))
+        format!("macro_rules! {name} {{\n{arms}}}", arms = render_macro_arms(cx.tcx, matchers, ";"))
     } else {
         if matchers.len() <= 1 {
             format!(
-                "{}macro {}{} {{\n    ...\n}}",
-                visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
-                name,
-                matchers.map(|matcher| render_macro_matcher(cx.tcx, matcher)).collect::<String>(),
+                "{vis}macro {name}{matchers} {{\n    ...\n}}",
+                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
+                matchers = matchers
+                    .map(|matcher| render_macro_matcher(cx.tcx, matcher))
+                    .collect::<String>(),
             )
         } else {
             format!(
-                "{}macro {} {{\n{}}}",
-                visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
-                name,
-                render_macro_arms(cx.tcx, matchers, ","),
+                "{vis}macro {name} {{\n{arms}}}",
+                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
+                arms = render_macro_arms(cx.tcx, matchers, ","),
             )
         }
     }

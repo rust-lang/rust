@@ -85,7 +85,7 @@ use crate::DOC_RUST_LANG_ORG_CHANNEL;
 
 pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
-        if !v.ends_with('/') && !v.is_empty() { write!(f, "{}/", v) } else { f.write_str(v) }
+        if !v.ends_with('/') && !v.is_empty() { write!(f, "{v}/") } else { f.write_str(v) }
     })
 }
 
@@ -416,7 +416,7 @@ fn document<'a, 'cx: 'a>(
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     if let Some(ref name) = item.name {
-        info!("Documenting {}", name);
+        info!("Documenting {name}");
     }
 
     display_fn(move |f| {
@@ -513,7 +513,7 @@ fn document_full_inner<'a, 'cx: 'a>(
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     display_fn(move |f| {
         if let Some(s) = item.opt_doc_value() {
-            debug!("Doc block: =====\n{}\n=====", s);
+            debug!("Doc block: =====\n{s}\n=====");
             if is_collapsible {
                 write!(
                     f,
@@ -565,12 +565,10 @@ fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<Strin
     };
 
     debug!(
-        "Portability {:?} {:?} (parent: {:?}) - {:?} = {:?}",
-        item.name,
-        item.cfg,
-        parent,
-        parent.and_then(|p| p.cfg.as_ref()),
-        cfg
+        "Portability {name:?} {item_cfg:?} (parent: {parent:?}) - {parent_cfg:?} = {cfg:?}",
+        name = item.name,
+        item_cfg = item.cfg,
+        parent_cfg = parent.and_then(|p| p.cfg.as_ref()),
     );
 
     Some(cfg?.render_long_html())
@@ -1041,7 +1039,7 @@ fn render_attributes_in_pre<'a, 'b: 'a>(
 ) -> impl fmt::Display + Captures<'a> + Captures<'b> {
     crate::html::format::display_fn(move |f| {
         for a in it.attributes(tcx, false) {
-            writeln!(f, "{}{}", prefix, a)?;
+            writeln!(f, "{prefix}{a}")?;
         }
         Ok(())
     })
@@ -1245,7 +1243,10 @@ fn render_deref_methods(
             _ => None,
         })
         .expect("Expected associated type binding");
-    debug!("Render deref methods for {:#?}, target {:#?}", impl_.inner_impl().for_, target);
+    debug!(
+        "Render deref methods for {for_:#?}, target {target:#?}",
+        for_ = impl_.inner_impl().for_
+    );
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
     if let Some(did) = target.def_id(cache) {

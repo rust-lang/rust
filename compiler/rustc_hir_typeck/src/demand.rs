@@ -53,7 +53,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_no_capture_closure(err, expected, expr_ty)
             || self.suggest_boxing_when_appropriate(err, expr.span, expr.hir_id, expected, expr_ty)
             || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
-            || self.suggest_copied_cloned_or_as_ref(err, expr, expr_ty, expected, expected_ty_expr)
+            || self.suggest_copied_cloned_or_as_ref(err, expr, expr_ty, expected)
             || self.suggest_clone_for_ref(err, expr, expr_ty, expected)
             || self.suggest_into(err, expr, expr_ty, expected)
             || self.suggest_floating_point_literal(err, expr, expected)
@@ -254,7 +254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>>) {
         let expected = self.resolve_vars_with_obligations(expected);
 
-        let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase, None) {
+        let e = match self.coerce(expr, checked_ty, expected, allow_two_phase, None) {
             Ok(ty) => return (ty, None),
             Err(e) => e,
         };
@@ -475,7 +475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     let Some(arg_ty) = self.node_ty_opt(arg_expr.hir_id) else { continue; };
                     let arg_ty = arg_ty.fold_with(&mut fudger);
-                    let _ = self.try_coerce(
+                    let _ = self.coerce(
                         arg_expr,
                         arg_ty,
                         *expected_arg_ty,

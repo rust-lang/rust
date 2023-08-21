@@ -22,6 +22,7 @@ use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
     AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
     PResult, StashKey,
@@ -193,13 +194,7 @@ impl<'a> Parser<'a> {
 
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = self.check_assoc_op() {
-            // Adjust the span for interpolated LHS to point to the `$lhs` token
-            // and not to what it refers to.
-            let lhs_span = match self.prev_token.kind {
-                TokenKind::Interpolated(..) => self.prev_token.span,
-                _ => lhs.span,
-            };
-
+            let lhs_span = self.interpolated_or_expr_span(&lhs);
             let cur_op_span = self.token.span;
             let restrictions = if op.node.is_assign_like() {
                 self.restrictions & Restrictions::NO_STRUCT_LITERAL
@@ -626,8 +621,8 @@ impl<'a> Parser<'a> {
 
     fn parse_expr_prefix_common(&mut self, lo: Span) -> PResult<'a, (Span, P<Expr>)> {
         self.bump();
-        let expr = self.parse_expr_prefix(None);
-        let (span, expr) = self.interpolated_or_expr_span(expr)?;
+        let expr = self.parse_expr_prefix(None)?;
+        let span = self.interpolated_or_expr_span(&expr);
         Ok((lo.to(span), expr))
     }
 
@@ -702,20 +697,12 @@ impl<'a> Parser<'a> {
         self.parse_expr_unary(lo, UnOp::Not)
     }
 
-    /// Returns the span of expr, if it was not interpolated or the span of the interpolated token.
-    fn interpolated_or_expr_span(
-        &self,
-        expr: PResult<'a, P<Expr>>,
-    ) -> PResult<'a, (Span, P<Expr>)> {
-        expr.map(|e| {
-            (
-                match self.prev_token.kind {
-                    TokenKind::Interpolated(..) => self.prev_token.span,
-                    _ => e.span,
-                },
-                e,
-            )
-        })
+    /// Returns the span of expr if it was not interpolated, or the span of the interpolated token.
+    fn interpolated_or_expr_span(&self, expr: &Expr) -> Span {
+        match self.prev_token.kind {
+            TokenKind::Interpolated(..) => self.prev_token.span,
+            _ => expr.span,
+        }
     }
 
     fn parse_assoc_op_cast(
@@ -898,8 +885,8 @@ impl<'a> Parser<'a> {
             self.parse_expr_prefix_range(None)
         } else {
             self.parse_expr_prefix(None)
-        };
-        let (hi, expr) = self.interpolated_or_expr_span(expr)?;
+        }?;
+        let hi = self.interpolated_or_expr_span(&expr);
         let span = lo.to(hi);
         if let Some(lt) = lifetime {
             self.error_remove_borrow_lifetime(span, lt.ident.span);
@@ -930,8 +917,8 @@ impl<'a> Parser<'a> {
     fn parse_expr_dot_or_call(&mut self, attrs: Option<AttrWrapper>) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
         self.collect_tokens_for_expr(attrs, |this, attrs| {
-            let base = this.parse_expr_bottom();
-            let (span, base) = this.interpolated_or_expr_span(base)?;
+            let base = this.parse_expr_bottom()?;
+            let span = this.interpolated_or_expr_span(&base);
             this.parse_expr_dot_or_call_with(base, span, attrs)
         })
     }
@@ -2503,7 +2490,7 @@ impl<'a> Parser<'a> {
         let else_span = self.prev_token.span; // `else`
         let attrs = self.parse_outer_attributes()?; // For recovery.
         let expr = if self.eat_keyword(kw::If) {
-            self.parse_expr_if()?
+            ensure_sufficient_stack(|| self.parse_expr_if())?
         } else if self.check(&TokenKind::OpenDelim(Delimiter::Brace)) {
             self.parse_simple_block()?
         } else {

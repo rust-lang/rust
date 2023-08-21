@@ -686,6 +686,12 @@ impl Span {
     }
 
     /// Walk down the expansion ancestors to find a span that's contained within `outer`.
+    ///
+    /// The span returned by this method may have a different [`SyntaxContext`] as `outer`.
+    /// If you need to extend the span, use [`find_ancestor_inside_same_ctxt`] instead,
+    /// because joining spans with different syntax contexts can create unexpected results.
+    ///
+    /// [`find_ancestor_inside_same_ctxt`]: Self::find_ancestor_inside_same_ctxt
     pub fn find_ancestor_inside(mut self, outer: Span) -> Option<Span> {
         while !outer.contains(self) {
             self = self.parent_callsite()?;
@@ -693,11 +699,34 @@ impl Span {
         Some(self)
     }
 
-    /// Like `find_ancestor_inside`, but specifically for when spans might not
-    /// overlaps. Take care when using this, and prefer `find_ancestor_inside`
-    /// when you know that the spans are nested (modulo macro expansion).
+    /// Walk down the expansion ancestors to find a span with the same [`SyntaxContext`] as
+    /// `other`.
+    ///
+    /// Like [`find_ancestor_inside_same_ctxt`], but specifically for when spans might not
+    /// overlap. Take care when using this, and prefer [`find_ancestor_inside`] or
+    /// [`find_ancestor_inside_same_ctxt`] when you know that the spans are nested (modulo
+    /// macro expansion).
+    ///
+    /// [`find_ancestor_inside`]: Self::find_ancestor_inside
+    /// [`find_ancestor_inside_same_ctxt`]: Self::find_ancestor_inside_same_ctxt
     pub fn find_ancestor_in_same_ctxt(mut self, other: Span) -> Option<Span> {
-        while !Span::eq_ctxt(self, other) {
+        while !self.eq_ctxt(other) {
+            self = self.parent_callsite()?;
+        }
+        Some(self)
+    }
+
+    /// Walk down the expansion ancestors to find a span that's contained within `outer` and
+    /// has the same [`SyntaxContext`] as `outer`.
+    ///
+    /// This method is the combination of [`find_ancestor_inside`] and
+    /// [`find_ancestor_in_same_ctxt`] and should be preferred when extending the returned span.
+    /// If you do not need to modify the span, use [`find_ancestor_inside`] instead.
+    ///
+    /// [`find_ancestor_inside`]: Self::find_ancestor_inside
+    /// [`find_ancestor_in_same_ctxt`]: Self::find_ancestor_in_same_ctxt
+    pub fn find_ancestor_inside_same_ctxt(mut self, outer: Span) -> Option<Span> {
+        while !outer.contains(self) || !self.eq_ctxt(outer) {
             self = self.parent_callsite()?;
         }
         Some(self)

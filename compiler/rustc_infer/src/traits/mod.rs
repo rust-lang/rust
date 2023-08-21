@@ -9,6 +9,7 @@ mod structural_impls;
 pub mod util;
 
 use std::cmp;
+use std::hash::{Hash, Hasher};
 
 use hir::def_id::LocalDefId;
 use rustc_hir as hir;
@@ -36,7 +37,7 @@ pub use rustc_middle::traits::*;
 /// either identifying an `impl` (e.g., `impl Eq for i32`) that
 /// satisfies the obligation, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone)]
 pub struct Obligation<'tcx, T> {
     /// The reason we have to prove this thing.
     pub cause: ObligationCause<'tcx>,
@@ -53,6 +54,27 @@ pub struct Obligation<'tcx, T> {
     /// in such cases, we can not say whether or not the predicate
     /// holds for certain. Stupid halting problem; such a drag.
     pub recursion_depth: usize,
+}
+
+impl<'tcx, T: PartialEq> PartialEq<Obligation<'tcx, T>> for Obligation<'tcx, T> {
+    #[inline]
+    fn eq(&self, other: &Obligation<'tcx, T>) -> bool {
+        // Ignore `cause` and `recursion_depth`. This is a small performance
+        // win for a few crates, and a huge performance win for the crate in
+        // https://github.com/rust-lang/rustc-perf/pull/1680, which greatly
+        // stresses the trait system.
+        self.param_env == other.param_env && self.predicate == other.predicate
+    }
+}
+
+impl<T: Eq> Eq for Obligation<'_, T> {}
+
+impl<T: Hash> Hash for Obligation<'_, T> {
+    fn hash<H: Hasher>(&self, state: &mut H) -> () {
+        // See the comment on `Obligation::eq`.
+        self.param_env.hash(state);
+        self.predicate.hash(state);
+    }
 }
 
 impl<'tcx, P> From<Obligation<'tcx, P>> for solve::Goal<'tcx, P> {

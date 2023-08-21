@@ -10,13 +10,14 @@ fn step_forward(_1: u32, _2: usize) -> u32 {
         let _3: std::option::Option<u32>;
         let mut _6: bool;
         let mut _7: u32;
+        let mut _8: &std::option::Option<u32>;
         scope 2 {
         }
         scope 3 (inlined Option::<u32>::is_none) {
-            debug self => &_3;
+            debug self => _8;
             let mut _5: bool;
             scope 4 (inlined Option::<u32>::is_some) {
-                debug self => &_3;
+                debug self => _8;
                 let mut _4: isize;
             }
         }
@@ -28,6 +29,7 @@ fn step_forward(_1: u32, _2: usize) -> u32 {
 
     bb0: {
         StorageLive(_6);
+        StorageLive(_8);
         StorageLive(_3);
         _3 = <u32 as Step>::forward_checked(_1, _2) -> [return: bb1, unwind continue];
     }
@@ -39,6 +41,7 @@ fn step_forward(_1: u32, _2: usize) -> u32 {
         _6 = Not(move _5);
         StorageDead(_5);
         StorageDead(_3);
+        StorageDead(_8);
         switchInt(move _6) -> [0: bb3, otherwise: bb2];
     }
 

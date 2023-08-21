@@ -389,34 +389,26 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
                     if let ty::RawPtr(TypeAndMut { ty: expr_ty, .. }) = *self.expr_ty.kind()
                         && fcx
-                            .try_coerce(
-                                self.expr,
+                            .can_coerce(
                                 Ty::new_ref(fcx.tcx,
                                     fcx.tcx.lifetimes.re_erased,
                                     TypeAndMut { ty: expr_ty, mutbl },
                                 ),
                                 self.cast_ty,
-                                AllowTwoPhase::No,
-                                None,
                             )
-                            .is_ok()
                     {
                         sugg = Some((format!("&{}*", mutbl.prefix_str()), cast_ty == expr_ty));
                     } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind()
                         && expr_mutbl == Mutability::Not
                         && mutbl == Mutability::Mut
                         && fcx
-                            .try_coerce(
-                                self.expr,
+                            .can_coerce(
                                 Ty::new_ref(fcx.tcx,
                                     expr_reg,
                                     TypeAndMut { ty: expr_ty, mutbl: Mutability::Mut },
                                 ),
                                 self.cast_ty,
-                                AllowTwoPhase::No,
-                                None,
                             )
-                            .is_ok()
                     {
                         sugg_mutref = true;
                     }
@@ -424,30 +416,22 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     if !sugg_mutref
                         && sugg == None
                         && fcx
-                            .try_coerce(
-                                self.expr,
+                            .can_coerce(
                                 Ty::new_ref(fcx.tcx,reg, TypeAndMut { ty: self.expr_ty, mutbl }),
                                 self.cast_ty,
-                                AllowTwoPhase::No,
-                                None,
                             )
-                            .is_ok()
                     {
                         sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                     }
                 } else if let ty::RawPtr(TypeAndMut { mutbl, .. }) = *self.cast_ty.kind()
                     && fcx
-                        .try_coerce(
-                            self.expr,
+                        .can_coerce(
                             Ty::new_ref(fcx.tcx,
                                 fcx.tcx.lifetimes.re_erased,
                                 TypeAndMut { ty: self.expr_ty, mutbl },
                             ),
                             self.cast_ty,
-                            AllowTwoPhase::No,
-                            None,
                         )
-                        .is_ok()
                 {
                     sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                 }
@@ -760,7 +744,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     ty::FnDef(..) => {
                         // Attempt a coercion to a fn pointer type.
                         let f = fcx.normalize(self.expr_span, self.expr_ty.fn_sig(fcx.tcx));
-                        let res = fcx.try_coerce(
+                        let res = fcx.coerce(
                             self.expr,
                             self.expr_ty,
                             Ty::new_fn_ptr(fcx.tcx, f),
@@ -860,7 +844,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
             (_, DynStar) => {
                 if fcx.tcx.features().dyn_star {
-                    bug!("should be handled by `try_coerce`")
+                    bug!("should be handled by `coerce`")
                 } else {
                     Err(CastError::IllegalCast)
                 }
@@ -956,7 +940,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
                 // Coerce to a raw pointer so that we generate AddressOf in MIR.
                 let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr);
-                fcx.try_coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
+                fcx.coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
                     .unwrap_or_else(|_| {
                         bug!(
                         "could not cast from reference to array to pointer to array ({:?} to {:?})",
@@ -992,7 +976,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<(), ty::error::TypeError<'tcx>> {
-        match fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No, None) {
+        match fcx.coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No, None) {
             Ok(_) => Ok(()),
             Err(err) => Err(err),
         }

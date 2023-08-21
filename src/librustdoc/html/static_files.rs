@@ -53,7 +53,7 @@ pub(crate) fn suffix_path(filename: &str, suffix: &str) -> PathBuf {
     // which would result in `style.min-suffix.css` which isn't what we
     // want.
     let (base, ext) = filename.split_once('.').unwrap();
-    let filename = format!("{}{}.{}", base, suffix, ext);
+    let filename = format!("{base}{suffix}.{ext}");
     filename.into()
 }
 

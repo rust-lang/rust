@@ -452,11 +452,11 @@ struct HandlerInner {
     /// have been converted.
     check_unstable_expect_diagnostics: bool,
 
-    /// Expected [`Diagnostic`][diagnostic::Diagnostic]s store a [`LintExpectationId`] as part of
+    /// Expected [`Diagnostic`][struct@diagnostic::Diagnostic]s store a [`LintExpectationId`] as part of
     /// the lint level. [`LintExpectationId`]s created early during the compilation
     /// (before `HirId`s have been defined) are not stable and can therefore not be
     /// stored on disk. This buffer stores these diagnostics until the ID has been
-    /// replaced by a stable [`LintExpectationId`]. The [`Diagnostic`][diagnostic::Diagnostic]s are the
+    /// replaced by a stable [`LintExpectationId`]. The [`Diagnostic`][struct@diagnostic::Diagnostic]s are the
     /// submitted for storage and added to the list of fulfilled expectations.
     unstable_expect_diagnostics: Vec<Diagnostic>,
 

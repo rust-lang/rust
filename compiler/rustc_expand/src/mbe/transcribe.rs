@@ -220,16 +220,15 @@ pub(super) fn transcribe<'a>(
                         MatchedTokenTree(tt) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            let token = tt.clone();
-                            result.push(token);
+                            result.push(tt.clone());
                         }
                         MatchedNonterminal(nt) => {
                             // Other variables are emitted into the output stream as groups with
                             // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
-                            let token = TokenTree::token_alone(token::Interpolated(nt.clone()), sp);
-                            result.push(token);
+                            result
+                                .push(TokenTree::token_alone(token::Interpolated(nt.clone()), sp));
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
