@@ -10,6 +10,6 @@ struct A<T: ?Sized + 'static> {
 }
 
 // EMIT_MIR dont_inline_type_id.call.Inline.diff
-fn call<T: ?Sized + 'static>(s: &T) -> TypeId {
+pub fn call<T: ?Sized + 'static>(s: &T) -> TypeId {
     s.type_id()
 }
