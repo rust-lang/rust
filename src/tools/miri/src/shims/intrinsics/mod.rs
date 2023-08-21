@@ -44,7 +44,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "the program aborted execution".to_owned()
                 ))
             }
-            _ => {},
+            _ => {}
         }
 
         // All remaining supported intrinsics have a return place.
