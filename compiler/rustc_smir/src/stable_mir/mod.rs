@@ -1,6 +1,6 @@
 //! Module that implements the public interface to the Stable MIR.
 //!
-//! This module shall contain all type definitions and APIs that we expect 3P tools to invoke to
+//! This module shall contain all type definitions and APIs that we expect third-party tools to invoke to
 //! interact with the compiler.
 //!
 //! The goal is to eventually move this module to its own crate which shall be published on
