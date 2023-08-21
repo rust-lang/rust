@@ -1096,7 +1096,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     store.register_late_pass(|_| Box::new(redundant_locals::RedundantLocals));
     store.register_late_pass(|_| Box::new(ignored_unit_patterns::IgnoredUnitPatterns));
-    store.register_late_pass(|_| Box::new(reserve_after_initialization::ReserveAfterInitialization::default()));
+    store.register_late_pass(|_| Box::<reserve_after_initialization::ReserveAfterInitialization>::default());
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
