@@ -184,6 +184,10 @@ pub enum CoverageKind {
         op: Op,
         rhs: ExpressionOperandId,
     },
+    Branch {
+        true_: ExpressionOperandId,
+        false_: ExpressionOperandId,
+    },
     Unreachable,
 }
 

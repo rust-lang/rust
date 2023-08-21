@@ -83,6 +83,10 @@ pub enum CoverageKind {
         op: Op,
         rhs: Operand,
     },
+    Branch {
+        true_: Operand,
+        false_: Operand,
+    },
     Unreachable,
 }
 
@@ -92,6 +96,7 @@ impl CoverageKind {
         match *self {
             Counter { id, .. } => Operand::Counter(id),
             Expression { id, .. } => Operand::Expression(id),
+            Branch { .. } => bug!("Branch coverage cannot be part of an expression"),
             Unreachable => bug!("Unreachable coverage cannot be part of an expression"),
         }
     }
@@ -117,6 +122,9 @@ impl Debug for CoverageKind {
                 },
                 rhs,
             ),
+            Branch { true_, false_ } => {
+                write!(fmt, "Branch: {true_:?} / {false_:?}")
+            }
             Unreachable => write!(fmt, "Unreachable"),
         }
     }

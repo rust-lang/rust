@@ -181,9 +181,6 @@ impl CounterMappingRegion {
         }
     }
 
-    // This function might be used in the future; the LLVM API is still evolving, as is coverage
-    // support.
-    #[allow(dead_code)]
     pub(crate) fn branch_region(
         counter: Counter,
         false_counter: Counter,

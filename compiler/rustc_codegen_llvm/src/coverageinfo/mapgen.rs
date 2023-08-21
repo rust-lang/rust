@@ -1,6 +1,6 @@
 use crate::common::CodegenCx;
 use crate::coverageinfo;
-use crate::coverageinfo::ffi::{Counter, CounterExpression, CounterMappingRegion};
+use crate::coverageinfo::ffi::{CounterExpression, CounterMappingRegion};
 use crate::llvm;
 
 use rustc_codegen_ssa::traits::ConstMethods;
@@ -13,6 +13,8 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Symbol;
+
+use super::map_data::{CoverageCounterAndRegion, CoverageCounterKind};
 
 /// Generates and exports the Coverage Map.
 ///
@@ -146,7 +148,7 @@ impl CoverageMapGenerator {
     fn write_coverage_mapping(
         &mut self,
         expressions: Vec<CounterExpression>,
-        counter_regions: Vec<(Counter, &CodeRegion)>,
+        counter_regions: Vec<CoverageCounterAndRegion<'_>>,
         coverage_mapping_buffer: &RustString,
     ) {
         if counter_regions.is_empty() {
@@ -158,12 +160,13 @@ impl CoverageMapGenerator {
         let mut current_file_name = None;
         let mut current_file_id = 0;
 
-        // Convert the list of (Counter, CodeRegion) pairs to an array of `CounterMappingRegion`, sorted
+        // Convert the list of `CoverageCounterAndRegion` to an array of `CounterMappingRegion`, sorted
         // by filename and position. Capture any new files to compute the `CounterMappingRegion`s
         // `file_id` (indexing files referenced by the current function), and construct the
         // function-specific `virtual_file_mapping` from `file_id` to its index in the module's
         // `filenames` array.
-        for (counter, region) in counter_regions {
+        for counter_region in counter_regions {
+            let region = counter_region.region;
             let CodeRegion { file_name, start_line, start_col, end_line, end_col } = *region;
             let same_file = current_file_name.is_some_and(|p| p == file_name);
             if !same_file {
@@ -175,15 +178,34 @@ impl CoverageMapGenerator {
                 let (filenames_index, _) = self.filenames.insert_full(file_name);
                 virtual_file_mapping.push(filenames_index as u32);
             }
-            debug!("Adding counter {:?} to map for {:?}", counter, region);
-            mapping_regions.push(CounterMappingRegion::code_region(
-                counter,
-                current_file_id,
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-            ));
+            match counter_region.kind {
+                CoverageCounterKind::Counter(counter) => {
+                    debug!("Adding counter {:?} to map for {:?}", counter, region);
+                    mapping_regions.push(CounterMappingRegion::code_region(
+                        counter,
+                        current_file_id,
+                        start_line,
+                        start_col,
+                        end_line,
+                        end_col,
+                    ));
+                }
+                CoverageCounterKind::Branch { true_counter, false_counter } => {
+                    debug!(
+                        "Adding branch ({:?} / {:?}) to map for {:?}",
+                        true_counter, false_counter, region
+                    );
+                    mapping_regions.push(CounterMappingRegion::branch_region(
+                        true_counter,
+                        false_counter,
+                        current_file_id,
+                        start_line,
+                        start_col,
+                        end_line,
+                        end_col,
+                    ));
+                }
+            }
         }
 
         // Encode and append the current function's coverage mapping data

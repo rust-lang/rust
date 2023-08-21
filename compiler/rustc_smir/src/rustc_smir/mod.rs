@@ -491,6 +491,10 @@ impl<'tcx> Stable<'tcx> for mir::coverage::CoverageKind {
                     rhs: opaque(rhs),
                 }
             }
+            CoverageKind::Branch { true_, false_ } => stable_mir::mir::CoverageKind::Branch {
+                true_: opaque(true_),
+                false_: opaque(false_),
+            },
             CoverageKind::Unreachable => stable_mir::mir::CoverageKind::Unreachable,
         }
     }

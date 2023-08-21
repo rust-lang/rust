@@ -299,6 +299,9 @@ impl DebugCounters {
             CoverageKind::Expression { .. } => {
                 format!("Expression({})", self.format_counter_kind(counter_kind))
             }
+            CoverageKind::Branch { true_, false_ } => {
+                format!("Branch({} / {})", self.format_operand(true_), self.format_operand(false_))
+            }
             CoverageKind::Unreachable { .. } => "Unreachable".to_owned(),
         }
     }

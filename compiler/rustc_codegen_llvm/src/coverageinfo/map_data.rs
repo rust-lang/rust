@@ -14,6 +14,23 @@ pub struct Expression {
     region: Option<CodeRegion>,
 }
 
+pub struct CoverageCounterAndRegion<'a> {
+    pub(crate) kind: CoverageCounterKind,
+    pub(crate) region: &'a CodeRegion,
+}
+
+pub enum CoverageCounterKind {
+    Counter(Counter),
+    Branch { true_counter: Counter, false_counter: Counter },
+}
+
+#[derive(Debug)]
+struct CoverageBranch {
+    true_: Operand,
+    false_: Operand,
+    region: CodeRegion,
+}
+
 /// Collects all of the coverage regions associated with (a) injected counters, (b) counter
 /// expressions (additions or subtraction), and (c) unreachable regions (always counted as zero),
 /// for a given Function. This struct also stores the `function_source_hash`,
@@ -32,6 +49,7 @@ pub struct FunctionCoverage<'tcx> {
     is_used: bool,
     counters: IndexVec<CounterId, Option<CodeRegion>>,
     expressions: IndexVec<ExpressionId, Option<Expression>>,
+    branches: Vec<CoverageBranch>,
     unreachable_regions: Vec<CodeRegion>,
 }
 
@@ -58,6 +76,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
             is_used,
             counters: IndexVec::from_elem_n(None, coverageinfo.num_counters as usize),
             expressions: IndexVec::from_elem_n(None, coverageinfo.num_expressions as usize),
+            branches: Vec::new(),
             unreachable_regions: Vec::new(),
         }
     }
@@ -82,6 +101,11 @@ impl<'tcx> FunctionCoverage<'tcx> {
         if let Some(previous_region) = self.counters[id].replace(region.clone()) {
             assert_eq!(previous_region, region, "add_counter: code region for id changed");
         }
+    }
+
+    /// Adds a branch region using the two provided true/false operands
+    pub fn add_branch_counter(&mut self, true_: Operand, false_: Operand, region: CodeRegion) {
+        self.branches.push(CoverageBranch { true_, false_, region })
     }
 
     /// Both counters and "counter expressions" (or simply, "expressions") can be operands in other
@@ -185,7 +209,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// `CoverageMapGenerator` will create `CounterMappingRegion`s.
     pub fn get_expressions_and_counter_regions(
         &self,
-    ) -> (Vec<CounterExpression>, Vec<(Counter, &CodeRegion)>) {
+    ) -> (Vec<CounterExpression>, Vec<CoverageCounterAndRegion<'_>>) {
         assert!(
             self.source_hash != 0 || !self.is_used,
             "No counters provided the source_hash for used function: {:?}",
@@ -201,7 +225,10 @@ impl<'tcx> FunctionCoverage<'tcx> {
         let counter_regions = self.counters.iter_enumerated().filter_map(|(index, entry)| {
             // Option::map() will return None to filter out missing counters. This may happen
             // if, for example, a MIR-instrumented counter is removed during an optimization.
-            entry.as_ref().map(|region| (Counter::counter_value_reference(index), region))
+            entry.as_ref().map(|region| CoverageCounterAndRegion {
+                kind: CoverageCounterKind::Counter(Counter::counter_value_reference(index)),
+                region,
+            })
         });
 
         // Find all of the expression IDs that weren't optimized out AND have
@@ -209,18 +236,32 @@ impl<'tcx> FunctionCoverage<'tcx> {
         // counter/region pair.
         let expression_regions =
             self.expressions.iter_enumerated().filter_map(|(id, expression)| {
-                let code_region = expression.as_ref()?.region.as_ref()?;
-                Some((Counter::expression(id), code_region))
+                let region = expression.as_ref()?.region.as_ref()?;
+                Some(CoverageCounterAndRegion {
+                    kind: CoverageCounterKind::Counter(Counter::expression(id)),
+                    region,
+                })
             });
-        let unreachable_regions =
-            self.unreachable_regions.iter().map(|region| (Counter::ZERO, region));
+
+        let unreachable_regions = self.unreachable_regions.iter().map(|region| {
+            CoverageCounterAndRegion { kind: CoverageCounterKind::Counter(Counter::ZERO), region }
+        });
+
+        let branch_regions = self.branches.iter().map(|branch| CoverageCounterAndRegion {
+            kind: CoverageCounterKind::Branch {
+                true_counter: Counter::from_operand(branch.true_),
+                false_counter: Counter::from_operand(branch.false_),
+            },
+            region: &branch.region,
+        });
 
         let mut all_regions: Vec<_> = expression_regions.collect();
         all_regions.extend(counter_regions);
         all_regions.extend(unreachable_regions);
+        all_regions.extend(branch_regions);
 
         // make sure all the regions are sorted
-        all_regions.sort_unstable_by_key(|(_counter, region)| *region);
+        all_regions.sort_unstable_by_key(|coverage_region| coverage_region.region);
 
         (counter_expressions, all_regions)
     }

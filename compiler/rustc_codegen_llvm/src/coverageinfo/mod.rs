@@ -152,6 +152,14 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 );
                 func_coverage.add_counter_expression(id, lhs, op, rhs, code_region);
             }
+            CoverageKind::Branch { true_, false_ } => {
+                let code_region = code_region.expect("branch regions always have code regions");
+                debug!(
+                    "adding branch to coverage_map: instance={:?}, {:?} / {:?}; region: {:?}",
+                    instance, true_, false_, code_region,
+                );
+                func_coverage.add_branch_counter(true_, false_, code_region);
+            }
             CoverageKind::Unreachable => {
                 let code_region =
                     code_region.expect("unreachable regions always have code regions");
