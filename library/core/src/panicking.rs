@@ -188,6 +188,7 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
 #[lang = "panic_cannot_unwind"] // needed by codegen for panic in nounwind function
 #[rustc_nounwind]
 fn panic_cannot_unwind() -> ! {
+    // Keep the text in sync with `UnwindTerminateReason::as_str` in `rustc_middle`.
     panic_nounwind("panic in a function that cannot unwind")
 }
 
@@ -203,6 +204,7 @@ fn panic_cannot_unwind() -> ! {
 #[lang = "panic_in_cleanup"] // needed by codegen for panic in nounwind function
 #[rustc_nounwind]
 fn panic_in_cleanup() -> ! {
+    // Keep the text in sync with `UnwindTerminateReason::as_str` in `rustc_middle`.
     panic_nounwind("panic in a destructor during cleanup")
 }
 
