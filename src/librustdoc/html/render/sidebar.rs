@@ -82,7 +82,7 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
         clean::PrimitiveItem(_) => sidebar_primitive(cx, it),
         clean::UnionItem(ref u) => sidebar_union(cx, it, u),
         clean::EnumItem(ref e) => sidebar_enum(cx, it, e),
-        clean::TypedefItem(_) => sidebar_typedef(cx, it),
+        clean::TypeAliasItem(_) => sidebar_type_alias(cx, it),
         clean::ModuleItem(ref m) => vec![sidebar_module(&m.items)],
         clean::ForeignTypeItem => sidebar_foreign_type(cx, it),
         _ => vec![],
@@ -100,7 +100,7 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
         || it.is_union()
         || it.is_enum()
         || it.is_mod()
-        || it.is_typedef()
+        || it.is_type_alias()
     {
         (
             match *it.kind {
@@ -230,7 +230,7 @@ fn sidebar_primitive<'a>(cx: &'a Context<'_>, it: &'a clean::Item) -> Vec<LinkBl
     }
 }
 
-fn sidebar_typedef<'a>(cx: &'a Context<'_>, it: &'a clean::Item) -> Vec<LinkBlock<'a>> {
+fn sidebar_type_alias<'a>(cx: &'a Context<'_>, it: &'a clean::Item) -> Vec<LinkBlock<'a>> {
     let mut items = vec![];
     sidebar_assoc_items(cx, it, &mut items);
     items
@@ -334,7 +334,7 @@ fn sidebar_deref_methods<'a>(
     if let Some((target, real_target)) =
         impl_.inner_impl().items.iter().find_map(|item| match *item.kind {
             clean::AssocTypeItem(box ref t, _) => Some(match *t {
-                clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
+                clean::TypeAlias { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
             _ => None,
