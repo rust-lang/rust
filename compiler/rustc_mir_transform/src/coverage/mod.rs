@@ -8,9 +8,9 @@ mod spans;
 #[cfg(test)]
 mod tests;
 
-use counters::CoverageCounters;
-use graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
-use spans::{CoverageSpan, CoverageSpans};
+use self::counters::{BcbCounter, CoverageCounters};
+use self::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
+use self::spans::{CoverageSpan, CoverageSpans};
 
 use crate::MirPass;
 
@@ -106,6 +106,7 @@ struct Instrumentor<'a, 'tcx> {
     source_file: Lrc<SourceFile>,
     fn_sig_span: Span,
     body_span: Span,
+    function_source_hash: u64,
     basic_coverage_blocks: CoverageGraph,
     coverage_counters: CoverageCounters,
 }
@@ -137,7 +138,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         let function_source_hash = hash_mir_source(tcx, hir_body);
         let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
-        let coverage_counters = CoverageCounters::new(function_source_hash, &basic_coverage_blocks);
+        let coverage_counters = CoverageCounters::new(&basic_coverage_blocks);
 
         Self {
             pass_name,
@@ -146,6 +147,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             source_file,
             fn_sig_span,
             body_span,
+            function_source_hash,
             basic_coverage_blocks,
             coverage_counters,
         }
@@ -270,8 +272,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         ////////////////////////////////////////////////////
         // Finally, inject the intermediate expressions collected along the way.
-        for intermediate_expression in self.coverage_counters.intermediate_expressions.drain(..) {
-            inject_intermediate_expression(self.mir_body, intermediate_expression);
+        for intermediate_expression in &self.coverage_counters.intermediate_expressions {
+            inject_intermediate_expression(
+                self.mir_body,
+                self.make_mir_coverage_kind(intermediate_expression),
+            );
         }
     }
 
@@ -309,19 +314,14 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             };
             graphviz_data.add_bcb_coverage_span_with_counter(bcb, &covspan, &counter_kind);
 
-            debug!(
-                "Calling make_code_region(file_name={}, source_file={:?}, span={}, body_span={})",
-                file_name,
-                self.source_file,
-                source_map.span_to_diagnostic_string(span),
-                source_map.span_to_diagnostic_string(body_span)
-            );
+            let code_region =
+                make_code_region(source_map, file_name, &self.source_file, span, body_span);
 
             inject_statement(
                 self.mir_body,
-                counter_kind,
+                self.make_mir_coverage_kind(&counter_kind),
                 self.bcb_leader_bb(bcb),
-                Some(make_code_region(source_map, file_name, &self.source_file, span, body_span)),
+                Some(code_region),
             );
         }
     }
@@ -367,7 +367,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             );
 
             match counter_kind {
-                CoverageKind::Counter { .. } => {
+                BcbCounter::Counter { .. } => {
                     let inject_to_bb = if let Some(from_bcb) = edge_from_bcb {
                         // The MIR edge starts `from_bb` (the outgoing / last BasicBlock in
                         // `from_bcb`) and ends at `to_bb` (the incoming / first BasicBlock in the
@@ -400,12 +400,17 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                         target_bb
                     };
 
-                    inject_statement(self.mir_body, counter_kind, inject_to_bb, None);
+                    inject_statement(
+                        self.mir_body,
+                        self.make_mir_coverage_kind(&counter_kind),
+                        inject_to_bb,
+                        None,
+                    );
                 }
-                CoverageKind::Expression { .. } => {
-                    inject_intermediate_expression(self.mir_body, counter_kind)
-                }
-                _ => bug!("CoverageKind should be a counter"),
+                BcbCounter::Expression { .. } => inject_intermediate_expression(
+                    self.mir_body,
+                    self.make_mir_coverage_kind(&counter_kind),
+                ),
             }
         }
     }
@@ -426,8 +431,19 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     }
 
     #[inline]
-    fn format_counter(&self, counter_kind: &CoverageKind) -> String {
+    fn format_counter(&self, counter_kind: &BcbCounter) -> String {
         self.coverage_counters.debug_counters.format_counter(counter_kind)
+    }
+
+    fn make_mir_coverage_kind(&self, counter_kind: &BcbCounter) -> CoverageKind {
+        match *counter_kind {
+            BcbCounter::Counter { id } => {
+                CoverageKind::Counter { function_source_hash: self.function_source_hash, id }
+            }
+            BcbCounter::Expression { id, lhs, op, rhs } => {
+                CoverageKind::Expression { id, lhs, op, rhs }
+            }
+        }
     }
 }
 
@@ -498,6 +514,14 @@ fn make_code_region(
     span: Span,
     body_span: Span,
 ) -> CodeRegion {
+    debug!(
+        "Called make_code_region(file_name={}, source_file={:?}, span={}, body_span={})",
+        file_name,
+        source_file,
+        source_map.span_to_diagnostic_string(span),
+        source_map.span_to_diagnostic_string(body_span)
+    );
+
     let (start_line, mut start_col) = source_file.lookup_file_pos(span.lo());
     let (end_line, end_col) = if span.hi() == span.lo() {
         let (end_line, mut end_col) = (start_line, start_col);

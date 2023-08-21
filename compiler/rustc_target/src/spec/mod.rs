@@ -42,7 +42,7 @@ use crate::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_fs_util::try_canonicalize;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -655,6 +655,43 @@ pub enum RelocModel {
     RopiRwpi,
 }
 
+impl RelocModel {
+    pub fn desc(&self) -> &str {
+        match *self {
+            RelocModel::Static => "static",
+            RelocModel::Pic => "pic",
+            RelocModel::Pie => "pie",
+            RelocModel::DynamicNoPic => "dynamic-no-pic",
+            RelocModel::Ropi => "ropi",
+            RelocModel::Rwpi => "rwpi",
+            RelocModel::RopiRwpi => "ropi-rwpi",
+        }
+    }
+    pub const fn desc_symbol(&self) -> Symbol {
+        match *self {
+            RelocModel::Static => kw::Static,
+            RelocModel::Pic => sym::pic,
+            RelocModel::Pie => sym::pie,
+            RelocModel::DynamicNoPic => sym::dynamic_no_pic,
+            RelocModel::Ropi => sym::ropi,
+            RelocModel::Rwpi => sym::rwpi,
+            RelocModel::RopiRwpi => sym::ropi_rwpi,
+        }
+    }
+
+    pub const fn all() -> [Symbol; 7] {
+        [
+            RelocModel::Static.desc_symbol(),
+            RelocModel::Pic.desc_symbol(),
+            RelocModel::Pie.desc_symbol(),
+            RelocModel::DynamicNoPic.desc_symbol(),
+            RelocModel::Ropi.desc_symbol(),
+            RelocModel::Rwpi.desc_symbol(),
+            RelocModel::RopiRwpi.desc_symbol(),
+        ]
+    }
+}
+
 impl FromStr for RelocModel {
     type Err = ();
 
@@ -674,16 +711,7 @@ impl FromStr for RelocModel {
 
 impl ToJson for RelocModel {
     fn to_json(&self) -> Json {
-        match *self {
-            RelocModel::Static => "static",
-            RelocModel::Pic => "pic",
-            RelocModel::Pie => "pie",
-            RelocModel::DynamicNoPic => "dynamic-no-pic",
-            RelocModel::Ropi => "ropi",
-            RelocModel::Rwpi => "rwpi",
-            RelocModel::RopiRwpi => "ropi-rwpi",
-        }
-        .to_json()
+        self.desc().to_json()
     }
 }
 
@@ -1922,6 +1950,9 @@ pub struct TargetOptions {
     /// Use platform dependent mcount function
     pub mcount: StaticCow<str>,
 
+    /// Use LLVM intrinsic for mcount function name
+    pub llvm_mcount_intrinsic: Option<StaticCow<str>>,
+
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
     pub llvm_abiname: StaticCow<str>,
 
@@ -2183,6 +2214,7 @@ impl Default for TargetOptions {
             override_export_symbols: None,
             merge_functions: MergeFunctions::Aliases,
             mcount: "mcount".into(),
+            llvm_mcount_intrinsic: None,
             llvm_abiname: "".into(),
             relax_elf_relocations: false,
             llvm_args: cvs![],
@@ -2840,6 +2872,7 @@ impl Target {
         key!(override_export_symbols, opt_list);
         key!(merge_functions, MergeFunctions)?;
         key!(mcount = "target-mcount");
+        key!(llvm_mcount_intrinsic, optional);
         key!(llvm_abiname);
         key!(relax_elf_relocations, bool);
         key!(llvm_args, list);
@@ -3096,6 +3129,7 @@ impl ToJson for Target {
         target_option_val!(override_export_symbols);
         target_option_val!(merge_functions);
         target_option_val!(mcount, "target-mcount");
+        target_option_val!(llvm_mcount_intrinsic);
         target_option_val!(llvm_abiname);
         target_option_val!(relax_elf_relocations);
         target_option_val!(llvm_args);

@@ -14,36 +14,76 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::*;
 
+use std::fmt::{self, Debug};
+
+/// The coverage counter or counter expression associated with a particular
+/// BCB node or BCB edge.
+#[derive(Clone)]
+pub(super) enum BcbCounter {
+    Counter { id: CounterId },
+    Expression { id: ExpressionId, lhs: Operand, op: Op, rhs: Operand },
+}
+
+impl BcbCounter {
+    fn is_expression(&self) -> bool {
+        matches!(self, Self::Expression { .. })
+    }
+
+    pub(super) fn as_operand(&self) -> Operand {
+        match *self {
+            BcbCounter::Counter { id, .. } => Operand::Counter(id),
+            BcbCounter::Expression { id, .. } => Operand::Expression(id),
+        }
+    }
+}
+
+impl Debug for BcbCounter {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Counter { id, .. } => write!(fmt, "Counter({:?})", id.index()),
+            Self::Expression { id, lhs, op, rhs } => write!(
+                fmt,
+                "Expression({:?}) = {:?} {} {:?}",
+                id.index(),
+                lhs,
+                match op {
+                    Op::Add => "+",
+                    Op::Subtract => "-",
+                },
+                rhs,
+            ),
+        }
+    }
+}
+
 /// Generates and stores coverage counter and coverage expression information
 /// associated with nodes/edges in the BCB graph.
 pub(super) struct CoverageCounters {
-    function_source_hash: u64,
     next_counter_id: CounterId,
     next_expression_id: ExpressionId,
 
     /// Coverage counters/expressions that are associated with individual BCBs.
-    bcb_counters: IndexVec<BasicCoverageBlock, Option<CoverageKind>>,
+    bcb_counters: IndexVec<BasicCoverageBlock, Option<BcbCounter>>,
     /// Coverage counters/expressions that are associated with the control-flow
     /// edge between two BCBs.
-    bcb_edge_counters: FxHashMap<(BasicCoverageBlock, BasicCoverageBlock), CoverageKind>,
+    bcb_edge_counters: FxHashMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
     /// Tracks which BCBs have a counter associated with some incoming edge.
     /// Only used by debug assertions, to verify that BCBs with incoming edge
     /// counters do not have their own physical counters (expressions are allowed).
     bcb_has_incoming_edge_counters: BitSet<BasicCoverageBlock>,
     /// Expression nodes that are not directly associated with any particular
     /// BCB/edge, but are needed as operands to more complex expressions.
-    /// These are always `CoverageKind::Expression`.
-    pub(super) intermediate_expressions: Vec<CoverageKind>,
+    /// These are always [`BcbCounter::Expression`].
+    pub(super) intermediate_expressions: Vec<BcbCounter>,
 
     pub debug_counters: DebugCounters,
 }
 
 impl CoverageCounters {
-    pub(super) fn new(function_source_hash: u64, basic_coverage_blocks: &CoverageGraph) -> Self {
+    pub(super) fn new(basic_coverage_blocks: &CoverageGraph) -> Self {
         let num_bcbs = basic_coverage_blocks.num_nodes();
 
         Self {
-            function_source_hash,
             next_counter_id: CounterId::START,
             next_expression_id: ExpressionId::START,
 
@@ -57,12 +97,12 @@ impl CoverageCounters {
     }
 
     /// Activate the `DebugCounters` data structures, to provide additional debug formatting
-    /// features when formatting `CoverageKind` (counter) values.
+    /// features when formatting [`BcbCounter`] (counter) values.
     pub fn enable_debug(&mut self) {
         self.debug_counters.enable();
     }
 
-    /// Makes `CoverageKind` `Counter`s and `Expressions` for the `BasicCoverageBlock`s directly or
+    /// Makes [`BcbCounter`] `Counter`s and `Expressions` for the `BasicCoverageBlock`s directly or
     /// indirectly associated with `CoverageSpans`, and accumulates additional `Expression`s
     /// representing intermediate values.
     pub fn make_bcb_counters(
@@ -73,14 +113,11 @@ impl CoverageCounters {
         MakeBcbCounters::new(self, basic_coverage_blocks).make_bcb_counters(coverage_spans)
     }
 
-    fn make_counter<F>(&mut self, debug_block_label_fn: F) -> CoverageKind
+    fn make_counter<F>(&mut self, debug_block_label_fn: F) -> BcbCounter
     where
         F: Fn() -> Option<String>,
     {
-        let counter = CoverageKind::Counter {
-            function_source_hash: self.function_source_hash,
-            id: self.next_counter(),
-        };
+        let counter = BcbCounter::Counter { id: self.next_counter() };
         if self.debug_counters.is_enabled() {
             self.debug_counters.add_counter(&counter, (debug_block_label_fn)());
         }
@@ -93,19 +130,19 @@ impl CoverageCounters {
         op: Op,
         rhs: Operand,
         debug_block_label_fn: F,
-    ) -> CoverageKind
+    ) -> BcbCounter
     where
         F: Fn() -> Option<String>,
     {
         let id = self.next_expression();
-        let expression = CoverageKind::Expression { id, lhs, op, rhs };
+        let expression = BcbCounter::Expression { id, lhs, op, rhs };
         if self.debug_counters.is_enabled() {
             self.debug_counters.add_counter(&expression, (debug_block_label_fn)());
         }
         expression
     }
 
-    pub fn make_identity_counter(&mut self, counter_operand: Operand) -> CoverageKind {
+    pub fn make_identity_counter(&mut self, counter_operand: Operand) -> BcbCounter {
         let some_debug_block_label = if self.debug_counters.is_enabled() {
             self.debug_counters.some_block_label(counter_operand).cloned()
         } else {
@@ -134,7 +171,7 @@ impl CoverageCounters {
     fn set_bcb_counter(
         &mut self,
         bcb: BasicCoverageBlock,
-        counter_kind: CoverageKind,
+        counter_kind: BcbCounter,
     ) -> Result<Operand, Error> {
         debug_assert!(
             // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
@@ -158,7 +195,7 @@ impl CoverageCounters {
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
-        counter_kind: CoverageKind,
+        counter_kind: BcbCounter,
     ) -> Result<Operand, Error> {
         if level_enabled!(tracing::Level::DEBUG) {
             // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
@@ -183,17 +220,17 @@ impl CoverageCounters {
         }
     }
 
-    pub(super) fn bcb_counter(&self, bcb: BasicCoverageBlock) -> Option<&CoverageKind> {
+    pub(super) fn bcb_counter(&self, bcb: BasicCoverageBlock) -> Option<&BcbCounter> {
         self.bcb_counters[bcb].as_ref()
     }
 
-    pub(super) fn take_bcb_counter(&mut self, bcb: BasicCoverageBlock) -> Option<CoverageKind> {
+    pub(super) fn take_bcb_counter(&mut self, bcb: BasicCoverageBlock) -> Option<BcbCounter> {
         self.bcb_counters[bcb].take()
     }
 
     pub(super) fn drain_bcb_counters(
         &mut self,
-    ) -> impl Iterator<Item = (BasicCoverageBlock, CoverageKind)> + '_ {
+    ) -> impl Iterator<Item = (BasicCoverageBlock, BcbCounter)> + '_ {
         self.bcb_counters
             .iter_enumerated_mut()
             .filter_map(|(bcb, counter)| Some((bcb, counter.take()?)))
@@ -201,7 +238,7 @@ impl CoverageCounters {
 
     pub(super) fn drain_bcb_edge_counters(
         &mut self,
-    ) -> impl Iterator<Item = ((BasicCoverageBlock, BasicCoverageBlock), CoverageKind)> + '_ {
+    ) -> impl Iterator<Item = ((BasicCoverageBlock, BasicCoverageBlock), BcbCounter)> + '_ {
         self.bcb_edge_counters.drain()
     }
 }
@@ -653,7 +690,7 @@ impl<'a> MakeBcbCounters<'a> {
         self.branch_counter(branch).is_none()
     }
 
-    fn branch_counter(&self, branch: &BcbBranch) -> Option<&CoverageKind> {
+    fn branch_counter(&self, branch: &BcbBranch) -> Option<&BcbCounter> {
         let to_bcb = branch.target_bcb;
         if let Some(from_bcb) = branch.edge_from_bcb {
             self.coverage_counters.bcb_edge_counters.get(&(from_bcb, to_bcb))
@@ -675,7 +712,7 @@ impl<'a> MakeBcbCounters<'a> {
     }
 
     #[inline]
-    fn format_counter(&self, counter_kind: &CoverageKind) -> String {
+    fn format_counter(&self, counter_kind: &BcbCounter) -> String {
         self.coverage_counters.debug_counters.format_counter(counter_kind)
     }
 }

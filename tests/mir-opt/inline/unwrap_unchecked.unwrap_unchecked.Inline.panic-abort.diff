@@ -7,7 +7,8 @@
       let mut _2: std::option::Option<T>;
 +     scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) {
 +         debug self => _2;
-+         let mut _3: isize;
++         let mut _3: &std::option::Option<T>;
++         let mut _4: isize;
 +         scope 2 {
 +             debug val => _0;
 +         }
@@ -20,7 +21,7 @@
 +             }
 +         }
 +         scope 4 (inlined Option::<T>::is_some) {
-+             debug self => &_2;
++             debug self => _3;
 +         }
 +     }
   
@@ -28,8 +29,9 @@
           StorageLive(_2);
           _2 = move _1;
 -         _0 = Option::<T>::unwrap_unchecked(move _2) -> [return: bb1, unwind unreachable];
-+         _3 = discriminant(_2);
-+         switchInt(move _3) -> [1: bb2, otherwise: bb1];
++         StorageLive(_3);
++         _4 = discriminant(_2);
++         switchInt(move _4) -> [1: bb2, otherwise: bb1];
       }
   
       bb1: {
@@ -38,6 +40,7 @@
 + 
 +     bb2: {
 +         _0 = move ((_2 as Some).0: T);
++         StorageDead(_3);
           StorageDead(_2);
           return;
       }

@@ -18,7 +18,6 @@ pub enum ConstEvalErrKind {
     ModifiedGlobal,
     AssertFailure(AssertKind<ConstInt>),
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
-    Abort(String),
 }
 
 impl MachineStopType for ConstEvalErrKind {
@@ -30,7 +29,6 @@ impl MachineStopType for ConstEvalErrKind {
             ModifiedGlobal => const_eval_modified_global,
             Panic { .. } => const_eval_panic,
             AssertFailure(x) => x.diagnostic_message(),
-            Abort(msg) => msg.to_string().into(),
         }
     }
     fn add_args(
@@ -39,7 +37,7 @@ impl MachineStopType for ConstEvalErrKind {
     ) {
         use ConstEvalErrKind::*;
         match *self {
-            ConstAccessesStatic | ModifiedGlobal | Abort(_) => {}
+            ConstAccessesStatic | ModifiedGlobal => {}
             AssertFailure(kind) => kind.add_args(adder),
             Panic { msg, line, col, file } => {
                 adder("msg".into(), msg.into_diagnostic_arg());

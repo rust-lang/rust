@@ -1097,7 +1097,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
-        expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> bool {
         let ty::Adt(adt_def, args) = expr_ty.kind() else {
             return false;
@@ -1115,7 +1114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let expr_inner_ty = args.type_at(0);
             let expected_inner_ty = expected_args.type_at(0);
-            if let &ty::Ref(_, ty, mutability) = expr_inner_ty.kind()
+            if let &ty::Ref(_, ty, _mutability) = expr_inner_ty.kind()
                     && self.can_eq(self.param_env, ty, expected_inner_ty)
                 {
                     let def_path = self.tcx.def_path_str(adt_def.did());
@@ -1123,14 +1122,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let subdiag = if self.type_is_copy_modulo_regions(self.param_env, ty) {
                         errors::OptionResultRefMismatch::Copied {
                             span, def_path
-                        }
-                    } else if let Some(expected_ty_expr) = expected_ty_expr
-                            // FIXME: suggest changes to both expressions to convert both to
-                            // Option/Result<&T>
-                            && mutability.is_not()
-                        {
-                        errors::OptionResultRefMismatch::AsRef {
-                            span: expected_ty_expr.span.shrink_to_hi(), expected_ty, expr_ty, def_path
                         }
                     } else if let Some(clone_did) = self.tcx.lang_items().clone_trait()
                         && rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions(

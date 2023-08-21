@@ -310,9 +310,8 @@ fn toggle_open(mut w: impl fmt::Write, text: impl fmt::Display) {
         w,
         "<details class=\"toggle type-contents-toggle\">\
             <summary class=\"hideme\">\
-                <span>Show {}</span>\
+                <span>Show {text}</span>\
             </summary>",
-        text
     )
     .unwrap();
 }
@@ -412,7 +411,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
         )
     });
 
-    debug!("{:?}", indices);
+    debug!("{indices:?}");
     let mut last_section = None;
 
     for &idx in &indices {
@@ -431,8 +430,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 w,
                 "<h2 id=\"{id}\" class=\"small-section-header\">\
                     <a href=\"#{id}\">{name}</a>\
-                 </h2>{}",
-                ITEM_TABLE_OPEN,
+                 </h2>{ITEM_TABLE_OPEN}",
                 id = cx.derive_id(my_section.id()),
                 name = my_section.name(),
             );
@@ -485,7 +483,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 let id = match import.kind {
                     clean::ImportKind::Simple(s) => {
-                        format!(" id=\"{}\"", cx.derive_id(format!("reexport.{}", s)))
+                        format!(" id=\"{}\"", cx.derive_id(format!("reexport.{s}")))
                     }
                     clean::ImportKind::Glob => String::new(),
                 };
@@ -583,10 +581,8 @@ fn extra_info_tags<'a, 'tcx: 'a>(
             display_fn(move |f| {
                 write!(
                     f,
-                    r#"<span class="stab {}" title="{}">{}</span>"#,
-                    class,
-                    Escape(title),
-                    contents
+                    r#"<span class="stab {class}" title="{title}">{contents}</span>"#,
+                    title = Escape(title),
                 )
             })
         }
@@ -614,7 +610,12 @@ fn extra_info_tags<'a, 'tcx: 'a>(
             (cfg, _) => cfg.as_deref().cloned(),
         };
 
-        debug!("Portability name={:?} {:?} - {:?} = {:?}", item.name, item.cfg, parent.cfg, cfg);
+        debug!(
+            "Portability name={name:?} {cfg:?} - {parent_cfg:?} = {cfg:?}",
+            name = item.name,
+            cfg = item.cfg,
+            parent_cfg = parent.cfg
+        );
         if let Some(ref cfg) = cfg {
             write!(
                 f,
@@ -689,14 +690,13 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     wrap_item(w, |mut w| {
         write!(
             w,
-            "{attrs}{}{}{}trait {}{}{}",
-            visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
-            t.unsafety(tcx).print_with_space(),
-            if t.is_auto(tcx) { "auto " } else { "" },
-            it.name.unwrap(),
-            t.generics.print(cx),
-            bounds,
+            "{attrs}{vis}{unsafety}{is_auto}trait {name}{generics}{bounds}",
             attrs = render_attributes_in_pre(it, "", tcx),
+            vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
+            unsafety = t.unsafety(tcx).print_with_space(),
+            is_auto = if t.is_auto(tcx) { "auto " } else { "" },
+            name = it.name.unwrap(),
+            generics = t.generics.print(cx),
         );
 
         if !t.generics.where_predicates.is_empty() {
@@ -742,11 +742,10 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                 toggle_open(
                     &mut w,
                     format_args!(
-                        "{} associated constant{} and {} method{}",
-                        count_consts,
-                        pluralize(count_consts),
-                        count_methods,
-                        pluralize(count_methods),
+                        "{count_consts} associated constant{plural_const} and \
+                         {count_methods} method{plural_method}",
+                        plural_const = pluralize(count_consts),
+                        plural_method = pluralize(count_methods),
                     ),
                 );
             }
@@ -768,7 +767,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             }
             if !toggle && should_hide_fields(count_methods) {
                 toggle = true;
-                toggle_open(&mut w, format_args!("{} methods", count_methods));
+                toggle_open(&mut w, format_args!("{count_methods} methods"));
             }
             if count_consts != 0 && count_methods != 0 {
                 w.write_str("\n");
@@ -837,9 +836,9 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
     fn trait_item(w: &mut Buffer, cx: &mut Context<'_>, m: &clean::Item, t: &clean::Item) {
         let name = m.name.unwrap();
-        info!("Documenting {} on {:?}", name, t.name);
+        info!("Documenting {name} on {ty_name:?}", ty_name = t.name);
         let item_type = m.type_();
-        let id = cx.derive_id(format!("{}.{}", item_type, name));
+        let id = cx.derive_id(format!("{item_type}.{name}"));
         let mut content = Buffer::empty_from(w);
         write!(&mut content, "{}", document(cx, m, Some(t), HeadingOffset::H5));
         let toggled = !content.is_empty();
@@ -847,7 +846,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
             write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>");
         }
-        write!(w, "<section id=\"{}\" class=\"method\">", id);
+        write!(w, "<section id=\"{id}\" class=\"method\">");
         render_rightside(w, cx, m, t, RenderMode::Normal);
         write!(w, "<h4 class=\"code-header\">");
         render_assoc_item(
@@ -1170,12 +1169,12 @@ fn item_trait_alias(
     wrap_item(w, |w| {
         write!(
             w,
-            "{attrs}trait {}{}{} = {};",
-            it.name.unwrap(),
-            t.generics.print(cx),
-            print_where_clause(&t.generics, cx, 0, Ending::Newline),
-            bounds(&t.bounds, true, cx),
+            "{attrs}trait {name}{generics}{where_b} = {bounds};",
             attrs = render_attributes_in_pre(it, "", cx.tcx()),
+            name = it.name.unwrap(),
+            generics = t.generics.print(cx),
+            where_b = print_where_clause(&t.generics, cx, 0, Ending::Newline),
+            bounds = bounds(&t.bounds, true, cx),
         )
         .unwrap();
     });
@@ -1198,12 +1197,12 @@ fn item_opaque_ty(
     wrap_item(w, |w| {
         write!(
             w,
-            "{attrs}type {}{}{where_clause} = impl {bounds};",
-            it.name.unwrap(),
-            t.generics.print(cx),
+            "{attrs}type {name}{generics}{where_clause} = impl {bounds};",
+            attrs = render_attributes_in_pre(it, "", cx.tcx()),
+            name = it.name.unwrap(),
+            generics = t.generics.print(cx),
             where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
             bounds = bounds(&t.bounds, false, cx),
-            attrs = render_attributes_in_pre(it, "", cx.tcx()),
         )
         .unwrap();
     });
@@ -1223,13 +1222,13 @@ fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clea
         wrap_item(w, |w| {
             write!(
                 w,
-                "{attrs}{}type {}{}{where_clause} = {type_};",
-                visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
-                it.name.unwrap(),
-                t.generics.print(cx),
+                "{attrs}{vis}type {name}{generics}{where_clause} = {type_};",
+                attrs = render_attributes_in_pre(it, "", cx.tcx()),
+                vis = visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
+                name = it.name.unwrap(),
+                generics = t.generics.print(cx),
                 where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
                 type_ = t.type_.print(cx),
-                attrs = render_attributes_in_pre(it, "", cx.tcx()),
             );
         });
     }
@@ -1354,7 +1353,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             w.write_str("{\n");
             let toggle = should_hide_fields(count_variants);
             if toggle {
-                toggle_open(&mut w, format_args!("{} variants", count_variants));
+                toggle_open(&mut w, format_args!("{count_variants} variants"));
             }
             for v in e.variants() {
                 w.write_str("    ");
@@ -1362,7 +1361,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                 match *v.kind {
                     // FIXME(#101337): Show discriminant
                     clean::VariantItem(ref var) => match var.kind {
-                        clean::VariantKind::CLike => write!(w, "{}", name),
+                        clean::VariantKind::CLike => w.write_str(name.as_str()),
                         clean::VariantKind::Tuple(ref s) => {
                             write!(w, "{name}({})", print_tuple_struct_fields(cx, s),);
                         }
@@ -1418,7 +1417,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             let clean::VariantItem(variant_data) = &*variant.kind else { unreachable!() };
 
             if let clean::VariantKind::Tuple(ref s) = variant_data.kind {
-                write!(w, "({})", print_tuple_struct_fields(cx, s),);
+                write!(w, "({})", print_tuple_struct_fields(cx, s));
             }
             w.write_str("</h3></section>");
 
@@ -1617,7 +1616,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             for (index, (field, ty)) in fields.enumerate() {
                 let field_name =
                     field.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
-                let id = cx.derive_id(format!("{}.{}", ItemType::StructField, field_name));
+                let id = cx.derive_id(format!("{typ}.{field_name}", typ = ItemType::StructField));
                 write!(
                     w,
                     "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
@@ -1722,7 +1721,7 @@ pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
 pub(super) fn item_path(ty: ItemType, name: &str) -> String {
     match ty {
         ItemType::Module => format!("{}index.html", ensure_trailing_slash(name)),
-        _ => format!("{}.{}.html", ty, name),
+        _ => format!("{ty}.{name}.html"),
     }
 }
 
@@ -1845,7 +1844,7 @@ fn render_union<'a, 'cx: 'a>(
             fields.iter().filter(|field| matches!(*field.kind, clean::StructFieldItem(..))).count();
         let toggle = should_hide_fields(count_fields);
         if toggle {
-            toggle_open(&mut f, format_args!("{} fields", count_fields));
+            toggle_open(&mut f, format_args!("{count_fields} fields"));
         }
 
         for field in fields {
@@ -1908,26 +1907,25 @@ fn render_struct(
             let has_visible_fields = count_fields > 0;
             let toggle = should_hide_fields(count_fields);
             if toggle {
-                toggle_open(&mut w, format_args!("{} fields", count_fields));
+                toggle_open(&mut w, format_args!("{count_fields} fields"));
             }
             for field in fields {
                 if let clean::StructFieldItem(ref ty) = *field.kind {
                     write!(
                         w,
-                        "\n{}    {}{}: {},",
-                        tab,
-                        visibility_print_with_space(field.visibility(tcx), field.item_id, cx),
-                        field.name.unwrap(),
-                        ty.print(cx),
+                        "\n{tab}    {vis}{name}: {ty},",
+                        vis = visibility_print_with_space(field.visibility(tcx), field.item_id, cx),
+                        name = field.name.unwrap(),
+                        ty = ty.print(cx),
                     );
                 }
             }
 
             if has_visible_fields {
                 if it.has_stripped_entries().unwrap() {
-                    write!(w, "\n{}    /* private fields */", tab);
+                    write!(w, "\n{tab}    /* private fields */");
                 }
-                write!(w, "\n{}", tab);
+                write!(w, "\n{tab}");
             } else if it.has_stripped_entries().unwrap() {
                 write!(w, " /* private fields */ ");
             }

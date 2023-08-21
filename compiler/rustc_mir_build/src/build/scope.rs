@@ -685,9 +685,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         drops.add_entry(block, drop_idx);
 
         // `build_drop_trees` doesn't have access to our source_info, so we
-        // create a dummy terminator now. `TerminatorKind::Resume` is used
+        // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
         // because MIR type checking will panic if it hasn't been overwritten.
-        self.cfg.terminate(block, source_info, TerminatorKind::Resume);
+        self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
 
         self.cfg.start_new_block().unit()
     }
@@ -717,9 +717,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         drops.add_entry(block, drop_idx);
 
         // `build_drop_trees` doesn't have access to our source_info, so we
-        // create a dummy terminator now. `TerminatorKind::Resume` is used
+        // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
         // because MIR type checking will panic if it hasn't been overwritten.
-        self.cfg.terminate(block, source_info, TerminatorKind::Resume);
+        self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
     }
 
     // Add a dummy `Assign` statement to the CFG, with the span for the source code's `continue`
@@ -1441,7 +1441,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         blocks[ROOT_NODE] = *resume_block;
         drops.build_mir::<Unwind>(cfg, &mut blocks);
         if let (None, Some(resume)) = (*resume_block, blocks[ROOT_NODE]) {
-            cfg.terminate(resume, SourceInfo::outermost(fn_span), TerminatorKind::Resume);
+            cfg.terminate(resume, SourceInfo::outermost(fn_span), TerminatorKind::UnwindResume);
 
             *resume_block = blocks[ROOT_NODE];
         }
@@ -1506,8 +1506,8 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             }
             TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::Resume
-            | TerminatorKind::Terminate
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }

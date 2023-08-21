@@ -16,6 +16,7 @@ use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_metadata::EncodedMetadata;
 use rustc_session::cstore::MetadataLoader;
 use rustc_session::Session;
+use rustc_span::sym;
 use rustc_target::abi::Endian;
 use rustc_target::spec::{ef_avr_arch, RelocModel, Target};
 
@@ -272,35 +273,38 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Architecture::Riscv32 | Architecture::Riscv64 => {
             // Source: https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/079772828bd10933d34121117a222b4cc0ee2200/riscv-elf.adoc
             let mut e_flags: u32 = 0x0;
-            let features = &sess.target.options.features;
+
             // Check if compressed is enabled
-            if features.contains("+c") {
+            // `unstable_target_features` is used here because "c" is gated behind riscv_target_feature.
+            if sess.unstable_target_features.contains(&sym::c) {
                 e_flags |= elf::EF_RISCV_RVC;
             }
 
-            // Select the appropriate floating-point ABI
-            if features.contains("+d") {
-                e_flags |= elf::EF_RISCV_FLOAT_ABI_DOUBLE;
-            } else if features.contains("+f") {
-                e_flags |= elf::EF_RISCV_FLOAT_ABI_SINGLE;
-            } else {
-                e_flags |= elf::EF_RISCV_FLOAT_ABI_SOFT;
+            // Set the appropriate flag based on ABI
+            // This needs to match LLVM `RISCVELFStreamer.cpp`
+            match &*sess.target.llvm_abiname {
+                "" | "ilp32" | "lp64" => (),
+                "ilp32f" | "lp64f" => e_flags |= elf::EF_RISCV_FLOAT_ABI_SINGLE,
+                "ilp32d" | "lp64d" => e_flags |= elf::EF_RISCV_FLOAT_ABI_DOUBLE,
+                "ilp32e" => e_flags |= elf::EF_RISCV_RVE,
+                _ => bug!("unknown RISC-V ABI name"),
             }
+
             e_flags
         }
         Architecture::LoongArch64 => {
             // Source: https://github.com/loongson/la-abi-specs/blob/release/laelf.adoc#e_flags-identifies-abi-type-and-version
             let mut e_flags: u32 = elf::EF_LARCH_OBJABI_V1;
-            let features = &sess.target.options.features;
 
-            // Select the appropriate floating-point ABI
-            if features.contains("+d") {
-                e_flags |= elf::EF_LARCH_ABI_DOUBLE_FLOAT;
-            } else if features.contains("+f") {
-                e_flags |= elf::EF_LARCH_ABI_SINGLE_FLOAT;
-            } else {
-                e_flags |= elf::EF_LARCH_ABI_SOFT_FLOAT;
+            // Set the appropriate flag based on ABI
+            // This needs to match LLVM `LoongArchELFStreamer.cpp`
+            match &*sess.target.llvm_abiname {
+                "ilp32s" | "lp64s" => e_flags |= elf::EF_LARCH_ABI_SOFT_FLOAT,
+                "ilp32f" | "lp64f" => e_flags |= elf::EF_LARCH_ABI_SINGLE_FLOAT,
+                "ilp32d" | "lp64d" => e_flags |= elf::EF_LARCH_ABI_DOUBLE_FLOAT,
+                _ => bug!("unknown RISC-V ABI name"),
             }
+
             e_flags
         }
         Architecture::Avr => {

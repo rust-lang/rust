@@ -146,9 +146,8 @@ impl DocVisitor for SourceCollector<'_, '_> {
                     self.cx.shared.tcx.sess.span_err(
                         span,
                         format!(
-                            "failed to render source code for `{}`: {}",
-                            filename.prefer_local(),
-                            e,
+                            "failed to render source code for `{filename}`: {e}",
+                            filename = filename.prefer_local(),
                         ),
                     );
                     false

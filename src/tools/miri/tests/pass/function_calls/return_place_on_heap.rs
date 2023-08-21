@@ -11,7 +11,7 @@ pub fn main() {
         {
             let x = 0;
             let ptr = &raw mut x;
-            Call(*ptr, after_call, myfun())
+            Call(*ptr = myfun(), after_call)
         }
 
         after_call = {

@@ -37,8 +37,7 @@ impl ExternalHtml {
         let bc = load_external_files(before_content, diag)?;
         let m_bc = load_external_files(md_before_content, diag)?;
         let bc = format!(
-            "{}{}",
-            bc,
+            "{bc}{}",
             Markdown {
                 content: &m_bc,
                 links: &[],
@@ -53,8 +52,7 @@ impl ExternalHtml {
         let ac = load_external_files(after_content, diag)?;
         let m_ac = load_external_files(md_after_content, diag)?;
         let ac = format!(
-            "{}{}",
-            ac,
+            "{ac}{}",
             Markdown {
                 content: &m_ac,
                 links: &[],
@@ -83,7 +81,11 @@ pub(crate) fn load_string<P: AsRef<Path>>(
     let contents = match fs::read(file_path) {
         Ok(bytes) => bytes,
         Err(e) => {
-            diag.struct_err(format!("error reading `{}`: {}", file_path.display(), e)).emit();
+            diag.struct_err(format!(
+                "error reading `{file_path}`: {e}",
+                file_path = file_path.display()
+            ))
+            .emit();
             return Err(LoadStringError::ReadFail);
         }
     };

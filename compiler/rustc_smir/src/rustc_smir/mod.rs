@@ -780,8 +780,8 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
                     .collect(),
                 otherwise: targets.otherwise().as_usize(),
             },
-            Resume => Terminator::Resume,
-            Terminate => Terminator::Abort,
+            UnwindResume => Terminator::Resume,
+            UnwindTerminate => Terminator::Abort,
             Return => Terminator::Return,
             Unreachable => Terminator::Unreachable,
             Drop { place, target, unwind, replace: _ } => Terminator::Drop {

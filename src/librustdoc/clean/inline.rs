@@ -50,7 +50,7 @@ pub(crate) fn try_inline(
     }
     let mut ret = Vec::new();
 
-    debug!("attrs={:?}", attrs);
+    debug!("attrs={attrs:?}");
 
     let attrs_without_docs = attrs.map(|(attrs, def_id)| {
         (attrs.into_iter().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>(), def_id)
@@ -529,7 +529,7 @@ pub(crate) fn build_impl(
     }
 
     let (merged_attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs);
-    trace!("merged_attrs={:?}", merged_attrs);
+    trace!("merged_attrs={merged_attrs:?}");
 
     trace!(
         "build_impl: impl {:?} for {:?}",
@@ -781,7 +781,7 @@ pub(crate) fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
         cx.active_extern_traits.insert(did);
     }
 
-    debug!("record_extern_trait: {:?}", did);
+    debug!("record_extern_trait: {did:?}");
     let trait_ = build_external_trait(cx, did);
 
     cx.external_traits.borrow_mut().insert(did, trait_);

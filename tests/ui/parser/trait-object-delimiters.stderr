@@ -4,28 +4,28 @@ error: ambiguous `+` in a type
 LL | fn foo1(_: &dyn Drop + AsRef<str>) {}
    |             ^^^^^^^^^^^^^^^^^^^^^ help: use parentheses to disambiguate: `(dyn Drop + AsRef<str>)`
 
-error: incorrect braces around trait bounds
+error: incorrect parentheses around trait bounds
   --> $DIR/trait-object-delimiters.rs:6:17
    |
 LL | fn foo2(_: &dyn (Drop + AsRef<str>)) {}
    |                 ^                 ^
    |
-help: remove the parentheses
+help: fix the parentheses
    |
 LL - fn foo2(_: &dyn (Drop + AsRef<str>)) {}
-LL + fn foo2(_: &dyn  Drop + AsRef<str>) {}
+LL + fn foo2(_: &(dyn Drop + AsRef<str>)) {}
    |
 
-error: incorrect braces around trait bounds
+error: incorrect parentheses around trait bounds
   --> $DIR/trait-object-delimiters.rs:8:25
    |
 LL | fn foo2_no_space(_: &dyn(Drop + AsRef<str>)) {}
    |                         ^                 ^
    |
-help: remove the parentheses
+help: fix the parentheses
    |
 LL - fn foo2_no_space(_: &dyn(Drop + AsRef<str>)) {}
-LL + fn foo2_no_space(_: &dyn Drop + AsRef<str>) {}
+LL + fn foo2_no_space(_: &(dyn Drop + AsRef<str>)) {}
    |
 
 error: expected parameter name, found `{`

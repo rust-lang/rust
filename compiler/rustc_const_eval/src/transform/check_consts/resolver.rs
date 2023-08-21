@@ -4,10 +4,12 @@
 
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{self, BasicBlock, Local, Location, Statement, StatementKind};
+use rustc_middle::mir::{
+    self, BasicBlock, CallReturnPlaces, Local, Location, Statement, StatementKind, TerminatorEdges,
+};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::JoinSemiLattice;
-use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces};
+use rustc_mir_dataflow::{Analysis, AnalysisDomain};
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -345,13 +347,14 @@ where
         self.transfer_function(state).visit_statement(statement, location);
     }
 
-    fn apply_terminator_effect(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         state: &mut Self::Domain,
-        terminator: &mir::Terminator<'tcx>,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         self.transfer_function(state).visit_terminator(terminator, location);
+        terminator.edges()
     }
 
     fn apply_call_return_effect(

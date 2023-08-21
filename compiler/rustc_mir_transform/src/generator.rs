@@ -50,8 +50,10 @@
 //! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
+use crate::abort_unwinding_calls;
 use crate::deref_separator::deref_finder;
 use crate::errors;
+use crate::pass_manager as pm;
 use crate::simplify;
 use crate::MirPass;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -64,6 +66,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::dump_mir;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::ty::InstanceDef;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_middle::ty::{GeneratorArgs, GenericArgsRef};
 use rustc_mir_dataflow::impls::{
@@ -1147,7 +1150,25 @@ fn create_generator_drop_shim<'tcx>(
     // unrelated code from the resume part of the function
     simplify::remove_dead_blocks(tcx, &mut body);
 
+    // Update the body's def to become the drop glue.
+    // This needs to be updated before the AbortUnwindingCalls pass.
+    let gen_instance = body.source.instance;
+    let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, None);
+    let drop_instance = InstanceDef::DropGlue(drop_in_place, Some(gen_ty));
+    body.source.instance = drop_instance;
+
+    pm::run_passes_no_validate(
+        tcx,
+        &mut body,
+        &[&abort_unwinding_calls::AbortUnwindingCalls],
+        None,
+    );
+
+    // Temporary change MirSource to generator's instance so that dump_mir produces more sensible
+    // filename.
+    body.source.instance = gen_instance;
     dump_mir(tcx, false, "generator_drop", &0, &body, |_, _| Ok(()));
+    body.source.instance = drop_instance;
 
     body
 }
@@ -1218,7 +1239,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             // These never unwind.
             TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::Terminate
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
@@ -1227,7 +1248,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
 
             // Resume will *continue* unwinding, but if there's no other unwinding terminator it
             // will never be reached.
-            TerminatorKind::Resume => {}
+            TerminatorKind::UnwindResume => {}
 
             TerminatorKind::Yield { .. } => {
                 unreachable!("`can_unwind` called before generator transform")
@@ -1258,14 +1279,14 @@ fn create_generator_resume_function<'tcx>(
         let source_info = SourceInfo::outermost(body.span);
         let poison_block = body.basic_blocks_mut().push(BasicBlockData {
             statements: vec![transform.set_discr(VariantIdx::new(POISONED), source_info)],
-            terminator: Some(Terminator { source_info, kind: TerminatorKind::Resume }),
+            terminator: Some(Terminator { source_info, kind: TerminatorKind::UnwindResume }),
             is_cleanup: true,
         });
 
         for (idx, block) in body.basic_blocks_mut().iter_enumerated_mut() {
             let source_info = block.terminator().source_info;
 
-            if let TerminatorKind::Resume = block.terminator().kind {
+            if let TerminatorKind::UnwindResume = block.terminator().kind {
                 // An existing `Resume` terminator is redirected to jump to our dedicated
                 // "poisoning block" above.
                 if idx != poison_block {
@@ -1316,6 +1337,8 @@ fn create_generator_resume_function<'tcx>(
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function
     simplify::remove_dead_blocks(tcx, body);
+
+    pm::run_passes_no_validate(tcx, body, &[&abort_unwinding_calls::AbortUnwindingCalls], None);
 
     dump_mir(tcx, false, "generator_resume", &0, body, |_, _| Ok(()));
 }
@@ -1735,8 +1758,8 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             TerminatorKind::Call { .. }
             | TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::Resume
-            | TerminatorKind::Terminate
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }

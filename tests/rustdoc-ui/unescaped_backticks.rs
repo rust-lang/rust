@@ -1,6 +1,7 @@
 #![deny(rustdoc::unescaped_backticks)]
 #![allow(rustdoc::broken_intra_doc_links)]
 #![allow(rustdoc::invalid_html_tags)]
+#![allow(rustdoc::redundant_explicit_links)]
 
 ///
 pub fn empty() {}

@@ -388,7 +388,6 @@ rustc_queries! {
     }
 
     query shallow_lint_levels_on(key: hir::OwnerId) -> &'tcx rustc_middle::lint::ShallowLintLevelMap {
-        eval_always // fetches `resolutions`
         arena_cache
         desc { |tcx| "looking up lint levels for `{}`", tcx.def_path_str(key) }
     }

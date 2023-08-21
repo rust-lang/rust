@@ -61,9 +61,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 })
             },
             @call("mir_call", args) => {
-                let destination = self.parse_place(args[0])?;
-                let target = self.parse_block(args[1])?;
-                self.parse_call(args[2], destination, target)
+                self.parse_call(args)
             },
             ExprKind::Match { scrutinee, arms, .. } => {
                 let discr = self.parse_operand(*scrutinee)?;
@@ -109,13 +107,14 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         Ok(SwitchTargets::new(values.into_iter().zip(targets), otherwise))
     }
 
-    fn parse_call(
-        &self,
-        expr_id: ExprId,
-        destination: Place<'tcx>,
-        target: BasicBlock,
-    ) -> PResult<TerminatorKind<'tcx>> {
-        parse_by_kind!(self, expr_id, _, "function call",
+    fn parse_call(&self, args: &[ExprId]) -> PResult<TerminatorKind<'tcx>> {
+        let (destination, call) = parse_by_kind!(self, args[0], _, "function call",
+            ExprKind::Assign { lhs, rhs } => (*lhs, *rhs),
+        );
+        let destination = self.parse_place(destination)?;
+        let target = self.parse_block(args[1])?;
+
+        parse_by_kind!(self, call, _, "function call",
             ExprKind::Call { fun, args, from_hir_call, fn_span, .. } => {
                 let fun = self.parse_operand(*fun)?;
                 let args = args

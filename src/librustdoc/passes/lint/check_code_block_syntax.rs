@@ -107,7 +107,7 @@ fn check_rust_syntax(
                 // just give a `help` instead.
                 lint.span_help(
                     sp.from_inner(InnerSpan::new(0, 3)),
-                    format!("{}: ```text", explanation),
+                    format!("{explanation}: ```text"),
                 );
             } else if empty_block {
                 lint.span_suggestion(
@@ -118,7 +118,7 @@ fn check_rust_syntax(
                 );
             }
         } else if empty_block || is_ignore {
-            lint.help(format!("{}: ```text", explanation));
+            lint.help(format!("{explanation}: ```text"));
         }
 
         // FIXME(#67563): Provide more context for these errors by displaying the spans inline.
@@ -160,7 +160,7 @@ impl Emitter for BufferEmitter {
             .translate_message(&diag.message[0].0, &fluent_args)
             .unwrap_or_else(|e| panic!("{e}"));
 
-        buffer.messages.push(format!("error from rustc: {}", translated_main_message));
+        buffer.messages.push(format!("error from rustc: {translated_main_message}"));
         if diag.is_error() {
             buffer.has_errors = true;
         }

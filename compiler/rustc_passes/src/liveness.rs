@@ -1105,7 +1105,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 }
 
                 // Then do a second pass for inputs
-                let mut succ = succ;
                 for (op, _op_sp) in asm.operands.iter().rev() {
                     match op {
                         hir::InlineAsmOperand::In { expr, .. } => {

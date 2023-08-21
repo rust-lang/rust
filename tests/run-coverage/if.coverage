@@ -1,30 +1,30 @@
-    1|       |#![allow(unused_assignments, unused_variables)]
-    2|       |
-    3|      1|fn main() {
-    4|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
-    5|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
-    6|      1|    // dependent conditions.
-    7|      1|    let
-    8|      1|    is_true
-    9|      1|    =
-   10|      1|        std::env::args().len()
-   11|      1|    ==
-   12|      1|        1
-   13|      1|    ;
-   14|      1|    let
-   15|      1|        mut
-   16|      1|    countdown
-   17|      1|    =
-   18|      1|        0
-   19|      1|    ;
-   20|      1|    if
-   21|      1|        is_true
-   22|      1|    {
-   23|      1|        countdown
-   24|      1|        =
-   25|      1|            10
-   26|      1|        ;
-   27|      1|    }
+   LL|       |#![allow(unused_assignments, unused_variables)]
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|      1|    // dependent conditions.
+   LL|      1|    let
+   LL|      1|    is_true
+   LL|      1|    =
+   LL|      1|        std::env::args().len()
+   LL|      1|    ==
+   LL|      1|        1
+   LL|      1|    ;
+   LL|      1|    let
+   LL|      1|        mut
+   LL|      1|    countdown
+   LL|      1|    =
+   LL|      1|        0
+   LL|      1|    ;
+   LL|      1|    if
+   LL|      1|        is_true
+   LL|      1|    {
+   LL|      1|        countdown
+   LL|      1|        =
+   LL|      1|            10
+   LL|      1|        ;
+   LL|      1|    }
                    ^0
-   28|      1|}
+   LL|      1|}
 

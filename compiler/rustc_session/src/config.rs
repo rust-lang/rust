@@ -12,7 +12,7 @@ use crate::{EarlyErrorHandler, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_target::abi::Align;
-use rustc_target::spec::{PanicStrategy, SanitizerSet, SplitDebuginfo};
+use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 
 use crate::parse::{CrateCheckConfig, CrateConfig};
@@ -1193,6 +1193,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     let os = &sess.target.os;
     let env = &sess.target.env;
     let abi = &sess.target.abi;
+    let relocation_model = sess.target.relocation_model.desc_symbol();
     let vendor = &sess.target.vendor;
     let min_atomic_width = sess.target.min_atomic_width();
     let max_atomic_width = sess.target.max_atomic_width();
@@ -1218,6 +1219,9 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     ret.insert((sym::target_pointer_width, Some(Symbol::intern(&wordsz))));
     ret.insert((sym::target_env, Some(Symbol::intern(env))));
     ret.insert((sym::target_abi, Some(Symbol::intern(abi))));
+    if sess.is_nightly_build() {
+        ret.insert((sym::relocation_model, Some(relocation_model)));
+    }
     ret.insert((sym::target_vendor, Some(Symbol::intern(vendor))));
     if sess.target.has_thread_local {
         ret.insert((sym::target_thread_local, None));
@@ -1415,6 +1419,8 @@ impl CrateCheckConfig {
             .into_iter()
             .map(|sanitizer| Symbol::intern(sanitizer.as_str().unwrap()));
 
+        let relocation_model_values = RelocModel::all();
+
         // Unknown possible values:
         //  - `feature`
         //  - `target_feature`
@@ -1453,6 +1459,10 @@ impl CrateCheckConfig {
             .entry(sym::target_has_atomic_equal_alignment)
             .or_insert_with(no_values)
             .extend(atomic_values);
+        self.expecteds
+            .entry(sym::relocation_model)
+            .or_insert_with(empty_values)
+            .extend(relocation_model_values);
 
         // Target specific values
         {

@@ -81,6 +81,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 static ENV_LOCK: RwLock<()> = RwLock::new(());
 
+pub fn env_read_lock() -> impl Drop {
+    ENV_LOCK.read().unwrap_or_else(PoisonError::into_inner)
+}
+
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
 }
@@ -134,7 +138,7 @@ pub fn env() -> Env {
     }
 
     unsafe {
-        let _guard = ENV_LOCK.read();
+        let _guard = env_read_lock();
         let mut result = Vec::new();
         if !environ.is_null() {
             while !(*environ).is_null() {
@@ -168,17 +172,21 @@ pub fn env() -> Env {
 pub fn getenv(k: &OsStr) -> Option<OsString> {
     // environment variables with a nul byte can't be set, so their value is
     // always None as well
-    let s = run_with_cstr(k.as_bytes(), |k| {
-        let _guard = ENV_LOCK.read();
-        Ok(unsafe { libc::getenv(k.as_ptr()) } as *const libc::c_char)
-    })
-    .ok()?;
+    run_with_cstr(k.as_bytes(), |k| {
+        let _guard = env_read_lock();
+        let v = unsafe { libc::getenv(k.as_ptr()) } as *const libc::c_char;
 
-    if s.is_null() {
-        None
-    } else {
-        Some(OsStringExt::from_vec(unsafe { CStr::from_ptr(s) }.to_bytes().to_vec()))
-    }
+        if v.is_null() {
+            Ok(None)
+        } else {
+            // SAFETY: `v` cannot be mutated while executing this line since we've a read lock
+            let bytes = unsafe { CStr::from_ptr(v) }.to_bytes().to_vec();
+
+            Ok(Some(OsStringExt::from_vec(bytes)))
+        }
+    })
+    .ok()
+    .flatten()
 }
 
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {

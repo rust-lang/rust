@@ -155,7 +155,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
             let t = t.to_lowercase();
             !ALLOWED_UNCLOSED.contains(&t.as_str())
         }) {
-            report_diag(format!("unclosed HTML tag `{}`", tag), range, true);
+            report_diag(format!("unclosed HTML tag `{tag}`"), range, true);
         }
 
         if let Some(range) = is_in_comment {
@@ -194,14 +194,14 @@ fn drop_tag(
             // `tags` is used as a queue, meaning that everything after `pos` is included inside it.
             // So `<h2><h3></h2>` will look like `["h2", "h3"]`. So when closing `h2`, we will still
             // have `h3`, meaning the tag wasn't closed as it should have.
-            f(format!("unclosed HTML tag `{}`", last_tag_name), &last_tag_span, true);
+            f(format!("unclosed HTML tag `{last_tag_name}`"), &last_tag_span, true);
         }
         // Remove the `tag_name` that was originally closed
         tags.pop();
     } else {
         // It can happen for example in this case: `<h2></script></h2>` (the `h2` tag isn't required
         // but it helps for the visualization).
-        f(format!("unopened HTML tag `{}`", tag_name), &range, false);
+        f(format!("unopened HTML tag `{tag_name}`"), &range, false);
     }
 }
 
@@ -355,7 +355,7 @@ fn extract_html_tag(
                     if let Some(quote_pos) = quote_pos {
                         let qr = Range { start: quote_pos, end: quote_pos };
                         f(
-                            format!("unclosed quoted HTML attribute on tag `{}`", tag_name),
+                            format!("unclosed quoted HTML attribute on tag `{tag_name}`"),
                             &qr,
                             false,
                         );
@@ -368,7 +368,7 @@ fn extract_html_tag(
                                 at == "svg" || at == "math"
                             });
                         if !valid {
-                            f(format!("invalid self-closing HTML tag `{}`", tag_name), &r, false);
+                            f(format!("invalid self-closing HTML tag `{tag_name}`"), &r, false);
                         }
                     } else {
                         tags.push((tag_name, r));

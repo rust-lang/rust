@@ -2,12 +2,14 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, BasicBlock, Body, Location, Place};
+use rustc_middle::mir::{
+    self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
+};
 use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::ResultsVisitable;
-use rustc_mir_dataflow::{self, fmt::DebugWithContext, CallReturnPlaces, GenKill};
+use rustc_mir_dataflow::{self, fmt::DebugWithContext, GenKill};
 use rustc_mir_dataflow::{Analysis, Direction, Results};
 use std::fmt;
 
@@ -334,6 +336,10 @@ impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
 impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     type Idx = BorrowIndex;
 
+    fn domain_size(&self, _: &mir::Body<'tcx>) -> usize {
+        self.borrow_set.len()
+    }
+
     fn before_statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -400,12 +406,12 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         self.kill_loans_out_of_scope_at_location(trans, location);
     }
 
-    fn terminator_effect(
+    fn terminator_effect<'mir>(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        terminator: &mir::Terminator<'tcx>,
+        trans: &mut Self::Domain,
+        terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
-    ) {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         if let mir::TerminatorKind::InlineAsm { operands, .. } = &terminator.kind {
             for op in operands {
                 if let mir::InlineAsmOperand::Out { place: Some(place), .. }
@@ -415,6 +421,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
                 }
             }
         }
+        terminator.edges()
     }
 
     fn call_return_effect(

@@ -8,8 +8,9 @@ fn num_to_digit(_1: char) -> u32 {
         debug self => _1;
         debug radix => const 8_u32;
         let _2: std::option::Option<u32>;
+        let mut _7: &std::option::Option<u32>;
         scope 2 (inlined Option::<u32>::is_some) {
-            debug self => &_2;
+            debug self => _7;
             let mut _3: isize;
         }
     }
@@ -23,12 +24,14 @@ fn num_to_digit(_1: char) -> u32 {
     }
 
     bb0: {
+        StorageLive(_7);
         StorageLive(_2);
         _2 = char::methods::<impl char>::to_digit(_1, const 8_u32) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
         _3 = discriminant(_2);
+        StorageDead(_7);
         StorageDead(_2);
         switchInt(move _3) -> [1: bb2, otherwise: bb7];
     }

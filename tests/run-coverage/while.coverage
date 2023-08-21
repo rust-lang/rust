@@ -1,6 +1,6 @@
-    1|      1|fn main() {
-    2|      1|    let num = 9;
-    3|      1|    while num >= 10 {
-    4|      0|    }
-    5|      1|}
+   LL|      1|fn main() {
+   LL|      1|    let num = 9;
+   LL|      1|    while num >= 10 {
+   LL|      0|    }
+   LL|      1|}
 

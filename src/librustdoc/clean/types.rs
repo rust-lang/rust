@@ -78,7 +78,7 @@ impl ItemId {
     #[track_caller]
     pub(crate) fn expect_def_id(self) -> DefId {
         self.as_def_id()
-            .unwrap_or_else(|| panic!("ItemId::expect_def_id: `{:?}` isn't a DefId", self))
+            .unwrap_or_else(|| panic!("ItemId::expect_def_id: `{self:?}` isn't a DefId"))
     }
 
     #[inline]
@@ -352,7 +352,7 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     match tcx.def_kind(parent) {
         DefKind::Struct | DefKind::Union => false,
         DefKind::Variant => true,
-        parent_kind => panic!("unexpected parent kind: {:?}", parent_kind),
+        parent_kind => panic!("unexpected parent kind: {parent_kind:?}"),
     }
 }
 
@@ -436,7 +436,7 @@ impl Item {
         attrs: Box<Attributes>,
         cfg: Option<Arc<Cfg>>,
     ) -> Item {
-        trace!("name={:?}, def_id={:?} cfg={:?}", name, def_id, cfg);
+        trace!("name={name:?}, def_id={def_id:?} cfg={cfg:?}");
 
         Item {
             item_id: def_id.into(),

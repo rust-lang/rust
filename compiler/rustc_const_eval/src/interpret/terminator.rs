@@ -196,15 +196,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Terminate => {
-                // FIXME: maybe should call `panic_no_unwind` lang item instead.
-                M::abort(self, "panic in a function that cannot unwind".to_owned())?;
+            UnwindTerminate => {
+                M::unwind_terminate(self)?;
             }
 
             // When we encounter Resume, we've finished unwinding
             // cleanup for the current stack frame. We pop it in order
             // to continue unwinding the next frame
-            Resume => {
+            UnwindResume => {
                 trace!("unwinding: resuming from cleanup");
                 // By definition, a Resume terminator means
                 // that we're unwinding
