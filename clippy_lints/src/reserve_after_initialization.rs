@@ -24,15 +24,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// {
-    ///     let mut v = vec![];
-    ///     v.reserve(space_hint);
-    ///     v
-    /// }
+    /// let mut v: Vec<usize> = vec![];
+    /// v.reserve(10);
     /// ```
     /// Use instead:
     /// ```rust
-    /// Vec::with_capacity(space_hint)
+    /// let mut v: Vec<usize> = Vec::with_capacity(10);
     /// ```
     #[clippy::version = "1.73.0"]
     pub RESERVE_AFTER_INITIALIZATION,
@@ -40,37 +37,6 @@ declare_clippy_lint! {
     "`reserve` called immediatly after `Vec` creation"
 }
 impl_lint_pass!(ReserveAfterInitialization => [RESERVE_AFTER_INITIALIZATION]);
-
-/*impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'_>) {
-        if let ExprKind::Assign(left, right, _) = expr.kind
-        && let ExprKind::Path(QPath::Resolved(None, path)) = left.kind
-        && let [name] = &path.segments
-        && let Res::Local(id) = path.res
-        && let Some(init) = get_vec_init_kind(cx, right)
-        && !matches!(init, VecInitKind::WithExprCapacity(_)) {
-            span_lint_and_help(
-                cx,
-                RESERVE_AFTER_INITIALIZATION,
-                expr.span,
-                "`reserve` called just after the initialisation of the vector",
-                None,
-                "use `Vec::with_capacity(space_hint)` instead"
-            );
-        }
-    }
-
-    /*fn check_block(&mut self, cx: &LateContext<'_>, block: &'_ rustc_hir::Block<'_>) {
-        span_lint_and_help(
-            cx,
-            RESERVE_AFTER_INITIALIZATION,
-            block.span,
-            "`reserve` called just after the initialisation of the vector",
-            None,
-            "use `Vec::with_capacity(space_hint)` instead"
-        );
-    }*/
-}*/
 
 #[derive(Default)]
 pub struct ReserveAfterInitialization {
