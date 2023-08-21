@@ -20,6 +20,7 @@ pub(crate) mod r#type;
 pub(crate) mod use_;
 pub(crate) mod vis;
 pub(crate) mod env_vars;
+pub(crate) mod extern_crate;
 
 use std::iter;
 
@@ -739,6 +740,7 @@ pub(super) fn complete_name_ref(
                 }
             }
         }
+        NameRefKind::ExternCrate => extern_crate::complete_extern_crate(acc, ctx),
         NameRefKind::DotAccess(dot_access) => {
             flyimport::import_on_the_fly_dot(acc, ctx, dot_access);
             dot::complete_dot(acc, ctx, dot_access);

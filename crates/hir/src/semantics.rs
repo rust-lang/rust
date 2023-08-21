@@ -1722,6 +1722,14 @@ impl SemanticsScope<'_> {
             |name, id| cb(name, id.into()),
         )
     }
+
+    pub fn extern_crates(&self) -> impl Iterator<Item = (Name, Module)> + '_ {
+        self.resolver.extern_crates_in_scope().map(|(name, id)| (name, Module { id }))
+    }
+
+    pub fn extern_crate_decls(&self) -> impl Iterator<Item = Name> + '_ {
+        self.resolver.extern_crate_decls_in_scope(self.db.upcast())
+    }
 }
 
 #[derive(Debug)]

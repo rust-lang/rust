@@ -351,6 +351,7 @@ pub(super) enum NameRefKind {
         expr: ast::RecordExpr,
     },
     Pattern(PatternContext),
+    ExternCrate,
 }
 
 /// The identifier we are currently completing.
