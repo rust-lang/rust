@@ -147,17 +147,9 @@ fn parse_tree<'a>(
     match tree {
         // `tree` is a `$` token. Look at the next token in `trees`
         &tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }, _) => {
-            // FIXME: Handle `Invisible`-delimited groups in a more systematic way
-            // during parsing.
-            let mut next = outer_trees.next();
-            let mut trees: Box<dyn Iterator<Item = &tokenstream::TokenTree>>;
-            match next {
-                Some(tokenstream::TokenTree::Delimited(_, delim, tts)) if delim.skip() => {
-                    trees = Box::new(tts.trees());
-                    next = trees.next();
-                }
-                _ => trees = Box::new(outer_trees),
-            }
+            let next = outer_trees.next();
+            let mut trees: Box<dyn Iterator<Item = &tokenstream::TokenTree>> =
+                Box::new(outer_trees);
 
             match next {
                 // `tree` is followed by a delimited set of token trees.

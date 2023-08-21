@@ -56,7 +56,7 @@ impl<'a> Parser<'a> {
                 | token::Ident(..)
                 | token::InterpolatedIdent(..)
                 | token::InterpolatedLifetime(..)
-                | token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(_))) => true,
+                | token::OpenDelim(Delimiter::Invisible(_)) => true,
                 _ => token.can_begin_type(),
             },
             NonterminalKind::Block => match &token.kind {
@@ -77,6 +77,7 @@ impl<'a> Parser<'a> {
                         unreachable!()
                     }
                 },
+                token::OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) => true,
                 token::InterpolatedLifetime(..) => true,
                 _ => false,
             },
@@ -85,6 +86,7 @@ impl<'a> Parser<'a> {
                 token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(kind))) => {
                     may_be_ident(*kind)
                 }
+                token::OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) => true,
                 _ => false,
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => match &token.kind {
@@ -106,6 +108,7 @@ impl<'a> Parser<'a> {
                 token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(kind))) => {
                     may_be_ident(*kind)
                 }
+                token::OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) => true,
                 _ => false,
             },
             NonterminalKind::Lifetime => match &token.kind {

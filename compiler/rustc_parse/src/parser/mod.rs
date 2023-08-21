@@ -282,39 +282,28 @@ impl TokenCursor {
     /// This always-inlined version should only be used on hot code paths.
     #[inline(always)]
     fn inlined_next(&mut self) -> (Token, Spacing) {
-        loop {
-            // FIXME: we currently don't return `Delimiter::Invisible` open/close delims. To fix
-            // #67062 we will need to, whereupon the `delim != Delimiter::Invisible` conditions
-            // below can be removed.
-            if let Some(tree) = self.tree_cursor.next_ref() {
-                match tree {
-                    &TokenTree::Token(token, spacing) => {
-                        debug_assert!(!matches!(
-                            token.kind,
-                            token::OpenDelim(_) | token::CloseDelim(_)
-                        ));
-                        return (token, spacing);
-                    }
-                    &TokenTree::Delimited(sp, delim, ref tts) => {
-                        let trees = tts.clone().into_trees();
-                        self.stack.push((mem::replace(&mut self.tree_cursor, trees), delim, sp));
-                        if !delim.skip() {
-                            return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);
-                        }
-                        // No open delimiter to return; continue on to the next iteration.
-                    }
-                };
-            } else if let Some((tree_cursor, delim, span)) = self.stack.pop() {
-                // We have exhausted this token stream. Move back to its parent token stream.
-                self.tree_cursor = tree_cursor;
-                if !delim.skip() {
-                    return (Token::new(token::CloseDelim(delim), span.close), Spacing::Alone);
+        if let Some(tree) = self.tree_cursor.next_ref() {
+            match tree {
+                &TokenTree::Token(token, spacing) => {
+                    debug_assert!(!matches!(
+                        token.kind,
+                        token::OpenDelim(_) | token::CloseDelim(_)
+                    ));
+                    (token, spacing)
                 }
-                // No close delimiter to return; continue on to the next iteration.
-            } else {
-                // We have exhausted the outermost token stream.
-                return (Token::new(token::Eof, DUMMY_SP), Spacing::Alone);
+                &TokenTree::Delimited(sp, delim, ref tts) => {
+                    let trees = tts.clone().into_trees();
+                    self.stack.push((mem::replace(&mut self.tree_cursor, trees), delim, sp));
+                    (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone)
+                }
             }
+        } else if let Some((tree_cursor, delim, span)) = self.stack.pop() {
+            // We have exhausted this token stream. Move back to its parent token stream.
+            self.tree_cursor = tree_cursor;
+            (Token::new(token::CloseDelim(delim), span.close), Spacing::Alone)
+        } else {
+            // We have exhausted the outermost token stream.
+            (Token::new(token::Eof, DUMMY_SP), Spacing::Alone)
         }
     }
 }
@@ -1117,10 +1106,6 @@ impl<'a> Parser<'a> {
             next.0.span = fallback_span.with_ctxt(next.0.span.ctxt());
             //eprintln!("fallback {:?}", next.0.span);
         }
-        debug_assert!(!matches!(
-            next.0.kind,
-            token::OpenDelim(delim) | token::CloseDelim(delim) if delim.skip()
-        ));
         self.inlined_bump_with(1, next)
     }
 
@@ -1132,52 +1117,38 @@ impl<'a> Parser<'a> {
             return looker(&self.token);
         }
 
-        if let Some(&(_, delim, span)) = self.token_cursor.stack.last()
-            && !delim.skip()
-        {
-            // We are not in the outermost token stream, and the token stream
-            // we are in has non-skipped delimiters. Look for skipped
-            // delimiters in the lookahead range.
+        // njn: more simplification here?
+
+        if let Some(&(_, delim, span)) = self.token_cursor.stack.last() {
+            // We are not in the outermost token stream. Do lookahead by plain
+            // indexing.
             let tree_cursor = &self.token_cursor.tree_cursor;
-            let any_skip = (0..dist).any(|i| {
-                let token = tree_cursor.look_ahead(i);
-                matches!(token, Some(TokenTree::Delimited(_, delim, _)) if delim.skip())
-            });
-            if !any_skip {
-                // There were no skipped delimiters. Do lookahead by plain indexing.
-                return match tree_cursor.look_ahead(dist - 1) {
-                    Some(tree) => {
-                        // Indexing stayed within the current token stream.
-                        match tree {
-                            TokenTree::Token(token, _) => looker(token),
-                            TokenTree::Delimited(dspan, delim, _) => {
-                                looker(&Token::new(token::OpenDelim(*delim), dspan.open))
-                            }
+            return match tree_cursor.look_ahead(dist - 1) {
+                Some(tree) => {
+                    // Indexing stayed within the current token stream.
+                    match tree {
+                        TokenTree::Token(token, _) => looker(token),
+                        TokenTree::Delimited(dspan, delim, _) => {
+                            looker(&Token::new(token::OpenDelim(*delim), dspan.open))
                         }
                     }
-                    None => {
-                        // Indexing went past the end of the current token
-                        // stream. Use the close delimiter, no matter how far
-                        // ahead `dist` went.
-                        looker(&Token::new(token::CloseDelim(delim), span.close))
-                    }
-                };
-            }
+                }
+                None => {
+                    // Indexing went past the end of the current token
+                    // stream. Use the close delimiter, no matter how far
+                    // ahead `dist` went.
+                    looker(&Token::new(token::CloseDelim(delim), span.close))
+                }
+            };
         }
 
         // We are in a more complex case. Just clone the token cursor and use
-        // `next`, skipping delimiters as necessary. Slow but simple.
+        // `next`. Slow but simple.
         let mut cursor = self.token_cursor.clone();
         let mut i = 0;
         let mut token = Token::dummy();
         while i < dist {
             token = cursor.next().0;
-            if matches!(
-                token.kind,
-                token::OpenDelim(delim) | token::CloseDelim(delim) if delim.skip()
-            ) {
-                continue;
-            }
             i += 1;
         }
         looker(&token)
@@ -1412,6 +1383,9 @@ impl<'a> Parser<'a> {
     /// so emit a proper diagnostic.
     // Public for rustfmt usage.
     pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
+        // njn: possible empty `vis` causes problems -- if you see
+        // open-invis-proc-macro, could be a vis, could be the following item?
+        // Hard to tell without the metavar kind of the open delim
         if let Some(vis) = maybe_reparse_metavar_seq!(
             self,
             NonterminalKind::Vis,

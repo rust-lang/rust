@@ -15,7 +15,7 @@
 
 use crate::ast::AttrStyle;
 use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
-use crate::token::{self, Delimiter, InvisibleSource, Token, TokenKind};
+use crate::token::{self, Delimiter, InvisibleSource, NonterminalKind, Token, TokenKind};
 use crate::AttrVec;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -456,9 +456,10 @@ impl TokenStream {
                 Token::new(token::Ident(name, is_raw), uninterpolated_span),
                 spacing,
             ),
+            // njn: not actually a metavar, but we know the kind
             token::InterpolatedLifetime(name, uninterpolated_span) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
-                Delimiter::Invisible(InvisibleSource::FlattenToken),
+                Delimiter::Invisible(InvisibleSource::MetaVar(NonterminalKind::Lifetime)),
                 TokenStream::token_alone(token::Lifetime(name), uninterpolated_span),
             ),
             _ => TokenTree::Token(*token, spacing),
@@ -474,6 +475,7 @@ impl TokenStream {
         }
     }
 
+    // njn: do we still need this?
     #[must_use]
     pub fn flattened(&self) -> TokenStream {
         fn can_skip(stream: &TokenStream) -> bool {

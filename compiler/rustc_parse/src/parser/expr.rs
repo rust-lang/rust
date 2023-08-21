@@ -709,6 +709,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns the span of expr if it was not interpolated, or the span of the interpolated token.
+    // njn: needs adjusting for ProcMacro?
     fn interpolated_or_expr_span(&self, expr: &Expr) -> Span {
         match self.prev_token.kind {
             TokenKind::InterpolatedIdent(..) | TokenKind::InterpolatedLifetime(..) => {
@@ -1363,16 +1364,39 @@ impl<'a> Parser<'a> {
     /// correctly if called from `parse_dot_or_call_expr()`.
     fn parse_expr_bottom(&mut self) -> PResult<'a, P<Expr>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
-        //eprintln!("AAA {:?}", self.token);
+        //eprintln!("AAA {:?}", self.token.kind);
         maybe_reparse_metavar_expr!(self);
-        //eprintln!("BBB {:?}", self.token);
+        //eprintln!("BBB {:?}", self.token.kind);
+
+        if let token::OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) = self.token.kind
+        {
+            //eprintln!("BUMP {:?}", self.token.kind);
+            self.bump();
+            // njn: parse_expr_force_collect?
+            match self.parse_expr() {
+                Ok(expr) => {
+                    match self.expect(&token::CloseDelim(Delimiter::Invisible(
+                        InvisibleSource::ProcMacro,
+                    ))) {
+                        Ok(_) => {
+                            return Ok(expr);
+                        }
+                        Err(_) => panic!("njn: no invisible close delim: {:?}", self.token),
+                    }
+                }
+                Err(_) => {
+                    panic!("njn: bad expr parse");
+                }
+            }
+        }
+        //eprintln!("CCC {:?}", self.token.kind);
 
         // Outer attributes are already parsed and will be
         // added to the return value after the fact.
 
         // Note: when adding new syntax here, don't forget to adjust `TokenKind::can_begin_expr()`.
         let lo = self.token.span;
-        if let token::Literal(_) = self.token.kind {
+        let res = if let token::Literal(_) = self.token.kind {
             // This match arm is a special-case of the `_` match arm below and
             // could be removed without changing functionality, but it's faster
             // to have it here, especially for programs with large constants.
@@ -1473,7 +1497,9 @@ impl<'a> Parser<'a> {
             }
         } else {
             self.parse_expr_lit()
-        }
+        };
+        //eprintln!("DDD {:?} -> {:#?}", self.token.kind, res);
+        res
     }
 
     fn parse_expr_lit(&mut self) -> PResult<'a, P<Expr>> {
@@ -1964,6 +1990,7 @@ impl<'a> Parser<'a> {
         &mut self,
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
     ) -> PResult<'a, L> {
+        // njn: proc macro too?
         if let Some(NonterminalKind::Expr | NonterminalKind::Literal) = self.token.is_metavar_seq()
         {
             // njn: not checking for ExprKind::Err
@@ -2090,6 +2117,9 @@ impl<'a> Parser<'a> {
                     None
                 }
             }
+            token::OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) => {
+                panic!("njn: maybe_parse_token_lit");
+            }
             _ => None,
         }
     }
@@ -2156,6 +2186,25 @@ impl<'a> Parser<'a> {
     /// Keep this in sync with `Token::can_begin_literal_maybe_minus`.
     pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
         maybe_reparse_metavar_expr!(self);
+
+        // if let token::OpenDelim(Delimiter::Invisible) = self.token.kind {
+        //     // njn: need parse_expr for negative case?
+        //     self.bump();
+        //     // njn: parse_expr_force_collect?
+        //     match self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus()) {
+        //         Ok(expr) => {
+        //             match self.expect(&token::CloseDelim(Delimiter::Invisible)) {
+        //                 Ok(_) => {
+        //                     return Ok(expr);
+        //                 }
+        //                 Err(_) => panic!("njn: no invisible close delim: {:?}", self.token),
+        //             }
+        //         }
+        //         Err(_) => {
+        //             panic!("njn: bad expr parse");
+        //         }
+        //     }
+        // }
 
         let lo = self.token.span;
         let minus_present = self.eat(&token::BinOp(token::Minus));

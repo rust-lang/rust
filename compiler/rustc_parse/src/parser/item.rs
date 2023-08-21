@@ -130,6 +130,36 @@ impl<'a> Parser<'a> {
             return Ok(Some(item.into_inner()));
         }
 
+        if let token::OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) = self.token.kind
+        {
+            //eprintln!("ITEM BUMP {:?}", self.token.kind);
+            self.bump();
+            match self.parse_item(ForceCollect::Yes) {
+                Ok(Some(mut item)) => {
+                    match self.expect(&token::CloseDelim(Delimiter::Invisible(
+                        InvisibleSource::ProcMacro,
+                    ))) {
+                        Ok(_) => {
+                            attrs.prepend_to_nt_inner(&mut item.attrs);
+                            return Ok(Some(item.into_inner()));
+                        }
+                        Err(_) => panic!("njn: no invisible close delim 1: {:?}", self.token),
+                    }
+                }
+                Ok(None) => {
+                    panic!("njn: missing item {:?}", self.token);
+                    // match self.expect(&token::CloseDelim(Delimiter::Invisible)) {
+                    //     Ok(_) => return Ok(None),
+                    //     // njn: hitting on tests/ui/proc-macro/issue-75734-pp-paren.rs, hmm
+                    //     Err(_) => panic!("njn: no invisible close delim 2: {:?}", self.token),
+                    // }
+                }
+                Err(_) => {
+                    panic!("njn: bad item parse");
+                }
+            }
+        }
+
         let item =
             self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {
                 let item =

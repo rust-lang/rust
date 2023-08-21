@@ -12,7 +12,7 @@ use crate::errors::{
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_reparse_metavar_seq};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, NonterminalKind};
+use rustc_ast::token::{self, Delimiter, InvisibleSource, NonterminalKind};
 use rustc_ast::{
     self as ast, AttrVec, BindingAnnotation, ByRef, Expr, ExprKind, MacCall, Mutability, Pat,
     PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
@@ -355,6 +355,32 @@ impl<'a> Parser<'a> {
             return Ok(pat);
         }
 
+        if let token::OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) = self.token.kind
+        {
+            //eprintln!("PAT BUMP {:?}", self.token.kind);
+            self.bump();
+            match self.parse_pat_allow_top_alt(
+                None,
+                RecoverComma::No,
+                RecoverColon::No,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            ) {
+                Ok(pat) => {
+                    match self.expect(&token::CloseDelim(Delimiter::Invisible(
+                        InvisibleSource::ProcMacro,
+                    ))) {
+                        Ok(_) => {
+                            return Ok(pat);
+                        }
+                        Err(_) => panic!("njn: no invisible close delim: {:?}", self.token),
+                    }
+                }
+                Err(_) => {
+                    panic!("njn: bad pat parse");
+                }
+            }
+        }
+
         let mut lo = self.token.span;
 
         if self.token.is_keyword(kw::Let) && self.look_ahead(1, |tok| tok.can_begin_pattern()) {
@@ -609,6 +635,7 @@ impl<'a> Parser<'a> {
         self.recover_additional_muts();
 
         if let Some(NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr) =
+            // njn: proc macro?
             self.token.is_metavar_seq()
         {
             self.expected_ident_found_err().emit();

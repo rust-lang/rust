@@ -190,6 +190,7 @@ impl<'a> Parser<'a> {
             return Ok(path.into_inner());
         }
 
+        // njn: proc macro?
         if let Some(NonterminalKind::Ty) = self.token.is_metavar_seq() {
             let mut self2 = self.clone();
             let ty =

@@ -62,26 +62,6 @@ pub enum InvisibleSource {
     // Converted from `proc_macro::Delimiter` in
     // `proc_macro::Delimiter::to_internal`, i.e. returned by a proc macro.
     ProcMacro,
-
-    // Converted from `TokenKind::Interpolated` in
-    // `TokenStream::flatten_token`. Treated similarly to `ProcMacro`.
-    FlattenToken,
-}
-
-impl Delimiter {
-    // Should the parser skip these delimiters? Only happens for certain kinds
-    // of invisible delimiters. Once all interpolated nonterminals are removed,
-    // the answer should become `false` for all kinds, whereupon this function
-    // can be removed.
-    pub fn skip(&self) -> bool {
-        match self {
-            Delimiter::Invisible(src) => match src {
-                InvisibleSource::FlattenToken | InvisibleSource::ProcMacro => true,
-                InvisibleSource::MetaVar(_) => false,
-            },
-            Delimiter::Parenthesis | Delimiter::Bracket | Delimiter::Brace => false,
-        }
-    }
 }
 
 // Note that the suffix is *not* considered when deciding the `LitKind` in this
@@ -136,21 +116,8 @@ impl Lit {
         match token.uninterpolate().kind {
             Ident(name, false) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
             Literal(token_lit) => Some(token_lit),
-            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(NonterminalKind::Literal))) => {
-                panic!("njn: FROM_TOKEN (1)");
-                // if let NtExpr(expr) | NtLiteral(expr) = &**nt
-                // && let ast::ExprKind::Lit(token_lit) = expr.kind =>
-                // {
-                //     Some(token_lit)
-                // }
-            }
-            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(NonterminalKind::Expr))) => {
-                panic!("njn: FROM_TOKEN (2)");
-                // if let NtExpr(expr) | NtLiteral(expr) = &**nt
-                // && let ast::ExprKind::Lit(token_lit) = expr.kind =>
-                // {
-                //     Some(token_lit)
-                // }
+            OpenDelim(Delimiter::Invisible(source)) => {
+                panic!("njn: from_token {source:?}");
             }
             _ => None,
         }
@@ -415,8 +382,8 @@ impl Token {
         match self.kind {
             InterpolatedIdent(_, _, uninterpolated_span)
             | InterpolatedLifetime(_, uninterpolated_span) => uninterpolated_span,
-            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(kind))) => {
-                panic!("njn: uninterpolated_span {kind:?}");
+            OpenDelim(Delimiter::Invisible(source)) => {
+                panic!("njn: uninterpolated_span {source:?}");
             }
             _ => self.span,
         }
@@ -473,8 +440,8 @@ impl Token {
                 NonterminalKind::Expr |
                 NonterminalKind::Literal |
                 NonterminalKind::Path
-            )))
-                => true,
+            ))) |
+            OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) => true,
             _ => false,
         }
     }
@@ -501,7 +468,8 @@ impl Token {
                 NonterminalKind::PatWithOr |
                 NonterminalKind::Path |
                 NonterminalKind::Literal
-            ))) => true,
+            ))) |
+            OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) => true,
             _ => false,
         }
     }
@@ -524,7 +492,8 @@ impl Token {
             OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
                 NonterminalKind::Ty |
                 NonterminalKind::Path
-            ))) => true,
+            ))) |
+            OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) => true,
             _ => false,
         }
     }
@@ -536,6 +505,7 @@ impl Token {
             OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
                 NonterminalKind::Block | NonterminalKind::Expr | NonterminalKind::Literal,
             ))) => true,
+            OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) => true,
             _ => self.can_begin_literal_maybe_minus(),
         }
     }
@@ -592,7 +562,8 @@ impl Token {
             Ident(name, false) if name.is_bool_lit() => true,
             OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(
                 NonterminalKind::Literal | NonterminalKind::Expr,
-            ))) => true,
+            )))
+            | OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) => true,
             _ => false,
         }
     }
@@ -658,6 +629,7 @@ impl Token {
     /// Would `maybe_reparse_metavar_expr` in `parser.rs` return `Ok(..)`?
     /// That is, is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
+    // njn: proc macro?
     pub fn is_metavar_expr(&self) -> bool {
         matches!(
             self.is_metavar_seq(),
@@ -672,6 +644,7 @@ impl Token {
 
     /// Are we at a block from a metavar (`$b:block`)?
     pub fn is_metavar_block(&self) -> bool {
+        // njn: handle proc-macro here too?
         matches!(self.is_metavar_seq(), Some(NonterminalKind::Block))
     }
 
@@ -687,6 +660,7 @@ impl Token {
     pub fn is_path_start(&self) -> bool {
         self == &ModSep
             || self.is_qpath_start()
+            // njn: proc macro?
             || matches!(self.is_metavar_seq(), Some(NonterminalKind::Path))
             || self.is_path_segment_keyword()
             || self.is_ident() && !self.is_reserved_ident()
@@ -758,6 +732,13 @@ impl Token {
             OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(kind))) => Some(kind),
             _ => None,
         }
+    }
+
+    /// Is this an invisible open delimiter at the start of a token sequence
+    /// from a proc macro?
+    // njn: need to use this more
+    pub fn is_proc_macro_seq(&self) -> bool {
+        matches!(self.kind, OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)))
     }
 
     pub fn glue(&self, joint: &Token) -> Option<Token> {

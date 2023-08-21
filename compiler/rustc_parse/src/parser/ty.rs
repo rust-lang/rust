@@ -10,7 +10,7 @@ use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_reparse_metavar_seq}
 
 use ast::DUMMY_NODE_ID;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleSource, NonterminalKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundPolarity, FnRetTy, GenericBound, GenericBounds, GenericParam,
@@ -261,6 +261,27 @@ impl<'a> Parser<'a> {
             ty
         ) {
             return Ok(ty);
+        }
+
+        if let token::OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) = self.token.kind
+        {
+            //eprintln!("TY BUMP {:?}", self.token.kind);
+            self.bump();
+            match self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover()) {
+                Ok(ty) => {
+                    match self.expect(&token::CloseDelim(Delimiter::Invisible(
+                        InvisibleSource::ProcMacro,
+                    ))) {
+                        Ok(_) => {
+                            return Ok(ty);
+                        }
+                        Err(_) => panic!("njn: no invisible close delim: {:?}", self.token),
+                    }
+                }
+                Err(_) => {
+                    panic!("njn: bad ty parse");
+                }
+            }
         }
 
         let lo = self.token.span;

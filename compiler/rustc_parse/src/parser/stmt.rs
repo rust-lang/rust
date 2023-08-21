@@ -12,7 +12,7 @@ use crate::maybe_reparse_metavar_seq;
 use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, NonterminalKind, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleSource, NonterminalKind, TokenKind};
 use rustc_ast::util::classify;
 use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
@@ -59,6 +59,51 @@ impl<'a> Parser<'a> {
                 attrs.prepend_to_nt_inner(stmt_attrs);
             });
             return Ok(Some(stmt.into_inner()));
+        }
+
+        // njn: We have this statement:
+        //   <<1 + 2>> * 3;
+        // When the <<>> is known to be an expression, we don't try to parse it
+        // as a statement here. Instead we end up parsing the entire `<<1 + 2>>
+        // * 3` as an expression.
+        // But when the <<>> isn't known to be an expression, we currently try
+        // to parse it as a statement, and the `<<1 + 2>>` gets parsed as a
+        // Stmt::Expr, and then the `* 3` part is unexpected and causes an
+        // error.
+        //
+        // Fix: try to parse as a statement at the end? parse it as an expression
+        if let token::OpenDelim(Delimiter::Invisible(InvisibleSource::ProcMacro)) = self.token.kind
+        {
+            //eprintln!("STMT BUMP {:?}", self.token.kind);
+            self.bump();
+            match self.parse_stmt(ForceCollect::Yes) {
+                Ok(Some(mut stmt)) => {
+                    //eprintln!("STMT MID {:?}", self.token.kind);
+                    match self.expect(&token::CloseDelim(Delimiter::Invisible(
+                        InvisibleSource::ProcMacro,
+                    ))) {
+                        Ok(_) => {
+                            //eprintln!("STMT END {:?} -> {:#?}", self.token.kind, stmt);
+                            stmt.visit_attrs(|stmt_attrs| {
+                                attrs.prepend_to_nt_inner(stmt_attrs);
+                            });
+                            return Ok(Some(stmt));
+                        }
+                        Err(_) => panic!("njn: no invisible close delim 1: {:?}", self.token),
+                    }
+                }
+                Ok(None) => {
+                    panic!("njn: missing stmt {:?}", self.token);
+                    // match self.expect(&token::CloseDelim(Delimiter::Invisible)) {
+                    //     Ok(_) => return Ok(None),
+                    //     // njn: hitting on tests/ui/proc-macro/issue-75734-pp-paren.rs, hmm
+                    //     Err(_) => panic!("njn: no invisible close delim 2: {:?}", self.token),
+                    // }
+                }
+                Err(_) => {
+                    panic!("njn: bad stmt parse");
+                }
+            }
         }
 
         if self.token.is_keyword(kw::Mut) && self.is_keyword_ahead(1, &[kw::Let]) {

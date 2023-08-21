@@ -14,7 +14,7 @@ extern crate test_macros;
 
 macro_rules! mul_2 {
     ($val:expr) => {
-        print_bang!($val * 2);
+        print_bang!($val * 3);
     };
 }
 
@@ -22,5 +22,5 @@ macro_rules! mul_2 {
 #[print_attr]
 fn main() {
     &|_: u8| {};
-    mul_2!(1 + 1);
+    mul_2!(1 + 2);
 }
