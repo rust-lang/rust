@@ -73,6 +73,8 @@ mod platform {
     pub use crate::os::openbsd::*;
     #[cfg(target_os = "redox")]
     pub use crate::os::redox::*;
+    #[cfg(target_os = "rtems")]
+    pub use crate::os::rtems::*;
     #[cfg(target_os = "solaris")]
     pub use crate::os::solaris::*;
     #[cfg(target_os = "vita")]

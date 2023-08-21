@@ -143,6 +143,8 @@ pub mod nto;
 pub mod openbsd;
 #[cfg(target_os = "redox")]
 pub mod redox;
+#[cfg(target_os = "rtems")]
+pub mod rtems;
 #[cfg(target_os = "solaris")]
 pub mod solaris;
 #[cfg(target_os = "solid_asp3")]

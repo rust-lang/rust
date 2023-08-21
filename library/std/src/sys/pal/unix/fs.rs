@@ -483,6 +483,7 @@ impl FileAttr {
         target_os = "horizon",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "rtems",
     )))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
@@ -495,7 +496,12 @@ impl FileAttr {
         SystemTime::new(self.stat.st_mtime as i64, self.stat.st_mtime_nsec as i64)
     }
 
-    #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "vita"))]
+    #[cfg(any(
+        target_os = "vxworks",
+        target_os = "espidf",
+        target_os = "vita",
+        target_os = "rtems",
+    ))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_mtime as i64, 0)
     }
@@ -511,6 +517,7 @@ impl FileAttr {
         target_os = "horizon",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "rtems",
     )))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
@@ -523,7 +530,12 @@ impl FileAttr {
         SystemTime::new(self.stat.st_atime as i64, self.stat.st_atime_nsec as i64)
     }
 
-    #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "vita"))]
+    #[cfg(any(
+        target_os = "vxworks",
+        target_os = "espidf",
+        target_os = "vita",
+        target_os = "rtems"
+    ))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_atime as i64, 0)
     }
@@ -858,6 +870,7 @@ impl Drop for Dir {
             target_os = "fuchsia",
             target_os = "horizon",
             target_os = "vxworks",
+            target_os = "rtems",
         )))]
         {
             let fd = unsafe { libc::dirfd(self.0) };
@@ -975,6 +988,7 @@ impl DirEntry {
         target_os = "aix",
         target_os = "nto",
         target_os = "hurd",
+        target_os = "rtems",
         target_vendor = "apple",
     ))]
     pub fn ino(&self) -> u64 {
