@@ -57,6 +57,10 @@ impl MiriEnv {
 
 impl Command {
     fn auto_actions() -> Result<()> {
+        if env::var_os("MIRI_AUTO_OPS").is_some_and(|x| x == "no") {
+            return Ok(());
+        }
+
         let miri_dir = miri_dir()?;
         let auto_everything = path!(miri_dir / ".auto-everything").exists();
         let auto_toolchain = auto_everything || path!(miri_dir / ".auto-toolchain").exists();
@@ -78,6 +82,7 @@ impl Command {
     }
 
     pub fn exec(self) -> Result<()> {
+        // First, and crucially only once, run the auto-actions -- but not for all commands.
         match &self {
             Command::Install { .. }
             | Command::Build { .. }
@@ -93,6 +98,7 @@ impl Command {
             | Command::Bench { .. }
             | Command::RustcPush { .. } => {}
         }
+        // Then run the actual command.
         match self {
             Command::Install { flags } => Self::install(flags),
             Command::Build { flags } => Self::build(flags),
