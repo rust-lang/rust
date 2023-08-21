@@ -193,31 +193,15 @@ pub fn sdk_version(platform: u32) -> Option<(u32, u32)> {
 }
 
 pub fn platform(target: &Target) -> Option<u32> {
-    Some(match &*target.os {
-        "macos" => object::macho::PLATFORM_MACOS,
-        "ios" => {
-            if target.llvm_target.ends_with("-macabi") {
-                object::macho::PLATFORM_MACCATALYST
-            } else if target.llvm_target.ends_with("-simulator") {
-                object::macho::PLATFORM_IOSSIMULATOR
-            } else {
-                object::macho::PLATFORM_IOS
-            }
-        }
-        "watchos" => {
-            if target.llvm_target.ends_with("-simulator") {
-                object::macho::PLATFORM_WATCHOSSIMULATOR
-            } else {
-                object::macho::PLATFORM_WATCHOS
-            }
-        }
-        "tvos" => {
-            if target.llvm_target.ends_with("-simulator") {
-                object::macho::PLATFORM_TVOSSIMULATOR
-            } else {
-                object::macho::PLATFORM_TVOS
-            }
-        }
+    Some(match (&*target.os, &*target.abi) {
+        ("macos", _) => object::macho::PLATFORM_MACOS,
+        ("ios", "macabi") => object::macho::PLATFORM_MACCATALYST,
+        ("ios", "sim") => object::macho::PLATFORM_IOSSIMULATOR,
+        ("ios", _) => object::macho::PLATFORM_IOS,
+        ("watchos", "sim") => object::macho::PLATFORM_WATCHOSSIMULATOR,
+        ("watchos", _) => object::macho::PLATFORM_WATCHOS,
+        ("tvos", "sim") => object::macho::PLATFORM_TVOSSIMULATOR,
+        ("tvos", _) => object::macho::PLATFORM_TVOS,
         _ => return None,
     })
 }
@@ -229,7 +213,7 @@ pub fn deployment_target(target: &Target) -> Option<(u32, u32)> {
             let arch = if target.arch == "x86" || target.arch == "x86_64" { X86_64 } else { Arm64 };
             macos_deployment_target(arch)
         }
-        "ios" => match &*target.options.abi {
+        "ios" => match &*target.abi {
             "macabi" => mac_catalyst_deployment_target(),
             _ => ios_deployment_target(),
         },
