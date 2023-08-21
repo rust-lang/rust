@@ -2334,6 +2334,7 @@ dependencies = [
  "rand",
  "regex",
  "rustc_version",
+ "serde",
  "smallvec",
  "ui_test",
 ]
