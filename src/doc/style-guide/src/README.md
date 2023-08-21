@@ -99,6 +99,42 @@ fn bar() {}
 fn baz() {}
 ```
 
+### Sorting
+
+In various cases, the default Rust style specifies to sort things. If not
+otherwise specified, such sorting should be "version sorting", which ensures
+that (for instance) `x8` comes before `x16` even though the character `1` comes
+before the character `8`. (If not otherwise specified, version-sorting is
+lexicographical.)
+
+For the purposes of the Rust style, to compare two strings for version-sorting:
+
+- Compare the strings by (Unicode) character as normal, finding the index of
+  the first differing character. (If the two strings do not have the same
+  length, this may be the end of the shorter string.)
+- For both strings, determine the sequence of ASCII digits containing either
+  that character or the character before. (If either string doesn't have such a
+  sequence of ASCII digits, fall back to comparing the strings as normal.)
+- Compare the numeric values of the number specified by the sequence of digits.
+  (Note that an implementation of this algorithm can easily check this without
+  accumulating copies of the digits or converting to a number: longer sequences
+  of digits are larger numbers, equal-length sequences can be sorted
+  lexicographically.)
+- If the numbers have the same numeric value, the one with more leading zeroes
+  comes first.
+
+Note that there exist various algorithms called "version sorting", which differ
+most commonly in their handling of numbers with leading zeroes. This algorithm
+does not purport to precisely match the behavior of any particular other
+algorithm, only to produce a simple and satisfying result for Rust formatting.
+(In particular, this algorithm aims to produce a satisfying result for a set of
+symbols that have the same number of leading zeroes, and an acceptable and
+easily understandable result for a set of symbols that has varying numbers of
+leading zeroes.)
+
+As an example, version-sorting will sort the following symbols in the order
+given: `x000`, `x00`, `x0`, `x01`, `x1`, `x09`, `x9`, `x010`, `x10`.
+
 ### [Module-level items](items.md)
 
 ### [Statements](statements.md)
