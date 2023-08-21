@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import pathlib
 
 from time import time
 from multiprocessing import Pool, cpu_count
@@ -42,30 +43,31 @@ def get_cpus():
 
 
 
-def get(base, url, path, checksums, verbose=False):
+def get(base, url, path, checksums, verbose=False, verify_checksum=True):
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_path = temp_file.name
 
     try:
-        if url not in checksums:
+        if url not in checksums and verify_checksum:
             raise RuntimeError(("src/stage0.json doesn't contain a checksum for {}. "
                                 "Pre-built artifacts might not be available for this "
                                 "target at this time, see https://doc.rust-lang.org/nightly"
                                 "/rustc/platform-support.html for more information.")
                                 .format(url))
-        sha256 = checksums[url]
-        if os.path.exists(path):
-            if verify(path, sha256, False):
-                if verbose:
-                    print("using already-download file", path, file=sys.stderr)
-                return
-            else:
-                if verbose:
-                    print("ignoring already-download file",
-                        path, "due to failed verification", file=sys.stderr)
-                os.unlink(path)
+        if verify_checksum:
+            sha256 = checksums[url]
+            if os.path.exists(path):
+                if verify(path, sha256, False):
+                    if verbose:
+                        print("using already-download file", path, file=sys.stderr)
+                    return
+                else:
+                    if verbose:
+                        print("ignoring already-download file",
+                            path, "due to failed verification", file=sys.stderr)
+                    os.unlink(path)
         download(temp_path, "{}/{}".format(base, url), True, verbose)
-        if not verify(temp_path, sha256, verbose):
+        if verify_checksum and not verify(temp_path, checksums[url], verbose):
             raise RuntimeError("failed verification")
         if verbose:
             print("moving {} to {}".format(temp_path, path), file=sys.stderr)
@@ -213,7 +215,11 @@ def require(cmd, exit=True, exception=False):
             sys.exit(1)
         return None
 
+def output_cmd(cmd):
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+    output = p.communicate()[0].strip('"').strip()
 
+    return output
 
 def format_build_time(duration):
     """Return a nicer format for build time
@@ -424,6 +430,7 @@ class DownloadInfo:
     def __init__(
         self,
         base_download_url,
+        artifacts_server,
         download_path,
         bin_root,
         tarball_path,
@@ -434,6 +441,7 @@ class DownloadInfo:
     ):
         self.base_download_url = base_download_url
         self.download_path = download_path
+        self.artifacts_server = artifacts_server
         self.bin_root = bin_root
         self.tarball_path = tarball_path
         self.tarball_suffix = tarball_suffix
@@ -463,6 +471,11 @@ def unpack_component(download_info):
 class FakeArgs:
     """Used for unit tests to avoid updating all call sites"""
     def __init__(self):
+        self.checksums_sha256 = {}
+        self.stage0_compiler = None
+        self.download_url = ''
+        self.artifacts_server = ''
+        self.is_precompiled_bootstrap = False
         self.build = ''
         self.build_dir = ''
         self.clean = False
@@ -488,6 +501,7 @@ class RustBuild(object):
         self.verbose = args.verbose
         self.color = args.color
         self.warnings = args.warnings
+        self.is_precompiled_bootstrap = False
 
         config_verbose_count = self.get_toml('verbose', 'build')
         if config_verbose_count is not None:
@@ -507,6 +521,7 @@ class RustBuild(object):
 
         self.build = args.build or self.build_triple()
 
+        self.git_merge_commit_mail = None
 
     def download_toolchain(self):
         """Fetch the build system for Rust, written in Rust
@@ -565,6 +580,7 @@ class RustBuild(object):
                 DownloadInfo(
                     base_download_url=self.download_url,
                     download_path="dist/{}/{}".format(self.stage0_compiler.date, filename),
+                    artifacts_server=self.artifacts_server,
                     bin_root=self.bin_root(),
                     tarball_path=os.path.join(rustc_cache, filename),
                     tarball_suffix=tarball_suffix,
@@ -606,20 +622,59 @@ class RustBuild(object):
                 rust_stamp.write(key)
 
     def _download_component_helper(
-        self, filename, pattern, tarball_suffix, rustc_cache,
+        self, key, filename, pattern, tarball_suffix,
     ):
-        key = self.stage0_compiler.date
-
+        cache_dst = os.path.join(self.build_dir, "cache")
+        rustc_cache = os.path.join(cache_dst)
         tarball = os.path.join(rustc_cache, filename)
         if not os.path.exists(tarball):
-            get(
-                self.download_url,
-                "dist/{}/{}".format(key, filename),
+            try:
+                get(
+                self.artifacts_server,
+                "{}/{}".format(key, filename),
                 tarball,
                 self.checksums_sha256,
                 verbose=self.verbose,
+                verify_checksum=False,
             )
+            except:
+                return False
         unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose)
+        return True
+
+
+
+    def download_bootstrap(self, commit_hash):
+        filename = "{}-{}.tar.xz".format("bootstrap-nightly", self.build_triple())
+        success = self._download_component_helper(commit_hash, filename, "bootstrap", "tar.xz")
+
+        return success
+
+    def last_bootstrap_commit(self):
+        top_level = output_cmd(["git", "rev-parse", "--show-toplevel"])
+
+        cmd = ["git", "rev-list", "--author={}".format(self.git_merge_commit_mail),
+               "-n1", "--first-parent", "HEAD"]
+        merge_base = output_cmd(cmd)
+
+        path = "{}/src/bootstrap".format(top_level)
+        cmd = ["git", "diff-index", "--quiet", "HEAD", "--", path]
+
+        ret = subprocess.Popen(cmd, cwd=self.rust_root)
+        code = ret.wait()
+        if code != 0:
+            return None
+        else:
+            return merge_base
+
+    def bootstrap_out_of_date(self, commit):
+        stamp_path = pathlib.Path(self.bin_root()).joinpath("bootstrap/.bootstrap-stamp")
+        if not stamp_path.exists():
+            return True
+
+        return stamp_path.read_text != commit
+
+
 
     def should_fix_bins_and_dylibs(self):
         """Whether or not `fix_bin_or_dylib` needs to be run; can only be True
@@ -863,7 +918,14 @@ class RustBuild(object):
         ... "debug", "bootstrap")
         True
         """
-        return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
+        if self.is_precompiled_bootstrap:
+            root = self.bin_root()
+            subfolder = "nightly-{}".format(self.build_triple())
+            return os.path.join(root, subfolder, "bootstrap", "bootstrap", "bin", "bootstrap")
+
+        else:
+            return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
+
 
     def build_bootstrap(self):
         """Build bootstrap"""
@@ -1068,13 +1130,45 @@ def bootstrap(args):
     build = RustBuild(config_toml, args)
     build.check_vendored_status()
 
+    build_dir = args.build_dir or build.get_toml('build-dir', 'build') or 'build'
+    build.build_dir = os.path.abspath(build_dir)
+
+    with open(os.path.join(build.rust_root, "src", "stage0.json")) as f:
+        data = json.load(f)
+    build.checksums_sha256 = data["checksums_sha256"]
+    build.stage0_compiler = Stage0Toolchain(data["compiler"])
+    build.download_url = os.getenv("RUSTUP_DIST_SERVER") or data["config"]["dist_server"]
+    build.artifacts_server = data["config"]["artifacts_server"]
+    build.git_merge_commit_mail = data["config"]["git_merge_commit_email"]
+
+    build.build = args.build or build.build_triple()
+
     if not os.path.exists(build.build_dir):
         os.makedirs(build.build_dir)
 
     # Fetch/build the bootstrap
     build.download_toolchain()
     sys.stdout.flush()
-    build.build_bootstrap()
+
+    bootstrap_bin = pathlib.Path(build.build_dir).joinpath("bootstrap/debug/bootstrap")
+
+    try:
+        last_commit = build.last_bootstrap_commit()
+        if last_commit is None:
+            build.build_bootstrap()
+        else:
+            if build.bootstrap_out_of_date(last_commit):
+                success = build.download_bootstrap(last_commit)
+                if success:
+                    stamp = pathlib.Path(build.build_dir).joinpath("bootstrap/.bootstrap-stamp")
+                    stamp.write_text(last_commit)
+                    build.is_precompiled_bootstrap = True
+
+    except Exception as e:
+        print(str(e))
+
+    if build.is_precompiled_bootstrap:
+        build.build_bootstrap()
     sys.stdout.flush()
 
     # Run the bootstrap
@@ -1101,8 +1195,8 @@ def main():
     # process has to happen before anything is printed out.
     if help_triggered:
         print(
-            "info: Downloading and building bootstrap before processing --help command.\n"
-            "      See src/bootstrap/README.md for help with common commands."
+            "info: Checking if bootstrap needs to be downloaded or built before processing"
+            " --help command.\n      See src/bootstrap/README.md for help with common commands."
         , file=sys.stderr)
 
     exit_code = 0
