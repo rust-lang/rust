@@ -270,7 +270,7 @@ ul ul, ol ul, ul ol, ol ol {
 	margin-bottom: .625em;
 }
 
-p {
+p, .docblock > .warning {
 	/* Paragraph spacing at least 1.5 times line spacing per Web Content Accessibility Guidelines.
 	   Line-height is 1.5rem, so line spacing is .5rem; .75em is 1.5 times that.
 	   https://www.w3.org/WAI/WCAG21/Understanding/visual-presentation.html */
@@ -278,7 +278,7 @@ p {
 }
 /* For the last child of a div, the margin will be taken care of
 	by the margin-top of the next item. */
-p:last-child {
+p:last-child, .docblock > .warning:last-child {
 	margin: 0;
 }
 
@@ -1096,7 +1096,7 @@ pre.rust .doccomment {
 }
 
 .example-wrap.ignore .tooltip {
-	color:  var(--codeblock-ignore-color);
+	color: var(--codeblock-ignore-color);
 }
 
 .example-wrap.compile_fail:hover .tooltip,
@@ -1120,6 +1120,26 @@ pre.rust .doccomment {
 .example-wrap.compile_fail .tooltip,
 .example-wrap.should_panic .tooltip,
 .example-wrap.ignore .tooltip {
+	font-weight: bold;
+	font-size: 1.25rem;
+}
+
+/* This class only exists for users who want to draw attention to a particular element in their
+documentation. */
+.content .docblock .warning {
+	border-left: 2px solid var(--warning-border-color);
+	padding: 14px;
+	position: relative;
+	/* The "!important" part is required because the rule is otherwise overruled in this CSS
+	selector: ".docblock > :not(.more-examples-toggle):not(.example-wrap)" */
+	overflow-x: visible !important;
+}
+.content .docblock .warning::before {
+	color: var(--warning-border-color);
+	content: "ⓘ";
+	position: absolute;
+	left: -25px;
+	top: 5px;
 	font-weight: bold;
 	font-size: 1.25rem;
 }
