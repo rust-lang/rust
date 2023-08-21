@@ -503,9 +503,14 @@ pub fn hacky_block_expr(
 pub fn expr_unit() -> ast::Expr {
     expr_from_text("()")
 }
+
 pub fn expr_literal(text: &str) -> ast::Literal {
     assert_eq!(text.trim(), text);
     ast_from_text(&format!("fn f() {{ let _ = {text}; }}"))
+}
+
+pub fn expr_const_value(text: &str) -> ast::ConstArg {
+    ast_from_text(&format!("trait Foo<const N: usize = {text}> {{}}"))
 }
 
 pub fn expr_empty_block() -> ast::Expr {
@@ -1100,7 +1105,7 @@ pub mod tokens {
 
     pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| {
         SourceFile::parse(
-            "const C: <()>::Item = (1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p)\n;\n\n",
+            "const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p)\n;\n\n",
         )
     });
 

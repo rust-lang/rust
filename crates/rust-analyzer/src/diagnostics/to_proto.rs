@@ -292,6 +292,13 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 
     let mut source = String::from("rustc");
     let mut code = rd.code.as_ref().map(|c| c.code.clone());
+
+    if let Some(code_val) = &code {
+        if config.check_ignore.contains(code_val) {
+            return Vec::new();
+        }
+    }
+
     if let Some(code_val) = &code {
         // See if this is an RFC #2103 scoped lint (e.g. from Clippy)
         let scoped_code: Vec<&str> = code_val.split("::").collect();

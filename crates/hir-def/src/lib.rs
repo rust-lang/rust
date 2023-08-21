@@ -109,6 +109,17 @@ impl CrateRootModuleId {
     }
 }
 
+impl PartialEq<ModuleId> for CrateRootModuleId {
+    fn eq(&self, other: &ModuleId) -> bool {
+        other.block.is_none() && other.local_id == DefMap::ROOT && self.krate == other.krate
+    }
+}
+impl PartialEq<CrateRootModuleId> for ModuleId {
+    fn eq(&self, other: &CrateRootModuleId) -> bool {
+        other == self
+    }
+}
+
 impl From<CrateRootModuleId> for ModuleId {
     fn from(CrateRootModuleId { krate }: CrateRootModuleId) -> Self {
         ModuleId { krate, block: None, local_id: DefMap::ROOT }
@@ -854,13 +865,35 @@ impl_from!(
     ConstId,
     FunctionId,
     TraitId,
+    TraitAliasId,
     TypeAliasId,
     MacroId(Macro2Id, MacroRulesId, ProcMacroId),
     ImplId,
     GenericParamId,
-    ExternCrateId
+    ExternCrateId,
+    UseId
     for AttrDefId
 );
+
+impl TryFrom<ModuleDefId> for AttrDefId {
+    type Error = ();
+
+    fn try_from(value: ModuleDefId) -> Result<Self, Self::Error> {
+        match value {
+            ModuleDefId::ModuleId(it) => Ok(it.into()),
+            ModuleDefId::FunctionId(it) => Ok(it.into()),
+            ModuleDefId::AdtId(it) => Ok(it.into()),
+            ModuleDefId::EnumVariantId(it) => Ok(it.into()),
+            ModuleDefId::ConstId(it) => Ok(it.into()),
+            ModuleDefId::StaticId(it) => Ok(it.into()),
+            ModuleDefId::TraitId(it) => Ok(it.into()),
+            ModuleDefId::TypeAliasId(it) => Ok(it.into()),
+            ModuleDefId::TraitAliasId(id) => Ok(id.into()),
+            ModuleDefId::MacroId(id) => Ok(id.into()),
+            ModuleDefId::BuiltinType(_) => Err(()),
+        }
+    }
+}
 
 impl From<ItemContainerId> for AttrDefId {
     fn from(acid: ItemContainerId) -> Self {
@@ -869,6 +902,15 @@ impl From<ItemContainerId> for AttrDefId {
             ItemContainerId::ImplId(iid) => AttrDefId::ImplId(iid),
             ItemContainerId::TraitId(tid) => AttrDefId::TraitId(tid),
             ItemContainerId::ExternBlockId(id) => AttrDefId::ExternBlockId(id),
+        }
+    }
+}
+impl From<AssocItemId> for AttrDefId {
+    fn from(assoc: AssocItemId) -> Self {
+        match assoc {
+            AssocItemId::FunctionId(it) => AttrDefId::FunctionId(it),
+            AssocItemId::ConstId(it) => AttrDefId::ConstId(it),
+            AssocItemId::TypeAliasId(it) => AttrDefId::TypeAliasId(it),
         }
     }
 }

@@ -119,6 +119,35 @@
                 is_alias: false,
             },
             FileSymbol {
+                name: "ItemLikeMacro",
+                def: Macro(
+                    Macro {
+                        id: Macro2Id(
+                            Macro2Id(
+                                0,
+                            ),
+                        ),
+                    },
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: FileId(
+                        FileId(
+                            0,
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: USE_TREE,
+                        range: 654..676,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 663..676,
+                    },
+                },
+                container_name: None,
+                is_alias: false,
+            },
+            FileSymbol {
                 name: "Macro",
                 def: Macro(
                     Macro {
@@ -353,6 +382,35 @@
                 is_alias: false,
             },
             FileSymbol {
+                name: "Trait",
+                def: Macro(
+                    Macro {
+                        id: Macro2Id(
+                            Macro2Id(
+                                0,
+                            ),
+                        ),
+                    },
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: FileId(
+                        FileId(
+                            0,
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: USE_TREE,
+                        range: 682..696,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 691..696,
+                    },
+                },
+                container_name: None,
+                is_alias: false,
+            },
+            FileSymbol {
                 name: "Union",
                 def: Adt(
                     Union(
@@ -552,6 +610,35 @@
                 is_alias: false,
             },
             FileSymbol {
+                name: "really_define_struct",
+                def: Macro(
+                    Macro {
+                        id: MacroRulesId(
+                            MacroRulesId(
+                                1,
+                            ),
+                        ),
+                    },
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: FileId(
+                        FileId(
+                            0,
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: USE_TREE,
+                        range: 611..648,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 628..648,
+                    },
+                },
+                container_name: None,
+                is_alias: false,
+            },
+            FileSymbol {
                 name: "trait_fn",
                 def: Function(
                     Function {
@@ -632,6 +719,35 @@
         },
         [
             FileSymbol {
+                name: "IsThisJustATrait",
+                def: Macro(
+                    Macro {
+                        id: Macro2Id(
+                            Macro2Id(
+                                0,
+                            ),
+                        ),
+                    },
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: FileId(
+                        FileId(
+                            1,
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: USE_TREE,
+                        range: 111..143,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 127..143,
+                    },
+                },
+                container_name: None,
+                is_alias: false,
+            },
+            FileSymbol {
                 name: "StructInModB",
                 def: Adt(
                     Struct(
@@ -655,6 +771,93 @@
                     name_ptr: SyntaxNodePtr {
                         kind: NAME,
                         range: 7..19,
+                    },
+                },
+                container_name: None,
+                is_alias: false,
+            },
+            FileSymbol {
+                name: "SuperItemLikeMacro",
+                def: Macro(
+                    Macro {
+                        id: Macro2Id(
+                            Macro2Id(
+                                0,
+                            ),
+                        ),
+                    },
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: FileId(
+                        FileId(
+                            1,
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: USE_TREE,
+                        range: 25..59,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 41..59,
+                    },
+                },
+                container_name: None,
+                is_alias: false,
+            },
+            FileSymbol {
+                name: "ThisStruct",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                3,
+                            ),
+                        },
+                    ),
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: FileId(
+                        FileId(
+                            1,
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: USE_TREE,
+                        range: 65..105,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 95..105,
+                    },
+                },
+                container_name: None,
+                is_alias: false,
+            },
+            FileSymbol {
+                name: "ThisStruct",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                3,
+                            ),
+                        },
+                    ),
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: FileId(
+                        FileId(
+                            1,
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: USE_TREE,
+                        range: 65..105,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 95..105,
                     },
                 },
                 container_name: None,

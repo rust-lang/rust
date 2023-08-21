@@ -27,13 +27,19 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     let cap = ctx.config.snippet_cap?;
     let nominal = ctx.find_node_at_offset::<ast::Adt>()?;
     let target = nominal.syntax().text_range();
+    let derive_attr = nominal
+        .attrs()
+        .filter_map(|x| x.as_simple_call())
+        .filter(|(name, _arg)| name == "derive")
+        .map(|(_name, arg)| arg)
+        .next();
+
+    let delimiter = match &derive_attr {
+        None => None,
+        Some(tt) => Some(tt.right_delimiter_token()?),
+    };
+
     acc.add(AssistId("generate_derive", AssistKind::Generate), "Add `#[derive]`", target, |edit| {
-        let derive_attr = nominal
-            .attrs()
-            .filter_map(|x| x.as_simple_call())
-            .filter(|(name, _arg)| name == "derive")
-            .map(|(_name, arg)| arg)
-            .next();
         match derive_attr {
             None => {
                 let derive = make::attr_outer(make::meta_token_tree(
@@ -45,15 +51,22 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
                 let nominal = edit.make_mut(nominal);
                 nominal.add_attr(derive.clone());
 
+                let delimiter = derive
+                    .meta()
+                    .expect("make::attr_outer was expected to have Meta")
+                    .token_tree()
+                    .expect("failed to get token tree out of Meta")
+                    .r_paren_token()
+                    .expect("make::attr_outer was expected to have a R_PAREN");
+
+                edit.add_tabstop_before_token(cap, delimiter);
+            }
+            Some(_) => {
+                // Just move the cursor.
                 edit.add_tabstop_before_token(
                     cap,
-                    derive.meta().unwrap().token_tree().unwrap().r_paren_token().unwrap(),
+                    delimiter.expect("Right delim token could not be found."),
                 );
-            }
-            Some(tt) => {
-                // Just move the cursor.
-                let tt = edit.make_mut(tt);
-                edit.add_tabstop_before_token(cap, tt.right_delimiter_token().unwrap());
             }
         };
     })

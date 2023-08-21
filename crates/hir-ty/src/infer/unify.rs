@@ -10,7 +10,6 @@ use chalk_solve::infer::ParameterEnaVariableExt;
 use either::Either;
 use ena::unify::UnifyKey;
 use hir_expand::name;
-use stdx::never;
 use triomphe::Arc;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
@@ -92,15 +91,10 @@ pub(crate) fn unify(
     let vars = Substitution::from_iter(
         Interner,
         tys.binders.iter(Interner).map(|it| match &it.kind {
-            chalk_ir::VariableKind::Ty(_) => {
-                GenericArgData::Ty(table.new_type_var()).intern(Interner)
-            }
-            chalk_ir::VariableKind::Lifetime => {
-                GenericArgData::Ty(table.new_type_var()).intern(Interner)
-            } // FIXME: maybe wrong?
-            chalk_ir::VariableKind::Const(ty) => {
-                GenericArgData::Const(table.new_const_var(ty.clone())).intern(Interner)
-            }
+            chalk_ir::VariableKind::Ty(_) => table.new_type_var().cast(Interner),
+            // FIXME: maybe wrong?
+            chalk_ir::VariableKind::Lifetime => table.new_type_var().cast(Interner),
+            chalk_ir::VariableKind::Const(ty) => table.new_const_var(ty.clone()).cast(Interner),
         }),
     );
     let ty1_with_vars = vars.apply(tys.value.0.clone(), Interner);
@@ -111,10 +105,10 @@ pub(crate) fn unify(
     // default any type vars that weren't unified back to their original bound vars
     // (kind of hacky)
     let find_var = |iv| {
-        vars.iter(Interner).position(|v| match v.interned() {
-            chalk_ir::GenericArgData::Ty(ty) => ty.inference_var(Interner),
-            chalk_ir::GenericArgData::Lifetime(lt) => lt.inference_var(Interner),
-            chalk_ir::GenericArgData::Const(c) => c.inference_var(Interner),
+        vars.iter(Interner).position(|v| match v.data(Interner) {
+            GenericArgData::Ty(ty) => ty.inference_var(Interner),
+            GenericArgData::Lifetime(lt) => lt.inference_var(Interner),
+            GenericArgData::Const(c) => c.inference_var(Interner),
         } == Some(iv))
     };
     let fallback = |iv, kind, default, binder| match kind {
@@ -149,6 +143,9 @@ pub(crate) struct InferenceTable<'a> {
     var_unification_table: ChalkInferenceTable,
     type_variable_table: Vec<TypeVariableFlags>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
+    /// Double buffer used in [`Self::resolve_obligations_as_possible`] to cut down on
+    /// temporary allocations.
+    resolve_obligations_buffer: Vec<Canonicalized<InEnvironment<Goal>>>,
 }
 
 pub(crate) struct InferenceTableSnapshot {
@@ -165,6 +162,7 @@ impl<'a> InferenceTable<'a> {
             var_unification_table: ChalkInferenceTable::new(),
             type_variable_table: Vec::new(),
             pending_obligations: Vec::new(),
+            resolve_obligations_buffer: Vec::new(),
         }
     }
 
@@ -516,10 +514,10 @@ impl<'a> InferenceTable<'a> {
     pub(crate) fn resolve_obligations_as_possible(&mut self) {
         let _span = profile::span("resolve_obligations_as_possible");
         let mut changed = true;
-        let mut obligations = Vec::new();
-        while changed {
-            changed = false;
+        let mut obligations = mem::take(&mut self.resolve_obligations_buffer);
+        while mem::take(&mut changed) {
             mem::swap(&mut self.pending_obligations, &mut obligations);
+
             for canonicalized in obligations.drain(..) {
                 if !self.check_changed(&canonicalized) {
                     self.pending_obligations.push(canonicalized);
@@ -534,6 +532,8 @@ impl<'a> InferenceTable<'a> {
                 self.register_obligation_in_env(uncanonical);
             }
         }
+        self.resolve_obligations_buffer = obligations;
+        self.resolve_obligations_buffer.clear();
     }
 
     pub(crate) fn fudge_inference<T: TypeFoldable<Interner>>(
@@ -611,9 +611,9 @@ impl<'a> InferenceTable<'a> {
     fn check_changed(&mut self, canonicalized: &Canonicalized<InEnvironment<Goal>>) -> bool {
         canonicalized.free_vars.iter().any(|var| {
             let iv = match var.data(Interner) {
-                chalk_ir::GenericArgData::Ty(ty) => ty.inference_var(Interner),
-                chalk_ir::GenericArgData::Lifetime(lt) => lt.inference_var(Interner),
-                chalk_ir::GenericArgData::Const(c) => c.inference_var(Interner),
+                GenericArgData::Ty(ty) => ty.inference_var(Interner),
+                GenericArgData::Lifetime(lt) => lt.inference_var(Interner),
+                GenericArgData::Const(c) => c.inference_var(Interner),
             }
             .expect("free var is not inference var");
             if self.var_unification_table.probe_var(iv).is_some() {
@@ -690,14 +690,10 @@ impl<'a> InferenceTable<'a> {
             .fill(|it| {
                 let arg = match it {
                     ParamKind::Type => self.new_type_var(),
-                    ParamKind::Const(ty) => {
-                        never!("Tuple with const parameter");
-                        return GenericArgData::Const(self.new_const_var(ty.clone()))
-                            .intern(Interner);
-                    }
+                    ParamKind::Const(_) => unreachable!("Tuple with const parameter"),
                 };
                 arg_tys.push(arg.clone());
-                GenericArgData::Ty(arg).intern(Interner)
+                arg.cast(Interner)
             })
             .build();
 

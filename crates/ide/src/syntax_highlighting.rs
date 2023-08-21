@@ -395,10 +395,10 @@ fn traverse(
                 NodeOrToken::Token(token) if token.kind() != COMMENT => {
                     let token = match attr_or_derive_item {
                         Some(AttrOrDerive::Attr(_)) => {
-                            sema.descend_into_macros_with_kind_preference(token)
+                            sema.descend_into_macros_with_kind_preference(token, 0.into())
                         }
                         Some(AttrOrDerive::Derive(_)) | None => {
-                            sema.descend_into_macros_single(token)
+                            sema.descend_into_macros_single(token, 0.into())
                         }
                     };
                     match token.parent().and_then(ast::NameLike::cast) {
