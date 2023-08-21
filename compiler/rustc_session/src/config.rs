@@ -169,6 +169,9 @@ pub enum MirSpanview {
 pub enum InstrumentCoverage {
     /// Default `-C instrument-coverage` or `-C instrument-coverage=statement`
     All,
+    /// Additionally, instrument branches and output branch coverage.
+    /// `-Zunstable-options -C instrument-coverage=branch`
+    Branch,
     /// `-Zunstable-options -C instrument-coverage=except-unused-generics`
     ExceptUnusedGenerics,
     /// `-Zunstable-options -C instrument-coverage=except-unused-functions`
@@ -2747,7 +2750,10 @@ pub fn build_session_options(
         }
         (Some(InstrumentCoverage::Off | InstrumentCoverage::All), _) => {}
         (Some(_), _) if !unstable_opts.unstable_options => {
-            handler.early_error("`-C instrument-coverage=except-*` requires `-Z unstable-options`");
+            handler.early_error(
+                "`-C instrument-coverage=branch` and `-C instrument-coverage=except-*` \
+                require `-Z unstable-options`",
+            );
         }
         (None, None) => {}
         (None, ic) => {
