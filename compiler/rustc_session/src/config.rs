@@ -168,6 +168,8 @@ pub enum MirSpanview {
 pub enum InstrumentCoverage {
     /// Default `-C instrument-coverage` or `-C instrument-coverage=statement`
     All,
+    /// Additionally, instrument branches and output branch overage
+    Branch,
     /// `-Zunstable-options -C instrument-coverage=except-unused-generics`
     ExceptUnusedGenerics,
     /// `-Zunstable-options -C instrument-coverage=except-unused-functions`
