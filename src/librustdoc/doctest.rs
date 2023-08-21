@@ -307,12 +307,14 @@ fn add_exe_suffix(input: String, target: &TargetTriple) -> String {
 }
 
 fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Command {
-    let args: Vec<&Path> =
-        rustc_wrappers.iter().map(PathBuf::as_path).chain([rustc_binary].into_iter()).collect();
-    let (exe, args) = args.split_first().expect("unable to create rustc command");
+    let mut args = rustc_wrappers.iter().map(PathBuf::as_path).chain([rustc_binary].into_iter());
 
+    let exe = args.next().expect("unable to create rustc command");
     let mut command = Command::new(exe);
-    command.args(args);
+    for arg in args {
+        command.arg(arg);
+    }
+
     command
 }
 
