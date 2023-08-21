@@ -8,6 +8,7 @@ TEEOS is a mini os run in TrustZone, for trusted/security apps. The kernel of TE
 It's very small that there is no RwLock, no network, no stdin, and no file system for apps in TEEOS.
 
 Some abbreviation:
+
 | Abbreviation | The full text | Description |
 |  ----  | ----  | ---- |
 | TEE | Trusted Execution Environment | ARM TrustZone divides the system into two worlds/modes -- the secure world/mode and the normal world/mode. TEE is in the secure world/mode. |
