@@ -8,12 +8,10 @@
 use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Read, Write};
-use std::path::Path;
 use std::process::{ChildStdout, Command, Stdio};
 use std::time::Duration;
 
-use crate::builder::Builder;
-use crate::failed::TRACKER_FILE;
+use crate::{builder::Builder, failed::get_tracker_file_path};
 
 use termcolor::{Color, ColorSpec, WriteColor};
 
@@ -305,21 +303,16 @@ impl<'a> Renderer<'a> {
 
     /// Initialises the tracking by reading the last state from a file and storing it
     fn init_tracking(&mut self) {
-        let mut contents = String::new();
-        {
-            let path = Path::new(TRACKER_FILE);
+        let path = get_tracker_file_path();
 
-            if !path.exists() {
-                let mut file = File::create(path).expect(&format!(
-                    "failed to create test.tracker | {:?}",
-                    path.canonicalize().unwrap()
-                ));
-                file.write_all(b"[]").unwrap();
-            } else {
-                let mut file = File::open(path).expect("failed to open test.tracker");
-                file.read_to_string(&mut contents).unwrap();
-                self.tracker = serde_json::from_str(&contents).unwrap();
-            }
+        if !path.exists() {
+            let mut file = File::create(&path).expect("failed to create test.tracker");
+            file.write_all(b"[]").unwrap();
+        } else {
+            let mut file = File::open(path).expect("failed to open test.tracker");
+            let mut contents = String::new();
+            file.read_to_string(&mut contents).unwrap();
+            self.tracker = serde_json::from_str(&contents).unwrap();
         }
     }
 
@@ -337,7 +330,8 @@ impl<'a> Renderer<'a> {
 
     /// Store the state of the tracker into file for retrieval on next run
     fn end_tracking(&mut self) {
-        let mut file = OpenOptions::new().write(true).truncate(true).open(TRACKER_FILE).unwrap();
+        let mut file =
+            OpenOptions::new().write(true).truncate(true).open(get_tracker_file_path()).unwrap();
         file.write_all(serde_json::to_string(&self.tracker).unwrap().as_bytes())
             .expect("failed to write to tracking file");
     }
