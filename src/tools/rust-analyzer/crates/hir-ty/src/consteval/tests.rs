@@ -1203,6 +1203,27 @@ fn destructing_assignment() {
         "#,
         5,
     );
+    check_number(
+        r#"
+    const GOAL: u8 = {
+        let (mut a, mut b) = (2, 5);
+        (a, b) = (b, a);
+        a * 10 + b
+    };
+        "#,
+        52,
+    );
+    check_number(
+        r#"
+    struct Point { x: i32, y: i32 }
+    const GOAL: i32 = {
+        let mut p = Point { x: 5, y: 6 };
+        (p.x, _) = (p.y, p.x);
+        p.x * 10 + p.y
+    };
+        "#,
+        66,
+    );
 }
 
 #[test]
@@ -1429,6 +1450,30 @@ fn from_trait() {
     };
     "#,
         2000,
+    );
+}
+
+#[test]
+fn closure_clone() {
+    check_number(
+        r#"
+//- minicore: clone, fn
+struct S(u8);
+
+impl Clone for S(u8) {
+    fn clone(&self) -> S {
+        S(self.0 + 5)
+    }
+}
+
+const GOAL: u8 = {
+    let s = S(3);
+    let cl = move || s;
+    let cl = cl.clone();
+    cl().0
+}
+    "#,
+        8,
     );
 }
 
@@ -2396,14 +2441,14 @@ fn const_loop() {
 fn const_transfer_memory() {
     check_number(
         r#"
-    //- minicore: slice, index, coerce_unsized
+    //- minicore: slice, index, coerce_unsized, option
     const A1: &i32 = &1;
     const A2: &i32 = &10;
     const A3: [&i32; 3] = [&1, &2, &100];
-    const A4: (i32, &i32) = (1, &1000);
-    const GOAL: i32 = *A1 + *A2 + *A3[2] + *A4.1;
+    const A4: (i32, &i32, Option<&i32>) = (1, &1000, Some(&10000));
+    const GOAL: i32 = *A1 + *A2 + *A3[2] + *A4.1 + *A4.2.unwrap_or(&5);
     "#,
-        1111,
+        11111,
     );
 }
 

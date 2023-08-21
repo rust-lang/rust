@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
 import { exec, type ExecOptions, spawnSync } from "child_process";
 import { inspect } from "util";
+import type { Env } from "./client";
 
 export function assert(condition: boolean, explanation: string): asserts condition {
     try {
@@ -93,10 +94,13 @@ export function isDocumentInWorkspace(document: RustDocument): boolean {
     return false;
 }
 
-export function isValidExecutable(path: string): boolean {
+export function isValidExecutable(path: string, extraEnv: Env): boolean {
     log.debug("Checking availability of a binary at", path);
 
-    const res = spawnSync(path, ["--version"], { encoding: "utf8" });
+    const res = spawnSync(path, ["--version"], {
+        encoding: "utf8",
+        env: { ...process.env, ...extraEnv },
+    });
 
     const printOutput = res.error ? log.warn : log.info;
     printOutput(path, "--version:", res);
@@ -151,6 +155,7 @@ export function execute(command: string, options: ExecOptions): Promise<string> 
 }
 
 export function executeDiscoverProject(command: string, options: ExecOptions): Promise<string> {
+    options = Object.assign({ maxBuffer: 10 * 1024 * 1024 }, options);
     log.info(`running command: ${command}`);
     return new Promise((resolve, reject) => {
         exec(command, options, (err, stdout, _) => {

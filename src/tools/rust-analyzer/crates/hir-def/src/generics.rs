@@ -21,10 +21,11 @@ use crate::{
     db::DefDatabase,
     dyn_map::{keys, DynMap},
     expander::Expander,
+    item_tree::{AttrOwner, ItemTree},
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
     src::{HasChildSource, HasSource},
-    type_ref::{LifetimeRef, TypeBound, TypeRef},
+    type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef},
     AdtId, ConstParamId, GenericDefId, HasModule, LifetimeParamId, LocalLifetimeParamId,
     LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
@@ -48,7 +49,7 @@ pub struct LifetimeParamData {
 pub struct ConstParamData {
     pub name: Name,
     pub ty: Interned<TypeRef>,
-    pub has_default: bool,
+    pub default: Option<ConstRef>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -75,7 +76,7 @@ impl TypeOrConstParamData {
     pub fn has_default(&self) -> bool {
         match self {
             TypeOrConstParamData::TypeParamData(it) => it.default.is_some(),
-            TypeOrConstParamData::ConstParamData(it) => it.has_default,
+            TypeOrConstParamData::ConstParamData(it) => it.default.is_some(),
         }
     }
 
@@ -154,12 +155,58 @@ impl GenericParams {
         def: GenericDefId,
     ) -> Interned<GenericParams> {
         let _p = profile::span("generic_params_query");
+
+        let krate = def.module(db).krate;
+        let cfg_options = db.crate_graph();
+        let cfg_options = &cfg_options[krate].cfg_options;
+
+        // Returns the generic parameters that are enabled under the current `#[cfg]` options
+        let enabled_params = |params: &Interned<GenericParams>, item_tree: &ItemTree| {
+            let enabled = |param| item_tree.attrs(db, krate, param).is_cfg_enabled(cfg_options);
+
+            // In the common case, no parameters will by disabled by `#[cfg]` attributes.
+            // Therefore, make a first pass to check if all parameters are enabled and, if so,
+            // clone the `Interned<GenericParams>` instead of recreating an identical copy.
+            let all_type_or_consts_enabled =
+                params.type_or_consts.iter().all(|(idx, _)| enabled(idx.into()));
+            let all_lifetimes_enabled = params.lifetimes.iter().all(|(idx, _)| enabled(idx.into()));
+
+            if all_type_or_consts_enabled && all_lifetimes_enabled {
+                params.clone()
+            } else {
+                Interned::new(GenericParams {
+                    type_or_consts: all_type_or_consts_enabled
+                        .then(|| params.type_or_consts.clone())
+                        .unwrap_or_else(|| {
+                            params
+                                .type_or_consts
+                                .iter()
+                                .filter_map(|(idx, param)| {
+                                    enabled(idx.into()).then(|| param.clone())
+                                })
+                                .collect()
+                        }),
+                    lifetimes: all_lifetimes_enabled
+                        .then(|| params.lifetimes.clone())
+                        .unwrap_or_else(|| {
+                            params
+                                .lifetimes
+                                .iter()
+                                .filter_map(|(idx, param)| {
+                                    enabled(idx.into()).then(|| param.clone())
+                                })
+                                .collect()
+                        }),
+                    where_predicates: params.where_predicates.clone(),
+                })
+            }
+        };
         macro_rules! id_to_generics {
             ($id:ident) => {{
                 let id = $id.lookup(db).id;
                 let tree = id.item_tree(db);
                 let item = &tree[id.value];
-                item.generic_params.clone()
+                enabled_params(&item.generic_params, &tree)
             }};
         }
 
@@ -169,7 +216,8 @@ impl GenericParams {
                 let tree = loc.id.item_tree(db);
                 let item = &tree[loc.id.value];
 
-                let mut generic_params = GenericParams::clone(&item.explicit_generic_params);
+                let enabled_params = enabled_params(&item.explicit_generic_params, &tree);
+                let mut generic_params = GenericParams::clone(&enabled_params);
 
                 let module = loc.container.module(db);
                 let func_data = db.function_data(id);
@@ -198,9 +246,14 @@ impl GenericParams {
         }
     }
 
-    pub(crate) fn fill(&mut self, lower_ctx: &LowerCtx<'_>, node: &dyn HasGenericParams) {
+    pub(crate) fn fill(
+        &mut self,
+        lower_ctx: &LowerCtx<'_>,
+        node: &dyn HasGenericParams,
+        add_param_attrs: impl FnMut(AttrOwner, ast::GenericParam),
+    ) {
         if let Some(params) = node.generic_param_list() {
-            self.fill_params(lower_ctx, params)
+            self.fill_params(lower_ctx, params, add_param_attrs)
         }
         if let Some(where_clause) = node.where_clause() {
             self.fill_where_predicates(lower_ctx, where_clause);
@@ -218,7 +271,12 @@ impl GenericParams {
         }
     }
 
-    fn fill_params(&mut self, lower_ctx: &LowerCtx<'_>, params: ast::GenericParamList) {
+    fn fill_params(
+        &mut self,
+        lower_ctx: &LowerCtx<'_>,
+        params: ast::GenericParamList,
+        mut add_param_attrs: impl FnMut(AttrOwner, ast::GenericParam),
+    ) {
         for type_or_const_param in params.type_or_const_params() {
             match type_or_const_param {
                 ast::TypeOrConstParam::Type(type_param) => {
@@ -232,13 +290,14 @@ impl GenericParams {
                         default,
                         provenance: TypeParamProvenance::TypeParamList,
                     };
-                    self.type_or_consts.alloc(param.into());
+                    let idx = self.type_or_consts.alloc(param.into());
                     let type_ref = TypeRef::Path(name.into());
                     self.fill_bounds(
                         lower_ctx,
                         type_param.type_bound_list(),
                         Either::Left(type_ref),
                     );
+                    add_param_attrs(idx.into(), ast::GenericParam::TypeParam(type_param));
                 }
                 ast::TypeOrConstParam::Const(const_param) => {
                     let name = const_param.name().map_or_else(Name::missing, |it| it.as_name());
@@ -248,9 +307,10 @@ impl GenericParams {
                     let param = ConstParamData {
                         name,
                         ty: Interned::new(ty),
-                        has_default: const_param.default_val().is_some(),
+                        default: ConstRef::from_const_param(lower_ctx, &const_param),
                     };
-                    self.type_or_consts.alloc(param.into());
+                    let idx = self.type_or_consts.alloc(param.into());
+                    add_param_attrs(idx.into(), ast::GenericParam::ConstParam(const_param));
                 }
             }
         }
@@ -258,13 +318,14 @@ impl GenericParams {
             let name =
                 lifetime_param.lifetime().map_or_else(Name::missing, |lt| Name::new_lifetime(&lt));
             let param = LifetimeParamData { name: name.clone() };
-            self.lifetimes.alloc(param);
+            let idx = self.lifetimes.alloc(param);
             let lifetime_ref = LifetimeRef::new_name(name);
             self.fill_bounds(
                 lower_ctx,
                 lifetime_param.type_bound_list(),
                 Either::Right(lifetime_ref),
             );
+            add_param_attrs(idx.into(), ast::GenericParam::LifetimeParam(lifetime_param));
         }
     }
 

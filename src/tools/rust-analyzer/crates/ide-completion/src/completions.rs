@@ -20,6 +20,7 @@ pub(crate) mod r#type;
 pub(crate) mod use_;
 pub(crate) mod vis;
 pub(crate) mod env_vars;
+pub(crate) mod extern_crate;
 
 use std::iter;
 
@@ -703,7 +704,9 @@ pub(super) fn complete_name_ref(
                         TypeLocation::TypeAscription(ascription) => {
                             r#type::complete_ascribed_type(acc, ctx, path_ctx, ascription);
                         }
-                        TypeLocation::GenericArgList(_)
+                        TypeLocation::GenericArg { .. }
+                        | TypeLocation::AssocConstEq
+                        | TypeLocation::AssocTypeEq
                         | TypeLocation::TypeBound
                         | TypeLocation::ImplTarget
                         | TypeLocation::ImplTrait
@@ -737,6 +740,7 @@ pub(super) fn complete_name_ref(
                 }
             }
         }
+        NameRefKind::ExternCrate => extern_crate::complete_extern_crate(acc, ctx),
         NameRefKind::DotAccess(dot_access) => {
             flyimport::import_on_the_fly_dot(acc, ctx, dot_access);
             dot::complete_dot(acc, ctx, dot_access);

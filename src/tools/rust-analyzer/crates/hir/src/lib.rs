@@ -63,12 +63,13 @@ use hir_ty::{
     all_super_traits, autoderef,
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
+    known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
     mir::{self, interpret_mir},
     primitive::UintTy,
     traits::FnTrait,
-    AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
+    AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId, GenericArg,
     GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
     TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, ValueTyDefId,
     WhereClause,
@@ -87,7 +88,7 @@ use triomphe::Arc;
 use crate::db::{DefDatabase, HirDatabase};
 
 pub use crate::{
-    attrs::{HasAttrs, Namespace},
+    attrs::{DocLinkDef, HasAttrs},
     diagnostics::{
         AnyDiagnostic, BreakOutsideOfLoop, CaseType, ExpectedFunction, InactiveCode,
         IncoherentImpl, IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError,
@@ -121,6 +122,7 @@ pub use {
         lang_item::LangItem,
         nameres::{DefMap, ModuleSource},
         path::{ModPath, PathKind},
+        per_ns::Namespace,
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
         // FIXME: This is here since some queries take it as input that are used
@@ -719,20 +721,18 @@ fn emit_def_diagnostic_(
 ) {
     match diag {
         DefDiagnosticKind::UnresolvedModule { ast: declaration, candidates } => {
-            let decl = declaration.to_node(db.upcast());
+            let decl = declaration.to_ptr(db.upcast());
             acc.push(
                 UnresolvedModule {
-                    decl: InFile::new(declaration.file_id, AstPtr::new(&decl)),
+                    decl: InFile::new(declaration.file_id, decl),
                     candidates: candidates.clone(),
                 }
                 .into(),
             )
         }
         DefDiagnosticKind::UnresolvedExternCrate { ast } => {
-            let item = ast.to_node(db.upcast());
-            acc.push(
-                UnresolvedExternCrate { decl: InFile::new(ast.file_id, AstPtr::new(&item)) }.into(),
-            );
+            let item = ast.to_ptr(db.upcast());
+            acc.push(UnresolvedExternCrate { decl: InFile::new(ast.file_id, item) }.into());
         }
 
         DefDiagnosticKind::UnresolvedImport { id, index } => {
@@ -747,14 +747,10 @@ fn emit_def_diagnostic_(
         }
 
         DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
-            let item = ast.to_node(db.upcast());
+            let item = ast.to_ptr(db.upcast());
             acc.push(
-                InactiveCode {
-                    node: ast.with_value(SyntaxNodePtr::new(&item).into()),
-                    cfg: cfg.clone(),
-                    opts: opts.clone(),
-                }
-                .into(),
+                InactiveCode { node: ast.with_value(item), cfg: cfg.clone(), opts: opts.clone() }
+                    .into(),
             );
         }
         DefDiagnosticKind::UnresolvedProcMacro { ast, krate } => {
@@ -1273,7 +1269,7 @@ impl Adt {
             .fill(|x| {
                 let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
                 match x {
-                    ParamKind::Type => GenericArgData::Ty(r).intern(Interner),
+                    ParamKind::Type => r.cast(Interner),
                     ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
                 }
             })
@@ -2094,14 +2090,6 @@ impl SelfParam {
                 _ => Access::Owned,
             })
             .unwrap_or(Access::Owned)
-    }
-
-    pub fn display(self, db: &dyn HirDatabase) -> &'static str {
-        match self.access(db) {
-            Access::Shared => "&self",
-            Access::Exclusive => "&mut self",
-            Access::Owned => "self",
-        }
     }
 
     pub fn source(&self, db: &dyn HirDatabase) -> Option<InFile<ast::SelfParam>> {
@@ -3142,12 +3130,8 @@ impl TypeParam {
     }
 
     pub fn default(self, db: &dyn HirDatabase) -> Option<Type> {
-        let params = db.generic_defaults(self.id.parent());
-        let local_idx = hir_ty::param_idx(db, self.id.into())?;
+        let ty = generic_arg_from_param(db, self.id.into())?;
         let resolver = self.id.parent().resolver(db.upcast());
-        let ty = params.get(local_idx)?.clone();
-        let subst = TyBuilder::placeholder_subst(db, self.id.parent());
-        let ty = ty.substitute(Interner, &subst);
         match ty.data(Interner) {
             GenericArgData::Ty(it) => {
                 Some(Type::new_with_resolver_inner(db, &resolver, it.clone()))
@@ -3209,6 +3193,19 @@ impl ConstParam {
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::new(db, self.id.parent(), db.const_param_ty(self.id))
     }
+
+    pub fn default(self, db: &dyn HirDatabase) -> Option<ast::ConstArg> {
+        let arg = generic_arg_from_param(db, self.id.into())?;
+        known_const_to_ast(arg.constant(Interner)?, db)
+    }
+}
+
+fn generic_arg_from_param(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<GenericArg> {
+    let params = db.generic_defaults(id.parent);
+    let local_idx = hir_ty::param_idx(db, id)?;
+    let ty = params.get(local_idx)?.clone();
+    let subst = TyBuilder::placeholder_subst(db, id.parent);
+    Some(ty.substitute(Interner, &subst))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -3716,7 +3713,7 @@ impl Type {
             .fill(|x| {
                 let r = it.next().unwrap();
                 match x {
-                    ParamKind::Type => GenericArgData::Ty(r).intern(Interner),
+                    ParamKind::Type => r.cast(Interner),
                     ParamKind::Const(ty) => {
                         // FIXME: this code is not covered in tests.
                         unknown_const_as_generic(ty.clone())
@@ -3749,9 +3746,7 @@ impl Type {
             .fill(|it| {
                 // FIXME: this code is not covered in tests.
                 match it {
-                    ParamKind::Type => {
-                        GenericArgData::Ty(args.next().unwrap().ty.clone()).intern(Interner)
-                    }
+                    ParamKind::Type => args.next().unwrap().ty.clone().cast(Interner),
                     ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
                 }
             })
@@ -4414,14 +4409,13 @@ impl Callable {
             Other => CallableKind::Other,
         }
     }
-    pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<(ast::SelfParam, Type)> {
+    pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<(SelfParam, Type)> {
         let func = match self.callee {
             Callee::Def(CallableDefId::FunctionId(it)) if self.is_bound_method => it,
             _ => return None,
         };
-        let src = func.lookup(db.upcast()).source(db.upcast());
-        let param_list = src.value.param_list()?;
-        Some((param_list.self_param()?, self.ty.derived(self.sig.params()[0].clone())))
+        let func = Function { id: func };
+        Some((func.self_param(db)?, self.ty.derived(self.sig.params()[0].clone())))
     }
     pub fn n_params(&self) -> usize {
         self.sig.params().len() - if self.is_bound_method { 1 } else { 0 }

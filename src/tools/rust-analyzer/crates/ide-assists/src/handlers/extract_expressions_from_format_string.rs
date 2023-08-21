@@ -48,7 +48,7 @@ pub(crate) fn extract_expressions_from_format_string(
     let tt = fmt_string.syntax().parent().and_then(ast::TokenTree::cast)?;
 
     let expanded_t = ast::String::cast(
-        ctx.sema.descend_into_macros_with_kind_preference(fmt_string.syntax().clone()),
+        ctx.sema.descend_into_macros_with_kind_preference(fmt_string.syntax().clone(), 0.into()),
     )?;
     if !is_format_string(&expanded_t) {
         return None;

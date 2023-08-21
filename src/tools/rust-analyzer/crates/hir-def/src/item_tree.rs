@@ -64,11 +64,11 @@ use triomphe::Arc;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    generics::GenericParams,
+    generics::{GenericParams, LifetimeParamData, TypeOrConstParamData},
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
-    BlockId,
+    BlockId, Lookup,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -143,6 +143,16 @@ impl ItemTree {
         Arc::new(item_tree)
     }
 
+    pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
+        let loc = block.lookup(db);
+        let block = loc.ast_id.to_node(db.upcast());
+
+        let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
+        let mut item_tree = ctx.lower_block(&block);
+        item_tree.shrink_to_fit();
+        Arc::new(item_tree)
+    }
+
     /// Returns an iterator over all items located at the top level of the `HirFileId` this
     /// `ItemTree` was created from.
     pub fn top_level_items(&self) -> &[ModItem] {
@@ -176,13 +186,6 @@ impl ItemTree {
 
     fn data_mut(&mut self) -> &mut ItemTreeData {
         self.data.get_or_insert_with(Box::default)
-    }
-
-    fn block_item_tree(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
-        let loc = db.lookup_intern_block(block);
-        let block = loc.ast_id.to_node(db.upcast());
-        let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
-        Arc::new(ctx.lower_block(&block))
     }
 
     fn shrink_to_fit(&mut self) {
@@ -296,10 +299,12 @@ pub enum AttrOwner {
     Variant(Idx<Variant>),
     Field(Idx<Field>),
     Param(Idx<Param>),
+    TypeOrConstParamData(Idx<TypeOrConstParamData>),
+    LifetimeParamData(Idx<LifetimeParamData>),
 }
 
 macro_rules! from_attrs {
-    ( $( $var:ident($t:ty) ),+ ) => {
+    ( $( $var:ident($t:ty) ),+ $(,)? ) => {
         $(
             impl From<$t> for AttrOwner {
                 fn from(t: $t) -> AttrOwner {
@@ -310,7 +315,14 @@ macro_rules! from_attrs {
     };
 }
 
-from_attrs!(ModItem(ModItem), Variant(Idx<Variant>), Field(Idx<Field>), Param(Idx<Param>));
+from_attrs!(
+    ModItem(ModItem),
+    Variant(Idx<Variant>),
+    Field(Idx<Field>),
+    Param(Idx<Param>),
+    TypeOrConstParamData(Idx<TypeOrConstParamData>),
+    LifetimeParamData(Idx<LifetimeParamData>),
+);
 
 /// Trait implemented by all item nodes in the item tree.
 pub trait ItemTreeNode: Clone {
@@ -373,7 +385,7 @@ impl TreeId {
 
     pub(crate) fn item_tree(&self, db: &dyn DefDatabase) -> Arc<ItemTree> {
         match self.block {
-            Some(block) => ItemTree::block_item_tree(db, block),
+            Some(block) => db.block_item_tree_query(block),
             None => db.file_item_tree(self.file),
         }
     }
@@ -761,6 +773,19 @@ impl Use {
             lower::lower_use_tree(db, &hygiene, ast_use_tree).expect("failed to lower use tree");
         source_map[index].clone()
     }
+    /// Maps a `UseTree` contained in this import back to its AST node.
+    pub fn use_tree_source_map(
+        &self,
+        db: &dyn DefDatabase,
+        file_id: HirFileId,
+    ) -> Arena<ast::UseTree> {
+        // Re-lower the AST item and get the source map.
+        // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
+        let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
+        let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
+        let hygiene = Hygiene::new(db.upcast(), file_id);
+        lower::lower_use_tree(db, &hygiene, ast_use_tree).expect("failed to lower use tree").1
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -785,7 +810,7 @@ impl UseTree {
     fn expand_impl(
         &self,
         prefix: Option<ModPath>,
-        cb: &mut dyn FnMut(Idx<ast::UseTree>, ModPath, ImportKind, Option<ImportAlias>),
+        cb: &mut impl FnMut(Idx<ast::UseTree>, ModPath, ImportKind, Option<ImportAlias>),
     ) {
         fn concat_mod_paths(
             prefix: Option<ModPath>,

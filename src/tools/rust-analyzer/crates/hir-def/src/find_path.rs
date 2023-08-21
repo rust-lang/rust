@@ -11,7 +11,7 @@ use crate::{
     nameres::DefMap,
     path::{ModPath, PathKind},
     visibility::Visibility,
-    ModuleDefId, ModuleId,
+    CrateRootModuleId, ModuleDefId, ModuleId,
 };
 
 /// Find a path that can be used to refer to a certain item. This can depend on
@@ -81,7 +81,7 @@ fn find_path_inner(
     }
 
     let def_map = from.def_map(db);
-    let crate_root = def_map.crate_root().into();
+    let crate_root = def_map.crate_root();
     // - if the item is a module, jump straight to module search
     if let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item {
         let mut visited_modules = FxHashSet::default();
@@ -149,7 +149,7 @@ fn find_path_for_module(
     db: &dyn DefDatabase,
     def_map: &DefMap,
     visited_modules: &mut FxHashSet<ModuleId>,
-    crate_root: ModuleId,
+    crate_root: CrateRootModuleId,
     from: ModuleId,
     module_id: ModuleId,
     max_len: usize,
@@ -183,7 +183,7 @@ fn find_path_for_module(
 
     // - if the item is the crate root of a dependency crate, return the name from the extern prelude
     let root_def_map = crate_root.def_map(db);
-    for (name, def_id) in root_def_map.extern_prelude() {
+    for (name, (def_id, _extern_crate)) in root_def_map.extern_prelude() {
         if module_id == def_id {
             let name = scope_name.unwrap_or_else(|| name.clone());
 
@@ -192,7 +192,7 @@ fn find_path_for_module(
                     def_map[local_id]
                         .scope
                         .type_(&name)
-                        .filter(|&(id, _)| id != ModuleDefId::ModuleId(def_id))
+                        .filter(|&(id, _)| id != ModuleDefId::ModuleId(def_id.into()))
                 })
                 .is_some();
             let kind = if name_already_occupied_in_type_ns {
@@ -224,6 +224,7 @@ fn find_path_for_module(
     )
 }
 
+// FIXME: Do we still need this now that we record import origins, and hence aliases?
 fn find_in_scope(
     db: &dyn DefDatabase,
     def_map: &DefMap,
@@ -244,7 +245,7 @@ fn find_in_prelude(
     item: ItemInNs,
     from: ModuleId,
 ) -> Option<ModPath> {
-    let prelude_module = root_def_map.prelude()?;
+    let (prelude_module, _) = root_def_map.prelude()?;
     // Preludes in block DefMaps are ignored, only the crate DefMap is searched
     let prelude_def_map = prelude_module.def_map(db);
     let prelude_scope = &prelude_def_map[prelude_module.local_id].scope;
@@ -293,7 +294,7 @@ fn calculate_best_path(
     db: &dyn DefDatabase,
     def_map: &DefMap,
     visited_modules: &mut FxHashSet<ModuleId>,
-    crate_root: ModuleId,
+    crate_root: CrateRootModuleId,
     max_len: usize,
     item: ItemInNs,
     from: ModuleId,
@@ -346,6 +347,11 @@ fn calculate_best_path(
         let extern_paths = crate_graph[from.krate].dependencies.iter().filter_map(|dep| {
             let import_map = db.import_map(dep.crate_id);
             import_map.import_info_for(item).and_then(|info| {
+                if info.is_doc_hidden {
+                    // the item or import is `#[doc(hidden)]`, so skip it as it is in an external crate
+                    return None;
+                }
+
                 // Determine best path for containing module and append last segment from `info`.
                 // FIXME: we should guide this to look up the path locally, or from the same crate again?
                 let mut path = find_path_for_module(
@@ -1291,6 +1297,67 @@ pub mod prelude {
             "None",
             "None",
             "None",
+        );
+    }
+
+    #[test]
+    fn different_crate_renamed_through_dep() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:intermediate
+$0
+//- /intermediate.rs crate:intermediate deps:std
+pub extern crate std as std_renamed;
+//- /std.rs crate:std
+pub struct S;
+    "#,
+            "intermediate::std_renamed::S",
+            "intermediate::std_renamed::S",
+            "intermediate::std_renamed::S",
+            "intermediate::std_renamed::S",
+        );
+    }
+
+    #[test]
+    fn different_crate_doc_hidden() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:intermediate
+$0
+//- /intermediate.rs crate:intermediate deps:std
+#[doc(hidden)]
+pub extern crate std;
+pub extern crate std as longer;
+//- /std.rs crate:std
+pub struct S;
+    "#,
+            "intermediate::longer::S",
+            "intermediate::longer::S",
+            "intermediate::longer::S",
+            "intermediate::longer::S",
+        );
+    }
+
+    #[test]
+    fn respect_doc_hidden() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:std,lazy_static
+$0
+//- /lazy_static.rs crate:lazy_static deps:core
+#[doc(hidden)]
+pub use core::ops::Deref as __Deref;
+//- /std.rs crate:std deps:core
+pub use core::ops;
+//- /core.rs crate:core
+pub mod ops {
+    pub trait Deref {}
+}
+    "#,
+            "std::ops::Deref",
+            "std::ops::Deref",
+            "std::ops::Deref",
+            "std::ops::Deref",
         );
     }
 }
