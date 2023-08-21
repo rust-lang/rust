@@ -179,6 +179,8 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
 
 /// Panic because we cannot unwind out of a function.
 ///
+/// This is a separate function to avoid the codesize impact of each crate containing the string to
+/// pass to `panic_nounwind`.
 /// This function is called directly by the codegen backend, and must not have
 /// any extra arguments (including those synthesized by track_caller).
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
@@ -187,6 +189,21 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
 #[rustc_nounwind]
 fn panic_cannot_unwind() -> ! {
     panic_nounwind("panic in a function that cannot unwind")
+}
+
+/// Panic because we are unwinding out of a destructor during cleanup.
+///
+/// This is a separate function to avoid the codesize impact of each crate containing the string to
+/// pass to `panic_nounwind`.
+/// This function is called directly by the codegen backend, and must not have
+/// any extra arguments (including those synthesized by track_caller).
+#[cfg(not(bootstrap))]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[lang = "panic_in_cleanup"] // needed by codegen for panic in nounwind function
+#[rustc_nounwind]
+fn panic_in_cleanup() -> ! {
+    panic_nounwind("panic in a destructor during cleanup")
 }
 
 /// This function is used instead of panic_fmt in const eval.

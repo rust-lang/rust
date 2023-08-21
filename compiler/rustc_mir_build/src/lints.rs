@@ -186,7 +186,7 @@ impl<'mir, 'tcx, C: TerminatorClassifier<'tcx>> TriColorVisitor<BasicBlocks<'tcx
 
         match self.body[bb].terminator().kind {
             // These terminators return control flow to the caller.
-            TerminatorKind::UnwindTerminate
+            TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::UnwindResume
             | TerminatorKind::Return

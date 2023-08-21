@@ -14,7 +14,8 @@ pub struct MirPatch<'tcx> {
     resume_block: Option<BasicBlock>,
     // Only for unreachable in cleanup path.
     unreachable_cleanup_block: Option<BasicBlock>,
-    terminate_block: Option<BasicBlock>,
+    // Cached block for UnwindTerminate(InCleanup)
+    terminate_in_cleanup_block: Option<BasicBlock>,
     body_span: Span,
     next_local: usize,
 }
@@ -29,19 +30,21 @@ impl<'tcx> MirPatch<'tcx> {
             next_local: body.local_decls.len(),
             resume_block: None,
             unreachable_cleanup_block: None,
-            terminate_block: None,
+            terminate_in_cleanup_block: None,
             body_span: body.span,
         };
 
         for (bb, block) in body.basic_blocks.iter_enumerated() {
             // Check if we already have a resume block
-            if let TerminatorKind::UnwindResume = block.terminator().kind && block.statements.is_empty() {
+            if matches!(block.terminator().kind, TerminatorKind::UnwindResume)
+                && block.statements.is_empty()
+            {
                 result.resume_block = Some(bb);
                 continue;
             }
 
             // Check if we already have an unreachable block
-            if let TerminatorKind::Unreachable = block.terminator().kind
+            if matches!(block.terminator().kind, TerminatorKind::Unreachable)
                 && block.statements.is_empty()
                 && block.is_cleanup
             {
@@ -50,8 +53,12 @@ impl<'tcx> MirPatch<'tcx> {
             }
 
             // Check if we already have a terminate block
-            if let TerminatorKind::UnwindTerminate = block.terminator().kind && block.statements.is_empty() {
-                result.terminate_block = Some(bb);
+            if matches!(
+                block.terminator().kind,
+                TerminatorKind::UnwindTerminate(UnwindTerminateReason::InCleanup)
+            ) && block.statements.is_empty()
+            {
+                result.terminate_in_cleanup_block = Some(bb);
                 continue;
             }
         }
@@ -93,8 +100,8 @@ impl<'tcx> MirPatch<'tcx> {
         bb
     }
 
-    pub fn terminate_block(&mut self) -> BasicBlock {
-        if let Some(bb) = self.terminate_block {
+    pub fn terminate_block(&mut self, reason: UnwindTerminateReason) -> BasicBlock {
+        if let Some(bb) = self.terminate_in_cleanup_block && reason == UnwindTerminateReason::InCleanup {
             return bb;
         }
 
@@ -102,11 +109,13 @@ impl<'tcx> MirPatch<'tcx> {
             statements: vec![],
             terminator: Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
-                kind: TerminatorKind::UnwindTerminate,
+                kind: TerminatorKind::UnwindTerminate(reason),
             }),
             is_cleanup: true,
         });
-        self.terminate_block = Some(bb);
+        if reason == UnwindTerminateReason::InCleanup {
+            self.terminate_in_cleanup_block = Some(bb);
+        }
         bb
     }
 

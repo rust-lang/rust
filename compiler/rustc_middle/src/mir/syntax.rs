@@ -621,7 +621,7 @@ pub enum TerminatorKind<'tcx> {
     ///
     /// Used to prevent unwinding for foreign items or with `-C unwind=abort`. Only permitted in
     /// cleanup blocks.
-    UnwindTerminate,
+    UnwindTerminate(UnwindTerminateReason),
 
     /// Returns from the function.
     ///
@@ -813,7 +813,7 @@ impl TerminatorKind<'_> {
             TerminatorKind::Goto { .. } => "Goto",
             TerminatorKind::SwitchInt { .. } => "SwitchInt",
             TerminatorKind::UnwindResume => "UnwindResume",
-            TerminatorKind::UnwindTerminate => "UnwindTerminate",
+            TerminatorKind::UnwindTerminate(_) => "UnwindTerminate",
             TerminatorKind::Return => "Return",
             TerminatorKind::Unreachable => "Unreachable",
             TerminatorKind::Drop { .. } => "Drop",
@@ -842,9 +842,20 @@ pub enum UnwindAction {
     /// Terminates the execution if unwind happens.
     ///
     /// Depending on the platform and situation this may cause a non-unwindable panic or abort.
-    Terminate,
+    Terminate(UnwindTerminateReason),
     /// Cleanups to be done.
     Cleanup(BasicBlock),
+}
+
+/// The reason we are terminating the process during unwinding.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub enum UnwindTerminateReason {
+    /// Unwinding is just not possible given the ABI of this function.
+    Abi,
+    /// We were already cleaning up for an ongoing unwind, and a *second*, *nested* unwind was
+    /// triggered by the drop glue.
+    InCleanup,
 }
 
 /// Information about an assertion failure.

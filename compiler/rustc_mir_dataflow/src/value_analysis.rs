@@ -270,7 +270,7 @@ pub trait ValueAnalysis<'tcx> {
             }
             TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume
-            | TerminatorKind::UnwindTerminate
+            | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Assert { .. }

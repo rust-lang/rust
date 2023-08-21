@@ -590,7 +590,7 @@ impl<'tcx> Stable<'tcx> for mir::UnwindAction {
         match self {
             UnwindAction::Continue => stable_mir::mir::UnwindAction::Continue,
             UnwindAction::Unreachable => stable_mir::mir::UnwindAction::Unreachable,
-            UnwindAction::Terminate => stable_mir::mir::UnwindAction::Terminate,
+            UnwindAction::Terminate(_) => stable_mir::mir::UnwindAction::Terminate,
             UnwindAction::Cleanup(bb) => stable_mir::mir::UnwindAction::Cleanup(bb.as_usize()),
         }
     }
@@ -788,7 +788,7 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
                 otherwise: targets.otherwise().as_usize(),
             },
             UnwindResume => Terminator::Resume,
-            UnwindTerminate => Terminator::Abort,
+            UnwindTerminate(_) => Terminator::Abort,
             Return => Terminator::Return,
             Unreachable => Terminator::Unreachable,
             Drop { place, target, unwind, replace: _ } => Terminator::Drop {

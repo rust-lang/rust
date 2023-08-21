@@ -116,7 +116,7 @@ impl CoverageGraph {
 
             match term.kind {
                 TerminatorKind::Return { .. }
-                | TerminatorKind::UnwindTerminate
+                | TerminatorKind::UnwindTerminate(_)
                 | TerminatorKind::Yield { .. }
                 | TerminatorKind::SwitchInt { .. } => {
                     // The `bb` has more than one _outgoing_ edge, or exits the function. Save the

@@ -291,7 +291,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
-            TerminatorKind::UnwindTerminate
+            TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::FalseEdge { .. }
@@ -328,7 +328,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
             TerminatorKind::Yield { .. }
-            | TerminatorKind::UnwindTerminate
+            | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::FalseEdge { .. }

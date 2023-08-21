@@ -10,8 +10,8 @@ use rustc_middle::mir::{
     traversal, BasicBlock, BinOp, Body, BorrowKind, CastKind, CopyNonOverlapping, Local, Location,
     MirPass, MirPhase, NonDivergingIntrinsic, NullOp, Operand, Place, PlaceElem, PlaceRef,
     ProjectionElem, RetagKind, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind,
-    Terminator, TerminatorKind, UnOp, UnwindAction, VarDebugInfo, VarDebugInfoContents,
-    START_BLOCK,
+    Terminator, TerminatorKind, UnOp, UnwindAction, UnwindTerminateReason, VarDebugInfo,
+    VarDebugInfoContents, START_BLOCK,
 };
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
@@ -274,7 +274,16 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
                     self.fail(location, "`UnwindAction::Continue` in no-unwind function");
                 }
             }
-            UnwindAction::Unreachable | UnwindAction::Terminate => (),
+            UnwindAction::Terminate(UnwindTerminateReason::InCleanup) => {
+                if !is_cleanup {
+                    self.fail(
+                        location,
+                        "`UnwindAction::Terminate(InCleanup)` in a non-cleanup block",
+                    );
+                }
+            }
+            // These are allowed everywhere.
+            UnwindAction::Unreachable | UnwindAction::Terminate(UnwindTerminateReason::Abi) => (),
         }
     }
 }
@@ -501,7 +510,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(location, "Cannot `UnwindResume` in a function that cannot unwind")
                 }
             }
-            TerminatorKind::UnwindTerminate => {
+            TerminatorKind::UnwindTerminate(_) => {
                 let bb = location.block;
                 if !self.body.basic_blocks[bb].is_cleanup {
                     self.fail(location, "Cannot `UnwindTerminate` from non-cleanup basic block")
@@ -1233,7 +1242,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::UnwindResume
-            | TerminatorKind::UnwindTerminate
+            | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
             | TerminatorKind::Unreachable => {}
         }

@@ -131,7 +131,7 @@ where
                 }
             }
 
-            TerminatorKind::UnwindTerminate
+            TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::FalseEdge { .. }
