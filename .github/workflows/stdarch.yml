@@ -102,7 +102,7 @@ jobs:
 
     - name: Build
       run: |
-        ./prepare_build.sh
+        ./y.sh prepare --only-libcore
         ./build.sh --release --release-sysroot
         cargo test
 
@@ -115,7 +115,7 @@ jobs:
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
-        ./prepare.sh
+        ./y.sh prepare
 
     # Compile is a separate step, as the actions-rs/cargo action supports error annotations
     - name: Compile
