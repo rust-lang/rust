@@ -204,7 +204,7 @@ inference variables using [`fresh_args_for_item`]. This can be used to answer qu
 like "can `Vec<T>` for any `T` be unified with `Vec<u32>`?".
 
 [type-inference]: ./type-inference.md#creating-an-inference-context
-[`fresh_args_for_item`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.fresh_args_for_item
+[`fresh_args_for_item`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.fresh_substs_for_item
 
 ## `ty::TyKind` Variants
 
