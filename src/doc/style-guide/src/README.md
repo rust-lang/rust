@@ -117,9 +117,9 @@ For the purposes of the Rust style, to compare two strings for version-sorting:
   sequence of ASCII digits, fall back to comparing the strings as normal.)
 - Compare the numeric values of the number specified by the sequence of digits.
   (Note that an implementation of this algorithm can easily check this without
-  accumulating copies of the digits or converting to a number: longer sequences
-  of digits are larger numbers, equal-length sequences can be sorted
-  lexicographically.)
+  accumulating copies of the digits or converting to a number: after skipping
+  leading zeroes, longer sequences of digits are larger numbers, and
+  equal-length sequences of digits can be sorted lexicographically.)
 - If the numbers have the same numeric value, the one with more leading zeroes
   comes first.
 
