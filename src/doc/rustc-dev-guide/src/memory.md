@@ -40,7 +40,7 @@ to that buffer is freed and our `'tcx` references would be invalid.
 In addition to types, there are a number of other arena-allocated data structures that you can
 allocate, and which are found in this module. Here are a few examples:
 
-- [`GenericArgs`][subst], allocated with `mk_args` – this will intern a slice of types, often used
+- [`GenericArgs`], allocated with `mk_args` – this will intern a slice of types, often used
 to specify the values to be substituted for generics args(e.g. `HashMap<i32, u32>` would be
 represented as a slice `&'tcx [tcx.types.i32, tcx.types.u32]`).
 - [`TraitRef`], typically passed by value – a **trait reference** consists of a reference to a trait
