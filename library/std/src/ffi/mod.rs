@@ -156,7 +156,7 @@
 
 #[stable(feature = "alloc_c_string", since = "1.64.0")]
 pub use alloc::ffi::{CString, FromVecWithNulError, IntoStringError, NulError};
-#[stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "cstr_from_bytes_until_nul", since = "1.73.0")]
 pub use core::ffi::FromBytesUntilNulError;
 #[stable(feature = "core_c_str", since = "1.64.0")]
 pub use core::ffi::{CStr, FromBytesWithNulError};

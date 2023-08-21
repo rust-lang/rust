@@ -265,7 +265,7 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
 /// inclusion/exclusion) does not point to the starting byte offset of
 /// a character (as defined by `is_char_boundary`), if `begin > end`, or if
 /// `end > len`.
-#[stable(feature = "slice_index_str_with_ops_bound_pair", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_index_str_with_ops_bound_pair", since = "1.73.0")]
 unsafe impl SliceIndex<str> for (ops::Bound<usize>, ops::Bound<usize>) {
     type Output = str;
 
