@@ -148,7 +148,7 @@ impl Kind {
             ItemEnum::Trait(_) => Trait,
             ItemEnum::TraitAlias(_) => TraitAlias,
             ItemEnum::Impl(_) => Impl,
-            ItemEnum::Typedef(_) => Typedef,
+            ItemEnum::TypeAlias(_) => Typedef,
             ItemEnum::OpaqueTy(_) => OpaqueTy,
             ItemEnum::Constant(_) => Constant,
             ItemEnum::Static(_) => Static,
@@ -186,7 +186,7 @@ impl Kind {
             ItemKind::StructField => StructField,
             ItemKind::Trait => Trait,
             ItemKind::TraitAlias => TraitAlias,
-            ItemKind::Typedef => Typedef,
+            ItemKind::TypeAlias => Typedef,
             ItemKind::Union => Union,
             ItemKind::Variant => Variant,
         }

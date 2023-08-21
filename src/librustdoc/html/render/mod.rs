@@ -235,7 +235,7 @@ struct AllTypes {
     traits: FxHashSet<ItemEntry>,
     macros: FxHashSet<ItemEntry>,
     functions: FxHashSet<ItemEntry>,
-    typedefs: FxHashSet<ItemEntry>,
+    type_aliases: FxHashSet<ItemEntry>,
     opaque_tys: FxHashSet<ItemEntry>,
     statics: FxHashSet<ItemEntry>,
     constants: FxHashSet<ItemEntry>,
@@ -255,7 +255,7 @@ impl AllTypes {
             traits: new_set(100),
             macros: new_set(100),
             functions: new_set(100),
-            typedefs: new_set(100),
+            type_aliases: new_set(100),
             opaque_tys: new_set(100),
             statics: new_set(100),
             constants: new_set(100),
@@ -279,7 +279,7 @@ impl AllTypes {
                 ItemType::Trait => self.traits.insert(ItemEntry::new(new_url, name)),
                 ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
                 ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
-                ItemType::TypeAlias => self.typedefs.insert(ItemEntry::new(new_url, name)),
+                ItemType::TypeAlias => self.type_aliases.insert(ItemEntry::new(new_url, name)),
                 ItemType::OpaqueTy => self.opaque_tys.insert(ItemEntry::new(new_url, name)),
                 ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
                 ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
@@ -317,7 +317,7 @@ impl AllTypes {
         if !self.functions.is_empty() {
             sections.insert(ItemSection::Functions);
         }
-        if !self.typedefs.is_empty() {
+        if !self.type_aliases.is_empty() {
             sections.insert(ItemSection::TypeAliases);
         }
         if !self.opaque_tys.is_empty() {
@@ -374,7 +374,7 @@ impl AllTypes {
         print_entries(f, &self.attribute_macros, ItemSection::AttributeMacros);
         print_entries(f, &self.derive_macros, ItemSection::DeriveMacros);
         print_entries(f, &self.functions, ItemSection::Functions);
-        print_entries(f, &self.typedefs, ItemSection::TypeAliases);
+        print_entries(f, &self.type_aliases, ItemSection::TypeAliases);
         print_entries(f, &self.trait_aliases, ItemSection::TraitAliases);
         print_entries(f, &self.opaque_tys, ItemSection::OpaqueTypes);
         print_entries(f, &self.statics, ItemSection::Statics);

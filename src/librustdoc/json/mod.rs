@@ -184,7 +184,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::Variant(_)
                 | types::ItemEnum::TraitAlias(_)
                 | types::ItemEnum::Impl(_)
-                | types::ItemEnum::Typedef(_)
+                | types::ItemEnum::TypeAlias(_)
                 | types::ItemEnum::OpaqueTy(_)
                 | types::ItemEnum::Constant(_)
                 | types::ItemEnum::Static(_)
