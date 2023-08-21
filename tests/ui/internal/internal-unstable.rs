@@ -8,7 +8,6 @@ extern crate internal_unstable;
 
 struct Baz {
     #[allow_internal_unstable]
-    //^ WARN `#[allow_internal_unstable]` is ignored on struct fields and match arms
     baz: u8,
 }
 
@@ -50,7 +49,6 @@ fn main() {
 
     match true {
         #[allow_internal_unstable]
-        //^ WARN `#[allow_internal_unstable]` is ignored on struct fields and match arms
         _ => {}
     }
 }

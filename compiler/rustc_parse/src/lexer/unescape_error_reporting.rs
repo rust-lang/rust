@@ -80,20 +80,14 @@ pub(crate) fn emit_unescape_error(
             let sugg = sugg.unwrap_or_else(|| {
                 let prefix = mode.prefix_noraw();
                 let mut escaped = String::with_capacity(lit.len());
-                let mut chrs = lit.chars().peekable();
-                while let Some(first) = chrs.next() {
-                    match (first, chrs.peek()) {
-                        ('\\', Some('"')) => {
-                            escaped.push('\\');
-                            escaped.push('"');
-                            chrs.next();
-                        }
-                        ('"', _) => {
-                            escaped.push('\\');
-                            escaped.push('"')
-                        }
-                        (c, _) => escaped.push(c),
-                    };
+                let mut in_escape = false;
+                for c in lit.chars() {
+                    match c {
+                        '\\' => in_escape = !in_escape,
+                        '"' if !in_escape => escaped.push('\\'),
+                        _ => in_escape = false,
+                    }
+                    escaped.push(c);
                 }
                 let sugg = format!("{prefix}\"{escaped}\"");
                 MoreThanOneCharSugg::Quotes {

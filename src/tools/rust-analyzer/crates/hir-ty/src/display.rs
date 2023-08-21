@@ -1809,6 +1809,25 @@ impl HirDisplay for Path {
             }
         }
 
+        // Convert trait's `Self` bound back to the surface syntax. Note there is no associated
+        // trait, so there can only be one path segment that `has_self_type`. The `Self` type
+        // itself can contain further qualified path through, which will be handled by recursive
+        // `hir_fmt`s.
+        //
+        // `trait_mod::Trait<Self = type_mod::Type, Args>::Assoc`
+        // =>
+        // `<type_mod::Type as trait_mod::Trait<Args>>::Assoc`
+        let trait_self_ty = self.segments().iter().find_map(|seg| {
+            let generic_args = seg.args_and_bindings?;
+            generic_args.has_self_type.then(|| &generic_args.args[0])
+        });
+        if let Some(ty) = trait_self_ty {
+            write!(f, "<")?;
+            ty.hir_fmt(f)?;
+            write!(f, " as ")?;
+            // Now format the path of the trait...
+        }
+
         for (seg_idx, segment) in self.segments().iter().enumerate() {
             if !matches!(self.kind(), PathKind::Plain) || seg_idx > 0 {
                 write!(f, "::")?;
@@ -1840,15 +1859,12 @@ impl HirDisplay for Path {
                     return Ok(());
                 }
 
-                write!(f, "<")?;
                 let mut first = true;
-                for arg in generic_args.args.iter() {
+                // Skip the `Self` bound if exists. It's handled outside the loop.
+                for arg in &generic_args.args[generic_args.has_self_type as usize..] {
                     if first {
                         first = false;
-                        if generic_args.has_self_type {
-                            // FIXME: Convert to `<Ty as Trait>` form.
-                            write!(f, "Self = ")?;
-                        }
+                        write!(f, "<")?;
                     } else {
                         write!(f, ", ")?;
                     }
@@ -1857,6 +1873,7 @@ impl HirDisplay for Path {
                 for binding in generic_args.bindings.iter() {
                     if first {
                         first = false;
+                        write!(f, "<")?;
                     } else {
                         write!(f, ", ")?;
                     }
@@ -1872,9 +1889,20 @@ impl HirDisplay for Path {
                         }
                     }
                 }
-                write!(f, ">")?;
+
+                // There may be no generic arguments to print, in case of a trait having only a
+                // single `Self` bound which is converted to `<Ty as Trait>::Assoc`.
+                if !first {
+                    write!(f, ">")?;
+                }
+
+                // Current position: `<Ty as Trait<Args>|`
+                if generic_args.has_self_type {
+                    write!(f, ">")?;
+                }
             }
         }
+
         Ok(())
     }
 }

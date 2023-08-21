@@ -1,7 +1,9 @@
 use crate::errors;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::join;
-use rustc_middle::dep_graph::{DepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{
+    DepGraph, SerializedDepGraph, WorkProduct, WorkProductId, WorkProductMap,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_serialize::Encodable as RustcEncodable;
@@ -101,7 +103,7 @@ pub fn save_work_product_index(
     // deleted during invalidation. Some object files don't change their
     // content, they are just not needed anymore.
     let previous_work_products = dep_graph.previous_work_products();
-    for (id, wp) in previous_work_products.iter() {
+    for (id, wp) in previous_work_products.to_sorted_stable_ord().iter() {
         if !new_work_products.contains_key(id) {
             work_product::delete_workproduct_files(sess, wp);
             debug_assert!(
@@ -146,7 +148,7 @@ fn encode_query_cache(tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult
 pub fn build_dep_graph(
     sess: &Session,
     prev_graph: SerializedDepGraph,
-    prev_work_products: FxIndexMap<WorkProductId, WorkProduct>,
+    prev_work_products: WorkProductMap,
 ) -> Option<DepGraph> {
     if sess.opts.incremental.is_none() {
         // No incremental compilation.

@@ -72,9 +72,9 @@ impl DocFS {
             let sender = self.errors.clone().expect("can't write after closing");
             self.pool.execute(move || {
                 fs::write(&path, contents).unwrap_or_else(|e| {
-                    sender.send(format!("\"{}\": {}", path.display(), e)).unwrap_or_else(|_| {
-                        panic!("failed to send error on \"{}\"", path.display())
-                    })
+                    sender.send(format!("\"{path}\": {e}", path = path.display())).unwrap_or_else(
+                        |_| panic!("failed to send error on \"{}\"", path.display()),
+                    )
                 });
             });
         } else {

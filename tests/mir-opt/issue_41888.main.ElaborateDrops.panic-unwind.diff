@@ -54,8 +54,12 @@
       }
   
       bb4 (cleanup): {
++         _7 = const true;
++         _8 = const true;
++         _9 = const true;
           _1 = move _3;
-          drop(_3) -> [return: bb11, unwind terminate];
+-         drop(_3) -> [return: bb11, unwind terminate];
++         goto -> bb11;
       }
   
       bb5: {
@@ -86,7 +90,7 @@
       bb9: {
           StorageDead(_2);
 -         drop(_1) -> [return: bb10, unwind continue];
-+         goto -> bb19;
++         goto -> bb18;
       }
   
       bb10: {
@@ -106,43 +110,39 @@
           resume;
 +     }
 + 
-+     bb13 (cleanup): {
-+         unreachable;
-+     }
-+ 
-+     bb14: {
++     bb13: {
 +         _7 = const false;
 +         goto -> bb10;
 +     }
 + 
-+     bb15 (cleanup): {
++     bb14 (cleanup): {
 +         goto -> bb12;
 +     }
 + 
-+     bb16: {
-+         drop(_1) -> [return: bb14, unwind: bb12];
++     bb15: {
++         drop(_1) -> [return: bb13, unwind: bb12];
 +     }
 + 
-+     bb17 (cleanup): {
++     bb16 (cleanup): {
 +         drop(_1) -> [return: bb12, unwind terminate];
 +     }
 + 
-+     bb18: {
++     bb17: {
 +         _10 = discriminant(_1);
-+         switchInt(move _10) -> [0: bb14, otherwise: bb16];
++         switchInt(move _10) -> [0: bb13, otherwise: bb15];
 +     }
 + 
-+     bb19: {
-+         switchInt(_7) -> [0: bb14, otherwise: bb18];
++     bb18: {
++         switchInt(_7) -> [0: bb13, otherwise: bb17];
++     }
++ 
++     bb19 (cleanup): {
++         _11 = discriminant(_1);
++         switchInt(move _11) -> [0: bb14, otherwise: bb16];
 +     }
 + 
 +     bb20 (cleanup): {
-+         _11 = discriminant(_1);
-+         switchInt(move _11) -> [0: bb15, otherwise: bb17];
-+     }
-+ 
-+     bb21 (cleanup): {
-+         switchInt(_7) -> [0: bb12, otherwise: bb20];
++         switchInt(_7) -> [0: bb12, otherwise: bb19];
       }
   }
   

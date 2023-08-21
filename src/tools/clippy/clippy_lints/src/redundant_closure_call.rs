@@ -52,7 +52,7 @@ impl ReturnVisitor {
 
 impl<'tcx> Visitor<'tcx> for ReturnVisitor {
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Ret(_) | hir::ExprKind::Match(.., hir::MatchSource::TryDesugar) = ex.kind {
+        if let hir::ExprKind::Ret(_) | hir::ExprKind::Match(.., hir::MatchSource::TryDesugar(_)) = ex.kind {
             self.found_return = true;
         } else {
             hir_visit::walk_expr(self, ex);

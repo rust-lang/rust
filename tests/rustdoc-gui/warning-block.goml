@@ -1,0 +1,45 @@
+// Test to check that the "warning blocks" are displayed as expected.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+show-text: true
+
+define-function: (
+    "check-warning",
+    (theme, color, border_color, background_color),
+    block {
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        reload:
+
+        // The IDs are added directly into the DOM to make writing this test easier.
+        assert-css: ("#doc-warning-1", {
+            "margin-bottom": "12px",
+            "color": |color|,
+            "border-left": "2px solid " + |border_color|,
+            "background-color": |background_color|,
+        })
+        assert-css: ("#doc-warning-2", {
+            "margin-bottom": "0px",
+            "color": |color|,
+            "border-left": "2px solid " + |border_color|,
+            "background-color": |background_color|,
+        })
+    },
+)
+
+call-function: ("check-warning", {
+    "theme": "ayu",
+    "color": "rgb(197, 197, 197)",
+    "border_color": "rgb(255, 142, 0)",
+    "background_color": "rgba(0, 0, 0, 0)",
+})
+call-function: ("check-warning", {
+    "theme": "dark",
+    "color": "rgb(221, 221, 221)",
+    "border_color": "rgb(255, 142, 0)",
+    "background_color": "rgba(0, 0, 0, 0)",
+})
+call-function: ("check-warning", {
+    "theme": "light",
+    "color": "rgb(0, 0, 0)",
+    "border_color": "rgb(255, 142, 0)",
+    "background_color": "rgba(0, 0, 0, 0)",
+})

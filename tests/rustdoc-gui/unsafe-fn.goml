@@ -23,6 +23,6 @@ define-function: (
     },
 )
 
-call-function: ("sup-check", ("dark", "rgb(221, 221, 221)"))
-call-function: ("sup-check", ("ayu", "rgb(197, 197, 197)"))
-call-function: ("sup-check", ("light", "rgb(0, 0, 0)"))
+call-function: ("sup-check", ("ayu", "#c5c5c5"))
+call-function: ("sup-check", ("dark", "#ddd"))
+call-function: ("sup-check", ("light", "black"))

@@ -112,6 +112,7 @@ impl<T: ?Sized> *mut T {
     /// [`cast_mut`]: #method.cast_mut
     #[stable(feature = "ptr_const_cast", since = "1.65.0")]
     #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
+    #[rustc_diagnostic_item = "ptr_cast_const"]
     #[inline(always)]
     pub const fn cast_const(self) -> *const T {
         self as _

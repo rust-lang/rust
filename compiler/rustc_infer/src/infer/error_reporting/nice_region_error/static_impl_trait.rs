@@ -146,7 +146,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = sub_origin {
             if let ObligationCauseCode::ReturnValue(hir_id)
-            | ObligationCauseCode::BlockTailExpression(hir_id) = cause.code()
+            | ObligationCauseCode::BlockTailExpression(hir_id, ..) = cause.code()
             {
                 let parent_id = tcx.hir().get_parent_item(*hir_id);
                 if let Some(fn_decl) = tcx.hir().fn_decl_by_hir_id(parent_id.into()) {

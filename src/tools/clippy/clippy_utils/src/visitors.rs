@@ -161,7 +161,7 @@ pub fn for_each_expr_with_closures<'tcx, B, C: Continue>(
 /// returns `true` if expr contains match expr desugared from try
 fn contains_try(expr: &hir::Expr<'_>) -> bool {
     for_each_expr(expr, |e| {
-        if matches!(e.kind, hir::ExprKind::Match(_, _, hir::MatchSource::TryDesugar)) {
+        if matches!(e.kind, hir::ExprKind::Match(_, _, hir::MatchSource::TryDesugar(_))) {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())

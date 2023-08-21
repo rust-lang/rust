@@ -192,7 +192,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
                     // The allow lint level is not expected,
                     // as if allow is specified, no message
                     // is to be emitted.
-                    v => unreachable!("Invalid lint level '{}'", v),
+                    v => unreachable!("Invalid lint level '{v}'"),
                 })
                 .unwrap_or("warn")
                 .to_string();
@@ -404,7 +404,7 @@ fn run_test(
     compiler.stdin(Stdio::piped());
     compiler.stderr(Stdio::piped());
 
-    debug!("compiler invocation for doctest: {:?}", compiler);
+    debug!("compiler invocation for doctest: {compiler:?}");
 
     let mut child = compiler.spawn().expect("Failed to spawn rustc process");
     {
@@ -469,7 +469,9 @@ fn run_test(
     // Run the code!
     let mut cmd;
 
+    let output_file = make_maybe_absolute_path(output_file);
     if let Some(tool) = runtool {
+        let tool = make_maybe_absolute_path(tool.into());
         cmd = Command::new(tool);
         cmd.args(runtool_args);
         cmd.arg(output_file);
@@ -501,6 +503,20 @@ fn run_test(
     }
 
     Ok(())
+}
+
+/// Converts a path intended to use as a command to absolute if it is
+/// relative, and not a single component.
+///
+/// This is needed to deal with relative paths interacting with
+/// `Command::current_dir` in a platform-specific way.
+fn make_maybe_absolute_path(path: PathBuf) -> PathBuf {
+    if path.components().count() == 1 {
+        // Look up process via PATH.
+        path
+    } else {
+        std::env::current_dir().map(|c| c.join(&path)).unwrap_or_else(|_| path)
+    }
 }
 
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
@@ -933,7 +949,7 @@ impl Collector {
         if !item_path.is_empty() {
             item_path.push(' ');
         }
-        format!("{} - {}(line {})", filename.prefer_local(), item_path, line)
+        format!("{} - {item_path}(line {line})", filename.prefer_local())
     }
 
     pub(crate) fn set_position(&mut self, position: Span) {
@@ -1010,7 +1026,7 @@ impl Tester for Collector {
             path.push(&test_id);
 
             if let Err(err) = std::fs::create_dir_all(&path) {
-                eprintln!("Couldn't create directory for doctest executables: {}", err);
+                eprintln!("Couldn't create directory for doctest executables: {err}");
                 panic::resume_unwind(Box::new(()));
             }
 
@@ -1079,7 +1095,7 @@ impl Tester for Collector {
                             eprint!("Test executable succeeded, but it's marked `should_panic`.");
                         }
                         TestFailure::MissingErrorCodes(codes) => {
-                            eprint!("Some expected error codes were not found: {:?}", codes);
+                            eprint!("Some expected error codes were not found: {codes:?}");
                         }
                         TestFailure::ExecutionError(err) => {
                             eprint!("Couldn't run the test: {err}");

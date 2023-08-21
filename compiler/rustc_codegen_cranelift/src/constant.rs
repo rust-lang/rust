@@ -550,8 +550,8 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                 match &bb_data.terminator().kind {
                     TerminatorKind::Goto { .. }
                     | TerminatorKind::SwitchInt { .. }
-                    | TerminatorKind::Resume
-                    | TerminatorKind::Terminate
+                    | TerminatorKind::UnwindResume
+                    | TerminatorKind::UnwindTerminate
                     | TerminatorKind::Return
                     | TerminatorKind::Unreachable
                     | TerminatorKind::Drop { .. }

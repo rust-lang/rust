@@ -3,7 +3,7 @@
 use crate::errors;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::unord::UnordMap;
-use rustc_middle::dep_graph::{SerializedDepGraph, WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{SerializedDepGraph, WorkProductMap};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::Decodable;
@@ -15,8 +15,6 @@ use super::data::*;
 use super::file_format;
 use super::fs::*;
 use super::work_product;
-
-type WorkProductMap = UnordMap<WorkProductId, WorkProduct>;
 
 #[derive(Debug)]
 /// Represents the result of an attempt to load incremental compilation data.

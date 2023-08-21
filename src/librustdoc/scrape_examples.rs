@@ -255,7 +255,7 @@ where
                 let fn_key = tcx.def_path_hash(*def_id);
                 let fn_entries = self.calls.entry(fn_key).or_default();
 
-                trace!("Including expr: {:?}", call_span);
+                trace!("Including expr: {call_span:?}");
                 let enclosing_item_span =
                     source_map.span_extend_to_prev_char(enclosing_item_span, '\n', false);
                 let location =
@@ -345,7 +345,7 @@ pub(crate) fn load_call_locations(
     let inner = || {
         let mut all_calls: AllCallLocations = FxHashMap::default();
         for path in with_examples {
-            let bytes = fs::read(&path).map_err(|e| format!("{} (for path {})", e, path))?;
+            let bytes = fs::read(&path).map_err(|e| format!("{e} (for path {path})"))?;
             let mut decoder = MemDecoder::new(&bytes, 0);
             let calls = AllCallLocations::decode(&mut decoder);
 
@@ -358,7 +358,7 @@ pub(crate) fn load_call_locations(
     };
 
     inner().map_err(|e: String| {
-        diag.err(format!("failed to load examples: {}", e));
+        diag.err(format!("failed to load examples: {e}"));
         1
     })
 }

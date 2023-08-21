@@ -215,7 +215,7 @@ pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
 ) -> Path {
     let kind = cx.tcx.def_kind(trait_ref.def_id()).into();
     if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
-        span_bug!(cx.tcx.def_span(trait_ref.def_id()), "`TraitRef` had unexpected kind {:?}", kind);
+        span_bug!(cx.tcx.def_span(trait_ref.def_id()), "`TraitRef` had unexpected kind {kind:?}");
     }
     inline::record_extern_fqn(cx, trait_ref.def_id(), kind);
     let path =
@@ -304,7 +304,7 @@ pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Life
         | ty::ReError(_)
         | ty::RePlaceholder(..)
         | ty::ReErased => {
-            debug!("cannot clean region {:?}", region);
+            debug!("cannot clean region {region:?}");
             None
         }
     }
@@ -1551,7 +1551,7 @@ fn first_non_private<'tcx>(
         }
         [parent, leaf] if parent.ident.name == kw::Super => {
             let parent_mod = cx.tcx.parent_module(hir_id);
-            if let Some(super_parent) = cx.tcx.opt_local_parent(parent_mod) {
+            if let Some(super_parent) = cx.tcx.opt_local_parent(parent_mod.to_local_def_id()) {
                 (super_parent, leaf.ident)
             } else {
                 // If we can't find the parent of the parent, then the parent is already the crate.
@@ -1867,11 +1867,11 @@ fn normalize<'tcx>(
         .map(|resolved| infcx.resolve_vars_if_possible(resolved.value));
     match normalized {
         Ok(normalized_value) => {
-            debug!("normalized {:?} to {:?}", ty, normalized_value);
+            debug!("normalized {ty:?} to {normalized_value:?}");
             Some(normalized_value)
         }
         Err(err) => {
-            debug!("failed to normalize {:?}: {:?}", ty, err);
+            debug!("failed to normalize {ty:?}: {err:?}");
             None
         }
     }
@@ -2828,7 +2828,7 @@ fn clean_use_statement_inner<'tcx>(
     // The parent of the module in which this import resides. This
     // is the same as `current_mod` if that's already the top
     // level module.
-    let parent_mod = cx.tcx.parent_module_from_def_id(current_mod);
+    let parent_mod = cx.tcx.parent_module_from_def_id(current_mod.to_local_def_id());
 
     // This checks if the import can be seen from a higher level module.
     // In other words, it checks if the visibility is the equivalent of

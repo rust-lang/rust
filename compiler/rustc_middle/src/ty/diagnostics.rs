@@ -1,6 +1,7 @@
 //! Diagnostics related methods for `Ty`.
 
 use std::borrow::Cow;
+use std::fmt::Write;
 use std::ops::ControlFlow;
 
 use crate::ty::{
@@ -335,10 +336,10 @@ pub fn suggest_constraining_type_params<'a>(
             //                                           - insert: `, X: Bar`
             suggestions.push((
                 generics.tail_span_for_predicate_suggestion(),
-                constraints
-                    .iter()
-                    .map(|&(constraint, _)| format!(", {param_name}: {constraint}"))
-                    .collect::<String>(),
+                constraints.iter().fold(String::new(), |mut string, &(constraint, _)| {
+                    write!(string, ", {param_name}: {constraint}").unwrap();
+                    string
+                }),
                 SuggestChangingConstraintsMessage::RestrictTypeFurther { ty: param_name },
             ));
             continue;

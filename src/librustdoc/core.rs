@@ -283,7 +283,7 @@ pub(crate) fn create_config(
 
                 let hir = tcx.hir();
                 let body = hir.body(hir.body_owned_by(def_id));
-                debug!("visiting body for {:?}", def_id);
+                debug!("visiting body for {def_id:?}");
                 EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
@@ -377,7 +377,7 @@ pub(crate) fn run_global_ctxt(
 
     fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler, sp: Span) {
         let mut msg =
-            diag.struct_span_warn(sp, format!("the `#![doc({})]` attribute is deprecated", name));
+            diag.struct_span_warn(sp, format!("the `#![doc({name})]` attribute is deprecated"));
         msg.note(
             "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
             for more information",
@@ -470,7 +470,7 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
     }
 
     fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
-        debug!("visiting path {:?}", path);
+        debug!("visiting path {path:?}");
         if path.res == Res::Err {
             // We have less context here than in rustc_resolve,
             // so we can only emit the name and span.
@@ -487,8 +487,7 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
                 self.tcx.sess,
                 path.span,
                 E0433,
-                "failed to resolve: {}",
-                label
+                "failed to resolve: {label}",
             );
             err.span_label(path.span, label);
             err.note("this error was originally ignored because you are running `rustdoc`");

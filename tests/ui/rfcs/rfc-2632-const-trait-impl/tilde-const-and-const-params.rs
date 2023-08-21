@@ -1,4 +1,4 @@
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 #![feature(generic_arg_infer)]
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
@@ -6,9 +6,10 @@
 struct Foo<const N: usize>;
 
 impl<const N: usize> Foo<N> {
-   fn add<A: ~const Add42>(self) -> Foo<{ A::add(N) }> {
-      Foo
-   }
+    fn add<A: ~const Add42>(self) -> Foo<{ A::add(N) }> {
+        //~^ ERROR mismatched types
+        Foo
+    }
 }
 
 #[const_trait]
@@ -24,7 +25,7 @@ impl const Add42 for () {
 
 fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
     //~^ ERROR `~const` is not allowed here
-    //~| ERROR cannot call
+    //~| ERROR mismatched types
     Foo
 }
 

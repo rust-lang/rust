@@ -368,7 +368,7 @@ pub enum TerminatorKind {
     ///
     /// Only permitted in cleanup blocks. `Resume` is not permitted with `-C unwind=abort` after
     /// deaggregation runs.
-    Resume,
+    UnwindResume,
 
     /// Indicates that the landing pad is finished and that the process should abort.
     ///
@@ -1057,7 +1057,7 @@ impl MirBody {
                     TerminatorKind::FalseEdge { .. }
                     | TerminatorKind::FalseUnwind { .. }
                     | TerminatorKind::Goto { .. }
-                    | TerminatorKind::Resume
+                    | TerminatorKind::UnwindResume
                     | TerminatorKind::GeneratorDrop
                     | TerminatorKind::Abort
                     | TerminatorKind::Return

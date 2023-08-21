@@ -47,7 +47,8 @@
   
       bb3 (cleanup): {
           _2 = move _5;
-          drop(_5) -> [return: bb8, unwind terminate];
+-         drop(_5) -> [return: bb8, unwind terminate];
++         goto -> bb8;
       }
   
       bb4: {
@@ -80,7 +81,7 @@
   
       bb9 (cleanup): {
 -         drop(_1) -> [return: bb10, unwind terminate];
-+         goto -> bb13;
++         goto -> bb12;
       }
   
       bb10 (cleanup): {
@@ -88,15 +89,11 @@
 +     }
 + 
 +     bb11 (cleanup): {
-+         unreachable;
-+     }
-+ 
-+     bb12 (cleanup): {
 +         drop(_1) -> [return: bb10, unwind terminate];
 +     }
 + 
-+     bb13 (cleanup): {
-+         switchInt(_6) -> [0: bb10, otherwise: bb12];
++     bb12 (cleanup): {
++         switchInt(_6) -> [0: bb10, otherwise: bb11];
       }
   }
   

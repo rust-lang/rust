@@ -459,6 +459,7 @@ impl Wtf8Buf {
     /// Converts this `Wtf8Buf` into a boxed `Wtf8`.
     #[inline]
     pub fn into_box(self) -> Box<Wtf8> {
+        // SAFETY: relies on `Wtf8` being `repr(transparent)`.
         unsafe { mem::transmute(self.bytes.into_boxed_slice()) }
     }
 
@@ -511,6 +512,7 @@ impl Extend<CodePoint> for Wtf8Buf {
 /// Similar to `&str`, but can additionally contain surrogate code points
 /// if they’re not in a surrogate pair.
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct Wtf8 {
     bytes: [u8],
 }

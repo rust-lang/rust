@@ -195,24 +195,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => unreachable!(),
                 };
 
-                let mut exact = false;
-                let cvt = op.to_i128_r(32, rnd, &mut exact);
-                let res = if cvt.status.intersects(
-                    rustc_apfloat::Status::INVALID_OP
-                        | rustc_apfloat::Status::OVERFLOW
-                        | rustc_apfloat::Status::UNDERFLOW,
-                ) {
-                    // Input is NaN (flagged with INVALID_OP) or does not fit
-                    // in an i32 (flagged with OVERFLOW or UNDERFLOW), fallback
-                    // to minimum acording to SSE semantics. The INEXACT flag
-                    // is ignored on purpose because rounding can happen during
-                    // float-to-int conversion.
-                    i32::MIN
-                } else {
-                    i32::try_from(cvt.value).unwrap()
-                };
+                let res = this.float_to_int_checked(op, dest.layout.ty, rnd).unwrap_or_else(|| {
+                    // Fallback to minimum acording to SSE semantics.
+                    Scalar::from_i32(i32::MIN)
+                });
 
-                this.write_scalar(Scalar::from_i32(res), dest)?;
+                this.write_scalar(res, dest)?;
             }
             // Use to implement _mm_cvtss_si64 and _mm_cvttss_si64.
             // Converts the first component of `op` from f32 to i64.
@@ -232,24 +220,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => unreachable!(),
                 };
 
-                let mut exact = false;
-                let cvt = op.to_i128_r(64, rnd, &mut exact);
-                let res = if cvt.status.intersects(
-                    rustc_apfloat::Status::INVALID_OP
-                        | rustc_apfloat::Status::OVERFLOW
-                        | rustc_apfloat::Status::UNDERFLOW,
-                ) {
-                    // Input is NaN (flagged with INVALID_OP) or does not fit
-                    // in an i64 (flagged with OVERFLOW or UNDERFLOW), fallback
-                    // to minimum acording to SSE semantics. The INEXACT flag
-                    // is ignored on purpose because rounding can happen during
-                    // float-to-int conversion.
-                    i64::MIN
-                } else {
-                    i64::try_from(cvt.value).unwrap()
-                };
+                let res = this.float_to_int_checked(op, dest.layout.ty, rnd).unwrap_or_else(|| {
+                    // Fallback to minimum acording to SSE semantics.
+                    Scalar::from_i64(i64::MIN)
+                });
 
-                this.write_scalar(Scalar::from_i64(res), dest)?;
+                this.write_scalar(res, dest)?;
             }
             // Used to implement the _mm_cvtsi32_ss function.
             // Converts `right` from i32 to f32. Returns a SIMD vector with

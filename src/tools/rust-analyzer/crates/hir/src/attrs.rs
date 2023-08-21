@@ -3,18 +3,19 @@
 use hir_def::{
     attr::{AttrsWithOwner, Documentation},
     item_scope::ItemInNs,
-    path::ModPath,
-    resolver::HasResolver,
-    AttrDefId, GenericParamId, ModuleDefId,
+    path::{ModPath, Path},
+    per_ns::Namespace,
+    resolver::{HasResolver, Resolver, TypeNs},
+    AssocItemId, AttrDefId, GenericParamId, ModuleDefId,
 };
-use hir_expand::hygiene::Hygiene;
+use hir_expand::{hygiene::Hygiene, name::Name};
 use hir_ty::db::HirDatabase;
 use syntax::{ast, AstNode};
 
 use crate::{
-    Adt, AssocItem, Const, ConstParam, Enum, ExternCrateDecl, Field, Function, GenericParam, Impl,
-    LifetimeParam, Macro, Module, ModuleDef, Static, Struct, Trait, TraitAlias, TypeAlias,
-    TypeParam, Union, Variant,
+    Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, Enum, ExternCrateDecl, Field,
+    Function, GenericParam, Impl, LifetimeParam, Macro, Module, ModuleDef, Static, Struct, Trait,
+    TraitAlias, TypeAlias, TypeParam, Union, Variant, VariantDef,
 };
 
 pub trait HasAttrs {
@@ -25,14 +26,14 @@ pub trait HasAttrs {
         db: &dyn HirDatabase,
         link: &str,
         ns: Option<Namespace>,
-    ) -> Option<ModuleDef>;
+    ) -> Option<DocLinkDef>;
 }
 
-#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
-pub enum Namespace {
-    Types,
-    Values,
-    Macros,
+/// Subset of `ide_db::Definition` that doc links can resolve to.
+pub enum DocLinkDef {
+    ModuleDef(ModuleDef),
+    Field(Field),
+    SelfType(Trait),
 }
 
 macro_rules! impl_has_attrs {
@@ -46,9 +47,14 @@ macro_rules! impl_has_attrs {
                 let def = AttrDefId::$def_id(self.into());
                 db.attrs(def).docs()
             }
-            fn resolve_doc_path(self, db: &dyn HirDatabase, link: &str, ns: Option<Namespace>) -> Option<ModuleDef> {
+            fn resolve_doc_path(
+                self,
+                db: &dyn HirDatabase,
+                link: &str,
+                ns: Option<Namespace>
+            ) -> Option<DocLinkDef> {
                 let def = AttrDefId::$def_id(self.into());
-                resolve_doc_path(db, def, link, ns).map(ModuleDef::from)
+                resolve_doc_path(db, def, link, ns)
             }
         }
     )*};
@@ -79,7 +85,12 @@ macro_rules! impl_has_attrs_enum {
             fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
                 $enum::$variant(self).docs(db)
             }
-            fn resolve_doc_path(self, db: &dyn HirDatabase, link: &str, ns: Option<Namespace>) -> Option<ModuleDef> {
+            fn resolve_doc_path(
+                self,
+                db: &dyn HirDatabase,
+                link: &str,
+                ns: Option<Namespace>
+            ) -> Option<DocLinkDef> {
                 $enum::$variant(self).resolve_doc_path(db, link, ns)
             }
         }
@@ -111,7 +122,7 @@ impl HasAttrs for AssocItem {
         db: &dyn HirDatabase,
         link: &str,
         ns: Option<Namespace>,
-    ) -> Option<ModuleDef> {
+    ) -> Option<DocLinkDef> {
         match self {
             AssocItem::Function(it) => it.resolve_doc_path(db, link, ns),
             AssocItem::Const(it) => it.resolve_doc_path(db, link, ns),
@@ -147,9 +158,9 @@ impl HasAttrs for ExternCrateDecl {
         db: &dyn HirDatabase,
         link: &str,
         ns: Option<Namespace>,
-    ) -> Option<ModuleDef> {
+    ) -> Option<DocLinkDef> {
         let def = AttrDefId::ExternCrateId(self.into());
-        resolve_doc_path(db, def, link, ns).map(ModuleDef::from)
+        resolve_doc_path(db, def, link, ns)
     }
 }
 
@@ -159,7 +170,7 @@ fn resolve_doc_path(
     def: AttrDefId,
     link: &str,
     ns: Option<Namespace>,
-) -> Option<ModuleDefId> {
+) -> Option<DocLinkDef> {
     let resolver = match def {
         AttrDefId::ModuleId(it) => it.resolver(db.upcast()),
         AttrDefId::FieldId(it) => it.parent.resolver(db.upcast()),
@@ -184,8 +195,107 @@ fn resolve_doc_path(
         .resolver(db.upcast()),
     };
 
-    let modpath = {
-        // FIXME: this is not how we should get a mod path here
+    let mut modpath = modpath_from_str(db, link)?;
+
+    let resolved = resolver.resolve_module_path_in_items(db.upcast(), &modpath);
+    if resolved.is_none() {
+        let last_name = modpath.pop_segment()?;
+        resolve_assoc_or_field(db, resolver, modpath, last_name, ns)
+    } else {
+        let def = match ns {
+            Some(Namespace::Types) => resolved.take_types(),
+            Some(Namespace::Values) => resolved.take_values(),
+            Some(Namespace::Macros) => resolved.take_macros().map(ModuleDefId::MacroId),
+            None => resolved.iter_items().next().map(|(it, _)| match it {
+                ItemInNs::Types(it) => it,
+                ItemInNs::Values(it) => it,
+                ItemInNs::Macros(it) => ModuleDefId::MacroId(it),
+            }),
+        };
+        Some(DocLinkDef::ModuleDef(def?.into()))
+    }
+}
+
+fn resolve_assoc_or_field(
+    db: &dyn HirDatabase,
+    resolver: Resolver,
+    path: ModPath,
+    name: Name,
+    ns: Option<Namespace>,
+) -> Option<DocLinkDef> {
+    let path = Path::from_known_path_with_no_generic(path);
+    // FIXME: This does not handle `Self` on trait definitions, which we should resolve to the
+    // trait itself.
+    let base_def = resolver.resolve_path_in_type_ns_fully(db.upcast(), &path)?;
+
+    let ty = match base_def {
+        TypeNs::SelfType(id) => Impl::from(id).self_ty(db),
+        TypeNs::GenericParam(_) => {
+            // Even if this generic parameter has some trait bounds, rustdoc doesn't
+            // resolve `name` to trait items.
+            return None;
+        }
+        TypeNs::AdtId(id) | TypeNs::AdtSelfType(id) => Adt::from(id).ty(db),
+        TypeNs::EnumVariantId(id) => {
+            // Enum variants don't have path candidates.
+            let variant = Variant::from(id);
+            return resolve_field(db, variant.into(), name, ns);
+        }
+        TypeNs::TypeAliasId(id) => {
+            let alias = TypeAlias::from(id);
+            if alias.as_assoc_item(db).is_some() {
+                // We don't normalize associated type aliases, so we have nothing to
+                // resolve `name` to.
+                return None;
+            }
+            alias.ty(db)
+        }
+        TypeNs::BuiltinType(id) => BuiltinType::from(id).ty(db),
+        TypeNs::TraitId(id) => {
+            // Doc paths in this context may only resolve to an item of this trait
+            // (i.e. no items of its supertraits), so we need to handle them here
+            // independently of others.
+            return db.trait_data(id).items.iter().find(|it| it.0 == name).map(|(_, assoc_id)| {
+                let def = match *assoc_id {
+                    AssocItemId::FunctionId(it) => ModuleDef::Function(it.into()),
+                    AssocItemId::ConstId(it) => ModuleDef::Const(it.into()),
+                    AssocItemId::TypeAliasId(it) => ModuleDef::TypeAlias(it.into()),
+                };
+                DocLinkDef::ModuleDef(def)
+            });
+        }
+        TypeNs::TraitAliasId(_) => {
+            // XXX: Do these get resolved?
+            return None;
+        }
+    };
+
+    // FIXME: Resolve associated items here, e.g. `Option::map`. Note that associated items take
+    // precedence over fields.
+
+    let variant_def = match ty.as_adt()? {
+        Adt::Struct(it) => it.into(),
+        Adt::Union(it) => it.into(),
+        Adt::Enum(_) => return None,
+    };
+    resolve_field(db, variant_def, name, ns)
+}
+
+fn resolve_field(
+    db: &dyn HirDatabase,
+    def: VariantDef,
+    name: Name,
+    ns: Option<Namespace>,
+) -> Option<DocLinkDef> {
+    if let Some(Namespace::Types | Namespace::Macros) = ns {
+        return None;
+    }
+    def.fields(db).into_iter().find(|f| f.name(db) == name).map(DocLinkDef::Field)
+}
+
+fn modpath_from_str(db: &dyn HirDatabase, link: &str) -> Option<ModPath> {
+    // FIXME: this is not how we should get a mod path here.
+    let try_get_modpath = |link: &str| {
         let ast_path = ast::SourceFile::parse(&format!("type T = {link};"))
             .syntax_node()
             .descendants()
@@ -193,23 +303,20 @@ fn resolve_doc_path(
         if ast_path.syntax().text() != link {
             return None;
         }
-        ModPath::from_src(db.upcast(), ast_path, &Hygiene::new_unhygienic())?
+        ModPath::from_src(db.upcast(), ast_path, &Hygiene::new_unhygienic())
     };
 
-    let resolved = resolver.resolve_module_path_in_items(db.upcast(), &modpath);
-    let resolved = if resolved.is_none() {
-        resolver.resolve_module_path_in_trait_assoc_items(db.upcast(), &modpath)?
-    } else {
-        resolved
-    };
-    match ns {
-        Some(Namespace::Types) => resolved.take_types(),
-        Some(Namespace::Values) => resolved.take_values(),
-        Some(Namespace::Macros) => resolved.take_macros().map(ModuleDefId::MacroId),
-        None => resolved.iter_items().next().map(|it| match it {
-            ItemInNs::Types(it) => it,
-            ItemInNs::Values(it) => it,
-            ItemInNs::Macros(it) => ModuleDefId::MacroId(it),
-        }),
+    let full = try_get_modpath(link);
+    if full.is_some() {
+        return full;
     }
+
+    // Tuple field names cannot be a part of `ModPath` usually, but rustdoc can
+    // resolve doc paths like `TupleStruct::0`.
+    // FIXME: Find a better way to handle these.
+    let (base, maybe_tuple_field) = link.rsplit_once("::")?;
+    let tuple_field = Name::new_tuple_field(maybe_tuple_field.parse().ok()?);
+    let mut modpath = try_get_modpath(base)?;
+    modpath.push_segment(tuple_field);
+    Some(modpath)
 }

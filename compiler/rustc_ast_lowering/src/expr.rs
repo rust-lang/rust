@@ -1648,7 +1648,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::Match(
             scrutinee,
             arena_vec![self; break_arm, continue_arm],
-            hir::MatchSource::TryDesugar,
+            hir::MatchSource::TryDesugar(scrutinee.hir_id),
         )
     }
 

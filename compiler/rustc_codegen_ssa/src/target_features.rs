@@ -296,6 +296,52 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
 
 const BPF_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[("alu32", Some(sym::bpf_target_feature))];
 
+const CSKY_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
+    ("10e60", Some(sym::csky_target_feature)),
+    ("2e3", Some(sym::csky_target_feature)),
+    ("3e3r1", Some(sym::csky_target_feature)),
+    ("3e3r2", Some(sym::csky_target_feature)),
+    ("3e3r3", Some(sym::csky_target_feature)),
+    ("3e7", Some(sym::csky_target_feature)),
+    ("7e10", Some(sym::csky_target_feature)),
+    ("cache", Some(sym::csky_target_feature)),
+    ("doloop", Some(sym::csky_target_feature)),
+    ("dsp1e2", Some(sym::csky_target_feature)),
+    ("dspe60", Some(sym::csky_target_feature)),
+    ("e1", Some(sym::csky_target_feature)),
+    ("e2", Some(sym::csky_target_feature)),
+    ("edsp", Some(sym::csky_target_feature)),
+    ("elrw", Some(sym::csky_target_feature)),
+    ("float1e2", Some(sym::csky_target_feature)),
+    ("float1e3", Some(sym::csky_target_feature)),
+    ("float3e4", Some(sym::csky_target_feature)),
+    ("float7e60", Some(sym::csky_target_feature)),
+    ("floate1", Some(sym::csky_target_feature)),
+    ("hard-tp", Some(sym::csky_target_feature)),
+    ("high-registers", Some(sym::csky_target_feature)),
+    ("hwdiv", Some(sym::csky_target_feature)),
+    ("mp", Some(sym::csky_target_feature)),
+    ("mp1e2", Some(sym::csky_target_feature)),
+    ("nvic", Some(sym::csky_target_feature)),
+    ("trust", Some(sym::csky_target_feature)),
+    ("vdsp2e60f", Some(sym::csky_target_feature)),
+    ("vdspv1", Some(sym::csky_target_feature)),
+    ("vdspv2", Some(sym::csky_target_feature)),
+    // tidy-alphabetical-end
+    //fpu
+    // tidy-alphabetical-start
+    ("fdivdu", Some(sym::csky_target_feature)),
+    ("fpuv2_df", Some(sym::csky_target_feature)),
+    ("fpuv2_sf", Some(sym::csky_target_feature)),
+    ("fpuv3_df", Some(sym::csky_target_feature)),
+    ("fpuv3_hf", Some(sym::csky_target_feature)),
+    ("fpuv3_hi", Some(sym::csky_target_feature)),
+    ("fpuv3_sf", Some(sym::csky_target_feature)),
+    ("hard-float", Some(sym::csky_target_feature)),
+    ("hard-float-abi", Some(sym::csky_target_feature)),
+    // tidy-alphabetical-end
+];
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -311,6 +357,7 @@ pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol
         .chain(RISCV_ALLOWED_FEATURES.iter())
         .chain(WASM_ALLOWED_FEATURES.iter())
         .chain(BPF_ALLOWED_FEATURES.iter())
+        .chain(CSKY_ALLOWED_FEATURES)
         .cloned()
 }
 
@@ -325,6 +372,7 @@ pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Opt
         "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
         "wasm32" | "wasm64" => WASM_ALLOWED_FEATURES,
         "bpf" => BPF_ALLOWED_FEATURES,
+        "csky" => CSKY_ALLOWED_FEATURES,
         _ => &[],
     }
 }
@@ -396,6 +444,7 @@ pub fn from_target_feature(
                 Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
                 Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
                 Some(sym::aarch64_ver_target_feature) => rust_features.aarch64_ver_target_feature,
+                Some(sym::csky_target_feature) => rust_features.csky_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };

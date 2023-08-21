@@ -1005,7 +1005,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// adjusted type of the expression, if successful.
     /// Adjustments are only recorded if the coercion succeeded.
     /// The expressions *must not* have any preexisting adjustments.
-    pub fn try_coerce(
+    pub fn coerce(
         &self,
         expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
@@ -1036,7 +1036,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    /// Same as `try_coerce()`, but without side-effects.
+    /// Same as `coerce()`, but without side-effects.
     ///
     /// Returns false if the coercion creates any obligations that result in
     /// errors.
@@ -1494,7 +1494,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 // Special-case the first expression we are coercing.
                 // To be honest, I'm not entirely sure why we do this.
                 // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
-                fcx.try_coerce(
+                fcx.coerce(
                     expression,
                     expression_ty,
                     self.expected_ty,
@@ -1603,7 +1603,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         );
                         err.span_label(cause.span, "return type is not `()`");
                     }
-                    ObligationCauseCode::BlockTailExpression(blk_id) => {
+                    ObligationCauseCode::BlockTailExpression(blk_id, ..) => {
                         let parent_id = fcx.tcx.hir().parent_id(blk_id);
                         err = self.report_return_mismatched_types(
                             cause,
@@ -1650,10 +1650,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
                 augment_error(&mut err);
 
-                let is_insufficiently_polymorphic =
-                    matches!(coercion_error, TypeError::RegionsInsufficientlyPolymorphic(..));
-
-                if !is_insufficiently_polymorphic && let Some(expr) = expression {
+                if let Some(expr) = expression {
                     fcx.emit_coerce_suggestions(
                         &mut err,
                         expr,
@@ -1751,7 +1748,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 ) && !in_external_macro(fcx.tcx.sess, cond_expr.span)
                     && !matches!(
                         cond_expr.kind,
-                        hir::ExprKind::Match(.., hir::MatchSource::TryDesugar)
+                        hir::ExprKind::Match(.., hir::MatchSource::TryDesugar(_))
                     )
             {
                 err.span_label(cond_expr.span, "expected this to be `()`");

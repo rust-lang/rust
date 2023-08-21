@@ -17,6 +17,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 - AVR
 - MSP430
 - M68k
+- CSKY
 - s390x
 
 ## Register classes
@@ -46,6 +47,8 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | M68k         | `reg`          | `d[0-7]`, `a[0-7]`                 | `r`                  |
 | M68k         | `reg_data`     | `d[0-7]`                           | `d`                  |
 | M68k         | `reg_addr`     | `a[0-3]`                           | `a`                  |
+| CSKY         | `reg`          | `r[0-31]`                          | `r`                  |
+| CSKY         | `freg`         | `f[0-31]`                          | `f`                  |
 | s390x        | `reg`          | `r[0-10]`, `r[12-14]`              | `r`                  |
 | s390x        | `freg`         | `f[0-15]`                          | `f`                  |
 
@@ -79,6 +82,8 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | MSP430       | `reg`                           | None           | `i8`, `i16`                             |
 | M68k         | `reg`, `reg_addr`               | None           | `i16`, `i32`                            |
 | M68k         | `reg_data`                      | None           | `i8`, `i16`, `i32`                      |
+| CSKY         | `reg`                           | None           | `i8`, `i16`, `i32`                      |
+| CSKY         | `freg`                          | None           | `f32`,                                  |
 | s390x        | `reg`                           | None           | `i8`, `i16`, `i32`, `i64`               |
 | s390x        | `freg`                          | None           | `f32`, `f64`                            |
 
@@ -102,6 +107,17 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | M68k         | `a5`          | `bp`      |
 | M68k         | `a6`          | `fp`      |
 | M68k         | `a7`          | `sp`, `usp`, `ssp`, `isp` |
+| CSKY         | `r[0-3]`      | `a[0-3]`  |
+| CSKY         | `r[4-11]`     | `l[0-7]`  |
+| CSKY         | `r[12-13]`    | `t[0-1]`  |
+| CSKY         | `r14`         | `sp`      |
+| CSKY         | `r15`         | `lr`      |
+| CSKY         | `r[16-17]`    | `l[8-9]`  |
+| CSKY         | `r[18-25]`    | `t[2-9]`  |
+| CSKY         | `r28`         | `rgb`     |
+| CSKY         | `r29`         | `rtb`     |
+| CSKY         | `r30`         | `svbr`    |
+| CSKY         | `r31`         | `tls`     |
 
 > **Notes**:
 > - TI does not mandate a frame pointer for MSP430, but toolchains are allowed
@@ -123,6 +139,13 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | AVR          | `r0`, `r1`, `r1r0`                      | Due to an issue in LLVM, the `r0` and `r1` registers cannot be used as inputs or outputs.  If modified, they must be restored to their original values before the end of the block. |
 |MSP430        | `r0`, `r2`, `r3`                        | These are the program counter, status register, and constant generator respectively. Neither the status register nor constant generator can be written to.                          |
 | M68k         | `a4`, `a5`                              | Used internally by LLVM for the base pointer and global base pointer. |
+| CSKY         | `r7`, `r28`                             | Used internally by LLVM for the base pointer and global base pointer. |
+| CSKY         | `r8`                                    | Used internally by LLVM for the frame pointer. |
+| CSKY         | `r14`                                   | Used internally by LLVM for the stack pointer. |
+| CSKY         | `r15`                                   | This is the link register. |
+| CSKY         | `r[26-30]`                              | Reserved by its ABI.       |
+| CSKY         | `r31`                                   | This is the TLS register.  |
+
 
 ## Template modifiers
 
@@ -139,6 +162,8 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `freg`         | None     | `0`            | None          |
 | s390x        | `reg`          | None     | `%r0`          | None          |
 | s390x        | `freg`         | None     | `%f0`          | None          |
+| CSKY         | `reg`          | None     | `r0`           | None          |
+| CSKY         | `freg`         | None     | `f0`           | None          |
 
 # Flags covered by `preserves_flags`
 

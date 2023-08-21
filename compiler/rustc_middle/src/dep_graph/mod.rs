@@ -8,7 +8,7 @@ mod dep_node;
 
 pub use rustc_query_system::dep_graph::{
     debug::DepNodeFilter, hash_result, DepContext, DepNodeColor, DepNodeIndex,
-    SerializedDepNodeIndex, WorkProduct, WorkProductId,
+    SerializedDepNodeIndex, WorkProduct, WorkProductId, WorkProductMap,
 };
 
 pub use dep_node::{label_strs, DepKind, DepNode, DepNodeExt};

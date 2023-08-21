@@ -12,7 +12,7 @@ fn ident<T>(t: T) -> T {
 fn direct_call(x: i32) -> i32 {
     mir!(
         {
-            Call(RET, retblock, ident(x))
+            Call(RET = ident(x), retblock)
         }
 
         retblock = {
@@ -26,7 +26,7 @@ fn direct_call(x: i32) -> i32 {
 fn indirect_call(x: i32, f: fn(i32) -> i32) -> i32 {
     mir!(
         {
-            Call(RET, retblock, f(x))
+            Call(RET = f(x), retblock)
         }
 
         retblock = {

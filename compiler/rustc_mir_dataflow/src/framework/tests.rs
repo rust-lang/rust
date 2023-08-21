@@ -198,14 +198,15 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         assert!(state.insert(idx));
     }
 
-    fn apply_terminator_effect(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         state: &mut Self::Domain,
-        _terminator: &mir::Terminator<'tcx>,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         let idx = self.effect(Effect::Primary.at_index(location.statement_index));
         assert!(state.insert(idx));
+        terminator.edges()
     }
 
     fn apply_before_terminator_effect(

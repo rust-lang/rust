@@ -267,14 +267,13 @@ impl str {
 
     /// Finds the closest `x` not below `index` where `is_char_boundary(x)` is `true`.
     ///
+    /// If `index` is greater than the length of the string, this returns the length of the string.
+    ///
     /// This method is the natural complement to [`floor_char_boundary`]. See that method
     /// for more details.
     ///
     /// [`floor_char_boundary`]: str::floor_char_boundary
     ///
-    /// # Panics
-    ///
-    /// Panics if `index > self.len()`.
     ///
     /// # Examples
     ///
@@ -292,7 +291,7 @@ impl str {
     #[inline]
     pub fn ceil_char_boundary(&self, index: usize) -> usize {
         if index > self.len() {
-            slice_error_fail(self, index, index)
+            self.len()
         } else {
             let upper_bound = Ord::min(index + 4, self.len());
             self.as_bytes()[index..upper_bound]

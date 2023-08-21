@@ -12,6 +12,7 @@ const OPTIONAL_COMPONENTS: &[&str] = &[
     "avr",
     "loongarch",
     "m68k",
+    "csky",
     "mips",
     "powerpc",
     "systemz",

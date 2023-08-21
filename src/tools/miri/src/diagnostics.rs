@@ -304,11 +304,21 @@ pub fn report_error<'tcx, 'mir>(
                     (None, format!("this usually indicates that your program performed an invalid operation and caused Undefined Behavior")),
                     (None, format!("but due to `-Zmiri-symbolic-alignment-check`, alignment errors can also be false positives")),
                 ],
-            UndefinedBehavior(_) =>
-                vec![
+            UndefinedBehavior(info) => {
+                let mut helps = vec![
                     (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
                     (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
-                ],
+                ];
+                if let UndefinedBehaviorInfo::PointerUseAfterFree(alloc_id, _) | UndefinedBehaviorInfo::PointerOutOfBounds { alloc_id, .. } = info {
+                    if let Some(span) = ecx.machine.allocated_span(*alloc_id) {
+                        helps.push((Some(span), format!("{:?} was allocated here:", alloc_id)));
+                    }
+                    if let Some(span) = ecx.machine.deallocated_span(*alloc_id) {
+                        helps.push((Some(span), format!("{:?} was deallocated here:", alloc_id)));
+                    }
+                }
+                helps
+            }
             InvalidProgram(
                 InvalidProgramInfo::AlreadyReported(_)
             ) => {

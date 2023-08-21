@@ -5,6 +5,7 @@ use rand::distributions::{Alphanumeric, DistString};
 
 mod common;
 use common::test_rng;
+use std::thread;
 
 #[track_caller]
 fn make_rand_name() -> OsString {
@@ -139,4 +140,23 @@ fn env_home_dir() {
             if let Some(olduserprofile) = olduserprofile { set_var("USERPROFILE", olduserprofile); }
         }
     }
+}
+
+#[test] // miri shouldn't detect any data race in this fn
+#[cfg_attr(any(not(miri), target_os = "emscripten"), ignore)]
+fn test_env_get_set_multithreaded() {
+    let getter = thread::spawn(|| {
+        for _ in 0..100 {
+            let _ = var_os("foo");
+        }
+    });
+
+    let setter = thread::spawn(|| {
+        for _ in 0..100 {
+            set_var("foo", "bar");
+        }
+    });
+
+    let _ = getter.join();
+    let _ = setter.join();
 }

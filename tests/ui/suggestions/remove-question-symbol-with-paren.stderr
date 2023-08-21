@@ -1,6 +1,9 @@
 error[E0308]: `?` operator has incompatible types
   --> $DIR/remove-question-symbol-with-paren.rs:5:6
    |
+LL | fn foo() -> Option<()> {
+   |             ---------- expected `Option<()>` because of return type
+LL |     let x = Some(());
 LL |     (x?)
    |      ^^ expected `Option<()>`, found `()`
    |

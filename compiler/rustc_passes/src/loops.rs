@@ -1,7 +1,7 @@
 use Context::*;
 
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Destination, Movability, Node};
 use rustc_middle::hir::map::Map;
@@ -34,7 +34,7 @@ struct CheckLoopVisitor<'a, 'hir> {
     cx: Context,
 }
 
-fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
+fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut CheckLoopVisitor { sess: &tcx.sess, hir_map: tcx.hir(), cx: Normal },

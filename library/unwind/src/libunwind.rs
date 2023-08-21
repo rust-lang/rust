@@ -54,6 +54,9 @@ pub const unwinder_private_data_size: usize = 2;
 #[cfg(any(target_arch = "mips", target_arch = "mips32r6"))]
 pub const unwinder_private_data_size: usize = 2;
 
+#[cfg(target_arch = "csky")]
+pub const unwinder_private_data_size: usize = 2;
+
 #[cfg(any(target_arch = "mips64", target_arch = "mips64r6"))]
 pub const unwinder_private_data_size: usize = 2;
 

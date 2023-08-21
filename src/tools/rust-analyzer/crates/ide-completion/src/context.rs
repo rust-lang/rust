@@ -155,11 +155,61 @@ pub(crate) struct ExprCtx {
 pub(crate) enum TypeLocation {
     TupleField,
     TypeAscription(TypeAscriptionTarget),
-    GenericArgList(Option<ast::GenericArgList>),
+    /// Generic argument position e.g. `Foo<$0>`
+    GenericArg {
+        /// The generic argument list containing the generic arg
+        args: Option<ast::GenericArgList>,
+        /// `Some(trait_)` if `trait_` is being instantiated with `args`
+        of_trait: Option<hir::Trait>,
+        /// The generic parameter being filled in by the generic arg
+        corresponding_param: Option<ast::GenericParam>,
+    },
+    /// Associated type equality constraint e.g. `Foo<Bar = $0>`
+    AssocTypeEq,
+    /// Associated constant equality constraint e.g. `Foo<X = $0>`
+    AssocConstEq,
     TypeBound,
     ImplTarget,
     ImplTrait,
     Other,
+}
+
+impl TypeLocation {
+    pub(crate) fn complete_lifetimes(&self) -> bool {
+        matches!(
+            self,
+            TypeLocation::GenericArg {
+                corresponding_param: Some(ast::GenericParam::LifetimeParam(_)),
+                ..
+            }
+        )
+    }
+
+    pub(crate) fn complete_consts(&self) -> bool {
+        match self {
+            TypeLocation::GenericArg {
+                corresponding_param: Some(ast::GenericParam::ConstParam(_)),
+                ..
+            } => true,
+            TypeLocation::AssocConstEq => true,
+            _ => false,
+        }
+    }
+
+    pub(crate) fn complete_types(&self) -> bool {
+        match self {
+            TypeLocation::GenericArg { corresponding_param: Some(param), .. } => {
+                matches!(param, ast::GenericParam::TypeParam(_))
+            }
+            TypeLocation::AssocConstEq => false,
+            TypeLocation::AssocTypeEq => true,
+            _ => true,
+        }
+    }
+
+    pub(crate) fn complete_self_type(&self) -> bool {
+        self.complete_types() && !matches!(self, TypeLocation::ImplTarget | TypeLocation::ImplTrait)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -301,6 +351,7 @@ pub(super) enum NameRefKind {
         expr: ast::RecordExpr,
     },
     Pattern(PatternContext),
+    ExternCrate,
 }
 
 /// The identifier we are currently completing.

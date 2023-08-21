@@ -38,9 +38,9 @@ fn outer() {
 "#,
         expect![[r#"
             block scope
-            CrateStruct: t
-            PlainStruct: t v
-            SelfStruct: t
+            CrateStruct: ti
+            PlainStruct: ti vi
+            SelfStruct: ti
             Struct: v
             SuperStruct: _
 
@@ -66,7 +66,7 @@ fn outer() {
 "#,
         expect![[r#"
             block scope
-            imported: t v
+            imported: ti vi
             name: v
 
             crate
@@ -92,9 +92,9 @@ fn outer() {
 "#,
         expect![[r#"
             block scope
-            inner1: t
+            inner1: ti
             inner2: v
-            outer: v
+            outer: vi
 
             block scope
             inner: v
@@ -121,7 +121,7 @@ struct Struct {}
 "#,
         expect![[r#"
             block scope
-            Struct: t
+            Struct: ti
 
             crate
             Struct: t
@@ -153,7 +153,7 @@ fn outer() {
 "#,
         expect![[r#"
             block scope
-            ResolveMe: t
+            ResolveMe: ti
 
             block scope
             m2: t
@@ -214,7 +214,7 @@ fn f() {
 "#,
         expect![[r#"
             block scope
-            ResolveMe: t
+            ResolveMe: ti
 
             block scope
             h: v
@@ -292,7 +292,7 @@ pub mod cov_mark {
             nested: v
 
             crate
-            cov_mark: t
+            cov_mark: ti
             f: v
         "#]],
     );

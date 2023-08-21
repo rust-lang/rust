@@ -776,7 +776,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     self.output.push(create_fn_mono_item(tcx, instance, source));
                 }
             }
-            mir::TerminatorKind::Terminate { .. } => {
+            mir::TerminatorKind::UnwindTerminate { .. } => {
                 let instance = Instance::mono(
                     tcx,
                     tcx.require_lang_item(LangItem::PanicCannotUnwind, Some(source)),
@@ -787,7 +787,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             }
             mir::TerminatorKind::Goto { .. }
             | mir::TerminatorKind::SwitchInt { .. }
-            | mir::TerminatorKind::Resume
+            | mir::TerminatorKind::UnwindResume
             | mir::TerminatorKind::Return
             | mir::TerminatorKind::Unreachable => {}
             mir::TerminatorKind::GeneratorDrop

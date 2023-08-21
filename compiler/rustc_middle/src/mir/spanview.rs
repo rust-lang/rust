@@ -238,45 +238,6 @@ pub fn source_range_no_file(tcx: TyCtxt<'_>, span: Span) -> String {
     format!("{}:{}-{}:{}", start.line, start.col.to_usize() + 1, end.line, end.col.to_usize() + 1)
 }
 
-pub fn statement_kind_name(statement: &Statement<'_>) -> &'static str {
-    use StatementKind::*;
-    match statement.kind {
-        Assign(..) => "Assign",
-        FakeRead(..) => "FakeRead",
-        SetDiscriminant { .. } => "SetDiscriminant",
-        Deinit(..) => "Deinit",
-        StorageLive(..) => "StorageLive",
-        StorageDead(..) => "StorageDead",
-        Retag(..) => "Retag",
-        PlaceMention(..) => "PlaceMention",
-        AscribeUserType(..) => "AscribeUserType",
-        Coverage(..) => "Coverage",
-        Intrinsic(..) => "Intrinsic",
-        ConstEvalCounter => "ConstEvalCounter",
-        Nop => "Nop",
-    }
-}
-
-pub fn terminator_kind_name(term: &Terminator<'_>) -> &'static str {
-    use TerminatorKind::*;
-    match term.kind {
-        Goto { .. } => "Goto",
-        SwitchInt { .. } => "SwitchInt",
-        Resume => "Resume",
-        Terminate => "Terminate",
-        Return => "Return",
-        Unreachable => "Unreachable",
-        Drop { .. } => "Drop",
-        Call { .. } => "Call",
-        Assert { .. } => "Assert",
-        Yield { .. } => "Yield",
-        GeneratorDrop => "GeneratorDrop",
-        FalseEdge { .. } => "FalseEdge",
-        FalseUnwind { .. } => "FalseUnwind",
-        InlineAsm { .. } => "InlineAsm",
-    }
-}
-
 fn statement_span_viewable<'tcx>(
     tcx: TyCtxt<'tcx>,
     body_span: Span,
@@ -304,7 +265,7 @@ fn terminator_span_viewable<'tcx>(
     if !body_span.contains(span) {
         return None;
     }
-    let id = format!("{}:{}", bb.index(), terminator_kind_name(term));
+    let id = format!("{}:{}", bb.index(), term.kind.name());
     let tooltip = tooltip(tcx, &id, span, vec![], &data.terminator);
     Some(SpanViewable { bb, span, id, tooltip })
 }
@@ -631,7 +592,7 @@ fn tooltip<'tcx>(
             "\n{}{}: {}: {:?}",
             TOOLTIP_INDENT,
             source_range,
-            statement_kind_name(&statement),
+            statement.kind.name(),
             statement
         ));
     }
@@ -641,7 +602,7 @@ fn tooltip<'tcx>(
             "\n{}{}: {}: {:?}",
             TOOLTIP_INDENT,
             source_range,
-            terminator_kind_name(term),
+            term.kind.name(),
             term.kind
         ));
     }

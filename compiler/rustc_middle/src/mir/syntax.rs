@@ -380,6 +380,28 @@ pub enum StatementKind<'tcx> {
     Nop,
 }
 
+impl StatementKind<'_> {
+    /// Returns a simple string representation of a `StatementKind` variant, independent of any
+    /// values it might hold (e.g. `StatementKind::Assign` always returns `"Assign"`).
+    pub const fn name(&self) -> &'static str {
+        match self {
+            StatementKind::Assign(..) => "Assign",
+            StatementKind::FakeRead(..) => "FakeRead",
+            StatementKind::SetDiscriminant { .. } => "SetDiscriminant",
+            StatementKind::Deinit(..) => "Deinit",
+            StatementKind::StorageLive(..) => "StorageLive",
+            StatementKind::StorageDead(..) => "StorageDead",
+            StatementKind::Retag(..) => "Retag",
+            StatementKind::PlaceMention(..) => "PlaceMention",
+            StatementKind::AscribeUserType(..) => "AscribeUserType",
+            StatementKind::Coverage(..) => "Coverage",
+            StatementKind::Intrinsic(..) => "Intrinsic",
+            StatementKind::ConstEvalCounter => "ConstEvalCounter",
+            StatementKind::Nop => "Nop",
+        }
+    }
+}
+
 #[derive(
     Clone,
     TyEncodable,
@@ -593,13 +615,13 @@ pub enum TerminatorKind<'tcx> {
     ///
     /// Only permitted in cleanup blocks. `Resume` is not permitted with `-C unwind=abort` after
     /// deaggregation runs.
-    Resume,
+    UnwindResume,
 
     /// Indicates that the landing pad is finished and that the process should terminate.
     ///
     /// Used to prevent unwinding for foreign items or with `-C unwind=abort`. Only permitted in
     /// cleanup blocks.
-    Terminate,
+    UnwindTerminate,
 
     /// Returns from the function.
     ///
@@ -790,8 +812,8 @@ impl TerminatorKind<'_> {
         match self {
             TerminatorKind::Goto { .. } => "Goto",
             TerminatorKind::SwitchInt { .. } => "SwitchInt",
-            TerminatorKind::Resume => "Resume",
-            TerminatorKind::Terminate => "Terminate",
+            TerminatorKind::UnwindResume => "UnwindResume",
+            TerminatorKind::UnwindTerminate => "UnwindTerminate",
             TerminatorKind::Return => "Return",
             TerminatorKind::Unreachable => "Unreachable",
             TerminatorKind::Drop { .. } => "Drop",

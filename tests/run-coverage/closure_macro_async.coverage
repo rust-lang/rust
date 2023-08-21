@@ -1,83 +1,83 @@
-    1|       |// compile-flags: --edition=2018
-    2|       |#![feature(no_coverage)]
-    3|       |
-    4|       |macro_rules! bail {
-    5|       |    ($msg:literal $(,)?) => {
-    6|       |        if $msg.len() > 0 {
-    7|       |            println!("no msg");
-    8|       |        } else {
-    9|       |            println!($msg);
-   10|       |        }
-   11|       |        return Err(String::from($msg));
-   12|       |    };
-   13|       |}
-   14|       |
-   15|       |macro_rules! on_error {
-   16|       |    ($value:expr, $error_message:expr) => {
-   17|       |        $value.or_else(|e| { // FIXME(85000): no coverage in closure macros
-   18|       |            let message = format!($error_message, e);
-   19|       |            if message.len() > 0 {
-   20|       |                println!("{}", message);
-   21|       |                Ok(String::from("ok"))
-   22|       |            } else {
-   23|       |                bail!("error");
-   24|       |            }
-   25|       |        })
-   26|       |    };
-   27|       |}
-   28|       |
-   29|      1|fn load_configuration_files() -> Result<String, String> {
-   30|      1|    Ok(String::from("config"))
-   31|      1|}
-   32|       |
-   33|      1|pub async fn test() -> Result<(), String> {
-   34|      1|    println!("Starting service");
-   35|      1|    let config = on_error!(load_configuration_files(), "Error loading configs: {}")?;
+   LL|       |// compile-flags: --edition=2018
+   LL|       |#![feature(no_coverage)]
+   LL|       |
+   LL|       |macro_rules! bail {
+   LL|       |    ($msg:literal $(,)?) => {
+   LL|       |        if $msg.len() > 0 {
+   LL|       |            println!("no msg");
+   LL|       |        } else {
+   LL|       |            println!($msg);
+   LL|       |        }
+   LL|       |        return Err(String::from($msg));
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|       |macro_rules! on_error {
+   LL|       |    ($value:expr, $error_message:expr) => {
+   LL|       |        $value.or_else(|e| { // FIXME(85000): no coverage in closure macros
+   LL|       |            let message = format!($error_message, e);
+   LL|       |            if message.len() > 0 {
+   LL|       |                println!("{}", message);
+   LL|       |                Ok(String::from("ok"))
+   LL|       |            } else {
+   LL|       |                bail!("error");
+   LL|       |            }
+   LL|       |        })
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|      1|fn load_configuration_files() -> Result<String, String> {
+   LL|      1|    Ok(String::from("config"))
+   LL|      1|}
+   LL|       |
+   LL|      1|pub async fn test() -> Result<(), String> {
+   LL|      1|    println!("Starting service");
+   LL|      1|    let config = on_error!(load_configuration_files(), "Error loading configs: {}")?;
                                                                                                  ^0
-   36|       |
-   37|      1|    let startup_delay_duration = String::from("arg");
-   38|      1|    let _ = (config, startup_delay_duration);
-   39|      1|    Ok(())
-   40|      1|}
-   41|       |
-   42|       |#[no_coverage]
-   43|       |fn main() {
-   44|       |    executor::block_on(test());
-   45|       |}
-   46|       |
-   47|       |mod executor {
-   48|       |    use core::{
-   49|       |        future::Future,
-   50|       |        pin::Pin,
-   51|       |        task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-   52|       |    };
-   53|       |
-   54|       |    #[no_coverage]
-   55|       |    pub fn block_on<F: Future>(mut future: F) -> F::Output {
-   56|       |        let mut future = unsafe { Pin::new_unchecked(&mut future) };
-   57|       |        use std::hint::unreachable_unchecked;
-   58|       |        static VTABLE: RawWakerVTable = RawWakerVTable::new(
-   59|       |
-   60|       |            #[no_coverage]
-   61|       |            |_| unsafe { unreachable_unchecked() }, // clone
-   62|       |
-   63|       |            #[no_coverage]
-   64|       |            |_| unsafe { unreachable_unchecked() }, // wake
-   65|       |
-   66|       |            #[no_coverage]
-   67|       |            |_| unsafe { unreachable_unchecked() }, // wake_by_ref
-   68|       |
-   69|       |            #[no_coverage]
-   70|       |            |_| (),
-   71|       |        );
-   72|       |        let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
-   73|       |        let mut context = Context::from_waker(&waker);
-   74|       |
-   75|       |        loop {
-   76|       |            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
-   77|       |                break val;
-   78|       |            }
-   79|       |        }
-   80|       |    }
-   81|       |}
+   LL|       |
+   LL|      1|    let startup_delay_duration = String::from("arg");
+   LL|      1|    let _ = (config, startup_delay_duration);
+   LL|      1|    Ok(())
+   LL|      1|}
+   LL|       |
+   LL|       |#[no_coverage]
+   LL|       |fn main() {
+   LL|       |    executor::block_on(test());
+   LL|       |}
+   LL|       |
+   LL|       |mod executor {
+   LL|       |    use core::{
+   LL|       |        future::Future,
+   LL|       |        pin::Pin,
+   LL|       |        task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
+   LL|       |    };
+   LL|       |
+   LL|       |    #[no_coverage]
+   LL|       |    pub fn block_on<F: Future>(mut future: F) -> F::Output {
+   LL|       |        let mut future = unsafe { Pin::new_unchecked(&mut future) };
+   LL|       |        use std::hint::unreachable_unchecked;
+   LL|       |        static VTABLE: RawWakerVTable = RawWakerVTable::new(
+   LL|       |
+   LL|       |            #[no_coverage]
+   LL|       |            |_| unsafe { unreachable_unchecked() }, // clone
+   LL|       |
+   LL|       |            #[no_coverage]
+   LL|       |            |_| unsafe { unreachable_unchecked() }, // wake
+   LL|       |
+   LL|       |            #[no_coverage]
+   LL|       |            |_| unsafe { unreachable_unchecked() }, // wake_by_ref
+   LL|       |
+   LL|       |            #[no_coverage]
+   LL|       |            |_| (),
+   LL|       |        );
+   LL|       |        let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
+   LL|       |        let mut context = Context::from_waker(&waker);
+   LL|       |
+   LL|       |        loop {
+   LL|       |            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
+   LL|       |                break val;
+   LL|       |            }
+   LL|       |        }
+   LL|       |    }
+   LL|       |}
 

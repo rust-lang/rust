@@ -192,8 +192,7 @@ fn init_logging(handler: &EarlyErrorHandler) {
         Ok("never") => false,
         Ok("auto") | Err(VarError::NotPresent) => io::stdout().is_terminal(),
         Ok(value) => handler.early_error(format!(
-            "invalid log color value '{}': expected one of always, never, or auto",
-            value
+            "invalid log color value '{value}': expected one of always, never, or auto",
         )),
         Err(VarError::NotUnicode(value)) => handler.early_error(format!(
             "invalid log color value '{}': expected one of always, never, or auto",
@@ -224,7 +223,7 @@ fn get_args(handler: &EarlyErrorHandler) -> Option<Vec<String>> {
         .map(|(i, arg)| {
             arg.into_string()
                 .map_err(|arg| {
-                    handler.early_warn(format!("Argument {} is not valid Unicode: {:?}", i, arg));
+                    handler.early_warn(format!("Argument {i} is not valid Unicode: {arg:?}"));
                 })
                 .ok()
         })
@@ -665,11 +664,10 @@ fn usage(argv0: &str) {
     for option in opts() {
         (option.apply)(&mut options);
     }
-    println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
+    println!("{}", options.usage(&format!("{argv0} [options] <input>")));
     println!("    @path               Read newline separated options from `path`\n");
     println!(
-        "More information available at {}/rustdoc/what-is-rustdoc.html",
-        DOC_RUST_LANG_ORG_CHANNEL
+        "More information available at {DOC_RUST_LANG_ORG_CHANNEL}/rustdoc/what-is-rustdoc.html",
     );
 }
 
@@ -699,7 +697,7 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
                 tcx.sess.struct_err(format!("couldn't generate documentation: {}", e.error));
             let file = e.file.display().to_string();
             if !file.is_empty() {
-                msg.note(format!("failed to create or modify \"{}\"", file));
+                msg.note(format!("failed to create or modify \"{file}\""));
             }
             Err(msg.emit())
         }

@@ -15,7 +15,11 @@ impl Ty {
     }
 }
 
-pub(crate) type Const = Opaque;
+#[derive(Debug, Clone)]
+pub struct Const {
+    pub literal: ConstantKind,
+}
+
 type Ident = Opaque;
 pub(crate) type Region = Opaque;
 type Span = Opaque;
@@ -428,12 +432,14 @@ pub struct UnevaluatedConst {
     pub promoted: Option<Promoted>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TraitSpecializationKind {
     None,
     Marker,
     AlwaysApplicable,
 }
 
+#[derive(Clone, Debug)]
 pub struct TraitDecl {
     pub def_id: TraitDef,
     pub unsafety: Safety,
@@ -450,6 +456,7 @@ pub struct TraitDecl {
 
 pub type ImplTrait = EarlyBinder<TraitRef>;
 
+#[derive(Clone, Debug)]
 pub struct TraitRef {
     pub def_id: TraitDef,
     pub args: GenericArgs,

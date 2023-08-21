@@ -11,8 +11,14 @@ LL | |         );
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
+help: ALLOC was allocated here:
+  --> $DIR/simd-scatter.rs:LL:CC
+   |
+LL |         let mut vec: Vec<i8> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: BACKTRACE (of the first span):
    = note: inside `main` at $DIR/simd-scatter.rs:LL:CC
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

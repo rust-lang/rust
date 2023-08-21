@@ -186,9 +186,9 @@ impl<'mir, 'tcx, C: TerminatorClassifier<'tcx>> TriColorVisitor<BasicBlocks<'tcx
 
         match self.body[bb].terminator().kind {
             // These terminators return control flow to the caller.
-            TerminatorKind::Terminate
+            TerminatorKind::UnwindTerminate
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::Resume
+            | TerminatorKind::UnwindResume
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. } => ControlFlow::Break(NonRecursive),

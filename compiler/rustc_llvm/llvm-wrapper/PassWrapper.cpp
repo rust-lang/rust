@@ -105,6 +105,12 @@ extern "C" void LLVMTimeTraceProfilerFinish(const char* FileName) {
 #define SUBTARGET_M68K
 #endif
 
+#ifdef LLVM_COMPONENT_CSKY
+#define SUBTARGET_CSKY SUBTARGET(CSKY)
+#else
+#define SUBTARGET_CSKY
+#endif
+
 #ifdef LLVM_COMPONENT_MIPS
 #define SUBTARGET_MIPS SUBTARGET(Mips)
 #else
@@ -159,6 +165,7 @@ extern "C" void LLVMTimeTraceProfilerFinish(const char* FileName) {
   SUBTARGET_AARCH64                                                            \
   SUBTARGET_AVR                                                                \
   SUBTARGET_M68K                                                               \
+  SUBTARGET_CSKY                                                               \
   SUBTARGET_MIPS                                                               \
   SUBTARGET_PPC                                                                \
   SUBTARGET_SYSTEMZ                                                            \

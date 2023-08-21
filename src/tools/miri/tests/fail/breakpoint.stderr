@@ -1,8 +1,8 @@
-error: abnormal termination: Trace/breakpoint trap
+error: abnormal termination: trace/breakpoint trap
   --> $DIR/breakpoint.rs:LL:CC
    |
 LL |         core::intrinsics::breakpoint()
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Trace/breakpoint trap
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trace/breakpoint trap
    |
    = note: inside `main` at $DIR/breakpoint.rs:LL:CC
 

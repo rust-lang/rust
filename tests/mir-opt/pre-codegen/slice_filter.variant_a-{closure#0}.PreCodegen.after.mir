@@ -3,138 +3,206 @@
 fn variant_a::{closure#0}(_1: &mut [closure@$DIR/slice_filter.rs:7:25: 7:39], _2: &&(usize, usize, usize, usize)) -> bool {
     let mut _0: bool;
     let mut _3: &(usize, usize, usize, usize);
-    let mut _4: &(usize, usize, usize, usize);
+    let _4: &usize;
     let mut _5: &(usize, usize, usize, usize);
-    let mut _6: &(usize, usize, usize, usize);
-    let mut _9: bool;
-    let mut _10: bool;
-    let mut _13: bool;
+    let _6: &usize;
+    let mut _7: &(usize, usize, usize, usize);
+    let _8: &usize;
+    let mut _9: &(usize, usize, usize, usize);
+    let _10: &usize;
+    let _11: &usize;
     let mut _16: bool;
     let mut _17: bool;
-    let mut _20: bool;
+    let _18: &usize;
+    let mut _23: bool;
+    let _24: &usize;
+    let mut _29: bool;
+    let mut _30: bool;
+    let _31: &usize;
+    let mut _36: bool;
+    let mut _37: &&usize;
+    let mut _38: &&usize;
+    let mut _39: &&usize;
+    let mut _40: &&usize;
+    let mut _41: &&usize;
+    let mut _42: &&usize;
+    let mut _43: &&usize;
+    let mut _44: &&usize;
     scope 1 {
-        debug a => &((*_3).0: usize);
-        debug b => &((*_4).1: usize);
-        debug c => &((*_5).2: usize);
-        debug d => &((*_6).3: usize);
+        debug a => _4;
+        debug b => _6;
+        debug c => _8;
+        debug d => _10;
         scope 2 (inlined cmp::impls::<impl PartialOrd for &usize>::le) {
-            debug self => &&((*_3).0: usize);
-            debug other => &&((*_5).2: usize);
+            debug self => _37;
+            debug other => _38;
+            let mut _12: &usize;
+            let mut _13: &usize;
             scope 3 (inlined cmp::impls::<impl PartialOrd for usize>::le) {
-                debug self => &((*_3).0: usize);
-                debug other => &((*_5).2: usize);
-                let mut _7: usize;
-                let mut _8: usize;
-            }
-        }
-        scope 4 (inlined cmp::impls::<impl PartialOrd for &usize>::le) {
-            debug self => &&((*_5).2: usize);
-            debug other => &&((*_3).0: usize);
-            scope 5 (inlined cmp::impls::<impl PartialOrd for usize>::le) {
-                debug self => &((*_5).2: usize);
-                debug other => &((*_3).0: usize);
+                debug self => _12;
+                debug other => _13;
                 let mut _14: usize;
                 let mut _15: usize;
             }
         }
+        scope 4 (inlined cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _41;
+            debug other => _42;
+            let mut _25: &usize;
+            let mut _26: &usize;
+            scope 5 (inlined cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _25;
+                debug other => _26;
+                let mut _27: usize;
+                let mut _28: usize;
+            }
+        }
         scope 6 (inlined cmp::impls::<impl PartialOrd for &usize>::le) {
-            debug self => &&((*_6).3: usize);
-            debug other => &&((*_4).1: usize);
+            debug self => _39;
+            debug other => _40;
+            let mut _19: &usize;
+            let mut _20: &usize;
             scope 7 (inlined cmp::impls::<impl PartialOrd for usize>::le) {
-                debug self => &((*_6).3: usize);
-                debug other => &((*_4).1: usize);
-                let mut _11: usize;
-                let mut _12: usize;
+                debug self => _19;
+                debug other => _20;
+                let mut _21: usize;
+                let mut _22: usize;
             }
         }
         scope 8 (inlined cmp::impls::<impl PartialOrd for &usize>::le) {
-            debug self => &&((*_4).1: usize);
-            debug other => &&((*_6).3: usize);
+            debug self => _43;
+            debug other => _44;
+            let mut _32: &usize;
+            let mut _33: &usize;
             scope 9 (inlined cmp::impls::<impl PartialOrd for usize>::le) {
-                debug self => &((*_4).1: usize);
-                debug other => &((*_6).3: usize);
-                let mut _18: usize;
-                let mut _19: usize;
+                debug self => _32;
+                debug other => _33;
+                let mut _34: usize;
+                let mut _35: usize;
             }
         }
     }
 
     bb0: {
+        StorageLive(_4);
         _3 = deref_copy (*_2);
-        _4 = deref_copy (*_2);
+        _4 = &((*_3).0: usize);
+        StorageLive(_6);
         _5 = deref_copy (*_2);
-        _6 = deref_copy (*_2);
-        StorageLive(_10);
-        StorageLive(_9);
-        StorageLive(_7);
-        _7 = ((*_3).0: usize);
+        _6 = &((*_5).1: usize);
         StorageLive(_8);
-        _8 = ((*_5).2: usize);
-        _9 = Le(move _7, move _8);
-        StorageDead(_8);
-        StorageDead(_7);
-        switchInt(move _9) -> [0: bb1, otherwise: bb2];
+        _7 = deref_copy (*_2);
+        _8 = &((*_7).2: usize);
+        StorageLive(_10);
+        _9 = deref_copy (*_2);
+        _10 = &((*_9).3: usize);
+        StorageLive(_17);
+        StorageLive(_16);
+        StorageLive(_37);
+        StorageLive(_38);
+        StorageLive(_11);
+        _11 = _8;
+        _12 = deref_copy _4;
+        _13 = deref_copy _11;
+        StorageLive(_14);
+        _14 = (*_12);
+        StorageLive(_15);
+        _15 = (*_13);
+        _16 = Le(move _14, move _15);
+        StorageDead(_15);
+        StorageDead(_14);
+        StorageDead(_11);
+        StorageDead(_38);
+        StorageDead(_37);
+        switchInt(move _16) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
-        _10 = const false;
+        _17 = const false;
         goto -> bb3;
     }
 
     bb2: {
-        StorageLive(_13);
-        StorageLive(_11);
-        _11 = ((*_6).3: usize);
-        StorageLive(_12);
-        _12 = ((*_4).1: usize);
-        _13 = Le(move _11, move _12);
-        StorageDead(_12);
-        StorageDead(_11);
-        _10 = move _13;
+        StorageLive(_23);
+        StorageLive(_39);
+        StorageLive(_40);
+        StorageLive(_18);
+        _18 = _6;
+        _19 = deref_copy _10;
+        _20 = deref_copy _18;
+        StorageLive(_21);
+        _21 = (*_19);
+        StorageLive(_22);
+        _22 = (*_20);
+        _23 = Le(move _21, move _22);
+        StorageDead(_22);
+        StorageDead(_21);
+        StorageDead(_18);
+        StorageDead(_40);
+        StorageDead(_39);
+        _17 = move _23;
         goto -> bb3;
     }
 
     bb3: {
-        StorageDead(_13);
-        StorageDead(_9);
-        switchInt(move _10) -> [0: bb4, otherwise: bb8];
+        StorageDead(_23);
+        StorageDead(_16);
+        switchInt(move _17) -> [0: bb4, otherwise: bb8];
     }
 
     bb4: {
-        StorageLive(_17);
-        StorageLive(_16);
-        StorageLive(_14);
-        _14 = ((*_5).2: usize);
-        StorageLive(_15);
-        _15 = ((*_3).0: usize);
-        _16 = Le(move _14, move _15);
-        StorageDead(_15);
-        StorageDead(_14);
-        switchInt(move _16) -> [0: bb5, otherwise: bb6];
+        StorageLive(_30);
+        StorageLive(_29);
+        StorageLive(_41);
+        StorageLive(_42);
+        StorageLive(_24);
+        _24 = _4;
+        _25 = deref_copy _8;
+        _26 = deref_copy _24;
+        StorageLive(_27);
+        _27 = (*_25);
+        StorageLive(_28);
+        _28 = (*_26);
+        _29 = Le(move _27, move _28);
+        StorageDead(_28);
+        StorageDead(_27);
+        StorageDead(_24);
+        StorageDead(_42);
+        StorageDead(_41);
+        switchInt(move _29) -> [0: bb5, otherwise: bb6];
     }
 
     bb5: {
-        _17 = const false;
+        _30 = const false;
         goto -> bb7;
     }
 
     bb6: {
-        StorageLive(_20);
-        StorageLive(_18);
-        _18 = ((*_4).1: usize);
-        StorageLive(_19);
-        _19 = ((*_6).3: usize);
-        _20 = Le(move _18, move _19);
-        StorageDead(_19);
-        StorageDead(_18);
-        _17 = move _20;
+        StorageLive(_36);
+        StorageLive(_43);
+        StorageLive(_44);
+        StorageLive(_31);
+        _31 = _10;
+        _32 = deref_copy _6;
+        _33 = deref_copy _31;
+        StorageLive(_34);
+        _34 = (*_32);
+        StorageLive(_35);
+        _35 = (*_33);
+        _36 = Le(move _34, move _35);
+        StorageDead(_35);
+        StorageDead(_34);
+        StorageDead(_31);
+        StorageDead(_44);
+        StorageDead(_43);
+        _30 = move _36;
         goto -> bb7;
     }
 
     bb7: {
-        StorageDead(_20);
-        StorageDead(_16);
-        _0 = move _17;
+        StorageDead(_36);
+        StorageDead(_29);
+        _0 = move _30;
         goto -> bb9;
     }
 
@@ -144,8 +212,12 @@ fn variant_a::{closure#0}(_1: &mut [closure@$DIR/slice_filter.rs:7:25: 7:39], _2
     }
 
     bb9: {
+        StorageDead(_30);
         StorageDead(_17);
         StorageDead(_10);
+        StorageDead(_8);
+        StorageDead(_6);
+        StorageDead(_4);
         return;
     }
 }

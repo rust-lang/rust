@@ -62,8 +62,6 @@ xflags::xflags! {
             optional --randomize
             /// Run type inference in parallel.
             optional --parallel
-            /// Collect memory usage statistics.
-            optional --memory-usage
             /// Print the total length of all source and macro files (whitespace is not counted).
             optional --source-stats
 
@@ -191,7 +189,6 @@ pub struct AnalysisStats {
     pub output: Option<OutputFormat>,
     pub randomize: bool,
     pub parallel: bool,
-    pub memory_usage: bool,
     pub source_stats: bool,
     pub only: Option<String>,
     pub with_deps: bool,

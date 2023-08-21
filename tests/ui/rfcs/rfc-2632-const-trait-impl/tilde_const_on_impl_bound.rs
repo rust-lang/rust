@@ -1,6 +1,6 @@
 // known-bug: #110395
 // FIXME check-pass
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 trait Foo {

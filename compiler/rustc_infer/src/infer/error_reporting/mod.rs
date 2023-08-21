@@ -743,6 +743,35 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::Pattern { origin_expr: false, span: Some(span), .. } => {
                 err.span_label(span, "expected due to this");
             }
+            ObligationCauseCode::BlockTailExpression(
+                _,
+                hir::MatchSource::TryDesugar(scrut_hir_id),
+            ) => {
+                if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
+                    let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
+                    let scrut_ty = if let hir::ExprKind::Call(_, args) = &scrut_expr.kind {
+                        let arg_expr = args.first().expect("try desugaring call w/out arg");
+                        self.typeck_results.as_ref().and_then(|typeck_results| {
+                            typeck_results.expr_ty_opt(arg_expr)
+                        })
+                    } else {
+                        bug!("try desugaring w/out call expr as scrutinee");
+                    };
+
+                    match scrut_ty {
+                        Some(ty) if expected == ty => {
+                            let source_map = self.tcx.sess.source_map();
+                            err.span_suggestion(
+                                source_map.end_point(cause.span()),
+                                "try removing this `?`",
+                                "",
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            },
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                 arm_block_id,
                 arm_span,
@@ -752,12 +781,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 prior_arm_ty,
                 source,
                 ref prior_arms,
-                scrut_hir_id,
                 opt_suggest_box_span,
                 scrut_span,
                 ..
             }) => match source {
-                hir::MatchSource::TryDesugar => {
+                hir::MatchSource::TryDesugar(scrut_hir_id) => {
                     if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
                         let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
                         let scrut_ty = if let hir::ExprKind::Call(_, args) = &scrut_expr.kind {
@@ -1927,7 +1955,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     true
                 };
 
-            if should_suggest_fixes {
+            // FIXME(#73154): For now, we do leak check when coercing function
+            // pointers in typeck, instead of only during borrowck. This can lead
+            // to these `RegionsInsufficientlyPolymorphic` errors that aren't helpful.
+            if should_suggest_fixes
+                && !matches!(terr, TypeError::RegionsInsufficientlyPolymorphic(..))
+            {
                 self.suggest_tuple_pattern(cause, &exp_found, diag);
                 self.suggest_accessing_field_where_appropriate(cause, &exp_found, diag);
                 self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
@@ -1973,7 +2006,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         trace: &TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
     ) -> Vec<TypeErrorAdditionalDiags> {
-        use crate::traits::ObligationCauseCode::MatchExpressionArm;
+        use crate::traits::ObligationCauseCode::{BlockTailExpression, MatchExpressionArm};
         let mut suggestions = Vec::new();
         let span = trace.cause.span();
         let values = self.resolve_vars_if_possible(trace.values);
@@ -1991,11 +2024,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 // specify a byte literal
                 (ty::Uint(ty::UintTy::U8), ty::Char) => {
                     if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
-                        && let Some(code) = code.strip_prefix('\'').and_then(|s| s.strip_suffix('\''))
-                        && !code.starts_with("\\u") // forbid all Unicode escapes
-                        && code.chars().next().is_some_and(|c| c.is_ascii()) // forbids literal Unicode characters beyond ASCII
+                        && let Some(code) =
+                            code.strip_prefix('\'').and_then(|s| s.strip_suffix('\''))
+                        // forbid all Unicode escapes
+                        && !code.starts_with("\\u")
+                        // forbids literal Unicode characters beyond ASCII
+                        && code.chars().next().is_some_and(|c| c.is_ascii())
                     {
-                        suggestions.push(TypeErrorAdditionalDiags::MeantByteLiteral { span, code: escape_literal(code) })
+                        suggestions.push(TypeErrorAdditionalDiags::MeantByteLiteral {
+                            span,
+                            code: escape_literal(code),
+                        })
                     }
                 }
                 // If a character was expected and the found expression is a string literal
@@ -2006,7 +2045,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         && let Some(code) = code.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
                         && code.chars().count() == 1
                     {
-                        suggestions.push(TypeErrorAdditionalDiags::MeantCharLiteral { span, code: escape_literal(code) })
+                        suggestions.push(TypeErrorAdditionalDiags::MeantCharLiteral {
+                            span,
+                            code: escape_literal(code),
+                        })
                     }
                 }
                 // If a string was expected and the found expression is a character literal,
@@ -2016,7 +2058,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         if let Some(code) =
                             code.strip_prefix('\'').and_then(|s| s.strip_suffix('\''))
                         {
-                            suggestions.push(TypeErrorAdditionalDiags::MeantStrLiteral { span, code: escape_literal(code) })
+                            suggestions.push(TypeErrorAdditionalDiags::MeantStrLiteral {
+                                span,
+                                code: escape_literal(code),
+                            })
                         }
                     }
                 }
@@ -2025,17 +2070,24 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 (ty::Bool, ty::Tuple(list)) => if list.len() == 0 {
                     suggestions.extend(self.suggest_let_for_letchains(&trace.cause, span));
                 }
-                (ty::Array(_, _), ty::Array(_, _)) => suggestions.extend(self.suggest_specify_actual_length(terr, trace, span)),
+                (ty::Array(_, _), ty::Array(_, _)) => {
+                    suggestions.extend(self.suggest_specify_actual_length(terr, trace, span))
+                }
                 _ => {}
             }
         }
         let code = trace.cause.code();
-        if let &MatchExpressionArm(box MatchExpressionArmCause { source, .. }) = code
-                    && let hir::MatchSource::TryDesugar = source
-                    && let Some((expected_ty, found_ty, _, _)) = self.values_str(trace.values)
-                {
-                    suggestions.push(TypeErrorAdditionalDiags::TryCannotConvert { found: found_ty.content(), expected: expected_ty.content() });
-                }
+        if let &(MatchExpressionArm(box MatchExpressionArmCause { source, .. })
+            | BlockTailExpression(.., source)
+        ) = code
+            && let hir::MatchSource::TryDesugar(_) = source
+            && let Some((expected_ty, found_ty, _, _)) = self.values_str(trace.values)
+        {
+            suggestions.push(TypeErrorAdditionalDiags::TryCannotConvert {
+                found: found_ty.content(),
+                expected: expected_ty.content(),
+            });
+        }
         suggestions
     }
 
@@ -2905,8 +2957,11 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => {
                 ObligationCauseFailureCode::ConstCompat { span, subdiags }
             }
+            BlockTailExpression(.., hir::MatchSource::TryDesugar(_)) => {
+                ObligationCauseFailureCode::TryCompat { span, subdiags }
+            }
             MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => match source {
-                hir::MatchSource::TryDesugar => {
+                hir::MatchSource::TryDesugar(_) => {
                     ObligationCauseFailureCode::TryCompat { span, subdiags }
                 }
                 _ => ObligationCauseFailureCode::MatchCompat { span, subdiags },

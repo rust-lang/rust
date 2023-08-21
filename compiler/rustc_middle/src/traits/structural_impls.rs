@@ -13,8 +13,8 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
                 write!(f, "Builtin({source:?}, {d:?})")
             }
 
-            super::ImplSource::Param(ct, n) => {
-                write!(f, "ImplSourceParamData({n:?}, {ct:?})")
+            super::ImplSource::Param(n) => {
+                write!(f, "ImplSourceParamData({n:?})")
             }
         }
     }

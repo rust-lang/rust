@@ -599,6 +599,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 = self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
             // Only suggest removing parens if there are no arguments
             && arg_exprs.is_empty()
+            && call_expr.span.contains(callee_expr.span)
         {
             let descr = match kind {
                 def::CtorOf::Struct => "struct",

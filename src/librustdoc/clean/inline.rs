@@ -9,7 +9,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdSet, LocalModDefId};
 use rustc_hir::Mutability;
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -50,7 +50,7 @@ pub(crate) fn try_inline(
     }
     let mut ret = Vec::new();
 
-    debug!("attrs={:?}", attrs);
+    debug!("attrs={attrs:?}");
 
     let attrs_without_docs = attrs.map(|(attrs, def_id)| {
         (attrs.into_iter().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>(), def_id)
@@ -138,7 +138,7 @@ pub(crate) fn try_inline(
 pub(crate) fn try_inline_glob(
     cx: &mut DocContext<'_>,
     res: Res,
-    current_mod: LocalDefId,
+    current_mod: LocalModDefId,
     visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
     import: &hir::Item<'_>,
@@ -154,7 +154,7 @@ pub(crate) fn try_inline_glob(
             // reexported by the glob, e.g. because they are shadowed by something else.
             let reexports = cx
                 .tcx
-                .module_children_local(current_mod)
+                .module_children_local(current_mod.to_local_def_id())
                 .iter()
                 .filter(|child| !child.reexport_chain.is_empty())
                 .filter_map(|child| child.res.opt_def_id())
@@ -529,7 +529,7 @@ pub(crate) fn build_impl(
     }
 
     let (merged_attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs);
-    trace!("merged_attrs={:?}", merged_attrs);
+    trace!("merged_attrs={merged_attrs:?}");
 
     trace!(
         "build_impl: impl {:?} for {:?}",
@@ -781,7 +781,7 @@ pub(crate) fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
         cx.active_extern_traits.insert(did);
     }
 
-    debug!("record_extern_trait: {:?}", did);
+    debug!("record_extern_trait: {did:?}");
     let trait_ = build_external_trait(cx, did);
 
     cx.external_traits.borrow_mut().insert(did, trait_);

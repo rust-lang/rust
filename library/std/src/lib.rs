@@ -190,7 +190,7 @@
 
 // To run std tests without x.py without ending up with two copies of std, Miri needs to be
 // able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
-// rustc itself never sets the feature, so this line has no affect there.
+// rustc itself never sets the feature, so this line has no effect there.
 #![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
 // miri-test-libstd also prefers to make std use the sysroot versions of the dependencies.
 #![cfg_attr(feature = "miri-test-libstd", feature(rustc_private))]
@@ -223,6 +223,7 @@
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 #![deny(rustc::existing_doc_keyword)]
 #![deny(fuzzy_provenance_casts)]
+#![cfg_attr(not(bootstrap), allow(rustdoc::redundant_explicit_links))]
 // Ensure that std can be linked against panic_abort despite compiled with `-C panic=unwind`
 #![deny(ffi_unwind_calls)]
 // std may use features in a platform-specific way
@@ -306,7 +307,6 @@
 #![feature(pointer_is_aligned)]
 #![feature(portable_simd)]
 #![feature(prelude_2024)]
-#![feature(provide_any)]
 #![feature(ptr_as_uninit)]
 #![feature(raw_os_nonzero)]
 #![feature(round_ties_even)]

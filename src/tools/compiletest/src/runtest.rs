@@ -18,6 +18,7 @@ use crate::ColorConfig;
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 
+use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -664,6 +665,7 @@ impl<'test> TestCx<'test> {
 
     fn normalize_coverage_output(&self, coverage: &str) -> Result<String, String> {
         let normalized = self.normalize_output(coverage, &[]);
+        let normalized = Self::anonymize_coverage_line_numbers(&normalized);
 
         let mut lines = normalized.lines().collect::<Vec<_>>();
 
@@ -672,6 +674,21 @@ impl<'test> TestCx<'test> {
 
         let joined_lines = lines.iter().flat_map(|line| [line, "\n"]).collect::<String>();
         Ok(joined_lines)
+    }
+
+    /// Replace line numbers in coverage reports with the placeholder `LL`,
+    /// so that the tests are less sensitive to lines being added/removed.
+    fn anonymize_coverage_line_numbers(coverage: &str) -> Cow<'_, str> {
+        // The coverage reporter prints line numbers at the start of a line.
+        // They are truncated or left-padded to occupy exactly 5 columns.
+        // (`LineNumberColumnWidth` in `SourceCoverageViewText.cpp`.)
+        // A pipe character `|` appears immediately after the final digit.
+        //
+        // Line numbers that appear inside expansion/instantiation subviews
+        // have an additional prefix of `  |` for each nesting level.
+        static LINE_NUMBER_RE: Lazy<Regex> =
+            Lazy::new(|| Regex::new(r"(?m:^)(?<prefix>(?:  \|)*) *[0-9]+\|").unwrap());
+        LINE_NUMBER_RE.replace_all(coverage, "$prefix   LL|")
     }
 
     /// Coverage reports can describe multiple source files, separated by

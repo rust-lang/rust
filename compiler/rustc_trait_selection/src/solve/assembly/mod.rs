@@ -281,23 +281,27 @@ pub(super) trait GoalKind<'tcx>:
     ) -> QueryResult<'tcx>;
 
     /// Consider (possibly several) candidates to upcast or unsize a type to another
-    /// type.
-    ///
-    /// The most common forms of unsizing are array to slice, and concrete (Sized)
-    /// type into a `dyn Trait`. ADTs and Tuples can also have their final field
-    /// unsized if it's generic.
-    ///
-    /// `dyn Trait1` can be unsized to `dyn Trait2` if they are the same trait, or
-    /// if `Trait2` is a (transitive) supertrait of `Trait2`.
+    /// type, excluding the coercion of a sized type into a `dyn Trait`.
     ///
     /// We return the `BuiltinImplSource` for each candidate as it is needed
     /// for unsize coercion in hir typeck and because it is difficult to
     /// otherwise recompute this for codegen. This is a bit of a mess but the
     /// easiest way to maintain the existing behavior for now.
-    fn consider_builtin_unsize_candidates(
+    fn consider_structural_builtin_unsize_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)>;
+
+    /// Consider the `Unsize` candidate corresponding to coercing a sized type
+    /// into a `dyn Trait`.
+    ///
+    /// This is computed separately from the rest of the `Unsize` candidates
+    /// since it is only done once per self type, and not once per
+    /// *normalization step* (in `assemble_candidates_via_self_ty`).
+    fn consider_unsize_to_dyn_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -311,6 +315,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
 
         let mut candidates = self.assemble_candidates_via_self_ty(goal, 0);
+
+        self.assemble_unsize_to_dyn_candidate(goal, &mut candidates);
 
         self.assemble_blanket_impl_candidates(goal, &mut candidates);
 
@@ -530,6 +536,23 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    fn assemble_unsize_to_dyn_candidate<G: GoalKind<'tcx>>(
+        &mut self,
+        goal: Goal<'tcx, G>,
+        candidates: &mut Vec<Candidate<'tcx>>,
+    ) {
+        let tcx = self.tcx();
+        if tcx.lang_items().unsize_trait() == Some(goal.predicate.trait_def_id(tcx)) {
+            match G::consider_unsize_to_dyn_candidate(self, goal) {
+                Ok(result) => candidates.push(Candidate {
+                    source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+                    result,
+                }),
+                Err(NoSolution) => (),
+            }
+        }
+    }
+
     fn assemble_blanket_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -610,7 +633,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // There may be multiple unsize candidates for a trait with several supertraits:
         // `trait Foo: Bar<A> + Bar<B>` and `dyn Foo: Unsize<dyn Bar<_>>`
         if lang_items.unsize_trait() == Some(trait_def_id) {
-            for (result, source) in G::consider_builtin_unsize_candidates(self, goal) {
+            for (result, source) in G::consider_structural_builtin_unsize_candidates(self, goal) {
                 candidates.push(Candidate { source: CandidateSource::BuiltinImpl(source), result });
             }
         }
@@ -825,6 +848,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
             ty::Dynamic(bounds, ..) => bounds,
         };
+
+        // Do not consider built-in object impls for non-object-safe types.
+        if bounds.principal_def_id().is_some_and(|def_id| !tcx.check_is_object_safe(def_id)) {
+            return;
+        }
 
         // Consider all of the auto-trait and projection bounds, which don't
         // need to be recorded as a `BuiltinImplSource::Object` since they don't

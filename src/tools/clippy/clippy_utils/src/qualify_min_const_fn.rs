@@ -291,8 +291,8 @@ fn check_terminator<'tcx>(
         | TerminatorKind::FalseUnwind { .. }
         | TerminatorKind::Goto { .. }
         | TerminatorKind::Return
-        | TerminatorKind::Resume
-        | TerminatorKind::Terminate
+        | TerminatorKind::UnwindResume
+        | TerminatorKind::UnwindTerminate
         | TerminatorKind::Unreachable => Ok(()),
         TerminatorKind::Drop { place, .. } => {
             if !is_ty_const_destruct(tcx, place.ty(&body.local_decls, tcx).ty, body) {
@@ -415,7 +415,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
 
         if !matches!(
             impl_src,
-            ImplSource::Builtin(BuiltinImplSource::Misc, _) | ImplSource::Param(ty::BoundConstness::ConstIfConst, _)
+            ImplSource::Builtin(BuiltinImplSource::Misc, _) | ImplSource::Param(_)
         ) {
             return false;
         }

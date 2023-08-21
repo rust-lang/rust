@@ -138,7 +138,7 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (
         Some(Mode::Std),
         "target_arch",
-        Some(&["asmjs", "spirv", "nvptx", "xtensa", "mips32r6", "mips64r6"]),
+        Some(&["asmjs", "spirv", "nvptx", "xtensa", "mips32r6", "mips64r6", "csky"]),
     ),
     /* Extra names used by dependencies */
     // FIXME: Used by serde_json, but we should not be triggering on external dependencies.

@@ -2700,7 +2700,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::MatchImpl(..)
             | ObligationCauseCode::ReturnType
             | ObligationCauseCode::ReturnValue(_)
-            | ObligationCauseCode::BlockTailExpression(_)
+            | ObligationCauseCode::BlockTailExpression(..)
             | ObligationCauseCode::AwaitableExpr(_)
             | ObligationCauseCode::ForLoopIterator
             | ObligationCauseCode::QuestionMark

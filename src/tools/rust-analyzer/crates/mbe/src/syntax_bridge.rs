@@ -961,6 +961,7 @@ impl TtTreeSink<'_> {
                 if has_pseudo_dot {
                     assert!(right.is_empty(), "{left}.{right}");
                 } else {
+                    assert!(!right.is_empty(), "{left}.{right}");
                     self.inner.start_node(SyntaxKind::NAME_REF);
                     self.inner.token(SyntaxKind::INT_NUMBER, right);
                     self.inner.finish_node();

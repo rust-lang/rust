@@ -321,7 +321,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, format!("pat: {:?}", pat), depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl);
             }
-            Match { scrutinee, arms } => {
+            Match { scrutinee, arms, .. } => {
                 print_indented!(self, "Match {", depth_lvl);
                 print_indented!(self, "scrutinee:", depth_lvl + 1);
                 self.print_expr(*scrutinee, depth_lvl + 2);

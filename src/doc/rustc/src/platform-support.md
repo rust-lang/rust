@@ -259,6 +259,7 @@ target | std | host | notes
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
 `bpfel-unknown-none` | * |  | BPF (little endian)
+`csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux(little endian)
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS
 [`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS |

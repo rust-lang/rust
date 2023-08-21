@@ -929,15 +929,15 @@ fn string_without_closing_tag<T: Display>(
     open_tag: bool,
 ) -> Option<&'static str> {
     let Some(klass) = klass else {
-        write!(out, "{}", text).unwrap();
+        write!(out, "{text}").unwrap();
         return None;
     };
     let Some(def_span) = klass.get_span() else {
         if !open_tag {
-            write!(out, "{}", text).unwrap();
+            write!(out, "{text}").unwrap();
             return None;
         }
-        write!(out, "<span class=\"{}\">{}", klass.as_html(), text).unwrap();
+        write!(out, "<span class=\"{klass}\">{text}", klass = klass.as_html()).unwrap();
         return Some("</span>");
     };
 
@@ -947,14 +947,17 @@ fn string_without_closing_tag<T: Display>(
             match t {
                 "self" | "Self" => write!(
                     &mut path,
-                    "<span class=\"{}\">{}</span>",
-                    Class::Self_(DUMMY_SP).as_html(),
-                    t
+                    "<span class=\"{klass}\">{t}</span>",
+                    klass = Class::Self_(DUMMY_SP).as_html(),
                 ),
                 "crate" | "super" => {
-                    write!(&mut path, "<span class=\"{}\">{}</span>", Class::KeyWord.as_html(), t)
+                    write!(
+                        &mut path,
+                        "<span class=\"{klass}\">{t}</span>",
+                        klass = Class::KeyWord.as_html(),
+                    )
                 }
-                t => write!(&mut path, "{}", t),
+                t => write!(&mut path, "{t}"),
             }
             .expect("Failed to build source HTML path");
             path
@@ -997,13 +1000,13 @@ fn string_without_closing_tag<T: Display>(
             if !open_tag {
                 // We're already inside an element which has the same klass, no need to give it
                 // again.
-                write!(out, "<a href=\"{}\">{}", href, text_s).unwrap();
+                write!(out, "<a href=\"{href}\">{text_s}").unwrap();
             } else {
                 let klass_s = klass.as_html();
                 if klass_s.is_empty() {
-                    write!(out, "<a href=\"{}\">{}", href, text_s).unwrap();
+                    write!(out, "<a href=\"{href}\">{text_s}").unwrap();
                 } else {
-                    write!(out, "<a class=\"{}\" href=\"{}\">{}", klass_s, href, text_s).unwrap();
+                    write!(out, "<a class=\"{klass_s}\" href=\"{href}\">{text_s}").unwrap();
                 }
             }
             return Some("</a>");
@@ -1018,7 +1021,7 @@ fn string_without_closing_tag<T: Display>(
         out.write_str(&text_s).unwrap();
         Some("")
     } else {
-        write!(out, "<span class=\"{}\">{}", klass_s, text_s).unwrap();
+        write!(out, "<span class=\"{klass_s}\">{text_s}").unwrap();
         Some("</span>")
     }
 }

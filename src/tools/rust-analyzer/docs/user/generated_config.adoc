@@ -161,23 +161,30 @@ List of features to activate. Defaults to
 
 Set to `"all"` to pass `--all-features` to Cargo.
 --
+[[rust-analyzer.check.ignore]]rust-analyzer.check.ignore (default: `[]`)::
++
+--
+List of `cargo check` (or other command specified in `check.command`) diagnostics to ignore.
+
+For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`,...
+--
 [[rust-analyzer.check.invocationLocation]]rust-analyzer.check.invocationLocation (default: `"workspace"`)::
 +
 --
 Specifies the working directory for running checks.
 - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
-  This falls back to "root" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.
+  This falls back to "root" if `#rust-analyzer.cargo.check.invocationStrategy#` is set to `once`.
 - "root": run checks in the project's root directory.
-This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+This config only has an effect when `#rust-analyzer.cargo.check.overrideCommand#`
 is set.
 --
 [[rust-analyzer.check.invocationStrategy]]rust-analyzer.check.invocationStrategy (default: `"per_workspace"`)::
 +
 --
-Specifies the invocation strategy to use when running the checkOnSave command.
+Specifies the invocation strategy to use when running the check command.
 If `per_workspace` is set, the command will be executed for each workspace.
 If `once` is set, the command will be executed once.
-This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+This config only has an effect when `#rust-analyzer.cargo.check.overrideCommand#`
 is set.
 --
 [[rust-analyzer.check.noDefaultFeatures]]rust-analyzer.check.noDefaultFeatures (default: `null`)::

@@ -690,6 +690,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let right = this.read_pointer(right)?;
                 let n = Size::from_bytes(this.read_target_usize(n)?);
 
+                // C requires that this must always be a valid pointer (C18 §7.1.4).
+                this.ptr_get_alloc_id(left)?;
+                this.ptr_get_alloc_id(right)?;
+
                 let result = {
                     let left_bytes = this.read_bytes_ptr_strip_provenance(left, n)?;
                     let right_bytes = this.read_bytes_ptr_strip_provenance(right, n)?;
@@ -713,6 +717,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // The docs say val is "interpreted as unsigned char".
                 #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
                 let val = val as u8;
+
+                // C requires that this must always be a valid pointer (C18 §7.1.4).
+                this.ptr_get_alloc_id(ptr)?;
 
                 if let Some(idx) = this
                     .read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(num))?
@@ -738,6 +745,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
                 let val = val as u8;
 
+                // C requires that this must always be a valid pointer (C18 §7.1.4).
+                this.ptr_get_alloc_id(ptr)?;
+
                 let idx = this
                     .read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(num))?
                     .iter()
@@ -752,6 +762,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "strlen" => {
                 let [ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
+                // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
                 let n = this.read_c_str(ptr)?.len();
                 this.write_scalar(
                     Scalar::from_target_usize(u64::try_from(n).unwrap(), this),
@@ -791,6 +802,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // pointer provenance is preserved by this implementation of `strcpy`.
                 // That is probably overly cautious, but there also is no fundamental
                 // reason to have `strcpy` destroy pointer provenance.
+                // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
                 let n = this.read_c_str(ptr_src)?.len().checked_add(1).unwrap();
                 this.mem_copy(
                     ptr_src,
@@ -942,6 +954,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
             }
 
+            // LLVM intrinsics
             "llvm.prefetch" => {
                 let [p, rw, loc, ty] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -968,8 +981,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     throw_unsup_format!("unsupported `llvm.prefetch` type argument: {}", ty);
                 }
             }
-
-            // Architecture-specific shims
             "llvm.x86.addcarry.64" if this.tcx.sess.target.arch == "x86_64" => {
                 // Computes u8+u64+u64, returning tuple (u8,u64) comprising the output carry and truncated sum.
                 let [c_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;

@@ -6,12 +6,12 @@ use std::iter;
 use log::trace;
 
 use rustc_apfloat::{Float, Round};
-use rustc_middle::ty::layout::{IntegerExt, LayoutOf};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{
     mir,
-    ty::{self, FloatTy, Ty},
+    ty::{self, FloatTy},
 };
-use rustc_target::abi::{Integer, Size};
+use rustc_target::abi::Size;
 
 use crate::*;
 use atomic::EvalContextExt as _;
@@ -34,10 +34,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         if this.emulate_intrinsic(instance, args, dest, ret)? {
             return Ok(());
         }
-
-        // All remaining supported intrinsics have a return place.
         let intrinsic_name = this.tcx.item_name(instance.def_id());
         let intrinsic_name = intrinsic_name.as_str();
+
+        // Handle intrinsics without return place.
+        match intrinsic_name {
+            "abort" => {
+                throw_machine_stop!(TerminationInfo::Abort(
+                    "the program aborted execution".to_owned()
+                ))
+            }
+            _ => {},
+        }
+
+        // All remaining supported intrinsics have a return place.
         let ret = match ret {
             None => throw_unsup_format!("unimplemented (diverging) intrinsic: `{intrinsic_name}`"),
             Some(p) => p,
@@ -356,10 +366,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let val = this.read_immediate(val)?;
 
                 let res = match val.layout.ty.kind() {
-                    ty::Float(FloatTy::F32) =>
-                        this.float_to_int_unchecked(val.to_scalar().to_f32()?, dest.layout.ty)?,
-                    ty::Float(FloatTy::F64) =>
-                        this.float_to_int_unchecked(val.to_scalar().to_f64()?, dest.layout.ty)?,
+                    ty::Float(FloatTy::F32) => {
+                        let f = val.to_scalar().to_f32()?;
+                        this
+                            .float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                            .ok_or_else(|| {
+                                err_ub_format!(
+                                    "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{:?}`",
+                                    dest.layout.ty
+                                )
+                            })?
+                    }
+                    ty::Float(FloatTy::F64) => {
+                        let f = val.to_scalar().to_f64()?;
+                        this
+                            .float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                            .ok_or_else(|| {
+                                err_ub_format!(
+                                    "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{:?}`",
+                                    dest.layout.ty
+                                )
+                            })?
+                    }
                     _ =>
                         span_bug!(
                             this.cur_span(),
@@ -375,65 +403,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "breakpoint" => {
                 let [] = check_arg_count(args)?;
                 // normally this would raise a SIGTRAP, which aborts if no debugger is connected
-                throw_machine_stop!(TerminationInfo::Abort(format!("Trace/breakpoint trap")))
+                throw_machine_stop!(TerminationInfo::Abort(format!("trace/breakpoint trap")))
             }
 
             name => throw_unsup_format!("unimplemented intrinsic: `{name}`"),
         }
 
         Ok(())
-    }
-
-    fn float_to_int_unchecked<F>(
-        &self,
-        f: F,
-        dest_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>>
-    where
-        F: Float + Into<Scalar<Provenance>>,
-    {
-        let this = self.eval_context_ref();
-
-        // Step 1: cut off the fractional part of `f`. The result of this is
-        // guaranteed to be precisely representable in IEEE floats.
-        let f = f.round_to_integral(Round::TowardZero).value;
-
-        // Step 2: Cast the truncated float to the target integer type and see if we lose any information in this step.
-        Ok(match dest_ty.kind() {
-            // Unsigned
-            ty::Uint(t) => {
-                let size = Integer::from_uint_ty(this, *t).size();
-                let res = f.to_u128(size.bits_usize());
-                if res.status.is_empty() {
-                    // No status flags means there was no further rounding or other loss of precision.
-                    Scalar::from_uint(res.value, size)
-                } else {
-                    // `f` was not representable in this integer type.
-                    throw_ub_format!(
-                        "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{dest_ty:?}`",
-                    );
-                }
-            }
-            // Signed
-            ty::Int(t) => {
-                let size = Integer::from_int_ty(this, *t).size();
-                let res = f.to_i128(size.bits_usize());
-                if res.status.is_empty() {
-                    // No status flags means there was no further rounding or other loss of precision.
-                    Scalar::from_int(res.value, size)
-                } else {
-                    // `f` was not representable in this integer type.
-                    throw_ub_format!(
-                        "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{dest_ty:?}`",
-                    );
-                }
-            }
-            // Nothing else
-            _ =>
-                span_bug!(
-                    this.cur_span(),
-                    "`float_to_int_unchecked` called with non-int output type {dest_ty:?}"
-                ),
-        })
     }
 }

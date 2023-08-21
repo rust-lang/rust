@@ -26,6 +26,7 @@
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
 	--codeblock-ignore-color: rgba(255, 142, 0, .6);
+	--warning-border-color: rgb(255, 142, 0);
 	--type-link-color: #2dbfb8;
 	--trait-link-color: #b78cf2;
 	--assoc-item-link-color: #d2991d;

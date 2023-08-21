@@ -236,7 +236,7 @@ fn indirect_usage<'tcx>(
             !matches!(
                 node,
                 Node::Expr(Expr {
-                    kind: ExprKind::Match(.., MatchSource::TryDesugar),
+                    kind: ExprKind::Match(.., MatchSource::TryDesugar(_)),
                     ..
                 })
             )

@@ -85,6 +85,22 @@ pub fn all_local_items() -> CrateItems {
     with(|cx| cx.all_local_items())
 }
 
+pub fn all_trait_decls() -> TraitDecls {
+    with(|cx| cx.all_trait_decls())
+}
+
+pub fn trait_decl(trait_def: &TraitDef) -> TraitDecl {
+    with(|cx| cx.trait_decl(trait_def))
+}
+
+pub fn all_trait_impls() -> ImplTraitDecls {
+    with(|cx| cx.all_trait_impls())
+}
+
+pub fn trait_impl(trait_impl: &ImplDef) -> ImplTrait {
+    with(|cx| cx.trait_impl(trait_impl))
+}
+
 pub trait Context {
     fn entry_fn(&mut self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.

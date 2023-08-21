@@ -203,7 +203,12 @@ pub fn deduced_param_attrs<'tcx>(
         body.local_decls.iter().skip(1).take(body.arg_count).enumerate().map(
             |(arg_index, local_decl)| DeducedParamAttrs {
                 read_only: !deduce_read_only.mutable_args.contains(arg_index)
-                    && local_decl.ty.is_freeze(tcx, param_env),
+                    // We must normalize here to reveal opaques and normalize
+                    // their substs, otherwise we'll see exponential blow-up in
+                    // compile times: #113372
+                    && tcx
+                        .normalize_erasing_regions(param_env, local_decl.ty)
+                        .is_freeze(tcx, param_env),
             },
         ),
     );

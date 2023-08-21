@@ -67,6 +67,9 @@ const UNWIND_DATA_REG: (i32, i32) = (0, 1); // D0, D1
 ))]
 const UNWIND_DATA_REG: (i32, i32) = (4, 5); // A0, A1
 
+#[cfg(target_arch = "csky")]
+const UNWIND_DATA_REG: (i32, i32) = (0, 1); // R0, R1
+
 #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
 const UNWIND_DATA_REG: (i32, i32) = (3, 4); // R3, R4 / X3, X4
 

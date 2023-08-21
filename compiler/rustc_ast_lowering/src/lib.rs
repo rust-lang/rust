@@ -2495,35 +2495,31 @@ impl<'hir> GenericArgsCtor<'hir> {
 
         let id = lcx.next_node_id();
         let hir_id = lcx.next_id();
+
+        let Some(host_param_id) = lcx.host_param_id else {
+            lcx.tcx
+                .sess
+                .delay_span_bug(span, "no host param id for call in const yet no errors reported");
+            return;
+        };
+
         let body = lcx.lower_body(|lcx| {
-            (
-                &[],
-                match constness {
-                    ast::Const::Yes(_) => {
-                        let hir_id = lcx.next_id();
-                        let res =
-                            Res::Def(DefKind::ConstParam, lcx.host_param_id.unwrap().to_def_id());
-                        let expr_kind = hir::ExprKind::Path(hir::QPath::Resolved(
-                            None,
-                            lcx.arena.alloc(hir::Path {
-                                span,
-                                res,
-                                segments: arena_vec![lcx; hir::PathSegment::new(Ident {
-                                    name: sym::host,
-                                    span,
-                                }, hir_id, res)],
-                            }),
-                        ));
-                        lcx.expr(span, expr_kind)
-                    }
-                    ast::Const::No => lcx.expr(
+            (&[], {
+                let hir_id = lcx.next_id();
+                let res = Res::Def(DefKind::ConstParam, host_param_id.to_def_id());
+                let expr_kind = hir::ExprKind::Path(hir::QPath::Resolved(
+                    None,
+                    lcx.arena.alloc(hir::Path {
                         span,
-                        hir::ExprKind::Lit(
-                            lcx.arena.alloc(hir::Lit { span, node: ast::LitKind::Bool(true) }),
-                        ),
-                    ),
-                },
-            )
+                        res,
+                        segments: arena_vec![lcx; hir::PathSegment::new(Ident {
+                            name: sym::host,
+                            span,
+                        }, hir_id, res)],
+                    }),
+                ));
+                lcx.expr(span, expr_kind)
+            })
         });
 
         let attr_id = lcx.tcx.sess.parse_sess.attr_id_generator.mk_attr_id();

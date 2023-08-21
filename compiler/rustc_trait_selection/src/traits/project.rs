@@ -1214,7 +1214,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
             let projected_term = selcx.infcx.resolve_vars_if_possible(projected_term);
 
-            let mut result = if projected_term.has_projections() {
+            let result = if projected_term.has_projections() {
                 let mut normalizer = AssocTypeNormalizer::new(
                     selcx,
                     param_env,
@@ -1224,18 +1224,13 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 );
                 let normalized_ty = normalizer.fold(projected_term);
 
+                let mut deduped = SsoHashSet::with_capacity(projected_obligations.len());
+                projected_obligations.retain(|obligation| deduped.insert(obligation.clone()));
+
                 Normalized { value: normalized_ty, obligations: projected_obligations }
             } else {
                 Normalized { value: projected_term, obligations: projected_obligations }
             };
-
-            let mut deduped: SsoHashSet<_> = Default::default();
-            result.obligations.retain(|projected_obligation| {
-                if !deduped.insert(projected_obligation.clone()) {
-                    return false;
-                }
-                true
-            });
 
             if use_cache {
                 infcx.inner.borrow_mut().projection_cache().insert_term(cache_key, result.clone());

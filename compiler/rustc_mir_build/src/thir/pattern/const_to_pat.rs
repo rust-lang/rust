@@ -325,6 +325,11 @@ impl<'tcx> ConstToPat<'tcx> {
                 // `PartialEq::eq` on it.
                 return Err(FallbackToConstRef);
             }
+            ty::FnDef(..) => {
+                self.saw_const_match_error.set(true);
+                tcx.sess.emit_err(InvalidPattern { span, non_sm_ty: ty });
+                PatKind::Wild
+            }
             ty::Adt(adt_def, _) if !self.type_marked_structural(ty) => {
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, ty,);
                 self.saw_const_match_error.set(true);
@@ -440,7 +445,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     }
                 }
             },
-            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::FnDef(..) => PatKind::Constant {
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) => PatKind::Constant {
                 value: mir::ConstantKind::Ty(ty::Const::new_value(tcx, cv, ty)),
             },
             ty::FnPtr(..) | ty::RawPtr(..) => unreachable!(),
