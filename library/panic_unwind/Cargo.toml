@@ -20,3 +20,10 @@ cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
 libc = { version = "0.2", default-features = false }
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    # #[cfg(bootstrap)] rtems
+    'cfg(target_os, values("rtems"))',
+]
