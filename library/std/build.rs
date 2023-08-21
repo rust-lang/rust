@@ -53,6 +53,7 @@ fn main() {
         || target_os == "uefi"
         || target_os == "teeos"
         || target_os == "zkvm"
+        || target_os == "rtems"
 
         // See src/bootstrap/src/core/build_steps/synthetic_targets.rs
         || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()
