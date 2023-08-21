@@ -2705,12 +2705,13 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
+/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes, and must remain valid even
+///   if `dst` is written for `count * size_of::<T>()` bytes. (This means if the memory ranges
+///   overlap, the two pointers must not be subject to aliasing restrictions relative to each
+///   other.)
 ///
-/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
-///
-/// * `src` must remain valid for reads even after `dst` is written, and vice versa.
-///   (In other words, there cannot be aliasing restrictions on the use of these pointers.)
+/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes, and must remain valid even
+///   if `src` is read for `count * size_of::<T>()` bytes.
 ///
 /// * Both `src` and `dst` must be properly aligned.
 ///
