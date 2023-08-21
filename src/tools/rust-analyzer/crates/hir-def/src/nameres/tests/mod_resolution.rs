@@ -80,18 +80,18 @@ pub trait Iterator;
             prelude: t
 
             crate::iter
-            Iterator: t
+            Iterator: ti
             traits: t
 
             crate::iter::traits
-            Iterator: t
+            Iterator: ti
             iterator: t
 
             crate::iter::traits::iterator
             Iterator: t
 
             crate::prelude
-            Iterator: t
+            Iterator: ti
         "#]],
     );
 }
@@ -109,7 +109,7 @@ pub struct Bar;
 "#,
         expect![[r#"
             crate
-            Bar: t v
+            Bar: ti vi
             foo: t
 
             crate::foo
@@ -139,7 +139,7 @@ pub struct Baz;
 "#,
         expect![[r#"
             crate
-            Bar: t v
+            Bar: ti vi
             r#async: t
 
             crate::r#async
@@ -176,8 +176,8 @@ pub struct Bar;
 "#,
         expect![[r#"
             crate
-            Bar: t v
-            Foo: t v
+            Bar: ti vi
+            Foo: ti vi
             r#async: t
 
             crate::r#async
@@ -207,7 +207,7 @@ pub struct Bar;
 "#,
         expect![[r#"
             crate
-            Bar: t v
+            Bar: ti vi
             foo: t
 
             crate::foo
@@ -236,7 +236,7 @@ pub struct Baz;
             foo: t
 
             crate::foo
-            Baz: t v
+            Baz: ti vi
             bar: t
 
             crate::foo::bar
@@ -265,7 +265,7 @@ pub struct Baz;
             foo: t
 
             crate::foo
-            Baz: t v
+            Baz: ti vi
             bar: t
 
             crate::foo::bar
@@ -292,7 +292,7 @@ use super::Baz;
             foo: t
 
             crate::foo
-            Baz: t v
+            Baz: ti vi
         "#]],
     );
 }
@@ -626,7 +626,7 @@ pub struct Baz;
 "#,
         expect![[r#"
             crate
-            Baz: t v
+            Baz: ti vi
             foo: t
 
             crate::foo
@@ -660,7 +660,7 @@ pub struct Baz;
             foo: t
 
             crate::foo
-            Baz: t v
+            Baz: ti vi
             bar: t
 
             crate::foo::bar
@@ -694,7 +694,7 @@ pub struct Baz;
             foo: t
 
             crate::foo
-            Baz: t v
+            Baz: ti vi
             bar: t
 
             crate::foo::bar
@@ -728,7 +728,7 @@ pub struct Baz;
             foo: t
 
             crate::foo
-            Baz: t v
+            Baz: ti vi
             bar: t
 
             crate::foo::bar
@@ -868,7 +868,7 @@ pub mod hash { pub trait Hash {} }
 "#,
         expect![[r#"
             crate
-            Hash: t
+            Hash: ti
             core: t
 
             crate::core

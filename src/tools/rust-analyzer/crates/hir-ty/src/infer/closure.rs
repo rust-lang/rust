@@ -322,7 +322,7 @@ impl InferenceContext<'_> {
             Expr::Path(p) => {
                 let resolver = resolver_for_expr(self.db.upcast(), self.owner, tgt_expr);
                 if let Some(r) = resolver.resolve_path_in_value_ns(self.db.upcast(), p) {
-                    if let ResolveValueResult::ValueNs(v) = r {
+                    if let ResolveValueResult::ValueNs(v, _) = r {
                         if let ValueNs::LocalBinding(b) = v {
                             return Some(HirPlace { local: b, projections: vec![] });
                         }

@@ -22,20 +22,19 @@ use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 // image::https://user-images.githubusercontent.com/48062697/113065566-02f85480-91b1-11eb-9288-aaad8abd8841.gif[]
 pub(crate) fn goto_implementation(
     db: &RootDatabase,
-    position: FilePosition,
+    FilePosition { file_id, offset }: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = Semantics::new(db);
-    let source_file = sema.parse(position.file_id);
+    let source_file = sema.parse(file_id);
     let syntax = source_file.syntax().clone();
 
-    let original_token =
-        pick_best_token(syntax.token_at_offset(position.offset), |kind| match kind {
-            IDENT | T![self] | INT_NUMBER => 1,
-            _ => 0,
-        })?;
+    let original_token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
+        IDENT | T![self] | INT_NUMBER => 1,
+        _ => 0,
+    })?;
     let range = original_token.text_range();
     let navs =
-        sema.descend_into_macros(original_token)
+        sema.descend_into_macros(original_token, offset)
             .into_iter()
             .filter_map(|token| token.parent().and_then(ast::NameLike::cast))
             .filter_map(|node| match &node {

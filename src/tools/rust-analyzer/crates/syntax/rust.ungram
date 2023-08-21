@@ -296,7 +296,7 @@ TypeParam =
 
 ConstParam =
   Attr* 'const' Name ':' Type
-  ('=' default_val:Expr)?
+  ('=' default_val:ConstArg)?
 
 LifetimeParam =
   Attr* Lifetime (':' TypeBoundList?)?

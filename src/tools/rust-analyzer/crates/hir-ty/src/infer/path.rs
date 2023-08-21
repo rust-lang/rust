@@ -61,8 +61,8 @@ impl InferenceContext<'_> {
                 self.resolver.resolve_path_in_value_ns(self.db.upcast(), path)?;
 
             match value_or_partial {
-                ResolveValueResult::ValueNs(it) => (it, None),
-                ResolveValueResult::Partial(def, remaining_index) => self
+                ResolveValueResult::ValueNs(it, _) => (it, None),
+                ResolveValueResult::Partial(def, remaining_index, _) => self
                     .resolve_assoc_item(def, path, remaining_index, id)
                     .map(|(it, substs)| (it, Some(substs)))?,
             }

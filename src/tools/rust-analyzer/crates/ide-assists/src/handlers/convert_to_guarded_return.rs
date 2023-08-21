@@ -58,7 +58,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'
                     return None;
                 }
 
-                let bound_ident = pat.fields().next().unwrap();
+                let bound_ident = pat.fields().next()?;
                 if !ast::IdentPat::can_cast(bound_ident.syntax().kind()) {
                     return None;
                 }
@@ -108,6 +108,15 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'
 
     then_block.syntax().last_child_or_token().filter(|t| t.kind() == T!['}'])?;
 
+    let then_block_items = then_block.dedent(IndentLevel(1)).clone_for_update();
+
+    let end_of_then = then_block_items.syntax().last_child_or_token()?;
+    let end_of_then = if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
+        end_of_then.prev_sibling_or_token()?
+    } else {
+        end_of_then
+    };
+
     let target = if_expr.syntax().text_range();
     acc.add(
         AssistId("convert_to_guarded_return", AssistKind::RefactorRewrite),
@@ -140,16 +149,6 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'
                     let_else_stmt.syntax().clone_for_update()
                 }
             };
-
-            let then_block_items = then_block.dedent(IndentLevel(1)).clone_for_update();
-
-            let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
-            let end_of_then =
-                if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
-                    end_of_then.prev_sibling_or_token().unwrap()
-                } else {
-                    end_of_then
-                };
 
             let then_statements = replacement
                 .children_with_tokens()

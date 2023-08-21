@@ -170,6 +170,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.is_derive_annotated(item)
     }
 
+    /// Expand the macro call with a different token tree, mapping the `token_to_map` down into the
+    /// expansion. `token_to_map` should be a token from the `speculative args` node.
     pub fn speculative_expand(
         &self,
         actual_macro_call: &ast::MacroCall,
@@ -179,6 +181,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.speculative_expand(actual_macro_call, speculative_args, token_to_map)
     }
 
+    /// Expand the macro call with a different item as the input, mapping the `token_to_map` down into the
+    /// expansion. `token_to_map` should be a token from the `speculative args` node.
     pub fn speculative_expand_attr_macro(
         &self,
         actual_macro_call: &ast::Item,
@@ -201,14 +205,22 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         )
     }
 
-    /// Descend the token into macrocalls to its first mapped counterpart.
-    pub fn descend_into_macros_single(&self, token: SyntaxToken) -> SyntaxToken {
-        self.imp.descend_into_macros_single(token)
+    /// Descend the token into its macro call if it is part of one, returning the token in the
+    /// expansion that it is associated with. If `offset` points into the token's range, it will
+    /// be considered for the mapping in case of inline format args.
+    pub fn descend_into_macros_single(&self, token: SyntaxToken, offset: TextSize) -> SyntaxToken {
+        self.imp.descend_into_macros_single(token, offset)
     }
 
-    /// Descend the token into macrocalls to all its mapped counterparts.
-    pub fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
-        self.imp.descend_into_macros(token)
+    /// Descend the token into its macro call if it is part of one, returning the tokens in the
+    /// expansion that it is associated with. If `offset` points into the token's range, it will
+    /// be considered for the mapping in case of inline format args.
+    pub fn descend_into_macros(
+        &self,
+        token: SyntaxToken,
+        offset: TextSize,
+    ) -> SmallVec<[SyntaxToken; 1]> {
+        self.imp.descend_into_macros(token, offset)
     }
 
     /// Descend the token into macrocalls to all its mapped counterparts that have the same text as the input token.
@@ -217,12 +229,17 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn descend_into_macros_with_same_text(
         &self,
         token: SyntaxToken,
+        offset: TextSize,
     ) -> SmallVec<[SyntaxToken; 1]> {
-        self.imp.descend_into_macros_with_same_text(token)
+        self.imp.descend_into_macros_with_same_text(token, offset)
     }
 
-    pub fn descend_into_macros_with_kind_preference(&self, token: SyntaxToken) -> SyntaxToken {
-        self.imp.descend_into_macros_with_kind_preference(token)
+    pub fn descend_into_macros_with_kind_preference(
+        &self,
+        token: SyntaxToken,
+        offset: TextSize,
+    ) -> SyntaxToken {
+        self.imp.descend_into_macros_with_kind_preference(token, offset)
     }
 
     /// Maps a node down by mapping its first and last token down.
@@ -606,7 +623,7 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call_id = macro_call.as_call_id(self.db.upcast(), krate, |path| {
             resolver
                 .resolve_path_as_macro(self.db.upcast(), &path, Some(MacroSubNs::Bang))
-                .map(|it| macro_id_to_def_id(self.db.upcast(), it))
+                .map(|(it, _)| macro_id_to_def_id(self.db.upcast(), it))
         })?;
         hir_expand::db::expand_speculative(
             self.db.upcast(),
@@ -665,7 +682,7 @@ impl<'db> SemanticsImpl<'db> {
         };
 
         if first == last {
-            self.descend_into_macros_impl(first, &mut |InFile { value, .. }| {
+            self.descend_into_macros_impl(first, 0.into(), &mut |InFile { value, .. }| {
                 if let Some(node) = value.parent_ancestors().find_map(N::cast) {
                     res.push(node)
                 }
@@ -674,7 +691,7 @@ impl<'db> SemanticsImpl<'db> {
         } else {
             // Descend first and last token, then zip them to look for the node they belong to
             let mut scratch: SmallVec<[_; 1]> = smallvec![];
-            self.descend_into_macros_impl(first, &mut |token| {
+            self.descend_into_macros_impl(first, 0.into(), &mut |token| {
                 scratch.push(token);
                 false
             });
@@ -682,6 +699,7 @@ impl<'db> SemanticsImpl<'db> {
             let mut scratch = scratch.into_iter();
             self.descend_into_macros_impl(
                 last,
+                0.into(),
                 &mut |InFile { value: last, file_id: last_fid }| {
                     if let Some(InFile { value: first, file_id: first_fid }) = scratch.next() {
                         if first_fid == last_fid {
@@ -705,19 +723,27 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
+    fn descend_into_macros(
+        &self,
+        token: SyntaxToken,
+        offset: TextSize,
+    ) -> SmallVec<[SyntaxToken; 1]> {
         let mut res = smallvec![];
-        self.descend_into_macros_impl(token, &mut |InFile { value, .. }| {
+        self.descend_into_macros_impl(token, offset, &mut |InFile { value, .. }| {
             res.push(value);
             false
         });
         res
     }
 
-    fn descend_into_macros_with_same_text(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
+    fn descend_into_macros_with_same_text(
+        &self,
+        token: SyntaxToken,
+        offset: TextSize,
+    ) -> SmallVec<[SyntaxToken; 1]> {
         let text = token.text();
         let mut res = smallvec![];
-        self.descend_into_macros_impl(token.clone(), &mut |InFile { value, .. }| {
+        self.descend_into_macros_impl(token.clone(), offset, &mut |InFile { value, .. }| {
             if value.text() == text {
                 res.push(value);
             }
@@ -729,7 +755,11 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    fn descend_into_macros_with_kind_preference(&self, token: SyntaxToken) -> SyntaxToken {
+    fn descend_into_macros_with_kind_preference(
+        &self,
+        token: SyntaxToken,
+        offset: TextSize,
+    ) -> SyntaxToken {
         let fetch_kind = |token: &SyntaxToken| match token.parent() {
             Some(node) => match node.kind() {
                 kind @ (SyntaxKind::NAME | SyntaxKind::NAME_REF) => {
@@ -741,7 +771,7 @@ impl<'db> SemanticsImpl<'db> {
         };
         let preferred_kind = fetch_kind(&token);
         let mut res = None;
-        self.descend_into_macros_impl(token.clone(), &mut |InFile { value, .. }| {
+        self.descend_into_macros_impl(token.clone(), offset, &mut |InFile { value, .. }| {
             if fetch_kind(&value) == preferred_kind {
                 res = Some(value);
                 true
@@ -755,9 +785,9 @@ impl<'db> SemanticsImpl<'db> {
         res.unwrap_or(token)
     }
 
-    fn descend_into_macros_single(&self, token: SyntaxToken) -> SyntaxToken {
+    fn descend_into_macros_single(&self, token: SyntaxToken, offset: TextSize) -> SyntaxToken {
         let mut res = token.clone();
-        self.descend_into_macros_impl(token, &mut |InFile { value, .. }| {
+        self.descend_into_macros_impl(token, offset, &mut |InFile { value, .. }| {
             res = value;
             true
         });
@@ -767,9 +797,13 @@ impl<'db> SemanticsImpl<'db> {
     fn descend_into_macros_impl(
         &self,
         token: SyntaxToken,
+        // FIXME: We might want this to be Option<TextSize> to be able to opt out of subrange
+        // mapping, specifically for node downmapping
+        offset: TextSize,
         f: &mut dyn FnMut(InFile<SyntaxToken>) -> bool,
     ) {
         let _p = profile::span("descend_into_macros");
+        let relative_token_offset = token.text_range().start().checked_sub(offset);
         let parent = match token.parent() {
             Some(it) => it,
             None => return,
@@ -796,7 +830,12 @@ impl<'db> SemanticsImpl<'db> {
                     self.cache(value, file_id);
                 }
 
-                let mapped_tokens = expansion_info.map_token_down(self.db.upcast(), item, token)?;
+                let mapped_tokens = expansion_info.map_token_down(
+                    self.db.upcast(),
+                    item,
+                    token,
+                    relative_token_offset,
+                )?;
                 let len = stack.len();
 
                 // requeue the tokens we got from mapping our current token down
@@ -943,7 +982,7 @@ impl<'db> SemanticsImpl<'db> {
         offset: TextSize,
     ) -> impl Iterator<Item = impl Iterator<Item = SyntaxNode> + '_> + '_ {
         node.token_at_offset(offset)
-            .map(move |token| self.descend_into_macros(token))
+            .map(move |token| self.descend_into_macros(token, offset))
             .map(|descendants| {
                 descendants.into_iter().map(move |it| self.token_ancestors_with_macros(it))
             })
@@ -1682,6 +1721,14 @@ impl SemanticsScope<'_> {
             resolution.in_type_ns()?,
             |name, id| cb(name, id.into()),
         )
+    }
+
+    pub fn extern_crates(&self) -> impl Iterator<Item = (Name, Module)> + '_ {
+        self.resolver.extern_crates_in_scope().map(|(name, id)| (name, Module { id }))
+    }
+
+    pub fn extern_crate_decls(&self) -> impl Iterator<Item = Name> + '_ {
+        self.resolver.extern_crate_decls_in_scope(self.db.upcast())
     }
 }
 

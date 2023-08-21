@@ -1,7 +1,7 @@
 //! Completion of names from the current scope in type position.
 
 use hir::{HirDisplay, ScopeDef};
-use syntax::{ast, AstNode, SyntaxKind};
+use syntax::{ast, AstNode};
 
 use crate::{
     context::{PathCompletionCtx, Qualified, TypeAscriptionTarget, TypeLocation},
@@ -20,16 +20,15 @@ pub(crate) fn complete_type_path(
     let scope_def_applicable = |def| {
         use hir::{GenericParam::*, ModuleDef::*};
         match def {
-            ScopeDef::GenericParam(LifetimeParam(_)) | ScopeDef::Label(_) => false,
+            ScopeDef::GenericParam(LifetimeParam(_)) => location.complete_lifetimes(),
+            ScopeDef::Label(_) => false,
             // no values in type places
             ScopeDef::ModuleDef(Function(_) | Variant(_) | Static(_)) | ScopeDef::Local(_) => false,
             // unless its a constant in a generic arg list position
             ScopeDef::ModuleDef(Const(_)) | ScopeDef::GenericParam(ConstParam(_)) => {
-                matches!(location, TypeLocation::GenericArgList(_))
+                location.complete_consts()
             }
-            ScopeDef::ImplSelfType(_) => {
-                !matches!(location, TypeLocation::ImplTarget | TypeLocation::ImplTrait)
-            }
+            ScopeDef::ImplSelfType(_) => location.complete_self_type(),
             // Don't suggest attribute macros and derives.
             ScopeDef::ModuleDef(Macro(mac)) => mac.is_fn_like(ctx.db),
             // Type things are fine
@@ -38,12 +37,12 @@ pub(crate) fn complete_type_path(
             )
             | ScopeDef::AdtSelfType(_)
             | ScopeDef::Unknown
-            | ScopeDef::GenericParam(TypeParam(_)) => true,
+            | ScopeDef::GenericParam(TypeParam(_)) => location.complete_types(),
         }
     };
 
     let add_assoc_item = |acc: &mut Completions, item| match item {
-        hir::AssocItem::Const(ct) if matches!(location, TypeLocation::GenericArgList(_)) => {
+        hir::AssocItem::Const(ct) if matches!(location, TypeLocation::GenericArg { .. }) => {
             acc.add_const(ctx, ct)
         }
         hir::AssocItem::Function(_) | hir::AssocItem::Const(_) => (),
@@ -157,56 +156,30 @@ pub(crate) fn complete_type_path(
                     });
                     return;
                 }
-                TypeLocation::GenericArgList(Some(arg_list)) => {
-                    let in_assoc_type_arg = ctx
-                        .original_token
-                        .parent_ancestors()
-                        .any(|node| node.kind() == SyntaxKind::ASSOC_TYPE_ARG);
+                TypeLocation::GenericArg {
+                    args: Some(arg_list), of_trait: Some(trait_), ..
+                } => {
+                    if arg_list.syntax().ancestors().find_map(ast::TypeBound::cast).is_some() {
+                        let arg_idx = arg_list
+                            .generic_args()
+                            .filter(|arg| {
+                                arg.syntax().text_range().end()
+                                    < ctx.original_token.text_range().start()
+                            })
+                            .count();
 
-                    if !in_assoc_type_arg {
-                        if let Some(path_seg) =
-                            arg_list.syntax().parent().and_then(ast::PathSegment::cast)
-                        {
-                            if path_seg
-                                .syntax()
-                                .ancestors()
-                                .find_map(ast::TypeBound::cast)
-                                .is_some()
-                            {
-                                if let Some(hir::PathResolution::Def(hir::ModuleDef::Trait(
-                                    trait_,
-                                ))) = ctx.sema.resolve_path(&path_seg.parent_path())
-                                {
-                                    let arg_idx = arg_list
-                                        .generic_args()
-                                        .filter(|arg| {
-                                            arg.syntax().text_range().end()
-                                                < ctx.original_token.text_range().start()
-                                        })
-                                        .count();
-
-                                    let n_required_params =
-                                        trait_.type_or_const_param_count(ctx.sema.db, true);
-                                    if arg_idx >= n_required_params {
-                                        trait_
-                                            .items_with_supertraits(ctx.sema.db)
-                                            .into_iter()
-                                            .for_each(|it| {
-                                                if let hir::AssocItem::TypeAlias(alias) = it {
-                                                    cov_mark::hit!(
-                                                        complete_assoc_type_in_generics_list
-                                                    );
-                                                    acc.add_type_alias_with_eq(ctx, alias);
-                                                }
-                                            });
-
-                                        let n_params =
-                                            trait_.type_or_const_param_count(ctx.sema.db, false);
-                                        if arg_idx >= n_params {
-                                            return; // only show assoc types
-                                        }
-                                    }
+                        let n_required_params = trait_.type_or_const_param_count(ctx.sema.db, true);
+                        if arg_idx >= n_required_params {
+                            trait_.items_with_supertraits(ctx.sema.db).into_iter().for_each(|it| {
+                                if let hir::AssocItem::TypeAlias(alias) = it {
+                                    cov_mark::hit!(complete_assoc_type_in_generics_list);
+                                    acc.add_type_alias_with_eq(ctx, alias);
                                 }
+                            });
+
+                            let n_params = trait_.type_or_const_param_count(ctx.sema.db, false);
+                            if arg_idx >= n_params {
+                                return; // only show assoc types
                             }
                         }
                     }

@@ -7,7 +7,7 @@
 
 use arrayvec::ArrayVec;
 use hir::{
-    Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Crate, DeriveHelper,
+    Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Crate, DeriveHelper, DocLinkDef,
     ExternCrateDecl, Field, Function, GenericParam, HasVisibility, Impl, Label, Local, Macro,
     Module, ModuleDef, Name, PathResolution, Semantics, Static, ToolModule, Trait, TraitAlias,
     TypeAlias, Variant, Visibility,
@@ -646,6 +646,16 @@ impl From<ModuleDef> for Definition {
             ModuleDef::TypeAlias(it) => Definition::TypeAlias(it),
             ModuleDef::Macro(it) => Definition::Macro(it),
             ModuleDef::BuiltinType(it) => Definition::BuiltinType(it),
+        }
+    }
+}
+
+impl From<DocLinkDef> for Definition {
+    fn from(def: DocLinkDef) -> Self {
+        match def {
+            DocLinkDef::ModuleDef(it) => it.into(),
+            DocLinkDef::Field(it) => it.into(),
+            DocLinkDef::SelfType(it) => it.into(),
         }
     }
 }

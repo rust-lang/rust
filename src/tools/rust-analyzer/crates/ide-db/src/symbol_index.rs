@@ -323,6 +323,8 @@ impl Query {
                             hir::ModuleDef::Adt(..)
                                 | hir::ModuleDef::TypeAlias(..)
                                 | hir::ModuleDef::BuiltinType(..)
+                                | hir::ModuleDef::TraitAlias(..)
+                                | hir::ModuleDef::Trait(..)
                         )
                     {
                         continue;
@@ -417,9 +419,16 @@ const CONST_WITH_INNER: () = {
 
 mod b_mod;
 
+
+use define_struct as really_define_struct;
+use Macro as ItemLikeMacro;
+use Macro as Trait; // overlay namespaces
 //- /b_mod.rs
 struct StructInModB;
-        "#,
+use super::Macro as SuperItemLikeMacro;
+use crate::b_mod::StructInModB as ThisStruct;
+use crate::Trait as IsThisJustATrait;
+"#,
         );
 
         let symbols: Vec<_> = Crate::from(db.test_crate())
