@@ -342,9 +342,16 @@ fn compare_method_predicate_entailment<'tcx>(
                 continue;
             };
             for obligation in obligations {
+                debug!(?obligation);
                 match obligation.predicate.kind().skip_binder() {
+                    // We need to register Projection oblgiations too, because we may end up with
+                    // an implied `X::Item: 'a`, which gets desugared into `X::Item = ?0`, `?0: 'a`.
+                    // If we only register the region outlives obligation, this leads to an unconstrained var.
+                    // See `implied_bounds_entailment_alias_var` test.
                     ty::PredicateKind::Clause(
-                        ty::ClauseKind::RegionOutlives(..) | ty::ClauseKind::TypeOutlives(..),
+                        ty::ClauseKind::RegionOutlives(..)
+                        | ty::ClauseKind::TypeOutlives(..)
+                        | ty::ClauseKind::Projection(..),
                     ) => ocx.register_obligation(obligation),
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
                         if wf_args_seen.insert(arg) {
