@@ -23,18 +23,23 @@ pub mod builtin;
 
 #[macro_export]
 macro_rules! pluralize {
+    // Pluralize based on count (e.g., apples)
     ($x:expr) => {
-        if $x != 1 { "s" } else { "" }
+        if $x == 1 { "" } else { "s" }
     };
+    // Subject-verb agreement
     ("has", $x:expr) => {
         if $x == 1 { "has" } else { "have" }
     };
+    // Subject-verb agreement
     ("is", $x:expr) => {
         if $x == 1 { "is" } else { "are" }
     };
+    // Past tense agreement
     ("was", $x:expr) => {
         if $x == 1 { "was" } else { "were" }
     };
+    // Demonstrative pronoun
     ("this", $x:expr) => {
         if $x == 1 { "this" } else { "these" }
     };
