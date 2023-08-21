@@ -20,7 +20,6 @@
 //! the field `next_edge`). Each of those fields is an array that should
 //! be indexed by the direction (see the type `Direction`).
 
-use crate::snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
 use rustc_index::bit_set::BitSet;
 use std::fmt::Debug;
 
@@ -28,8 +27,8 @@ use std::fmt::Debug;
 mod tests;
 
 pub struct Graph<N, E> {
-    nodes: SnapshotVec<Node<N>>,
-    edges: SnapshotVec<Edge<E>>,
+    nodes: Vec<Node<N>>,
+    edges: Vec<Edge<E>>,
 }
 
 pub struct Node<N> {
@@ -43,20 +42,6 @@ pub struct Edge<E> {
     source: NodeIndex,
     target: NodeIndex,
     pub data: E,
-}
-
-impl<N> SnapshotVecDelegate for Node<N> {
-    type Value = Node<N>;
-    type Undo = ();
-
-    fn reverse(_: &mut Vec<Node<N>>, _: ()) {}
-}
-
-impl<N> SnapshotVecDelegate for Edge<N> {
-    type Value = Edge<N>;
-    type Undo = ();
-
-    fn reverse(_: &mut Vec<Edge<N>>, _: ()) {}
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -86,11 +71,11 @@ impl NodeIndex {
 
 impl<N: Debug, E: Debug> Graph<N, E> {
     pub fn new() -> Graph<N, E> {
-        Graph { nodes: SnapshotVec::new(), edges: SnapshotVec::new() }
+        Graph { nodes: Vec::new(), edges: Vec::new() }
     }
 
     pub fn with_capacity(nodes: usize, edges: usize) -> Graph<N, E> {
-        Graph { nodes: SnapshotVec::with_capacity(nodes), edges: SnapshotVec::with_capacity(edges) }
+        Graph { nodes: Vec::with_capacity(nodes), edges: Vec::with_capacity(edges) }
     }
 
     // # Simple accessors
