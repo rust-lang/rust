@@ -315,7 +315,7 @@ impl<'a> Parser<'a> {
                 self.sess.emit_err(TrailingVertNotAllowed {
                     span: self.token.span,
                     start: lo,
-                    token: self.token.clone(),
+                    token: self.token,
                     note_double_vert: matches!(self.token.kind, token::OrOr).then_some(()),
                 });
                 self.bump();
@@ -1000,8 +1000,8 @@ impl<'a> Parser<'a> {
                 etc = true;
                 let mut etc_sp = self.token.span;
                 if first_etc_and_maybe_comma_span.is_none() {
-                    if let Some(comma_tok) = self
-                        .look_ahead(1, |t| if *t == token::Comma { Some(t.clone()) } else { None })
+                    if let Some(comma_tok) =
+                        self.look_ahead(1, |&t| if t == token::Comma { Some(t) } else { None })
                     {
                         let nw_span = self
                             .sess

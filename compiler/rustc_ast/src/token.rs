@@ -259,7 +259,7 @@ fn ident_can_begin_type(name: Symbol, span: Span, is_raw: bool) -> bool {
             .contains(&name)
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     Eq,
@@ -329,7 +329,7 @@ pub enum TokenKind {
     Eof,
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,

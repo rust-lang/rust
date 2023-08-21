@@ -40,7 +40,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // struct Bar;
     // ```
 
-    let derive = sema.descend_into_macros(tok.clone()).into_iter().find_map(|descended| {
+    let derive = sema.descend_into_macros(tok).into_iter().find_map(|descended| {
         let hir_file = sema.hir_file_for(&descended.parent()?);
         if !hir_file.is_derive_attr_pseudo_expansion(db) {
             return None;

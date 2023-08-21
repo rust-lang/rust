@@ -104,13 +104,12 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
         // produce an empty `TokenStream` if no calls were made, and omit the
         // final token otherwise.
         let mut cursor_snapshot = self.cursor_snapshot.clone();
-        let tokens =
-            std::iter::once((FlatToken::Token(self.start_token.0.clone()), self.start_token.1))
-                .chain((0..self.num_calls).map(|_| {
-                    let token = cursor_snapshot.next();
-                    (FlatToken::Token(token.0), token.1)
-                }))
-                .take(self.num_calls);
+        let tokens = std::iter::once((FlatToken::Token(self.start_token.0), self.start_token.1))
+            .chain((0..self.num_calls).map(|_| {
+                let token = cursor_snapshot.next();
+                (FlatToken::Token(token.0), token.1)
+            }))
+            .take(self.num_calls);
 
         if !self.replace_ranges.is_empty() {
             let mut tokens: Vec<_> = tokens.collect();
@@ -211,7 +210,7 @@ impl<'a> Parser<'a> {
             return Ok(f(self, attrs.attrs)?.0);
         }
 
-        let start_token = (self.token.clone(), self.token_spacing);
+        let start_token = (self.token, self.token_spacing);
         let cursor_snapshot = self.token_cursor.clone();
         let start_pos = self.num_bump_calls;
 

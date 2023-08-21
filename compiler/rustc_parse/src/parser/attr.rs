@@ -411,7 +411,7 @@ impl<'a> Parser<'a> {
             Err(err) => err.cancel(),
         }
 
-        Err(InvalidMetaItem { span: self.token.span, token: self.token.clone() }
+        Err(InvalidMetaItem { span: self.token.span, token: self.token }
             .into_diagnostic(&self.sess.span_diagnostic))
     }
 }

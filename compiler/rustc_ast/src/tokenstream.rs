@@ -461,7 +461,7 @@ impl TokenStream {
                 Delimiter::Invisible(InvisibleSource::FlattenToken),
                 TokenStream::token_alone(token::Lifetime(name), uninterpolated_span),
             ),
-            _ => TokenTree::Token(token.clone(), spacing),
+            _ => TokenTree::Token(*token, spacing),
         }
     }
 

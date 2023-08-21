@@ -430,7 +430,7 @@ impl<'a> Parser<'a> {
     fn error_found_expr_would_be_stmt(&self, lhs: &Expr) {
         self.sess.emit_err(errors::FoundExprWouldBeStmt {
             span: self.token.span,
-            token: self.token.clone(),
+            token: self.token,
             suggestion: ExprParenthesesNeeded::surrounding(lhs.span),
         });
     }
@@ -685,7 +685,7 @@ impl<'a> Parser<'a> {
 
     /// Recover on `not expr` in favor of `!expr`.
     fn recover_not_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        let negated_token = self.look_ahead(1, |t| t.clone());
+        let negated_token = self.look_ahead(1, |t| *t);
 
         let sub_diag = if negated_token.is_numeric_lit() {
             errors::NotAsNegationOperatorSub::SuggestNotBitwise
@@ -1544,7 +1544,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr_path_start(&mut self) -> PResult<'a, P<Expr>> {
-        let maybe_eq_tok = self.prev_token.clone();
+        let maybe_eq_tok = self.prev_token;
         let (qself, path) = if self.eat_lt() {
             let lt_span = self.prev_token.span;
             let (qself, path) = self.parse_qpath(PathStyle::Expr).map_err(|mut err| {
@@ -1983,7 +1983,7 @@ impl<'a> Parser<'a> {
         //     err.downgrade_to_delayed_bug();
         //     return Err(err);
         // }
-        let token = self.token.clone();
+        let token = self.token;
         let err = |self_: &Self| {
             let msg = format!("unexpected token: {}", super::token_descr(&token));
             self_.struct_span_err(token.span, msg)

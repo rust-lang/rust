@@ -821,14 +821,14 @@ impl MacroArgParser {
         };
 
         self.result.push(ParsedMacroArg {
-            kind: MacroArgKind::Repeat(delim, inner, another, self.last_tok.clone()),
+            kind: MacroArgKind::Repeat(delim, inner, another, self.last_tok),
         });
         Some(())
     }
 
     fn update_buffer(&mut self, t: &Token) {
         if self.buf.is_empty() {
-            self.start_tok = t.clone();
+            self.start_tok = t;
         } else {
             let needs_space = match next_space(&self.last_tok.kind) {
                 SpaceState::Ident => ident_like(t),
@@ -1145,7 +1145,7 @@ impl<'a> MacroParser<'a> {
             TokenTree::Token(..) => return None,
             &TokenTree::Delimited(delimited_span, d, _) => (delimited_span.open.lo(), d),
         };
-        let args = TokenStream::new(vec![tok.clone()]);
+        let args = TokenStream::new(vec![tok]);
         match self.toks.next()? {
             TokenTree::Token(
                 Token {

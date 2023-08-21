@@ -172,11 +172,8 @@ impl<'a> Parser<'a> {
                     self.bump();
                     Ok(ParseNtResult::Ident(ident, is_raw))
                 } else {
-                    Err(UnexpectedNonterminal::Ident {
-                        span: self.token.span,
-                        token: self.token.clone(),
-                    }
-                    .into_diagnostic(&self.sess.span_diagnostic))
+                    Err(UnexpectedNonterminal::Ident { span: self.token.span, token: self.token }
+                        .into_diagnostic(&self.sess.span_diagnostic))
                 }
             }
             NonterminalKind::Path => Ok(ParseNtResult::Path(P(
@@ -193,7 +190,7 @@ impl<'a> Parser<'a> {
                 } else {
                     Err(UnexpectedNonterminal::Lifetime {
                         span: self.token.span,
-                        token: self.token.clone(),
+                        token: self.token,
                     }
                     .into_diagnostic(&self.sess.span_diagnostic))
                 }

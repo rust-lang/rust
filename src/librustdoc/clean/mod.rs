@@ -2490,7 +2490,7 @@ fn filter_tokens_from_list(
             }
             token if should_retain(token) => {
                 skip_next_comma = false;
-                tokens.push(token.clone());
+                tokens.push(token);
             }
             _ => {
                 skip_next_comma = true;

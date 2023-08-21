@@ -288,12 +288,12 @@ impl TokenCursor {
             // below can be removed.
             if let Some(tree) = self.tree_cursor.next_ref() {
                 match tree {
-                    &TokenTree::Token(ref token, spacing) => {
+                    &TokenTree::Token(token, spacing) => {
                         debug_assert!(!matches!(
                             token.kind,
                             token::OpenDelim(_) | token::CloseDelim(_)
                         ));
-                        return (token.clone(), spacing);
+                        return (token, spacing);
                     }
                     &TokenTree::Delimited(sp, delim, ref tts) => {
                         let trees = tts.clone().into_trees();
@@ -564,7 +564,7 @@ impl<'a> Parser<'a> {
     fn check(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.token == *tok;
         if !is_present {
-            self.expected_tokens.push(TokenType::Token(tok.clone()));
+            self.expected_tokens.push(TokenType::Token(*tok));
         }
         is_present
     }
@@ -1378,7 +1378,7 @@ impl<'a> Parser<'a> {
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
                 self.bump();
-                TokenTree::Token(self.prev_token.clone(), Spacing::Alone)
+                TokenTree::Token(self.prev_token, Spacing::Alone)
             }
         }
     }
