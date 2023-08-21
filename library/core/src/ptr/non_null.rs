@@ -367,7 +367,7 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[rustc_const_stable(feature = "const_nonnull_as_ref", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_nonnull_as_ref", since = "1.73.0")]
     #[must_use]
     #[inline(always)]
     pub const unsafe fn as_ref<'a>(&self) -> &'a T {
