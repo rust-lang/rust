@@ -2123,7 +2123,7 @@ impl ItemSection {
             Self::Unions => "Unions",
             Self::Enums => "Enums",
             Self::Functions => "Functions",
-            Self::TypeDefinitions => "Type Definitions",
+            Self::TypeDefinitions => "Type Aliases",
             Self::Statics => "Statics",
             Self::Constants => "Constants",
             Self::Traits => "Traits",

@@ -198,7 +198,7 @@ pub(super) fn print_item(
         clean::StructItem(..) => "Struct ",
         clean::UnionItem(..) => "Union ",
         clean::EnumItem(..) => "Enum ",
-        clean::TypedefItem(..) => "Type Definition ",
+        clean::TypedefItem(..) => "Type Alias ",
         clean::MacroItem(..) => "Macro ",
         clean::ProcMacroItem(ref mac) => match mac.kind {
             MacroKind::Bang => "Macro ",
