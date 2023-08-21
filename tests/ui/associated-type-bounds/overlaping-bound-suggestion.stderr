@@ -6,11 +6,6 @@ LL |     inner: <IntoIterator<Item: IntoIterator<Item: >>::IntoIterator as Item>
    |             |                  |
    |             |                  associated types `Item`, `IntoIter` must be specified
    |             associated types `Item`, `IntoIter` must be specified
-   |
-help: specify the associated types
-   |
-LL |     inner: <IntoIterator<Item: IntoIterator<Item: >, Item = Type, IntoIter = Type>IntoIterator<Item: , Item = Type, IntoIter = Type>>::IntoIterator as Item>::Core,
-   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
   --> $DIR/overlaping-bound-suggestion.rs:7:13
