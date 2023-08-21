@@ -1,19 +1,15 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::{get_vec_init_kind, VecInitKind};
+use clippy_utils::path_to_local_id;
 use clippy_utils::source::snippet;
-use clippy_utils::visitors::for_each_local_use_after_expr;
-use clippy_utils::{get_parent_expr, path_to_local_id};
-use core::ops::ControlFlow;
-use rustc_ast::LitKind;
+//use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{
-    BindingAnnotation, Block, Expr, ExprKind, HirId, Local, Mutability, PatKind, QPath, Stmt, StmtKind, UnOp,
-};
+use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Local, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -45,89 +41,17 @@ pub struct ReserveAfterInitialization {
 
 struct VecReserveSearcher {
     local_id: HirId,
-    lhs_is_let: bool,
-    let_ty_span: Option<Span>,
-    name: Symbol,
     err_span: Span,
-    last_reserve_expr: HirId,
-    space_hint: Option<usize>,
+    init_part: String,
+    space_hint: String,
 }
 impl VecReserveSearcher {
     fn display_err(&self, cx: &LateContext<'_>) {
-        if self.space_hint == Some(0) {
+        if self.space_hint.is_empty() {
             return;
         }
 
-        let mut needs_mut = false;
-        let _res = for_each_local_use_after_expr(cx, self.local_id, self.last_reserve_expr, |e| {
-            let Some(parent) = get_parent_expr(cx, e) else {
-                return ControlFlow::Continue(());
-            };
-            let adjusted_ty = cx.typeck_results().expr_ty_adjusted(e);
-            let adjusted_mut = adjusted_ty.ref_mutability().unwrap_or(Mutability::Not);
-            needs_mut |= adjusted_mut == Mutability::Mut;
-            match parent.kind {
-                ExprKind::AddrOf(_, Mutability::Mut, _) => {
-                    needs_mut = true;
-                    return ControlFlow::Break(true);
-                },
-                ExprKind::Unary(UnOp::Deref, _) | ExprKind::Index(..) if !needs_mut => {
-                    let mut last_place = parent;
-                    while let Some(parent) = get_parent_expr(cx, last_place) {
-                        if matches!(parent.kind, ExprKind::Unary(UnOp::Deref, _) | ExprKind::Field(..))
-                            || matches!(parent.kind, ExprKind::Index(e, _, _) if e.hir_id == last_place.hir_id)
-                        {
-                            last_place = parent;
-                        } else {
-                            break;
-                        }
-                    }
-                    needs_mut |= cx.typeck_results().expr_ty_adjusted(last_place).ref_mutability()
-                        == Some(Mutability::Mut)
-                        || get_parent_expr(cx, last_place)
-                            .map_or(false, |e| matches!(e.kind, ExprKind::AddrOf(_, Mutability::Mut, _)));
-                },
-                ExprKind::MethodCall(_, recv, ..)
-                    if recv.hir_id == e.hir_id
-                        && adjusted_mut == Mutability::Mut
-                        && !adjusted_ty.peel_refs().is_slice() =>
-                {
-                    // No need to set `needs_mut` to true. The receiver will be either explicitly borrowed, or it will
-                    // be implicitly borrowed via an adjustment. Both of these cases are already handled by this point.
-                    return ControlFlow::Break(true);
-                },
-                ExprKind::Assign(lhs, ..) if e.hir_id == lhs.hir_id => {
-                    needs_mut = true;
-                    return ControlFlow::Break(false);
-                },
-                _ => (),
-            }
-            ControlFlow::Continue(())
-        });
-
-        let mut s = if self.lhs_is_let {
-            String::from("let ")
-        } else {
-            String::new()
-        };
-        if needs_mut {
-            s.push_str("mut ");
-        }
-        s.push_str(self.name.as_str());
-        if let Some(span) = self.let_ty_span {
-            s.push_str(": ");
-            s.push_str(&snippet(cx, span, "_"));
-        }
-        s.push_str(
-            format!(
-                " = Vec::with_capacity({});",
-                match self.space_hint {
-                    None => "..".to_string(),
-                    Some(hint) => hint.to_string(),
-                }
-            )
-            .as_str(),
-        );
+        let s = format!("{} = Vec::with_capacity({});", self.init_part, self.space_hint);
 
         span_lint_and_sugg(
             cx,
@@ -148,19 +72,22 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
         if let Some(init_expr) = local.init
-            && let PatKind::Binding(BindingAnnotation::MUT, id, name, None) = local.pat.kind
+            && let PatKind::Binding(BindingAnnotation::MUT, id, _name, None) = local.pat.kind
             && !in_external_macro(cx.sess(), local.span)
             && let Some(init) = get_vec_init_kind(cx, init_expr)
             && !matches!(init, VecInitKind::WithExprCapacity(_))
+            && !matches!(init, VecInitKind::WithConstCapacity(_))
         {
             self.searcher = Some(VecReserveSearcher {
                 local_id: id,
-                lhs_is_let: true,
-                name: name.name,
-                let_ty_span: local.ty.map(|ty| ty.span),
                 err_span: local.span,
-                last_reserve_expr: init_expr.hir_id,
-                space_hint: Some(0)
+                init_part: format!("let {}: {}", 
+                snippet(cx, local.pat.span, ""),
+                match local.ty {
+                    Some(type_inference) => snippet(cx, type_inference.span, "").to_string(),
+                    None => String::new()
+                }),
+                space_hint: String::new()
             });
         }
     }
@@ -169,20 +96,18 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
         if self.searcher.is_none()
             && let ExprKind::Assign(left, right, _) = expr.kind
             && let ExprKind::Path(QPath::Resolved(None, path)) = left.kind
-            && let [name] = &path.segments
+            && let [_name] = &path.segments
             && let Res::Local(id) = path.res
             && !in_external_macro(cx.sess(), expr.span)
             && let Some(init) = get_vec_init_kind(cx, right)
             && !matches!(init, VecInitKind::WithExprCapacity(_))
+            && !matches!(init, VecInitKind::WithConstCapacity(_))
         {
             self.searcher = Some(VecReserveSearcher {
                 local_id: id,
-                lhs_is_let: false,
-                let_ty_span: None,
-                name: name.ident.name,
                 err_span: expr.span,
-                last_reserve_expr: expr.hir_id,
-                space_hint: Some(0)
+                init_part: snippet(cx, left.span, "").to_string(),
+                space_hint: String::new()
             });
         }
     }
@@ -195,22 +120,11 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
                 && path_to_local_id(self_arg, searcher.local_id)
                 && name.ident.as_str() == "reserve"
             {
-                if let ExprKind::Lit(lit) = other_args[0].kind
-                && let LitKind::Int(space_hint, _) = lit.node {
-                    self.searcher = Some(VecReserveSearcher {
-                        err_span: searcher.err_span.to(stmt.span),
-                        last_reserve_expr: expr.hir_id,
-                        space_hint: Some(space_hint as usize), // the expression is an int, so we'll display the good amount as a hint
-                        .. searcher
-                    });
-                } else {
-                    self.searcher = Some(VecReserveSearcher {
-                        err_span: searcher.err_span.to(stmt.span),
-                        last_reserve_expr: expr.hir_id,
-                        space_hint: None, // the expression isn't an int, so we'll display ".." as hint
-                        .. searcher
-                    });
-                }
+                self.searcher = Some(VecReserveSearcher {
+                    err_span: searcher.err_span.to(stmt.span),
+                    space_hint: snippet(cx, other_args[0].span, "").to_string(),
+                    .. searcher
+                });
             } else {
                 searcher.display_err(cx);
             }
