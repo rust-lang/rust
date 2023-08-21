@@ -50,11 +50,11 @@ struct VecReserveSearcher {
     name: Symbol,
     err_span: Span,
     last_reserve_expr: HirId,
-    space_hint: usize,
+    space_hint: Option<usize>,
 }
 impl VecReserveSearcher {
     fn display_err(&self, cx: &LateContext<'_>) {
-        if self.space_hint == 0 {
+        if self.space_hint == Some(0) {
             return;
         }
 
@@ -118,7 +118,16 @@ impl VecReserveSearcher {
             s.push_str(": ");
             s.push_str(&snippet(cx, span, "_"));
         }
-        s.push_str(format!(" = Vec::with_capacity({});", self.space_hint).as_str());
+        s.push_str(
+            format!(
+                " = Vec::with_capacity({});",
+                match self.space_hint {
+                    None => "..".to_string(),
+                    Some(hint) => hint.to_string(),
+                }
+            )
+            .as_str(),
+        );
 
         span_lint_and_sugg(
             cx,
@@ -151,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
                 let_ty_span: local.ty.map(|ty| ty.span),
                 err_span: local.span,
                 last_reserve_expr: init_expr.hir_id,
-                space_hint: 0
+                space_hint: Some(0)
             });
         }
     }
@@ -173,7 +182,7 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
                 name: name.ident.name,
                 err_span: expr.span,
                 last_reserve_expr: expr.hir_id,
-                space_hint: 0
+                space_hint: Some(0)
             });
         }
     }
@@ -183,17 +192,25 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
             if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind
                 && let ExprKind::MethodCall(name, self_arg, other_args, _) = expr.kind
                 && other_args.len() == 1
-                && let ExprKind::Lit(lit) = other_args[0].kind
-                && let LitKind::Int(space_hint, _) = lit.node
                 && path_to_local_id(self_arg, searcher.local_id)
                 && name.ident.as_str() == "reserve"
             {
-                self.searcher = Some(VecReserveSearcher {
-                    err_span: searcher.err_span.to(stmt.span),
-                    last_reserve_expr: expr.hir_id,
-                    space_hint: space_hint as usize,
-                    .. searcher
-                });
+                if let ExprKind::Lit(lit) = other_args[0].kind
+                && let LitKind::Int(space_hint, _) = lit.node {
+                    self.searcher = Some(VecReserveSearcher {
+                        err_span: searcher.err_span.to(stmt.span),
+                        last_reserve_expr: expr.hir_id,
+                        space_hint: Some(space_hint as usize), // the expression is an int, so we'll display the good amount as a hint
+                        .. searcher
+                    });
+                } else {
+                    self.searcher = Some(VecReserveSearcher {
+                        err_span: searcher.err_span.to(stmt.span),
+                        last_reserve_expr: expr.hir_id,
+                        space_hint: None, // the expression isn't an int, so we'll display ".." as hint
+                        .. searcher
+                    });
+                }
             } else {
                 searcher.display_err(cx);
             }
