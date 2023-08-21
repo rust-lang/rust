@@ -16,7 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
-use rustc_middle::mir::coverage::{CodeRegion, CounterId, CoverageKind, ExpressionId, Op, Operand};
+use rustc_middle::mir::coverage::{CounterId, CoverageKind};
 use rustc_middle::mir::Coverage;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
@@ -104,140 +104,63 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
     fn add_coverage(&mut self, instance: Instance<'tcx>, coverage: &Coverage) {
         let bx = self;
 
+        let Some(coverage_context) = bx.coverage_context() else { return };
+        let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
+        let func_coverage = coverage_map
+            .entry(instance)
+            .or_insert_with(|| FunctionCoverage::new(bx.tcx(), instance));
+
         let Coverage { kind, code_region } = coverage.clone();
         match kind {
             CoverageKind::Counter { function_source_hash, id } => {
-                if bx.set_function_source_hash(instance, function_source_hash) {
-                    // If `set_function_source_hash()` returned true, the coverage map is enabled,
-                    // so continue adding the counter.
-                    if let Some(code_region) = code_region {
-                        // Note: Some counters do not have code regions, but may still be referenced
-                        // from expressions. In that case, don't add the counter to the coverage map,
-                        // but do inject the counter intrinsic.
-                        bx.add_coverage_counter(instance, id, code_region);
-                    }
+                debug!(
+                    "ensuring function source hash is set for instance={:?}; function_source_hash={}",
+                    instance, function_source_hash,
+                );
+                func_coverage.set_function_source_hash(function_source_hash);
 
-                    let coverageinfo = bx.tcx().coverageinfo(instance.def);
-
-                    let fn_name = bx.get_pgo_func_name_var(instance);
-                    let hash = bx.const_u64(function_source_hash);
-                    let num_counters = bx.const_u32(coverageinfo.num_counters);
-                    let index = bx.const_u32(id.as_u32());
+                if let Some(code_region) = code_region {
+                    // Note: Some counters do not have code regions, but may still be referenced
+                    // from expressions. In that case, don't add the counter to the coverage map,
+                    // but do inject the counter intrinsic.
                     debug!(
-                        "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
-                        fn_name, hash, num_counters, index,
+                        "adding counter to coverage_map: instance={:?}, id={:?}, region={:?}",
+                        instance, id, code_region,
                     );
-                    bx.instrprof_increment(fn_name, hash, num_counters, index);
+                    func_coverage.add_counter(id, code_region);
                 }
+                // We need to explicitly drop the `RefMut` before calling into `instrprof_increment`,
+                // as that needs an exclusive borrow.
+                drop(coverage_map);
+
+                let coverageinfo = bx.tcx().coverageinfo(instance.def);
+
+                let fn_name = bx.get_pgo_func_name_var(instance);
+                let hash = bx.const_u64(function_source_hash);
+                let num_counters = bx.const_u32(coverageinfo.num_counters);
+                let index = bx.const_u32(id.as_u32());
+                debug!(
+                    "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
+                    fn_name, hash, num_counters, index,
+                );
+                bx.instrprof_increment(fn_name, hash, num_counters, index);
             }
             CoverageKind::Expression { id, lhs, op, rhs } => {
-                bx.add_coverage_counter_expression(instance, id, lhs, op, rhs, code_region);
+                debug!(
+                    "adding counter expression to coverage_map: instance={:?}, id={:?}, {:?} {:?} {:?}; region: {:?}",
+                    instance, id, lhs, op, rhs, code_region,
+                );
+                func_coverage.add_counter_expression(id, lhs, op, rhs, code_region);
             }
             CoverageKind::Unreachable => {
-                bx.add_coverage_unreachable(
-                    instance,
-                    code_region.expect("unreachable regions always have code regions"),
+                let code_region =
+                    code_region.expect("unreachable regions always have code regions");
+                debug!(
+                    "adding unreachable code to coverage_map: instance={:?}, at {:?}",
+                    instance, code_region,
                 );
+                func_coverage.add_unreachable_region(code_region);
             }
-        }
-    }
-}
-
-// These methods used to be part of trait `CoverageInfoBuilderMethods`, but
-// after moving most coverage code out of SSA they are now just ordinary methods.
-impl<'tcx> Builder<'_, '_, 'tcx> {
-    /// Returns true if the function source hash was added to the coverage map (even if it had
-    /// already been added, for this instance). Returns false *only* if `-C instrument-coverage` is
-    /// not enabled (a coverage map is not being generated).
-    fn set_function_source_hash(
-        &mut self,
-        instance: Instance<'tcx>,
-        function_source_hash: u64,
-    ) -> bool {
-        if let Some(coverage_context) = self.coverage_context() {
-            debug!(
-                "ensuring function source hash is set for instance={:?}; function_source_hash={}",
-                instance, function_source_hash,
-            );
-            let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
-            coverage_map
-                .entry(instance)
-                .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
-                .set_function_source_hash(function_source_hash);
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Returns true if the counter was added to the coverage map; false if `-C instrument-coverage`
-    /// is not enabled (a coverage map is not being generated).
-    fn add_coverage_counter(
-        &mut self,
-        instance: Instance<'tcx>,
-        id: CounterId,
-        region: CodeRegion,
-    ) -> bool {
-        if let Some(coverage_context) = self.coverage_context() {
-            debug!(
-                "adding counter to coverage_map: instance={:?}, id={:?}, region={:?}",
-                instance, id, region,
-            );
-            let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
-            coverage_map
-                .entry(instance)
-                .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
-                .add_counter(id, region);
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Returns true if the expression was added to the coverage map; false if
-    /// `-C instrument-coverage` is not enabled (a coverage map is not being generated).
-    fn add_coverage_counter_expression(
-        &mut self,
-        instance: Instance<'tcx>,
-        id: ExpressionId,
-        lhs: Operand,
-        op: Op,
-        rhs: Operand,
-        region: Option<CodeRegion>,
-    ) -> bool {
-        if let Some(coverage_context) = self.coverage_context() {
-            debug!(
-                "adding counter expression to coverage_map: instance={:?}, id={:?}, {:?} {:?} {:?}; \
-                region: {:?}",
-                instance, id, lhs, op, rhs, region,
-            );
-            let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
-            coverage_map
-                .entry(instance)
-                .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
-                .add_counter_expression(id, lhs, op, rhs, region);
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Returns true if the region was added to the coverage map; false if `-C instrument-coverage`
-    /// is not enabled (a coverage map is not being generated).
-    fn add_coverage_unreachable(&mut self, instance: Instance<'tcx>, region: CodeRegion) -> bool {
-        if let Some(coverage_context) = self.coverage_context() {
-            debug!(
-                "adding unreachable code to coverage_map: instance={:?}, at {:?}",
-                instance, region,
-            );
-            let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
-            coverage_map
-                .entry(instance)
-                .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
-                .add_unreachable_region(region);
-            true
-        } else {
-            false
         }
     }
 }
