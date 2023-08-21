@@ -1,0 +1,11 @@
+error: calls to `reverse` immediately after creation
+  --> $DIR/reserve_after_initialization.rs:4:5
+   |
+LL | /     let mut v: Vec<usize> = vec![];
+LL | |     v.reserve(10);
+   | |__________________^ help: consider using `Vec::with_capacity(space_hint)`: `let v: Vec<usize> = Vec::with_capacity(10);`
+   |
+   = note: `-D clippy::reserve-after-initialization` implied by `-D warnings`
+
+error: aborting due to previous error
+

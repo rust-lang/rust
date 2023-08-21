@@ -1,0 +1,5 @@
+#![warn(clippy::reserve_after_initialization)]
+
+fn main() {
+    let v: Vec<usize> = Vec::with_capacity(10);
+}
