@@ -137,7 +137,7 @@ converting from the `rustc_hir::Ty` to a real `ty::Ty`. You can see that we firs
 (`args`).  Then we call `type_of` to get a type and call `ty.instantiate(tcx, args)` to get a new
 version of `ty` with the args made.
 
-[instantiatex]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_hir_analysis/src/astconv/mod.rs#L905-L927
+[instantiatex]: https://github.com/rust-lang/rust/blob/8a562f9671e36cf29c9c794c2646bcf252d55535/compiler/rustc_hir_analysis/src/astconv/mod.rs#L905-L927
 
 **Note on indices:** It is possible for the indices in `Param` to not match with what we expect. For
 example, the index could be out of bounds or it could be the index of a lifetime when we were
