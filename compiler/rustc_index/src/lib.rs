@@ -29,6 +29,18 @@ pub use {idx::Idx, slice::IndexSlice, vec::IndexVec};
 pub use rustc_macros::newtype_index;
 
 /// Type size assertion. The first argument is a type and the second argument is its expected size.
+///
+/// <div class="warning">
+///
+/// Emitting hard errors from size assertions like this is generally not
+/// recommended, especially in libraries, because they can cause build failures if the layout
+/// algorithm or dependencies change. Here in rustc we control the toolchain and layout algorithm,
+/// so the former is not a problem. For the latter we have a lockfile as rustc is an application and
+/// precompiled library.
+///
+/// Short version: Don't copy this macro into your own code. Use a `#[test]` instead.
+///
+/// </div>
 #[macro_export]
 macro_rules! static_assert_size {
     ($ty:ty, $size:expr) => {
