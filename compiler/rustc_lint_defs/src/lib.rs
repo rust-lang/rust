@@ -573,6 +573,10 @@ pub enum BuiltinLintDiagnostics {
         /// The span of the unnecessarily-qualified path to remove.
         removal_span: Span,
     },
+    AssociatedConstElidedLifetime {
+        elided: bool,
+        span: Span,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the

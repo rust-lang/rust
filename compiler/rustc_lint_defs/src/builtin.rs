@@ -3376,6 +3376,7 @@ declare_lint_pass! {
         DEPRECATED_IN_FUTURE,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         DUPLICATE_MACRO_ATTRIBUTES,
+        ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
         EXPORTED_PRIVATE_DEPENDENCIES,
         FFI_UNWIND_CALLS,
@@ -4525,5 +4526,46 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #114095 <https://github.com/rust-lang/rust/issues/114095>",
+    };
+}
+
+declare_lint! {
+    /// The `elided_lifetimes_in_associated_constant` lint detects elided lifetimes
+    /// that were erroneously allowed in associated constants.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(elided_lifetimes_in_associated_constant)]
+    ///
+    /// struct Foo;
+    ///
+    /// impl Foo {
+    ///     const STR: &str = "hello, world";
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Previous version of Rust
+    ///
+    /// Implicit static-in-const behavior was decided [against] for associated
+    /// constants because of ambiguity. This, however, regressed and the compiler
+    /// erroneously treats elided lifetimes in associated constants as lifetime
+    /// parameters on the impl.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [against]: https://github.com/rust-lang/rust/issues/38831
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
+    Warn,
+    "elided lifetimes cannot be used in associated constants in impls",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseError,
+        reference: "issue #115010 <https://github.com/rust-lang/rust/issues/115010>",
     };
 }

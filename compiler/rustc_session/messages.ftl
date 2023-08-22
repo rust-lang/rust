@@ -8,6 +8,9 @@ session_cannot_mix_and_match_sanitizers = `-Zsanitizer={$first}` is incompatible
 session_cgu_not_recorded =
     CGU-reuse for `{$cgu_user_name}` is (mangled: `{$cgu_name}`) was not recorded
 
+session_cli_feature_diagnostic_help =
+    add `-Zcrate-attr="feature({$feature})"` to the command-line options to enable
+
 session_crate_name_does_not_match = `--crate-name` and `#[crate_name]` are required to match, but `{$s}` != `{$name}`
 
 session_crate_name_empty = crate name must not be empty
