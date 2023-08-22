@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::{get_vec_init_kind, VecInitKind};
 use clippy_utils::path_to_local_id;
 use clippy_utils::source::snippet;
-//use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Local, PatKind, QPath, Stmt, StmtKind};
@@ -16,7 +15,7 @@ declare_clippy_lint! {
     /// Informs the user about a more concise way to create a vector with a known capacity.
     ///
     /// ### Why is this bad?
-    /// The `Vec::with_capacity` constructor is easier to understand.
+    /// The `Vec::with_capacity` constructor is less complex.
     ///
     /// ### Example
     /// ```rust
@@ -51,14 +50,14 @@ impl VecReserveSearcher {
             return;
         }
 
-        let s = format!("{} = Vec::with_capacity({});", self.init_part, self.space_hint);
+        let s = format!("{}Vec::with_capacity({});", self.init_part, self.space_hint);
 
         span_lint_and_sugg(
             cx,
             RESERVE_AFTER_INITIALIZATION,
             self.err_span,
-            "calls to `reverse` immediately after creation",
-            "consider using `Vec::with_capacity(space_hint)`",
+            "call to `reserve` immediately after creation",
+            "consider using `Vec::with_capacity(/* Space hint */)`",
             s,
             Applicability::HasPlaceholders,
         );
@@ -72,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
         if let Some(init_expr) = local.init
-            && let PatKind::Binding(BindingAnnotation::MUT, id, _name, None) = local.pat.kind
+            && let PatKind::Binding(BindingAnnotation::MUT, id, _, None) = local.pat.kind
             && !in_external_macro(cx.sess(), local.span)
             && let Some(init) = get_vec_init_kind(cx, init_expr)
             && !matches!(init, VecInitKind::WithExprCapacity(_))
@@ -81,12 +80,9 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
             self.searcher = Some(VecReserveSearcher {
                 local_id: id,
                 err_span: local.span,
-                init_part: format!("let {}: {}", 
-                snippet(cx, local.pat.span, ""),
-                match local.ty {
-                    Some(type_inference) => snippet(cx, type_inference.span, "").to_string(),
-                    None => String::new()
-                }),
+                init_part: snippet(cx, local.span.shrink_to_lo()
+                    .to(init_expr.span.source_callsite().shrink_to_lo()), "..")
+                    .into_owned(),
                 space_hint: String::new()
             });
         }
@@ -96,17 +92,20 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
         if self.searcher.is_none()
             && let ExprKind::Assign(left, right, _) = expr.kind
             && let ExprKind::Path(QPath::Resolved(None, path)) = left.kind
-            && let [_name] = &path.segments
+            && let [_] = &path.segments
             && let Res::Local(id) = path.res
             && !in_external_macro(cx.sess(), expr.span)
             && let Some(init) = get_vec_init_kind(cx, right)
-            && !matches!(init, VecInitKind::WithExprCapacity(_))
-            && !matches!(init, VecInitKind::WithConstCapacity(_))
+            && !matches!(init, VecInitKind::WithExprCapacity(_)
+               | VecInitKind::WithConstCapacity(_)
+            )
         {
             self.searcher = Some(VecReserveSearcher {
                 local_id: id,
                 err_span: expr.span,
-                init_part: snippet(cx, left.span, "").to_string(),
+                init_part: snippet(cx, left.span.shrink_to_lo()
+                    .to(right.span.source_callsite().shrink_to_lo()), "..")
+                    .into_owned(), // see `assign_expression` test
                 space_hint: String::new()
             });
         }
@@ -115,14 +114,13 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let Some(searcher) = self.searcher.take() {
             if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind
-                && let ExprKind::MethodCall(name, self_arg, other_args, _) = expr.kind
-                && other_args.len() == 1
+                && let ExprKind::MethodCall(name, self_arg, [space_hint], _) = expr.kind
                 && path_to_local_id(self_arg, searcher.local_id)
                 && name.ident.as_str() == "reserve"
             {
                 self.searcher = Some(VecReserveSearcher {
                     err_span: searcher.err_span.to(stmt.span),
-                    space_hint: snippet(cx, other_args[0].span, "").to_string(),
+                    space_hint: snippet(cx, space_hint.span, "..").to_string(),
                     .. searcher
                 });
             } else {
