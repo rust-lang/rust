@@ -96,9 +96,9 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
 #![warn(multiple_supertrait_upcastable)]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![allow(internal_features)]
 // Do not check link redundancy on bootstraping phase
-#![cfg_attr(not(bootstrap), allow(rustdoc::redundant_explicit_links))]
+#![allow(rustdoc::redundant_explicit_links)]
 //
 // Library features:
 // tidy-alphabetical-start

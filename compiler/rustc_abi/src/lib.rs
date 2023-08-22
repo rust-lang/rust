@@ -1,5 +1,5 @@
 #![cfg_attr(feature = "nightly", feature(step_trait, rustc_attrs, min_specialization))]
-#![cfg_attr(all(not(bootstrap), feature = "nightly"), allow(internal_features))]
+#![cfg_attr(feature = "nightly", allow(internal_features))]
 
 use std::fmt;
 #[cfg(feature = "nightly")]
