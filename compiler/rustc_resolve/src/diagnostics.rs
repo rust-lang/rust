@@ -1032,7 +1032,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 .get(&expn_id)
                                 .into_iter()
                                 .flatten()
-                                .map(|ident| TypoSuggestion::typo_from_ident(*ident, res)),
+                                .map(|(ident, _)| TypoSuggestion::typo_from_ident(*ident, res)),
                         );
                     }
                 }

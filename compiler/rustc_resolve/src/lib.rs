@@ -1047,7 +1047,7 @@ pub struct Resolver<'a, 'tcx> {
     /// `macro_rules` scopes produced by `macro_rules` item definitions.
     macro_rules_scopes: FxHashMap<LocalDefId, MacroRulesScopeRef<'a>>,
     /// Helper attributes that are in scope for the given expansion.
-    helper_attrs: FxHashMap<LocalExpnId, Vec<Ident>>,
+    helper_attrs: FxHashMap<LocalExpnId, Vec<(Ident, NameBinding<'a>)>>,
     /// Ready or in-progress results of resolving paths inside the `#[derive(...)]` attribute
     /// with the given `ExpnId`.
     derive_data: FxHashMap<LocalExpnId, DeriveData>,

@@ -421,26 +421,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             orig_ident.span.ctxt(),
             |this, scope, use_prelude, ctxt| {
                 let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
-                let ok = |res, span, arenas| {
-                    Ok((
-                        (res, Visibility::Public, span, LocalExpnId::ROOT).to_name_binding(arenas),
-                        Flags::empty(),
-                    ))
-                };
                 let result = match scope {
                     Scope::DeriveHelpers(expn_id) => {
-                        if let Some(attr) = this
-                            .helper_attrs
-                            .get(&expn_id)
-                            .and_then(|attrs| attrs.iter().rfind(|i| ident == **i))
-                        {
-                            let binding = (
-                                Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
-                                Visibility::Public,
-                                attr.span,
-                                expn_id,
-                            )
-                                .to_name_binding(this.arenas);
+                        if let Some(binding) = this.helper_attrs.get(&expn_id).and_then(|attrs| {
+                            attrs.iter().rfind(|(i, _)| ident == *i).map(|(_, binding)| *binding)
+                        }) {
                             Ok((binding, Flags::empty()))
                         } else {
                             Err(Determinacy::Determined)
@@ -459,11 +444,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             ) {
                                 Ok((Some(ext), _)) => {
                                     if ext.helper_attrs.contains(&ident.name) {
-                                        result = ok(
+                                        let binding = (
                                             Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat),
+                                            Visibility::Public,
                                             derive.span,
-                                            this.arenas,
-                                        );
+                                            LocalExpnId::ROOT,
+                                        )
+                                            .to_name_binding(this.arenas);
+                                        result = Ok((binding, Flags::empty()));
                                         break;
                                     }
                                 }

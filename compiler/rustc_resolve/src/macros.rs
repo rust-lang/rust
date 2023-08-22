@@ -7,7 +7,7 @@ use crate::errors::{
 use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
-use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment};
+use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, attr, Crate, Inline, ItemKind, ModKind, NodeId};
 use rustc_ast_pretty::pprust;
@@ -20,10 +20,10 @@ use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind, SupportsMacroExpansion};
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
-use rustc_hir::def_id::{CrateNum, LocalDefId};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::RegisteredTools;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
 };
@@ -401,8 +401,17 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
         }
         // Sort helpers in a stable way independent from the derive resolution order.
         entry.helper_attrs.sort_by_key(|(i, _)| *i);
-        self.helper_attrs
-            .insert(expn_id, entry.helper_attrs.iter().map(|(_, ident)| *ident).collect());
+        let helper_attrs = entry
+            .helper_attrs
+            .iter()
+            .map(|(_, ident)| {
+                let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
+                let binding = (res, Visibility::<DefId>::Public, ident.span, expn_id)
+                    .to_name_binding(self.arenas);
+                (*ident, binding)
+            })
+            .collect();
+        self.helper_attrs.insert(expn_id, helper_attrs);
         // Mark this derive as having `Copy` either if it has `Copy` itself or if its parent derive
         // has `Copy`, to support cases like `#[derive(Clone, Copy)] #[derive(Debug)]`.
         if entry.has_derive_copy || self.has_derive_copy(parent_scope.expansion) {
