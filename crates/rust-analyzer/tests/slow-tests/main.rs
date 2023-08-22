@@ -861,6 +861,7 @@ edition = "2021"
 bar = {path = "../bar"}
 
 //- /foo/src/main.rs
+#![allow(internal_features)]
 #![feature(rustc_attrs, decl_macro)]
 use bar::Bar;
 
@@ -938,7 +939,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("foo/src/main.rs"),
-            Position::new(11, 9),
+            Position::new(12, 9),
         ),
         work_done_progress_params: Default::default(),
     });

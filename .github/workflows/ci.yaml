@@ -86,6 +86,12 @@ jobs:
       - name: Test
         run: cargo test ${{ env.USE_SYSROOT_ABI }} -- --nocapture --quiet
 
+      - name: Switch to stable toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup component add --toolchain stable rust-src
+          rustup default stable
+
       - name: Run analysis-stats on rust-analyzer
         if: matrix.os == 'ubuntu-latest'
         run: target/${{ matrix.target }}/debug/rust-analyzer analysis-stats .

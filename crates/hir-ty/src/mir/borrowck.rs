@@ -160,7 +160,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                 TerminatorKind::FalseEdge { .. }
                 | TerminatorKind::FalseUnwind { .. }
                 | TerminatorKind::Goto { .. }
-                | TerminatorKind::Resume
+                | TerminatorKind::UnwindResume
                 | TerminatorKind::GeneratorDrop
                 | TerminatorKind::Abort
                 | TerminatorKind::Return
@@ -280,7 +280,7 @@ fn ever_initialized_map(
         let targets = match &terminator.kind {
             TerminatorKind::Goto { target } => vec![*target],
             TerminatorKind::SwitchInt { targets, .. } => targets.all_targets().to_vec(),
-            TerminatorKind::Resume
+            TerminatorKind::UnwindResume
             | TerminatorKind::Abort
             | TerminatorKind::Return
             | TerminatorKind::Unreachable => vec![],
@@ -371,7 +371,7 @@ fn mutability_of_locals(
         };
         match &terminator.kind {
             TerminatorKind::Goto { .. }
-            | TerminatorKind::Resume
+            | TerminatorKind::UnwindResume
             | TerminatorKind::Abort
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
