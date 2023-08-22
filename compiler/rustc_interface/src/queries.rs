@@ -381,7 +381,7 @@ impl Compiler {
             {
                 let _prof_timer =
                     queries.session().prof.generic_activity("self_profile_alloc_query_strings");
-                gcx.enter(rustc_query_impl::alloc_self_profile_query_strings);
+                gcx.enter(rustc_query_misc::alloc_self_profile_query_strings);
             }
 
             self.session()

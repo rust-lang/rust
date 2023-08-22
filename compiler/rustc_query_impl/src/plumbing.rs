@@ -2,32 +2,24 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::rustc_middle::dep_graph::DepContext;
-use crate::rustc_middle::ty::TyEncoder;
 use crate::QueryConfigRestored;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_errors::Diagnostic;
 
-use rustc_index::Idx;
 use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::{
     self, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
 };
-use rustc_middle::query::on_disk_cache::AbsoluteBytePos;
-use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder, EncodedDepNodeIndex};
 use rustc_middle::query::Key;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, print::with_no_queries, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    force_query, QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffects,
-    QueryStackFrame,
+    force_query, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffects, QueryStackFrame,
 };
 use rustc_query_system::{LayoutOfDepth, QueryOverflow};
-use rustc_serialize::Decodable;
-use rustc_serialize::Encodable;
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use std::num::NonZeroU64;
@@ -180,16 +172,6 @@ pub(super) fn try_mark_green<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepN
     tcx.dep_graph.try_mark_green(QueryCtxt::new(tcx), dep_node).is_some()
 }
 
-pub(super) fn encode_all_query_results<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    encoder: &mut CacheEncoder<'_, 'tcx>,
-    query_result_index: &mut EncodedDepNodeIndex,
-) {
-    for encode in super::ENCODE_QUERY_RESULTS.iter().copied().flatten() {
-        encode(tcx, encoder, query_result_index);
-    }
-}
-
 macro_rules! handle_cycle_error {
     ([]) => {{
         rustc_query_system::HandleCycleError::Error
@@ -254,10 +236,10 @@ macro_rules! feedable {
 }
 
 macro_rules! hash_result {
-    ([][$V:ty]) => {{
-        Some(|hcx, result| dep_graph::hash_result(hcx, &restore::<$V>(*result)))
+    ([][$f:path]) => {{
+        Some($f)
     }};
-    ([(no_hash) $($rest:tt)*][$V:ty]) => {{
+    ([(no_hash) $($rest:tt)*]$args:tt) => {{
         None
     }};
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
@@ -341,33 +323,6 @@ pub(crate) fn create_query_frame<
     QueryStackFrame::new(description, span, def_id, def_kind, kind, ty_adt_id, hash)
 }
 
-pub(crate) fn encode_query_results<'a, 'tcx, Q>(
-    query: Q::Config,
-    qcx: QueryCtxt<'tcx>,
-    encoder: &mut CacheEncoder<'a, 'tcx>,
-    query_result_index: &mut EncodedDepNodeIndex,
-) where
-    Q: super::QueryConfigRestored<'tcx>,
-    Q::RestoredValue: Encodable<CacheEncoder<'a, 'tcx>>,
-{
-    let _timer = qcx.profiler().generic_activity_with_arg("encode_query_results_for", query.name());
-
-    assert!(query.query_state(qcx).all_inactive());
-    let cache = query.query_cache(qcx);
-    cache.iter(&mut |key, value, dep_node| {
-        if query.cache_on_disk(qcx.tcx, &key) {
-            let dep_node = SerializedDepNodeIndex::new(dep_node.index());
-
-            // Record position of the cache entry.
-            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
-
-            // Encode the type check tables with the `SerializedDepNodeIndex`
-            // as tag.
-            encoder.encode_tagged(dep_node, &Q::restore(*value));
-        }
-    });
-}
-
 fn try_load_from_on_disk_cache<'tcx, Q>(query: Q, tcx: TyCtxt<'tcx>, dep_node: DepNode)
 where
     Q: QueryConfig<QueryCtxt<'tcx>>,
@@ -380,38 +335,6 @@ where
     if query.cache_on_disk(tcx, &key) {
         let _ = query.execute_query(tcx, key);
     }
-}
-
-pub(crate) fn loadable_from_disk<'tcx>(tcx: TyCtxt<'tcx>, id: SerializedDepNodeIndex) -> bool {
-    if let Some(cache) = tcx.query_system.on_disk_cache.as_ref() {
-        cache.loadable_from_disk(id)
-    } else {
-        false
-    }
-}
-
-pub(crate) fn try_load_from_disk<'tcx, V>(
-    tcx: TyCtxt<'tcx>,
-    prev_index: SerializedDepNodeIndex,
-    index: DepNodeIndex,
-) -> Option<V>
-where
-    V: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
-{
-    let on_disk_cache = tcx.query_system.on_disk_cache.as_ref()?;
-
-    let prof_timer = tcx.prof.incr_cache_loading();
-
-    // The call to `with_query_deserialization` enforces that no new `DepNodes`
-    // are created during deserialization. See the docs of that method for more
-    // details.
-    let value = tcx
-        .dep_graph
-        .with_query_deserialization(|| on_disk_cache.try_load_query_result(tcx, prev_index));
-
-    prof_timer.finish_with_query_invocation_id(index.into());
-
-    value
 }
 
 fn force_from_dep_node<'tcx, Q>(query: Q, tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool
@@ -475,28 +398,6 @@ where
         }),
         name: Q::NAME,
     }
-}
-
-macro_rules! item_if_cached {
-    ([] $tokens:tt) => {};
-    ([(cache) $($rest:tt)*] { $($tokens:tt)* }) => {
-        $($tokens)*
-    };
-    ([$other:tt $($modifiers:tt)*] $tokens:tt) => {
-        item_if_cached! { [$($modifiers)*] $tokens }
-    };
-}
-
-macro_rules! expand_if_cached {
-    ([], $tokens:expr) => {{
-        None
-    }};
-    ([(cache) $($rest:tt)*], $tokens:expr) => {{
-        Some($tokens)
-    }};
-    ([$other:tt $($modifiers:tt)*], $tokens:expr) => {
-        expand_if_cached!([$($modifiers)*], $tokens)
-    };
 }
 
 /// Don't show the backtrace for query system by default
@@ -590,38 +491,11 @@ macro_rules! define_queries {
                         )
                     },
                     can_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] true false),
-                    try_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] {
-                        |tcx, key, prev_index, index| {
-                            if ::rustc_middle::query::cached::$name(tcx, key) {
-                                let value = $crate::plumbing::try_load_from_disk::<
-                                    queries::$name::ProvidedValue<'tcx>
-                                >(
-                                    tcx,
-                                    prev_index,
-                                    index,
-                                );
-                                value.map(|value| queries::$name::provided_to_erased(tcx, value))
-                            } else {
-                                None
-                            }
-                        }
-                    } {
-                        |_tcx, _key, _prev_index, _index| None
-                    }),
-                    value_from_cycle_error: |tcx, cycle, guar| {
-                        let result: queries::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle, guar);
-                        erase(result)
-                    },
-                    loadable_from_disk: |_tcx, _key, _index| {
-                        should_ever_cache_on_disk!([$($modifiers)*] {
-                            ::rustc_middle::query::cached::$name(_tcx, _key) &&
-                                $crate::plumbing::loadable_from_disk(_tcx, _index)
-                        } {
-                            false
-                        })
-                    },
-                    hash_result: hash_result!([$($modifiers)*][queries::$name::Value<'tcx>]),
-                    format_value: |value| format!("{:?}", restore::<queries::$name::Value<'tcx>>(*value)),
+                    try_load_from_disk: query_utils::$name::try_load_from_disk,
+                    loadable_from_disk: query_utils::$name::loadable_from_disk,
+                    value_from_cycle_error: query_utils::$name::value_from_cycle_error,
+                    hash_result: hash_result!([$($modifiers)*][query_utils::$name::hash_result]),
+                    format_value: query_utils::$name::format_value,
                 }
             }
 
@@ -667,30 +541,6 @@ macro_rules! define_queries {
                     qmap,
                 ).unwrap();
             }
-
-            pub fn alloc_self_profile_query_strings<'tcx>(tcx: TyCtxt<'tcx>, string_cache: &mut QueryKeyStringCache) {
-                $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
-                    tcx,
-                    stringify!($name),
-                    &tcx.query_system.caches.$name,
-                    string_cache,
-                )
-            }
-
-            item_if_cached! { [$($modifiers)*] {
-                pub fn encode_query_results<'tcx>(
-                    tcx: TyCtxt<'tcx>,
-                    encoder: &mut CacheEncoder<'_, 'tcx>,
-                    query_result_index: &mut EncodedDepNodeIndex
-                ) {
-                    $crate::plumbing::encode_query_results::<query_impl::$name::QueryType<'tcx>>(
-                        query_impl::$name::QueryType::config(tcx),
-                        QueryCtxt::new(tcx),
-                        encoder,
-                        query_result_index,
-                    )
-                }
-            }}
         })*}
 
         pub(crate) fn engine(incremental: bool) -> QueryEngine {
@@ -713,22 +563,10 @@ macro_rules! define_queries {
             }
         }
 
-        // These arrays are used for iteration and can't be indexed by `DepKind`.
+        // This array is used for iteration and can't be indexed by `DepKind`.
 
         const TRY_COLLECT_ACTIVE_JOBS: &[for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap)] =
             &[$(query_impl::$name::try_collect_active_jobs),*];
-
-        const ALLOC_SELF_PROFILE_QUERY_STRINGS: &[
-            for<'tcx> fn(TyCtxt<'tcx>, &mut QueryKeyStringCache)
-        ] = &[$(query_impl::$name::alloc_self_profile_query_strings),*];
-
-        const ENCODE_QUERY_RESULTS: &[
-            Option<for<'tcx> fn(
-                TyCtxt<'tcx>,
-                &mut CacheEncoder<'_, 'tcx>,
-                &mut EncodedDepNodeIndex)
-            >
-        ] = &[$(expand_if_cached!([$($modifiers)*], query_impl::$name::encode_query_results)),*];
 
         #[allow(nonstandard_style)]
         mod query_callbacks {

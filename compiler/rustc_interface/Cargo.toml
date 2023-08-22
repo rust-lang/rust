@@ -47,6 +47,7 @@ rustc_plugin_impl = { path = "../rustc_plugin_impl" }
 rustc_privacy = { path = "../rustc_privacy" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_query_impl = { path = "../rustc_query_impl" }
+rustc_query_misc = { path = "../rustc_query_misc" }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
