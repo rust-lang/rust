@@ -1174,6 +1174,11 @@ impl Step for ExpandYamlAnchors {
     /// appropriate configuration for all our CI providers. This step ensures the tool was called
     /// by the user before committing CI changes.
     fn run(self, builder: &Builder<'_>) {
+        // Note: `.github/` is not included in dist-src tarballs
+        if !builder.src.join(".github/workflows/ci.yml").exists() {
+            builder.info("Skipping YAML anchors check: GitHub Actions config not found");
+            return;
+        }
         builder.info("Ensuring the YAML anchors in the GitHub Actions config were expanded");
         builder.run_delaying_failure(
             &mut builder.tool_cmd(Tool::ExpandYamlAnchors).arg("check").arg(&builder.src),
