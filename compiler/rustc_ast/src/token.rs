@@ -421,10 +421,11 @@ impl Token {
 
     /// Returns `true` if the token can appear at the start of an expression.
     pub fn can_begin_expr(&self) -> bool {
+        use Delimiter::*;
         match self.uninterpolate().kind {
             Ident(name, is_raw)              =>
                 ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
-            OpenDelim(..)                     | // tuple, array or block
+            OpenDelim(Parenthesis | Brace | Bracket) | // tuple, array or block
             Literal(..)                       | // literal
             Not                               | // operator not
             BinOp(Minus)                      | // unary minus
