@@ -1,5 +1,9 @@
+//@aux-build:proc_macros.rs
 #![warn(clippy::reserve_after_initialization)]
 #![no_main]
+
+extern crate proc_macros;
+use proc_macros::{external, with_span};
 
 // Should lint
 fn standard() {
@@ -29,28 +33,16 @@ fn assign_expression() {
     v5 = Vec::with_capacity(10);
 }
 
-/*fn in_macros() {
+fn in_macros() {
     external! {
-        // Should lint
-        let mut v1: Vec<usize> = vec![];
-        v1.reserve(10);
-
-        // Should lint
-        let capacity = 10;
-        let mut v2: Vec<usize> = vec![];
-        v2.reserve(capacity);
+        let mut v: Vec<usize> = vec![];
+        v.reserve(10);
     }
 
     with_span! {
         span
 
-        // Should lint
-        let mut v1: Vec<usize> = vec![];
-        v1.reserve(10);
-
-        // Should lint
-        let capacity = 10;
-        let mut v2: Vec<usize> = vec![];
-        v2.reserve(capacity);
+        let mut v: Vec<usize> = vec![];
+        v.reserve(10);
     }
-}*/
+}

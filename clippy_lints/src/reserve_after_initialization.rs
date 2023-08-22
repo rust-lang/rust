@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::{get_vec_init_kind, VecInitKind};
-use clippy_utils::path_to_local_id;
 use clippy_utils::source::snippet;
+use clippy_utils::{is_from_proc_macro, path_to_local_id};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Local, PatKind, QPath, Stmt, StmtKind};
@@ -74,8 +74,9 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
             && let PatKind::Binding(BindingAnnotation::MUT, id, _, None) = local.pat.kind
             && !in_external_macro(cx.sess(), local.span)
             && let Some(init) = get_vec_init_kind(cx, init_expr)
-            && !matches!(init, VecInitKind::WithExprCapacity(_))
-            && !matches!(init, VecInitKind::WithConstCapacity(_))
+            && !matches!(init, VecInitKind::WithExprCapacity(_)
+               | VecInitKind::WithConstCapacity(_)
+            )
         {
             self.searcher = Some(VecReserveSearcher {
                 local_id: id,
@@ -116,6 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
             if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind
                 && let ExprKind::MethodCall(name, self_arg, [space_hint], _) = expr.kind
                 && path_to_local_id(self_arg, searcher.local_id)
+                && !is_from_proc_macro(cx, expr)
                 && name.ident.as_str() == "reserve"
             {
                 self.searcher = Some(VecReserveSearcher {
