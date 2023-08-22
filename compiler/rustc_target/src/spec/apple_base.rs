@@ -180,6 +180,8 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
 }
 
 pub fn sdk_version(platform: u32) -> Option<(u32, u32)> {
+    // NOTE: These values are from an arbitrary point in time but shouldn't make it into the final
+    // binary since the final link command will have the current SDK version passed to it.
     match platform {
         object::macho::PLATFORM_MACOS => Some((13, 1)),
         object::macho::PLATFORM_IOS
