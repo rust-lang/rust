@@ -135,9 +135,10 @@ pub enum AsyncGeneratorKind {
 }
 
 pub(crate) type LocalDefId = Opaque;
-pub(crate) type CounterValueReference = Opaque;
-pub(crate) type InjectedExpressionId = Opaque;
-pub(crate) type ExpressionOperandId = Opaque;
+/// [`rustc_middle::mir::Coverage`] is heavily tied to internal details of the
+/// coverage implementation that are likely to change, and are unlikely to be
+/// useful to third-party tools for the foreseeable future.
+pub(crate) type Coverage = Opaque;
 
 /// The FakeReadCause describes the type of pattern why a FakeRead statement exists.
 #[derive(Clone, Debug)]
@@ -164,42 +165,6 @@ pub enum Variance {
     Invariant,
     Contravariant,
     Bivariant,
-}
-
-#[derive(Clone, Debug)]
-pub enum Op {
-    Subtract,
-    Add,
-}
-
-#[derive(Clone, Debug)]
-pub enum CoverageKind {
-    Counter {
-        function_source_hash: usize,
-        id: CounterValueReference,
-    },
-    Expression {
-        id: InjectedExpressionId,
-        lhs: ExpressionOperandId,
-        op: Op,
-        rhs: ExpressionOperandId,
-    },
-    Unreachable,
-}
-
-#[derive(Clone, Debug)]
-pub struct CodeRegion {
-    pub file_name: String,
-    pub start_line: usize,
-    pub start_col: usize,
-    pub end_line: usize,
-    pub end_col: usize,
-}
-
-#[derive(Clone, Debug)]
-pub struct Coverage {
-    pub kind: CoverageKind,
-    pub code_region: Option<CodeRegion>,
 }
 
 #[derive(Clone, Debug)]
