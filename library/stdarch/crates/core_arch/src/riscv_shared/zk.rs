@@ -75,7 +75,7 @@ extern "unadjusted" {
 #[inline]
 pub unsafe fn packh(rs1: usize, rs2: usize) -> usize {
     // Note: There is no LLVM intrinsic for this instruction currently.
-     
+
     let value: usize;
     unsafe {
         asm!(
