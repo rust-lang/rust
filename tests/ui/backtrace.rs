@@ -106,6 +106,8 @@ fn runtest(me: &str) {
                 contains_verbose_expected(s, "double"),
             "bad output3: {}", s
         );
+        // Make sure it's only one stack trace.
+        assert_eq!(s.split("stack backtrace").count(), 2);
 
         // Make sure a stack trace isn't printed too many times
         //

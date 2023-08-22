@@ -6,5 +6,4 @@ BOOM
 stack backtrace:
 thread 'main' panicked at library/core/src/panicking.rs:126:5:
 panic in a destructor during cleanup
-stack backtrace:
 thread caused non-unwinding panic. aborting.
