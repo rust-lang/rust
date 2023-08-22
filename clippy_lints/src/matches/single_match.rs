@@ -6,7 +6,7 @@ use clippy_utils::{
 };
 use core::cmp::max;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BindingMode, Block, Expr, ExprKind, Pat, PatKind};
+use rustc_hir::{Arm, BindingMode, Expr, ExprKind, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{sym, Span};
@@ -30,51 +30,38 @@ fn empty_arm_has_comment(cx: &LateContext<'_>, span: Span) -> bool {
 
 #[rustfmt::skip]
 pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
-    if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
-        if expr.span.from_expansion() {
-            // Don't lint match expressions present in
-            // macro_rules! block
-            return;
-        }
-        if let PatKind::Or(..) = arms[0].pat.kind {
-            // don't lint for or patterns for now, this makes
-            // the lint noisy in unnecessary situations
-            return;
-        }
-        let els = arms[1].body;
-        let els = if is_unit_expr(peel_blocks(els)) && !empty_arm_has_comment(cx, els.span) {
+    if let [arm1, arm2] = arms
+        && arm1.guard.is_none()
+        && arm2.guard.is_none()
+        && !expr.span.from_expansion()
+        // don't lint for or patterns for now, this makes
+        // the lint noisy in unnecessary situations
+        && !matches!(arm1.pat.kind, PatKind::Or(..))
+    {
+        let els = if is_unit_expr(peel_blocks(arm2.body)) && !empty_arm_has_comment(cx, arm2.body.span) {
             None
-        } else if let ExprKind::Block(Block { stmts, expr: block_expr, .. }, _) = els.kind {
-            if stmts.len() == 1 && block_expr.is_none() || stmts.is_empty() && block_expr.is_some() {
+        } else if let ExprKind::Block(block, _) = arm2.body.kind {
+            if matches!((block.stmts, block.expr), ([], Some(_)) | ([_], None)) {
                 // single statement/expr "else" block, don't lint
                 return;
             }
             // block with 2+ statements or 1 expr and 1+ statement
-            Some(els)
+            Some(arm2.body)
         } else {
             // not a block or an empty block w/ comments, don't lint
             return;
         };
 
         let ty = cx.typeck_results().expr_ty(ex);
-        if (*ty.kind() != ty::Bool || is_lint_allowed(cx, MATCH_BOOL, ex.hir_id)) &&
-            (check_single_pattern(arms) || check_opt_like(cx, arms, ty)) {
-            report_single_pattern(cx, ex, arms, expr, els);
+        if (*ty.kind() != ty::Bool || is_lint_allowed(cx, MATCH_BOOL, ex.hir_id))
+            && (is_wild(arm2.pat) || form_exhaustive_matches(cx, ty, arm1.pat, arm2.pat))
+        {
+            report_single_pattern(cx, ex, arm1, expr, els);
         }
     }
 }
 
-fn check_single_pattern(arms: &[Arm<'_>]) -> bool {
-    is_wild(arms[1].pat)
-}
-
-fn report_single_pattern(
-    cx: &LateContext<'_>,
-    ex: &Expr<'_>,
-    arms: &[Arm<'_>],
-    expr: &Expr<'_>,
-    els: Option<&Expr<'_>>,
-) {
+fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, expr: &Expr<'_>, els: Option<&Expr<'_>>) {
     let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
     let ctxt = expr.span.ctxt();
     let mut app = Applicability::MachineApplicable;
@@ -82,7 +69,7 @@ fn report_single_pattern(
         format!(" else {}", expr_block(cx, els, ctxt, "..", Some(expr.span), &mut app))
     });
 
-    let (pat, pat_ref_count) = peel_hir_pat_refs(arms[0].pat);
+    let (pat, pat_ref_count) = peel_hir_pat_refs(arm.pat);
     let (msg, sugg) = if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind
         && let (ty, ty_ref_count) = peel_middle_ty_refs(cx.typeck_results().expr_ty(ex))
         && let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait()
@@ -116,28 +103,22 @@ fn report_single_pattern(
             snippet(cx, ex.span, ".."),
             // PartialEq for different reference counts may not exist.
             "&".repeat(ref_count_diff),
-            snippet(cx, arms[0].pat.span, ".."),
-            expr_block(cx, arms[0].body, ctxt, "..", Some(expr.span), &mut app),
+            snippet(cx, arm.pat.span, ".."),
+            expr_block(cx, arm.body, ctxt, "..", Some(expr.span), &mut app),
         );
         (msg, sugg)
     } else {
         let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";
         let sugg = format!(
             "if let {} = {} {}{els_str}",
-            snippet(cx, arms[0].pat.span, ".."),
+            snippet(cx, arm.pat.span, ".."),
             snippet(cx, ex.span, ".."),
-            expr_block(cx, arms[0].body, ctxt, "..", Some(expr.span), &mut app),
+            expr_block(cx, arm.body, ctxt, "..", Some(expr.span), &mut app),
         );
         (msg, sugg)
     };
 
     span_lint_and_sugg(cx, lint, expr.span, msg, "try", sugg, app);
-}
-
-fn check_opt_like<'a>(cx: &LateContext<'a>, arms: &[Arm<'_>], ty: Ty<'a>) -> bool {
-    // We don't want to lint if the second arm contains an enum which could
-    // have more variants in the future.
-    form_exhaustive_matches(cx, ty, arms[0].pat, arms[1].pat)
 }
 
 /// Returns `true` if all of the types in the pattern are enums which we know
