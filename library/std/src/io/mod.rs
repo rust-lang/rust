@@ -244,9 +244,9 @@
 //! means that file descriptors can be *exclusively owned*. (Here, "file descriptor" is meant to
 //! subsume similar concepts that exist across a wide range of operating systems even if they might
 //! use a different name, such as "handle".) An exclusively owned file descriptor is one that no
-//! other code is allowed to access in any way, but the owner is allowed to a access and even close
+//! other code is allowed to access in any way, but the owner is allowed to access and even close
 //! it any time. A type that owns its file descriptor should usually close it in its `drop`
-//! function. Types like [`File`] generally own their file descriptor. Similarly, file descriptors
+//! function. Types like [`File`] own their file descriptor. Similarly, file descriptors
 //! can be *borrowed*, granting the temporary right to perform operations on this file descriptor.
 //! This indicates that the file descriptor will not be closed for the lifetime of the borrow, but
 //! it does *not* imply any right to close this file descriptor, since it will likely be owned by
@@ -270,7 +270,7 @@
 //! some operating systems). File descriptors basically work like [`Arc`]: when you receive an owned
 //! file descriptor, you cannot know whether there are any other file descriptors that reference the
 //! same kernel object. However, when you create a new kernel object, you know that you are holding
-//! the only reference to it. Just be careful not to borrow it to anyone, since they can obtain a
+//! the only reference to it. Just be careful not to lend it to anyone, since they can obtain a
 //! clone and then you can no longer know what the reference count is! In that sense, [`OwnedFd`] is
 //! like `Arc` and [`BorrowedFd<'a>`] is like `&'a Arc` (and similar for the Windows types). There
 //! is no equivalent to `Box` for file descriptors in the standard library (that would be a type
