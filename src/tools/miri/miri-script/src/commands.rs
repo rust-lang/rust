@@ -2,6 +2,9 @@ use std::env;
 use std::ffi::OsString;
 use std::io::Write;
 use std::ops::Not;
+use std::process;
+use std::thread;
+use std::time;
 
 use anyhow::{anyhow, bail, Context, Result};
 use path_macro::path;
@@ -14,6 +17,7 @@ use crate::Command;
 /// Used for rustc syncs.
 const JOSH_FILTER: &str =
     ":rev(75dd959a3a40eb5b4574f8d2e23aa6efbeb33573:prefix=src/tools/miri):/src/tools/miri";
+const JOSH_PORT: &str = "42042";
 
 impl MiriEnv {
     fn build_miri_sysroot(&mut self, quiet: bool) -> Result<()> {
@@ -79,6 +83,55 @@ impl Command {
         }
 
         Ok(())
+    }
+
+    fn start_josh() -> Result<impl Drop> {
+        // Determine cache directory.
+        let local_dir = {
+            let user_dirs =
+                directories::ProjectDirs::from("org", "rust-lang", "miri-josh").unwrap();
+            user_dirs.cache_dir().to_owned()
+        };
+
+        // Start josh, silencing its output.
+        let mut cmd = process::Command::new("josh-proxy");
+        cmd.arg("--local").arg(local_dir);
+        cmd.arg("--remote").arg("https://github.com");
+        cmd.arg("--port").arg(JOSH_PORT);
+        cmd.arg("--no-background");
+        cmd.stdout(process::Stdio::null());
+        cmd.stderr(process::Stdio::null());
+        let josh = cmd.spawn().context("failed to start josh-proxy, make sure it is installed")?;
+        // Give it some time so hopefully the port is open. (10ms was not enough.)
+        thread::sleep(time::Duration::from_millis(100));
+
+        // Create a wrapper that stops it on drop.
+        struct Josh(process::Child);
+        impl Drop for Josh {
+            fn drop(&mut self) {
+                #[cfg(unix)]
+                {
+                    // Try to gracefully shut it down.
+                    process::Command::new("kill")
+                        .args(["-s", "INT", &self.0.id().to_string()])
+                        .output()
+                        .expect("failed to SIGINT josh-proxy");
+                    // Sadly there is no "wait with timeout"... so we just give it some time to finish.
+                    thread::sleep(time::Duration::from_millis(100));
+                    // Now hopefully it is gone.
+                    if self.0.try_wait().expect("failed to wait for josh-proxy").is_some() {
+                        return;
+                    }
+                }
+                // If that didn't work (or we're not on Unix), kill it hard.
+                eprintln!(
+                    "I have to kill josh-proxy the hard way, let's hope this does not break anything."
+                );
+                self.0.kill().expect("failed to SIGKILL josh-proxy");
+            }
+        }
+
+        Ok(Josh(josh))
     }
 
     pub fn exec(self) -> Result<()> {
@@ -174,6 +227,8 @@ impl Command {
         if cmd!(sh, "git status --untracked-files=no --porcelain").read()?.is_empty().not() {
             bail!("working directory must be clean before running `./miri rustc-pull`");
         }
+        // Make sure josh is running.
+        let josh = Self::start_josh()?;
 
         // Update rust-version file. As a separate commit, since making it part of
         // the merge has confused the heck out of josh in the past.
@@ -186,7 +241,7 @@ impl Command {
             .context("FAILED to commit rust-version file, something went wrong")?;
 
         // Fetch given rustc commit.
-        cmd!(sh, "git fetch http://localhost:8000/rust-lang/rust.git@{commit}{JOSH_FILTER}.git")
+        cmd!(sh, "git fetch http://localhost:{JOSH_PORT}/rust-lang/rust.git@{commit}{JOSH_FILTER}.git")
             .run()
             .map_err(|e| {
                 // Try to un-do the previous `git commit`, to leave the repo in the state we found it it.
@@ -202,6 +257,8 @@ impl Command {
         cmd!(sh, "git merge FETCH_HEAD --no-verify --no-ff -m {MERGE_COMMIT_MESSAGE}")
             .run()
             .context("FAILED to merge new commits, something went wrong")?;
+
+        drop(josh);
         Ok(())
     }
 
@@ -213,6 +270,8 @@ impl Command {
         if cmd!(sh, "git status --untracked-files=no --porcelain").read()?.is_empty().not() {
             bail!("working directory must be clean before running `./miri rustc-push`");
         }
+        // Make sure josh is running.
+        let josh = Self::start_josh()?;
 
         // Find a repo we can do our preparation in.
         if let Ok(rustc_git) = env::var("RUSTC_GIT") {
@@ -249,6 +308,8 @@ impl Command {
         }
         cmd!(sh, "git fetch https://github.com/rust-lang/rust {base}").run()?;
         cmd!(sh, "git push https://github.com/{github_user}/rust {base}:refs/heads/{branch}")
+            .ignore_stdout()
+            .ignore_stderr() // silence the "create GitHub PR" message
             .run()?;
         println!();
 
@@ -257,7 +318,7 @@ impl Command {
         println!("Pushing miri changes...");
         cmd!(
             sh,
-            "git push http://localhost:8000/{github_user}/rust.git{JOSH_FILTER}.git HEAD:{branch}"
+            "git push http://localhost:{JOSH_PORT}/{github_user}/rust.git{JOSH_FILTER}.git HEAD:{branch}"
         )
         .run()?;
         println!();
@@ -265,7 +326,7 @@ impl Command {
         // Do a round-trip check to make sure the push worked as expected.
         cmd!(
             sh,
-            "git fetch http://localhost:8000/{github_user}/rust.git{JOSH_FILTER}.git {branch}"
+            "git fetch http://localhost:{JOSH_PORT}/{github_user}/rust.git{JOSH_FILTER}.git {branch}"
         )
         .ignore_stderr()
         .read()?;
@@ -278,6 +339,8 @@ impl Command {
             "Confirmed that the push round-trips back to Miri properly. Please create a rustc PR:"
         );
         println!("    https://github.com/{github_user}/rust/pull/new/{branch}");
+
+        drop(josh);
         Ok(())
     }
 
