@@ -94,8 +94,8 @@ impl Command {
             | Command::Cargo { .. } => Self::auto_actions()?,
             | Command::ManySeeds { .. }
             | Command::Toolchain { .. }
-            | Command::RustcPull { .. }
             | Command::Bench { .. }
+            | Command::RustcPull { .. }
             | Command::RustcPush { .. } => {}
         }
         // Then run the actual command.
@@ -295,6 +295,7 @@ impl Command {
             bail!("expected many-seeds command to be non-empty");
         };
         let sh = Shell::new()?;
+        sh.set_var("MIRI_AUTO_OPS", "no"); // just in case we get recursively invoked
         for seed in seed_start..seed_end {
             println!("Trying seed: {seed}");
             let mut miriflags = env::var_os("MIRIFLAGS").unwrap_or_default();
