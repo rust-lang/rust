@@ -20,7 +20,8 @@ issue_rust_86261 = { path = "issue-rust-86261" }
 
 [dev-dependencies]
 byteorder_2 = { package = "byteorder", version = "0.5" } # to test dev-dependencies behave as expected, with renaming
-serde_derive = "1.0" # not actually used, but exercises some unique code path (`--extern` .so file)
+# Not actually used, but exercises some unique code path (`--extern` .so file).
+serde_derive = "1.0.185"
 
 [build-dependencies]
 autocfg = "1"

@@ -165,16 +165,17 @@ to `.vscode/settings.json` in your local Miri clone:
 {
     "rust-analyzer.rustc.source": "discover",
     "rust-analyzer.linkedProjects": [
-        "./Cargo.toml",
-        "./cargo-miri/Cargo.toml"
+        "Cargo.toml",
+        "cargo-miri/Cargo.toml",
+        "miri-script/Cargo.toml",
     ],
-    "rust-analyzer.checkOnSave.overrideCommand": [
+    "rust-analyzer.check.overrideCommand": [
         "env",
         "MIRI_AUTO_OPS=no",
         "./miri",
         "cargo",
         "clippy", // make this `check` when working with a locally built rustc
-        "--message-format=json"
+        "--message-format=json",
     ],
     // Contrary to what the name suggests, this also affects proc macros.
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
@@ -230,25 +231,16 @@ You can also directly run Miri on a Rust source file:
 ## Advanced topic: Syncing with the rustc repo
 
 We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit changes between the
-rustc and Miri repositories.
+rustc and Miri repositories. You can install it as follows:
 
 ```sh
 cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r22.12.06
-josh-proxy --local=$HOME/.cache/josh --remote=https://github.com --no-background
 ```
 
-This uses a directory `$HOME/.cache/josh` as a cache, to speed up repeated pulling/pushing.
-
-To make josh push via ssh instead of https, you can add the following to your `.gitconfig`:
-
-```toml
-[url "git@github.com:"]
-    pushInsteadOf = https://github.com/
-```
+Josh will automatically be started and stopped by `./miri`.
 
 ### Importing changes from the rustc repo
 
-Josh needs to be running, as described above.
 We assume we start on an up-to-date master branch in the Miri repo.
 
 ```sh
@@ -267,16 +259,14 @@ needed.
 
 ### Exporting changes to the rustc repo
 
-Keep in mind that pushing is the most complicated job that josh has to do --
-pulling just filters the rustc history, but pushing needs to construct a new
-rustc history that would filter to the given Miri history! To avoid problems, it
-is a good idea to always pull immediately before you push. In particular, you
-should never do two josh pushes without an intermediate pull; that can lead to
-duplicated commits.
+Keep in mind that pushing is the most complicated job that josh has to do -- pulling just filters
+the rustc history, but pushing needs to construct a new rustc history that would filter to the given
+Miri history! To avoid problems, it is a good idea to always pull immediately before you push. If
+you are getting strange errors, chances are you are running into [this josh
+bug](https://github.com/josh-project/josh/issues/998). In that case, please get in touch on Zulip.
 
-Josh needs to be running, as described above. We will use the josh proxy to push
-to your fork of rustc. Run the following in the Miri repo, assuming we are on an
-up-to-date master branch:
+We will use the josh proxy to push to your fork of rustc. Run the following in the Miri repo,
+assuming we are on an up-to-date master branch:
 
 ```sh
 # Push the Miri changes to your rustc fork (substitute your github handle for YOUR_NAME).
@@ -286,3 +276,11 @@ up-to-date master branch:
 This will create a new branch called 'miri' in your fork, and the output should
 include a link to create a rustc PR that will integrate those changes into the
 main repository.
+
+If this fails due to authentication problems, it can help to make josh push via ssh instead of
+https. Add the following to your `.gitconfig`:
+
+```toml
+[url "git@github.com:"]
+    pushInsteadOf = https://github.com/
+```

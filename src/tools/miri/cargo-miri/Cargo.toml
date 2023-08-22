@@ -22,7 +22,8 @@ rustc-build-sysroot = "0.4.1"
 
 # Enable some feature flags that dev-dependencies need but dependencies
 # do not.  This makes `./miri install` after `./miri build` faster.
-serde = { version = "*", features = ["derive"] }
+# Require a version of serde without intransparent unreproducible binary blobs.
+serde = { version = "1.0.185", features = ["derive"] }
 
 [build-dependencies]
 rustc_tools_util = "0.3"

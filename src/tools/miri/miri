@@ -2,5 +2,5 @@
 set -e
 # Instead of doing just `cargo run --manifest-path .. $@`, we invoke miri-script binary directly. Invoking `cargo run` goes through
 # rustup (that sets it's own environmental variables), which is undesirable.
-cargo build -q --manifest-path "$(dirname "$0")"/miri-script/Cargo.toml
+cargo build $CARGO_EXTRA_FLAGS -q --manifest-path "$(dirname "$0")"/miri-script/Cargo.toml
 "$(dirname "$0")"/miri-script/target/debug/miri-script "$@"

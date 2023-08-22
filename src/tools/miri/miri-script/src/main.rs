@@ -1,3 +1,5 @@
+#![allow(clippy::needless_question_mark)]
+
 mod commands;
 mod util;
 
