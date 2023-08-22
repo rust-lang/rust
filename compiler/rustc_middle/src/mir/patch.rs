@@ -14,8 +14,8 @@ pub struct MirPatch<'tcx> {
     resume_block: Option<BasicBlock>,
     // Only for unreachable in cleanup path.
     unreachable_cleanup_block: Option<BasicBlock>,
-    // Cached block for UnwindTerminate(InCleanup)
-    terminate_in_cleanup_block: Option<BasicBlock>,
+    // Cached block for UnwindTerminate (with reason)
+    terminate_block: Option<(BasicBlock, UnwindTerminateReason)>,
     body_span: Span,
     next_local: usize,
 }
@@ -30,7 +30,7 @@ impl<'tcx> MirPatch<'tcx> {
             next_local: body.local_decls.len(),
             resume_block: None,
             unreachable_cleanup_block: None,
-            terminate_in_cleanup_block: None,
+            terminate_block: None,
             body_span: body.span,
         };
 
@@ -53,12 +53,10 @@ impl<'tcx> MirPatch<'tcx> {
             }
 
             // Check if we already have a terminate block
-            if matches!(
-                block.terminator().kind,
-                TerminatorKind::UnwindTerminate(UnwindTerminateReason::InCleanup)
-            ) && block.statements.is_empty()
+            if let TerminatorKind::UnwindTerminate(reason) = block.terminator().kind
+                && block.statements.is_empty()
             {
-                result.terminate_in_cleanup_block = Some(bb);
+                result.terminate_block = Some((bb, reason));
                 continue;
             }
         }
@@ -101,8 +99,8 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn terminate_block(&mut self, reason: UnwindTerminateReason) -> BasicBlock {
-        if let Some(bb) = self.terminate_in_cleanup_block && reason == UnwindTerminateReason::InCleanup {
-            return bb;
+        if let Some((cached_bb, cached_reason)) = self.terminate_block && reason == cached_reason {
+            return cached_bb;
         }
 
         let bb = self.new_block(BasicBlockData {
@@ -113,9 +111,7 @@ impl<'tcx> MirPatch<'tcx> {
             }),
             is_cleanup: true,
         });
-        if reason == UnwindTerminateReason::InCleanup {
-            self.terminate_in_cleanup_block = Some(bb);
-        }
+        self.terminate_block = Some((bb, reason));
         bb
     }
 

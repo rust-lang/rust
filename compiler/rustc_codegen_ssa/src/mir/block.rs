@@ -1581,8 +1581,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn terminate_block(&mut self, reason: UnwindTerminateReason) -> Bx::BasicBlock {
-        if let Some(bb) = self.terminate_in_cleanup_block && reason == UnwindTerminateReason::InCleanup {
-            return bb;
+        if let Some((cached_bb, cached_reason)) = self.terminate_block && reason == cached_reason {
+            return cached_bb;
         }
 
         let funclet;
@@ -1653,9 +1653,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         bx.unreachable();
 
-        if reason == UnwindTerminateReason::InCleanup {
-            self.terminate_in_cleanup_block = Some(llbb);
-        }
+        self.terminate_block = Some((llbb, reason));
         llbb
     }
 
