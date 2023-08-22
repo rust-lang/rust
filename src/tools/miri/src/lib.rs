@@ -32,6 +32,7 @@
     clippy::needless_return,
     clippy::bool_to_int_with_if,
     clippy::box_default,
+    clippy::needless_question_mark,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability
 )]

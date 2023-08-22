@@ -189,8 +189,6 @@ jobs:
           fetch-depth: 256 # get a bit more of the history
       - name: install josh-proxy
         run: cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r22.12.06
-      - name: start josh-proxy
-        run: josh-proxy --local=$HOME/.cache/josh --remote=https://github.com --no-background &
       - name: setup bot git name and email
         run: |
           git config --global user.name 'The Miri Conjob Bot'
