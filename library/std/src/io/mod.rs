@@ -255,9 +255,9 @@
 //! The platform-specific parts of the Rust standard library expose types that reflect these
 //! concepts, see [`os::unix`] and [`os::windows`].
 //!
-//! To uphold I/O safety, it is crucial that no code acts on file descriptors it does not own. In
-//! other words, a safe function that takes a regular integer, treats it as a file descriptor, and
-//! acts on it, is *unsound*.
+//! To uphold I/O safety, it is crucial that no code acts on file descriptors it does not own or
+//! borrow, and no code closes file descriptors it does not own. In other words, a safe function
+//! that takes a regular integer, treats it as a file descriptor, and acts on it, is *unsound*.
 //!
 //! Not upholding I/O safety and acting on a file descriptor without proof of ownership can lead to
 //! misbehavior and even Undefined Behavior in code that relies on ownership of its file
