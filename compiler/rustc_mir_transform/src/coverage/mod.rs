@@ -202,11 +202,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         //
         // Intermediate expressions (used to compute other `Expression` values), which have no
         // direct association with any `BasicCoverageBlock`, are accumulated inside `coverage_counters`.
-        let result = self
+        let mut result = self
             .coverage_counters
             .make_bcb_counters(&mut self.basic_coverage_blocks, &coverage_spans);
 
-        if let Ok(()) = result {
+        if let Ok(branches) = result.as_mut() {
             // If debugging, add any intermediate expressions (which are not associated with any
             // BCB) to the `debug_used_expressions` map.
             if debug_used_expressions.is_enabled() {
@@ -230,6 +230,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 &mut graphviz_data,
                 &mut debug_used_expressions,
             );
+
+            self.inject_branch_counters(std::mem::take(branches));
 
             ////////////////////////////////////////////////////
             // For any remaining `BasicCoverageBlock` counters (that were not associated with
@@ -272,6 +274,27 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // Finally, inject the intermediate expressions collected along the way.
         for intermediate_expression in self.coverage_counters.intermediate_expressions.drain(..) {
             inject_intermediate_expression(self.mir_body, intermediate_expression);
+        }
+    }
+
+    fn inject_branch_counters(&mut self, branches: Vec<(BasicCoverageBlock, CoverageKind)>) {
+        let tcx = self.tcx;
+        let source_map = tcx.sess.source_map();
+        let body_span = self.body_span;
+        let file_name = Symbol::intern(&self.source_file.name.prefer_remapped().to_string_lossy());
+
+        for branch in branches {
+            let bcb_data = self.bcb_data(branch.0);
+            let terminator = bcb_data.terminator(self.mir_body);
+
+            let span = terminator.source_info.span;
+
+            // FIXME(swatinem): figure out what a good span for the conditional is.
+            // For trivial code examples, the `terminator` seems to be sufficient.
+            let code_region =
+                Some(make_code_region(source_map, file_name, &self.source_file, span, body_span));
+
+            inject_statement(self.mir_body, branch.1, bcb_data.last_bb(), code_region);
         }
     }
 

@@ -18,7 +18,6 @@ use crate::ColorConfig;
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 
-use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -564,7 +563,12 @@ impl<'test> TestCx<'test> {
 
         // Run `llvm-cov show` to produce a coverage report in text format.
         let proc_res = self.run_llvm_tool("llvm-cov", |cmd| {
-            cmd.args(["show", "--format=text", "--show-line-counts-or-regions"]);
+            cmd.args([
+                "show",
+                "--format=text",
+                "--show-line-counts-or-regions",
+                "--show-branches=count",
+            ]);
 
             cmd.arg("--Xdemangler");
             cmd.arg(self.config.rust_demangler_path.as_ref().unwrap());
@@ -723,7 +727,7 @@ impl<'test> TestCx<'test> {
 
     /// Replace line numbers in coverage reports with the placeholder `LL`,
     /// so that the tests are less sensitive to lines being added/removed.
-    fn anonymize_coverage_line_numbers(coverage: &str) -> Cow<'_, str> {
+    fn anonymize_coverage_line_numbers(line: &str) -> String {
         // The coverage reporter prints line numbers at the start of a line.
         // They are truncated or left-padded to occupy exactly 5 columns.
         // (`LineNumberColumnWidth` in `SourceCoverageViewText.cpp`.)
@@ -733,7 +737,10 @@ impl<'test> TestCx<'test> {
         // have an additional prefix of `  |` for each nesting level.
         static LINE_NUMBER_RE: Lazy<Regex> =
             Lazy::new(|| Regex::new(r"(?m:^)(?<prefix>(?:  \|)*) *[0-9]+\|").unwrap());
-        LINE_NUMBER_RE.replace_all(coverage, "$prefix   LL|")
+        static BRANCH_LINE_RE: Lazy<Regex> =
+            Lazy::new(|| Regex::new(r"(?m:^)(?<prefix>(?:  \|)*)  Branch \([0-9]+:").unwrap());
+        let line = LINE_NUMBER_RE.replace_all(line, "$prefix   LL|");
+        BRANCH_LINE_RE.replace_all(&line, "$prefix  Branch (LL:").into_owned()
     }
 
     /// Coverage reports can describe multiple source files, separated by

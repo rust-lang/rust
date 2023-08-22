@@ -69,8 +69,31 @@ impl CoverageCounters {
         &mut self,
         basic_coverage_blocks: &CoverageGraph,
         coverage_spans: &[CoverageSpan],
-    ) -> Result<(), Error> {
-        MakeBcbCounters::new(self, basic_coverage_blocks).make_bcb_counters(coverage_spans)
+    ) -> Result<Vec<(BasicCoverageBlock, CoverageKind)>, Error> {
+        let mut make_counters = MakeBcbCounters::new(self, basic_coverage_blocks);
+        make_counters.make_bcb_counters(coverage_spans)?;
+
+        let branches: Vec<_> = basic_coverage_blocks
+            .iter_enumerated()
+            .filter_map(|(bcb, _data)| {
+                let branches = make_counters.bcb_branches(bcb);
+                if branches.len() != 2 {
+                    return None;
+                }
+                let mut branch_counters =
+                    branches.iter().filter_map(|branch| make_counters.branch_counter(branch));
+
+                // FIXME(swatinem): figure out what the correct ordering here is?
+                // In simple testing, the `false` (aka `0`) branch of `SwitchInt` seems to be first.
+                let false_ = branch_counters.next()?.as_operand();
+                let true_ = branch_counters.next()?.as_operand();
+
+                let branch = CoverageKind::Branch { true_, false_ };
+                Some((bcb, branch))
+            })
+            .collect();
+
+        Ok(branches)
     }
 
     fn make_counter<F>(&mut self, debug_block_label_fn: F) -> CoverageKind
