@@ -623,7 +623,7 @@ class RustBuild(object):
 
     def should_fix_bins_and_dylibs(self):
         """Whether or not `fix_bin_or_dylib` needs to be run; can only be True
-        on NixOS.
+        on NixOS or if config.toml has `build.patch-binaries-for-nix` set.
         """
         if self._should_fix_bins_and_dylibs is not None:
             return self._should_fix_bins_and_dylibs
