@@ -72,9 +72,9 @@ Stabilized APIs
 These APIs are now stable in const contexts:
 
 - [`CStr::from_bytes_with_nul`](https://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.from_bytes_with_nul)
-- [`CStr::to_bytes`](https://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.from_bytes_with_nul)
-- [`CStr::to_bytes_with_nul`](https://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.from_bytes_with_nul)
-- [`CStr::to_str`](https://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.from_bytes_with_nul)
+- [`CStr::to_bytes`](https://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.to_bytes)
+- [`CStr::to_bytes_with_nul`](https://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.to_bytes_with_nul)
+- [`CStr::to_str`](https://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.to_str)
 
 <a id="1.72.0-Cargo"></a>
 
