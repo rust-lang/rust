@@ -175,7 +175,7 @@ fn unix_exit_statuses() {
     use crate::process::*;
 
     for exit_code in 0..=0xff {
-        // TODO impl From<ExitCode> for ExitStatus and then test that here too;
+        // FIXME impl From<ExitCode> for ExitStatus and then test that here too;
         // the two ExitStatus values should be the same
         let raw_wait_status = exit_code << 8;
         let exit_status = ExitStatus::from_raw(raw_wait_status);
