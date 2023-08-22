@@ -1481,32 +1481,6 @@ LLVMRustParseBitcodeForLTO(LLVMContextRef Context,
   return wrap(std::move(*SrcOrError).release());
 }
 
-// Find the bitcode section in the object file data and return it as a slice.
-// Fail if the bitcode section is present but empty.
-//
-// On success, the return value is the pointer to the start of the slice and
-// `out_len` is filled with the (non-zero) length. On failure, the return value
-// is `nullptr` and `out_len` is set to zero.
-extern "C" const char*
-LLVMRustGetBitcodeSliceFromObjectData(const char *data,
-                                      size_t len,
-                                      size_t *out_len) {
-  *out_len = 0;
-
-  StringRef Data(data, len);
-  MemoryBufferRef Buffer(Data, ""); // The id is unused.
-
-  Expected<MemoryBufferRef> BitcodeOrError =
-    object::IRObjectFile::findBitcodeInMemBuffer(Buffer);
-  if (!BitcodeOrError) {
-    LLVMRustSetLastError(toString(BitcodeOrError.takeError()).c_str());
-    return nullptr;
-  }
-
-  *out_len = BitcodeOrError->getBufferSize();
-  return BitcodeOrError->getBufferStart();
-}
-
 // Computes the LTO cache key for the provided 'ModId' in the given 'Data',
 // storing the result in 'KeyOut'.
 // Currently, this cache key is a SHA-1 hash of anything that could affect

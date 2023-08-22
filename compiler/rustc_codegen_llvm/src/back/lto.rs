@@ -28,6 +28,9 @@ use std::path::Path;
 use std::slice;
 use std::sync::Arc;
 
+use object::Object;
+use object::ObjectSection;
+
 /// We keep track of the computed LTO cache keys from the previous
 /// session to determine which CGUs we can reuse.
 pub const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
@@ -142,23 +145,21 @@ fn prepare_lto(
 }
 
 fn get_bitcode_slice_from_object_data(obj: &[u8]) -> Result<&[u8], LtoBitcodeFromRlib> {
-    let mut len = 0;
-    let data =
-        unsafe { llvm::LLVMRustGetBitcodeSliceFromObjectData(obj.as_ptr(), obj.len(), &mut len) };
-    if !data.is_null() {
-        assert!(len != 0);
-        let bc = unsafe { slice::from_raw_parts(data, len) };
-
-        // `bc` must be a sub-slice of `obj`.
-        assert!(obj.as_ptr() <= bc.as_ptr());
-        assert!(bc[bc.len()..bc.len()].as_ptr() <= obj[obj.len()..obj.len()].as_ptr());
-
-        Ok(bc)
-    } else {
-        assert!(len == 0);
-        Err(LtoBitcodeFromRlib {
-            llvm_err: llvm::last_error().unwrap_or_else(|| "unknown LLVM error".to_string()),
-        })
+    // The object crate doesn't understand bitcode files, but we can just sniff for the possible
+    // magic strings here and return the whole slice directly.
+    if obj.starts_with(b"\xDE\xC0\x17\x0B") || obj.starts_with(b"BC\xC0\xDE") {
+        return Ok(obj);
+    }
+    match object::read::File::parse(obj) {
+        Ok(f) => match f.section_by_name(".llvmbc").or_else(|| f.section_by_name(".llvm.lto")) {
+            Some(d) => Ok(d.data().unwrap()),
+            None => Err(LtoBitcodeFromRlib {
+                llvm_err: "Bitcode section not found in object file".to_string(),
+            }),
+        },
+        Err(e) => {
+            Err(LtoBitcodeFromRlib { llvm_err: format!("error loading bitcode section: {}", e) })
+        }
     }
 }
 

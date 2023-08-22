@@ -2309,11 +2309,6 @@ extern "C" {
         len: usize,
         Identifier: *const c_char,
     ) -> Option<&Module>;
-    pub fn LLVMRustGetBitcodeSliceFromObjectData(
-        Data: *const u8,
-        len: usize,
-        out_len: &mut usize,
-    ) -> *const u8;
 
     pub fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
     pub fn LLVMRustLinkerAdd(
