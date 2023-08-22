@@ -497,3 +497,81 @@ pub struct GenericParamDef {
     pub pure_wrt_drop: bool,
     pub kind: GenericParamDefKind,
 }
+
+pub struct GenericPredicates {
+    pub parent: Option<DefId>,
+    pub predicates: Vec<PredicateKind>,
+}
+
+#[derive(Clone, Debug)]
+pub enum PredicateKind {
+    Clause(ClauseKind),
+    ObjectSafe(TraitDef),
+    ClosureKind(ClosureDef, GenericArgs, ClosureKind),
+    SubType(SubtypePredicate),
+    Coerce(CoercePredicate),
+    ConstEquate(Const, Const),
+    Ambiguous,
+    AliasRelate(TermKind, TermKind, AliasRelationDirection),
+}
+
+#[derive(Clone, Debug)]
+pub enum ClauseKind {
+    Trait(TraitPredicate),
+    RegionOutlives(RegionOutlivesPredicate),
+    TypeOutlives(TypeOutlivesPredicate),
+    Projection(ProjectionPredicate),
+    ConstArgHasType(Const, Ty),
+    WellFormed(GenericArgKind),
+    ConstEvaluatable(Const),
+}
+
+#[derive(Clone, Debug)]
+pub enum ClosureKind {
+    Fn,
+    FnMut,
+    FnOnce,
+}
+
+#[derive(Clone, Debug)]
+pub struct SubtypePredicate {
+    pub a: Ty,
+    pub b: Ty,
+}
+
+#[derive(Clone, Debug)]
+pub struct CoercePredicate {
+    pub a: Ty,
+    pub b: Ty,
+}
+
+#[derive(Clone, Debug)]
+pub enum AliasRelationDirection {
+    Equate,
+    Subtype,
+}
+
+#[derive(Clone, Debug)]
+pub struct TraitPredicate {
+    pub trait_ref: TraitRef,
+    pub polarity: ImplPolarity,
+}
+
+#[derive(Clone, Debug)]
+pub struct OutlivesPredicate<A, B>(pub A, pub B);
+
+pub type RegionOutlivesPredicate = OutlivesPredicate<Region, Region>;
+pub type TypeOutlivesPredicate = OutlivesPredicate<Ty, Region>;
+
+#[derive(Clone, Debug)]
+pub struct ProjectionPredicate {
+    pub projection_ty: AliasTy,
+    pub term: TermKind,
+}
+
+#[derive(Clone, Debug)]
+pub enum ImplPolarity {
+    Positive,
+    Negative,
+    Reservation,
+}
