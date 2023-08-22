@@ -84,8 +84,8 @@ impl ExitStatus {
 #[cfg(all(test, target_os = "linux"))]
 mod compare_with_linux {
     use super::ExitStatus as Emulated;
-    use crate::process::ExitStatus as Real;
     use crate::os::unix::process::ExitStatusExt as _;
+    use crate::process::ExitStatus as Real;
 
     #[test]
     fn compare() {
