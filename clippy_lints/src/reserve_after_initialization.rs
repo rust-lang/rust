@@ -74,9 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
             && let PatKind::Binding(BindingAnnotation::MUT, id, _, None) = local.pat.kind
             && !in_external_macro(cx.sess(), local.span)
             && let Some(init) = get_vec_init_kind(cx, init_expr)
-            && !matches!(init, VecInitKind::WithExprCapacity(_)
-               | VecInitKind::WithConstCapacity(_)
-            )
+            && !matches!(init, VecInitKind::WithExprCapacity(_) | VecInitKind::WithConstCapacity(_))
         {
             self.searcher = Some(VecReserveSearcher {
                 local_id: id,
@@ -93,13 +91,10 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
         if self.searcher.is_none()
             && let ExprKind::Assign(left, right, _) = expr.kind
             && let ExprKind::Path(QPath::Resolved(None, path)) = left.kind
-            && let [_] = &path.segments
             && let Res::Local(id) = path.res
             && !in_external_macro(cx.sess(), expr.span)
             && let Some(init) = get_vec_init_kind(cx, right)
-            && !matches!(init, VecInitKind::WithExprCapacity(_)
-               | VecInitKind::WithConstCapacity(_)
-            )
+            && !matches!(init, VecInitKind::WithExprCapacity(_) | VecInitKind::WithConstCapacity(_))
         {
             self.searcher = Some(VecReserveSearcher {
                 local_id: id,
@@ -122,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
             {
                 self.searcher = Some(VecReserveSearcher {
                     err_span: searcher.err_span.to(stmt.span),
-                    space_hint: snippet(cx, space_hint.span, "..").to_string(),
+                    space_hint: snippet(cx, space_hint.span, "..").into_owned(),
                     .. searcher
                 });
             } else {
