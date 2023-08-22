@@ -67,7 +67,7 @@ pub struct CodegenUnitDebugContext<'ll, 'tcx> {
     type_map: metadata::TypeMap<'ll, 'tcx>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
-    /// Maps a varaible (name, scope, kind (argument or local), span) to its debug information.
+    /// Maps a variable (name, scope, kind (argument or local), span) to its debug information.
     variables: RefCell<FxHashMap<(Symbol, &'ll DIScope, VariableKind, Span), &'ll DIVariable>>,
 }
 
