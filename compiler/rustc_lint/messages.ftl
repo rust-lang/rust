@@ -323,6 +323,8 @@ lint_invalid_reference_casting_assign_to_ref = assigning to `&T` is undefined be
 lint_invalid_reference_casting_borrow_as_mut = casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
     .label = casting happend here
 
+lint_invalid_reference_casting_note_book = for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
+
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
 

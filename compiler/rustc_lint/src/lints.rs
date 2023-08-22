@@ -764,11 +764,13 @@ pub enum InvalidFromUtf8Diag {
 #[derive(LintDiagnostic)]
 pub enum InvalidReferenceCastingDiag {
     #[diag(lint_invalid_reference_casting_borrow_as_mut)]
+    #[note(lint_invalid_reference_casting_note_book)]
     BorrowAsMut {
         #[label]
         orig_cast: Option<Span>,
     },
     #[diag(lint_invalid_reference_casting_assign_to_ref)]
+    #[note(lint_invalid_reference_casting_note_book)]
     AssignToRef {
         #[label]
         orig_cast: Option<Span>,
