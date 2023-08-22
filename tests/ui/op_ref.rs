@@ -9,6 +9,8 @@ fn main() {
     let unwanted = &tracked_fds - &new_fds;
 
     let foo = &5 - &6;
+    //~^ ERROR: needlessly taken reference of both operands
+    //~| NOTE: `-D clippy::op-ref` implied by `-D warnings`
 
     let bar = String::new();
     let bar = "foo" == &bar;
@@ -54,6 +56,7 @@ fn main() {
     let x = Y(1);
     let y = Y(2);
     let z = x & &y;
+    //~^ ERROR: taken reference of right operand
 }
 
 #[derive(Clone, Copy)]
@@ -87,7 +90,9 @@ impl Mul<A> for A {
         let two = 2;
         let three = 3;
         let _ = one * &self;
+        //~^ ERROR: taken reference of right operand
         let _ = two + &three;
+        //~^ ERROR: taken reference of right operand
         // Removing the reference would lead to unconditional recursion
         self * &rhs
     }

@@ -9,6 +9,8 @@ fn main() {
     let ns = vec![2, 3, 5, 7];
 
     for i in 3..10 {
+        //~^ ERROR: the loop variable `i` is only used to index `ns`
+        //~| NOTE: `-D clippy::needless-range-loop` implied by `-D warnings`
         println!("{}", ns[i]);
     }
 
@@ -30,12 +32,14 @@ fn main() {
 
     let mut ms = vec![1, 2, 3, 4, 5, 6];
     for i in 0..ms.len() {
+        //~^ ERROR: the loop variable `i` is only used to index `ms`
         ms[i] *= 2;
     }
     assert_eq!(ms, vec![2, 4, 6, 8, 10, 12]);
 
     let mut ms = vec![1, 2, 3, 4, 5, 6];
     for i in 0..ms.len() {
+        //~^ ERROR: the loop variable `i` is only used to index `ms`
         let x = &mut ms[i];
         *x *= 2;
     }
@@ -60,6 +64,7 @@ fn main() {
     let mut vec = vec![0; 9];
 
     for i in x..x + 4 {
+        //~^ ERROR: the loop variable `i` is only used to index `vec`
         vec[i] += 1;
     }
 
@@ -67,20 +72,24 @@ fn main() {
     let mut vec = vec![0; 10];
 
     for i in x..=x + 4 {
+        //~^ ERROR: the loop variable `i` is only used to index `vec`
         vec[i] += 1;
     }
 
     let arr = [1, 2, 3];
 
     for i in 0..3 {
+        //~^ ERROR: the loop variable `i` is only used to index `arr`
         println!("{}", arr[i]);
     }
 
     for i in 0..2 {
+        //~^ ERROR: the loop variable `i` is only used to index `arr`
         println!("{}", arr[i]);
     }
 
     for i in 1..3 {
+        //~^ ERROR: the loop variable `i` is only used to index `arr`
         println!("{}", arr[i]);
     }
 

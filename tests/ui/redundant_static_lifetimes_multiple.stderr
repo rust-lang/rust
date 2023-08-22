@@ -13,49 +13,49 @@ LL | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; 
    |                             -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: constants have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:6:29
+  --> $DIR/redundant_static_lifetimes_multiple.rs:9:29
    |
 LL | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                            -^^^^^^^--------------- help: consider removing `'static`: `&[&'static str]`
 
 error: constants have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:6:39
+  --> $DIR/redundant_static_lifetimes_multiple.rs:9:39
    |
 LL | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                                      -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:8:40
+  --> $DIR/redundant_static_lifetimes_multiple.rs:13:40
    |
 LL | static STATIC_VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR: Consider removing 'static
    |                                       -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:8:55
+  --> $DIR/redundant_static_lifetimes_multiple.rs:13:55
    |
 LL | static STATIC_VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR: Consider removing 'static
    |                                                      -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:10:26
+  --> $DIR/redundant_static_lifetimes_multiple.rs:17:26
    |
 LL | static STATIC_VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR: Consider removing 'static
    |                         -^^^^^^^------------------ help: consider removing `'static`: `&[&[&'static str]]`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:10:38
+  --> $DIR/redundant_static_lifetimes_multiple.rs:17:38
    |
 LL | static STATIC_VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR: Consider removing 'static
    |                                     -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:12:37
+  --> $DIR/redundant_static_lifetimes_multiple.rs:21:37
    |
 LL | static STATIC_VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                                    -^^^^^^^--------------- help: consider removing `'static`: `&[&'static str]`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:12:47
+  --> $DIR/redundant_static_lifetimes_multiple.rs:21:47
    |
 LL | static STATIC_VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                                              -^^^^^^^---- help: consider removing `'static`: `&str`

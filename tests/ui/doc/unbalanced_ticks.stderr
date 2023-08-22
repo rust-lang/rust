@@ -2,6 +2,7 @@ error: backticks are unbalanced
   --> $DIR/unbalanced_ticks.rs:7:1
    |
 LL | / /// This is a doc comment with `unbalanced_tick marks and several words that
+LL | |
 LL | | /// should be `encompassed_by` tick marks because they `contain_underscores`.
 LL | | /// Because of the initial `unbalanced_tick` pair, the error message is
 LL | | /// very `confusing_and_misleading`.
@@ -11,7 +12,7 @@ LL | | /// very `confusing_and_misleading`.
    = note: `-D clippy::doc-markdown` implied by `-D warnings`
 
 error: backticks are unbalanced
-  --> $DIR/unbalanced_ticks.rs:13:1
+  --> $DIR/unbalanced_ticks.rs:14:1
    |
 LL | /// This paragraph has `unbalanced_tick marks and should stop_linting.
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +20,7 @@ LL | /// This paragraph has `unbalanced_tick marks and should stop_linting.
    = help: a backtick may be missing a pair
 
 error: item in documentation is missing backticks
-  --> $DIR/unbalanced_ticks.rs:15:32
+  --> $DIR/unbalanced_ticks.rs:17:32
    |
 LL | /// This paragraph is fine and should_be linted normally.
    |                                ^^^^^^^^^
@@ -30,7 +31,7 @@ LL | /// This paragraph is fine and `should_be` linted normally.
    |                                ~~~~~~~~~~~
 
 error: backticks are unbalanced
-  --> $DIR/unbalanced_ticks.rs:17:1
+  --> $DIR/unbalanced_ticks.rs:20:1
    |
 LL | /// Double unbalanced backtick from ``here to here` should lint.
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,7 +39,7 @@ LL | /// Double unbalanced backtick from ``here to here` should lint.
    = help: a backtick may be missing a pair
 
 error: item in documentation is missing backticks
-  --> $DIR/unbalanced_ticks.rs:30:8
+  --> $DIR/unbalanced_ticks.rs:34:8
    |
 LL | /// ## not_fine
    |        ^^^^^^^^
@@ -49,7 +50,7 @@ LL | /// ## `not_fine`
    |        ~~~~~~~~~~
 
 error: backticks are unbalanced
-  --> $DIR/unbalanced_ticks.rs:32:1
+  --> $DIR/unbalanced_ticks.rs:37:1
    |
 LL | /// ### `unbalanced
    | ^^^^^^^^^^^^^^^^^^^
@@ -57,7 +58,7 @@ LL | /// ### `unbalanced
    = help: a backtick may be missing a pair
 
 error: backticks are unbalanced
-  --> $DIR/unbalanced_ticks.rs:34:1
+  --> $DIR/unbalanced_ticks.rs:40:1
    |
 LL | /// - This `item has unbalanced tick marks
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,7 +66,7 @@ LL | /// - This `item has unbalanced tick marks
    = help: a backtick may be missing a pair
 
 error: item in documentation is missing backticks
-  --> $DIR/unbalanced_ticks.rs:35:23
+  --> $DIR/unbalanced_ticks.rs:42:23
    |
 LL | /// - This item needs backticks_here
    |                       ^^^^^^^^^^^^^^

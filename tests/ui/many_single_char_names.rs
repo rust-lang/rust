@@ -3,6 +3,10 @@
 
 fn bla() {
     let a: i32;
+    //~^ ERROR: 5 bindings with single-character names in scope
+    //~| NOTE: `-D clippy::many-single-char-names` implied by `-D warnings`
+    //~| ERROR: 6 bindings with single-character names in scope
+    //~| ERROR: 5 bindings with single-character names in scope
     let (b, c, d): (i32, i64, i16);
     {
         {
@@ -28,9 +32,11 @@ fn bla() {
 }
 
 fn bindings(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32, h: i32) {}
+//~^ ERROR: 8 bindings with single-character names in scope
 
 fn bindings2() {
     let (a, b, c, d, e, f, g, h): (bool, bool, bool, bool, bool, bool, bool, bool) = unimplemented!();
+    //~^ ERROR: 8 bindings with single-character names in scope
 }
 
 fn shadowing() {

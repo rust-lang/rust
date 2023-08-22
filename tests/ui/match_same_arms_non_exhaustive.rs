@@ -39,6 +39,7 @@ pub fn g(x: Ordering) {
         Ordering::Release => println!("release"),
         Ordering::Acquire => println!("acquire"),
         Ordering::AcqRel | Ordering::SeqCst => panic!(),
+        //~^ ERROR: this match arm has an identical body to the `_` wildcard arm
         _ => panic!(),
     }
 }
@@ -52,6 +53,7 @@ mod g {
             Ordering::Release => println!("release"),
             Ordering::Acquire => println!("acquire"),
             Ordering::AcqRel | Ordering::SeqCst => panic!(),
+            //~^ ERROR: this match arm has an identical body to the `_` wildcard arm
             _ => panic!(),
         }
     }

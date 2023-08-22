@@ -5,27 +5,32 @@
 /// This should lint
 /// ```
 /// fn main() {
+//~^ ERROR: needless `fn main` in doctest
+//~| NOTE: `-D clippy::needless-doctest-main` implied by `-D warnings`
 ///     unimplemented!();
 /// }
 /// ```
-///
+/// 
 /// With an explicit return type it should lint too
 /// ```edition2015
 /// fn main() -> () {
+//~^ ERROR: needless `fn main` in doctest
 ///     unimplemented!();
 /// }
 /// ```
-///
+/// 
 /// This should, too.
 /// ```rust
 /// fn main() {
+//~^ ERROR: needless `fn main` in doctest
 ///     unimplemented!();
 /// }
 /// ```
-///
+/// 
 /// This one too.
 /// ```no_run
 /// fn main() {
+//~^ ERROR: needless `fn main` in doctest
 ///     unimplemented!();
 /// }
 /// ```

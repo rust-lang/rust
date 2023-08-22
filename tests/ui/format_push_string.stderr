@@ -8,7 +8,7 @@ LL |     string += &format!("{:?}", 1234);
    = note: `-D clippy::format-push-string` implied by `-D warnings`
 
 error: `format!(..)` appended to existing `String`
-  --> $DIR/format_push_string.rs:6:5
+  --> $DIR/format_push_string.rs:7:5
    |
 LL |     string.push_str(&format!("{:?}", 5678));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,9 +16,10 @@ LL |     string.push_str(&format!("{:?}", 5678));
    = help: consider using `write!` to avoid the extra allocation
 
 error: `format!(..)` appended to existing `String`
-  --> $DIR/format_push_string.rs:13:13
+  --> $DIR/format_push_string.rs:15:13
    |
 LL | /             hex += &(if upper {
+LL | |
 LL | |                 format!("{byte:02X}")
 LL | |             } else {
 LL | |                 format!("{byte:02x}")
@@ -28,9 +29,10 @@ LL | |             });
    = help: consider using `write!` to avoid the extra allocation
 
 error: `format!(..)` appended to existing `String`
-  --> $DIR/format_push_string.rs:25:9
+  --> $DIR/format_push_string.rs:28:9
    |
 LL | /         s += &(if let Some(_a) = Some(1234) {
+LL | |
 LL | |             format!("{}", 1234)
 LL | |         } else {
 LL | |             format!("{}", 1234)
@@ -40,9 +42,10 @@ LL | |         });
    = help: consider using `write!` to avoid the extra allocation
 
 error: `format!(..)` appended to existing `String`
-  --> $DIR/format_push_string.rs:31:9
+  --> $DIR/format_push_string.rs:35:9
    |
 LL | /         s += &(match Some(1234) {
+LL | |
 LL | |             Some(_) => format!("{}", 1234),
 LL | |             None => format!("{}", 1234),
 LL | |         });

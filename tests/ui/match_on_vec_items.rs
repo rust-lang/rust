@@ -8,6 +8,8 @@ fn match_with_wildcard() {
 
     // Lint, may panic
     match arr[idx] {
+        //~^ ERROR: indexing into a vector may panic
+        //~| NOTE: `-D clippy::match-on-vec-items` implied by `-D warnings`
         0 => println!("0"),
         1 => println!("1"),
         _ => {},
@@ -15,6 +17,7 @@ fn match_with_wildcard() {
 
     // Lint, may panic
     match arr[range] {
+        //~^ ERROR: indexing into a vector may panic
         [0, 1] => println!("0 1"),
         [1, 2] => println!("1 2"),
         _ => {},
@@ -28,6 +31,7 @@ fn match_without_wildcard() {
 
     // Lint, may panic
     match arr[idx] {
+        //~^ ERROR: indexing into a vector may panic
         0 => println!("0"),
         1 => println!("1"),
         num => {},
@@ -35,6 +39,7 @@ fn match_without_wildcard() {
 
     // Lint, may panic
     match arr[range] {
+        //~^ ERROR: indexing into a vector may panic
         [0, 1] => println!("0 1"),
         [1, 2] => println!("1 2"),
         [ref sub @ ..] => {},
@@ -48,6 +53,7 @@ fn match_wildcard_and_action() {
 
     // Lint, may panic
     match arr[idx] {
+        //~^ ERROR: indexing into a vector may panic
         0 => println!("0"),
         1 => println!("1"),
         _ => println!("Hello, World!"),
@@ -55,6 +61,7 @@ fn match_wildcard_and_action() {
 
     // Lint, may panic
     match arr[range] {
+        //~^ ERROR: indexing into a vector may panic
         [0, 1] => println!("0 1"),
         [1, 2] => println!("1 2"),
         _ => println!("Hello, World!"),
@@ -68,6 +75,7 @@ fn match_vec_ref() {
 
     // Lint, may panic
     match arr[idx] {
+        //~^ ERROR: indexing into a vector may panic
         0 => println!("0"),
         1 => println!("1"),
         _ => {},
@@ -75,6 +83,7 @@ fn match_vec_ref() {
 
     // Lint, may panic
     match arr[range] {
+        //~^ ERROR: indexing into a vector may panic
         [0, 1] => println!("0 1"),
         [1, 2] => println!("1 2"),
         _ => {},

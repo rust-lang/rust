@@ -1,5 +1,5 @@
 //@normalize-stderr-test: "\(\d+ byte\)" -> "(N byte)"
-//@normalize-stderr-test: "\(limit: \d+ byte\)" -> "(limit: N byte)"
+//@normalize-stderr-test: "\(limit: \d+ byte\)" -> "(limit: 8 byte)"
 #![deny(clippy::trivially_copy_pass_by_ref)]
 #![allow(
     clippy::disallowed_names,
@@ -50,6 +50,8 @@ fn good_return_explicit_lt_struct<'a>(foo: &'a Foo) -> FooRef<'a> {
 }
 
 fn bad(x: &u32, y: &Foo, z: &Baz) {}
+//~^ ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
+//~| ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
 
 impl Foo {
     fn good(self, a: &mut u32, b: u32, c: &Bar) {}
@@ -57,10 +59,18 @@ impl Foo {
     fn good2(&mut self) {}
 
     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {}
+    //~^ ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
+    //~| ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
+    //~| ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
+    //~| ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
 
     fn bad2(x: &u32, y: &Foo, z: &Baz) {}
+    //~^ ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
+    //~| ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
+    //~| ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
 
     fn bad_issue7518(self, other: &Self) {}
+    //~^ ERROR: this argument (4 byte) is passed by reference, but would be more efficient if
 }
 
 impl AsRef<u32> for Foo {
@@ -73,10 +83,14 @@ impl Bar {
     fn good(&self, a: &mut u32, b: u32, c: &Bar) {}
 
     fn bad2(x: &u32, y: &Foo, z: &Baz) {}
+    //~^ ERROR: this argument (4 byte) is passed by reference, but would be more efficient if
+    //~| ERROR: this argument (4 byte) is passed by reference, but would be more efficient if
+    //~| ERROR: this argument (4 byte) is passed by reference, but would be more efficient if
 }
 
 trait MyTrait {
     fn trait_method(&self, _foo: &Foo);
+    //~^ ERROR: this argument (4 byte) is passed by reference, but would be more efficient if
 }
 
 pub trait MyTrait2 {
@@ -109,11 +123,13 @@ mod issue5876 {
 
     #[inline(never)]
     fn foo_never(x: &i32) {
+        //~^ ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
         println!("{}", x);
     }
 
     #[inline]
     fn foo(x: &i32) {
+        //~^ ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
         println!("{}", x);
     }
 }
@@ -141,6 +157,7 @@ async fn _async_explicit<'a>(x: &'a u32) -> &'a u32 {
 }
 
 fn _unrelated_lifetimes<'a, 'b>(_x: &'a u32, y: &'b u32) -> &'b u32 {
+    //~^ ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
     y
 }
 

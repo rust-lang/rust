@@ -2,40 +2,51 @@
 #![allow(clippy::unnecessary_wraps)]
 
 const C: Option<Option<i32>> = None;
+//~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
 static S: Option<Option<i32>> = None;
+//~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
 
 fn input(_: Option<Option<u8>>) {}
+//~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
 
 fn output() -> Option<Option<u8>> {
+    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
     None
 }
 
 fn output_nested() -> Vec<Option<Option<u8>>> {
+    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
     vec![None]
 }
 
 // The lint only generates one warning for this
 fn output_nested_nested() -> Option<Option<Option<u8>>> {
+    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
     None
 }
 
 struct Struct {
     x: Option<Option<u8>>,
+    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum
 }
 
 impl Struct {
     fn struct_fn() -> Option<Option<u8>> {
+        //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum
         None
     }
 }
 
 trait Trait {
     fn trait_fn() -> Option<Option<u8>>;
+    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum
 }
 
 enum Enum {
     Tuple(Option<Option<u8>>),
+    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum
     Struct { x: Option<Option<u8>> },
+    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum
 }
 
 // The lint allows this
@@ -77,6 +88,7 @@ mod issue_4298 {
         #[serde(default)]
         #[serde(borrow)]
         foo: Option<Option<Cow<'a, str>>>,
+        //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom
     }
 
     #[allow(clippy::option_option)]

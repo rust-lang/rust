@@ -9,7 +9,7 @@ LL |     vec1.extend(repeat(0).take(len));
    = note: `-D clippy::slow-vector-initialization` implied by `-D warnings`
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:18:5
+  --> $DIR/slow_vector_initialization.rs:20:5
    |
 LL |     let mut vec2 = Vec::with_capacity(len - 10);
    |                    ---------------------------- help: consider replacing this with: `vec![0; len - 10]`
@@ -17,7 +17,7 @@ LL |     vec2.extend(repeat(0).take(len - 10));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:25:5
+  --> $DIR/slow_vector_initialization.rs:28:5
    |
 LL |     let mut vec4 = Vec::with_capacity(len);
    |                    ----------------------- help: consider replacing this with: `vec![0; len]`
@@ -25,7 +25,7 @@ LL |     vec4.extend(repeat(0).take(vec4.capacity()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:35:5
+  --> $DIR/slow_vector_initialization.rs:39:5
    |
 LL |     let mut resized_vec = Vec::with_capacity(30);
    |                           ---------------------- help: consider replacing this with: `vec![0; 30]`
@@ -33,7 +33,7 @@ LL |     resized_vec.resize(30, 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:38:5
+  --> $DIR/slow_vector_initialization.rs:43:5
    |
 LL |     let mut extend_vec = Vec::with_capacity(30);
    |                          ---------------------- help: consider replacing this with: `vec![0; 30]`
@@ -41,7 +41,7 @@ LL |     extend_vec.extend(repeat(0).take(30));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:45:5
+  --> $DIR/slow_vector_initialization.rs:51:5
    |
 LL |     let mut vec1 = Vec::with_capacity(len);
    |                    ----------------------- help: consider replacing this with: `vec![0; len]`
@@ -49,7 +49,7 @@ LL |     vec1.resize(len, 0);
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:53:5
+  --> $DIR/slow_vector_initialization.rs:60:5
    |
 LL |     let mut vec3 = Vec::with_capacity(len - 10);
    |                    ---------------------------- help: consider replacing this with: `vec![0; len - 10]`
@@ -57,7 +57,7 @@ LL |     vec3.resize(len - 10, 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:56:5
+  --> $DIR/slow_vector_initialization.rs:64:5
    |
 LL |     let mut vec4 = Vec::with_capacity(len);
    |                    ----------------------- help: consider replacing this with: `vec![0; len]`
@@ -65,7 +65,7 @@ LL |     vec4.resize(vec4.capacity(), 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:60:5
+  --> $DIR/slow_vector_initialization.rs:69:5
    |
 LL |     vec1 = Vec::with_capacity(10);
    |            ---------------------- help: consider replacing this with: `vec![0; 10]`
@@ -73,7 +73,7 @@ LL |     vec1.resize(10, 0);
    |     ^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:67:5
+  --> $DIR/slow_vector_initialization.rs:77:5
    |
 LL |     let mut vec1 = Vec::new();
    |                    ---------- help: consider replacing this with: `vec![0; len]`
@@ -81,7 +81,7 @@ LL |     vec1.resize(len, 0);
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:71:5
+  --> $DIR/slow_vector_initialization.rs:82:5
    |
 LL |     let mut vec3 = Vec::new();
    |                    ---------- help: consider replacing this with: `vec![0; len - 10]`
@@ -89,7 +89,7 @@ LL |     vec3.resize(len - 10, 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:75:5
+  --> $DIR/slow_vector_initialization.rs:87:5
    |
 LL |     vec1 = Vec::new();
    |            ---------- help: consider replacing this with: `vec![0; 10]`
@@ -97,7 +97,7 @@ LL |     vec1.resize(10, 0);
    |     ^^^^^^^^^^^^^^^^^^
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/slow_vector_initialization.rs:78:18
+  --> $DIR/slow_vector_initialization.rs:91:18
    |
 LL | fn do_stuff(vec: &mut [u8]) {}
    |                  ^^^^^^^^^ help: consider changing to: `&[u8]`

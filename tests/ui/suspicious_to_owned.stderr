@@ -15,7 +15,7 @@ LL |     let _ = cow.clone();
    |             ~~~~~~~~~~~
 
 error: this `to_owned` call clones the Cow<'_, [char; 3]> itself and does not cause the Cow<'_, [char; 3]> contents to become owned
-  --> $DIR/suspicious_to_owned.rs:27:13
+  --> $DIR/suspicious_to_owned.rs:29:13
    |
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL |     let _ = cow.clone();
    |             ~~~~~~~~~~~
 
 error: this `to_owned` call clones the Cow<'_, Vec<char>> itself and does not cause the Cow<'_, Vec<char>> contents to become owned
-  --> $DIR/suspicious_to_owned.rs:37:13
+  --> $DIR/suspicious_to_owned.rs:40:13
    |
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |     let _ = cow.clone();
    |             ~~~~~~~~~~~
 
 error: this `to_owned` call clones the Cow<'_, str> itself and does not cause the Cow<'_, str> contents to become owned
-  --> $DIR/suspicious_to_owned.rs:47:13
+  --> $DIR/suspicious_to_owned.rs:51:13
    |
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL |     let _ = cow.clone();
    |             ~~~~~~~~~~~
 
 error: implicitly cloning a `String` by calling `to_owned` on its dereferenced type
-  --> $DIR/suspicious_to_owned.rs:61:13
+  --> $DIR/suspicious_to_owned.rs:66:13
    |
 LL |     let _ = String::from(moo).to_owned();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::from(moo).clone()`
@@ -68,7 +68,7 @@ LL |     let _ = String::from(moo).to_owned();
    = note: `-D clippy::implicit-clone` implied by `-D warnings`
 
 error: implicitly cloning a `Vec` by calling `to_owned` on its dereferenced type
-  --> $DIR/suspicious_to_owned.rs:62:13
+  --> $DIR/suspicious_to_owned.rs:69:13
    |
 LL |     let _ = moos_vec.to_owned();
    |             ^^^^^^^^^^^^^^^^^^^ help: consider using: `moos_vec.clone()`

@@ -16,13 +16,19 @@ const NOT_A_REAL_REGEX: &str = "foobar";
 
 fn syntax_error() {
     let pipe_in_wrong_position = Regex::new("|");
+    //~^ ERROR: trivial regex
     let pipe_in_wrong_position_builder = RegexBuilder::new("|");
+    //~^ ERROR: trivial regex
     let wrong_char_ranice = Regex::new("[z-a]");
+    //~^ ERROR: regex syntax error: invalid character class range, the start must be <= th
+    //~| NOTE: `-D clippy::invalid-regex` implied by `-D warnings`
     let some_unicode = Regex::new("[é-è]");
+    //~^ ERROR: regex syntax error: invalid character class range, the start must be <= th
 
     let some_regex = Regex::new(OPENING_PAREN);
 
     let binary_pipe_in_wrong_position = BRegex::new("|");
+    //~^ ERROR: trivial regex
     let some_binary_regex = BRegex::new(OPENING_PAREN);
     let some_binary_regex_builder = BRegexBuilder::new(OPENING_PAREN);
 
@@ -47,36 +53,49 @@ fn syntax_error() {
     let escaped_string_span = Regex::new("\\b\\c");
 
     let aux_span = Regex::new("(?ixi)");
+    //~^ ERROR: regex syntax error: duplicate flag
 
     let should_not_lint = Regex::new("(?u).");
     let should_not_lint = BRegex::new("(?u).");
     let invalid_utf8_should_not_lint = BRegex::new("(?-u).");
     let invalid_utf8_should_lint = Regex::new("(?-u).");
+    //~^ ERROR: regex syntax error: pattern can match invalid UTF-8
 }
 
 fn trivial_regex() {
     let trivial_eq = Regex::new("^foobar$");
+    //~^ ERROR: trivial regex
 
     let trivial_eq_builder = RegexBuilder::new("^foobar$");
+    //~^ ERROR: trivial regex
 
     let trivial_starts_with = Regex::new("^foobar");
+    //~^ ERROR: trivial regex
 
     let trivial_ends_with = Regex::new("foobar$");
+    //~^ ERROR: trivial regex
 
     let trivial_contains = Regex::new("foobar");
+    //~^ ERROR: trivial regex
 
     let trivial_contains = Regex::new(NOT_A_REAL_REGEX);
+    //~^ ERROR: trivial regex
 
     let trivial_backslash = Regex::new("a\\.b");
+    //~^ ERROR: trivial regex
 
     // unlikely corner cases
     let trivial_empty = Regex::new("");
+    //~^ ERROR: trivial regex
 
     let trivial_empty = Regex::new("^");
+    //~^ ERROR: trivial regex
 
     let trivial_empty = Regex::new("^$");
+    //~^ ERROR: trivial regex
 
     let binary_trivial_empty = BRegex::new("^$");
+    //~^ ERROR: trivial regex
 
     // non-trivial regexes
     let non_trivial_dot = Regex::new("a.b");

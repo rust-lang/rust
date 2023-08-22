@@ -7,7 +7,7 @@ LL |         let writer = lock.write().unwrap();
    = note: `-D clippy::readonly-write-lock` implied by `-D warnings`
 
 error: this write lock is used only for reading
-  --> $DIR/readonly_write_lock.rs:21:22
+  --> $DIR/readonly_write_lock.rs:23:22
    |
 LL |         let writer = lock.write().unwrap();
    |                      ^^^^^^^^^^^^ help: consider using a read lock instead: `lock.read()`
