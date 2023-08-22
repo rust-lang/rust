@@ -16,6 +16,11 @@ fn get_host() -> String {
         .host
 }
 
+pub fn flagsplit(flags: &str) -> Vec<String> {
+    // This code is taken from `RUSTFLAGS` handling in cargo.
+    flags.split(' ').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect()
+}
+
 // Build the shared object file for testing external C function calls.
 fn build_so_for_c_ffi_tests() -> PathBuf {
     let cc = option_env!("CC").unwrap_or("cc");
@@ -100,14 +105,16 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
     if with_dependencies && use_std {
         config.dependencies_crate_manifest_path =
             Some(Path::new("test_dependencies").join("Cargo.toml"));
-        config.dependency_builder.args = vec![
-            "run".into(),
+        let mut builder_args = vec!["run".into()];
+        builder_args.extend(flagsplit(&env::var("CARGO_EXTRA_FLAGS").unwrap_or_default()));
+        builder_args.extend([
             "--manifest-path".into(),
             "cargo-miri/Cargo.toml".into(),
             "--".into(),
             "miri".into(),
             "run".into(), // There is no `cargo miri build` so we just use `cargo miri run`.
-        ];
+        ]);
+        config.dependency_builder.args = builder_args.into_iter().map(Into::into).collect();
     }
     config
 }

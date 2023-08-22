@@ -15,12 +15,14 @@ CGREEN  = '\33[32m'
 CBOLD   = '\33[1m'
 CEND    = '\33[0m'
 
+CARGO_EXTRA_FLAGS = os.environ.get("CARGO_EXTRA_FLAGS", "").split()
+
 def fail(msg):
     print("\nTEST FAIL: {}".format(msg))
     sys.exit(1)
 
 def cargo_miri(cmd, quiet = True):
-    args = ["cargo", "miri", cmd]
+    args = ["cargo", "miri", cmd] + CARGO_EXTRA_FLAGS
     if quiet:
         args += ["-q"]
     if 'MIRI_TEST_TARGET' in os.environ:

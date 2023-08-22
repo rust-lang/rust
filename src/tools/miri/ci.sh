@@ -52,7 +52,7 @@ function run_tests {
 
     # Also run some many-seeds tests. 64 seeds means this takes around a minute per test.
     for FILE in tests/many-seeds/*.rs; do
-      MIRI_SEEDS=64 CARGO_EXTRA_FLAGS="$CARGO_EXTRA_FLAGS -q" ./miri many-seeds ./miri run "$FILE"
+      MIRI_SEEDS=64 ./miri many-seeds ./miri run "$FILE"
     done
 
     # Check that the benchmarks build and run, but without actually benchmarking.
