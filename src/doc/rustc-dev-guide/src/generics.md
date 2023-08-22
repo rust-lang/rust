@@ -127,7 +127,7 @@ You may have a couple of followup questions…
  `MyStruct`: `Adt(Foo, &[Param(0), Param(1)])`.
 
 **`instantiate`** How do we actually do the substitutions? There is a function for that too! You
-use [`instantiate`][instantiate] to replace a `GenericArgsRef` with  another list of types.
+use [`instantiate`] to replace a `GenericArgsRef` with  another list of types.
 
 [Here is an example of actually using `instantiate` in the compiler][instantiatex].
 The exact details are not too important, but in this piece of code, we happen to be
@@ -135,7 +135,7 @@ converting from the `rustc_hir::Ty` to a real `ty::Ty`. You can see that we firs
 (`args`).  Then we call `type_of` to get a type and call `ty.instantiate(tcx, args)` to get a new
 version of `ty` with the args made.
 
-[instantiate]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/generic_args/struct.EarlyBinder.html#method.instantiate
+[`instantiate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/generic_args/struct.EarlyBinder.html#method.instantiate
 [instantiatex]: https://github.com/rust-lang/rust/blob/8a562f9671e36cf29c9c794c2646bcf252d55535/compiler/rustc_hir_analysis/src/astconv/mod.rs#L905-L927
 
 **Note on indices:** It is possible for the indices in `Param` to not match with what we expect. For
