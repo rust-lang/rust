@@ -205,7 +205,7 @@ fn main() {
         }
     }
 
-    f_str(&&ref_str); // `needless_borrow` will suggest removing both references
+    f_str(&ref_str); // `needless_borrow` will suggest removing both references
     f_str(&ref_str); // `needless_borrow` will suggest removing only one reference
 
     let x = &&40;
@@ -293,4 +293,10 @@ fn main() {
     fn return_dyn_assoc<'a>(x: &'a &'a u32) -> &'a <&'a u32 as WithAssoc>::Assoc {
         *x
     }
+
+    // Issue #11366
+    let _: &mut u32 = match &mut Some(&mut 0u32) {
+        Some(x) => x,
+        None => panic!(),
+    };
 }

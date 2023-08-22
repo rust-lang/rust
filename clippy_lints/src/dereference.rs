@@ -609,12 +609,14 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             adjusted_ty,
                         },
                     ));
-                } else if stability.is_deref_stable() {
+                } else if stability.is_deref_stable()
+                    && let Some(parent) = get_parent_expr(cx, expr)
+                {
                     self.state = Some((
                         State::ExplicitDeref { mutability: None },
                         StateData {
-                            span: expr.span,
-                            hir_id: expr.hir_id,
+                            span: parent.span,
+                            hir_id: parent.hir_id,
                             adjusted_ty,
                         },
                     ));

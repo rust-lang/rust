@@ -193,10 +193,10 @@ LL |     let _ = f_str(**ref_ref_str);
    |                   ^^^^^^^^^^^^^ help: try: `ref_ref_str`
 
 error: deref which would be done by auto-deref
-  --> $DIR/explicit_auto_deref.rs:208:13
+  --> $DIR/explicit_auto_deref.rs:208:12
    |
 LL |     f_str(&&*ref_str); // `needless_borrow` will suggest removing both references
-   |             ^^^^^^^^ help: try: `ref_str`
+   |            ^^^^^^^^^ help: try: `ref_str`
 
 error: deref which would be done by auto-deref
   --> $DIR/explicit_auto_deref.rs:209:12
@@ -234,5 +234,11 @@ error: deref which would be done by auto-deref
 LL |         *x
    |         ^^ help: try: `x`
 
-error: aborting due to 39 previous errors
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:299:20
+   |
+LL |         Some(x) => &mut *x,
+   |                    ^^^^^^^ help: try: `x`
+
+error: aborting due to 40 previous errors
 
