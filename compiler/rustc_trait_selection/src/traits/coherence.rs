@@ -191,7 +191,7 @@ fn overlap<'tcx>(
         .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
         .build();
     let selcx =
-        &mut SelectionContext::with_treat_inductive_cycle_as(&infcx, TreatInductiveCycleAs::Ambig);
+        &mut SelectionContext::with_treat_inductive_cycle_as(&infcx, TreatInductiveCycleAs::Recur);
     if track_ambiguity_causes.is_yes() {
         selcx.enable_tracking_intercrate_ambiguity_causes();
     }
