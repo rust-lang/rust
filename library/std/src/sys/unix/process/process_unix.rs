@@ -1061,3 +1061,8 @@ impl crate::os::linux::process::ChildExt for crate::process::Child {
 #[cfg(test)]
 #[path = "process_unix/tests.rs"]
 mod tests;
+
+// See [`process_unsupported_wait_status::compare_with_linux`];
+#[cfg(all(test, target_os = "linux"))]
+#[path = "process_unsupported/wait_status.rs"]
+mod process_unsupported_wait_status;

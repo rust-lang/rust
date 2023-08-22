@@ -55,56 +55,8 @@ impl Process {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Default)]
-pub struct ExitStatus(c_int);
-
-impl ExitStatus {
-    #[cfg_attr(target_os = "horizon", allow(unused))]
-    pub fn success(&self) -> bool {
-        self.code() == Some(0)
-    }
-
-    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
-        Err(ExitStatusError(1.try_into().unwrap()))
-    }
-
-    pub fn code(&self) -> Option<i32> {
-        None
-    }
-
-    pub fn signal(&self) -> Option<i32> {
-        None
-    }
-
-    pub fn core_dumped(&self) -> bool {
-        false
-    }
-
-    pub fn stopped_signal(&self) -> Option<i32> {
-        None
-    }
-
-    pub fn continued(&self) -> bool {
-        false
-    }
-
-    pub fn into_raw(&self) -> c_int {
-        0
-    }
-}
-
-/// Converts a raw `c_int` to a type-safe `ExitStatus` by wrapping it without copying.
-impl From<c_int> for ExitStatus {
-    fn from(a: c_int) -> ExitStatus {
-        ExitStatus(a as i32)
-    }
-}
-
-impl fmt::Display for ExitStatus {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "exit code: {}", self.0)
-    }
-}
+mod wait_status;
+pub use wait_status::ExitStatus;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct ExitStatusError(NonZero_c_int);
