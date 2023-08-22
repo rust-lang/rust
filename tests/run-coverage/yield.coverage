@@ -11,11 +11,21 @@
    LL|      1|    };
    LL|       |
    LL|      1|    match Pin::new(&mut generator).resume(()) {
+  ------------------
+  |  Branch (LL:5): [True: 0, False: 1]
+  |  Branch (LL:5): [True: 0, False: 1]
+  ------------------
    LL|      1|        GeneratorState::Yielded(1) => {}
    LL|      0|        _ => panic!("unexpected value from resume"),
    LL|       |    }
    LL|      1|    match Pin::new(&mut generator).resume(()) {
+  ------------------
+  |  Branch (LL:5): [True: 0, False: 1]
+  ------------------
    LL|      1|        GeneratorState::Complete("foo") => {}
+  ------------------
+  |  Branch (LL:34): [True: 1, False: 0]
+  ------------------
    LL|      0|        _ => panic!("unexpected value from resume"),
    LL|       |    }
    LL|       |
@@ -27,10 +37,18 @@
    LL|      0|    };
    LL|       |
    LL|      1|    match Pin::new(&mut generator).resume(()) {
+  ------------------
+  |  Branch (LL:5): [True: 0, False: 1]
+  |  Branch (LL:5): [True: 0, False: 1]
+  ------------------
    LL|      1|        GeneratorState::Yielded(1) => {}
    LL|      0|        _ => panic!("unexpected value from resume"),
    LL|       |    }
    LL|      1|    match Pin::new(&mut generator).resume(()) {
+  ------------------
+  |  Branch (LL:5): [True: 0, False: 1]
+  |  Branch (LL:5): [True: 0, False: 1]
+  ------------------
    LL|      1|        GeneratorState::Yielded(2) => {}
    LL|      0|        _ => panic!("unexpected value from resume"),
    LL|       |    }

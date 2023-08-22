@@ -5,17 +5,26 @@
    LL|      1|    let mut countdown = 10;
    LL|       |    while
    LL|      7|        countdown
+  ------------------
+  |  Branch (LL:9): [True: 7, False: 0]
+  ------------------
    LL|      7|            >
    LL|      7|        0
    LL|       |    {
    LL|       |        if
    LL|      7|            countdown
+  ------------------
+  |  Branch (LL:13): [True: 1, False: 6]
+  ------------------
    LL|      7|                <
    LL|      7|            5
    LL|       |        {
    LL|       |            return
    LL|       |                if
    LL|      1|                    countdown
+  ------------------
+  |  Branch (LL:21): [True: 0, False: 1]
+  ------------------
    LL|      1|                        >
    LL|      1|                    8
    LL|       |                {

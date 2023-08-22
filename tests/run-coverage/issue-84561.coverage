@@ -26,6 +26,9 @@
    LL|      1|
    LL|      1|    assert_ne!(Foo(0), Foo(5), "{}", if is_true { "true message" } else { "false message" });
                                              ^0                 ^0                      ^0
+  ------------------
+  |  Branch (LL:41): [True: 0, False: 0]
+  ------------------
    LL|      1|    assert_ne!(
    LL|       |        Foo(0)
    LL|       |        ,
@@ -35,6 +38,9 @@
    LL|      0|        ,
    LL|      0|        if
    LL|      0|        is_true
+  ------------------
+  |  Branch (LL:9): [True: 0, False: 0]
+  ------------------
    LL|       |        {
    LL|      0|            "true message"
    LL|       |        } else {
@@ -62,6 +68,9 @@
    LL|      1|        Foo(3)
    LL|      1|    );
    LL|      1|    if is_true {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
    LL|      1|        assert_ne!(
    LL|      1|            Foo(0),
    LL|      1|            Foo(4)
@@ -73,6 +82,9 @@
    LL|      0|        );
    LL|       |    }
    LL|      1|    if is_true {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
    LL|      1|        assert_ne!(
    LL|       |            Foo(0),
    LL|       |            Foo(4),
@@ -87,6 +99,9 @@
    LL|       |    }
    LL|      1|    assert_ne!(
    LL|      1|        if is_true {
+  ------------------
+  |  Branch (LL:12): [True: 1, False: 0]
+  ------------------
    LL|      1|            Foo(0)
    LL|       |        } else {
    LL|      0|            Foo(1)
@@ -96,6 +111,9 @@
    LL|      1|    assert_ne!(
    LL|      1|        Foo(5),
    LL|      1|        if is_true {
+  ------------------
+  |  Branch (LL:12): [True: 1, False: 0]
+  ------------------
    LL|      1|            Foo(0)
    LL|       |        } else {
    LL|      0|            Foo(1)
@@ -103,6 +121,9 @@
    LL|       |    );
    LL|      1|    assert_ne!(
    LL|      1|        if is_true {
+  ------------------
+  |  Branch (LL:12): [True: 1, False: 0]
+  ------------------
    LL|      1|            assert_eq!(
    LL|      1|                Foo(3),
    LL|      1|                Foo(3)
@@ -111,6 +132,9 @@
    LL|       |        } else {
    LL|      0|            assert_ne!(
    LL|      0|                if is_true {
+  ------------------
+  |  Branch (LL:20): [True: 0, False: 0]
+  ------------------
    LL|      0|                    Foo(0)
    LL|       |                } else {
    LL|      0|                    Foo(1)
@@ -138,6 +162,9 @@
    LL|       |    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
    LL|      7|        write!(f, "try and succeed")?;
                                                   ^0
+  ------------------
+  |  Branch (LL:9): [True: 0, False: 7]
+  ------------------
    LL|      7|        Ok(())
    LL|      7|    }
    LL|       |}
@@ -147,6 +174,14 @@
    LL|       |macro_rules! debug {
    LL|       |    ($($arg:tt)+) => (
    LL|       |        if unsafe { DEBUG_LEVEL_ENABLED } {
+  ------------------
+  |  Branch (LL:12): [True: 0, False: 1]
+  |  Branch (LL:12): [True: 0, False: 1]
+  |  Branch (LL:12): [True: 0, False: 1]
+  |  Branch (LL:12): [True: 1, False: 0]
+  ------------------
+  |  Branch (LL:12): [True: 1, False: 0]
+  ------------------
    LL|       |            println!($($arg)+);
    LL|       |        }
    LL|       |    );
@@ -186,4 +221,30 @@
    LL|      1|    test2();
    LL|      1|    test3();
    LL|      1|}
+  ------------------
+  |  Branch (LL:192675): [True: 0, False: 1]
+  |  Branch (LL:192675): [True: 0, False: 1]
+  |  Branch (LL:192675): [True: 0, False: 1]
+  |  Branch (LL:192675): [True: 0, False: 1]
+  |  Branch (LL:192675): [True: 0, False: 1]
+  |  Branch (LL:192675): [True: 0, False: 0]
+  |  Branch (LL:192675): [True: 0, False: 1]
+  |  Branch (LL:193311): [True: 0, False: 0]
+  |  Branch (LL:193311): [True: 1, False: 0]
+  |  Branch (LL:193311): [True: 0, False: 1]
+  |  Branch (LL:193311): [True: 0, False: 0]
+  |  Branch (LL:194635): [True: 0, False: 1]
+  |  Branch (LL:194635): [True: 0, False: 1]
+  |  Branch (LL:194635): [True: 0, False: 1]
+  |  Branch (LL:194635): [True: 0, False: 1]
+  |  Branch (LL:194635): [True: 0, False: 1]
+  |  Branch (LL:194635): [True: 0, False: 0]
+  |  Branch (LL:194635): [True: 0, False: 1]
+  |  Branch (LL:194635): [True: 0, False: 1]
+  |  Branch (LL:194635): [True: 0, False: 1]
+  |  Branch (LL:195272): [True: 0, False: 1]
+  |  Branch (LL:195272): [True: 0, False: 1]
+  |  Branch (LL:195272): [True: 0, False: 1]
+  |  Branch (LL:195272): [True: 0, False: 1]
+  ------------------
 

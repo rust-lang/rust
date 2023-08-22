@@ -35,6 +35,9 @@
    LL|       |    pub fn outer_not_covered(is_true: bool) {
    LL|      1|        fn inner(is_true: bool) {
    LL|      1|            if is_true {
+  ------------------
+  |  Branch (LL:16): [True: 1, False: 0]
+  ------------------
    LL|      1|                println!("called and covered");
    LL|      1|            } else {
    LL|      0|                println!("absolutely not covered");
@@ -64,6 +67,9 @@
    LL|      1|
    LL|      1|        fn inner(is_true: bool) {
    LL|      1|            if is_true {
+  ------------------
+  |  Branch (LL:16): [True: 1, False: 0]
+  ------------------
    LL|      1|                println!("called and covered");
    LL|      1|            } else {
    LL|      0|                println!("absolutely not covered");

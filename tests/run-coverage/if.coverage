@@ -19,6 +19,9 @@
    LL|      1|    ;
    LL|      1|    if
    LL|      1|        is_true
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 0]
+  ------------------
    LL|      1|    {
    LL|      1|        countdown
    LL|      1|        =

@@ -8,6 +8,9 @@
    LL|      1|    generic_fn::<()>(cond);
    LL|      1|    generic_fn::<&'static str>(!cond);
    LL|      1|    if false {
+  ------------------
+  |  Branch (LL:8): [True: 0, False: 1]
+  ------------------
    LL|      0|        generic_fn::<char>(cond);
    LL|      1|    }
    LL|      1|    generic_fn::<i32>(cond);
@@ -16,6 +19,12 @@
    LL|       |
    LL|      3|fn generic_fn<T>(cond: bool) {
    LL|      3|    if cond {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  |  Branch (LL:8): [True: 0, False: 0]
+  |  Branch (LL:8): [True: 0, False: 1]
+  |  Branch (LL:8): [True: 0, False: 1]
+  ------------------
    LL|      1|        println!("{}", std::any::type_name::<T>());
    LL|      2|    }
    LL|      3|}
@@ -25,6 +34,9 @@
   | sort_groups::generic_fn::<&str>:
   |   LL|      1|fn generic_fn<T>(cond: bool) {
   |   LL|      1|    if cond {
+  |  ------------------
+  |  |  Branch (LL:8): [True: 1, False: 0]
+  |  ------------------
   |   LL|      1|        println!("{}", std::any::type_name::<T>());
   |   LL|      1|    }
   |                   ^0
@@ -33,6 +45,9 @@
   | sort_groups::generic_fn::<()>:
   |   LL|      1|fn generic_fn<T>(cond: bool) {
   |   LL|      1|    if cond {
+  |  ------------------
+  |  |  Branch (LL:8): [True: 0, False: 1]
+  |  ------------------
   |   LL|      0|        println!("{}", std::any::type_name::<T>());
   |   LL|      1|    }
   |   LL|      1|}
@@ -40,6 +55,9 @@
   | sort_groups::generic_fn::<i32>:
   |   LL|      1|fn generic_fn<T>(cond: bool) {
   |   LL|      1|    if cond {
+  |  ------------------
+  |  |  Branch (LL:8): [True: 0, False: 1]
+  |  ------------------
   |   LL|      0|        println!("{}", std::any::type_name::<T>());
   |   LL|      1|    }
   |   LL|      1|}

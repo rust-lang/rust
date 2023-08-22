@@ -8,23 +8,50 @@
    LL|       |impl std::fmt::Debug for DebugTest {
    LL|      1|    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
    LL|      1|        if true {
+  ------------------
+  |  Branch (LL:12): [True: 1, False: 0]
+  ------------------
    LL|      1|            if false {
+  ------------------
+  |  Branch (LL:16): [True: 0, False: 1]
+  ------------------
    LL|      0|                while true {
+  ------------------
+  |  Branch (LL:23): [True: 0, False: 0]
+  ------------------
    LL|      0|                }
    LL|      1|            }
    LL|      1|            write!(f, "cool")?;
                                            ^0
+  ------------------
+  |  Branch (LL:13): [True: 0, False: 1]
+  ------------------
    LL|      0|        } else {
    LL|      0|        }
    LL|       |
    LL|     11|        for i in 0..10 {
                           ^10
+  ------------------
+  |  Branch (LL:18): [True: 10, False: 1]
+  ------------------
    LL|     10|            if true {
+  ------------------
+  |  Branch (LL:16): [True: 10, False: 0]
+  ------------------
    LL|     10|                if false {
+  ------------------
+  |  Branch (LL:20): [True: 0, False: 10]
+  ------------------
    LL|      0|                    while true {}
+  ------------------
+  |  Branch (LL:27): [True: 0, False: 0]
+  ------------------
    LL|     10|                }
    LL|     10|                write!(f, "cool")?;
                                                ^0
+  ------------------
+  |  Branch (LL:17): [True: 0, False: 10]
+  ------------------
    LL|      0|            } else {
    LL|      0|            }
    LL|       |        }
@@ -37,22 +64,49 @@
    LL|       |impl std::fmt::Display for DisplayTest {
    LL|      1|    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
    LL|      1|        if false {
+  ------------------
+  |  Branch (LL:12): [True: 0, False: 1]
+  ------------------
    LL|      0|        } else {
    LL|      1|            if false {
+  ------------------
+  |  Branch (LL:16): [True: 0, False: 1]
+  ------------------
    LL|      0|                while true {}
+  ------------------
+  |  Branch (LL:23): [True: 0, False: 0]
+  ------------------
    LL|      1|            }
    LL|      1|            write!(f, "cool")?;
                                            ^0
+  ------------------
+  |  Branch (LL:13): [True: 0, False: 1]
+  ------------------
    LL|       |        }
    LL|     11|        for i in 0..10 {
                           ^10
+  ------------------
+  |  Branch (LL:18): [True: 10, False: 1]
+  ------------------
    LL|     10|            if false {
+  ------------------
+  |  Branch (LL:16): [True: 0, False: 10]
+  ------------------
    LL|      0|            } else {
    LL|     10|                if false {
+  ------------------
+  |  Branch (LL:20): [True: 0, False: 10]
+  ------------------
    LL|      0|                    while true {}
+  ------------------
+  |  Branch (LL:27): [True: 0, False: 0]
+  ------------------
    LL|     10|                }
    LL|     10|                write!(f, "cool")?;
                                                ^0
+  ------------------
+  |  Branch (LL:17): [True: 0, False: 10]
+  ------------------
    LL|       |            }
    LL|       |        }
    LL|      1|        Ok(())

@@ -13,4 +13,8 @@
    LL|      1|    println!("{:?}", bar);
    LL|      1|    println!("{:?}", baz);
    LL|      1|}
+  ------------------
+  |  Branch (LL:192675): [True: 0, False: 1]
+  |  Branch (LL:194635): [True: 0, False: 1]
+  ------------------
 

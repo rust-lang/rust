@@ -3,6 +3,9 @@
    LL|       |
    LL|     12|extern "C" fn might_abort(should_abort: bool) {
    LL|     12|    if should_abort {
+  ------------------
+  |  Branch (LL:8): [True: 0, False: 12]
+  ------------------
    LL|      0|        println!("aborting...");
    LL|      0|        panic!("panics and aborts");
    LL|     12|    } else {
@@ -13,17 +16,29 @@
    LL|      1|fn main() -> Result<(), u8> {
    LL|      1|    let mut countdown = 10;
    LL|     11|    while countdown > 0 {
+  ------------------
+  |  Branch (LL:11): [True: 10, False: 1]
+  ------------------
    LL|     10|        if countdown < 5 {
+  ------------------
+  |  Branch (LL:12): [True: 4, False: 6]
+  ------------------
    LL|      4|            might_abort(false);
    LL|      6|        }
    LL|       |        // See discussion (below the `Notes` section) on coverage results for the closing brace.
    LL|     10|        if countdown < 5 { might_abort(false); } // Counts for different regions on one line.
                                        ^4                     ^6
+  ------------------
+  |  Branch (LL:12): [True: 4, False: 6]
+  ------------------
    LL|       |        // For the following example, the closing brace is the last character on the line.
    LL|       |        // This shows the character after the closing brace is highlighted, even if that next
    LL|       |        // character is a newline.
    LL|     10|        if countdown < 5 { might_abort(false); }
                                        ^4                     ^6
+  ------------------
+  |  Branch (LL:12): [True: 4, False: 6]
+  ------------------
    LL|     10|        countdown -= 1;
    LL|       |    }
    LL|      1|    Ok(())

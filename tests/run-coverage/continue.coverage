@@ -5,7 +5,13 @@
    LL|      1|
    LL|      1|    let mut x = 0;
    LL|     11|    for _ in 0..10 {
+  ------------------
+  |  Branch (LL:14): [True: 10, False: 1]
+  ------------------
    LL|     10|        match is_true {
+  ------------------
+  |  Branch (LL:9): [True: 10, False: 0]
+  ------------------
    LL|       |            true => {
    LL|     10|                continue;
    LL|       |            }
@@ -16,7 +22,13 @@
    LL|      0|        x = 3;
    LL|       |    }
    LL|     11|    for _ in 0..10 {
+  ------------------
+  |  Branch (LL:14): [True: 10, False: 1]
+  ------------------
    LL|     10|        match is_true {
+  ------------------
+  |  Branch (LL:9): [True: 10, False: 0]
+  ------------------
    LL|      0|            false => {
    LL|      0|                x = 1;
    LL|      0|            }
@@ -27,7 +39,13 @@
    LL|      0|        x = 3;
    LL|       |    }
    LL|     11|    for _ in 0..10 {
+  ------------------
+  |  Branch (LL:14): [True: 10, False: 1]
+  ------------------
    LL|     10|        match is_true {
+  ------------------
+  |  Branch (LL:9): [True: 10, False: 0]
+  ------------------
    LL|     10|            true => {
    LL|     10|                x = 1;
    LL|     10|            }
@@ -38,13 +56,25 @@
    LL|     10|        x = 3;
    LL|       |    }
    LL|     11|    for _ in 0..10 {
+  ------------------
+  |  Branch (LL:14): [True: 10, False: 1]
+  ------------------
    LL|     10|        if is_true {
+  ------------------
+  |  Branch (LL:12): [True: 10, False: 0]
+  ------------------
    LL|     10|            continue;
    LL|      0|        }
    LL|      0|        x = 3;
    LL|       |    }
    LL|     11|    for _ in 0..10 {
+  ------------------
+  |  Branch (LL:14): [True: 10, False: 1]
+  ------------------
    LL|     10|        match is_true {
+  ------------------
+  |  Branch (LL:9): [True: 10, False: 0]
+  ------------------
    LL|      0|            false => {
    LL|      0|                x = 1;
    LL|      0|            }
@@ -55,7 +85,13 @@
    LL|     10|        x = 3;
    LL|       |    }
    LL|      1|    for _ in 0..10 {
+  ------------------
+  |  Branch (LL:14): [True: 1, False: 0]
+  ------------------
    LL|      1|        match is_true {
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 0]
+  ------------------
    LL|      0|            false => {
    LL|      0|                x = 1;
    LL|      0|            }

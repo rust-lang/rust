@@ -17,6 +17,9 @@
    LL|       |        $value.or_else(|e| { // FIXME(85000): no coverage in closure macros
    LL|       |            let message = format!($error_message, e);
    LL|       |            if message.len() > 0 {
+  ------------------
+  |  Branch (LL:16): [True: 0, False: 0]
+  ------------------
    LL|       |                println!("{}", message);
    LL|       |                Ok(String::from("ok"))
    LL|       |            } else {
@@ -34,6 +37,9 @@
    LL|      1|    println!("Starting service");
    LL|      1|    let config = on_error!(load_configuration_files(), "Error loading configs: {}")?;
                                                                                                  ^0
+  ------------------
+  |  Branch (LL:18): [True: 0, False: 1]
+  ------------------
    LL|       |
    LL|      1|    let startup_delay_duration = String::from("arg");
    LL|      1|    let _ = (config, startup_delay_duration);

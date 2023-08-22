@@ -8,6 +8,9 @@
    LL|      1|
    LL|      1|    let mut countdown = 1;
    LL|      1|    if is_true {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
    LL|      1|        countdown = 0;
    LL|      1|    }
                    ^0
@@ -16,6 +19,9 @@
    LL|       |        _
    LL|       |    in
    LL|      3|        0..2
+  ------------------
+  |  Branch (LL:9): [True: 2, False: 1]
+  ------------------
    LL|       |    {
    LL|       |        let z
    LL|       |        ;
@@ -25,6 +31,9 @@
    LL|      1|            x
    LL|       |            if
    LL|      2|                x
+  ------------------
+  |  Branch (LL:17): [True: 1, False: 1]
+  ------------------
    LL|      2|                    <
    LL|      2|                1
    LL|       |            =>

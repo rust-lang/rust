@@ -3,6 +3,9 @@
    LL|       |
    LL|      4|fn might_overflow(to_add: u32) -> u32 {
    LL|      4|    if to_add > 5 {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 3]
+  ------------------
    LL|      1|        println!("this will probably overflow");
    LL|      3|    }
    LL|      4|    let add_to = u32::MAX - 5;
@@ -15,10 +18,19 @@
    LL|      1|fn main() -> Result<(),u8> {
    LL|      1|    let mut countdown = 10;
    LL|     11|    while countdown > 0 {
+  ------------------
+  |  Branch (LL:11): [True: 11, False: 0]
+  ------------------
    LL|     11|        if countdown == 1 {
+  ------------------
+  |  Branch (LL:12): [True: 1, False: 10]
+  ------------------
    LL|      1|            let result = might_overflow(10);
    LL|      1|            println!("Result: {}", result);
    LL|     10|        } else if countdown < 5 {
+  ------------------
+  |  Branch (LL:19): [True: 3, False: 6]
+  ------------------
    LL|      3|            let result = might_overflow(1);
    LL|      3|            println!("Result: {}", result);
    LL|      6|        }

@@ -4,9 +4,15 @@
    LL|      2|#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
                        ^0            ^0      ^0     ^1       ^1 ^0^0
    LL|       |pub struct Version {
-   LL|       |    major: usize,
-   LL|       |    minor: usize,
-   LL|       |    patch: usize,
+   LL|      0|    major: usize,
+  ------------------
+  |  Branch (LL:5): [True: 0, False: 1]
+  ------------------
+   LL|      0|    minor: usize,
+  ------------------
+  |  Branch (LL:5): [True: 1, False: 0]
+  ------------------
+   LL|      0|    patch: usize,
    LL|       |}
    LL|       |
    LL|       |impl Version {

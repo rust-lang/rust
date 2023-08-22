@@ -8,6 +8,9 @@
    LL|      1|
    LL|      1|    let (mut a, mut b, mut c) = (0, 0, 0);
    LL|      1|    if is_true {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
    LL|      1|        a = 1;
    LL|      1|        b = 10;
    LL|      1|        c = 100;
@@ -17,6 +20,9 @@
    LL|      1|        somebool
    LL|       |        =
    LL|      1|            a < b
+  ------------------
+  |  Branch (LL:13): [True: 1, False: 0]
+  ------------------
    LL|       |        ||
    LL|      0|            b < c
    LL|       |    ;
@@ -24,15 +30,27 @@
    LL|      1|        somebool
    LL|       |        =
    LL|      1|            b < a
+  ------------------
+  |  Branch (LL:13): [True: 0, False: 1]
+  ------------------
    LL|       |        ||
    LL|      1|            b < c
    LL|       |    ;
    LL|      1|    let somebool = a < b && b < c;
+  ------------------
+  |  Branch (LL:20): [True: 1, False: 0]
+  ------------------
    LL|      1|    let somebool = b < a && b < c;
                                           ^0
+  ------------------
+  |  Branch (LL:20): [True: 0, False: 1]
+  ------------------
    LL|       |
    LL|       |    if
    LL|      1|        !
+  ------------------
+  |  Branch (LL:9): [True: 0, False: 1]
+  ------------------
    LL|      1|        is_true
    LL|      0|    {
    LL|      0|        a = 2
@@ -41,6 +59,9 @@
    LL|       |
    LL|       |    if
    LL|      1|        is_true
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 0]
+  ------------------
    LL|      1|    {
    LL|      1|        b = 30
    LL|      1|        ;
@@ -52,10 +73,16 @@
    LL|      0|    }
    LL|       |
    LL|      1|    if !is_true {
+  ------------------
+  |  Branch (LL:8): [True: 0, False: 1]
+  ------------------
    LL|      0|        a = 2;
    LL|      1|    }
    LL|       |
    LL|      1|    if is_true {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
    LL|      1|        b = 30;
    LL|      1|    } else {
    LL|      0|        c = 400;

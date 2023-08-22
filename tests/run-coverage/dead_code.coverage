@@ -32,6 +32,9 @@
    LL|      1|
    LL|      1|    let mut countdown = 0;
    LL|      1|    if is_true {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
    LL|      1|        countdown = 10;
    LL|      1|    }
                    ^0

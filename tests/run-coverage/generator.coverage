@@ -11,6 +11,9 @@
    LL|      1|fn get_u32(val: bool) -> Result<u32, String> {
    LL|      1|    if val { Ok(1) } else { Err(String::from("some error")) }
                                           ^0
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
    LL|      1|}
    LL|       |
    LL|      1|fn main() {
@@ -21,11 +24,21 @@
    LL|      1|    };
    LL|       |
    LL|      1|    match Pin::new(&mut generator).resume(()) {
+  ------------------
+  |  Branch (LL:5): [True: 0, False: 1]
+  |  Branch (LL:5): [True: 0, False: 1]
+  ------------------
    LL|      1|        GeneratorState::Yielded(Ok(1)) => {}
    LL|      0|        _ => panic!("unexpected return from resume"),
    LL|       |    }
    LL|      1|    match Pin::new(&mut generator).resume(()) {
+  ------------------
+  |  Branch (LL:5): [True: 0, False: 1]
+  ------------------
    LL|      1|        GeneratorState::Complete("foo") => {}
+  ------------------
+  |  Branch (LL:34): [True: 1, False: 0]
+  ------------------
    LL|      0|        _ => panic!("unexpected return from resume"),
    LL|       |    }
    LL|      1|}

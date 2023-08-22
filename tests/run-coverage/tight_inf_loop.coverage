@@ -1,5 +1,8 @@
    LL|      1|fn main() {
    LL|      1|    if false {
+  ------------------
+  |  Branch (LL:8): [True: 0, False: 1]
+  ------------------
    LL|      0|        loop {}
    LL|      1|    }
    LL|      1|}

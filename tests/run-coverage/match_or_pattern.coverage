@@ -9,6 +9,9 @@
    LL|      1|    let mut a: u8 = 0;
    LL|      1|    let mut b: u8 = 0;
    LL|      1|    if is_true {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
    LL|      1|        a = 2;
    LL|      1|        b = 0;
    LL|      1|    }
@@ -17,33 +20,58 @@
    LL|       |        // Or patterns generate MIR `SwitchInt` with multiple targets to the same `BasicBlock`.
    LL|       |        // This test confirms a fix for Issue #79569.
    LL|      0|        (0 | 1, 2 | 3) => {}
+  ------------------
+  |  Branch (LL:10): [True: 1, False: 0]
+  |  Branch (LL:17): [True: 0, False: 0]
+  ------------------
    LL|      1|        _ => {}
    LL|       |    }
    LL|      1|    if is_true {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
    LL|      1|        a = 0;
    LL|      1|        b = 0;
    LL|      1|    }
                    ^0
    LL|      1|    match (a, b) {
    LL|      0|        (0 | 1, 2 | 3) => {}
+  ------------------
+  |  Branch (LL:10): [True: 0, False: 1]
+  |  Branch (LL:17): [True: 1, False: 0]
+  ------------------
    LL|      1|        _ => {}
    LL|       |    }
    LL|      1|    if is_true {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
    LL|      1|        a = 2;
    LL|      1|        b = 2;
    LL|      1|    }
                    ^0
    LL|      1|    match (a, b) {
    LL|      0|        (0 | 1, 2 | 3) => {}
+  ------------------
+  |  Branch (LL:10): [True: 1, False: 0]
+  |  Branch (LL:17): [True: 0, False: 0]
+  ------------------
    LL|      1|        _ => {}
    LL|       |    }
    LL|      1|    if is_true {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
    LL|      1|        a = 0;
    LL|      1|        b = 2;
    LL|      1|    }
                    ^0
    LL|      1|    match (a, b) {
    LL|      1|        (0 | 1, 2 | 3) => {}
+  ------------------
+  |  Branch (LL:10): [True: 0, False: 1]
+  |  Branch (LL:17): [True: 0, False: 1]
+  ------------------
    LL|      0|        _ => {}
    LL|       |    }
    LL|      1|}

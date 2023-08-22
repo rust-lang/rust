@@ -4,6 +4,9 @@
    LL|       |
    LL|      1|async fn c(x: u8) -> u8 {
    LL|      1|    if x == 8 {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
    LL|      1|        1
    LL|       |    } else {
    LL|      0|        0
@@ -42,8 +45,14 @@
    LL|      1|    match x {
    LL|      1|        y if c(x).await == y + 1 => { d().await; }
                       ^0        ^0                  ^0  ^0
+  ------------------
+  |  Branch (LL:14): [True: 0, False: 1]
+  ------------------
    LL|      1|        y if f().await == y + 1 => (),
                       ^0       ^0                ^0
+  ------------------
+  |  Branch (LL:14): [True: 0, False: 1]
+  ------------------
    LL|      1|        _ => (),
    LL|       |    }
    LL|      1|}
@@ -52,6 +61,9 @@
    LL|      1|    // non-async versions of `c()`, `d()`, and `f()` to make it similar to async `i()`.
    LL|      1|    fn c(x: u8) -> u8 {
    LL|      1|        if x == 8 {
+  ------------------
+  |  Branch (LL:12): [True: 0, False: 1]
+  ------------------
    LL|      1|            1 // This line appears covered, but the 1-character expression span covering the `1`
                           ^0
    LL|      1|              // is not executed. (`llvm-cov show` displays a `^0` below the `1` ). This is because
@@ -72,8 +84,14 @@
    LL|      1|    match x {
    LL|      1|        y if c(x) == y + 1 => { d(); }
                       ^0                    ^0
+  ------------------
+  |  Branch (LL:14): [True: 0, False: 1]
+  ------------------
    LL|      1|        y if f() == y + 1 => (),
                       ^0                   ^0
+  ------------------
+  |  Branch (LL:14): [True: 0, False: 1]
+  ------------------
    LL|      1|        _ => (),
    LL|       |    }
    LL|      1|}
@@ -131,6 +149,9 @@
    LL|       |
    LL|       |        loop {
    LL|      1|            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
+  ------------------
+  |  Branch (LL:20): [True: 0, False: 1]
+  ------------------
    LL|      1|                break val;
    LL|      0|            }
    LL|       |        }

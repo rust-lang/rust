@@ -19,6 +19,9 @@
    LL|      0|            {
    LL|      0|                let mut countdown = 0;
    LL|      0|                if is_false {
+  ------------------
+  |  Branch (LL:20): [True: 0, False: 0]
+  ------------------
    LL|      0|                    countdown = 10;
    LL|      0|                }
    LL|      0|                "alt string 1".to_owned()
@@ -34,6 +37,9 @@
    LL|      0|    {
    LL|      0|        let mut countdown = 0;
    LL|      0|        if is_false {
+  ------------------
+  |  Branch (LL:12): [True: 0, False: 0]
+  ------------------
    LL|      0|            countdown = 10;
    LL|      0|        }
    LL|      0|        "alt string 2".to_owned()
@@ -61,6 +67,9 @@
    LL|      1|            {
    LL|      1|                let mut countdown = 0;
    LL|      1|                if is_false {
+  ------------------
+  |  Branch (LL:20): [True: 0, False: 1]
+  ------------------
    LL|      0|                    countdown = 10;
    LL|      1|                }
    LL|      1|                "alt string 3".to_owned()
@@ -76,6 +85,9 @@
    LL|      1|    {
    LL|      1|        let mut countdown = 0;
    LL|      1|        if is_false {
+  ------------------
+  |  Branch (LL:12): [True: 0, False: 1]
+  ------------------
    LL|      0|            countdown = 10;
    LL|      1|        }
    LL|      1|        "alt string 4".to_owned()
@@ -98,6 +110,9 @@
    LL|      5|    {
    LL|      5|        let mut countdown = 0;
    LL|      5|        if is_false {
+  ------------------
+  |  Branch (LL:12): [True: 0, False: 5]
+  ------------------
    LL|      0|            countdown = 10;
    LL|      5|        }
    LL|      5|        format!("'{}'", val)
@@ -177,6 +192,9 @@
    LL|      0|            println!(
    LL|      0|                "not called: {}",
    LL|      0|                if is_true { "check" } else { "me" }
+  ------------------
+  |  Branch (LL:20): [True: 0, False: 0]
+  ------------------
    LL|      0|            )
    LL|       |    ;
    LL|       |
@@ -186,6 +204,9 @@
    LL|      0|            println!(
    LL|      0|                "not called: {}",
    LL|      0|                if is_true { "check" } else { "me" }
+  ------------------
+  |  Branch (LL:20): [True: 0, False: 0]
+  ------------------
    LL|       |            )
    LL|      0|        }
    LL|       |    ;
@@ -196,6 +217,9 @@
    LL|      1|                "not called: {}",
    LL|      1|                if is_true { "check" } else { "me" }
                                                             ^0
+  ------------------
+  |  Branch (LL:20): [True: 1, False: 0]
+  ------------------
    LL|      1|            )
    LL|       |    ;
    LL|       |
@@ -206,11 +230,17 @@
    LL|      1|                "not called: {}",
    LL|      1|                if is_true { "check" } else { "me" }
                                                             ^0
+  ------------------
+  |  Branch (LL:20): [True: 1, False: 0]
+  ------------------
    LL|       |            )
    LL|      1|        }
    LL|       |    ;
    LL|       |
    LL|      1|    if is_false {
+  ------------------
+  |  Branch (LL:8): [True: 0, False: 1]
+  ------------------
    LL|      0|        short_used_not_covered_closure_macro(0);
    LL|      0|        short_used_not_covered_closure_line_break_no_block_embedded_branch(0);
    LL|      0|        short_used_not_covered_closure_line_break_block_embedded_branch(0);

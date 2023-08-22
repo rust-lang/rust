@@ -1,6 +1,9 @@
    LL|      1|fn main() {
    LL|      1|    let num = 9;
    LL|      1|    while num >= 10 {
+  ------------------
+  |  Branch (LL:11): [True: 0, False: 1]
+  ------------------
    LL|      0|    }
    LL|      1|}
 
