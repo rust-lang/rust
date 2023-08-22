@@ -1,5 +1,8 @@
 use core::arch::asm;
 
+#[cfg(test)]
+use stdarch_test::assert_instr;
+
 macro_rules! static_assert_imm_0_until_10 {
     ($imm:ident) => {
         static_assert!(
@@ -10,8 +13,35 @@ macro_rules! static_assert_imm_0_until_10 {
 }
 
 extern "unadjusted" {
+    #[link_name = "llvm.riscv.aes64es"]
+    fn _aes64es(rs1: i64, rs2: i64) -> i64;
+
+    #[link_name = "llvm.riscv.aes64esm"]
+    fn _aes64esm(rs1: i64, rs2: i64) -> i64;
+
+    #[link_name = "llvm.riscv.aes64ds"]
+    fn _aes64ds(rs1: i64, rs2: i64) -> i64;
+
+    #[link_name = "llvm.riscv.aes64dsm"]
+    fn _aes64dsm(rs1: i64, rs2: i64) -> i64;
+
     #[link_name = "llvm.riscv.aes64ks1i"]
     fn _aes64ks1i(rs1: i64, rnum: i32) -> i64;
+
+    #[link_name = "llvm.riscv.aes64ks2"]
+    fn _aes64ks2(rs1: i64, rs2: i64) -> i64;
+
+    #[link_name = "llvm.riscv.sha512sig0"]
+    fn _sha512sig0(rs1: i64) -> i64;
+
+    #[link_name = "llvm.riscv.sha512sig1"]
+    fn _sha512sig1(rs1: i64) -> i64;
+
+    #[link_name = "llvm.riscv.sha512sum0"]
+    fn _sha512sum0(rs1: i64) -> i64;
+
+    #[link_name = "llvm.riscv.sha512sum1"]
+    fn _sha512sum1(rs1: i64) -> i64;
 }
 
 /// AES final round encryption instruction for RV64.
@@ -34,17 +64,7 @@ extern "unadjusted" {
 #[cfg_attr(test, assert_instr(aes64es))]
 #[inline]
 pub unsafe fn aes64es(rs1: u64, rs2: u64) -> u64 {
-    let value: u64;
-    unsafe {
-        asm!(
-            "aes64es {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _aes64es(rs1 as i64, rs2 as i64) as u64
 }
 
 /// AES middle round encryption instruction for RV64.
@@ -67,17 +87,7 @@ pub unsafe fn aes64es(rs1: u64, rs2: u64) -> u64 {
 #[cfg_attr(test, assert_instr(aes64esm))]
 #[inline]
 pub unsafe fn aes64esm(rs1: u64, rs2: u64) -> u64 {
-    let value: u64;
-    unsafe {
-        asm!(
-            "aes64esm {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _aes64esm(rs1 as i64, rs2 as i64) as u64
 }
 
 /// AES final round decryption instruction for RV64.
@@ -100,17 +110,7 @@ pub unsafe fn aes64esm(rs1: u64, rs2: u64) -> u64 {
 #[cfg_attr(test, assert_instr(aes64ds))]
 #[inline]
 pub unsafe fn aes64ds(rs1: u64, rs2: u64) -> u64 {
-    let value: u64;
-    unsafe {
-        asm!(
-            "aes64ds {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _aes64ds(rs1 as i64, rs2 as i64) as u64
 }
 
 /// AES middle round decryption instruction for RV64.
@@ -133,17 +133,7 @@ pub unsafe fn aes64ds(rs1: u64, rs2: u64) -> u64 {
 #[cfg_attr(test, assert_instr(aes64dsm))]
 #[inline]
 pub unsafe fn aes64dsm(rs1: u64, rs2: u64) -> u64 {
-    let value: u64;
-    unsafe {
-        asm!(
-            "aes64dsm {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _aes64dsm(rs1 as i64, rs2 as i64) as u64
 }
 
 /// This instruction implements part of the KeySchedule operation for the AES Block cipher
@@ -196,17 +186,7 @@ pub unsafe fn aes64ks1i<const RNUM: u8>(rs1: u64) -> u64 {
 #[cfg_attr(test, assert_instr(aes64ks2))]
 #[inline]
 pub unsafe fn aes64ks2(rs1: u64, rs2: u64) -> u64 {
-    let value: u64;
-    unsafe {
-        asm!(
-            "aes64ks2 {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _aes64ks2(rs1 as i64, rs2 as i64) as u64
 }
 
 /// Pack the low 16-bits of rs1 and rs2 into rd on RV64
@@ -228,6 +208,8 @@ pub unsafe fn aes64ks2(rs1: u64, rs2: u64) -> u64 {
 #[cfg_attr(test, assert_instr(packw))]
 #[inline]
 pub unsafe fn packw(rs1: u64, rs2: u64) -> u64 {
+    // Note: There is no LLVM intrinsic for this instruction currently.
+
     let value: u64;
     unsafe {
         asm!(
@@ -261,16 +243,7 @@ pub unsafe fn packw(rs1: u64, rs2: u64) -> u64 {
 #[cfg_attr(test, assert_instr(sha512sig0))]
 #[inline]
 pub unsafe fn sha512sig0(rs1: u64) -> u64 {
-    let value: u64;
-    unsafe {
-        asm!(
-            "sha512sig0 {rd},{rs1}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _sha512sig0(rs1 as i64) as u64
 }
 
 /// Implements the Sigma1 transformation function as used in the SHA2-512 hash function \[49\]
@@ -293,16 +266,7 @@ pub unsafe fn sha512sig0(rs1: u64) -> u64 {
 #[cfg_attr(test, assert_instr(sha512sig1))]
 #[inline]
 pub unsafe fn sha512sig1(rs1: u64) -> u64 {
-    let value: u64;
-    unsafe {
-        asm!(
-            "sha512sig1 {rd},{rs1}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _sha512sig1(rs1 as i64) as u64
 }
 
 /// Implements the Sum0 transformation function as used in the SHA2-512 hash function \[49\]
@@ -325,16 +289,7 @@ pub unsafe fn sha512sig1(rs1: u64) -> u64 {
 #[cfg_attr(test, assert_instr(sha512sum0))]
 #[inline]
 pub unsafe fn sha512sum0(rs1: u64) -> u64 {
-    let value: u64;
-    unsafe {
-        asm!(
-            "sha512sum0 {rd},{rs1}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _sha512sum0(rs1 as i64) as u64
 }
 
 /// Implements the Sum1 transformation function as used in the SHA2-512 hash function \[49\]
@@ -357,14 +312,5 @@ pub unsafe fn sha512sum0(rs1: u64) -> u64 {
 #[cfg_attr(test, assert_instr(sha512sum1))]
 #[inline]
 pub unsafe fn sha512sum1(rs1: u64) -> u64 {
-    let value: u64;
-    unsafe {
-        asm!(
-            "sha512sum1 {rd},{rs1}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _sha512sum1(rs1 as i64) as u64
 }

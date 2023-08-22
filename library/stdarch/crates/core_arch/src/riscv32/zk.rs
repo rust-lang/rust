@@ -1,4 +1,5 @@
-use core::arch::asm;
+#[cfg(test)]
+use stdarch_test::assert_instr;
 
 macro_rules! static_assert_imm2 {
     ($imm:ident) => {
@@ -21,6 +22,30 @@ extern "unadjusted" {
 
     #[link_name = "llvm.riscv.aes32dsmi"]
     fn _aes32dsmi(rs1: i32, rs2: i32, bs: i32) -> i32;
+
+    #[link_name = "llvm.riscv.zip.i32"]
+    fn _zip(rs1: i32) -> i32;
+
+    #[link_name = "llvm.riscv.unzip.i32"]
+    fn _unzip(rs1: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sha512sig0h"]
+    fn _sha512sig0h(rs1: i32, rs2: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sha512sig0l"]
+    fn _sha512sig0l(rs1: i32, rs2: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sha512sig1h"]
+    fn _sha512sig1h(rs1: i32, rs2: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sha512sig1l"]
+    fn _sha512sig1l(rs1: i32, rs2: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sha512sum0r"]
+    fn _sha512sum0r(rs1: i32, rs2: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sha512sum1r"]
+    fn _sha512sum1r(rs1: i32, rs2: i32) -> i32;
 }
 
 /// AES final round encryption instruction for RV32.
@@ -166,17 +191,8 @@ pub unsafe fn aes32dsmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 #[target_feature(enable = "zbkb")]
 #[cfg_attr(test, assert_instr(zip))]
 #[inline]
-pub unsafe fn zip(rs: usize) -> usize {
-    let value: usize;
-    unsafe {
-        asm!(
-            "zip {rd},{rs}",
-            rd = lateout(reg) value,
-            rs = in(reg) rs,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+pub unsafe fn zip(rs: u32) -> u32 {
+    _zip(rs as i32) as u32
 }
 
 /// Place odd and even bits of the source word into upper/lower halves of the destination.
@@ -197,17 +213,8 @@ pub unsafe fn zip(rs: usize) -> usize {
 #[target_feature(enable = "zbkb")]
 #[cfg_attr(test, assert_instr(unzip))]
 #[inline]
-pub unsafe fn unzip(rs: usize) -> usize {
-    let value: usize;
-    unsafe {
-        asm!(
-            "unzip {rd},{rs}",
-            rd = lateout(reg) value,
-            rs = in(reg) rs,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+pub unsafe fn unzip(rs: u32) -> u32 {
+    _unzip(rs as i32) as u32
 }
 
 /// Implements the high half of the Sigma0 transformation, as used in the SHA2-512 hash
@@ -232,17 +239,7 @@ pub unsafe fn unzip(rs: usize) -> usize {
 #[cfg_attr(test, assert_instr(sha512sig0h))]
 #[inline]
 pub unsafe fn sha512sig0h(rs1: u32, rs2: u32) -> u32 {
-    let value: u32;
-    unsafe {
-        asm!(
-            "sha512sig0h {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _sha512sig0h(rs1 as i32, rs2 as i32) as u32
 }
 
 /// Implements the low half of the Sigma0 transformation, as used in the SHA2-512 hash function
@@ -267,17 +264,7 @@ pub unsafe fn sha512sig0h(rs1: u32, rs2: u32) -> u32 {
 #[cfg_attr(test, assert_instr(sha512sig0l))]
 #[inline]
 pub unsafe fn sha512sig0l(rs1: u32, rs2: u32) -> u32 {
-    let value: u32;
-    unsafe {
-        asm!(
-            "sha512sig0l {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _sha512sig0l(rs1 as i32, rs2 as i32) as u32
 }
 
 /// Implements the high half of the Sigma1 transformation, as used in the SHA2-512 hash
@@ -302,17 +289,7 @@ pub unsafe fn sha512sig0l(rs1: u32, rs2: u32) -> u32 {
 #[cfg_attr(test, assert_instr(sha512sig1h))]
 #[inline]
 pub unsafe fn sha512sig1h(rs1: u32, rs2: u32) -> u32 {
-    let value: u32;
-    unsafe {
-        asm!(
-            "sha512sig1h {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _sha512sig1h(rs1 as i32, rs2 as i32) as u32
 }
 
 /// Implements the low half of the Sigma1 transformation, as used in the SHA2-512 hash function
@@ -337,17 +314,7 @@ pub unsafe fn sha512sig1h(rs1: u32, rs2: u32) -> u32 {
 #[cfg_attr(test, assert_instr(sha512sig1l))]
 #[inline]
 pub unsafe fn sha512sig1l(rs1: u32, rs2: u32) -> u32 {
-    let value: u32;
-    unsafe {
-        asm!(
-            "sha512sig1l {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _sha512sig1l(rs1 as i32, rs2 as i32) as u32
 }
 
 /// Implements the Sum0 transformation, as used in the SHA2-512 hash function \[49\] (Section
@@ -371,17 +338,7 @@ pub unsafe fn sha512sig1l(rs1: u32, rs2: u32) -> u32 {
 #[cfg_attr(test, assert_instr(sha512sum0r))]
 #[inline]
 pub unsafe fn sha512sum0r(rs1: u32, rs2: u32) -> u32 {
-    let value: u32;
-    unsafe {
-        asm!(
-            "sha512sum0r {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _sha512sum0r(rs1 as i32, rs2 as i32) as u32
 }
 
 /// Implements the Sum1 transformation, as used in the SHA2-512 hash function \[49\] (Section
@@ -405,15 +362,5 @@ pub unsafe fn sha512sum0r(rs1: u32, rs2: u32) -> u32 {
 #[cfg_attr(test, assert_instr(sha512sum1r))]
 #[inline]
 pub unsafe fn sha512sum1r(rs1: u32, rs2: u32) -> u32 {
-    let value: u32;
-    unsafe {
-        asm!(
-            "sha512sum1r {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+    _sha512sum1r(rs1 as i32, rs2 as i32) as u32
 }

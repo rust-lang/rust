@@ -1,5 +1,8 @@
 use core::arch::asm;
 
+#[cfg(test)]
+use stdarch_test::assert_instr;
+
 macro_rules! static_assert_imm2 {
     ($imm:ident) => {
         static_assert!(
@@ -15,6 +18,24 @@ extern "unadjusted" {
 
     #[link_name = "llvm.riscv.sm4ks"]
     fn _sm4ks(rs1: i32, rs2: i32, bs: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sm3p0"]
+    fn _sm3p0(rs1: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sm3p1"]
+    fn _sm3p1(rs1: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sha256sig0"]
+    fn _sha256sig0(rs1: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sha256sig1"]
+    fn _sha256sig1(rs1: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sha256sum0"]
+    fn _sha256sum0(rs1: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sha256sum1"]
+    fn _sha256sum1(rs1: i32) -> i32;
 }
 
 #[cfg(target_arch = "riscv32")]
@@ -35,37 +56,6 @@ extern "unadjusted" {
     fn _xperm4_64(rs1: i64, rs2: i64) -> i64;
 }
 
-/// Pack the low halves of rs1 and rs2 into rd.
-///
-/// The pack instruction packs the XLEN/2-bit lower halves of rs1 and rs2 into rd, with rs1 in
-/// the lower half and rs2 in the upper half.
-///
-/// Source: RISC-V Cryptography Extensions Volume I: Scalar & Entropy Source Instructions
-///
-/// Version: v1.0.1
-///
-/// Section: 3.17
-///
-/// # Safety
-///
-/// This function is safe to use if the `zbkb` target feature is present.
-#[target_feature(enable = "zbkb")]
-#[cfg_attr(test, assert_instr(pack))]
-#[inline]
-pub unsafe fn pack(rs1: usize, rs2: usize) -> usize {
-    let value: usize;
-    unsafe {
-        asm!(
-            "pack {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
-}
-
 /// Pack the low bytes of rs1 and rs2 into rd.
 ///
 /// And the packh instruction packs the least-significant bytes of rs1 and rs2 into the 16
@@ -84,6 +74,8 @@ pub unsafe fn pack(rs1: usize, rs2: usize) -> usize {
 #[cfg_attr(test, assert_instr(packh))]
 #[inline]
 pub unsafe fn packh(rs1: usize, rs2: usize) -> usize {
+    // Note: There is no LLVM intrinsic for this instruction currently.
+     
     let value: usize;
     unsafe {
         asm!(
@@ -91,35 +83,6 @@ pub unsafe fn packh(rs1: usize, rs2: usize) -> usize {
             rd = lateout(reg) value,
             rs1 = in(reg) rs1,
             rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
-}
-
-/// Reverse the bits in each byte of a source register.
-///
-/// This instruction reverses the order of the bits in every byte of a register.
-///
-/// Source: RISC-V Cryptography Extensions Volume I: Scalar & Entropy Source Instructions
-///
-/// Version: v1.0.1
-///
-/// Section: 3.13
-///
-/// # Safety
-///
-/// This function is safe to use if the `zbkb` target feature is present.
-#[target_feature(enable = "zbkb")]
-#[cfg_attr(test, assert_instr(brev8))]
-#[inline]
-pub unsafe fn brev8(rs: usize) -> usize {
-    let value: usize;
-    unsafe {
-        asm!(
-            "brev8 {rd},{rs}",
-            rd = lateout(reg) value,
-            rs = in(reg) rs,
             options(pure, nomem, nostack),
         )
     }
@@ -210,17 +173,8 @@ pub unsafe fn xperm4(rs1: usize, rs2: usize) -> usize {
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha256sig0))]
 #[inline]
-pub unsafe fn sha256sig0(rs1: usize) -> usize {
-    let value: usize;
-    unsafe {
-        asm!(
-            "sha256sig0 {rd},{rs1}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+pub unsafe fn sha256sig0(rs1: u32) -> u32 {
+    _sha256sig0(rs1 as i32) as u32
 }
 
 /// Implements the Sigma1 transformation function as used in the SHA2-256 hash function \[49\]
@@ -245,17 +199,8 @@ pub unsafe fn sha256sig0(rs1: usize) -> usize {
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha256sig1))]
 #[inline]
-pub unsafe fn sha256sig1(rs1: usize) -> usize {
-    let value: usize;
-    unsafe {
-        asm!(
-            "sha256sig1 {rd},{rs1}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+pub unsafe fn sha256sig1(rs1: u32) -> u32 {
+    _sha256sig1(rs1 as i32) as u32
 }
 
 /// Implements the Sum0 transformation function as used in the SHA2-256 hash function \[49\]
@@ -280,17 +225,8 @@ pub unsafe fn sha256sig1(rs1: usize) -> usize {
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha256sum0))]
 #[inline]
-pub unsafe fn sha256sum0(rs1: usize) -> usize {
-    let value: usize;
-    unsafe {
-        asm!(
-            "sha256sum0 {rd},{rs1}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+pub unsafe fn sha256sum0(rs1: u32) -> u32 {
+    _sha256sum0(rs1 as i32) as u32
 }
 
 /// Implements the Sum1 transformation function as used in the SHA2-256 hash function \[49\]
@@ -315,17 +251,8 @@ pub unsafe fn sha256sum0(rs1: usize) -> usize {
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha256sum1))]
 #[inline]
-pub unsafe fn sha256sum1(rs1: usize) -> usize {
-    let value: usize;
-    unsafe {
-        asm!(
-            "sha256sum1 {rd},{rs1}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+pub unsafe fn sha256sum1(rs1: u32) -> u32 {
+    _sha256sum1(rs1 as i32) as u32
 }
 
 /// Accelerates the block encrypt/decrypt operation of the SM4 block cipher \[5, 31\].
@@ -520,17 +447,8 @@ pub unsafe fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 #[target_feature(enable = "zksh")]
 #[cfg_attr(test, assert_instr(sm3p0))]
 #[inline]
-pub unsafe fn sm3p0(rs1: usize) -> usize {
-    let value: usize;
-    unsafe {
-        asm!(
-            "sm3p0 {rd},{rs1}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+pub unsafe fn sm3p0(rs1: u32) -> u32 {
+    _sm3p0(rs1 as i32) as u32
 }
 
 /// Implements the P1 transformation function as used in the SM3 hash function [4, 30].
@@ -573,15 +491,6 @@ pub unsafe fn sm3p0(rs1: usize) -> usize {
 #[target_feature(enable = "zksh")]
 #[cfg_attr(test, assert_instr(sm3p1))]
 #[inline]
-pub unsafe fn sm3p1(rs1: usize) -> usize {
-    let value: usize;
-    unsafe {
-        asm!(
-            "sm3p1 {rd},{rs1}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
+pub unsafe fn sm3p1(rs1: u32) -> u32 {
+    _sm3p1(rs1 as i32) as u32
 }
