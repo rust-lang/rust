@@ -282,6 +282,7 @@ let
     changelog-seen = 2
 
     [build]
+    patch-binaries-for-nix = true
     # The path to (or name of) the GDB executable to use. This is only used for
     # executing the debuginfo test suite.
     gdb = "${pkgs.gdb}/bin/gdb"
