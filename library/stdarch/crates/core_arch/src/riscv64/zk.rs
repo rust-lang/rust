@@ -1,23 +1,17 @@
-#[allow(unused)]
 use core::arch::asm;
 
-#[allow(unused)]
-macro_rules! constify_imm_0_until_10 {
-    ($imm2:expr, $expand:ident) => {
-        match $imm2 {
-            1 => $expand!(1),
-            2 => $expand!(2),
-            3 => $expand!(3),
-            4 => $expand!(4),
-            5 => $expand!(5),
-            6 => $expand!(6),
-            7 => $expand!(7),
-            8 => $expand!(8),
-            9 => $expand!(9),
-            10 => $expand!(10),
-            _ => $expand!(0),
-        }
+macro_rules! static_assert_imm_0_until_10 {
+    ($imm:ident) => {
+        static_assert!(
+            $imm <= 10,
+            "Immediate value allowed to be a constant from 0 up to including 10"
+        )
     };
+}
+
+extern "unadjusted" {
+    #[link_name = "llvm.riscv.aes64ks1i"]
+    fn _aes64ks1i(rs1: i64, rnum: i32) -> i64;
 }
 
 /// AES final round encryption instruction for RV64.
@@ -168,31 +162,19 @@ pub unsafe fn aes64dsm(rs1: u64, rs2: u64) -> u64 {
 ///
 /// # Note
 ///
-/// The `rnum` parameter is expected to be a constant value inside the range of `0..=10`, if a
-/// value outside the valid range is given it uses `rnum=0`.
+/// The `RNUM` parameter is expected to be a constant value inside the range of `0..=10`.
 ///
 /// # Safety
 ///
 /// This function is safe to use if the `zkne` or `zknd` target feature is present.
 #[target_feature(enable = "zkne", enable = "zknd")]
+#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(aes64ks1i))]
 #[inline]
-pub unsafe fn aes64ks1i(rs1: u64, rnum: u8) -> u64 {
-    macro_rules! aes64ks1i {
-            ($imm_0_until_10:expr) => {{
-                let value: u64;
-                unsafe {
-                    asm!(
-                        concat!("aes64ks1i {rd},{rs1},", $imm_0_until_10),
-                        rd = lateout(reg) value,
-                        rs1 = in(reg) rs1,
-                        options(pure, nomem, nostack),
-                    )
-                }
-                value
-            }}
-        }
-    constify_imm_0_until_10!(rnum, aes64ks1i)
+pub unsafe fn aes64ks1i<const RNUM: u8>(rs1: u64) -> u64 {
+    static_assert_imm_0_until_10!(RNUM);
+
+    _aes64ks1i(rs1 as i64, RNUM as i32) as u64
 }
 
 /// This instruction implements part of the KeySchedule operation for the AES Block cipher.

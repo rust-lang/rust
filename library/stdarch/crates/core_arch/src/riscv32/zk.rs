@@ -1,17 +1,26 @@
-#[allow(unused)]
 use core::arch::asm;
 
-#[allow(unused)]
-macro_rules! constify_imm2 {
-    ($imm2:expr, $expand:ident) => {
-        #[allow(overflowing_literals)]
-        match $imm2 & 0b11 {
-            0b00 => $expand!(0),
-            0b01 => $expand!(1),
-            0b10 => $expand!(2),
-            _ => $expand!(3),
-        }
+macro_rules! static_assert_imm2 {
+    ($imm:ident) => {
+        static_assert!(
+            $imm < 4,
+            "Immediate value allowed to be a constant from 0 up to including 3"
+        )
     };
+}
+
+extern "unadjusted" {
+    #[link_name = "llvm.riscv.aes32esi"]
+    fn _aes32esi(rs1: i32, rs2: i32, bs: i32) -> i32;
+
+    #[link_name = "llvm.riscv.aes32esmi"]
+    fn _aes32esmi(rs1: i32, rs2: i32, bs: i32) -> i32;
+
+    #[link_name = "llvm.riscv.aes32dsi"]
+    fn _aes32dsi(rs1: i32, rs2: i32, bs: i32) -> i32;
+
+    #[link_name = "llvm.riscv.aes32dsmi"]
+    fn _aes32dsmi(rs1: i32, rs2: i32, bs: i32) -> i32;
 }
 
 /// AES final round encryption instruction for RV32.
@@ -29,32 +38,20 @@ macro_rules! constify_imm2 {
 ///
 /// # Note
 ///
-/// The `bs` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
+/// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
 ///
 /// # Safety
 ///
 /// This function is safe to use if the `zkne` target feature is present.
 #[target_feature(enable = "zkne")]
+#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(aes32esi))]
 #[inline]
-pub unsafe fn aes32esi(rs1: u32, rs2: u32, bs: u8) -> u32 {
-    macro_rules! aes32esi {
-            ($imm2:expr) => {{
-                let value: u32;
-                unsafe {
-                    asm!(
-                        concat!("aes32esi {rd},{rs1},{rs2},", $imm2),
-                        rd = lateout(reg) value,
-                        rs1 = in(reg) rs1,
-                        rs2 = in(reg) rs2,
-                        options(pure, nomem, nostack),
-                    );
-                }
-                value
-            }}
-        }
-    constify_imm2!(bs, aes32esi)
+pub unsafe fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
+    static_assert_imm2!(BS);
+
+    _aes32esi(rs1 as i32, rs2 as i32, BS as i32) as u32
 }
 
 /// AES middle round encryption instruction for RV32 with.
@@ -79,25 +76,13 @@ pub unsafe fn aes32esi(rs1: u32, rs2: u32, bs: u8) -> u32 {
 ///
 /// This function is safe to use if the `zkne` target feature is present.
 #[target_feature(enable = "zkne")]
+#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(aes32esmi))]
 #[inline]
-pub unsafe fn aes32esmi(rs1: u32, rs2: u32, bs: u8) -> u32 {
-    macro_rules! aes32esmi {
-            ($imm2:expr) => {{
-                let value: u32;
-                unsafe {
-                    asm!(
-                        concat!("aes32esmi {rd},{rs1},{rs2},", $imm2),
-                        rd = lateout(reg) value,
-                        rs1 = in(reg) rs1,
-                        rs2 = in(reg) rs2,
-                        options(pure, nomem, nostack),
-                    );
-                }
-                value
-            }}
-        }
-    constify_imm2!(bs, aes32esmi)
+pub unsafe fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
+    static_assert_imm2!(BS);
+
+    _aes32esmi(rs1 as i32, rs2 as i32, BS as i32) as u32
 }
 
 /// AES final round decryption instruction for RV32.
@@ -114,32 +99,20 @@ pub unsafe fn aes32esmi(rs1: u32, rs2: u32, bs: u8) -> u32 {
 ///
 /// # Note
 ///
-/// The `bs` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
+/// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
 ///
 /// # Safety
 ///
 /// This function is safe to use if the `zknd` target feature is present.
 #[target_feature(enable = "zknd")]
+#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(aes32dsi))]
 #[inline]
-pub unsafe fn aes32dsi(rs1: u32, rs2: u32, bs: u8) -> u32 {
-    macro_rules! aes32dsi {
-            ($imm2:expr) => {{
-                let value: u32;
-                unsafe {
-                    asm!(
-                        concat!("aes32dsi {rd},{rs1},{rs2},", $imm2),
-                        rd = lateout(reg) value,
-                        rs1 = in(reg) rs1,
-                        rs2 = in(reg) rs2,
-                        options(pure, nomem, nostack),
-                    );
-                }
-                value
-            }}
-        }
-    constify_imm2!(bs, aes32dsi)
+pub unsafe fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
+    static_assert_imm2!(BS);
+
+    _aes32dsi(rs1 as i32, rs2 as i32, BS as i32) as u32
 }
 
 /// AES middle round decryption instruction for RV32.
@@ -157,32 +130,20 @@ pub unsafe fn aes32dsi(rs1: u32, rs2: u32, bs: u8) -> u32 {
 ///
 /// # Note
 ///
-/// The `bs` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
+/// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
 ///
 /// # Safety
 ///
 /// This function is safe to use if the `zknd` target feature is present.
 #[target_feature(enable = "zknd")]
+#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(aes32dsmi))]
 #[inline]
-pub unsafe fn aes32dsmi(rs1: u32, rs2: u32, bs: u8) -> u32 {
-    macro_rules! aes32dsmi {
-            ($imm2:expr) => {{
-                let value: u32;
-                unsafe {
-                    asm!(
-                        concat!("aes32dsmi {rd},{rs1},{rs2},", $imm2),
-                        rd = lateout(reg) value,
-                        rs1 = in(reg) rs1,
-                        rs2 = in(reg) rs2,
-                        options(pure, nomem, nostack),
-                    );
-                }
-                value
-            }}
-        }
-    constify_imm2!(bs, aes32dsmi)
+pub unsafe fn aes32dsmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
+    static_assert_imm2!(BS);
+
+    _aes32dsmi(rs1 as i32, rs2 as i32, BS as i32) as u32
 }
 
 /// Place upper/lower halves of the source register into odd/even bits of the destination

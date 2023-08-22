@@ -1,17 +1,38 @@
-#[allow(unused)]
 use core::arch::asm;
 
-#[allow(unused)]
-macro_rules! constify_imm2 {
-    ($imm2:expr, $expand:ident) => {
-        #[allow(overflowing_literals)]
-        match $imm2 & 0b11 {
-            0b00 => $expand!(0),
-            0b01 => $expand!(1),
-            0b10 => $expand!(2),
-            _ => $expand!(3),
-        }
+macro_rules! static_assert_imm2 {
+    ($imm:ident) => {
+        static_assert!(
+            $imm < 4,
+            "Immediate value allowed to be a constant from 0 up to including 3"
+        )
     };
+}
+
+extern "unadjusted" {
+    #[link_name = "llvm.riscv.sm4ed"]
+    fn _sm4ed(rs1: i32, rs2: i32, bs: i32) -> i32;
+
+    #[link_name = "llvm.riscv.sm4ks"]
+    fn _sm4ks(rs1: i32, rs2: i32, bs: i32) -> i32;
+}
+
+#[cfg(target_arch = "riscv32")]
+extern "unadjusted" {
+    #[link_name = "llvm.riscv.xperm8.i32"]
+    fn _xperm8_32(rs1: i32, rs2: i32) -> i32;
+
+    #[link_name = "llvm.riscv.xperm4.i32"]
+    fn _xperm4_32(rs1: i32, rs2: i32) -> i32;
+}
+
+#[cfg(target_arch = "riscv64")]
+extern "unadjusted" {
+    #[link_name = "llvm.riscv.xperm8.i64"]
+    fn _xperm8_64(rs1: i64, rs2: i64) -> i64;
+
+    #[link_name = "llvm.riscv.xperm4.i64"]
+    fn _xperm4_64(rs1: i64, rs2: i64) -> i64;
 }
 
 /// Pack the low halves of rs1 and rs2 into rd.
@@ -125,17 +146,15 @@ pub unsafe fn brev8(rs: usize) -> usize {
 #[cfg_attr(test, assert_instr(xperm8))]
 #[inline]
 pub unsafe fn xperm8(rs1: usize, rs2: usize) -> usize {
-    let value: usize;
-    unsafe {
-        asm!(
-            "xperm8 {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
+    #[cfg(target_arch = "riscv32")]
+    {
+        _xperm8_32(rs1 as i32, rs2 as i32) as usize
     }
-    value
+
+    #[cfg(target_arch = "riscv64")]
+    {
+        _xperm8_64(rs1 as i64, rs2 as i64) as usize
+    }
 }
 
 /// Nibble-wise lookup of indicies into a vector.
@@ -158,17 +177,15 @@ pub unsafe fn xperm8(rs1: usize, rs2: usize) -> usize {
 #[cfg_attr(test, assert_instr(xperm4))]
 #[inline]
 pub unsafe fn xperm4(rs1: usize, rs2: usize) -> usize {
-    let value: usize;
-    unsafe {
-        asm!(
-            "xperm4 {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
+    #[cfg(target_arch = "riscv32")]
+    {
+        _xperm4_32(rs1 as i32, rs2 as i32) as usize
     }
-    value
+
+    #[cfg(target_arch = "riscv64")]
+    {
+        _xperm4_64(rs1 as i64, rs2 as i64) as usize
+    }
 }
 
 /// Implements the Sigma0 transformation function as used in the SHA2-256 hash function \[49\]
@@ -328,7 +345,7 @@ pub unsafe fn sha256sum1(rs1: usize) -> usize {
 ///
 /// # Note
 ///
-/// The `bs` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
+/// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
 ///
 /// # Safety
@@ -381,25 +398,13 @@ pub unsafe fn sha256sum1(rs1: usize) -> usize {
 /// # }
 /// ```
 #[target_feature(enable = "zksed")]
+#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(sm4ed))]
 #[inline]
-pub unsafe fn sm4ed(rs1: usize, rs2: usize, bs: u8) -> usize {
-    macro_rules! sm4ed {
-        ($imm2:expr) => {{
-            let value: usize;
-            unsafe {
-                asm!(
-                    concat!("sm4ed {rd},{rs1},{rs2},", $imm2),
-                    rd = lateout(reg) value,
-                    rs1 = in(reg) rs1,
-                    rs2 = in(reg) rs2,
-                    options(pure, nomem, nostack),
-                )
-            }
-            value
-        }}
-    }
-    constify_imm2!(bs, sm4ed)
+pub unsafe fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
+    static_assert_imm2!(BS);
+
+    _sm4ed(rs1 as i32, rs2 as i32, BS as i32) as u32
 }
 
 /// Accelerates the Key Schedule operation of the SM4 block cipher \[5, 31\] with `bs=0`.
@@ -419,7 +424,7 @@ pub unsafe fn sm4ed(rs1: usize, rs2: usize, bs: u8) -> usize {
 ///
 /// # Note
 ///
-/// The `bs` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
+/// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
 ///
 /// # Safety
@@ -472,25 +477,13 @@ pub unsafe fn sm4ed(rs1: usize, rs2: usize, bs: u8) -> usize {
 /// # }
 /// ```
 #[target_feature(enable = "zksed")]
+#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(sm4ks))]
 #[inline]
-pub unsafe fn sm4ks(rs1: usize, rs2: usize, bs: u8) -> usize {
-    macro_rules! sm4ks {
-        ($imm2:expr) => {{
-            let value: usize;
-            unsafe {
-                asm!(
-                    concat!("sm4ks {rd},{rs1},{rs2},", $imm2),
-                    rd = lateout(reg) value,
-                    rs1 = in(reg) rs1,
-                    rs2 = in(reg) rs2,
-                    options(pure, nomem, nostack),
-                )
-            }
-            value
-        }}
-    }
-    constify_imm2!(bs, sm4ks)
+pub unsafe fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
+    static_assert_imm2!(BS);
+
+    _sm4ks(rs1 as i32, rs2 as i32, BS as i32) as u32
 }
 
 /// Implements the P0 transformation function as used in the SM3 hash function [4, 30].
