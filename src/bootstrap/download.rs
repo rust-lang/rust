@@ -105,7 +105,7 @@ impl Config {
                     matches!(l.trim(), "ID=nixos" | "ID='nixos'" | "ID=\"nixos\"")
                 }),
             };
-            is_nixos && !Path::new("/lib").exists()
+            is_nixos
         });
         if val {
             eprintln!("info: You seem to be using Nix.");

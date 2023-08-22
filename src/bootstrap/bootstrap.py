@@ -644,7 +644,7 @@ class RustBuild(object):
                 return False
 
             # If the user has asked binaries to be patched for Nix, then
-            # don't check for NixOS or `/lib`.
+            # don't check for NixOS.
             if self.get_toml("patch-binaries-for-nix", "build") == "true":
                 return True
 
@@ -652,14 +652,9 @@ class RustBuild(object):
             # The latter one does not exist on NixOS when using tmpfs as root.
             try:
                 with open("/etc/os-release", "r") as f:
-                    if not any(ln.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"') for ln in f):
-                        return False
+                    return any(ln.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"') for ln in f)
             except FileNotFoundError:
                 return False
-            if os.path.exists("/lib"):
-                return False
-
-            return True
 
         answer = self._should_fix_bins_and_dylibs = get_answer()
         if answer:
