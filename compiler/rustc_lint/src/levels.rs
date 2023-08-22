@@ -12,7 +12,7 @@ use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{DecorateLint, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
-use rustc_feature::Features;
+use rustc_feature::{Features, GateIssue};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
@@ -24,12 +24,14 @@ use rustc_middle::lint::{
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
-use rustc_session::lint::builtin::{RENAMED_AND_REMOVED_LINTS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES};
 use rustc_session::lint::{
-    builtin::{self, FORBIDDEN_LINT_GROUPS, SINGLE_USE_LIFETIMES, UNFULFILLED_LINT_EXPECTATIONS},
+    builtin::{
+        self, FORBIDDEN_LINT_GROUPS, RENAMED_AND_REMOVED_LINTS, SINGLE_USE_LIFETIMES,
+        UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
+    },
     Level, Lint, LintExpectationId, LintId,
 };
-use rustc_session::parse::{add_feature_diagnostics, feature_err};
+use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -566,7 +568,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     continue;
                 }
 
-                if self.check_gated_lint(id, DUMMY_SP) {
+                if self.check_gated_lint(id, DUMMY_SP, true) {
                     let src = LintLevelSource::CommandLine(lint_flag_val, orig_level);
                     self.insert(id, (level, src));
                 }
@@ -837,7 +839,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             reason,
                         };
                         for &id in *ids {
-                            if self.check_gated_lint(id, attr.span) {
+                            if self.check_gated_lint(id, attr.span, false) {
                                 self.insert_spec(id, (level, src));
                             }
                         }
@@ -854,7 +856,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                     reason,
                                 };
                                 for &id in ids {
-                                    if self.check_gated_lint(id, attr.span) {
+                                    if self.check_gated_lint(id, attr.span, false) {
                                         self.insert_spec(id, (level, src));
                                     }
                                 }
@@ -955,7 +957,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             reason,
                         };
                         for &id in ids {
-                            if self.check_gated_lint(id, attr.span) {
+                            if self.check_gated_lint(id, attr.span, false) {
                                 self.insert_spec(id, (level, src));
                             }
                         }
@@ -1000,7 +1002,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     // FIXME only emit this once for each attribute, instead of repeating it 4 times for
     // pre-expansion lints, post-expansion lints, `shallow_lint_levels_on` and `lint_expectations`.
     #[track_caller]
-    fn check_gated_lint(&self, lint_id: LintId, span: Span) -> bool {
+    fn check_gated_lint(&self, lint_id: LintId, span: Span, lint_from_cli: bool) -> bool {
         if let Some(feature) = lint_id.lint.feature_gate {
             if !self.features.enabled(feature) {
                 let lint = builtin::UNKNOWN_LINTS;
@@ -1015,7 +1017,13 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     |lint| {
                         lint.set_arg("name", lint_id.lint.name_lower());
                         lint.note(fluent::lint_note);
-                        add_feature_diagnostics(lint, &self.sess.parse_sess, feature);
+                        rustc_session::parse::add_feature_diagnostics_for_issue(
+                            lint,
+                            &self.sess.parse_sess,
+                            feature,
+                            GateIssue::Language,
+                            lint_from_cli,
+                        );
                         lint
                     },
                 );

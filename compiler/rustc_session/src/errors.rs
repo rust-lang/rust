@@ -57,6 +57,12 @@ pub struct FeatureDiagnosticHelp {
     pub feature: Symbol,
 }
 
+#[derive(Subdiagnostic)]
+#[help(session_cli_feature_diagnostic_help)]
+pub struct CliFeatureDiagnosticHelp {
+    pub feature: Symbol,
+}
+
 #[derive(Diagnostic)]
 #[diag(session_not_circumvent_feature)]
 pub struct NotCircumventFeature;

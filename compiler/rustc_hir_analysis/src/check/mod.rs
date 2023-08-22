@@ -289,6 +289,7 @@ fn default_body_is_unstable(
         &tcx.sess.parse_sess,
         feature,
         rustc_feature::GateIssue::Library(issue),
+        false,
     );
 
     err.emit();
