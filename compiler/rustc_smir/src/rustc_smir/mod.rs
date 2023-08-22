@@ -108,6 +108,23 @@ impl<'tcx> Context for Tables<'tcx> {
         let generic_def = self.tcx.generics_of(def_id);
         generic_def.stable(self)
     }
+
+    fn predicates_of(
+        &mut self,
+        trait_def: &stable_mir::ty::TraitDef,
+    ) -> stable_mir::GenericPredicates {
+        let trait_def_id = self.trait_def_id(trait_def);
+        let ty::GenericPredicates { parent, predicates } = self.tcx.predicates_of(trait_def_id);
+        stable_mir::GenericPredicates {
+            parent: parent.map(|did| self.trait_def(did)),
+            predicates: predicates
+                .iter()
+                .map(|(clause, span)| {
+                    (clause.as_predicate().kind().skip_binder().stable(self), span.stable(self))
+                })
+                .collect(),
+        }
+    }
 }
 
 pub struct Tables<'tcx> {
@@ -947,12 +964,12 @@ impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
 impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
     type T = stable_mir::ty::BoundRegionKind;
 
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::BoundRegionKind;
 
         match self {
             ty::BoundRegionKind::BrAnon(option_span) => {
-                BoundRegionKind::BrAnon(option_span.map(|span| opaque(&span)))
+                BoundRegionKind::BrAnon(option_span.map(|span| span.stable(tables)))
             }
             ty::BoundRegionKind::BrNamed(def_id, symbol) => {
                 BoundRegionKind::BrNamed(rustc_internal::br_named_def(*def_id), symbol.to_string())
@@ -1242,14 +1259,6 @@ impl<'tcx> Stable<'tcx> for ty::Generics {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_span::Span {
-    type T = stable_mir::ty::Span;
-
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        opaque(self)
-    }
-}
-
 impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDefKind {
     type T = stable_mir::ty::GenericParamDefKind;
 
@@ -1453,6 +1462,15 @@ impl<'tcx> Stable<'tcx> for ty::Region<'tcx> {
 
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         // FIXME: add a real implementation of stable regions
+        opaque(self)
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_span::Span {
+    type T = stable_mir::ty::Span;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        // FIXME: add a real implementation of stable spans
         opaque(self)
     }
 }

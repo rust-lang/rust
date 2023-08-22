@@ -22,7 +22,7 @@ pub struct Const {
 
 type Ident = Opaque;
 pub(crate) type Region = Opaque;
-pub type Span = Opaque;
+pub(crate) type Span = Opaque;
 
 #[derive(Clone, Debug)]
 pub enum TyKind {
