@@ -1,4 +1,5 @@
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
+use crate::mir;
 use crate::ty::{GenericArgs, Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
@@ -59,21 +60,19 @@ impl<'tcx> MonoItem<'tcx> {
     // Note: if you change how item size estimates work, you might need to
     // change NON_INCR_MIN_CGU_SIZE as well.
     pub fn size_estimate(&self, tcx: TyCtxt<'tcx>) -> usize {
+        use crate::mir::visit::Visitor;
         match *self {
             MonoItem::Fn(instance) => {
-                match instance.def {
-                    // "Normal" functions size estimate: the number of
-                    // statements, plus one for the terminator.
-                    InstanceDef::Item(..) | InstanceDef::DropGlue(..) => {
-                        let mir = tcx.instance_mir(instance.def);
-                        mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
-                    }
-                    // Other compiler-generated shims size estimate: 1
-                    _ => 1,
-                }
+                // Function size estimate: the number of statements, plus one
+                // for the terminator.
+                let mir = tcx.instance_mir(instance.def);
+                let mut sizer = FnSizer::default();
+                sizer.visit_body(mir);
+                sizer.size_estimate()
             }
-            // Conservatively estimate the size of a static declaration or
-            // assembly item to be 1.
+            // Static declarations and asm item are hard to compare in size
+            // with functions, but they're quite rare so the exact value
+            // doesn't matter much.
             MonoItem::Static(_) | MonoItem::GlobalAsm(_) => 1,
         }
     }
@@ -450,6 +449,42 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
         items.sort_unstable_by_key(|i| i.0);
         items.hash_stable(hcx, hasher);
     }
+}
+
+// njn: comment linking to analysis, etc.
+#[derive(Default)]
+pub struct FnSizer {
+    pub num_basic_blocks: usize,
+    pub num_projection_elems: usize,
+}
+
+impl FnSizer {
+    fn size_estimate(&self) -> usize {
+        7 * self.num_basic_blocks + 4 * self.num_projection_elems
+    }
+}
+
+impl<'tcx> mir::visit::Visitor<'tcx> for FnSizer {
+    fn visit_basic_block_data(
+        &mut self,
+        block: mir::BasicBlock,
+        data: &mir::BasicBlockData<'tcx>,
+    ) {
+        self.num_basic_blocks += 1;
+        self.super_basic_block_data(block, data);
+    }
+
+    fn visit_projection_elem(
+        &mut self,
+        place_ref: mir::PlaceRef<'tcx>,
+        elem: mir::PlaceElem<'tcx>,
+        context: mir::visit::PlaceContext,
+        location: mir::Location,
+    ) {
+        self.num_projection_elems += 1;
+        self.super_projection_elem(place_ref, elem, context, location);
+    }
+
 }
 
 pub struct CodegenUnitNameBuilder<'tcx> {

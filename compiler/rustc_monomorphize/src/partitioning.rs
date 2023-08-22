@@ -377,7 +377,7 @@ fn merge_codegen_units<'tcx>(
     // worse generated code. So we don't allow CGUs smaller than this (unless
     // there is just one CGU, of course). Note that CGU sizes of 100,000+ are
     // common in larger programs, so this isn't all that large.
-    const NON_INCR_MIN_CGU_SIZE: usize = 1800;
+    const NON_INCR_MIN_CGU_SIZE: usize = 3750;
 
     // Repeatedly merge the two smallest codegen units as long as: it's a
     // non-incremental build, and the user didn't specify a CGU count, and
