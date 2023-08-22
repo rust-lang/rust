@@ -14,7 +14,6 @@ use crate::stable_mir::ty::{
 };
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
-use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::mir::interpret::alloc_range;
 use rustc_middle::mir::{self, ConstantKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
@@ -168,10 +167,7 @@ impl<'tcx> Stable<'tcx> for mir::Statement<'tcx> {
                     variance: variance.stable(tables),
                 }
             }
-            Coverage(coverage) => stable_mir::mir::Statement::Coverage(stable_mir::mir::Coverage {
-                kind: coverage.kind.stable(tables),
-                code_region: coverage.code_region.as_ref().map(|reg| reg.stable(tables)),
-            }),
+            Coverage(coverage) => stable_mir::mir::Statement::Coverage(opaque(coverage)),
             Intrinsic(intrinstic) => {
                 stable_mir::mir::Statement::Intrinsic(intrinstic.stable(tables))
             }
@@ -472,47 +468,11 @@ impl<'tcx> Stable<'tcx> for mir::Place<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for mir::coverage::CoverageKind {
-    type T = stable_mir::mir::CoverageKind;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        use rustc_middle::mir::coverage::CoverageKind;
-        match self {
-            CoverageKind::Counter { function_source_hash, id } => {
-                stable_mir::mir::CoverageKind::Counter {
-                    function_source_hash: *function_source_hash as usize,
-                    id: opaque(id),
-                }
-            }
-            CoverageKind::Expression { id, lhs, op, rhs } => {
-                stable_mir::mir::CoverageKind::Expression {
-                    id: opaque(id),
-                    lhs: opaque(lhs),
-                    op: op.stable(tables),
-                    rhs: opaque(rhs),
-                }
-            }
-            CoverageKind::Unreachable => stable_mir::mir::CoverageKind::Unreachable,
-        }
-    }
-}
-
 impl<'tcx> Stable<'tcx> for mir::UserTypeProjection {
     type T = stable_mir::mir::UserTypeProjection;
 
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         UserTypeProjection { base: self.base.as_usize(), projection: format!("{:?}", self.projs) }
-    }
-}
-
-impl<'tcx> Stable<'tcx> for mir::coverage::Op {
-    type T = stable_mir::mir::Op;
-
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        use rustc_middle::mir::coverage::Op::*;
-        match self {
-            Subtract => stable_mir::mir::Op::Subtract,
-            Add => stable_mir::mir::Op::Add,
-        }
     }
 }
 
@@ -559,20 +519,6 @@ impl<'tcx> Stable<'tcx> for ty::UserTypeAnnotationIndex {
     type T = usize;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         self.as_usize()
-    }
-}
-
-impl<'tcx> Stable<'tcx> for CodeRegion {
-    type T = stable_mir::mir::CodeRegion;
-
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        stable_mir::mir::CodeRegion {
-            file_name: self.file_name.as_str().to_string(),
-            start_line: self.start_line as usize,
-            start_col: self.start_col as usize,
-            end_line: self.end_line as usize,
-            end_col: self.end_col as usize,
-        }
     }
 }
 
