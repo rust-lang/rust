@@ -1,11 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
+use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, FnDecl, FnRetTy, GenericArg, GenericBound, ItemKind, TraitBoundModifier, TyKind};
+use rustc_hir::{
+    Body, FnDecl, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind, ItemKind, TraitBoundModifier, TraitItem,
+    TraitItemKind, TyKind,
+};
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_middle::ty::{self, ClauseKind, TyCtxt};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
@@ -94,6 +97,86 @@ fn is_same_generics(
         })
 }
 
+fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
+    if let FnRetTy::Return(ty) = decl.output
+        &&let TyKind::OpaqueDef(item_id, ..) = ty.kind
+        && let item = cx.tcx.hir().item(item_id)
+        && let ItemKind::OpaqueTy(opaque_ty) = item.kind
+        // Very often there is only a single bound, e.g. `impl Deref<..>`, in which case
+        // we can avoid doing a bunch of stuff unnecessarily.
+        && opaque_ty.bounds.len() > 1
+    {
+        // Get all the (implied) trait predicates in the bounds.
+        // For `impl Deref + DerefMut` this will contain [`Deref`].
+        // The implied `Deref` comes from `DerefMut` because `trait DerefMut: Deref {}`.
+        // N.B. (G)ATs are fine to disregard, because they must be the same for all of its supertraits.
+        // Example:
+        // `impl Deref<Target = i32> + DerefMut<Target = u32>` is not allowed.
+        // `DerefMut::Target` needs to match `Deref::Target`.
+        let implied_bounds: Vec<_> = opaque_ty.bounds.iter().filter_map(|bound| {
+            if let GenericBound::Trait(poly_trait, TraitBoundModifier::None) = bound
+                && let [.., path]  = poly_trait.trait_ref.path.segments
+                && poly_trait.bound_generic_params.is_empty()
+                && let Some(trait_def_id) = path.res.opt_def_id()
+                && let predicates = cx.tcx.super_predicates_of(trait_def_id).predicates
+                && !predicates.is_empty() // If the trait has no supertrait, there is nothing to add.
+            {
+                Some((bound.span(), path.args.map_or([].as_slice(), |a| a.args), predicates))
+            } else {
+                None
+            }
+        }).collect();
+
+        // Lint all bounds in the `impl Trait` type that are also in the `implied_bounds` vec.
+        // This involves some extra logic when generic arguments are present, since
+        // simply comparing trait `DefId`s won't be enough. We also need to compare the generics.
+        for (index, bound) in opaque_ty.bounds.iter().enumerate() {
+            if let GenericBound::Trait(poly_trait, TraitBoundModifier::None) = bound
+                && let [.., path] = poly_trait.trait_ref.path.segments
+                && let implied_args = path.args.map_or([].as_slice(), |a| a.args)
+                && let Some(def_id) = poly_trait.trait_ref.path.res.opt_def_id()
+                && let Some(implied_by_span) = implied_bounds.iter().find_map(|&(span, implied_by_args, preds)| {
+                    preds.iter().find_map(|(clause, _)| {
+                        if let ClauseKind::Trait(tr) = clause.kind().skip_binder()
+                            && tr.def_id() == def_id
+                            && is_same_generics(cx.tcx, tr.trait_ref.args, implied_by_args, implied_args)
+                        {
+                            Some(span)
+                        } else {
+                            None
+                        }
+                    })
+                })
+            {
+                let implied_by = snippet(cx, implied_by_span, "..");
+                span_lint_and_then(
+                    cx, IMPLIED_BOUNDS_IN_IMPLS,
+                    poly_trait.span,
+                    &format!("this bound is already specified as the supertrait of `{implied_by}`"),
+                    |diag| {
+                        // If we suggest removing a bound, we may also need extend the span
+                        // to include the `+` token, so we don't end up with something like `impl + B`
+
+                        let implied_span_extended = if let Some(next_bound) = opaque_ty.bounds.get(index + 1) {
+                            poly_trait.span.to(next_bound.span().shrink_to_lo())
+                        } else {
+                            poly_trait.span
+                        };
+
+                        diag.span_suggestion_with_style(
+                            implied_span_extended,
+                            "try removing this bound",
+                            "",
+                            Applicability::MachineApplicable,
+                            SuggestionStyle::ShowAlways
+                        );
+                    }
+                );
+            }
+        }
+    }
+}
+
 impl LateLintPass<'_> for ImpliedBoundsInImpls {
     fn check_fn(
         &mut self,
@@ -104,82 +187,16 @@ impl LateLintPass<'_> for ImpliedBoundsInImpls {
         _: Span,
         _: LocalDefId,
     ) {
-        if let FnRetTy::Return(ty) = decl.output 
-            &&let TyKind::OpaqueDef(item_id, ..) = ty.kind
-            && let item = cx.tcx.hir().item(item_id)
-            && let ItemKind::OpaqueTy(opaque_ty) = item.kind
-            // Very often there is only a single bound, e.g. `impl Deref<..>`, in which case
-            // we can avoid doing a bunch of stuff unnecessarily.
-            && opaque_ty.bounds.len() > 1
-        {
-            // Get all the (implied) trait predicates in the bounds.
-            // For `impl Deref + DerefMut` this will contain [`Deref`].
-            // The implied `Deref` comes from `DerefMut` because `trait DerefMut: Deref {}`.
-            // N.B. (G)ATs are fine to disregard, because they must be the same for all of its supertraits.
-            // Example:
-            // `impl Deref<Target = i32> + DerefMut<Target = u32>` is not allowed.
-            // `DerefMut::Target` needs to match `Deref::Target`.
-            let implied_bounds: Vec<_> = opaque_ty.bounds.iter().filter_map(|bound| {
-                if let GenericBound::Trait(poly_trait, TraitBoundModifier::None) = bound
-                    && let [.., path]  = poly_trait.trait_ref.path.segments
-                    && poly_trait.bound_generic_params.is_empty()
-                    && let Some(trait_def_id) = path.res.opt_def_id()
-                    && let predicates = cx.tcx.super_predicates_of(trait_def_id).predicates
-                    && !predicates.is_empty() // If the trait has no supertrait, there is nothing to add.
-                {
-                    Some((bound.span(), path.args.map_or([].as_slice(), |a| a.args), predicates))
-                } else {
-                    None
-                }
-            }).collect();
-
-            // Lint all bounds in the `impl Trait` type that are also in the `implied_bounds` vec.
-            // This involves some extra logic when generic arguments are present, since
-            // simply comparing trait `DefId`s won't be enough. We also need to compare the generics.
-            for (index, bound) in opaque_ty.bounds.iter().enumerate() {
-                if let GenericBound::Trait(poly_trait, TraitBoundModifier::None) = bound
-                    && let [.., path] = poly_trait.trait_ref.path.segments
-                    && let implied_args = path.args.map_or([].as_slice(), |a| a.args)
-                    && let Some(def_id) = poly_trait.trait_ref.path.res.opt_def_id()
-                    && let Some(implied_by_span) = implied_bounds.iter().find_map(|&(span, implied_by_args, preds)| {
-                        preds.iter().find_map(|(clause, _)| {
-                            if let ClauseKind::Trait(tr) = clause.kind().skip_binder()
-                                && tr.def_id() == def_id
-                                && is_same_generics(cx.tcx, tr.trait_ref.args, implied_by_args, implied_args)
-                            {
-                                Some(span)
-                            } else {
-                                None
-                            }
-                        })
-                    })
-                {
-                    let implied_by = snippet(cx, implied_by_span, "..");
-                    span_lint_and_then(
-                        cx, IMPLIED_BOUNDS_IN_IMPLS,
-                        poly_trait.span,
-                        &format!("this bound is already specified as the supertrait of `{}`", implied_by),
-                        |diag| {
-                            // If we suggest removing a bound, we may also need extend the span
-                            // to include the `+` token, so we don't end up with something like `impl + B`
-
-                            let implied_span_extended = if let Some(next_bound) = opaque_ty.bounds.get(index + 1) {
-                                poly_trait.span.to(next_bound.span().shrink_to_lo())
-                            } else {
-                                poly_trait.span
-                            };
-
-                            diag.span_suggestion_with_style(
-                                implied_span_extended,
-                                "try removing this bound",
-                                "",
-                                Applicability::MachineApplicable,
-                                SuggestionStyle::ShowAlways
-                            );
-                        }
-                    );
-                }
-            }
+        check(cx, decl);
+    }
+    fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
+        if let TraitItemKind::Fn(sig, ..) = &item.kind {
+            check(cx, sig.decl);
+        }
+    }
+    fn check_impl_item(&mut self, cx: &LateContext<'_>, item: &ImplItem<'_>) {
+        if let ImplItemKind::Fn(sig, ..) = &item.kind {
+            check(cx, sig.decl);
         }
     }
 }

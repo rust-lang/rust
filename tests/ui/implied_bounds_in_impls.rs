@@ -49,20 +49,18 @@ fn generics_same() -> impl GenericTrait<i32> + GenericSubtrait<(), i32, ()> {}
 
 trait SomeTrait {
     // Check that it works in trait declarations.
-    fn f() -> impl Deref + DerefMut<Target = u8> {
-        Box::new(0)
-    }
+    fn f() -> impl Deref + DerefMut<Target = u8>;
 }
 struct SomeStruct;
 impl SomeStruct {
     // Check that it works in inherent impl blocks.
-    fn f() -> impl DerefMut<Target = u8> {
+    fn f() -> impl Deref + DerefMut<Target = u8> {
         Box::new(123)
     }
 }
 impl SomeTrait for SomeStruct {
     // Check that it works in trait impls.
-    fn f() -> impl DerefMut<Target = u8> {
+    fn f() -> impl Deref + DerefMut<Target = u8> {
         Box::new(42)
     }
 }
