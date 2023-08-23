@@ -435,9 +435,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.store(place.llval, alloca.llval, alloca.align);
 
             // Point the debug info to `*alloca` for the current variable
-            bx.dbg_var_addr(dbg_var, dbg_loc, alloca.llval, Size::ZERO, &[Size::ZERO], None);
+            bx.dbg_var_addr(
+                dbg_var,
+                dbg_loc,
+                alloca.llval,
+                Size::ZERO,
+                &[Size::ZERO],
+                var.fragment,
+            );
         } else {
-            bx.dbg_var_addr(dbg_var, dbg_loc, base.llval, direct_offset, &indirect_offsets, None);
+            bx.dbg_var_addr(
+                dbg_var,
+                dbg_loc,
+                base.llval,
+                direct_offset,
+                &indirect_offsets,
+                var.fragment,
+            );
         }
     }
 
