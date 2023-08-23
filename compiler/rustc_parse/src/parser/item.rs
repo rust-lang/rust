@@ -1,5 +1,5 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
-use super::ty::{AllowAnonStructOrUnion, AllowPlus, RecoverQPath, RecoverReturnSign};
+use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
@@ -590,7 +590,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `..`, do not add it to expected tokens
             Some(self.mk_ty(self.prev_token.span, TyKind::Err))
         } else if has_for || self.token.can_begin_type() {
-            Some(self.parse_second_ty_for_item_impl()?)
+            Some(self.parse_ty()?)
         } else {
             None
         };
@@ -1595,26 +1595,11 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Union(vdata, generics)))
     }
 
-    fn parse_record_struct_body(
+    pub(crate) fn parse_record_struct_body(
         &mut self,
         adt_ty: &str,
         ident_span: Span,
         parsed_where: bool,
-    ) -> PResult<'a, (ThinVec<FieldDef>, /* recovered */ bool)> {
-        self.parse_record_struct_body_common(
-            adt_ty,
-            ident_span,
-            parsed_where,
-            AllowAnonStructOrUnion::Yes,
-        )
-    }
-
-    pub(crate) fn parse_record_struct_body_common(
-        &mut self,
-        adt_ty: &str,
-        ident_span: Span,
-        parsed_where: bool,
-        allow_anon_struct_or_union: AllowAnonStructOrUnion<'a>,
     ) -> PResult<'a, (ThinVec<FieldDef>, /* recovered */ bool)> {
         let mut fields = ThinVec::new();
         let mut recovered = false;
@@ -1628,18 +1613,6 @@ impl<'a> Parser<'a> {
                 match field {
                     Ok(field) => fields.push(field),
                     Err(mut err) => {
-                        // When recovering the anonymous structs or unions, we should't emit the error
-                        // immediately, because it may also be a type path `union` followed by a block,
-                        // such as `impl union { fn foo() {} }`. Here we are actaully not parsing a
-                        // record struct body but an `impl` body.
-                        //
-                        // Instead, the error should be thrown and handled by the caller
-                        // `parse_anon_struct_or_union`.
-                        if let AllowAnonStructOrUnion::RecoverNonEmptyOrElse(_) =
-                            allow_anon_struct_or_union
-                        {
-                            return Err(err);
-                        }
                         err.span_label(ident_span, format!("while parsing this {adt_ty}"));
                         err.emit();
                         break;

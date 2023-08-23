@@ -220,9 +220,7 @@ impl<'a> AstValidator<'a> {
                 }
             }
             TyKind::AnonStruct(ref fields, ..) | TyKind::AnonUnion(ref fields, ..) => {
-                // self.with_banned_assoc_ty_bound(|this| {
                 walk_list!(self, visit_field_def, fields)
-                // });
             }
             _ => visit::walk_ty(self, t),
         }
@@ -1059,9 +1057,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.visit_vis(&item.vis);
                     self.visit_ident(item.ident);
                     self.visit_generics(generics);
-                    // self.with_banned_assoc_ty_bound(|this| {
                     walk_list!(self, visit_struct_field_def, fields);
-                    // });
                     walk_list!(self, visit_attribute, &item.attrs);
                     return;
                 }
@@ -1076,9 +1072,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         self.visit_vis(&item.vis);
                         self.visit_ident(item.ident);
                         self.visit_generics(generics);
-                        // self.with_banned_assoc_ty_bound(|this| {
                         walk_list!(self, visit_struct_field_def, fields);
-                        // });
                         walk_list!(self, visit_attribute, &item.attrs);
                         return;
                     }
