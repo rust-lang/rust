@@ -80,6 +80,10 @@ impl<'tcx> Tables<'tcx> {
         self.def_ids[impl_def.0]
     }
 
+    pub fn generic_def_id(&self, generic_def: &stable_mir::ty::GenericDef) -> DefId {
+        self.def_ids[generic_def.0]
+    }
+
     pub fn crate_item(&mut self, did: DefId) -> stable_mir::CrateItem {
         stable_mir::CrateItem(self.create_def_id(did))
     }
@@ -118,6 +122,10 @@ impl<'tcx> Tables<'tcx> {
 
     pub fn trait_def(&mut self, did: DefId) -> stable_mir::ty::TraitDef {
         stable_mir::ty::TraitDef(self.create_def_id(did))
+    }
+
+    pub fn generic_def(&mut self, did: DefId) -> stable_mir::ty::GenericDef {
+        stable_mir::ty::GenericDef(self.create_def_id(did))
     }
 
     pub fn const_def(&mut self, did: DefId) -> stable_mir::ty::ConstDef {

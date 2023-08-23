@@ -22,7 +22,7 @@ pub struct Const {
 
 type Ident = Opaque;
 pub(crate) type Region = Opaque;
-type Span = Opaque;
+pub type Span = Opaque;
 
 #[derive(Clone, Debug)]
 pub enum TyKind {
@@ -87,34 +87,37 @@ pub enum Movability {
     Movable,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ForeignDef(pub(crate) DefId);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct FnDef(pub(crate) DefId);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ClosureDef(pub(crate) DefId);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct GeneratorDef(pub(crate) DefId);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ParamDef(pub(crate) DefId);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct BrNamedDef(pub(crate) DefId);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct AdtDef(pub(crate) DefId);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct AliasDef(pub(crate) DefId);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct TraitDef(pub(crate) DefId);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct GenericDef(pub(crate) DefId);
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ConstDef(pub(crate) DefId);
 
 impl TraitDef {
@@ -129,6 +132,12 @@ pub struct ImplDef(pub(crate) DefId);
 impl ImplDef {
     pub fn trait_impl(&self) -> ImplTrait {
         with(|cx| cx.trait_impl(self))
+    }
+}
+
+impl GenericDef {
+    pub fn generics_of(&self) -> Generics {
+        with(|tcx| tcx.generics_of(self))
     }
 }
 
@@ -460,4 +469,31 @@ pub type ImplTrait = EarlyBinder<TraitRef>;
 pub struct TraitRef {
     pub def_id: TraitDef,
     pub args: GenericArgs,
+}
+
+#[derive(Clone, Debug)]
+pub struct Generics {
+    pub parent: Option<GenericDef>,
+    pub parent_count: usize,
+    pub params: Vec<GenericParamDef>,
+    pub param_def_id_to_index: Vec<(GenericDef, u32)>,
+    pub has_self: bool,
+    pub has_late_bound_regions: Option<Span>,
+    pub host_effect_index: Option<usize>,
+}
+
+#[derive(Clone, Debug)]
+pub enum GenericParamDefKind {
+    Lifetime,
+    Type { has_default: bool, synthetic: bool },
+    Const { has_default: bool },
+}
+
+#[derive(Clone, Debug)]
+pub struct GenericParamDef {
+    pub name: super::Symbol,
+    pub def_id: GenericDef,
+    pub index: u32,
+    pub pure_wrt_drop: bool,
+    pub kind: GenericParamDefKind,
 }

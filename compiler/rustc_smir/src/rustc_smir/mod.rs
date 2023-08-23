@@ -10,7 +10,8 @@
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
 use crate::stable_mir::ty::{
-    allocation_filter, new_allocation, Const, FloatTy, IntTy, Movability, RigidTy, TyKind, UintTy,
+    allocation_filter, new_allocation, Const, FloatTy, GenericDef, GenericParamDef, IntTy,
+    Movability, RigidTy, TyKind, UintTy,
 };
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
@@ -100,6 +101,12 @@ impl<'tcx> Context for Tables<'tcx> {
     fn ty_kind(&mut self, ty: crate::stable_mir::ty::Ty) -> TyKind {
         let ty = self.types[ty.0];
         ty.stable(self)
+    }
+
+    fn generics_of(&mut self, generic_def: &GenericDef) -> stable_mir::ty::Generics {
+        let def_id = self.generic_def_id(generic_def);
+        let generic_def = self.tcx.generics_of(def_id);
+        generic_def.stable(self)
     }
 }
 
@@ -1203,5 +1210,69 @@ impl<'tcx> Stable<'tcx> for ty::TraitRef<'tcx> {
         use stable_mir::ty::TraitRef;
 
         TraitRef { def_id: rustc_internal::trait_def(self.def_id), args: self.args.stable(tables) }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::Generics {
+    type T = stable_mir::ty::Generics;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::Generics;
+
+        let params: Vec<_> = self.params.iter().map(|param| param.stable(tables)).collect();
+        let param_def_id_to_index =
+            params.iter().map(|param| (param.def_id, param.index)).collect();
+
+        Generics {
+            parent: self.parent.map(|did| tables.generic_def(did)),
+            parent_count: self.parent_count,
+            params,
+            param_def_id_to_index,
+            has_self: self.has_self,
+            has_late_bound_regions: self
+                .has_late_bound_regions
+                .as_ref()
+                .map(|late_bound_regions| late_bound_regions.stable(tables)),
+            host_effect_index: self.host_effect_index,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_span::Span {
+    type T = stable_mir::ty::Span;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        opaque(self)
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDefKind {
+    type T = stable_mir::ty::GenericParamDefKind;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::GenericParamDefKind;
+        match self {
+            ty::GenericParamDefKind::Lifetime => GenericParamDefKind::Lifetime,
+            ty::GenericParamDefKind::Type { has_default, synthetic } => {
+                GenericParamDefKind::Type { has_default: *has_default, synthetic: *synthetic }
+            }
+            ty::GenericParamDefKind::Const { has_default } => {
+                GenericParamDefKind::Const { has_default: *has_default }
+            }
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDef {
+    type T = stable_mir::ty::GenericParamDef;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        GenericParamDef {
+            name: self.name.to_string(),
+            def_id: tables.generic_def(self.def_id),
+            index: self.index,
+            pure_wrt_drop: self.pure_wrt_drop,
+            kind: self.kind.stable(tables),
+        }
     }
 }
