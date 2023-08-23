@@ -1,6 +1,6 @@
 use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{CodeRegion, CounterId, ExpressionId, Op, Operand};
 use rustc_middle::ty::Instance;
@@ -129,14 +129,13 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// Perform some simplifications to make the final coverage mappings
     /// slightly smaller.
     pub(crate) fn simplify_expressions(&mut self) {
-        // The set of expressions that either were optimized out entirely, or
-        // have zero as both of their operands, and will therefore always have
-        // a value of zero. Other expressions that refer to these as operands
-        // can have those operands replaced with `Operand::Zero`.
-        let mut zero_expressions = FxIndexSet::default();
+        // The set of expressions that were simplified to either `Zero` or a
+        // `Counter`. Other expressions that refer to these as operands
+        // can then also be simplified.
+        let mut simplified_expressions = FxHashMap::default();
 
         // For each expression, perform simplifications based on lower-numbered
-        // expressions, and then update the set of always-zero expressions if
+        // expressions, and then update the map of simplified expressions if
         // necessary.
         // (By construction, expressions can only refer to other expressions
         // that have lower IDs, so one simplification pass is sufficient.)
@@ -144,20 +143,22 @@ impl<'tcx> FunctionCoverage<'tcx> {
             let Some(expression) = maybe_expression else {
                 // If an expression is missing, it must have been optimized away,
                 // so any operand that refers to it can be replaced with zero.
-                zero_expressions.insert(id);
+                simplified_expressions.insert(id, Operand::Zero);
                 continue;
             };
 
-            // If an operand refers to an expression that is always zero, then
-            // that operand can be replaced with `Operand::Zero`.
-            let maybe_set_operand_to_zero = |operand: &mut Operand| match &*operand {
-                Operand::Expression(id) if zero_expressions.contains(id) => {
-                    *operand = Operand::Zero;
+            // If an operand refers to an expression that has been simplified, then
+            // replace that operand with the simplified version.
+            let maybe_simplify_operand = |operand: &mut Operand| {
+                if let Operand::Expression(id) = &*operand {
+                    if let Some(simplified) = simplified_expressions.get(id) {
+                        *operand = *simplified;
+                    }
                 }
-                _ => (),
             };
-            maybe_set_operand_to_zero(&mut expression.lhs);
-            maybe_set_operand_to_zero(&mut expression.rhs);
+
+            maybe_simplify_operand(&mut expression.lhs);
+            maybe_simplify_operand(&mut expression.rhs);
 
             // Coverage counter values cannot be negative, so if an expression
             // involves subtraction from zero, assume that its RHS must also be zero.
@@ -166,12 +167,31 @@ impl<'tcx> FunctionCoverage<'tcx> {
                 expression.rhs = Operand::Zero;
             }
 
-            // After the above simplifications, if both operands are zero, then
-            // we know that this expression is always zero too.
-            if let Expression { lhs: Operand::Zero, rhs: Operand::Zero, .. } = expression {
-                zero_expressions.insert(id);
+            // After the above simplifications, if the right hand operand is zero,
+            // we can replace the expression by its left hand side.
+            if let Expression { lhs, rhs: Operand::Zero, .. } = expression {
+                simplified_expressions.insert(id, *lhs);
+            } else
+            // And the same thing for the left hand side.
+            if let Expression { lhs: Operand::Zero, rhs, .. } = expression {
+                simplified_expressions.insert(id, *rhs);
             }
         }
+    }
+
+    /// This will further simplify any expression, "inlining" the left hand side operand
+    /// if the right hand side is `Zero`. This is similar to `simplify_expressions` above,
+    /// but works for an already referenced expression.
+    fn simplified_expression(&self, id: ExpressionId) -> Counter {
+        if let Some(expr) = &self.expressions[id] {
+            if expr.rhs == Operand::Zero {
+                return Counter::from_operand(expr.lhs);
+            }
+            if expr.lhs == Operand::Zero {
+                return Counter::from_operand(expr.rhs);
+            }
+        }
+        Counter::expression(id)
     }
 
     /// Return the source hash, generated from the HIR node structure, and used to indicate whether
@@ -253,7 +273,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
             .iter_enumerated()
             .filter_map(|(id, expression)| {
                 let code_region = expression.as_ref()?.region.as_ref()?;
-                Some((Counter::expression(id), code_region))
+                Some((self.simplified_expression(id), code_region))
             })
             .collect::<Vec<_>>()
     }
