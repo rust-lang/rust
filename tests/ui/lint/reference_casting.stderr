@@ -131,7 +131,17 @@ LL |     *std::mem::transmute::<_, *mut i32>(num) += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:76:5
+  --> $DIR/reference_casting.rs:74:5
+   |
+LL | /     std::ptr::write(
+LL | |
+LL | |         std::mem::transmute::<*const i32, *mut i32>(num),
+LL | |         -1i32,
+LL | |     );
+   | |_____^
+
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:81:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happend here
@@ -139,22 +149,49 @@ LL |     *value = 1;
    |     ^^^^^^^^^^
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:78:5
+  --> $DIR/reference_casting.rs:83:5
    |
 LL |     *(num as *const i32).cast::<i32>().cast_mut() = 2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:80:5
+  --> $DIR/reference_casting.rs:85:5
    |
 LL |     *(num as *const _ as usize as *mut i32) = 2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:84:9
+  --> $DIR/reference_casting.rs:87:5
+   |
+LL |     let value = num as *const i32 as *mut i32;
+   |                 ----------------------------- casting happend here
+...
+LL |     std::ptr::write(value, 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:89:5
+   |
+LL |     let value = num as *const i32 as *mut i32;
+   |                 ----------------------------- casting happend here
+...
+LL |     std::ptr::write_unaligned(value, 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:91:5
+   |
+LL |     let value = num as *const i32 as *mut i32;
+   |                 ----------------------------- casting happend here
+...
+LL |     std::ptr::write_volatile(value, 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:95:9
    |
 LL |         *(this as *const _ as *mut _) = a;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 25 previous errors
+error: aborting due to 29 previous errors
 

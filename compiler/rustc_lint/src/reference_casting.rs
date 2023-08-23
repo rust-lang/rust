@@ -56,20 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        // &mut <expr>
-        let inner = if let ExprKind::AddrOf(_, Mutability::Mut, expr) = expr.kind {
-            expr
-        // <expr> = ...
-        } else if let ExprKind::Assign(expr, _, _) = expr.kind {
-            expr
-        // <expr> += ...
-        } else if let ExprKind::AssignOp(_, expr, _) = expr.kind {
-            expr
-        } else {
-            return;
-        };
-
-        let ExprKind::Unary(UnOp::Deref, e) = &inner.kind else {
+        let Some((is_assignment, e)) = is_operation_we_care_about(cx, expr) else {
             return;
         };
 
@@ -86,13 +73,56 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
         cx.emit_spanned_lint(
             INVALID_REFERENCE_CASTING,
             expr.span,
-            if matches!(expr.kind, ExprKind::AddrOf(..)) {
-                InvalidReferenceCastingDiag::BorrowAsMut { orig_cast }
-            } else {
+            if is_assignment {
                 InvalidReferenceCastingDiag::AssignToRef { orig_cast }
+            } else {
+                InvalidReferenceCastingDiag::BorrowAsMut { orig_cast }
             },
         );
     }
+}
+
+fn is_operation_we_care_about<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx Expr<'tcx>,
+) -> Option<(bool, &'tcx Expr<'tcx>)> {
+    fn deref_assign_or_addr_of<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<(bool, &'tcx Expr<'tcx>)> {
+        // &mut <expr>
+        let inner = if let ExprKind::AddrOf(_, Mutability::Mut, expr) = expr.kind {
+            expr
+        // <expr> = ...
+        } else if let ExprKind::Assign(expr, _, _) = expr.kind {
+            expr
+        // <expr> += ...
+        } else if let ExprKind::AssignOp(_, expr, _) = expr.kind {
+            expr
+        } else {
+            return None;
+        };
+
+        if let ExprKind::Unary(UnOp::Deref, e) = &inner.kind {
+            Some((!matches!(expr.kind, ExprKind::AddrOf(..)), e))
+        } else {
+            None
+        }
+    }
+
+    fn ptr_write<'tcx>(
+        cx: &LateContext<'tcx>,
+        e: &'tcx Expr<'tcx>,
+    ) -> Option<(bool, &'tcx Expr<'tcx>)> {
+        if let ExprKind::Call(path, [arg_ptr, _arg_val]) = e.kind
+            && let ExprKind::Path(ref qpath) = path.kind
+            && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+            && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::ptr_write | sym::ptr_write_volatile | sym::ptr_write_unaligned))
+        {
+            Some((true, arg_ptr))
+        } else {
+            None
+        }
+    }
+
+    deref_assign_or_addr_of(e).or_else(|| ptr_write(cx, e))
 }
 
 fn is_cast_from_const_to_mut<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {

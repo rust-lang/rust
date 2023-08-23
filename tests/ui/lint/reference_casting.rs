@@ -71,6 +71,11 @@ unsafe fn assign_to_ref() {
     //~^ ERROR assigning to `&T` is undefined behavior
     *std::mem::transmute::<_, *mut i32>(num) += 1;
     //~^ ERROR assigning to `&T` is undefined behavior
+    std::ptr::write(
+    //~^ ERROR assigning to `&T` is undefined behavior
+        std::mem::transmute::<*const i32, *mut i32>(num),
+        -1i32,
+    );
 
     let value = num as *const i32 as *mut i32;
     *value = 1;
@@ -78,6 +83,12 @@ unsafe fn assign_to_ref() {
     *(num as *const i32).cast::<i32>().cast_mut() = 2;
     //~^ ERROR assigning to `&T` is undefined behavior
     *(num as *const _ as usize as *mut i32) = 2;
+    //~^ ERROR assigning to `&T` is undefined behavior
+    std::ptr::write(value, 2);
+    //~^ ERROR assigning to `&T` is undefined behavior
+    std::ptr::write_unaligned(value, 2);
+    //~^ ERROR assigning to `&T` is undefined behavior
+    std::ptr::write_volatile(value, 2);
     //~^ ERROR assigning to `&T` is undefined behavior
 
     unsafe fn generic_assign_to_ref<T>(this: &T, a: T) {
