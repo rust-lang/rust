@@ -1410,8 +1410,12 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
             &mut hygiene_data.syntax_context_data[ctxt.as_u32() as usize],
             ctxt_data,
         );
-        // Make sure nothing weird happening while `decode_data` was running
         if cfg!(not(parallel_compiler)) {
+            // Make sure nothing weird happened while `decode_data` was running.
+            // We used `kw::Empty` for the dummy value and we expect nothing to be
+            // modifying the dummy entry.
+            // This does not hold for the parallel compiler as another thread may
+            // have inserted the fully decoded data.
             assert_eq!(dummy.dollar_crate_name, kw::Empty);
         }
     });
