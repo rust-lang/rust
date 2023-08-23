@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   sudo \
   bzip2 \
   xz-utils \
+  texinfo \
   wget \
   libssl-dev \
   pkg-config \
