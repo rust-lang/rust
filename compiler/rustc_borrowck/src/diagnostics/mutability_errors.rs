@@ -225,17 +225,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
                 if suggest {
                     borrow_spans.var_subdiag(
-                    None,
-                    &mut err,
-                    Some(mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default }),
-                    |_kind, var_span| {
-                        let place = self.describe_any_place(access_place.as_ref());
-                        crate::session_diagnostics::CaptureVarCause::MutableBorrowUsePlaceClosure {
-                            place,
-                            var_span,
-                        }
-                    },
-                );
+                        None,
+                        &mut err,
+                        Some(mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default }),
+                        |_kind, var_span| {
+                            let place = self.describe_any_place(access_place.as_ref());
+                            crate::session_diagnostics::CaptureVarCause::MutableBorrowUsePlaceClosure {
+                                place,
+                                var_span,
+                            }
+                        },
+                    );
                 }
                 borrow_span
             }
@@ -262,11 +262,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             } => {
                 err.span_label(span, format!("cannot {act}"));
 
-                if let Some(span) = get_mut_span_in_struct_field(
-                    self.infcx.tcx,
-                    Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty,
-                    *field,
-                ) {
+                let place = Place::ty_from(local, proj_base, self.body, self.infcx.tcx);
+                if let Some(span) = get_mut_span_in_struct_field(self.infcx.tcx, place.ty, *field) {
                     err.span_suggestion_verbose(
                         span,
                         "consider changing this to be mutable",
@@ -781,83 +778,88 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     // Attempt to search similar mutable associated items for suggestion.
     // In the future, attempt in all path but initially for RHS of for_loop
-    fn suggest_similar_mut_method_for_for_loop(&self, err: &mut Diagnostic) {
+    fn suggest_similar_mut_method_for_for_loop(&self, err: &mut Diagnostic, span: Span) {
         use hir::{
-            Expr,
-            ExprKind::{Block, Call, DropTemps, Match, MethodCall},
+            BorrowKind, Expr,
+            ExprKind::{AddrOf, Block, Call, MethodCall},
         };
 
         let hir_map = self.infcx.tcx.hir();
-        if let Some(body_id) = hir_map.maybe_body_owned_by(self.mir_def_id()) {
-            if let Block(
-                hir::Block {
-                    expr:
-                        Some(Expr {
-                            kind:
-                                DropTemps(Expr {
-                                    kind:
-                                        Match(
-                                            Expr {
-                                                kind:
-                                                    Call(
-                                                        _,
-                                                        [
-                                                            Expr {
-                                                                kind:
-                                                                    MethodCall(path_segment, _, _, span),
-                                                                hir_id,
-                                                                ..
-                                                            },
-                                                            ..,
-                                                        ],
-                                                    ),
-                                                ..
-                                            },
-                                            ..,
-                                        ),
-                                    ..
-                                }),
-                            ..
-                        }),
-                    ..
-                },
-                _,
-            ) = hir_map.body(body_id).value.kind
-            {
-                let opt_suggestions = self
-                    .infcx
-                    .tcx
-                    .typeck(path_segment.hir_id.owner.def_id)
-                    .type_dependent_def_id(*hir_id)
-                    .and_then(|def_id| self.infcx.tcx.impl_of_method(def_id))
-                    .map(|def_id| self.infcx.tcx.associated_items(def_id))
-                    .map(|assoc_items| {
-                        assoc_items
-                            .in_definition_order()
-                            .map(|assoc_item_def| assoc_item_def.ident(self.infcx.tcx))
-                            .filter(|&ident| {
-                                let original_method_ident = path_segment.ident;
-                                original_method_ident != ident
-                                    && ident
-                                        .as_str()
-                                        .starts_with(&original_method_ident.name.to_string())
-                            })
-                            .map(|ident| format!("{ident}()"))
-                            .peekable()
-                    });
+        struct Finder<'tcx> {
+            span: Span,
+            expr: Option<&'tcx Expr<'tcx>>,
+        }
 
-                if let Some(mut suggestions) = opt_suggestions
-                    && suggestions.peek().is_some()
-                {
-                    err.span_suggestions(
-                        *span,
-                        "use mutable method",
-                        suggestions,
-                        Applicability::MaybeIncorrect,
-                    );
+        impl<'tcx> Visitor<'tcx> for Finder<'tcx> {
+            fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
+                if e.span == self.span && self.expr.is_none() {
+                    self.expr = Some(e);
+                }
+                hir::intravisit::walk_expr(self, e);
+            }
+        }
+        if let Some(body_id) = hir_map.maybe_body_owned_by(self.mir_def_id())
+            && let Block(block, _) = hir_map.body(body_id).value.kind
+        {
+            // `span` corresponds to the expression being iterated, find the `for`-loop desugared
+            // expression with that span in order to identify potential fixes when encountering a
+            // read-only iterator that should be mutable.
+            let mut v = Finder {
+                span,
+                expr: None,
+            };
+            v.visit_block(block);
+            if let Some(expr) = v.expr && let Call(_, [expr]) = expr.kind {
+                match expr.kind {
+                    MethodCall(path_segment, _, _, span) => {
+                        // We have `for _ in iter.read_only_iter()`, try to
+                        // suggest `for _ in iter.mutable_iter()` instead.
+                        let opt_suggestions = self
+                            .infcx
+                            .tcx
+                            .typeck(path_segment.hir_id.owner.def_id)
+                            .type_dependent_def_id(expr.hir_id)
+                            .and_then(|def_id| self.infcx.tcx.impl_of_method(def_id))
+                            .map(|def_id| self.infcx.tcx.associated_items(def_id))
+                            .map(|assoc_items| {
+                                assoc_items
+                                    .in_definition_order()
+                                    .map(|assoc_item_def| assoc_item_def.ident(self.infcx.tcx))
+                                    .filter(|&ident| {
+                                        let original_method_ident = path_segment.ident;
+                                        original_method_ident != ident
+                                            && ident.as_str().starts_with(
+                                                &original_method_ident.name.to_string(),
+                                            )
+                                    })
+                                    .map(|ident| format!("{ident}()"))
+                                    .peekable()
+                            });
+
+                        if let Some(mut suggestions) = opt_suggestions
+                            && suggestions.peek().is_some()
+                        {
+                            err.span_suggestions(
+                                span,
+                                "use mutable method",
+                                suggestions,
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                    AddrOf(BorrowKind::Ref, Mutability::Not, expr) => {
+                        // We have `for _ in &i`, suggest `for _ in &mut i`.
+                        err.span_suggestion_verbose(
+                            expr.span.shrink_to_lo(),
+                            "use a mutable iterator instead",
+                            "mut ".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    _ => {}
                 }
             }
-        };
+        }
     }
 
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
@@ -1003,9 +1005,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 match opt_assignment_rhs_span.and_then(|s| s.desugaring_kind()) {
                     // on for loops, RHS points to the iterator part
                     Some(DesugaringKind::ForLoop) => {
-                        self.suggest_similar_mut_method_for_for_loop(err);
+                        let span = opt_assignment_rhs_span.unwrap();
+                        self.suggest_similar_mut_method_for_for_loop(err, span);
                         err.span_label(
-                            opt_assignment_rhs_span.unwrap(),
+                            span,
                             format!("this iterator yields `{pointer_sigil}` {pointer_desc}s",),
                         );
                         None
