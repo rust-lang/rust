@@ -245,6 +245,32 @@ impl AsFd for OwnedFd {
     }
 }
 
+macro_rules! impl_owned_fd_traits {
+    ($($t:ident)*) => {$(
+        impl AsFd for net::$t {
+            #[inline]
+            fn as_fd(&self) -> BorrowedFd<'_> {
+                unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
+            }
+        }
+
+        impl From<net::$t> for OwnedFd {
+            #[inline]
+            fn from(socket: net::$t) -> OwnedFd {
+                unsafe { Self::from_raw_fd(socket.into_raw_fd()) }
+            }
+        }
+
+        impl From<OwnedFd> for net::$t {
+            #[inline]
+            fn from(owned_fd: OwnedFd) -> Self {
+                unsafe { Self::from_raw_fd(owned_fd.into_raw_fd()) }
+            }
+        }
+    )*};
+}
+impl_owned_fd_traits! { TcpStream TcpListener UdpSocket }
+
 /// A trait to extract the raw SOLID Sockets file descriptor from an underlying
 /// object.
 pub trait AsRawFd {
