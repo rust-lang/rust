@@ -15,8 +15,7 @@ Number of expressions: 2
 - expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 5
 - Code(Counter(0)) at (prev + 20, 23) to (start + 3, 9)
-- Branch at (prev + 3, 8) to (start + 0, 9)
-    true  = c1
+- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 3, 8) to (start + 0, 9)
     false = (c0 - c1)
 - Code(Counter(1)) at (prev + 0, 10) to (start + 2, 6)
 - Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
@@ -52,8 +51,7 @@ Number of expressions: 5
 - expression 4 operands: lhs = Expression(0, Sub), rhs = Zero
 Number of file 0 mappings: 7
 - Code(Counter(0)) at (prev + 51, 5) to (start + 10, 54)
-- Branch at (prev + 13, 20) to (start + 0, 36)
-    true  = c1
+- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 13, 20) to (start + 0, 36)
     false = ((c0 + c1) - c1)
 - Code(Expression(0, Sub)) at (prev + 0, 32) to (start + 0, 35)
     = ((c0 + c1) - c1)
@@ -77,8 +75,7 @@ Number of expressions: 5
 - expression 4 operands: lhs = Expression(0, Sub), rhs = Zero
 Number of file 0 mappings: 7
 - Code(Counter(0)) at (prev + 51, 5) to (start + 10, 54)
-- Branch at (prev + 13, 20) to (start + 0, 36)
-    true  = c1
+- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 13, 20) to (start + 0, 36)
     false = ((c0 + c1) - c1)
 - Code(Expression(0, Sub)) at (prev + 0, 32) to (start + 0, 35)
     = ((c0 + c1) - c1)
@@ -139,8 +136,7 @@ Number of expressions: 2
 - expression 1 operands: lhs = Counter(1), rhs = Zero
 Number of file 0 mappings: 5
 - Code(Counter(0)) at (prev + 9, 1) to (start + 3, 9)
-- Branch at (prev + 3, 8) to (start + 0, 9)
-    true  = c1
+- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 3, 8) to (start + 0, 9)
     false = (Zero - Zero)
 - Code(Counter(1)) at (prev + 0, 10) to (start + 2, 6)
 - Code(Zero) at (prev + 2, 6) to (start + 0, 7)

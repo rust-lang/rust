@@ -65,9 +65,7 @@ pub(crate) fn dump_covfun_mappings(
                 // If the mapping contains expressions, also print the resolved
                 // form of those expressions
                 kind.for_each_operand(|label, operand| {
-                    if matches!(operand, Operand::Expression { .. })
-                        || matches!(kind, MappingKind::Branch { .. })
-                    {
+                    if matches!(operand, Operand::Expression { .. }) {
                         let pad = if label.is_empty() { "" } else { " " };
                         let resolved = expression_resolver.format_operand(operand);
                         println!("    {label}{pad}= {resolved}");
@@ -157,9 +155,9 @@ impl<'a> Parser<'a> {
                 0 => unreachable!("zero kind should have already been handled as a code mapping"),
                 2 => Ok(MappingKind::Skip),
                 4 => {
-                    let true_ = self.read_simple_operand()?;
-                    let false_ = self.read_simple_operand()?;
-                    Ok(MappingKind::Branch { true_, false_ })
+                    let r#true = self.read_simple_operand()?;
+                    let r#false = self.read_simple_operand()?;
+                    Ok(MappingKind::Branch { r#true, r#false })
                 }
                 _ => Err(anyhow!("unknown mapping kind: {raw_mapping_kind:#x}")),
             }
@@ -209,24 +207,13 @@ impl Operand {
     }
 }
 
+#[derive(Debug)]
 enum MappingKind {
     Code(Operand),
     Gap(Operand),
     Expansion(u32),
     Skip,
-    Branch { true_: Operand, false_: Operand },
-}
-
-impl Debug for MappingKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Code(operand) => f.debug_tuple("Code").field(operand).finish(),
-            Self::Gap(operand) => f.debug_tuple("Gap").field(operand).finish(),
-            Self::Expansion(expansion) => f.debug_tuple("Expansion").field(expansion).finish(),
-            Self::Skip => write!(f, "Skip"),
-            Self::Branch { .. } => f.debug_tuple("Branch").finish(),
-        }
-    }
+    Branch { r#true: Operand, r#false: Operand },
 }
 
 impl MappingKind {
@@ -238,9 +225,9 @@ impl MappingKind {
             Self::Gap(operand) => func("", operand),
             Self::Expansion(_) => (),
             Self::Skip => (),
-            Self::Branch { true_, false_ } => {
-                func("true ", true_);
-                func("false", false_);
+            Self::Branch { r#true, r#false } => {
+                func("true ", r#true);
+                func("false", r#false);
             }
         }
     }

@@ -136,8 +136,7 @@ Number of expressions: 131
 - expression 130 operands: lhs = Counter(1), rhs = Zero
 Number of file 0 mappings: 93
 - Code(Counter(0)) at (prev + 3, 1) to (start + 2, 12)
-- Branch at (prev + 2, 8) to (start + 0, 12)
-    true  = c1
+- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 2, 8) to (start + 0, 12)
     false = (Zero - Zero)
 - Code(Counter(1)) at (prev + 0, 13) to (start + 2, 6)
 - Code(Zero) at (prev + 2, 6) to (start + 0, 7)
@@ -145,22 +144,17 @@ Number of file 0 mappings: 93
     = (c2 + (c11 + c12))
 - Code(Expression(130, Add)) at (prev + 0, 16) to (start + 0, 29)
     = (c1 + Zero)
-- Branch at (prev + 0, 16) to (start + 0, 29)
-    true  = c2
+- Branch { true: Counter(2), false: Expression(129, Sub) } at (prev + 0, 16) to (start + 0, 29)
     false = ((c1 + Zero) - c2)
 - Code(Counter(2)) at (prev + 1, 9) to (start + 1, 10)
 - Code(Expression(129, Sub)) at (prev + 2, 15) to (start + 0, 28)
     = ((c1 + Zero) - c2)
-- Branch at (prev + 0, 15) to (start + 0, 28)
-    true  = c3
+- Branch { true: Counter(3), false: Expression(128, Sub) } at (prev + 0, 15) to (start + 0, 28)
     false = (((c1 + Zero) - c2) - c3)
 - Code(Counter(3)) at (prev + 1, 12) to (start + 0, 25)
-- Branch at (prev + 0, 12) to (start + 0, 42)
-    true  = c14
+- Branch { true: Counter(14), false: Expression(12, Sub) } at (prev + 0, 12) to (start + 0, 42)
     false = (c3 - c14)
-- Branch at (prev + 0, 12) to (start + 0, 60)
-    true  = c11
-    false = c12
+- Branch { true: Counter(11), false: Counter(12) } at (prev + 0, 12) to (start + 0, 60)
 - Code(Expression(12, Sub)) at (prev + 0, 29) to (start + 0, 42)
     = (c3 - c14)
 - Code(Counter(16)) at (prev + 0, 46) to (start + 0, 60)
@@ -172,30 +166,24 @@ Number of file 0 mappings: 93
     = (((c1 + Zero) - c2) - c3)
 - Code(Expression(17, Add)) at (prev + 3, 9) to (start + 1, 12)
     = ((c2 + (c11 + c12)) + Zero)
-- Branch at (prev + 1, 8) to (start + 0, 12)
-    true  = c13
+- Branch { true: Counter(13), false: Expression(20, Sub) } at (prev + 1, 8) to (start + 0, 12)
     false = (Zero - Zero)
 - Code(Counter(13)) at (prev + 0, 13) to (start + 2, 6)
 - Code(Zero) at (prev + 2, 6) to (start + 0, 7)
 - Code(Expression(39, Add)) at (prev + 2, 8) to (start + 0, 21)
     = (c13 + Zero)
-- Branch at (prev + 0, 8) to (start + 0, 21)
-    true  = c15
+- Branch { true: Counter(15), false: Expression(38, Sub) } at (prev + 0, 8) to (start + 0, 21)
     false = ((c13 + Zero) - c15)
 - Code(Counter(15)) at (prev + 0, 22) to (start + 2, 6)
 - Code(Expression(38, Sub)) at (prev + 2, 15) to (start + 0, 28)
     = ((c13 + Zero) - c15)
-- Branch at (prev + 0, 15) to (start + 0, 28)
+- Branch { true: Expression(37, Sub), false: Counter(10) } at (prev + 0, 15) to (start + 0, 28)
     true  = (((c13 + Zero) - c15) - c10)
-    false = c10
 - Code(Expression(37, Sub)) at (prev + 1, 12) to (start + 0, 25)
     = (((c13 + Zero) - c15) - c10)
-- Branch at (prev + 0, 12) to (start + 0, 42)
-    true  = c20
+- Branch { true: Counter(20), false: Expression(36, Sub) } at (prev + 0, 12) to (start + 0, 42)
     false = ((((c13 + Zero) - c15) - c10) - c20)
-- Branch at (prev + 0, 12) to (start + 0, 60)
-    true  = c17
-    false = c18
+- Branch { true: Counter(17), false: Counter(18) } at (prev + 0, 12) to (start + 0, 60)
 - Code(Expression(36, Sub)) at (prev + 0, 29) to (start + 0, 42)
     = ((((c13 + Zero) - c15) - c10) - c20)
 - Code(Counter(26)) at (prev + 0, 46) to (start + 0, 60)
@@ -206,34 +194,27 @@ Number of file 0 mappings: 93
 - Code(Counter(10)) at (prev + 2, 9) to (start + 0, 15)
 - Code(Expression(41, Add)) at (prev + 3, 8) to (start + 0, 12)
     = (c15 + (c17 + c18))
-- Branch at (prev + 0, 8) to (start + 0, 12)
-    true  = c19
+- Branch { true: Counter(19), false: Expression(43, Sub) } at (prev + 0, 8) to (start + 0, 12)
     false = (Zero - Zero)
 - Code(Counter(19)) at (prev + 1, 13) to (start + 1, 16)
-- Branch at (prev + 1, 12) to (start + 0, 16)
-    true  = c21
+- Branch { true: Counter(21), false: Expression(44, Sub) } at (prev + 1, 12) to (start + 0, 16)
     false = (Zero - Zero)
 - Code(Counter(21)) at (prev + 0, 17) to (start + 2, 10)
 - Code(Zero) at (prev + 2, 10) to (start + 0, 11)
 - Code(Expression(63, Add)) at (prev + 2, 12) to (start + 0, 25)
     = (c21 + Zero)
-- Branch at (prev + 0, 12) to (start + 0, 25)
-    true  = c22
+- Branch { true: Counter(22), false: Expression(62, Sub) } at (prev + 0, 12) to (start + 0, 25)
     false = ((c21 + Zero) - c22)
 - Code(Counter(22)) at (prev + 0, 26) to (start + 2, 10)
 - Code(Expression(62, Sub)) at (prev + 3, 17) to (start + 0, 30)
     = ((c21 + Zero) - c22)
-- Branch at (prev + 0, 17) to (start + 0, 30)
+- Branch { true: Expression(61, Sub), false: Counter(9) } at (prev + 0, 17) to (start + 0, 30)
     true  = (((c21 + Zero) - c22) - c9)
-    false = c9
 - Code(Expression(61, Sub)) at (prev + 1, 16) to (start + 0, 29)
     = (((c21 + Zero) - c22) - c9)
-- Branch at (prev + 0, 16) to (start + 0, 46)
-    true  = c30
+- Branch { true: Counter(30), false: Expression(60, Sub) } at (prev + 0, 16) to (start + 0, 46)
     false = ((((c21 + Zero) - c22) - c9) - c30)
-- Branch at (prev + 0, 16) to (start + 0, 64)
-    true  = c23
-    false = c24
+- Branch { true: Counter(23), false: Counter(24) } at (prev + 0, 16) to (start + 0, 64)
 - Code(Expression(60, Sub)) at (prev + 0, 33) to (start + 0, 46)
     = ((((c21 + Zero) - c22) - c9) - c30)
 - Code(Counter(32)) at (prev + 0, 50) to (start + 0, 64)
@@ -245,8 +226,7 @@ Number of file 0 mappings: 93
 - Code(Zero) at (prev + 2, 6) to (start + 0, 7)
 - Code(Expression(65, Add)) at (prev + 3, 9) to (start + 1, 12)
     = ((c22 + (c23 + c24)) + Zero)
-- Branch at (prev + 1, 8) to (start + 0, 12)
-    true  = c25
+- Branch { true: Counter(25), false: Expression(68, Sub) } at (prev + 1, 8) to (start + 0, 12)
     false = (Zero - Zero)
 - Code(Counter(25)) at (prev + 0, 13) to (start + 2, 6)
 - Code(Zero) at (prev + 2, 6) to (start + 0, 7)
@@ -254,23 +234,18 @@ Number of file 0 mappings: 93
     = (c27 + (c28 + c29))
 - Code(Expression(89, Add)) at (prev + 0, 16) to (start + 0, 29)
     = (c25 + Zero)
-- Branch at (prev + 0, 16) to (start + 0, 29)
-    true  = c27
+- Branch { true: Counter(27), false: Expression(88, Sub) } at (prev + 0, 16) to (start + 0, 29)
     false = ((c25 + Zero) - c27)
 - Code(Counter(27)) at (prev + 0, 30) to (start + 2, 6)
 - Code(Expression(88, Sub)) at (prev + 2, 15) to (start + 0, 28)
     = ((c25 + Zero) - c27)
-- Branch at (prev + 0, 15) to (start + 0, 28)
+- Branch { true: Expression(87, Sub), false: Counter(8) } at (prev + 0, 15) to (start + 0, 28)
     true  = (((c25 + Zero) - c27) - c8)
-    false = c8
 - Code(Expression(87, Sub)) at (prev + 1, 12) to (start + 0, 25)
     = (((c25 + Zero) - c27) - c8)
-- Branch at (prev + 0, 12) to (start + 0, 42)
-    true  = c31
+- Branch { true: Counter(31), false: Expression(86, Sub) } at (prev + 0, 12) to (start + 0, 42)
     false = ((((c25 + Zero) - c27) - c8) - c31)
-- Branch at (prev + 0, 12) to (start + 0, 60)
-    true  = c28
-    false = c29
+- Branch { true: Counter(28), false: Counter(29) } at (prev + 0, 12) to (start + 0, 60)
 - Code(Expression(86, Sub)) at (prev + 0, 29) to (start + 0, 42)
     = ((((c25 + Zero) - c27) - c8) - c31)
 - Code(Counter(33)) at (prev + 0, 46) to (start + 0, 60)
@@ -283,23 +258,18 @@ Number of file 0 mappings: 93
     = (c4 + (c5 + c6))
 - Code(Expression(93, Add)) at (prev + 0, 16) to (start + 0, 29)
     = ((c27 + (c28 + c29)) + Zero)
-- Branch at (prev + 0, 16) to (start + 0, 29)
-    true  = c4
+- Branch { true: Counter(4), false: Expression(117, Sub) } at (prev + 0, 16) to (start + 0, 29)
     false = ((c27 + (c28 + c29)) - c4)
 - Code(Counter(4)) at (prev + 0, 30) to (start + 2, 6)
 - Code(Expression(117, Sub)) at (prev + 2, 15) to (start + 0, 28)
     = ((c27 + (c28 + c29)) - c4)
-- Branch at (prev + 0, 15) to (start + 0, 28)
+- Branch { true: Expression(116, Sub), false: Counter(7) } at (prev + 0, 15) to (start + 0, 28)
     true  = (((c27 + (c28 + c29)) - c4) - c7)
-    false = c7
 - Code(Expression(116, Sub)) at (prev + 1, 12) to (start + 0, 25)
     = (((c27 + (c28 + c29)) - c4) - c7)
-- Branch at (prev + 0, 12) to (start + 0, 42)
-    true  = c34
+- Branch { true: Counter(34), false: Expression(115, Sub) } at (prev + 0, 12) to (start + 0, 42)
     false = ((((c27 + (c28 + c29)) - c4) - c7) - c34)
-- Branch at (prev + 0, 12) to (start + 0, 60)
-    true  = c5
-    false = c6
+- Branch { true: Counter(5), false: Counter(6) } at (prev + 0, 12) to (start + 0, 60)
 - Code(Expression(115, Sub)) at (prev + 0, 29) to (start + 0, 42)
     = ((((c27 + (c28 + c29)) - c4) - c7) - c34)
 - Code(Counter(35)) at (prev + 0, 46) to (start + 0, 60)

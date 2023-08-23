@@ -727,7 +727,7 @@ impl<'test> TestCx<'test> {
 
     /// Replace line numbers in coverage reports with the placeholder `LL`,
     /// so that the tests are less sensitive to lines being added/removed.
-    fn anonymize_coverage_line_numbers(line: &str) -> String {
+    fn anonymize_coverage_line_numbers(coverage: &str) -> String {
         // The coverage reporter prints line numbers at the start of a line.
         // They are truncated or left-padded to occupy exactly 5 columns.
         // (`LineNumberColumnWidth` in `SourceCoverageViewText.cpp`.)
@@ -739,8 +739,8 @@ impl<'test> TestCx<'test> {
             Lazy::new(|| Regex::new(r"(?m:^)(?<prefix>(?:  \|)*) *[0-9]+\|").unwrap());
         static BRANCH_LINE_RE: Lazy<Regex> =
             Lazy::new(|| Regex::new(r"(?m:^)(?<prefix>(?:  \|)*)  Branch \([0-9]+:").unwrap());
-        let line = LINE_NUMBER_RE.replace_all(line, "$prefix   LL|");
-        BRANCH_LINE_RE.replace_all(&line, "$prefix  Branch (LL:").into_owned()
+        let coverage = LINE_NUMBER_RE.replace_all(coverage, "$prefix   LL|");
+        BRANCH_LINE_RE.replace_all(&coverage, "$prefix  Branch (LL:").into_owned()
     }
 
     /// Coverage reports can describe multiple source files, separated by
