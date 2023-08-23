@@ -5,10 +5,10 @@ use crate::{
     io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut},
     mem,
     net::{Shutdown, SocketAddr},
-    os::solid::io::{AsRawFd, FromRawFd, IntoRawFd, OwnedFd},
+    os::solid::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd},
     ptr, str,
     sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr},
-    sys_common::IntoInner,
+    sys_common::{FromInner, IntoInner},
     time::Duration,
 };
 
@@ -389,6 +389,27 @@ impl Socket {
     // This method is used by sys_common code to abstract over targets.
     pub fn as_raw(&self) -> c_int {
         self.as_raw_fd()
+    }
+}
+
+impl FromInner<OwnedFd> for Socket {
+    #[inline]
+    fn from_inner(sock: OwnedFd) -> Socket {
+        Socket(sock)
+    }
+}
+
+impl IntoInner<OwnedFd> for Socket {
+    #[inline]
+    fn into_inner(self) -> OwnedFd {
+        self.0
+    }
+}
+
+impl AsFd for Socket {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_fd()
     }
 }
 
