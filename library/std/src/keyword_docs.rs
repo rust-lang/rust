@@ -1820,7 +1820,7 @@ mod true_keyword {}
 
 #[doc(keyword = "type")]
 //
-/// Define an alias for an existing type.
+/// Define an [alias] for an existing type.
 ///
 /// The syntax is `type Name = ExistingType;`.
 ///
@@ -1836,6 +1836,13 @@ mod true_keyword {}
 /// let k: Kilograms = 3;
 ///
 /// assert_eq!(m, k);
+/// ```
+///
+/// A type can be generic:
+///
+/// ```rust
+/// # use std::sync::{Arc, Mutex};
+/// type ArcMutex<T> = Arc<Mutex<T>>;
 /// ```
 ///
 /// In traits, `type` is used to declare an [associated type]:
@@ -1860,6 +1867,7 @@ mod true_keyword {}
 ///
 /// [`trait`]: keyword.trait.html
 /// [associated type]: ../reference/items/associated-items.html#associated-types
+/// [alias]: ../reference/items/type-aliases.html
 mod type_keyword {}
 
 #[doc(keyword = "unsafe")]
