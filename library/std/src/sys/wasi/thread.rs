@@ -47,11 +47,19 @@ cfg_if::cfg_if! {
                     stack_size: libc::size_t,
                 ) -> ffi::c_int;
                 pub fn pthread_attr_destroy(attr: *mut pthread_attr_t) -> ffi::c_int;
+                pub fn pthread_detach(thread: pthread_t) -> ffi::c_int;
             }
         }
 
         pub struct Thread {
             id: libc::pthread_t,
+        }
+
+        impl Drop for Thread {
+            fn drop(&mut self) {
+                let ret = unsafe { libc::pthread_detach(self.id) };
+                debug_assert_eq!(ret, 0);
+            }
         }
     } else {
         pub struct Thread(!);
