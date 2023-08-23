@@ -21,8 +21,8 @@ use rustc_feature::UnstableFeatures;
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::{FileName, FilePathMapping};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::RealFileName;
 use rustc_span::SourceFileHashAlgorithm;
+use rustc_span::{FileNameDisplayPreference, RealFileName};
 
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagnosticArgValue, HandlerFlags, IntoDiagnosticArg};
@@ -1056,6 +1056,22 @@ pub fn host_triple() -> &'static str {
     (option_env!("CFG_COMPILER_HOST_TRIPLE")).expect("CFG_COMPILER_HOST_TRIPLE")
 }
 
+fn file_path_mapping(
+    remap_path_prefix: Vec<(PathBuf, PathBuf)>,
+    unstable_opts: &UnstableOptions,
+) -> FilePathMapping {
+    FilePathMapping::new(
+        remap_path_prefix.clone(),
+        if unstable_opts.remap_path_scope.contains(RemapPathScopeComponents::DIAGNOSTICS)
+            && !remap_path_prefix.is_empty()
+        {
+            FileNameDisplayPreference::Remapped
+        } else {
+            FileNameDisplayPreference::Local
+        },
+    )
+}
+
 impl Default for Options {
     fn default() -> Options {
         Options {
@@ -1111,7 +1127,7 @@ impl Options {
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
-        FilePathMapping::new(self.remap_path_prefix.clone())
+        file_path_mapping(self.remap_path_prefix.clone(), &self.unstable_opts)
     }
 
     /// Returns `true` if there will be an output file generated.
@@ -2893,7 +2909,7 @@ pub fn build_session_options(
         handler.early_error(format!("Current directory is invalid: {e}"));
     });
 
-    let remap = FilePathMapping::new(remap_path_prefix.clone());
+    let remap = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
     let (path, remapped) = remap.map_prefix(&working_dir);
     let working_dir = if remapped {
         RealFileName::Remapped { virtual_name: path.into_owned(), local_path: Some(working_dir) }

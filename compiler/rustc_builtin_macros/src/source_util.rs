@@ -61,9 +61,14 @@ pub fn expand_file(
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
-    base::MacEager::expr(
-        cx.expr_str(topmost, Symbol::intern(&loc.file.name.prefer_remapped().to_string_lossy())),
-    )
+
+    use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
+    base::MacEager::expr(cx.expr_str(
+        topmost,
+        Symbol::intern(
+            &loc.file.name.for_scope(cx.sess, RemapPathScopeComponents::MACRO).to_string_lossy(),
+        ),
+    ))
 }
 
 pub fn expand_stringify(

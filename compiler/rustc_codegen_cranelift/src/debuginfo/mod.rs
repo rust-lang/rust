@@ -31,6 +31,8 @@ pub(crate) struct DebugContext {
 
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
+
+    should_remap_filepaths: bool,
 }
 
 pub(crate) struct FunctionDebugContext {
@@ -63,12 +65,18 @@ impl DebugContext {
 
         let mut dwarf = DwarfUnit::new(encoding);
 
+        let should_remap_filepaths = tcx.sess.should_prefer_remapped_for_codegen();
+
         let producer = producer();
         let comp_dir = tcx
             .sess
             .opts
             .working_dir
-            .to_string_lossy(FileNameDisplayPreference::Remapped)
+            .to_string_lossy(if should_remap_filepaths {
+                FileNameDisplayPreference::Remapped
+            } else {
+                FileNameDisplayPreference::Local
+            })
             .into_owned();
         let (name, file_info) = match tcx.sess.local_crate_source_file() {
             Some(path) => {
@@ -102,7 +110,12 @@ impl DebugContext {
             root.set(gimli::DW_AT_low_pc, AttributeValue::Address(Address::Constant(0)));
         }
 
-        DebugContext { endian, dwarf, unit_range_list: RangeList(Vec::new()) }
+        DebugContext {
+            endian,
+            dwarf,
+            unit_range_list: RangeList(Vec::new()),
+            should_remap_filepaths,
+        }
     }
 
     pub(crate) fn define_function(

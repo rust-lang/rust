@@ -414,11 +414,12 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     // Note: must be kept in sync with get_caller_location from cg_ssa
     pub(crate) fn get_caller_location(&mut self, mut source_info: mir::SourceInfo) -> CValue<'tcx> {
         let span_to_caller_location = |fx: &mut FunctionCx<'_, '_, 'tcx>, span: Span| {
+            use rustc_session::RemapFileNameExt;
             let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
             let caller = fx.tcx.sess.source_map().lookup_char_pos(topmost.lo());
             let const_loc = fx.tcx.const_caller_location((
                 rustc_span::symbol::Symbol::intern(
-                    &caller.file.name.prefer_remapped().to_string_lossy(),
+                    &caller.file.name.for_codegen(&fx.tcx.sess).to_string_lossy(),
                 ),
                 caller.line as u32,
                 caller.col_display as u32 + 1,
