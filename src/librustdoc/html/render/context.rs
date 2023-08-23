@@ -463,6 +463,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             generate_link_to_definition,
             call_locations,
             no_emit_shared,
+            html_no_source,
             ..
         } = options;
 
@@ -488,7 +489,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             scrape_examples_extension: !call_locations.is_empty(),
         };
         let mut issue_tracker_base_url = None;
-        let mut include_sources = true;
+        let mut include_sources = !html_no_source;
 
         // Crawl the crate attributes looking for attributes which control how we're
         // going to emit HTML
