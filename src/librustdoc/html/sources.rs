@@ -225,7 +225,8 @@ impl SourceCollector<'_, '_> {
         cur.push(&fname);
 
         let title = format!("{} - source", src_fname.to_string_lossy());
-        let desc = format!("Source of the Rust file `{}`.", filename.prefer_remapped());
+        let desc =
+            format!("Source of the Rust file `{}`.", filename.prefer_remapped_unconditionaly());
         let page = layout::Page {
             title: &title,
             css_class: "src",
