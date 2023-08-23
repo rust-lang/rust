@@ -231,7 +231,9 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 &mut debug_used_expressions,
             );
 
+            // TODO: if self.tcx.sess.instrument_coverage_branch() {
             self.inject_branch_counters(std::mem::take(branches));
+            // }
 
             ////////////////////////////////////////////////////
             // For any remaining `BasicCoverageBlock` counters (that were not associated with

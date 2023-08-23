@@ -159,6 +159,16 @@ impl<'tcx> FunctionCoverage<'tcx> {
         // can have those operands replaced with `Operand::Zero`.
         let mut zero_expressions = FxIndexSet::default();
 
+        // If an operand refers to an expression that is always zero, then
+        // that operand can be replaced with `Operand::Zero`.
+        let maybe_set_operand_to_zero =
+            |zero_expressions: &FxIndexSet<ExpressionId>, operand: &mut Operand| match &*operand {
+                Operand::Expression(id) if zero_expressions.contains(id) => {
+                    *operand = Operand::Zero;
+                }
+                _ => (),
+            };
+
         // For each expression, perform simplifications based on lower-numbered
         // expressions, and then update the set of always-zero expressions if
         // necessary.
@@ -172,16 +182,8 @@ impl<'tcx> FunctionCoverage<'tcx> {
                 continue;
             };
 
-            // If an operand refers to an expression that is always zero, then
-            // that operand can be replaced with `Operand::Zero`.
-            let maybe_set_operand_to_zero = |operand: &mut Operand| match &*operand {
-                Operand::Expression(id) if zero_expressions.contains(id) => {
-                    *operand = Operand::Zero;
-                }
-                _ => (),
-            };
-            maybe_set_operand_to_zero(&mut expression.lhs);
-            maybe_set_operand_to_zero(&mut expression.rhs);
+            maybe_set_operand_to_zero(&zero_expressions, &mut expression.lhs);
+            maybe_set_operand_to_zero(&zero_expressions, &mut expression.rhs);
 
             // Coverage counter values cannot be negative, so if an expression
             // involves subtraction from zero, assume that its RHS must also be zero.
@@ -195,6 +197,12 @@ impl<'tcx> FunctionCoverage<'tcx> {
             if let Expression { lhs: Operand::Zero, rhs: Operand::Zero, .. } = expression {
                 zero_expressions.insert(id);
             }
+        }
+
+        // Do the same simplification for each side of a branch region.
+        for branch in &mut self.branches {
+            maybe_set_operand_to_zero(&zero_expressions, &mut branch.true_);
+            maybe_set_operand_to_zero(&zero_expressions, &mut branch.false_);
         }
     }
 
