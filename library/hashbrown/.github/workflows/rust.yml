@@ -59,7 +59,7 @@ jobs:
           thumbv6m-none-eabi,
           x86_64-pc-windows-gnu,
         ]
-        channel: [1.64.0, nightly]
+        channel: [1.63.0, nightly]
         include:
         - os: macos-latest
           target: x86_64-apple-darwin
@@ -69,10 +69,10 @@ jobs:
           channel: nightly
         - os: macos-latest
           target: x86_64-apple-darwin
-          channel: 1.64.0
+          channel: 1.63.0
         - os: windows-latest
           target: x86_64-pc-windows-msvc
-          channel: 1.64.0
+          channel: 1.63.0
         - os: ubuntu-latest
           target: x86_64-unknown-linux-gnu
           channel: beta
