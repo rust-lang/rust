@@ -427,6 +427,7 @@ pub enum MetadataType {
     MD_type = 19,
     MD_vcall_visibility = 28,
     MD_noundef = 29,
+    MD_exclude = 33,
     MD_kcfi_type = 36,
 }
 
