@@ -4,6 +4,7 @@ error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
 LL |             *(B as *const bool as *mut bool) = false;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
    = note: `#[deny(invalid_reference_casting)]` on by default
 
 error[E0080]: evaluation of constant value failed
