@@ -134,9 +134,19 @@ pub struct CheckNameUnknownTool {
 }
 
 #[derive(Diagnostic)]
-#[diag(lint_check_name_warning)]
-pub struct CheckNameWarning {
-    pub msg: String,
+#[diag(lint_check_name_renamed)]
+pub struct CheckNameRenamed {
+    pub lint_name: String,
+    pub replace: String,
+    #[subdiagnostic]
+    pub sub: RequestedLevel,
+}
+
+#[derive(Diagnostic)]
+#[diag(lint_check_name_removed)]
+pub struct CheckNameRemoved {
+    pub lint_name: String,
+    pub reason: String,
     #[subdiagnostic]
     pub sub: RequestedLevel,
 }
