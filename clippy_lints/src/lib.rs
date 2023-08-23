@@ -285,6 +285,7 @@ mod ref_option_ref;
 mod ref_patterns;
 mod reference;
 mod regex;
+mod reserve_after_initialization;
 mod return_self_not_must_use;
 mod returns;
 mod same_name_method;
@@ -1095,6 +1096,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     store.register_late_pass(|_| Box::new(redundant_locals::RedundantLocals));
     store.register_late_pass(|_| Box::new(ignored_unit_patterns::IgnoredUnitPatterns));
+    store.register_late_pass(|_| Box::<reserve_after_initialization::ReserveAfterInitialization>::default());
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

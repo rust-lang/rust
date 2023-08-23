@@ -579,6 +579,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::reference::DEREF_ADDROF_INFO,
     crate::regex::INVALID_REGEX_INFO,
     crate::regex::TRIVIAL_REGEX_INFO,
+    crate::reserve_after_initialization::RESERVE_AFTER_INITIALIZATION_INFO,
     crate::return_self_not_must_use::RETURN_SELF_NOT_MUST_USE_INFO,
     crate::returns::LET_AND_RETURN_INFO,
     crate::returns::NEEDLESS_RETURN_INFO,
