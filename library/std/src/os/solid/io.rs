@@ -271,6 +271,39 @@ macro_rules! impl_owned_fd_traits {
 }
 impl_owned_fd_traits! { TcpStream TcpListener UdpSocket }
 
+/// This impl allows implementing traits that require `AsFd` on Arc.
+/// ```
+/// # #[cfg(target_os = "solid_asp3")] mod group_cfg {
+/// # use std::os::solid::io::AsFd;
+/// use std::net::UdpSocket;
+/// use std::sync::Arc;
+///
+/// trait MyTrait: AsFd {}
+/// impl MyTrait for Arc<UdpSocket> {}
+/// impl MyTrait for Box<UdpSocket> {}
+/// # }
+/// ```
+impl<T: AsFd> AsFd for crate::sync::Arc<T> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        (**self).as_fd()
+    }
+}
+
+impl<T: AsFd> AsFd for crate::rc::Rc<T> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        (**self).as_fd()
+    }
+}
+
+impl<T: AsFd> AsFd for Box<T> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        (**self).as_fd()
+    }
+}
+
 /// A trait to extract the raw SOLID Sockets file descriptor from an underlying
 /// object.
 pub trait AsRawFd {
