@@ -15,10 +15,8 @@ RUN yum upgrade -y && \
       gcc \
       gcc-c++ \
       git \
-      glibc-devel.i686 \
       glibc-devel.x86_64 \
       libedit-devel \
-      libstdc++-devel.i686 \
       libstdc++-devel.x86_64 \
       make \
       ncurses-devel \
@@ -30,7 +28,6 @@ RUN yum upgrade -y && \
       unzip \
       wget \
       xz \
-      zlib-devel.i686 \
       zlib-devel.x86_64 \
       && yum clean all
 
