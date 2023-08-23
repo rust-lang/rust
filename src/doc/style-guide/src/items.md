@@ -377,12 +377,12 @@ type VeryLongType<T, U: SomeBound>
     = AnEvenLongerType<T, U, Foo<T>>;
 ```
 
-Where possible avoid `where` clauses and keep type constraints inline. Where
-that is not possible, prefer a trailing `where` clause over one that precedes
-the type. Split the line before and after a trailing `where` clause (and split
-the `where` clause as normal) and indent before the `=` and type, e.g.,
+When there is a trailing `where` clause after the type, and no `where` clause
+present before the type, break before the `=` and indent. Then break before the
+`where` keyword and format the clauses normally, e.g.,
 
 ```rust
+// With only a trailing where clause
 type VeryLongType<T, U>
     = AnEvenLongerType<T, U, Foo<T>>
 where
@@ -392,9 +392,12 @@ where
 
 When there is a `where` clause before the type, format it normally, and break
 after the last clause. Do not indent before the `=` to leave it visually
-distinct from the indented clauses.
+distinct from the indented clauses that precede it. If there is additionally a
+`where` clause after the type, break before the `where` keyword and format the
+clauses normally.
 
-```
+```rust
+// With only a preceding where clause.
 type WithPrecedingWC<T, U>
 where
     T: U::AnAssociatedType,
