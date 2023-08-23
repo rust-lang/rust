@@ -151,7 +151,12 @@ fn get_bitcode_slice_from_object_data(obj: &[u8]) -> Result<&[u8], LtoBitcodeFro
         return Ok(obj);
     }
     match object::read::File::parse(obj) {
-        Ok(f) => match f.section_by_name(".llvmbc").or_else(|| f.section_by_name(".llvm.lto")) {
+        Ok(f) => match f
+            .section_by_name(".llvmbc")
+            .or_else(|| f.section_by_name(".llvm.lto"))
+            .or_else(|| f.section_by_name("__LLVM,__bitcode\0"))
+            .or_else(|| f.section_by_name(".ipa\0"))
+        {
             Some(d) => Ok(d.data().unwrap()),
             None => Err(LtoBitcodeFromRlib {
                 llvm_err: "Bitcode section not found in object file".to_string(),
