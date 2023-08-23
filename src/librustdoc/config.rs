@@ -273,6 +273,8 @@ pub(crate) struct RenderOptions {
     pub(crate) call_locations: AllCallLocations,
     /// If `true`, Context::init will not emit shared files.
     pub(crate) no_emit_shared: bool,
+    /// If `true`, HTML source code pages won't be generated.
+    pub(crate) html_no_source: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -686,6 +688,7 @@ impl Options {
         let generate_link_to_definition = matches.opt_present("generate-link-to-definition");
         let extern_html_root_takes_precedence =
             matches.opt_present("extern-html-root-takes-precedence");
+        let html_no_source = matches.opt_present("html-no-source");
 
         if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
             diag.struct_err(
@@ -769,6 +772,7 @@ impl Options {
             generate_link_to_definition,
             call_locations,
             no_emit_shared: false,
+            html_no_source,
         };
         Ok((options, render_options))
     }
