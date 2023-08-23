@@ -250,21 +250,21 @@ macro_rules! impl_owned_fd_traits {
         impl AsFd for net::$t {
             #[inline]
             fn as_fd(&self) -> BorrowedFd<'_> {
-                unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
+                self.as_inner().socket().as_fd()
             }
         }
 
         impl From<net::$t> for OwnedFd {
             #[inline]
             fn from(socket: net::$t) -> OwnedFd {
-                unsafe { Self::from_raw_fd(socket.into_raw_fd()) }
+                socket.into_inner().into_socket().into_inner()
             }
         }
 
         impl From<OwnedFd> for net::$t {
             #[inline]
             fn from(owned_fd: OwnedFd) -> Self {
-                unsafe { Self::from_raw_fd(owned_fd.into_raw_fd()) }
+                Self::from_inner(FromInner::from_inner(FromInner::from_inner(owned_fd)))
             }
         }
     )*};
