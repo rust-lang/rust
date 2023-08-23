@@ -5,9 +5,10 @@ use crate::{
     io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut},
     mem,
     net::{Shutdown, SocketAddr},
+    os::solid::io::{AsRawFd, FromRawFd, IntoRawFd},
     ptr, str,
     sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr},
-    sys_common::{AsInner, FromInner, IntoInner},
+    sys_common::IntoInner,
     time::Duration,
 };
 
@@ -108,13 +109,6 @@ impl FileDesc {
 
     fn duplicate(&self) -> io::Result<FileDesc> {
         cvt(unsafe { netc::dup(self.fd) }).map(Self::new)
-    }
-}
-
-impl AsInner<c_int> for FileDesc {
-    #[inline]
-    fn as_inner(&self) -> &c_int {
-        &self.fd
     }
 }
 
@@ -454,7 +448,7 @@ impl Socket {
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as c_int;
         cvt(unsafe {
-            netc::ioctl(*self.as_inner(), netc::FIONBIO, (&mut nonblocking) as *mut c_int as _)
+            netc::ioctl(self.0.raw(), netc::FIONBIO, (&mut nonblocking) as *mut c_int as _)
         })
         .map(drop)
     }
@@ -466,25 +460,27 @@ impl Socket {
 
     // This method is used by sys_common code to abstract over targets.
     pub fn as_raw(&self) -> c_int {
-        *self.as_inner()
+        self.0.raw()
     }
 }
 
-impl AsInner<c_int> for Socket {
+impl AsRawFd for Socket {
     #[inline]
-    fn as_inner(&self) -> &c_int {
-        self.0.as_inner()
+    fn as_raw_fd(&self) -> c_int {
+        self.0.fd
     }
 }
 
-impl FromInner<c_int> for Socket {
-    fn from_inner(fd: c_int) -> Socket {
+impl FromRawFd for Socket {
+    #[inline]
+    unsafe fn from_raw_fd(fd: c_int) -> Socket {
         Socket(FileDesc::new(fd))
     }
 }
 
-impl IntoInner<c_int> for Socket {
-    fn into_inner(self) -> c_int {
+impl IntoRawFd for Socket {
+    #[inline]
+    fn into_raw_fd(self) -> c_int {
         self.0.into_raw()
     }
 }
