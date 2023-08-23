@@ -91,9 +91,9 @@ pub struct BuiltinEllipsisInclusiveRangePatterns {
 
 #[derive(Subdiagnostic)]
 #[note(lint_requested_level)]
-pub struct RequestedLevel {
+pub struct RequestedLevel<'a> {
     pub level: Level,
-    pub lint_name: String,
+    pub lint_name: &'a str,
 }
 
 #[derive(Diagnostic)]
@@ -102,13 +102,13 @@ pub struct UnsupportedGroup {
     pub lint_group: String,
 }
 
-pub struct CheckNameUnknown {
-    pub lint_name: String,
+pub struct CheckNameUnknown<'a> {
+    pub lint_name: &'a str,
     pub suggestion: Option<Symbol>,
-    pub sub: RequestedLevel,
+    pub sub: RequestedLevel<'a>,
 }
 
-impl IntoDiagnostic<'_> for CheckNameUnknown {
+impl IntoDiagnostic<'_> for CheckNameUnknown<'_> {
     fn into_diagnostic(
         self,
         handler: &Handler,
@@ -127,35 +127,35 @@ impl IntoDiagnostic<'_> for CheckNameUnknown {
 
 #[derive(Diagnostic)]
 #[diag(lint_check_name_unknown_tool, code = "E0602")]
-pub struct CheckNameUnknownTool {
+pub struct CheckNameUnknownTool<'a> {
     pub tool_name: Symbol,
     #[subdiagnostic]
-    pub sub: RequestedLevel,
+    pub sub: RequestedLevel<'a>,
 }
 
 #[derive(Diagnostic)]
 #[diag(lint_check_name_renamed)]
-pub struct CheckNameRenamed {
-    pub lint_name: String,
-    pub replace: String,
+pub struct CheckNameRenamed<'a> {
+    pub lint_name: &'a str,
+    pub replace: &'a str,
     #[subdiagnostic]
-    pub sub: RequestedLevel,
+    pub sub: RequestedLevel<'a>,
 }
 
 #[derive(Diagnostic)]
 #[diag(lint_check_name_removed)]
-pub struct CheckNameRemoved {
-    pub lint_name: String,
-    pub reason: String,
+pub struct CheckNameRemoved<'a> {
+    pub lint_name: &'a str,
+    pub reason: &'a str,
     #[subdiagnostic]
-    pub sub: RequestedLevel,
+    pub sub: RequestedLevel<'a>,
 }
 
 #[derive(Diagnostic)]
 #[diag(lint_check_name_deprecated)]
-pub struct CheckNameDeprecated {
-    pub lint_name: String,
-    pub new_name: String,
+pub struct CheckNameDeprecated<'a> {
+    pub lint_name: &'a str,
+    pub new_name: &'a str,
     #[subdiagnostic]
-    pub sub: RequestedLevel,
+    pub sub: RequestedLevel<'a>,
 }

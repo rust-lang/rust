@@ -343,33 +343,32 @@ impl LintStore {
             sess.emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
             return;
         }
-        let lint_name = lint_name.to_string();
         match self.check_lint_name(lint_name_only, tool_name, registered_tools) {
             CheckLintNameResult::Renamed(replace) => {
                 sess.emit_warning(CheckNameRenamed {
-                    lint_name: lint_name.clone(),
-                    replace,
+                    lint_name,
+                    replace: &replace,
                     sub: RequestedLevel { level, lint_name },
                 });
             }
             CheckLintNameResult::Removed(reason) => {
                 sess.emit_warning(CheckNameRemoved {
-                    lint_name: lint_name.clone(),
-                    reason,
+                    lint_name,
+                    reason: &reason,
                     sub: RequestedLevel { level, lint_name },
                 });
             }
             CheckLintNameResult::NoLint(suggestion) => {
                 sess.emit_err(CheckNameUnknown {
-                    lint_name: lint_name.clone(),
+                    lint_name,
                     suggestion,
                     sub: RequestedLevel { level, lint_name },
                 });
             }
             CheckLintNameResult::Tool(Err((Some(_), new_name))) => {
                 sess.emit_warning(CheckNameDeprecated {
-                    lint_name: lint_name.clone(),
-                    new_name,
+                    lint_name,
+                    new_name: &new_name,
                     sub: RequestedLevel { level, lint_name },
                 });
             }
