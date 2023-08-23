@@ -2216,7 +2216,7 @@ impl Default for TargetOptions {
             mcount: "mcount".into(),
             llvm_mcount_intrinsic: None,
             llvm_abiname: "".into(),
-            relax_elf_relocations: false,
+            relax_elf_relocations: true,
             llvm_args: cvs![],
             use_ctors_section: false,
             eh_frame_header: true,
