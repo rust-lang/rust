@@ -1,8 +1,9 @@
 use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_middle::mir::coverage::{CodeRegion, CounterId, ExpressionId, Op, Operand};
+use rustc_middle::mir::coverage::{CounterId, ExpressionId, Op, Operand};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::TyCtxt;
 
@@ -11,7 +12,6 @@ pub struct Expression {
     lhs: Operand,
     op: Op,
     rhs: Operand,
-    region: Option<CodeRegion>,
 }
 
 /// Collects all of the coverage regions associated with (a) injected counters, (b) counter
@@ -26,16 +26,14 @@ pub struct Expression {
 /// for a gap area is only used as the line execution count if there are no other regions on a
 /// line."
 #[derive(Debug)]
-pub struct FunctionCoverage<'tcx> {
-    instance: Instance<'tcx>,
+pub struct FunctionCoverage {
     source_hash: u64,
     is_used: bool,
-    counters: IndexVec<CounterId, Option<CodeRegion>>,
+    counters: BitSet<CounterId>,
     expressions: IndexVec<ExpressionId, Option<Expression>>,
-    unreachable_regions: Vec<CodeRegion>,
 }
 
-impl<'tcx> FunctionCoverage<'tcx> {
+impl<'tcx> FunctionCoverage {
     /// Creates a new set of coverage data for a used (called) function.
     pub fn new(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
         Self::create(tcx, instance, true)
@@ -53,12 +51,10 @@ impl<'tcx> FunctionCoverage<'tcx> {
             instance, coverageinfo, is_used
         );
         Self {
-            instance,
             source_hash: 0, // will be set with the first `add_counter()`
             is_used,
-            counters: IndexVec::from_elem_n(None, coverageinfo.num_counters as usize),
+            counters: BitSet::new_empty(coverageinfo.num_counters as usize),
             expressions: IndexVec::from_elem_n(None, coverageinfo.num_expressions as usize),
-            unreachable_regions: Vec::new(),
         }
     }
 
@@ -67,21 +63,17 @@ impl<'tcx> FunctionCoverage<'tcx> {
         self.is_used
     }
 
-    /// Sets the function source hash value. If called multiple times for the same function, all
-    /// calls should have the same hash value.
-    pub fn set_function_source_hash(&mut self, source_hash: u64) {
+    /// Adds a Counter, along with setting the function source hash value.
+    /// If called multiple times for the same function,
+    /// all calls should have the same `source_hash` value.
+    pub fn add_counter(&mut self, source_hash: u64, id: CounterId) {
         if self.source_hash == 0 {
             self.source_hash = source_hash;
         } else {
             debug_assert_eq!(source_hash, self.source_hash);
         }
-    }
 
-    /// Adds a code region to be counted by an injected counter intrinsic.
-    pub fn add_counter(&mut self, id: CounterId, region: CodeRegion) {
-        if let Some(previous_region) = self.counters[id].replace(region.clone()) {
-            assert_eq!(previous_region, region, "add_counter: code region for id changed");
-        }
+        self.counters.insert(id);
     }
 
     /// Both counters and "counter expressions" (or simply, "expressions") can be operands in other
@@ -93,11 +85,10 @@ impl<'tcx> FunctionCoverage<'tcx> {
         lhs: Operand,
         op: Op,
         rhs: Operand,
-        region: Option<CodeRegion>,
     ) {
         debug!(
-            "add_counter_expression({:?}, lhs={:?}, op={:?}, rhs={:?} at {:?}",
-            expression_id, lhs, op, rhs, region
+            "add_counter_expression({:?}, lhs={:?}, op={:?}, rhs={:?}",
+            expression_id, lhs, op, rhs
         );
         debug_assert!(
             expression_id.as_usize() < self.expressions.len(),
@@ -107,23 +98,15 @@ impl<'tcx> FunctionCoverage<'tcx> {
             self.expressions.len(),
             self,
         );
-        if let Some(previous_expression) = self.expressions[expression_id].replace(Expression {
-            lhs,
-            op,
-            rhs,
-            region: region.clone(),
-        }) {
+        if let Some(previous_expression) =
+            self.expressions[expression_id].replace(Expression { lhs, op, rhs })
+        {
             assert_eq!(
                 previous_expression,
-                Expression { lhs, op, rhs, region },
+                Expression { lhs, op, rhs },
                 "add_counter_expression: expression for id changed"
             );
         }
-    }
-
-    /// Add a region that will be marked as "unreachable", with a constant "zero counter".
-    pub fn add_unreachable_region(&mut self, region: CodeRegion) {
-        self.unreachable_regions.push(region)
     }
 
     /// Perform some simplifications to make the final coverage mappings
@@ -149,8 +132,14 @@ impl<'tcx> FunctionCoverage<'tcx> {
 
             // If an operand refers to an expression that has been simplified, then
             // replace that operand with the simplified version.
-            let maybe_simplify_operand = |operand: &mut Operand| {
-                if let Operand::Expression(id) = &*operand {
+            let maybe_simplify_operand = |operand: &mut Operand| match operand {
+                Operand::Zero => {}
+                Operand::Counter(id) => {
+                    if !self.counters.contains(*id) {
+                        *operand = Operand::Zero;
+                    }
+                }
+                Operand::Expression(id) => {
                     if let Some(simplified) = simplified_expressions.get(id) {
                         *operand = *simplified;
                     }
@@ -182,62 +171,42 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// This will further simplify any expression, "inlining" the left hand side operand
     /// if the right hand side is `Zero`. This is similar to `simplify_expressions` above,
     /// but works for an already referenced expression.
-    fn simplified_expression(&self, id: ExpressionId) -> Counter {
-        if let Some(expr) = &self.expressions[id] {
-            if expr.rhs == Operand::Zero {
-                return Counter::from_operand(expr.lhs);
+    pub fn simplified_operand(&self, operand: Operand) -> Counter {
+        let operand = match operand {
+            Operand::Zero => operand,
+            Operand::Counter(id) => {
+                if !self.counters.contains(id) {
+                    Operand::Zero
+                } else {
+                    operand
+                }
             }
-            if expr.lhs == Operand::Zero {
-                return Counter::from_operand(expr.rhs);
+            Operand::Expression(id) => {
+                if let Some(expr) = &self.expressions[id] {
+                    if expr.rhs == Operand::Zero {
+                        expr.lhs
+                    } else if expr.lhs == Operand::Zero {
+                        expr.rhs
+                    } else {
+                        operand
+                    }
+                } else {
+                    operand
+                }
             }
-        }
-        Counter::expression(id)
-    }
+        };
 
+        Counter::from_operand(operand)
+    }
     /// Return the source hash, generated from the HIR node structure, and used to indicate whether
     /// or not the source code structure changed between different compilations.
     pub fn source_hash(&self) -> u64 {
         self.source_hash
     }
 
-    /// Generate an array of CounterExpressions, and an iterator over all `Counter`s and their
-    /// associated `Regions` (from which the LLVM-specific `CoverageMapGenerator` will create
-    /// `CounterMappingRegion`s.
-    pub fn get_expressions_and_counter_regions(
-        &self,
-    ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &CodeRegion)>) {
-        assert!(
-            self.source_hash != 0 || !self.is_used,
-            "No counters provided the source_hash for used function: {:?}",
-            self.instance
-        );
-
-        let counter_expressions = self.counter_expressions();
-        // Expression IDs are indices into `self.expressions`, and on the LLVM
-        // side they will be treated as indices into `counter_expressions`, so
-        // the two vectors should correspond 1:1.
-        assert_eq!(self.expressions.len(), counter_expressions.len());
-
-        let counter_regions = self.counter_regions();
-        let expression_regions = self.expression_regions();
-        let unreachable_regions = self.unreachable_regions();
-
-        let counter_regions =
-            counter_regions.chain(expression_regions.into_iter().chain(unreachable_regions));
-        (counter_expressions, counter_regions)
-    }
-
-    fn counter_regions(&self) -> impl Iterator<Item = (Counter, &CodeRegion)> {
-        self.counters.iter_enumerated().filter_map(|(index, entry)| {
-            // Option::map() will return None to filter out missing counters. This may happen
-            // if, for example, a MIR-instrumented counter is removed during an optimization.
-            entry.as_ref().map(|region| (Counter::counter_value_reference(index), region))
-        })
-    }
-
     /// Convert this function's coverage expression data into a form that can be
     /// passed through FFI to LLVM.
-    fn counter_expressions(&self) -> Vec<CounterExpression> {
+    pub fn counter_expressions(&self) -> Vec<CounterExpression> {
         // We know that LLVM will optimize out any unused expressions before
         // producing the final coverage map, so there's no need to do the same
         // thing on the Rust side unless we're confident we can do much better.
@@ -263,22 +232,5 @@ impl<'tcx> FunctionCoverage<'tcx> {
                 ),
             })
             .collect::<Vec<_>>()
-    }
-
-    fn expression_regions(&self) -> Vec<(Counter, &CodeRegion)> {
-        // Find all of the expression IDs that weren't optimized out AND have
-        // an attached code region, and return the corresponding mapping as a
-        // counter/region pair.
-        self.expressions
-            .iter_enumerated()
-            .filter_map(|(id, expression)| {
-                let code_region = expression.as_ref()?.region.as_ref()?;
-                Some((self.simplified_expression(id), code_region))
-            })
-            .collect::<Vec<_>>()
-    }
-
-    fn unreachable_regions(&self) -> impl Iterator<Item = (Counter, &CodeRegion)> {
-        self.unreachable_regions.iter().map(|region| (Counter::ZERO, region))
     }
 }

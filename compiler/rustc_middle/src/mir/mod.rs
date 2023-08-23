@@ -243,6 +243,11 @@ pub struct Body<'tcx> {
     /// and used for debuginfo. Indexed by a `SourceScope`.
     pub source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
 
+    /// This is metadata computed by the `-C instrument-coverage` option.
+    /// The metadata includes the code regions relevant for code coverage, as
+    /// well as intermediate expressions used for a regions counter.
+    pub coverage_info: Option<Box<coverage::CoverageInfo>>,
+
     pub generator: Option<Box<GeneratorInfo<'tcx>>>,
 
     /// Declarations of locals.
@@ -333,6 +338,7 @@ impl<'tcx> Body<'tcx> {
             source,
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes,
+            coverage_info: None,
             generator: generator_kind.map(|generator_kind| {
                 Box::new(GeneratorInfo {
                     yield_ty: None,
@@ -368,6 +374,7 @@ impl<'tcx> Body<'tcx> {
             source: MirSource::item(CRATE_DEF_ID.to_def_id()),
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes: IndexVec::new(),
+            coverage_info: None,
             generator: None,
             local_decls: IndexVec::new(),
             user_type_annotations: IndexVec::new(),
@@ -1474,10 +1481,9 @@ impl Debug for Statement<'_> {
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({place:?}, {variance:?}, {c_ty:?})")
             }
-            Coverage(box self::Coverage { ref kind, code_region: Some(ref rgn) }) => {
-                write!(fmt, "Coverage::{kind:?} for {rgn:?}")
+            Coverage(box ref coverage) => {
+                write!(fmt, "Coverage({coverage:?})")
             }
-            Coverage(box ref coverage) => write!(fmt, "Coverage::{:?}", coverage.kind),
             Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
             ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
             Nop => write!(fmt, "nop"),

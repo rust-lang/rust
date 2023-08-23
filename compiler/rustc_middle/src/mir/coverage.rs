@@ -1,5 +1,6 @@
 //! Metadata from source code coverage analysis and instrumentation.
 
+use rustc_index::IndexVec;
 use rustc_macros::HashStable;
 use rustc_span::Symbol;
 
@@ -67,46 +68,6 @@ impl Debug for Operand {
     }
 }
 
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub enum CoverageKind {
-    Counter {
-        function_source_hash: u64,
-        /// ID of this counter within its enclosing function.
-        /// Expressions in the same function can refer to it as an operand.
-        id: CounterId,
-    },
-    Expression {
-        /// ID of this coverage-counter expression within its enclosing function.
-        /// Other expressions in the same function can refer to it as an operand.
-        id: ExpressionId,
-        lhs: Operand,
-        op: Op,
-        rhs: Operand,
-    },
-    Unreachable,
-}
-
-impl Debug for CoverageKind {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        use CoverageKind::*;
-        match self {
-            Counter { id, .. } => write!(fmt, "Counter({:?})", id.index()),
-            Expression { id, lhs, op, rhs } => write!(
-                fmt,
-                "Expression({:?}) = {:?} {} {:?}",
-                id.index(),
-                lhs,
-                match op {
-                    Op::Add => "+",
-                    Op::Subtract => "-",
-                },
-                rhs,
-            ),
-            Unreachable => write!(fmt, "Unreachable"),
-        }
-    }
-}
-
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct CodeRegion {
@@ -127,7 +88,7 @@ impl Debug for CodeRegion {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum Op {
     Subtract,
@@ -142,4 +103,53 @@ impl Op {
     pub fn is_subtract(&self) -> bool {
         matches!(self, Self::Subtract)
     }
+}
+
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub struct CoverageExpression {
+    /// ID of this coverage-counter expression within its enclosing function.
+    /// Other expressions in the same function can refer to it as an operand.
+    pub id: ExpressionId,
+    pub lhs: Operand,
+    pub op: Op,
+    pub rhs: Operand,
+}
+
+impl Debug for CoverageExpression {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        let CoverageExpression { id, lhs, op, rhs } = self;
+        write!(
+            fmt,
+            "Expression({:?}) = {:?} {} {:?}",
+            id.index(),
+            lhs,
+            match op {
+                Op::Add => "+",
+                Op::Subtract => "-",
+            },
+            rhs,
+        )
+    }
+}
+
+#[derive(Clone, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub enum CoverageRegionKind {
+    Code(Operand),
+}
+
+#[derive(Clone, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub struct CoverageRegion {
+    pub kind: CoverageRegionKind,
+    pub code_region: CodeRegion,
+}
+
+#[derive(Clone, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub struct CoverageInfo {
+    pub num_counters: u32,
+    pub expressions: IndexVec<ExpressionId, CoverageExpression>,
+    pub regions: Vec<CoverageRegion>,
 }

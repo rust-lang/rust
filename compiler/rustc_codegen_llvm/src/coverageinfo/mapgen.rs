@@ -10,7 +10,7 @@ use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::coverage::CodeRegion;
+use rustc_middle::mir::coverage::{CodeRegion, CoverageExpression, CoverageRegionKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Symbol;
 
@@ -61,13 +61,33 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     let mut function_data = Vec::new();
     for (instance, mut function_coverage) in function_coverage_map {
         debug!("Generate function coverage for {}, {:?}", cx.codegen_unit.name(), instance);
+
+        let mir_body = tcx.instance_mir(instance.def);
+        let Some(coverage_info) = mir_body.coverage_info.as_ref() else { continue };
+        for CoverageExpression { id, lhs, op, rhs } in &coverage_info.expressions {
+            debug!(
+                "adding counter expression to coverage_map: instance={:?}, id={:?}, {:?} {:?} {:?}",
+                instance, id, lhs, op, rhs,
+            );
+            function_coverage.add_counter_expression(*id, *lhs, *op, *rhs);
+        }
         function_coverage.simplify_expressions();
+        let expressions = function_coverage.counter_expressions();
+
+        let counter_regions = coverage_info.regions.iter().map(|region| {
+            (
+                match region.kind {
+                    CoverageRegionKind::Code(operand) => {
+                        function_coverage.simplified_operand(operand)
+                    }
+                },
+                &region.code_region,
+            )
+        });
 
         let mangled_function_name = tcx.symbol_name(instance).name;
         let source_hash = function_coverage.source_hash();
         let is_used = function_coverage.is_used();
-        let (expressions, counter_regions) =
-            function_coverage.get_expressions_and_counter_regions();
 
         let coverage_mapping_buffer = llvm::build_byte_buffer(|coverage_mapping_buffer| {
             mapgen.write_coverage_mapping(expressions, counter_regions, coverage_mapping_buffer);

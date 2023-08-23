@@ -59,8 +59,8 @@ impl Debug for BcbCounter {
 /// Generates and stores coverage counter and coverage expression information
 /// associated with nodes/edges in the BCB graph.
 pub(super) struct CoverageCounters {
-    next_counter_id: CounterId,
-    next_expression_id: ExpressionId,
+    pub(super) next_counter_id: CounterId,
+    pub(super) next_expression_id: ExpressionId,
 
     /// Coverage counters/expressions that are associated with individual BCBs.
     bcb_counters: IndexVec<BasicCoverageBlock, Option<BcbCounter>>,
@@ -140,17 +140,6 @@ impl CoverageCounters {
             self.debug_counters.add_counter(&expression, (debug_block_label_fn)());
         }
         expression
-    }
-
-    pub fn make_identity_counter(&mut self, counter_operand: Operand) -> BcbCounter {
-        let some_debug_block_label = if self.debug_counters.is_enabled() {
-            self.debug_counters.some_block_label(counter_operand).cloned()
-        } else {
-            None
-        };
-        self.make_expression(counter_operand, Op::Add, Operand::Zero, || {
-            some_debug_block_label.clone()
-        })
     }
 
     /// Counter IDs start from one and go up.

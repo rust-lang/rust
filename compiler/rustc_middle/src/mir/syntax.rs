@@ -5,7 +5,7 @@
 
 use super::{BasicBlock, Constant, Local, SwitchTargets, UserTypeProjection};
 
-use crate::mir::coverage::{CodeRegion, CoverageKind};
+use crate::mir::coverage::CounterId;
 use crate::traits::Reveal;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::GenericArgsRef;
@@ -359,11 +359,9 @@ pub enum StatementKind<'tcx> {
     /// Disallowed after drop elaboration.
     AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
 
-    /// Marks the start of a "coverage region", injected with '-Cinstrument-coverage'. A
-    /// `Coverage` statement carries metadata about the coverage region, used to inject a coverage
-    /// map into the binary. If `Coverage::kind` is a `Counter`, the statement also generates
-    /// executable code, to increment a counter variable at runtime, each time the code region is
-    /// executed.
+    /// A coverage counter injected with '-Cinstrument-coverage'.
+    /// This statement generates executable code to increment a counter variable at runtime,
+    /// each time the code region is executed.
     Coverage(Box<Coverage>),
 
     /// Denotes a call to an intrinsic that does not require an unwind path and always returns.
@@ -522,8 +520,8 @@ pub enum FakeReadCause {
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct Coverage {
-    pub kind: CoverageKind,
-    pub code_region: Option<CodeRegion>,
+    pub function_source_hash: u64,
+    pub id: CounterId,
 }
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]

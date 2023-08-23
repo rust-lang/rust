@@ -285,12 +285,6 @@ impl DebugCounters {
         }
     }
 
-    pub fn some_block_label(&self, operand: Operand) -> Option<&String> {
-        self.some_counters.as_ref().and_then(|counters| {
-            counters.get(&operand).and_then(|debug_counter| debug_counter.some_block_label.as_ref())
-        })
-    }
-
     pub fn format_counter(&self, counter_kind: &BcbCounter) -> String {
         match *counter_kind {
             BcbCounter::Counter { .. } => {
