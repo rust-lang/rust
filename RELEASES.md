@@ -65,16 +65,16 @@ Rustdoc
 Stabilized APIs
 ---------------
 
-- [`impl<T: Send> Sync for mpsc::Sender<T>`](https://doc.rust-lang.org/nightly/std/sync/mpsc/struct.Sender.html#impl-Sync-for-Sender%3CT%3E)
-- [`impl TryFrom<&OsStr> for &str`](https://doc.rust-lang.org/nightly/std/primitive.str.html#impl-TryFrom%3C%26'a+OsStr%3E-for-%26'a+str)
-- [`String::leak`](https://doc.rust-lang.org/nightly/alloc/string/struct.String.html#method.leak)
+- [`impl<T: Send> Sync for mpsc::Sender<T>`](https://doc.rust-lang.org/stable/std/sync/mpsc/struct.Sender.html#impl-Sync-for-Sender%3CT%3E)
+- [`impl TryFrom<&OsStr> for &str`](https://doc.rust-lang.org/stable/std/primitive.str.html#impl-TryFrom%3C%26'a+OsStr%3E-for-%26'a+str)
+- [`String::leak`](https://doc.rust-lang.org/stable/alloc/string/struct.String.html#method.leak)
 
 These APIs are now stable in const contexts:
 
-- [`CStr::from_bytes_with_nul`](https://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.from_bytes_with_nul)
-- [`CStr::to_bytes`](https://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.from_bytes_with_nul)
-- [`CStr::to_bytes_with_nul`](https://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.from_bytes_with_nul)
-- [`CStr::to_str`](https://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.from_bytes_with_nul)
+- [`CStr::from_bytes_with_nul`](https://doc.rust-lang.org/stable/std/ffi/struct.CStr.html#method.from_bytes_with_nul)
+- [`CStr::to_bytes`](https://doc.rust-lang.org/stable/std/ffi/struct.CStr.html#method.to_bytes)
+- [`CStr::to_bytes_with_nul`](https://doc.rust-lang.org/stable/std/ffi/struct.CStr.html#method.to_bytes_with_nul)
+- [`CStr::to_str`](https://doc.rust-lang.org/stable/std/ffi/struct.CStr.html#method.to_str)
 
 <a id="1.72.0-Cargo"></a>
 
