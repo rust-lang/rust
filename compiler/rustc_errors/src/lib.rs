@@ -197,34 +197,57 @@ impl CodeSuggestion {
 
         use rustc_span::{CharPos, Pos};
 
-        /// Append to a buffer the remainder of the line of existing source code, and return the
-        /// count of lines that have been added for accurate highlighting.
+        /// Extracts a substring from the provided `line_opt` based on the specified low and high indices,
+        /// appends it to the given buffer `buf`, and returns the count of newline characters in the substring.
+        /// If `line_opt` is `None`, a newline character is appended to the buffer, and 0 is returned.
+        /// 
+        /// ## Returns
+        ///
+        /// The count of newline characters in the extracted substring.
         fn push_trailing(
             buf: &mut String,
             line_opt: Option<&Cow<'_, str>>,
             lo: &Loc,
             hi_opt: Option<&Loc>,
         ) -> usize {
+            // Base Case 1: If line_opt is empty string
+            if line_opt.is_none() {
+                return 0;
+            }
+            
+            // Convert CharPos to Usize, as CharPose is character position offset within a string
+            // Extract low index and high index
+            let (lo_idx, hi_idx) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
+        
+            // Base Case 2: If maximum index is lower than minimum index
+            if let Some(hi_idx) = hi_idx {
+                if hi_idx <= lo_idx {
+                    return 0;
+                }
+            }
+        
             let mut line_count = 0;
-            let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
-            if let Some(line) = line_opt {
-                if let Some(lo) = line.char_indices().map(|(i, _)| i).nth(lo) {
-                    let hi_opt = hi_opt.and_then(|hi| line.char_indices().map(|(i, _)| i).nth(hi));
-                    match hi_opt {
-                        Some(hi) if hi > lo => {
-                            line_count = line[lo..hi].matches('\n').count();
-                            buf.push_str(&line[lo..hi])
-                        }
-                        Some(_) => (),
-                        None => {
-                            line_count = line[lo..].matches('\n').count();
-                            buf.push_str(&line[lo..])
-                        }
-                    }
+            
+            let line_slice = if let Some(hi_idx) = hi_idx {
+                // If high index exist, take string from low to high index
+                &line_opt.unwrap()[lo_idx..hi_idx]
+            } else {
+                // If high index absence, take string from low index till end string.len
+                &line_opt.unwrap()[lo_idx..]
+            };
+        
+            // count how many new-line exist in the string slice we take
+            for c in line_slice.chars() {
+                if c == '\n' {
+                    line_count += 1;
                 }
-                if hi_opt.is_none() {
-                    buf.push('\n');
-                }
+            }
+        
+            buf.push_str(line_slice);
+        
+            // If high index is None
+            if hi_opt.is_none() {
+                buf.push('\n');
             }
             line_count
         }
