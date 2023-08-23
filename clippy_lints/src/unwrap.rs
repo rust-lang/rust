@@ -1,15 +1,18 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::usage::is_potentially_mutated;
+use clippy_utils::usage::is_potentially_local_place;
 use clippy_utils::{higher, path_to_local};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
-use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, PathSegment, UnOp};
+use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, PathSegment, UnOp};
+use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceWithHirId};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::Ty;
+use rustc_middle::mir::FakeReadCause;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
@@ -192,6 +195,43 @@ fn collect_unwrap_info<'tcx>(
     Vec::new()
 }
 
+/// A HIR visitor delegate that checks if a local variable of type `Option<_>` is mutated,
+/// unless `Option::as_mut` is called.
+struct MutationVisitor<'tcx> {
+    is_mutated: bool,
+    local_id: HirId,
+    tcx: TyCtxt<'tcx>,
+}
+
+fn is_option_as_mut_use(tcx: TyCtxt<'_>, expr_id: HirId) -> bool {
+    if let Node::Expr(mutating_expr) = tcx.hir().get_parent(expr_id)
+        && let ExprKind::MethodCall(path, ..) = mutating_expr.kind
+    {
+        path.ident.name.as_str() == "as_mut"
+    } else {
+        false
+    }
+}
+
+impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx> {
+    fn borrow(&mut self, cat: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
+        if let ty::BorrowKind::MutBorrow = bk
+            && is_potentially_local_place(self.local_id, &cat.place)
+            && !is_option_as_mut_use(self.tcx, diag_expr_id)
+        {
+            self.is_mutated = true;
+        }
+    }
+
+    fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {
+        self.is_mutated = true;
+    }
+
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+}
+
 impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
     fn visit_branch(
         &mut self,
@@ -202,9 +242,24 @@ impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
     ) {
         let prev_len = self.unwrappables.len();
         for unwrap_info in collect_unwrap_info(self.cx, if_expr, cond, branch, else_branch, true) {
-            if is_potentially_mutated(unwrap_info.local_id, cond, self.cx)
-                || is_potentially_mutated(unwrap_info.local_id, branch, self.cx)
-            {
+            let mut delegate = MutationVisitor {
+                tcx: self.cx.tcx,
+                is_mutated: false,
+                local_id: unwrap_info.local_id,
+            };
+
+            let infcx = self.cx.tcx.infer_ctxt().build();
+            let mut vis = ExprUseVisitor::new(
+                &mut delegate,
+                &infcx,
+                cond.hir_id.owner.def_id,
+                self.cx.param_env,
+                self.cx.typeck_results(),
+            );
+            vis.walk_expr(cond);
+            vis.walk_expr(branch);
+
+            if delegate.is_mutated {
                 // if the variable is mutated, we don't know whether it can be unwrapped:
                 continue;
             }
@@ -212,6 +267,27 @@ impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
         }
         walk_expr(self, branch);
         self.unwrappables.truncate(prev_len);
+    }
+}
+
+enum AsRefKind {
+    AsRef,
+    AsMut,
+}
+
+/// Checks if the expression is a method call to `as_{ref,mut}` and returns the receiver of it.
+/// If it isn't, the expression itself is returned.
+fn consume_option_as_ref<'tcx>(expr: &'tcx Expr<'tcx>) -> (&'tcx Expr<'tcx>, Option<AsRefKind>) {
+    if let ExprKind::MethodCall(path, recv, ..) = expr.kind {
+        if path.ident.name == sym::as_ref {
+            (recv, Some(AsRefKind::AsRef))
+        } else if path.ident.name.as_str() == "as_mut" {
+            (recv, Some(AsRefKind::AsMut))
+        } else {
+            (expr, None)
+        }
+    } else {
+        (expr, None)
     }
 }
 
@@ -233,6 +309,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
             // find `unwrap[_err]()` calls:
             if_chain! {
                 if let ExprKind::MethodCall(method_name, self_arg, ..) = expr.kind;
+                let (self_arg, as_ref_kind) = consume_option_as_ref(self_arg);
                 if let Some(id) = path_to_local(self_arg);
                 if [sym::unwrap, sym::expect, sym!(unwrap_err)].contains(&method_name.ident.name);
                 let call_to_unwrap = [sym::unwrap, sym::expect].contains(&method_name.ident.name);
@@ -268,7 +345,12 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                                         unwrappable.check.span.with_lo(unwrappable.if_expr.span.lo()),
                                         "try",
                                         format!(
-                                            "if let {suggested_pattern} = {unwrappable_variable_name}",
+                                            "if let {suggested_pattern} = {borrow_prefix}{unwrappable_variable_name}",
+                                            borrow_prefix = match as_ref_kind {
+                                                Some(AsRefKind::AsRef) => "&",
+                                                Some(AsRefKind::AsMut) => "&mut ",
+                                                None => "",
+                                            },
                                         ),
                                         // We don't track how the unwrapped value is used inside the
                                         // block or suggest deleting the unwrap, so we can't offer a

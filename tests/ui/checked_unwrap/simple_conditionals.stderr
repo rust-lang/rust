@@ -168,5 +168,73 @@ LL |     if x.is_err() {
 LL |         x.unwrap_err();
    |         ^^^^^^^^^^^^^^
 
-error: aborting due to 17 previous errors
+error: called `unwrap` on `option` after checking its variant with `is_some`
+  --> $DIR/simple_conditionals.rs:135:9
+   |
+LL |     if option.is_some() {
+   |     ------------------- help: try: `if let Some(..) = &option`
+LL |         option.as_ref().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> $DIR/simple_conditionals.rs:138:9
+   |
+LL |     if option.is_some() {
+   |        ---------------- because of this check
+...
+LL |         option.as_ref().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `result` after checking its variant with `is_ok`
+  --> $DIR/simple_conditionals.rs:145:9
+   |
+LL |     if result.is_ok() {
+   |     ----------------- help: try: `if let Ok(..) = &result`
+LL |         result.as_ref().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> $DIR/simple_conditionals.rs:148:9
+   |
+LL |     if result.is_ok() {
+   |        -------------- because of this check
+...
+LL |         result.as_ref().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `option` after checking its variant with `is_some`
+  --> $DIR/simple_conditionals.rs:154:9
+   |
+LL |     if option.is_some() {
+   |     ------------------- help: try: `if let Some(..) = &mut option`
+LL |         option.as_mut().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> $DIR/simple_conditionals.rs:157:9
+   |
+LL |     if option.is_some() {
+   |        ---------------- because of this check
+...
+LL |         option.as_mut().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `result` after checking its variant with `is_ok`
+  --> $DIR/simple_conditionals.rs:163:9
+   |
+LL |     if result.is_ok() {
+   |     ----------------- help: try: `if let Ok(..) = &mut result`
+LL |         result.as_mut().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> $DIR/simple_conditionals.rs:166:9
+   |
+LL |     if result.is_ok() {
+   |        -------------- because of this check
+...
+LL |         result.as_mut().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 25 previous errors
 

@@ -128,6 +128,46 @@ fn main() {
     assert!(x.is_ok(), "{:?}", x.unwrap_err());
 }
 
+fn issue11371() {
+    let option = Some(());
+
+    if option.is_some() {
+        option.as_ref().unwrap();
+        //~^ ERROR: called `unwrap` on `option` after checking its variant with `is_some`
+    } else {
+        option.as_ref().unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
+    }
+
+    let result = Ok::<(), ()>(());
+
+    if result.is_ok() {
+        result.as_ref().unwrap();
+        //~^ ERROR: called `unwrap` on `result` after checking its variant with `is_ok`
+    } else {
+        result.as_ref().unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
+    }
+
+    let mut option = Some(());
+    if option.is_some() {
+        option.as_mut().unwrap();
+        //~^ ERROR: called `unwrap` on `option` after checking its variant with `is_some`
+    } else {
+        option.as_mut().unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
+    }
+
+    let mut result = Ok::<(), ()>(());
+    if result.is_ok() {
+        result.as_mut().unwrap();
+        //~^ ERROR: called `unwrap` on `result` after checking its variant with `is_ok`
+    } else {
+        result.as_mut().unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
+    }
+}
+
 fn check_expect() {
     let x = Some(());
     if x.is_some() {
