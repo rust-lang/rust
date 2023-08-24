@@ -1,5 +1,5 @@
 use crate::alloc::alloc::{handle_alloc_error, Layout};
-use crate::scopeguard::{guard, ScopeGuard};
+use crate::scopeguard::guard;
 use crate::TryReserveError;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
@@ -2494,7 +2494,11 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
         } else {
             unsafe {
                 // Avoid `Result::ok_or_else` because it bloats LLVM IR.
-                let new_table = match Self::new_uninitialized(
+                //
+                // SAFETY: This is safe as we are taking the size of an already allocated table
+                // and therefore сapacity overflow cannot occur, `self.table.buckets()` is power
+                // of two and all allocator errors will be caught inside `RawTableInner::new_uninitialized`.
+                let mut new_table = match Self::new_uninitialized(
                     self.table.alloc.clone(),
                     self.table.buckets(),
                     Fallibility::Infallible,
@@ -2503,29 +2507,29 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
                     Err(_) => hint::unreachable_unchecked(),
                 };
 
-                // If cloning fails then we need to free the allocation for the
-                // new table. However we don't run its drop since its control
-                // bytes are not initialized yet.
-                let mut guard = guard(ManuallyDrop::new(new_table), |new_table| {
-                    new_table.free_buckets();
-                });
-
-                guard.clone_from_spec(self);
-
-                // Disarm the scope guard and return the newly created table.
-                ManuallyDrop::into_inner(ScopeGuard::into_inner(guard))
+                // Cloning elements may fail (the clone function may panic). But we don't
+                // need to worry about uninitialized control bits, since:
+                // 1. The number of items (elements) in the table is zero, which means that
+                //    the control bits will not be readed by Drop function.
+                // 2. The `clone_from_spec` method will first copy all control bits from
+                //    `self` (thus initializing them). But this will not affect the `Drop`
+                //    function, since the `clone_from_spec` function sets `items` only after
+                //    successfully clonning all elements.
+                new_table.clone_from_spec(self);
+                new_table
             }
         }
     }
 
     fn clone_from(&mut self, source: &Self) {
         if source.table.is_empty_singleton() {
+            // Dereference drops old `self` table
             *self = Self::new_in(self.table.alloc.clone());
         } else {
             unsafe {
                 // Make sure that if any panics occurs, we clear the table and
                 // leave it in an empty state.
-                let mut self_ = guard(self, |self_| {
+                let mut guard = guard(&mut *self, |self_| {
                     self_.clear_no_drop();
                 });
 
@@ -2535,18 +2539,32 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
                 //
                 // This leak is unavoidable: we can't try dropping more elements
                 // since this could lead to another panic and abort the process.
-                self_.drop_elements();
+                //
+                // SAFETY: We clear our table right after dropping the elements,
+                // so there is no double drop, since `items` will be equal to zero.
+                guard.drop_elements();
+
+                // Okay, we've successfully dropped all elements, so we'll just set
+                // `items` to zero (so that the `Drop` of `RawTable` doesn't try to
+                // drop all elements twice) and just forget about the guard.
+                guard.table.items = 0;
+                mem::forget(guard);
 
                 // If necessary, resize our table to match the source.
-                if self_.buckets() != source.buckets() {
+                if self.buckets() != source.buckets() {
                     // Skip our drop by using ptr::write.
-                    if !self_.table.is_empty_singleton() {
-                        self_.free_buckets();
+                    if !self.table.is_empty_singleton() {
+                        // SAFETY: We have verified that the table is allocated.
+                        self.free_buckets();
                     }
-                    (&mut **self_ as *mut Self).write(
+                    (self as *mut Self).write(
                         // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
+                        //
+                        // SAFETY: This is safe as we are taking the size of an already allocated table
+                        // and therefore сapacity overflow cannot occur, `self.table.buckets()` is power
+                        // of two and all allocator errors will be caught inside `RawTableInner::new_uninitialized`.
                         match Self::new_uninitialized(
-                            self_.table.alloc.clone(),
+                            self.table.alloc.clone(),
                             source.buckets(),
                             Fallibility::Infallible,
                         ) {
@@ -2556,10 +2574,11 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
                     );
                 }
 
-                self_.clone_from_spec(source);
-
-                // Disarm the scope guard if cloning was successful.
-                ScopeGuard::into_inner(self_);
+                // Cloning elements may fail (the clone function may panic), but the `ScopeGuard`
+                // inside the `clone_from_impl` function will take care of that, dropping all
+                // cloned elements if necessary. The `Drop` of `RawTable` takes care of the rest
+                // by freeing up the allocated memory.
+                self.clone_from_spec(source);
             }
         }
     }
@@ -3371,6 +3390,151 @@ mod test_map {
                 assert_eq!(table.find(i, |x| *x == i).map(|b| b.read()), Some(i));
             }
             assert!(table.find(i + 100, |x| *x == i + 100).is_none());
+        }
+    }
+
+    #[test]
+    #[should_panic = "panic in clone"]
+    fn test_clone_memory_leaks_and_double_drop() {
+        use ::alloc::vec::Vec;
+
+        const DISARMED: bool = false;
+        const ARMED: bool = true;
+
+        struct CheckedCloneDrop {
+            panic_in_clone: bool,
+            dropped: bool,
+            need_drop: Vec<i32>,
+        }
+
+        impl Clone for CheckedCloneDrop {
+            fn clone(&self) -> Self {
+                if self.panic_in_clone {
+                    panic!("panic in clone")
+                }
+                Self {
+                    panic_in_clone: self.panic_in_clone,
+                    dropped: self.dropped,
+                    need_drop: self.need_drop.clone(),
+                }
+            }
+        }
+
+        impl Drop for CheckedCloneDrop {
+            fn drop(&mut self) {
+                if self.dropped {
+                    panic!("double drop");
+                }
+                self.dropped = true;
+            }
+        }
+
+        let mut table: RawTable<(u64, CheckedCloneDrop)> = RawTable::with_capacity(7);
+
+        let armed_flags = [
+            DISARMED, DISARMED, ARMED, DISARMED, DISARMED, DISARMED, DISARMED,
+        ];
+
+        // Hash and Key must be equal to each other for controlling the elements placement
+        // so that we can be sure that we first clone elements that don't panic during cloning.
+        for (idx, &panic_in_clone) in armed_flags.iter().enumerate() {
+            let idx = idx as u64;
+            table.insert(
+                idx,
+                (
+                    idx,
+                    CheckedCloneDrop {
+                        panic_in_clone,
+                        dropped: false,
+                        need_drop: vec![0, 1, 2, 3],
+                    },
+                ),
+                |(k, _)| *k,
+            );
+        }
+        let mut count = 0;
+        unsafe {
+            // Let's check that all elements are located as we wanted
+            //
+            // SAFETY: We know for sure that `RawTable` will outlive
+            // the returned `RawIter` iterator.
+            for (bucket, panic_in_clone) in table.iter().zip(armed_flags) {
+                // SAFETY: It's OK, we get bucket from RawIter, so it is safe to read
+                let (key, value) = bucket.as_ref();
+                assert_eq!(*key, count);
+                assert_eq!(value.panic_in_clone, panic_in_clone);
+                count += 1;
+            }
+        }
+        assert_eq!(table.len(), 7);
+        assert_eq!(count, 7);
+
+        // Clone should normally clone a few elements, and then (when the clone
+        // function panics), deallocate both its own memory and the memory of
+        // already cloned elements (Vec<i32> memory inside CheckedCloneDrop).
+        let _table2 = table.clone();
+    }
+
+    /// CHECKING THAT WE ARE NOT TRYING TO READ THE MEMORY OF
+    /// AN UNINITIALIZED TABLE DURING THE DROP
+    #[test]
+    fn test_drop_uninitialized() {
+        use ::alloc::vec::Vec;
+
+        let table = unsafe {
+            // SAFETY: The `buckets` is power of two and we're not
+            // trying to actually use the returned RawTable.
+            RawTable::<(u64, Vec<i32>)>::new_uninitialized(Global, 8, Fallibility::Infallible)
+                .unwrap()
+        };
+        drop(table);
+    }
+
+    /// CHECKING THAT WE DON'T TRY TO DROP DATA IF THE `ITEMS`
+    /// ARE ZERO, EVEN IF WE HAVE `FULL` CONTROL BYTES.
+    #[test]
+    fn test_drop_zero_items() {
+        use ::alloc::vec::Vec;
+        unsafe {
+            // SAFETY: The `buckets` is power of two and we're not
+            // trying to actually use the returned RawTable.
+            let table =
+                RawTable::<(u64, Vec<i32>)>::new_uninitialized(Global, 8, Fallibility::Infallible)
+                    .unwrap();
+
+            // WE SIMULATE, AS IT WERE, A FULL TABLE.
+
+            // SAFETY: We checked that the table is allocated and therefore the table already has
+            // `self.bucket_mask + 1 + Group::WIDTH` number of control bytes (see TableLayout::calculate_layout_for)
+            // so writing `table.table.num_ctrl_bytes() == bucket_mask + 1 + Group::WIDTH` bytes is safe.
+            table
+                .table
+                .ctrl(0)
+                .write_bytes(EMPTY, table.table.num_ctrl_bytes());
+
+            // SAFETY: table.capacity() is guaranteed to be smaller than table.buckets()
+            table.table.ctrl(0).write_bytes(0, table.capacity());
+
+            // Fix up the trailing control bytes. See the comments in set_ctrl
+            // for the handling of tables smaller than the group width.
+            if table.buckets() < Group::WIDTH {
+                // SAFETY: We have `self.bucket_mask + 1 + Group::WIDTH` number of control bytes,
+                // so copying `self.buckets() == self.bucket_mask + 1` bytes with offset equal to
+                // `Group::WIDTH` is safe
+                table
+                    .table
+                    .ctrl(0)
+                    .copy_to(table.table.ctrl(Group::WIDTH), table.table.buckets());
+            } else {
+                // SAFETY: We have `self.bucket_mask + 1 + Group::WIDTH` number of
+                // control bytes,so copying `Group::WIDTH` bytes with offset equal
+                // to `self.buckets() == self.bucket_mask + 1` is safe
+                table
+                    .table
+                    .ctrl(0)
+                    .copy_to(table.table.ctrl(table.table.buckets()), Group::WIDTH);
+            }
+            drop(table);
         }
     }
 }
