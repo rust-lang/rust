@@ -1,24 +1,24 @@
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/generator-wf-check.rs:44:22
+  --> $DIR/generator-wf-check.rs:33:22
    |
 LL |         let witness: Option<Static<T>> = None;
    |                      ^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound...
    |
-LL | fn test_witness_wf<T: 'static>() {
-   |                     +++++++++
+LL | fn test_witness<T: 'static>() {
+   |                  +++++++++
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/generator-wf-check.rs:47:9
+  --> $DIR/generator-wf-check.rs:36:9
    |
 LL |         drop(witness);
    |         ^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound...
    |
-LL | fn test_witness_wf<T: 'static>() {
-   |                     +++++++++
+LL | fn test_witness<T: 'static>() {
+   |                  +++++++++
 
 error: aborting due to 2 previous errors
 

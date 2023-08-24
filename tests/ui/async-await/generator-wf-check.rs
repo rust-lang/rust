@@ -5,7 +5,7 @@
 // revisions: output output_wf witness witness_wf
 //[output] check-pass
 //[output_wf] check-fail
-//[witness] check-pass
+//[witness] check-fail
 //[witness_wf] check-fail
 
 struct Static<T: 'static>(T);
@@ -31,18 +31,21 @@ fn test_output_wf<T>() {
 fn test_witness<T>() {
     async {
         let witness: Option<Static<T>> = None;
+        //[witness]~^ ERROR `T` may not live long enough
         async {}.await;
         drop(witness);
+        //[witness]~^ ERROR `T` may not live long enough
     };
 }
 
 #[cfg(witness_wf)]
 fn test_witness_wf<T>() {
     wf(async {
-    //[witness_wf]~^ ERROR `T` may not live long enough
         let witness: Option<Static<T>> = None;
+        //[witness_wf]~^ ERROR `T` may not live long enough
         async {}.await;
         drop(witness);
+        //[witness_wf]~^ ERROR `T` may not live long enough
     });
 }
 
