@@ -10,7 +10,7 @@ document.
 
 ## Rust 1.72
 
-Current beta, released 2023-08-24
+Current stable, released 2023-08-24
 
 [View all 131 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-05-22T14%3A53%3A59Z..2023-07-01T22%3A57%3A20Z+base%3Amaster)
 
@@ -101,7 +101,7 @@ Current beta, released 2023-08-24
 
 ## Rust 1.71
 
-Current stable, released 2023-07-13
+Released 2023-07-13
 
 Note: Clippy will use a shorter changelog format from now on, if you want a detailed list of
 all changes, please check out the list of merged pull requests.
