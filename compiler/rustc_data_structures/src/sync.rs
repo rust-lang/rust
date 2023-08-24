@@ -41,6 +41,7 @@
 //! [^2] `MTLockRef` is a typedef.
 
 pub use crate::marker::*;
+use parking_lot::Mutex;
 use std::any::Any;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
@@ -110,13 +111,13 @@ pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
 /// continuing with unwinding. It's also used for the non-parallel code to ensure error message
 /// output match the parallel compiler for testing purposes.
 pub struct ParallelGuard {
-    panic: Lock<Option<Box<dyn Any + std::marker::Send + 'static>>>,
+    panic: Mutex<Option<Box<dyn Any + std::marker::Send + 'static>>>,
 }
 
 impl ParallelGuard {
     #[inline]
     pub fn new() -> Self {
-        ParallelGuard { panic: Lock::new(None) }
+        ParallelGuard { panic: Mutex::new(None) }
     }
 
     pub fn run<R>(&self, f: impl FnOnce() -> R) -> Option<R> {
@@ -316,8 +317,6 @@ cfg_if! {
             }
         }
     } else {
-        use parking_lot::Mutex;
-
         pub use std::marker::Send as Send;
         pub use std::marker::Sync as Sync;
 
