@@ -67,6 +67,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
         };
 
+        // Account for enum variant constructors, where the type param corresponds to the enum
+        // itself.
+        let enum_def_id = if let hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, _) =
+            self.tcx.def_kind(def_id)
+        {
+            // `def_id` corresponds to a constructor, and its parent is the variant, and we want
+            // the enum.
+            Some(self.tcx.parent(self.tcx.parent(def_id)))
+        } else {
+            None
+        };
+        let variant_param_to_point_at = find_param_matching(&|param_term| {
+            // FIXME: It would be nice to make this not use string manipulation,
+            // but it's pretty hard to do this, since `ty::ParamTy` is missing
+            // sufficient info to determine if it is synthetic, and we don't
+            // always have a convenient way of getting `ty::Generics` at the call
+            // sites we invoke `IsSuggestable::is_suggestable`.
+            let include = match param_term {
+                ty::ParamTerm::Ty(param_ty) => !param_ty.name.as_str().starts_with("impl "),
+                _ => true,
+            };
+            // Account for enum variant constructors, where the type param corresponds to the enum
+            // itself.
+            let def_id = if let Some(def_id) = enum_def_id {
+                def_id
+            } else {
+                def_id
+            };
+            self.tcx.parent(generics.param_at(param_term.index(), self.tcx).def_id) == def_id
+                && include
+        });
         // Prefer generics that are local to the fn item, since these are likely
         // to be the cause of the unsatisfied predicate.
         let mut param_to_point_at = find_param_matching(&|param_term| {
@@ -102,6 +133,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match &expr.kind {
             hir::ExprKind::Path(qpath) => {
+                let def_id = if let Some(def_id) = enum_def_id {
+                    def_id
+                } else {
+                    def_id
+                };
+                if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind {
+                    for segment in path.segments {
+                        if let Some(param) = variant_param_to_point_at
+                            && self.point_at_generic_if_possible(error, def_id, param, segment)
+                        {
+                            return true;
+                        }
+                    }
+                }
                 if let hir::Node::Expr(hir::Expr {
                     kind: hir::ExprKind::Call(callee, args),
                     hir_id: call_hir_id,

@@ -1,10 +1,8 @@
 error[E0277]: the trait bound `for<'b> &'b S: Trait` is not satisfied
-  --> $DIR/imm-ref-trait-object-literal-bound-regions.rs:17:14
+  --> $DIR/imm-ref-trait-object-literal-bound-regions.rs:17:11
    |
 LL |     foo::<S>(s);
-   |     -------- ^ the trait `for<'b> Trait` is not implemented for `&'b S`
-   |     |
-   |     required by a bound introduced by this call
+   |           ^ the trait `for<'b> Trait` is not implemented for `&'b S`
    |
    = help: the trait `Trait` is implemented for `&'a mut S`
    = note: `for<'b> Trait` is implemented for `&'b mut S`, but not for `&'b S`

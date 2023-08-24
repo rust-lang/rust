@@ -1,8 +1,8 @@
 error[E0283]: type annotations needed: cannot satisfy `T: Bar`
-  --> $DIR/two-projection-param-candidates-are-ambiguous.rs:26:5
+  --> $DIR/two-projection-param-candidates-are-ambiguous.rs:26:17
    |
 LL |     needs_bar::<T>();
-   |     ^^^^^^^^^^^^^^
+   |                 ^
    |
    = note: cannot satisfy `T: Bar`
    = help: the trait `Bar` is implemented for `T`
