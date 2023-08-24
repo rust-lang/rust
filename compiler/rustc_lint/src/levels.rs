@@ -4,8 +4,8 @@ use crate::{
     fluent_generated as fluent,
     late::unerased_lint_store,
     lints::{
-        DeprecatedLintName, IgnoredUnlessCrateSpecified, OverruledAttributeLint,
-        RenamedOrRemovedLint, RenamedOrRemovedLintSuggestion, UnknownLint, UnknownLintSuggestion,
+        DeprecatedLintName, IgnoredUnlessCrateSpecified, OverruledAttributeLint, RemovedLint,
+        RenamedLint, RenamedLintSuggestion, UnknownLint, UnknownLintSuggestion,
     },
 };
 use rustc_ast as ast;
@@ -915,18 +915,26 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
                     _ if !self.warn_about_weird_lints => {}
 
-                    CheckLintNameResult::Warning(msg, renamed) => {
+                    CheckLintNameResult::Renamed(new_name) => {
                         let suggestion =
-                            renamed.as_ref().map(|replace| RenamedOrRemovedLintSuggestion {
-                                suggestion: sp,
-                                replace: replace.as_str(),
-                            });
+                            RenamedLintSuggestion { suggestion: sp, replace: new_name.as_str() };
+                        let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
                         self.emit_spanned_lint(
                             RENAMED_AND_REMOVED_LINTS,
                             sp.into(),
-                            RenamedOrRemovedLint { msg, suggestion },
+                            RenamedLint { name: name.as_str(), suggestion },
                         );
                     }
+
+                    CheckLintNameResult::Removed(reason) => {
+                        let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
+                        self.emit_spanned_lint(
+                            RENAMED_AND_REMOVED_LINTS,
+                            sp.into(),
+                            RemovedLint { name: name.as_str(), reason: reason.as_str() },
+                        );
+                    }
+
                     CheckLintNameResult::NoLint(suggestion) => {
                         let name = if let Some(tool_ident) = tool_ident {
                             format!("{}::{}", tool_ident.name, name)
@@ -945,7 +953,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 // If this lint was renamed, apply the new lint instead of ignoring the attribute.
                 // This happens outside of the match because the new lint should be applied even if
                 // we don't warn about the name change.
-                if let CheckLintNameResult::Warning(_, Some(new_name)) = lint_result {
+                if let CheckLintNameResult::Renamed(new_name) = lint_result {
                     // Ignore any errors or warnings that happen because the new name is inaccurate
                     // NOTE: `new_name` already includes the tool name, so we don't have to add it again.
                     if let CheckLintNameResult::Ok(ids) =
