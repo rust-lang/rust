@@ -702,5 +702,17 @@ error: arithmetic operation that can potentially result in unexpected side-effec
 LL |     10 / a
    |     ^^^^^^
 
-error: aborting due to 117 previous errors
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:498:9
+   |
+LL |         unsigned / nonzero_unsigned
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:502:9
+   |
+LL |         unsigned % nonzero_unsigned
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 119 previous errors
 
