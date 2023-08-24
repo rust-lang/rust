@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/alloc.rs:12:1
+  --> $DIR/alloc.rs:11:1
    |
 LL | const LAYOUT_INVALID_ZERO: Layout = unsafe { Layout::from_size_align_unchecked(0x1000, 0x00) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .align.0.<enum-tag>: encountered 0x00000000, but expected a valid enum tag
@@ -10,7 +10,7 @@ LL | const LAYOUT_INVALID_ZERO: Layout = unsafe { Layout::from_size_align_unchec
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/alloc.rs:16:1
+  --> $DIR/alloc.rs:15:1
    |
 LL | const LAYOUT_INVALID_THREE: Layout = unsafe { Layout::from_size_align_unchecked(9, 3) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .align.0.<enum-tag>: encountered 0x00000003, but expected a valid enum tag
