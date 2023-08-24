@@ -2499,7 +2499,6 @@ fn test_into_flattened_size_overflow() {
     let _ = v.into_flattened();
 }
 
-#[cfg(not(bootstrap))]
 #[test]
 fn test_box_zero_allocator() {
     use core::{alloc::AllocError, cell::RefCell};

@@ -849,7 +849,7 @@ impl Seek for File {
     }
 }
 
-#[stable(feature = "io_traits_arc", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "io_traits_arc", since = "1.73.0")]
 impl Read for Arc<File> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (&**self).read(buf)
@@ -871,7 +871,7 @@ impl Read for Arc<File> {
         (&**self).read_to_string(buf)
     }
 }
-#[stable(feature = "io_traits_arc", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "io_traits_arc", since = "1.73.0")]
 impl Write for Arc<File> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         (&**self).write(buf)
@@ -888,7 +888,7 @@ impl Write for Arc<File> {
         (&**self).flush()
     }
 }
-#[stable(feature = "io_traits_arc", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "io_traits_arc", since = "1.73.0")]
 impl Seek for Arc<File> {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         (&**self).seek(pos)

@@ -7,5 +7,5 @@
     issue = "none"
 )]
 #![allow(unused_features)]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![allow(internal_features)]
 #![feature(staged_api)]
