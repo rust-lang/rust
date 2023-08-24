@@ -25,6 +25,7 @@ impl<T, F> ScopeGuard<T, F>
 where
     F: FnMut(&mut T),
 {
+    #[allow(dead_code)]
     #[inline]
     pub fn into_inner(guard: Self) -> T {
         // Cannot move out of Drop-implementing types, so
