@@ -6,7 +6,11 @@ use clippy_utils::macros::{is_panic, macro_backtrace};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
 use if_chain::if_chain;
-use rustc_ast::{AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
+use rustc_ast::token::{Token, TokenKind};
+use rustc_ast::tokenstream::TokenTree;
+use rustc_ast::{
+    AttrArgs, AttrArgsEq, AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem,
+};
 use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
@@ -341,6 +345,41 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for `#[should_panic]` attributes without specifying the expected panic message.
+    ///
+    /// ### Why is this bad?
+    /// The expected panic message should be specified to ensure that the test is actually
+    /// panicking with the expected message, and not another unrelated panic.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn random() -> i32 { 0 }
+    ///
+    /// #[should_panic]
+    /// #[test]
+    /// fn my_test() {
+    ///     let _ = 1 / random();
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// fn random() -> i32 { 0 }
+    ///
+    /// #[should_panic = "attempt to divide by zero"]
+    /// #[test]
+    /// fn my_test() {
+    ///     let _ = 1 / random();
+    /// }
+    /// ```
+    #[clippy::version = "1.73.0"]
+    pub SHOULD_PANIC_WITHOUT_EXPECT,
+    pedantic,
+    "ensures that all `should_panic` attributes specify its expected panic message"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for `any` and `all` combinators in `cfg` with only one condition.
     ///
     /// ### Why is this bad?
@@ -395,6 +434,7 @@ declare_lint_pass!(Attributes => [
     DEPRECATED_SEMVER,
     USELESS_ATTRIBUTE,
     BLANKET_CLIPPY_RESTRICTION_LINTS,
+    SHOULD_PANIC_WITHOUT_EXPECT,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
@@ -441,6 +481,9 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                     }
                 }
             }
+        }
+        if attr.has_name(sym::should_panic) {
+            check_should_panic_reason(cx, attr);
         }
     }
 
@@ -548,6 +591,35 @@ fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<Symbol> {
         }
     }
     None
+}
+
+fn check_should_panic_reason(cx: &LateContext<'_>, attr: &Attribute) {
+    if let AttrKind::Normal(normal_attr) = &attr.kind {
+        if let AttrArgs::Eq(_, AttrArgsEq::Hir(_)) = &normal_attr.item.args {
+            // `#[should_panic = ".."]` found, good
+            return;
+        }
+
+        if let AttrArgs::Delimited(args) = &normal_attr.item.args
+            && let mut tt_iter = args.tokens.trees()
+            && let Some(TokenTree::Token(Token { kind: TokenKind::Ident(sym::expected, _), .. }, _)) = tt_iter.next()
+            && let Some(TokenTree::Token(Token { kind: TokenKind::Eq, .. }, _)) = tt_iter.next()
+            && let Some(TokenTree::Token(Token { kind: TokenKind::Literal(_), .. }, _)) = tt_iter.next()
+        {
+            // `#[should_panic(expected = "..")]` found, good
+            return;
+        }
+
+        span_lint_and_sugg(
+            cx,
+            SHOULD_PANIC_WITHOUT_EXPECT,
+            attr.span,
+            "#[should_panic] attribute without a reason",
+            "consider specifying the expected panic",
+            r#"#[should_panic(expected = /* panic message */)]"#.into(),
+            Applicability::HasPlaceholders,
+        );
+    }
 }
 
 fn check_clippy_lint_names(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem]) {

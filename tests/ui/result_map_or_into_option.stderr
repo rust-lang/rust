@@ -1,5 +1,5 @@
 error: called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling `ok()` instead
-  --> $DIR/result_map_or_into_option.rs:7:13
+  --> $DIR/result_map_or_into_option.rs:5:13
    |
 LL |     let _ = opt.map_or(None, Some);
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: try using `ok` instead: `opt.ok()`

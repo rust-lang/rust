@@ -1,7 +1,7 @@
 #![feature(non_exhaustive_omitted_patterns_lint)]
 #![warn(clippy::match_same_arms)]
 #![no_main]
-
+//@no-rustfix
 use std::sync::atomic::Ordering; // #[non_exhaustive] enum
 
 pub fn f(x: Ordering) {
@@ -39,6 +39,7 @@ pub fn g(x: Ordering) {
         Ordering::Release => println!("release"),
         Ordering::Acquire => println!("acquire"),
         Ordering::AcqRel | Ordering::SeqCst => panic!(),
+        //~^ ERROR: this match arm has an identical body to the `_` wildcard arm
         _ => panic!(),
     }
 }
@@ -52,6 +53,7 @@ mod g {
             Ordering::Release => println!("release"),
             Ordering::Acquire => println!("acquire"),
             Ordering::AcqRel | Ordering::SeqCst => panic!(),
+            //~^ ERROR: this match arm has an identical body to the `_` wildcard arm
             _ => panic!(),
         }
     }

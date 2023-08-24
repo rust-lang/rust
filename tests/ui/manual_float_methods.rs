@@ -1,4 +1,5 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@no-rustfix: overlapping suggestions
+//@aux-build:proc_macros.rs
 #![allow(clippy::needless_if, unused)]
 #![warn(clippy::manual_is_infinite, clippy::manual_is_finite)]
 #![feature(inline_const)]

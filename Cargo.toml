@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.73"
+version = "0.1.74"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -27,7 +27,7 @@ tempfile = { version = "3.2", optional = true }
 termize = "0.1"
 
 [dev-dependencies]
-ui_test = "0.11.5"
+ui_test = "0.17.0"
 tester = "0.9"
 regex = "1.5"
 toml = "0.7.3"

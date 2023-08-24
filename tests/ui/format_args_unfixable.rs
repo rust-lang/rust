@@ -24,31 +24,49 @@ fn main() {
     let x = 'x';
 
     println!("error: {}", format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `println!` args
     println!("{}: {}", error, format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `println!` args
     println!("{:?}: {}", error, format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `println!` args
     println!("{{}}: {}", format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `println!` args
     println!(r#"error: "{}""#, format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `println!` args
     println!("error: {}", format!(r#"something failed at "{}""#, Location::caller()));
+    //~^ ERROR: `format!` in `println!` args
     println!("error: {}", format!("something failed at {} {0}", Location::caller()));
+    //~^ ERROR: `format!` in `println!` args
     let _ = format!("error: {}", format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `format!` args
     let _ = write!(
+        //~^ ERROR: `format!` in `write!` args
         stdout(),
         "error: {}",
         format!("something failed at {}", Location::caller())
     );
     let _ = writeln!(
+        //~^ ERROR: `format!` in `writeln!` args
         stdout(),
         "error: {}",
         format!("something failed at {}", Location::caller())
     );
     print!("error: {}", format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `print!` args
     eprint!("error: {}", format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `eprint!` args
     eprintln!("error: {}", format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `eprintln!` args
     let _ = format_args!("error: {}", format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `format_args!` args
     assert!(true, "error: {}", format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `assert!` args
     assert_eq!(0, 0, "error: {}", format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `assert_eq!` args
     assert_ne!(0, 0, "error: {}", format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `assert_ne!` args
     panic!("error: {}", format!("something failed at {}", Location::caller()));
+    //~^ ERROR: `format!` in `panic!` args
 
     // negative tests
     println!("error: {}", format_args!("something failed at {}", Location::caller()));

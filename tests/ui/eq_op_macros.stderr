@@ -50,43 +50,43 @@ LL |     assert_eq!(a, a);
    |                ^^^^
 
 error: identical args used in this `assert_eq!` macro call
-  --> $DIR/eq_op_macros.rs:24:16
+  --> $DIR/eq_op_macros.rs:25:16
    |
 LL |     assert_eq!(a + 1, a + 1);
    |                ^^^^^^^^^^^^
 
 error: identical args used in this `assert_ne!` macro call
-  --> $DIR/eq_op_macros.rs:31:16
+  --> $DIR/eq_op_macros.rs:33:16
    |
 LL |     assert_ne!(a, a);
    |                ^^^^
 
 error: identical args used in this `assert_ne!` macro call
-  --> $DIR/eq_op_macros.rs:32:16
+  --> $DIR/eq_op_macros.rs:35:16
    |
 LL |     assert_ne!(a + 1, a + 1);
    |                ^^^^^^^^^^^^
 
 error: identical args used in this `debug_assert_eq!` macro call
-  --> $DIR/eq_op_macros.rs:39:22
+  --> $DIR/eq_op_macros.rs:43:22
    |
 LL |     debug_assert_eq!(a, a);
    |                      ^^^^
 
 error: identical args used in this `debug_assert_eq!` macro call
-  --> $DIR/eq_op_macros.rs:40:22
+  --> $DIR/eq_op_macros.rs:45:22
    |
 LL |     debug_assert_eq!(a + 1, a + 1);
    |                      ^^^^^^^^^^^^
 
 error: identical args used in this `debug_assert_ne!` macro call
-  --> $DIR/eq_op_macros.rs:47:22
+  --> $DIR/eq_op_macros.rs:53:22
    |
 LL |     debug_assert_ne!(a, a);
    |                      ^^^^
 
 error: identical args used in this `debug_assert_ne!` macro call
-  --> $DIR/eq_op_macros.rs:48:22
+  --> $DIR/eq_op_macros.rs:55:22
    |
 LL |     debug_assert_ne!(a + 1, a + 1);
    |                      ^^^^^^^^^^^^

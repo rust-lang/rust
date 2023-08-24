@@ -6,6 +6,7 @@ LL |   enum E {
    |   |
    |  _help: add the attribute: `#[non_exhaustive] enum E`
    | |
+LL | |
 LL | |     A,
 LL | |     B,
 LL | |     #[doc(hidden)]
@@ -14,16 +15,17 @@ LL | | }
    | |_^
    |
 help: remove this variant
-  --> $DIR/manual_non_exhaustive_enum.rs:9:5
+  --> $DIR/manual_non_exhaustive_enum.rs:10:5
    |
 LL |     _C,
    |     ^^
    = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
 
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_enum.rs:14:1
+  --> $DIR/manual_non_exhaustive_enum.rs:15:1
    |
 LL | / enum Ep {
+LL | |
 LL | |     A,
 LL | |     B,
 LL | |     #[doc(hidden)]
@@ -32,7 +34,7 @@ LL | | }
    | |_^
    |
 help: remove this variant
-  --> $DIR/manual_non_exhaustive_enum.rs:18:5
+  --> $DIR/manual_non_exhaustive_enum.rs:20:5
    |
 LL |     _C,
    |     ^^

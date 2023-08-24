@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 #![feature(lint_reasons)]
 #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
 #![allow(
@@ -9,7 +10,8 @@
 macro_rules! m {
     ($a:expr) => {
         if $a.is_some() {
-            $a.unwrap(); // unnecessary
+            // unnecessary
+            $a.unwrap();
         }
     };
 }
@@ -41,37 +43,72 @@ macro_rules! checks_some {
 fn main() {
     let x = Some(());
     if x.is_some() {
-        x.unwrap(); // unnecessary
-        x.expect("an error message"); // unnecessary
+        // unnecessary
+        x.unwrap();
+        //~^ ERROR: called `unwrap` on `x` after checking its variant with `is_some`
+        // unnecessary
+        x.expect("an error message");
+        //~^ ERROR: called `expect` on `x` after checking its variant with `is_some`
     } else {
-        x.unwrap(); // will panic
-        x.expect("an error message"); // will panic
+        // will panic
+        x.unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
+        // will panic
+        x.expect("an error message");
+        //~^ ERROR: this call to `expect()` will always panic
     }
     if x.is_none() {
-        x.unwrap(); // will panic
+        // will panic
+        x.unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
     } else {
-        x.unwrap(); // unnecessary
+        // unnecessary
+        x.unwrap();
+        //~^ ERROR: called `unwrap` on `x` after checking its variant with `is_none`
     }
     m!(x);
-    checks_in_param!(x.is_some(), x.unwrap()); // ok
-    checks_unwrap!(x, x.unwrap()); // ok
-    checks_some!(x.is_some(), x); // ok
+    // ok
+    checks_in_param!(x.is_some(), x.unwrap());
+    // ok
+    checks_unwrap!(x, x.unwrap());
+    // ok
+    checks_some!(x.is_some(), x);
     let mut x: Result<(), ()> = Ok(());
     if x.is_ok() {
-        x.unwrap(); // unnecessary
-        x.expect("an error message"); // unnecessary
-        x.unwrap_err(); // will panic
+        // unnecessary
+        x.unwrap();
+        //~^ ERROR: called `unwrap` on `x` after checking its variant with `is_ok`
+        // unnecessary
+        x.expect("an error message");
+        //~^ ERROR: called `expect` on `x` after checking its variant with `is_ok`
+        // will panic
+        x.unwrap_err();
+        //~^ ERROR: this call to `unwrap_err()` will always panic
     } else {
-        x.unwrap(); // will panic
-        x.expect("an error message"); // will panic
-        x.unwrap_err(); // unnecessary
+        // will panic
+        x.unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
+        // will panic
+        x.expect("an error message");
+        //~^ ERROR: this call to `expect()` will always panic
+        // unnecessary
+        x.unwrap_err();
+        //~^ ERROR: called `unwrap_err` on `x` after checking its variant with `is_ok`
     }
     if x.is_err() {
-        x.unwrap(); // will panic
-        x.unwrap_err(); // unnecessary
+        // will panic
+        x.unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
+        // unnecessary
+        x.unwrap_err();
+        //~^ ERROR: called `unwrap_err` on `x` after checking its variant with `is_err`
     } else {
-        x.unwrap(); // unnecessary
-        x.unwrap_err(); // will panic
+        // unnecessary
+        x.unwrap();
+        //~^ ERROR: called `unwrap` on `x` after checking its variant with `is_err`
+        // will panic
+        x.unwrap_err();
+        //~^ ERROR: this call to `unwrap_err()` will always panic
     }
     if x.is_ok() {
         x = Err(());
@@ -87,20 +124,25 @@ fn main() {
         x.unwrap_err();
     }
 
-    assert!(x.is_ok(), "{:?}", x.unwrap_err()); // ok, it's a common test pattern
+    // ok, it's a common test pattern
+    assert!(x.is_ok(), "{:?}", x.unwrap_err());
 }
 
 fn check_expect() {
     let x = Some(());
     if x.is_some() {
         #[expect(clippy::unnecessary_unwrap)]
-        x.unwrap(); // unnecessary
+        // unnecessary
+        x.unwrap();
         #[expect(clippy::unnecessary_unwrap)]
-        x.expect("an error message"); // unnecessary
+        // unnecessary
+        x.expect("an error message");
     } else {
         #[expect(clippy::panicking_unwrap)]
-        x.unwrap(); // will panic
+        // will panic
+        x.unwrap();
         #[expect(clippy::panicking_unwrap)]
-        x.expect("an error message"); // will panic
+        // will panic
+        x.expect("an error message");
     }
 }

@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::unnecessary_owned_empty_strings)]
 
 fn ref_str_argument(_value: &str) {}

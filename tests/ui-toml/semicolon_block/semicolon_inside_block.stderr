@@ -1,5 +1,5 @@
 error: consider moving the `;` inside the block for consistent formatting
-  --> $DIR/semicolon_inside_block.rs:48:5
+  --> $DIR/semicolon_inside_block.rs:47:5
    |
 LL | /     {
 LL | |         unit_fn_block();

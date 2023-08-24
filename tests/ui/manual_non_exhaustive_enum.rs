@@ -1,8 +1,9 @@
 #![feature(lint_reasons)]
 #![warn(clippy::manual_non_exhaustive)]
 #![allow(unused)]
-
+//@no-rustfix
 enum E {
+    //~^ ERROR: this seems like a manual implementation of the non-exhaustive pattern
     A,
     B,
     #[doc(hidden)]
@@ -12,6 +13,7 @@ enum E {
 // user forgot to remove the marker
 #[non_exhaustive]
 enum Ep {
+    //~^ ERROR: this seems like a manual implementation of the non-exhaustive pattern
     A,
     B,
     #[doc(hidden)]

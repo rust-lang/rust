@@ -1,5 +1,5 @@
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry_with_else.rs:16:5
+  --> $DIR/entry_with_else.rs:14:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         m.insert(k, v);
@@ -22,7 +22,7 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry_with_else.rs:22:5
+  --> $DIR/entry_with_else.rs:20:5
    |
 LL | /     if m.contains_key(&k) {
 LL | |         m.insert(k, v);
@@ -44,7 +44,7 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry_with_else.rs:28:5
+  --> $DIR/entry_with_else.rs:26:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         m.insert(k, v);
@@ -63,7 +63,7 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry_with_else.rs:34:5
+  --> $DIR/entry_with_else.rs:32:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         foo();
@@ -82,7 +82,7 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry_with_else.rs:40:5
+  --> $DIR/entry_with_else.rs:38:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         m.insert(k, v);
@@ -104,7 +104,7 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry_with_else.rs:46:5
+  --> $DIR/entry_with_else.rs:44:5
    |
 LL | /     if m.contains_key(&k) {
 LL | |         if true { m.insert(k, v) } else { m.insert(k, v2) }
@@ -127,7 +127,7 @@ LL ~     };
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry_with_else.rs:52:5
+  --> $DIR/entry_with_else.rs:50:5
    |
 LL | /     if m.contains_key(&k) {
 LL | |         foo();

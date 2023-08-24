@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::short_circuit_statement)]
 #![allow(clippy::nonminimal_bool)]
 

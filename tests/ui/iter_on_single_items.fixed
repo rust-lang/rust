@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::iter_on_single_items)]
 #![allow(clippy::iter_next_slice, clippy::redundant_clone)]
 
