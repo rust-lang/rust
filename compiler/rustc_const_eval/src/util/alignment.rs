@@ -34,13 +34,14 @@ where
             false
         }
         _ => {
+            // We cannot figure out the layout. Conservatively assume that this is disaligned.
             debug!("is_disaligned({:?}) - true", place);
             true
         }
     }
 }
 
-fn is_within_packed<'tcx, L>(
+pub fn is_within_packed<'tcx, L>(
     tcx: TyCtxt<'tcx>,
     local_decls: &L,
     place: Place<'tcx>,
