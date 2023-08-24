@@ -121,7 +121,7 @@ impl ArithmeticSideEffects {
         if match_type(cx, lhs_ty, SATURATING) || match_type(cx, lhs_ty, WRAPPING) {
             return true;
         }
-        return false;
+        false
     }
 
     // For example, 8i32 or &i64::MAX.
