@@ -7,7 +7,7 @@ use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
-use rustc_middle::ty::{self, RegionVid, ToPredicate, Ty};
+use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;
@@ -232,21 +232,14 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let mut normalized_inputs_and_output =
             Vec::with_capacity(self.universal_regions.unnormalized_input_tys.len() + 1);
         let mut constraints = vec![];
-        for (i, ty) in unnormalized_input_output_tys.enumerate() {
+        for ty in unnormalized_input_output_tys {
             debug!("build: input_or_output={:?}", ty);
-
-            let use_implied_bounds = i < self.universal_regions.unnormalized_input_tys.len()
-                || self.universal_regions.defining_ty.is_fn_def();
-
             // We add implied bounds from both the unnormalized and normalized ty.
             // See issue #87748
-            if use_implied_bounds {
-                let constraints_unnorm = self.add_implied_bounds(ty);
-                if let Some(c) = constraints_unnorm {
-                    constraints.push(c)
-                }
+            let constraints_unnorm = self.add_implied_bounds(ty);
+            if let Some(c) = constraints_unnorm {
+                constraints.push(c)
             }
-
             let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
                 .param_env
                 .and(type_op::normalize::Normalize::new(ty))
@@ -272,7 +265,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             // }
             // ```
             // Both &Self::Bar and &() are WF
-            if use_implied_bounds && ty != norm_ty {
+            if ty != norm_ty {
                 let constraints_norm = self.add_implied_bounds(norm_ty);
                 if let Some(c) = constraints_norm {
                     constraints.push(c)
@@ -280,22 +273,6 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             }
 
             normalized_inputs_and_output.push(norm_ty);
-        }
-
-        let TypeOpOutput { constraints: constraints_wf, .. } = self
-            .param_env
-            .and(type_op::ProvePredicate::new(
-                ty::ClauseKind::WellFormed((*normalized_inputs_and_output.last().unwrap()).into())
-                    .to_predicate(self.infcx.tcx),
-            ))
-            .fully_perform(self.infcx, span)
-            .unwrap_or_else(|_: rustc_span::ErrorGuaranteed| TypeOpOutput {
-                output: (),
-                constraints: None,
-                error_info: None,
-            });
-        if let Some(c) = constraints_wf {
-            constraints.push(c)
         }
 
         for c in constraints {

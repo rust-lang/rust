@@ -3,7 +3,7 @@
 
 // edition: 2021
 // revisions: output output_wf witness witness_wf
-//[output] check-fail
+//[output] check-pass
 //[output_wf] check-fail
 //[witness] check-fail
 //[witness_wf] check-fail
@@ -15,7 +15,6 @@ fn wf<T>(_: T) {}
 #[cfg(output)]
 fn test_output<T>() {
     async {
-    //[output]~^ ERROR `T` may not live long enough
         None::<Static<T>>
     };
 }

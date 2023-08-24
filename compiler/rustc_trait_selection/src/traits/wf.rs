@@ -681,9 +681,23 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
                 ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => {
                     // Unspecified in RFC 1214.
+                    // They are always WF when the gnereator passes typeck/borrowck.
+                    walker.skip_current_subtree();
                 }
 
-                ty::Closure(did, args) | ty::Generator(did, args, ..) => {
+                ty::Generator(did, args, ..) => {
+                    // Walk ALL the types in the generator: this will
+                    // include the upvar types as well as the yield
+                    // type. Note that this is mildly distinct from
+                    // the closure case, where we have to be careful
+                    // about the signature of the closure. We don't
+                    // have the problem of implied bounds here since
+                    // generators don't take arguments.
+                    let obligations = self.nominal_obligations(did, args);
+                    self.out.extend(obligations);
+                }
+
+                ty::Closure(did, args) => {
                     // Only check the upvar types for WF, not the rest
                     // of the types within. This is needed because we
                     // capture the signature and it may not be WF
@@ -705,15 +719,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // shorthand for something like `where(T: 'a) {
                     // fn(&'a T) }`, as discussed in #25860.
                     walker.skip_current_subtree(); // subtree handled below
-
-                    let upvars = match ty.kind() {
-                        ty::Closure(..) => args.as_closure().tupled_upvars_ty(),
-                        ty::Generator(..) => args.as_generator().tupled_upvars_ty(),
-                        _ => unreachable!(),
-                    };
                     // FIXME(eddyb) add the type to `walker` instead of recursing.
-                    self.compute(upvars.into());
-
+                    self.compute(args.as_closure().tupled_upvars_ty().into());
                     // Note that we cannot skip the generic types
                     // types. Normally, within the fn
                     // body where they are created, the generics will
