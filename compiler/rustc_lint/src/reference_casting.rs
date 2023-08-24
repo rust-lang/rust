@@ -128,7 +128,11 @@ fn is_operation_we_care_about<'tcx>(
 fn is_cast_from_const_to_mut<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {
     let e = e.peel_blocks();
 
-    fn from_casts<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+    fn from_casts<'tcx>(
+        cx: &LateContext<'tcx>,
+        e: &'tcx Expr<'tcx>,
+        need_check_freeze: &mut bool,
+    ) -> Option<&'tcx Expr<'tcx>> {
         // <expr> as *mut ...
         let mut e = if let ExprKind::Cast(e, t) = e.kind
             && let ty::RawPtr(TypeAndMut { mutbl: Mutability::Mut, .. }) = cx.typeck_results().node_type(t.hir_id).kind() {
@@ -138,6 +142,14 @@ fn is_cast_from_const_to_mut<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) 
             && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
             && cx.tcx.is_diagnostic_item(sym::ptr_cast_mut, def_id) {
             expr
+        // UnsafeCell::raw_get(<expr>)
+        } else if let ExprKind::Call(path, [arg]) = e.kind
+            && let ExprKind::Path(ref qpath) = path.kind
+            && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+            && cx.tcx.is_diagnostic_item(sym::unsafe_cell_raw_get, def_id)
+        {
+            *need_check_freeze = true;
+            arg
         } else {
             return None;
         };
@@ -160,11 +172,18 @@ fn is_cast_from_const_to_mut<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) 
             {
                 had_at_least_one_cast = true;
                 expr
-            // ptr::from_ref(<expr>)
+            // ptr::from_ref(<expr>) or UnsafeCell::raw_get(<expr>)
             } else if let ExprKind::Call(path, [arg]) = e.kind
                 && let ExprKind::Path(ref qpath) = path.kind
                 && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
-                && cx.tcx.is_diagnostic_item(sym::ptr_from_ref, def_id) {
+                && matches!(
+                    cx.tcx.get_diagnostic_name(def_id),
+                    Some(sym::ptr_from_ref | sym::unsafe_cell_raw_get)
+                )
+            {
+                if cx.tcx.is_diagnostic_item(sym::unsafe_cell_raw_get, def_id) {
+                    *need_check_freeze = true;
+                }
                 return Some(arg);
             } else if had_at_least_one_cast {
                 return Some(e);
@@ -190,10 +209,25 @@ fn is_cast_from_const_to_mut<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) 
         }
     }
 
-    let Some(e) = from_casts(cx, e).or_else(|| from_transmute(cx, e)) else {
+    let mut need_check_freeze = false;
+    let Some(e) = from_casts(cx, e, &mut need_check_freeze).or_else(|| from_transmute(cx, e))
+    else {
         return false;
     };
 
     let e = e.peel_blocks();
-    matches!(cx.typeck_results().node_type(e.hir_id).kind(), ty::Ref(_, _, Mutability::Not))
+    let node_type = cx.typeck_results().node_type(e.hir_id);
+    if let ty::Ref(_, inner_ty, Mutability::Not) = node_type.kind() {
+        // If an UnsafeCell method is involved we need to additionaly check the
+        // inner type for the presence of the Freeze trait (ie does NOT contain
+        // an UnsafeCell), since in that case we would incorrectly lint on valid casts.
+        //
+        // We also consider non concrete skeleton types (ie generics)
+        // to be an issue since there is no way to make it safe for abitrary types.
+        !need_check_freeze
+            || inner_ty.is_freeze(cx.tcx, cx.param_env)
+            || !inner_ty.has_concrete_skeleton()
+    } else {
+        false
+    }
 }
