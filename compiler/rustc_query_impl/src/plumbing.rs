@@ -23,7 +23,7 @@ use rustc_query_system::query::{
     force_query, QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffects,
     QueryStackFrame,
 };
-use rustc_query_system::{LayoutOfDepth, QueryOverflow};
+use rustc_query_system::{with_qcx_query_caches, LayoutOfDepth, QueryOverflow};
 use rustc_serialize::Decodable;
 use rustc_serialize::Encodable;
 use rustc_session::Limit;
@@ -71,6 +71,12 @@ impl QueryContext for QueryCtxt<'_> {
             )
             .unwrap(),
         )
+    }
+
+    #[inline]
+    #[cfg(parallel_compiler)]
+    fn single_thread(self) -> bool {
+        self.query_system.single_thread
     }
 
     #[inline]
@@ -352,19 +358,22 @@ pub(crate) fn encode_query_results<'a, 'tcx, Q>(
         qcx.profiler().verbose_generic_activity_with_arg("encode_query_results_for", query.name());
 
     assert!(query.query_state(qcx).all_inactive());
-    let cache = query.query_cache(qcx);
-    cache.iter(&mut |key, value, dep_node| {
-        if query.cache_on_disk(qcx.tcx, &key) {
-            let dep_node = SerializedDepNodeIndex::new(dep_node.index());
+    with_qcx_query_caches!(
+        query,
+        qcx,
+        iter(&mut |key, value, dep_node| {
+            if query.cache_on_disk(qcx.tcx, &key) {
+                let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
-            // Record position of the cache entry.
-            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
+                // Record position of the cache entry.
+                query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
 
-            // Encode the type check tables with the `SerializedDepNodeIndex`
-            // as tag.
-            encoder.encode_tagged(dep_node, &Q::restore(*value));
-        }
-    });
+                // Encode the type check tables with the `SerializedDepNodeIndex`
+                // as tag.
+                encoder.encode_tagged(dep_node, &Q::restore(*value));
+            }
+        })
+    );
 }
 
 fn try_load_from_on_disk_cache<'tcx, Q>(query: Q, tcx: TyCtxt<'tcx>, dep_node: DepNode)
@@ -562,7 +571,7 @@ macro_rules! define_queries {
                 }
             }
 
-            pub fn dynamic_query<'tcx>() -> DynamicQuery<'tcx, queries::$name::Storage<'tcx>> {
+            pub fn dynamic_query<'tcx>() -> DynamicQuery<'tcx, queries::$name::Storage<'tcx>, queries::$name::MtStorage<'tcx>> {
                 DynamicQuery {
                     name: stringify!($name),
                     eval_always: is_eval_always!([$($modifiers)*]),
@@ -570,6 +579,10 @@ macro_rules! define_queries {
                     handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
                     query_state: offset_of!(QueryStates<'tcx> => $name),
                     query_cache: offset_of!(QueryCaches<'tcx> => $name),
+                    #[cfg(not(parallel_compiler))]
+                    mt_query_cache: PhantomData,
+                    #[cfg(parallel_compiler)]
+                    mt_query_cache: offset_of!(MtQueryCaches<'tcx> => $name),
                     cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
                     execute_query: |tcx, key| erase(tcx.$name(key)),
                     compute: |tcx, key| {
@@ -632,6 +645,7 @@ macro_rules! define_queries {
                 type Config = DynamicConfig<
                     'tcx,
                     queries::$name::Storage<'tcx>,
+                    queries::$name::MtStorage<'tcx>,
                     { is_anon!([$($modifiers)*]) },
                     { depth_limit!([$($modifiers)*]) },
                     { feedable!([$($modifiers)*]) },
@@ -664,12 +678,13 @@ macro_rules! define_queries {
             }
 
             pub fn alloc_self_profile_query_strings<'tcx>(tcx: TyCtxt<'tcx>, string_cache: &mut QueryKeyStringCache) {
-                $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
+                use $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache;
+                with_query_caches!(alloc_self_profile_query_strings_for_query_cache(
                     tcx,
                     stringify!($name),
-                    &tcx.query_system.caches.$name,
+                    :tcx, $name,
                     string_cache,
-                )
+                ))
             }
 
             item_if_cached! { [$($modifiers)*] {

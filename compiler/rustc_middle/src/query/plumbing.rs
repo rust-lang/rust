@@ -3,6 +3,8 @@ use crate::dep_graph::DepKind;
 use crate::query::on_disk_cache::CacheEncoder;
 use crate::query::on_disk_cache::EncodedDepNodeIndex;
 use crate::query::on_disk_cache::OnDiskCache;
+#[cfg(parallel_compiler)]
+use crate::query::MtQueryCaches;
 use crate::query::{
     DynamicQueries, ExternProviders, Providers, QueryArenas, QueryCaches, QueryEngine, QueryStates,
 };
@@ -20,6 +22,8 @@ pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 use rustc_query_system::HandleCycleError;
 use rustc_span::{Span, DUMMY_SP};
+#[cfg(not(parallel_compiler))]
+use std::marker::PhantomData;
 use std::ops::Deref;
 
 pub struct QueryKeyStringCache {
@@ -32,13 +36,17 @@ impl QueryKeyStringCache {
     }
 }
 
-pub struct DynamicQuery<'tcx, C: QueryCache> {
+pub struct DynamicQuery<'tcx, C: QueryCache, C2: QueryCache<Key = C::Key, Value = C::Value>> {
     pub name: &'static str,
     pub eval_always: bool,
     pub dep_kind: DepKind,
     pub handle_cycle_error: HandleCycleError,
     pub query_state: FieldOffset<QueryStates<'tcx>, QueryState<C::Key, DepKind>>,
     pub query_cache: FieldOffset<QueryCaches<'tcx>, C>,
+    #[cfg(not(parallel_compiler))]
+    pub mt_query_cache: PhantomData<C2>,
+    #[cfg(parallel_compiler)]
+    pub mt_query_cache: FieldOffset<MtQueryCaches<'tcx>, C2>,
     pub cache_on_disk: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
     pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
     pub compute: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
@@ -72,6 +80,10 @@ pub struct QuerySystem<'tcx> {
     pub states: QueryStates<'tcx>,
     pub arenas: QueryArenas<'tcx>,
     pub caches: QueryCaches<'tcx>,
+    #[cfg(parallel_compiler)]
+    pub single_thread: bool,
+    #[cfg(parallel_compiler)]
+    pub mt_caches: MtQueryCaches<'tcx>,
     pub dynamic_queries: DynamicQueries<'tcx>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
@@ -135,6 +147,36 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn try_mark_green(self, dep_node: &dep_graph::DepNode) -> bool {
         (self.query_system.fns.try_mark_green)(self, dep_node)
+    }
+}
+
+#[macro_export]
+#[cfg(not(parallel_compiler))]
+macro_rules! with_query_caches {
+    ($func: ident($($params: expr,)* :$tcx: expr, $name:ident, $($rest: expr,)*)) => {
+        $func($($params,)* &$tcx.query_system.caches.$name, $($rest,)*)
+    };
+    ($tcx: expr, $name:ident, $func: ident($($params: expr,)*)) => {
+        $tcx.query_system.caches.$name.$func($($params,)*)
+    }
+}
+
+#[macro_export]
+#[cfg(parallel_compiler)]
+macro_rules! with_query_caches {
+    ($func: ident($($params: expr,)* :$tcx: expr, $name:ident, $($rest: expr,)*)) => {
+        if $tcx.query_system.single_thread {
+            $func($($params,)* &$tcx.query_system.caches.$name, $($rest,)*)
+        } else {
+            $func($($params,)* &$tcx.query_system.mt_caches.$name, $($rest,)*)
+        }
+    };
+    ($tcx: expr, $name:ident, $func: ident($($params: expr,)*)) => {
+        if $tcx.query_system.single_thread {
+            $tcx.query_system.caches.$name.$func($($params,)*)
+        } else {
+            $tcx.query_system.mt_caches.$name.$func($($params,)*)
+        }
     }
 }
 
@@ -286,6 +328,10 @@ macro_rules! define_callbacks {
                     <$($K)* as keys::Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>>
                 >::Cache;
 
+                pub type MtStorage<'tcx> = <
+                    <$($K)* as keys::Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>>
+                >::MtCache;
+
                 // Ensure that keys grow no larger than 64 bytes
                 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
                 const _: () = {
@@ -339,17 +385,22 @@ macro_rules! define_callbacks {
             $($(#[$attr])* pub $name: queries::$name::Storage<'tcx>,)*
         }
 
+        #[derive(Default)]
+        pub struct MtQueryCaches<'tcx> {
+            $($(#[$attr])* pub $name: queries::$name::MtStorage<'tcx>,)*
+        }
+
         impl<'tcx> TyCtxtEnsure<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                query_ensure(
+                with_query_caches!(query_ensure(
                     self.tcx,
                     self.tcx.query_system.fns.engine.$name,
-                    &self.tcx.query_system.caches.$name,
+                    :self.tcx, $name,
                     key.into_query_param(),
                     false,
-                );
+                ));
             })*
         }
 
@@ -357,13 +408,13 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                query_ensure(
+                with_query_caches!(query_ensure(
                     self.tcx,
                     self.tcx.query_system.fns.engine.$name,
-                    &self.tcx.query_system.caches.$name,
+                    :self.tcx, $name,
                     key.into_query_param(),
                     true,
-                );
+                ));
             })*
         }
 
@@ -382,19 +433,19 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
-                restore::<$V>(query_get_at(
+                restore::<$V>(with_query_caches!(query_get_at(
                     self.tcx,
                     self.tcx.query_system.fns.engine.$name,
-                    &self.tcx.query_system.caches.$name,
+                    :self.tcx, $name,
                     self.span,
                     key.into_query_param(),
-                ))
+                )))
             })*
         }
 
         pub struct DynamicQueries<'tcx> {
             $(
-                pub $name: DynamicQuery<'tcx, queries::$name::Storage<'tcx>>,
+                pub $name: DynamicQuery<'tcx, queries::$name::Storage<'tcx>, queries::$name::MtStorage<'tcx>>,
             )*
         }
 
@@ -484,10 +535,9 @@ macro_rules! define_feedable {
                 let tcx = self.tcx;
                 let erased = queries::$name::provided_to_erased(tcx, value);
                 let value = restore::<$V>(erased);
-                let cache = &tcx.query_system.caches.$name;
 
                 let hasher: Option<fn(&mut StableHashingContext<'_>, &_) -> _> = hash_result!([$($modifiers)*]);
-                match try_get_cached(tcx, cache, &key) {
+                match with_query_caches!(try_get_cached(tcx, :tcx, $name, &key,)) {
                     Some(old) => {
                         let old = restore::<$V>(old);
                         if let Some(hasher) = hasher {
@@ -523,7 +573,7 @@ macro_rules! define_feedable {
                             &value,
                             hash_result!([$($modifiers)*]),
                         );
-                        cache.complete(key, erased, dep_node_index);
+                        with_query_caches!(tcx, $name, complete(key, erased, dep_node_index,));
                     }
                 }
             }

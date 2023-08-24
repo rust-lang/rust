@@ -12,6 +12,9 @@ pub trait CacheSelector<'tcx, V> {
     type Cache
     where
         V: Copy;
+    type MtCache
+    where
+        V: Copy;
 }
 
 pub trait QueryCache: Sized {
@@ -32,10 +35,13 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<'tcx, V> for DefaultCacheSelecto
     type Cache = DefaultCache<K, V>
     where
         V: Copy;
+    type MtCache = MtDefaultCache<K, V>
+    where
+        V: Copy;
 }
 
 pub struct DefaultCache<K, V> {
-    cache: Sharded<FxHashMap<K, (V, DepNodeIndex)>>,
+    cache: Lock<FxHashMap<K, (V, DepNodeIndex)>>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
@@ -45,6 +51,50 @@ impl<K, V> Default for DefaultCache<K, V> {
 }
 
 impl<K, V> QueryCache for DefaultCache<K, V>
+where
+    K: Eq + Hash + Copy + Debug,
+    V: Copy,
+{
+    type Key = K;
+    type Value = V;
+
+    #[inline(always)]
+    fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
+        let key_hash = sharded::make_hash(key);
+        let lock = self.cache.lock();
+        let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
+
+        if let Some((_, value)) = result { Some(*value) } else { None }
+    }
+
+    #[inline]
+    fn complete(&self, key: K, value: V, index: DepNodeIndex) {
+        let mut lock = self.cache.lock();
+        // We may be overwriting another value. This is all right, since the dep-graph
+        // will check that the fingerprint matches.
+        lock.insert(key, (value, index));
+    }
+
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        let map = self.cache.lock();
+        for (k, v) in map.iter() {
+            f(k, &v.0, v.1);
+        }
+    }
+}
+
+// Default caches for multiple threads
+pub struct MtDefaultCache<K, V> {
+    cache: Sharded<FxHashMap<K, (V, DepNodeIndex)>>,
+}
+
+impl<K, V> Default for MtDefaultCache<K, V> {
+    fn default() -> Self {
+        MtDefaultCache { cache: Default::default() }
+    }
+}
+
+impl<K, V> QueryCache for MtDefaultCache<K, V>
 where
     K: Eq + Hash + Copy + Debug,
     V: Copy,
@@ -83,6 +133,9 @@ pub struct SingleCacheSelector;
 
 impl<'tcx, V: 'tcx> CacheSelector<'tcx, V> for SingleCacheSelector {
     type Cache = SingleCache<V>
+    where
+        V: Copy;
+    type MtCache = SingleCache<V>
     where
         V: Copy;
 }
@@ -127,10 +180,13 @@ impl<'tcx, K: Idx, V: 'tcx> CacheSelector<'tcx, V> for VecCacheSelector<K> {
     type Cache = VecCache<K, V>
     where
         V: Copy;
+    type MtCache = MtVecCache<K, V>
+    where
+        V: Copy;
 }
 
 pub struct VecCache<K: Idx, V> {
-    cache: Sharded<IndexVec<K, Option<(V, DepNodeIndex)>>>,
+    cache: Lock<IndexVec<K, Option<(V, DepNodeIndex)>>>,
 }
 
 impl<K: Idx, V> Default for VecCache<K, V> {
@@ -140,6 +196,47 @@ impl<K: Idx, V> Default for VecCache<K, V> {
 }
 
 impl<K, V> QueryCache for VecCache<K, V>
+where
+    K: Eq + Idx + Copy + Debug,
+    V: Copy,
+{
+    type Key = K;
+    type Value = V;
+
+    #[inline(always)]
+    fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
+        let lock = self.cache.lock();
+        if let Some(Some(value)) = lock.get(*key) { Some(*value) } else { None }
+    }
+
+    #[inline]
+    fn complete(&self, key: K, value: V, index: DepNodeIndex) {
+        let mut lock = self.cache.lock();
+        lock.insert(key, (value, index));
+    }
+
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        let map = self.cache.lock();
+        for (k, v) in map.iter_enumerated() {
+            if let Some(v) = v {
+                f(&k, &v.0, v.1);
+            }
+        }
+    }
+}
+
+// Vec caches for multiple threads
+pub struct MtVecCache<K: Idx, V> {
+    cache: Sharded<IndexVec<K, Option<(V, DepNodeIndex)>>>,
+}
+
+impl<K: Idx, V> Default for MtVecCache<K, V> {
+    fn default() -> Self {
+        MtVecCache { cache: Default::default() }
+    }
+}
+
+impl<K, V> QueryCache for MtVecCache<K, V>
 where
     K: Eq + Idx + Copy + Debug,
     V: Copy,

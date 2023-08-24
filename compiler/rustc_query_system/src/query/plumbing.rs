@@ -11,7 +11,7 @@ use crate::query::job::QueryLatch;
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::SerializedDepNodeIndex;
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
-use crate::HandleCycleError;
+use crate::{with_qcx_query_caches, HandleCycleError};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -299,7 +299,7 @@ where
 
     match result {
         Ok(()) => {
-            let Some((v, index)) = query.query_cache(qcx).lookup(&key) else {
+            let Some((v, index)) = query.mt_query_cache(qcx).lookup(&key) else {
                 cold_path(|| panic!("value must be in cache after waiting"))
             };
 
@@ -336,8 +336,9 @@ where
     // re-executing the query since `try_start` only checks that the query is not currently
     // executing, but another thread may have already completed the query and stores it result
     // in the query cache.
-    if cfg!(parallel_compiler) && qcx.dep_context().sess().threads() > 1 {
-        if let Some((value, index)) = query.query_cache(qcx).lookup(&key) {
+    #[cfg(parallel_compiler)]
+    if rustc_data_structures::sync::is_dyn_thread_safe() {
+        if let Some((value, index)) = query.mt_query_cache(qcx).lookup(&key) {
             qcx.dep_context().profiler().query_cache_hit(index.into());
             return (value, Some(index));
         }
@@ -414,13 +415,12 @@ where
         execute_job_non_incr(query, qcx, key, id)
     };
 
-    let cache = query.query_cache(qcx);
     if query.feedable() {
         // We should not compute queries that also got a value via feeding.
         // This can't happen, as query feeding adds the very dependencies to the fed query
         // as its feeding query had. So if the fed query is red, so is its feeder, which will
         // get evaluated first, and re-feed the query.
-        if let Some((cached_result, _)) = cache.lookup(&key) {
+        if let Some((cached_result, _)) = with_qcx_query_caches!(query, qcx, lookup(&key)) {
             let Some(hasher) = query.hash_result() else {
                 panic!(
                     "no_hash fed query later has its value computed.\n\
@@ -452,7 +452,7 @@ where
             }
         }
     }
-    job_owner.complete(cache, result, dep_node_index);
+    with_qcx_query_caches!(job_owner.complete(query, qcx, result, dep_node_index,));
 
     (result, Some(dep_node_index))
 }
@@ -855,7 +855,7 @@ pub fn force_query<Q, Qcx>(
 {
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
-    if let Some((_, index)) = query.query_cache(qcx).lookup(&key) {
+    if let Some((_, index)) = with_qcx_query_caches!(query, qcx, lookup(&key)) {
         qcx.dep_context().profiler().query_cache_hit(index.into());
         return;
     }

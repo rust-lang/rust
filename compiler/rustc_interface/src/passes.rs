@@ -731,6 +731,7 @@ pub fn create_global_ctxt<'tcx>(
                     extern_providers,
                     query_result_on_disk_cache,
                     incremental,
+                    !rustc_data_structures::sync::is_dyn_thread_safe(),
                 ),
             )
         })

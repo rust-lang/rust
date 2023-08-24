@@ -29,6 +29,8 @@ use rustc_middle::query::plumbing::{
     DynamicQuery, QueryKeyStringCache, QuerySystem, QuerySystemFns,
 };
 use rustc_middle::query::AsLocalKey;
+#[cfg(parallel_compiler)]
+use rustc_middle::query::MtQueryCaches;
 use rustc_middle::query::{
     queries, DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
 };
@@ -53,33 +55,40 @@ pub use self::profiling_support::alloc_self_profile_query_strings;
 struct DynamicConfig<
     'tcx,
     C: QueryCache,
+    C2: QueryCache<Key = C::Key, Value = C::Value>,
     const ANON: bool,
     const DEPTH_LIMIT: bool,
     const FEEDABLE: bool,
 > {
-    dynamic: &'tcx DynamicQuery<'tcx, C>,
+    dynamic: &'tcx DynamicQuery<'tcx, C, C2>,
 }
 
-impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Copy
-    for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+impl<'tcx, C: QueryCache, C2, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Copy
+    for DynamicConfig<'tcx, C, C2, ANON, DEPTH_LIMIT, FEEDABLE>
+where
+    C2: QueryCache<Key = C::Key, Value = C::Value>,
 {
 }
-impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Clone
-    for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+impl<'tcx, C: QueryCache, C2, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Clone
+    for DynamicConfig<'tcx, C, C2, ANON, DEPTH_LIMIT, FEEDABLE>
+where
+    C2: QueryCache<Key = C::Key, Value = C::Value>,
 {
     fn clone(&self) -> Self {
         DynamicConfig { dynamic: self.dynamic }
     }
 }
 
-impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool>
-    QueryConfig<QueryCtxt<'tcx>> for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+impl<'tcx, C: QueryCache, C2, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool>
+    QueryConfig<QueryCtxt<'tcx>> for DynamicConfig<'tcx, C, C2, ANON, DEPTH_LIMIT, FEEDABLE>
 where
+    C2: QueryCache<Key = C::Key, Value = C::Value>,
     for<'a> C::Key: HashStable<StableHashingContext<'a>>,
 {
     type Key = C::Key;
     type Value = C::Value;
     type Cache = C;
+    type MtCache = C2;
 
     #[inline(always)]
     fn name(self) -> &'static str {
@@ -105,6 +114,15 @@ where
         'tcx: 'a,
     {
         self.dynamic.query_cache.apply(&qcx.tcx.query_system.caches)
+    }
+
+    #[inline(always)]
+    #[cfg(parallel_compiler)]
+    fn mt_query_cache<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a Self::MtCache
+    where
+        'tcx: 'a,
+    {
+        self.dynamic.mt_query_cache.apply(&qcx.tcx.query_system.mt_caches)
     }
 
     #[inline(always)]
@@ -207,11 +225,16 @@ pub fn query_system<'tcx>(
     extern_providers: ExternProviders,
     on_disk_cache: Option<OnDiskCache<'tcx>>,
     incremental: bool,
+    _single_thread: bool,
 ) -> QuerySystem<'tcx> {
     QuerySystem {
         states: Default::default(),
         arenas: Default::default(),
         caches: Default::default(),
+        #[cfg(parallel_compiler)]
+        single_thread: _single_thread,
+        #[cfg(parallel_compiler)]
+        mt_caches: Default::default(),
         dynamic_queries: dynamic_queries(),
         on_disk_cache,
         fns: QuerySystemFns {

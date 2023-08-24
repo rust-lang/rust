@@ -22,6 +22,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     type Value: Copy;
 
     type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;
+    type MtCache: QueryCache<Key = Self::Key, Value = Self::Value>;
 
     fn format_value(self) -> fn(&Self::Value) -> String;
 
@@ -32,6 +33,12 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_cache<'a>(self, tcx: Qcx) -> &'a Self::Cache
+    where
+        Qcx: 'a;
+
+    // Don't use this method to access query results, instead use the methods on TyCtxt
+    #[cfg(parallel_compiler)]
+    fn mt_query_cache<'a>(self, tcx: Qcx) -> &'a Self::MtCache
     where
         Qcx: 'a;
 
@@ -72,4 +79,34 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn construct_dep_node(self, tcx: Qcx::DepContext, key: &Self::Key) -> DepNode<Qcx::DepKind> {
         DepNode::construct(tcx, self.dep_kind(), key)
     }
+}
+
+#[macro_export]
+#[cfg(not(parallel_compiler))]
+macro_rules! with_qcx_query_caches {
+    ($query: ident, $qcx: ident, $func:ident($($params: expr)*)) => {
+        $query.query_cache($qcx).$func($($params)*)
+    };
+    ($func: ident$(.$call: ident)?($query: ident, $qcx: ident, $($rest: expr,)*)) => {
+        $func$(.$call)?($query.query_cache($qcx), $($rest,)*)
+    };
+}
+
+#[macro_export]
+#[cfg(parallel_compiler)]
+macro_rules! with_qcx_query_caches {
+    ($query: ident, $qcx: ident, $func:ident($($params: expr)*)) => {
+        if $qcx.single_thread() {
+            $query.query_cache($qcx).$func($($params)*)
+        } else {
+            $query.mt_query_cache($qcx).$func($($params)*)
+        }
+    };
+    ($func: ident$(.$call: ident)?($query: ident, $qcx: ident, $($rest: expr,)*)) => {
+        if $qcx.single_thread() {
+            $func$(.$call)?($query.query_cache($qcx), $($rest,)*)
+        } else {
+            $func$(.$call)?($query.mt_query_cache($qcx), $($rest,)*)
+        }
+    };
 }
