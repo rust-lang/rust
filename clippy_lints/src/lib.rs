@@ -152,6 +152,7 @@ mod implicit_hasher;
 mod implicit_return;
 mod implicit_saturating_add;
 mod implicit_saturating_sub;
+mod implied_bounds_in_impls;
 mod inconsistent_struct_constructor;
 mod incorrect_impls;
 mod index_refutable_slice;
@@ -1097,6 +1098,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(redundant_locals::RedundantLocals));
     store.register_late_pass(|_| Box::new(ignored_unit_patterns::IgnoredUnitPatterns));
     store.register_late_pass(|_| Box::<reserve_after_initialization::ReserveAfterInitialization>::default());
+    store.register_late_pass(|_| Box::new(implied_bounds_in_impls::ImpliedBoundsInImpls));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
