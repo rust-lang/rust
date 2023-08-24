@@ -278,7 +278,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
 fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     // (fn_path, arg_indices) - `arg_indices` are the `arg` positions where null would cause U.B.
-    const INVALID_NULL_PTR_USAGE_TABLE: [(&[&str], &[usize]); 16] = [
+    const INVALID_NULL_PTR_USAGE_TABLE: [(&[&str], &[usize]); 13] = [
         (&paths::SLICE_FROM_RAW_PARTS, &[0]),
         (&paths::SLICE_FROM_RAW_PARTS_MUT, &[0]),
         (&paths::PTR_COPY, &[0, 1]),
@@ -291,10 +291,12 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         (&paths::PTR_SLICE_FROM_RAW_PARTS_MUT, &[0]),
         (&paths::PTR_SWAP, &[0, 1]),
         (&paths::PTR_SWAP_NONOVERLAPPING, &[0, 1]),
-        (&paths::PTR_WRITE, &[0]),
-        (&paths::PTR_WRITE_UNALIGNED, &[0]),
-        (&paths::PTR_WRITE_VOLATILE, &[0]),
         (&paths::PTR_WRITE_BYTES, &[0]),
+    ];
+    let invalid_null_ptr_usage_table_diag_items: [(Option<DefId>, &[usize]); 3] = [
+        (cx.tcx.get_diagnostic_item(sym::ptr_write), &[0]),
+        (cx.tcx.get_diagnostic_item(sym::ptr_write_unaligned), &[0]),
+        (cx.tcx.get_diagnostic_item(sym::ptr_write_volatile), &[0]),
     ];
 
     if_chain! {
@@ -302,9 +304,20 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Path(ref qpath) = fun.kind;
         if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
         let fun_def_path = cx.get_def_path(fun_def_id).into_iter().map(Symbol::to_ident_string).collect::<Vec<_>>();
-        if let Some(&(_, arg_indices)) = INVALID_NULL_PTR_USAGE_TABLE
+        if let Some(arg_indices) = INVALID_NULL_PTR_USAGE_TABLE
             .iter()
-            .find(|&&(fn_path, _)| fn_path == fun_def_path);
+            .find_map(|&(fn_path, indices)| if fn_path == fun_def_path { Some(indices) } else { None })
+            .or_else(|| {
+                invalid_null_ptr_usage_table_diag_items
+                    .iter()
+                    .find_map(|&(def_id, indices)| {
+                        if def_id == Some(fun_def_id) {
+                            Some(indices)
+                        } else {
+                            None
+                        }
+                    })
+            });
         then {
             for &arg_idx in arg_indices {
                 if let Some(arg) = args.get(arg_idx).filter(|arg| is_null_path(cx, arg)) {
