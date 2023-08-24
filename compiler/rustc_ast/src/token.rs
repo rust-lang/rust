@@ -486,6 +486,8 @@ impl Token {
             Lt | BinOp(Shl)             | // associated path
             ModSep                      => true, // global path
             Interpolated(ref nt) => matches!(**nt, NtTy(..) | NtPath(..)),
+            // For anonymous structs or unions, which only appear in specific positions
+            // (type of struct fields or union fields), we don't consider them as regular types
             _ => false,
         }
     }

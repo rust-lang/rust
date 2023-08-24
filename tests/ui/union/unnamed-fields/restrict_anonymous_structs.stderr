@@ -1,0 +1,78 @@
+error: anonymous structs are not allowed outside of unnamed struct or union fields
+  --> $DIR/restrict_anonymous_structs.rs:5:12
+   |
+LL |     field: struct { field: u8 },
+   |            ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
+
+error: unnamed fields can only have struct or union types
+  --> $DIR/restrict_anonymous_structs.rs:12:5
+   |
+LL |     _: (u8, u8),
+   |     ^  -------- not a struct or union
+
+error: anonymous structs are not allowed outside of unnamed struct or union fields
+  --> $DIR/restrict_anonymous_structs.rs:16:12
+   |
+LL |     field: struct { field: u8 },
+   |            ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
+
+error: unnamed fields can only have struct or union types
+  --> $DIR/restrict_anonymous_structs.rs:23:5
+   |
+LL |     _: (u8, u8),
+   |     ^  -------- not a struct or union
+
+error: unnamed fields are not allowed outside of structs or unions
+  --> $DIR/restrict_anonymous_structs.rs:28:9
+   |
+LL |         _ : struct { field: u8 },
+   |         -^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         unnamed field declared here
+
+error: anonymous structs are not allowed outside of unnamed struct or union fields
+  --> $DIR/restrict_anonymous_structs.rs:28:13
+   |
+LL |         _ : struct { field: u8 },
+   |             ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
+
+error: unnamed fields are not allowed outside of structs or unions
+  --> $DIR/restrict_anonymous_structs.rs:33:9
+   |
+LL |         _ : u8,
+   |         -^^^^^
+   |         |
+   |         unnamed field declared here
+
+error: anonymous structs are unimplemented
+  --> $DIR/restrict_anonymous_structs.rs:5:12
+   |
+LL |     field: struct { field: u8 },
+   |            ^^^^^^^^^^^^^^^^^^^^
+
+error: anonymous structs are unimplemented
+  --> $DIR/restrict_anonymous_structs.rs:7:8
+   |
+LL |     _: struct { field: u8 },
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: anonymous structs are unimplemented
+  --> $DIR/restrict_anonymous_structs.rs:16:12
+   |
+LL |     field: struct { field: u8 },
+   |            ^^^^^^^^^^^^^^^^^^^^
+
+error: anonymous structs are unimplemented
+  --> $DIR/restrict_anonymous_structs.rs:18:8
+   |
+LL |     _: struct { field: u8 },
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: anonymous structs are unimplemented
+  --> $DIR/restrict_anonymous_structs.rs:28:13
+   |
+LL |         _ : struct { field: u8 },
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+
