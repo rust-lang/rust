@@ -530,8 +530,8 @@ impl Item {
     pub(crate) fn is_ty_method(&self) -> bool {
         self.type_() == ItemType::TyMethod
     }
-    pub(crate) fn is_typedef(&self) -> bool {
-        self.type_() == ItemType::Typedef
+    pub(crate) fn is_type_alias(&self) -> bool {
+        self.type_() == ItemType::TypeAlias
     }
     pub(crate) fn is_primitive(&self) -> bool {
         self.type_() == ItemType::Primitive
@@ -799,7 +799,7 @@ pub(crate) enum ItemKind {
     EnumItem(Enum),
     FunctionItem(Box<Function>),
     ModuleItem(Module),
-    TypedefItem(Box<Typedef>),
+    TypeAliasItem(Box<TypeAlias>),
     OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
     ConstantItem(Constant),
@@ -832,7 +832,7 @@ pub(crate) enum ItemKind {
     /// The bounds may be non-empty if there is a `where` clause.
     TyAssocTypeItem(Generics, Vec<GenericBound>),
     /// An associated type in a trait impl or a provided one in a trait declaration.
-    AssocTypeItem(Box<Typedef>, Vec<GenericBound>),
+    AssocTypeItem(Box<TypeAlias>, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
     KeywordItem,
@@ -857,7 +857,7 @@ impl ItemKind {
             ExternCrateItem { .. }
             | ImportItem(_)
             | FunctionItem(_)
-            | TypedefItem(_)
+            | TypeAliasItem(_)
             | OpaqueTyItem(_)
             | StaticItem(_)
             | ConstantItem(_)
@@ -891,7 +891,7 @@ impl ItemKind {
                 | ModuleItem(_)
                 | ExternCrateItem { .. }
                 | FunctionItem(_)
-                | TypedefItem(_)
+                | TypeAliasItem(_)
                 | OpaqueTyItem(_)
                 | StaticItem(_)
                 | ConstantItem(_)
@@ -2230,7 +2230,7 @@ pub(crate) struct PathSegment {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Typedef {
+pub(crate) struct TypeAlias {
     pub(crate) type_: Type,
     pub(crate) generics: Generics,
     /// `type_` can come from either the HIR or from metadata. If it comes from HIR, it may be a type

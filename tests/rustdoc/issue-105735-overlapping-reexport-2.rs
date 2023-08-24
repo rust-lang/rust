@@ -8,7 +8,7 @@
 // @has - '//*[@class="item-name"]/a[@class="constant"]' 'AtomicU8'
 // We also ensure we don't have another item displayed.
 // @count - '//*[@id="main-content"]/*[@class="small-section-header"]' 2
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Type Definitions'
+// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Type Aliases'
 // @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Constants'
 
 mod other {

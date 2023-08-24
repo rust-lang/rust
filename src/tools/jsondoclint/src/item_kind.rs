@@ -12,7 +12,7 @@ pub(crate) enum Kind {
     Enum,
     Variant,
     Function,
-    Typedef,
+    TypeAlias,
     OpaqueTy,
     Constant,
     Trait,
@@ -45,7 +45,7 @@ impl Kind {
             Trait => true,
             TraitAlias => true,
             Impl => true,
-            Typedef => true,
+            TypeAlias => true,
             Constant => true,
             Static => true,
             Macro => true,
@@ -98,7 +98,7 @@ impl Kind {
             Kind::Union => false,
             Kind::Enum => false,
             Kind::Variant => false,
-            Kind::Typedef => false,
+            Kind::TypeAlias => false,
             Kind::OpaqueTy => false,
             Kind::Constant => false,
             Kind::Trait => false,
@@ -131,7 +131,7 @@ impl Kind {
         matches!(self, Kind::Trait | Kind::TraitAlias)
     }
     pub fn is_type(self) -> bool {
-        matches!(self, Kind::Struct | Kind::Enum | Kind::Union | Kind::Typedef)
+        matches!(self, Kind::Struct | Kind::Enum | Kind::Union | Kind::TypeAlias)
     }
 
     pub fn from_item(i: &Item) -> Self {
@@ -148,7 +148,7 @@ impl Kind {
             ItemEnum::Trait(_) => Trait,
             ItemEnum::TraitAlias(_) => TraitAlias,
             ItemEnum::Impl(_) => Impl,
-            ItemEnum::Typedef(_) => Typedef,
+            ItemEnum::TypeAlias(_) => TypeAlias,
             ItemEnum::OpaqueTy(_) => OpaqueTy,
             ItemEnum::Constant(_) => Constant,
             ItemEnum::Static(_) => Static,
@@ -186,7 +186,7 @@ impl Kind {
             ItemKind::StructField => StructField,
             ItemKind::Trait => Trait,
             ItemKind::TraitAlias => TraitAlias,
-            ItemKind::Typedef => Typedef,
+            ItemKind::TypeAlias => TypeAlias,
             ItemKind::Union => Union,
             ItemKind::Variant => Variant,
         }

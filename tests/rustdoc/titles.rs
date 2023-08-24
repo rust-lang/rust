@@ -30,7 +30,7 @@ pub struct FooStruct;
 // @matches 'foo/enum.FooEnum.html' '//h2[@class="location"]' 'FooEnum'
 pub enum FooEnum {}
 
-// @matches 'foo/type.FooType.html' '//h1' 'Type Definition foo::FooType'
+// @matches 'foo/type.FooType.html' '//h1' 'Type Alias foo::FooType'
 // @matches 'foo/type.FooType.html' '//h2[@class="location"]' 'FooType'
 pub type FooType = FooStruct;
 

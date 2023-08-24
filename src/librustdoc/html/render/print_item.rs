@@ -198,7 +198,7 @@ pub(super) fn print_item(
         clean::StructItem(..) => "Struct ",
         clean::UnionItem(..) => "Union ",
         clean::EnumItem(..) => "Enum ",
-        clean::TypedefItem(..) => "Type Definition ",
+        clean::TypeAliasItem(..) => "Type Alias ",
         clean::MacroItem(..) => "Macro ",
         clean::ProcMacroItem(ref mac) => match mac.kind {
             MacroKind::Bang => "Macro ",
@@ -273,7 +273,7 @@ pub(super) fn print_item(
         clean::StructItem(ref s) => item_struct(buf, cx, item, s),
         clean::UnionItem(ref s) => item_union(buf, cx, item, s),
         clean::EnumItem(ref e) => item_enum(buf, cx, item, e),
-        clean::TypedefItem(ref t) => item_typedef(buf, cx, item, t),
+        clean::TypeAliasItem(ref t) => item_type_alias(buf, cx, item, t),
         clean::MacroItem(ref m) => item_macro(buf, cx, item, m),
         clean::ProcMacroItem(ref m) => item_proc_macro(buf, cx, item, m),
         clean::PrimitiveItem(_) => item_primitive(buf, cx, item),
@@ -343,7 +343,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             ItemType::Static => 8,
             ItemType::Trait => 9,
             ItemType::Function => 10,
-            ItemType::Typedef => 12,
+            ItemType::TypeAlias => 12,
             ItemType::Union => 13,
             _ => 14 + ty as u8,
         }
@@ -1217,8 +1217,8 @@ fn item_opaque_ty(
         .unwrap();
 }
 
-fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Typedef) {
-    fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
+fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::TypeAlias) {
+    fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) {
         wrap_item(w, |w| {
             write!(
                 w,

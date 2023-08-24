@@ -389,7 +389,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         match *item.kind {
             clean::StructItem(..)
             | clean::EnumItem(..)
-            | clean::TypedefItem(..)
+            | clean::TypeAliasItem(..)
             | clean::TraitItem(..)
             | clean::TraitAliasItem(..)
             | clean::FunctionItem(..)

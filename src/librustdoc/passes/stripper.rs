@@ -49,7 +49,7 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
             }
             // These items can all get re-exported
             clean::OpaqueTyItem(..)
-            | clean::TypedefItem(..)
+            | clean::TypeAliasItem(..)
             | clean::StaticItem(..)
             | clean::StructItem(..)
             | clean::EnumItem(..)

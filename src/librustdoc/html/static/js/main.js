@@ -499,7 +499,7 @@ function preLoadCss(cssUrl) {
             block("static", "static", "Statics");
             block("trait", "traits", "Traits");
             block("fn", "functions", "Functions");
-            block("type", "types", "Type Definitions");
+            block("type", "types", "Type Aliases");
             block("foreigntype", "foreign-types", "Foreign Types");
             block("keyword", "keywords", "Keywords");
             block("traitalias", "trait-aliases", "Trait Aliases");
