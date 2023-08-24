@@ -2529,7 +2529,6 @@ fn main() {
 ",
         )
     }
-<<<<<<< HEAD
 
     #[test]
     fn extern_crate() {
@@ -2635,8 +2634,6 @@ use qux as frob;
         // ",
         //         );
     }
-||||||| parent of 948d9f274 (Disallow renaming of non-local structs)
-=======
 
     #[test]
     fn disallow_renaming_for_non_local_definition() {
@@ -2644,12 +2641,26 @@ use qux as frob;
             "Baz",
             r#"
 //- /lib.rs crate:lib new_source_root:library
-pub struct S$0;
+pub struct S;
 //- /main.rs crate:main deps:lib new_source_root:local
-use lib::S;
+use lib::S$0;
 "#,
             "error: Cannot rename a non-local definition.",
         );
     }
->>>>>>> 948d9f274 (Disallow renaming of non-local structs)
+
+    #[test]
+    fn disallow_renaming_for_builtin_macros() {
+        check(
+            "Baz",
+            r#"
+//- minicore: derive, hash
+//- /main.rs crate:main
+use core::hash::Hash;
+#[derive(H$0ash)]
+struct A;
+            "#,
+            "error: Cannot rename a non-local definition.",
+        )
+    }
 }

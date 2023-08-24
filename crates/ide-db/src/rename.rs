@@ -22,7 +22,7 @@
 //! Our current behavior is ¯\_(ツ)_/¯.
 use std::fmt;
 
-use base_db::{AnchoredPathBuf, CrateOrigin, FileId, FileRange};
+use base_db::{AnchoredPathBuf, FileId, FileRange};
 use either::Either;
 use hir::{FieldSource, HasSource, InFile, ModuleSource, Semantics};
 use stdx::never;
@@ -71,21 +71,29 @@ impl Definition {
         sema: &Semantics<'_, RootDatabase>,
         new_name: &str,
     ) -> Result<SourceChange> {
+        // self.krate() returns None if
+        // self is a built-in attr, built-in type or tool module.
         if let Some(krate) = self.krate(sema.db) {
-            if !matches!(krate.origin(sema.db), CrateOrigin::Local { .. }) {
+            if !krate.origin(sema.db).is_local() {
                 bail!("Cannot rename a non-local definition.")
             }
         }
 
         match *self {
             Definition::Module(module) => rename_mod(sema, module, new_name),
+            Definition::ToolModule(_) => {
+                bail!("Cannot rename a tool module")
+            }
             Definition::BuiltinType(_) => {
                 bail!("Cannot rename builtin type")
+            }
+            Definition::BuiltinAttr(_) => {
+                bail!("Cannot rename a builtin attr.")
             }
             Definition::SelfType(_) => bail!("Cannot rename `Self`"),
             Definition::Macro(mac) => {
                 if mac.is_builtin_derive(sema.db) {
-                    bail!("Cannot rename builtin macro")
+                    bail!("Cannot rename builtin derive")
                 }
 
                 rename_reference(sema, Definition::Macro(mac), new_name)
