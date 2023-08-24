@@ -623,7 +623,7 @@ class RustBuild(object):
 
     def should_fix_bins_and_dylibs(self):
         """Whether or not `fix_bin_or_dylib` needs to be run; can only be True
-        on NixOS.
+        on NixOS or if config.toml has `build.patch-binaries-for-nix` set.
         """
         if self._should_fix_bins_and_dylibs is not None:
             return self._should_fix_bins_and_dylibs
@@ -643,18 +643,31 @@ class RustBuild(object):
             if ostype != "Linux":
                 return False
 
-            # If the user has asked binaries to be patched for Nix, then
-            # don't check for NixOS.
+            # If the user has explicitly indicated whether binaries should be
+            # patched for Nix, then don't check for NixOS.
             if self.get_toml("patch-binaries-for-nix", "build") == "true":
                 return True
+            if self.get_toml("patch-binaries-for-nix", "build") == "false":
+                return False
 
             # Use `/etc/os-release` instead of `/etc/NIXOS`.
             # The latter one does not exist on NixOS when using tmpfs as root.
             try:
                 with open("/etc/os-release", "r") as f:
-                    return any(ln.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"') for ln in f)
+                    is_nixos = any(ln.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"')
+                                   for ln in f)
             except FileNotFoundError:
-                return False
+                is_nixos = False
+
+            # If not on NixOS, then warn if user seems to be atop Nix shell
+            if not is_nixos:
+                in_nix_shell = os.getenv('IN_NIX_SHELL')
+                if in_nix_shell:
+                    print("The IN_NIX_SHELL environment variable is `{}`;".format(in_nix_shell),
+                          "you may need to set `patch-binaries-for-nix=true` in config.toml",
+                          file=sys.stderr)
+
+            return is_nixos
 
         answer = self._should_fix_bins_and_dylibs = get_answer()
         if answer:
