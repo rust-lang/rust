@@ -301,7 +301,7 @@ pub trait Eq: PartialEq<Self> {
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, derive_eq, structural_match)]
 #[cfg_attr(bootstrap, allow_internal_unstable(no_coverage))]
-#[cfg_attr(not(bootstrap), allow_internal_unstable(coverage))]
+#[cfg_attr(not(bootstrap), allow_internal_unstable(coverage_attribute))]
 pub macro Eq($item:item) {
     /* compiler built-in */
 }

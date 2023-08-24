@@ -1,4 +1,4 @@
-# `coverage`
+# `coverage_attribute`
 
 The tracking issue for this feature is: [#84605]
 
@@ -16,7 +16,7 @@ instrumentation in an annotated function. This might be useful to:
 ## Example
 
 ```rust
-#![feature(coverage)]
+#![feature(coverage_attribute)]
 
 // `foo()` will get coverage instrumentation (by default)
 fn foo() {

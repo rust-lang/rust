@@ -111,7 +111,7 @@
 // Library features:
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(no_coverage))] // rust-lang/rust#84605
-#![cfg_attr(not(bootstrap), feature(coverage))] // rust-lang/rust#84605
+#![cfg_attr(not(bootstrap), feature(coverage_attribute))] // rust-lang/rust#84605
 #![feature(char_indices_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]

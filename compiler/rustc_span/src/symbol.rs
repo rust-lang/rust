@@ -574,6 +574,7 @@ symbols! {
         cosf64,
         count,
         coverage,
+        coverage_attribute,
         cr,
         crate_id,
         crate_in_paths,
