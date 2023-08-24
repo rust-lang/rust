@@ -650,26 +650,24 @@ class RustBuild(object):
             if self.get_toml("patch-binaries-for-nix", "build") == "false":
                 return False
 
-            # Assume we should fix until we see evidence that it is not NixOS
-            should_fix_retval = True
-
             # Use `/etc/os-release` instead of `/etc/NIXOS`.
             # The latter one does not exist on NixOS when using tmpfs as root.
             try:
                 with open("/etc/os-release", "r") as f:
-                    should_fix_retval = any(ln.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"') for ln in f)
+                    is_nixos = any(ln.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"')
+                                   for ln in f)
             except FileNotFoundError:
-                should_fix_retval = False
+                is_nixos = False
 
             # If not on NixOS, then warn if user seems to be atop Nix shell
-            if not should_fix_retval:
+            if not is_nixos:
                 in_nix_shell = os.getenv('IN_NIX_SHELL')
                 if in_nix_shell:
-                    print("The IN_NIX_SHELL environment variable is set to `{}`;".format(in_nix_shell),
-                          "you may need to set `patch-binaries-for-nix=true` in your config.toml",
+                    print("The IN_NIX_SHELL environment variable is `{}`;".format(in_nix_shell),
+                          "you may need to set `patch-binaries-for-nix=true` in config.toml",
                           file=sys.stderr)
 
-            return should_fix_retval
+            return is_nixos
 
         answer = self._should_fix_bins_and_dylibs = get_answer()
         if answer:

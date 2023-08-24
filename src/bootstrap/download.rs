@@ -109,8 +109,8 @@ impl Config {
                 let in_nix_shell = env::var("IN_NIX_SHELL");
                 if let Ok(in_nix_shell) = in_nix_shell {
                     eprintln!(
-                        "The IN_NIX_SHELL environment variable is set to `{in_nix_shell}`; \
-                         you may need to set `patch-binaries-for-nix=true` in your config.toml"
+                        "The IN_NIX_SHELL environment variable is `{in_nix_shell}`; \
+                         you may need to set `patch-binaries-for-nix=true` in config.toml"
                     );
                 }
             }
