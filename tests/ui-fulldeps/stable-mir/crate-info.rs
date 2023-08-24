@@ -9,18 +9,12 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
-extern crate rustc_driver;
 extern crate rustc_hir;
-extern crate rustc_interface;
 extern crate rustc_middle;
-extern crate rustc_session;
 extern crate rustc_smir;
 
-use rustc_driver::{Callbacks, Compilation, RunCompiler};
 use rustc_hir::def::DefKind;
-use rustc_interface::{interface, Queries};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::EarlyErrorHandler;
 use rustc_smir::{rustc_internal, stable_mir};
 use std::assert_matches::assert_matches;
 use std::io::Write;
@@ -130,8 +124,8 @@ fn get_item<'a>(
 
 /// This test will generate and analyze a dummy crate using the stable mir.
 /// For that, it will first write the dummy crate into a file.
-/// It will invoke the compiler using a custom Callback implementation, which will
-/// invoke Stable MIR APIs after the compiler has finished its analysis.
+/// Then it will create a `StableMir` using custom arguments and then
+/// it will run the compiler.
 fn main() {
     let path = "input.rs";
     generate_input(&path).unwrap();
@@ -142,29 +136,7 @@ fn main() {
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    rustc_driver::catch_fatal_errors(|| {
-        RunCompiler::new(&args, &mut SMirCalls {}).run().unwrap();
-    })
-    .unwrap();
-}
-
-struct SMirCalls {}
-
-impl Callbacks for SMirCalls {
-    /// Called after analysis. Return value instructs the compiler whether to
-    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
-    fn after_analysis<'tcx>(
-        &mut self,
-        _handler: &EarlyErrorHandler,
-        _compiler: &interface::Compiler,
-        queries: &'tcx Queries<'tcx>,
-    ) -> Compilation {
-        queries.global_ctxt().unwrap().enter(|tcx| {
-            rustc_smir::rustc_internal::run(tcx, || test_stable_mir(tcx));
-        });
-        // No need to keep going.
-        Compilation::Stop
-    }
+    rustc_internal::StableMir::new(args, test_stable_mir).run();
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {

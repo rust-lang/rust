@@ -13,11 +13,10 @@
 
 use std::cell::Cell;
 
-use crate::rustc_smir::Tables;
-
 use self::ty::{
     GenericDef, Generics, ImplDef, ImplTrait, PredicateKind, Span, TraitDecl, TraitDef, Ty, TyKind,
 };
+use crate::rustc_smir::Tables;
 
 pub mod mir;
 pub mod ty;
