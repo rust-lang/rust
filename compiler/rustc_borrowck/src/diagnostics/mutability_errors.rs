@@ -1,4 +1,8 @@
-use hir::ExprKind;
+use hir::def::{DefKind, Res};
+use hir::{
+    BindingAnnotation, Expr, ExprKind, FnDecl, FnRetTy, FnSig, Item, ItemKind, Pat, PatKind, Path,
+    QPath, TyKind,
+};
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
@@ -854,7 +858,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     // In the future, attempt in all path but initially for RHS of for_loop
     fn suggest_similar_mut_method_for_for_loop(&self, err: &mut Diagnostic, span: Span) {
         use hir::{
-            BorrowKind, Expr,
+            BorrowKind,
             ExprKind::{AddrOf, Block, Call, MethodCall},
         };
 
@@ -1216,6 +1220,56 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(hir_id) = hir_id
                 && let Some(hir::Node::Local(local)) = hir_map.find(hir_id)
                 {
+
+                    let initial_expression = match local.init.map(|init| init.kind)  {
+                        Some(hir::ExprKind::Path(hir::QPath::Resolved(_, hir::Path{res: Res::Local(id), ..} ))) => hir_map.find(*id),
+                        Some(hir::ExprKind::Call(Expr {  kind: ExprKind::Path(QPath::Resolved(_, Path {res: Res::Def(DefKind::Fn, defid ) , ..}   ), ..), ..}, ..  )) => {
+                            let Some(local_id) = defid.as_local() else {
+                                todo!("What do we do here?")
+                            };
+
+                            hir_map.find_by_def_id(local_id)
+                        }
+
+                        _ => None
+                    };
+
+                    let initial_expression_mutability = match initial_expression {
+
+                    Some(Node::Pat(Pat {
+                        kind: PatKind::Binding(BindingAnnotation(_, mut_ty), ..),
+                        ..
+                    })) => *mut_ty,
+                    Some(Node::Item(Item {
+                        kind:
+                            ItemKind::Fn(
+                                FnSig {
+                                    decl:
+                                        FnDecl {
+                                            output:
+                                                FnRetTy::Return(hir::Ty {
+                                                    kind: TyKind::Ref(_, mut_ty),
+                                                    ..
+                                                }),
+                                            ..
+                                        },
+                                    ..
+                                },
+                                ..,
+                            ),
+                        ..
+                    })) => mut_ty.mutbl,
+                    _ => Mutability::Mut, // TODO: this probably is not correct handling of this case.
+                    };
+
+                    // If the inital value of an expression is not mutable then suggesting that the user 
+                    // changes the type of the expression to be mutable is incorrect is it will not help.
+                    // TODO: Could we provide an alternative suggestions around altering the mutability
+                    // of the inital value.
+                    if initial_expression_mutability.is_not()   {
+                        return;
+                    }
+
                     let (changing, span, sugg) = match local.ty {
                         Some(ty) => ("changing", ty.span, message),
                         None => (
@@ -1224,6 +1278,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             format!(": {message}"),
                         ),
                     };
+                    // FOUND IT
                     err.span_suggestion_verbose(
                         span,
                         format!("consider {changing} this binding's type"),
