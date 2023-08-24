@@ -15,7 +15,9 @@ use std::cell::Cell;
 
 use crate::rustc_smir::Tables;
 
-use self::ty::{GenericDef, Generics, ImplDef, ImplTrait, TraitDecl, TraitDef, Ty, TyKind};
+use self::ty::{
+    GenericDef, Generics, ImplDef, ImplTrait, PredicateKind, Span, TraitDecl, TraitDef, Ty, TyKind,
+};
 
 pub mod mir;
 pub mod ty;
@@ -37,6 +39,12 @@ pub type TraitDecls = Vec<TraitDef>;
 
 /// A list of impl trait decls.
 pub type ImplTraitDecls = Vec<ImplDef>;
+
+/// A list of predicates.
+pub struct GenericPredicates {
+    pub parent: Option<TraitDef>,
+    pub predicates: Vec<(PredicateKind, Span)>,
+}
 
 /// Holds information about a crate.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -101,6 +109,10 @@ pub fn trait_impl(trait_impl: &ImplDef) -> ImplTrait {
     with(|cx| cx.trait_impl(trait_impl))
 }
 
+pub fn predicates_of(trait_def: &TraitDef) -> GenericPredicates {
+    with(|cx| cx.predicates_of(trait_def))
+}
+
 pub trait Context {
     fn entry_fn(&mut self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.
@@ -111,6 +123,7 @@ pub trait Context {
     fn all_trait_impls(&mut self) -> ImplTraitDecls;
     fn trait_impl(&mut self, trait_impl: &ImplDef) -> ImplTrait;
     fn generics_of(&mut self, generic_def: &GenericDef) -> Generics;
+    fn predicates_of(&mut self, trait_def: &TraitDef) -> GenericPredicates;
     /// Get information about the local crate.
     fn local_crate(&self) -> Crate;
     /// Retrieve a list of all external crates.
