@@ -899,7 +899,7 @@ where
                         if local_layout.is_unsized() {
                             throw_unsup_format!("unsized locals are not supported");
                         }
-                        let mplace = *self.allocate(local_layout, MemoryKind::Stack)?;
+                        let mplace = self.allocate(local_layout, MemoryKind::Stack)?;
                         // Preserve old value. (As an optimization, we can skip this if it was uninit.)
                         if !matches!(local_val, Immediate::Uninit) {
                             // We don't have to validate as we can assume the local was already
@@ -909,15 +909,16 @@ where
                                 local_val,
                                 local_layout,
                                 local_layout.align.abi,
-                                mplace,
+                                *mplace,
                             )?;
                         }
+                        M::after_local_allocated(self, frame, local, &mplace)?;
                         // Now we can call `access_mut` again, asserting it goes well, and actually
                         // overwrite things. This points to the entire allocation, not just the part
                         // the place refers to, i.e. we do this before we apply `offset`.
                         *M::access_local_mut(self, frame, local).unwrap() =
-                            Operand::Indirect(mplace);
-                        mplace
+                            Operand::Indirect(*mplace);
+                        *mplace
                     }
                     &mut Operand::Indirect(mplace) => mplace, // this already was an indirect local
                 };

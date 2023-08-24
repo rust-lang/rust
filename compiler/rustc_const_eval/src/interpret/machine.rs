@@ -18,7 +18,7 @@ use crate::const_eval::CheckAlignment;
 
 use super::{
     AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, FnArg, Frame, ImmTy, InterpCx,
-    InterpResult, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar,
+    InterpResult, MPlaceTy, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -470,6 +470,15 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         // By default, we do not support unwinding from panics
         assert!(!unwinding);
         Ok(StackPopJump::Normal)
+    }
+
+    fn after_local_allocated(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _frame: usize,
+        _local: mir::Local,
+        _mplace: &MPlaceTy<'tcx, Self::Provenance>,
+    ) -> InterpResult<'tcx> {
+        Ok(())
     }
 }
 
