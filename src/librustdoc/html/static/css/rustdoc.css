@@ -270,7 +270,7 @@ ul ul, ol ul, ul ol, ol ol {
 	margin-bottom: .625em;
 }
 
-p, .docblock > .warning {
+p, .docblock > .note, .docblock > .warning, .docblock > .danger {
 	/* Paragraph spacing at least 1.5 times line spacing per Web Content Accessibility Guidelines.
 	   Line-height is 1.5rem, so line spacing is .5rem; .75em is 1.5 times that.
 	   https://www.w3.org/WAI/WCAG21/Understanding/visual-presentation.html */
@@ -278,7 +278,10 @@ p, .docblock > .warning {
 }
 /* For the last child of a div, the margin will be taken care of
 	by the margin-top of the next item. */
-p:last-child, .docblock > .warning:last-child {
+p:last-child,
+.docblock > .note:last-child,
+.docblock > .warning:last-child,
+.docblock > .danger:last-child {
 	margin: 0;
 }
 
@@ -1124,24 +1127,44 @@ pre.rust .doccomment {
 	font-size: 1.25rem;
 }
 
-/* This class only exists for users who want to draw attention to a particular element in their
+/* These classes only exist for users who want to draw attention to a particular element in their
 documentation. */
-.content .docblock .warning {
-	border-left: 2px solid var(--warning-border-color);
+.content .docblock .note,
+.content .docblock .warning,
+.content .docblock .danger {
 	padding: 14px;
 	position: relative;
 	/* The "!important" part is required because the rule is otherwise overruled in this CSS
 	selector: ".docblock > :not(.more-examples-toggle):not(.example-wrap)" */
 	overflow-x: visible !important;
 }
-.content .docblock .warning::before {
-	color: var(--warning-border-color);
+.content .docblock .note::before,
+.content .docblock .warning::before,
+.content .docblock .danger::before {
 	content: "ⓘ";
 	position: absolute;
 	left: -25px;
 	top: 5px;
 	font-weight: bold;
 	font-size: 1.25rem;
+}
+.content .docblock .note {
+	border-left: 2px solid var(--note-border-color);
+}
+.content .docblock .warning {
+	border-left: 2px solid var(--warning-border-color);
+}
+.content .docblock .danger {
+	border-left: 2px solid var(--danger-border-color);
+}
+.content .docblock .note::before {
+	color: var(--note-border-color);
+}
+.content .docblock .warning::before {
+	color: var(--warning-border-color);
+}
+.content .docblock .danger::before {
+	color: var(--danger-border-color);
 }
 
 a.test-arrow {
