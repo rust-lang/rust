@@ -6,7 +6,7 @@ use super::Subtype;
 use super::{DefineOpaqueTypes, InferCtxt};
 
 use crate::traits::{ObligationCause, PredicateObligations};
-use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation, TypeRelation2};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 
 /// "Least upper bound" (common supertype)
@@ -49,7 +49,7 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
         b: T,
     ) -> RelateResult<'tcx, T> {
         match variance {
-            ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
+            ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b).map(|()| a),
             ty::Covariant => self.relate(a, b),
             // FIXME(#41044) -- not correct, need test
             ty::Bivariant => Ok(a),

@@ -33,7 +33,7 @@ use rustc_middle::infer::canonical::OriginalQueryValues;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::relate::{RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{RelateResult, RelateResult2, TypeRelation, TypeRelation2};
 use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::DUMMY_SP;
@@ -55,7 +55,7 @@ impl<'tcx> InferCtxt<'tcx> {
         b: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
-        R: ObligationEmittingRelation<'tcx>,
+        R: ObligationEmittingRelation<'tcx> + TypeRelation<'tcx>,
     {
         let a_is_expected = relation.a_is_expected();
         debug_assert!(!a.has_escaping_bound_vars());
@@ -135,6 +135,93 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    pub fn super_combine_tys2<R>(
+        &self,
+        relation: &mut R,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+    ) -> RelateResult2<'tcx>
+    where
+        R: ObligationEmittingRelation<'tcx> + TypeRelation2<'tcx>,
+    {
+        let a_is_expected = relation.a_is_expected();
+        debug_assert!(!a.has_escaping_bound_vars());
+        debug_assert!(!b.has_escaping_bound_vars());
+
+        match (a.kind(), b.kind()) {
+            // Relate integral variables to other types
+            (&ty::Infer(ty::IntVar(a_id)), &ty::Infer(ty::IntVar(b_id))) => {
+                self.inner
+                    .borrow_mut()
+                    .int_unification_table()
+                    .unify_var_var(a_id, b_id)
+                    .map_err(|e| int_unification_error(a_is_expected, e))?;
+                Ok(())
+            }
+            (&ty::Infer(ty::IntVar(v_id)), &ty::Int(v)) => {
+                self.unify_integral_variable(a_is_expected, v_id, IntType(v)).map(|_| ())
+            }
+            (&ty::Int(v), &ty::Infer(ty::IntVar(v_id))) => {
+                self.unify_integral_variable(!a_is_expected, v_id, IntType(v)).map(|_| ())
+            }
+            (&ty::Infer(ty::IntVar(v_id)), &ty::Uint(v)) => {
+                self.unify_integral_variable(a_is_expected, v_id, UintType(v)).map(|_| ())
+            }
+            (&ty::Uint(v), &ty::Infer(ty::IntVar(v_id))) => {
+                self.unify_integral_variable(!a_is_expected, v_id, UintType(v)).map(|_| ())
+            }
+
+            // Relate floating-point variables to other types
+            (&ty::Infer(ty::FloatVar(a_id)), &ty::Infer(ty::FloatVar(b_id))) => {
+                self.inner
+                    .borrow_mut()
+                    .float_unification_table()
+                    .unify_var_var(a_id, b_id)
+                    .map_err(|e| float_unification_error(relation.a_is_expected(), e))?;
+                Ok(())
+            }
+            (&ty::Infer(ty::FloatVar(v_id)), &ty::Float(v)) => {
+                self.unify_float_variable(a_is_expected, v_id, v).map(|_| ())
+            }
+            (&ty::Float(v), &ty::Infer(ty::FloatVar(v_id))) => {
+                self.unify_float_variable(!a_is_expected, v_id, v).map(|_| ())
+            }
+
+            // We don't expect `TyVar` or `Fresh*` vars at this point with lazy norm.
+            (
+                ty::Alias(..),
+                ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
+            )
+            | (
+                ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
+                ty::Alias(..),
+            ) if self.next_trait_solver() => {
+                bug!()
+            }
+
+            (_, ty::Alias(..)) | (ty::Alias(..), _) if self.next_trait_solver() => {
+                relation.register_type_relate_obligation(a, b);
+                Ok(())
+            }
+
+            // All other cases of inference are errors
+            (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
+                Err(TypeError::Sorts(ty::relate::expected_found2(relation, a, b)))
+            }
+
+            // During coherence, opaque types should be treated as *possibly*
+            // equal to any other type (except for possibly itself). This is an
+            // extremely heavy hammer, but can be relaxed in a fowards-compatible
+            // way later.
+            (&ty::Alias(ty::Opaque, _), _) | (_, &ty::Alias(ty::Opaque, _)) if self.intercrate => {
+                relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
+                Ok(())
+            }
+
+            _ => ty::relate::structurally_relate_tys2(relation, a, b),
+        }
+    }
+
     pub fn super_combine_consts<R>(
         &self,
         relation: &mut R,
@@ -142,7 +229,7 @@ impl<'tcx> InferCtxt<'tcx> {
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>>
     where
-        R: ObligationEmittingRelation<'tcx>,
+        R: ObligationEmittingRelation<'tcx> + TypeRelation<'tcx>,
     {
         debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
         debug_assert!(!a.has_escaping_bound_vars());
@@ -243,6 +330,116 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         ty::relate::structurally_relate_consts(relation, a, b)
+    }
+
+    pub fn super_combine_consts2<R>(
+        &self,
+        relation: &mut R,
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
+    ) -> RelateResult2<'tcx>
+    where
+        R: ObligationEmittingRelation<'tcx> + TypeRelation2<'tcx>,
+    {
+        debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
+        debug_assert!(!a.has_escaping_bound_vars());
+        debug_assert!(!b.has_escaping_bound_vars());
+        if a == b {
+            return Ok(());
+        }
+
+        let a = self.shallow_resolve(a);
+        let b = self.shallow_resolve(b);
+
+        // We should never have to relate the `ty` field on `Const` as it is checked elsewhere that consts have the
+        // correct type for the generic param they are an argument for. However there have been a number of cases
+        // historically where asserting that the types are equal has found bugs in the compiler so this is valuable
+        // to check even if it is a bit nasty impl wise :(
+        //
+        // This probe is probably not strictly necessary but it seems better to be safe and not accidentally find
+        // ourselves with a check to find bugs being required for code to compile because it made inference progress.
+        let compatible_types = self.probe(|_| {
+            if a.ty() == b.ty() {
+                return Ok(());
+            }
+
+            // We don't have access to trait solving machinery in `rustc_infer` so the logic for determining if the
+            // two const param's types are able to be equal has to go through a canonical query with the actual logic
+            // in `rustc_trait_selection`.
+            let canonical = self.canonicalize_query(
+                (relation.param_env(), a.ty(), b.ty()),
+                &mut OriginalQueryValues::default(),
+            );
+            self.tcx.check_tys_might_be_eq(canonical).map_err(|_| {
+                self.tcx.sess.delay_span_bug(
+                    DUMMY_SP,
+                    format!("cannot relate consts of different types (a={a:?}, b={b:?})",),
+                )
+            })
+        });
+
+        // If the consts have differing types, just bail with a const error with
+        // the expected const's type. Specifically, we don't want const infer vars
+        // to do any type shapeshifting before and after resolution.
+        if let Err(guar) = compatible_types {
+            // HACK: equating both sides with `[const error]` eagerly prevents us
+            // from leaving unconstrained inference vars during things like impl
+            // matching in the solver.
+            let a_error = ty::Const::new_error(self.tcx, guar, a.ty());
+            if let ty::ConstKind::Infer(InferConst::Var(vid)) = a.kind() {
+                return self.unify_const_variable(vid, a_error, relation.param_env()).map(|_| ());
+            }
+            let b_error = ty::Const::new_error(self.tcx, guar, b.ty());
+            if let ty::ConstKind::Infer(InferConst::Var(vid)) = b.kind() {
+                return self.unify_const_variable(vid, b_error, relation.param_env()).map(|_| ());
+            }
+
+            return Ok(());
+        }
+
+        match (a.kind(), b.kind()) {
+            (
+                ty::ConstKind::Infer(InferConst::Var(a_vid)),
+                ty::ConstKind::Infer(InferConst::Var(b_vid)),
+            ) => {
+                self.inner.borrow_mut().const_unification_table().union(a_vid, b_vid);
+                return Ok(());
+            }
+
+            // All other cases of inference with other variables are errors.
+            (ty::ConstKind::Infer(InferConst::Var(_)), ty::ConstKind::Infer(_))
+            | (ty::ConstKind::Infer(_), ty::ConstKind::Infer(InferConst::Var(_))) => {
+                bug!("tried to combine ConstKind::Infer/ConstKind::Infer(InferConst::Var)")
+            }
+
+            (ty::ConstKind::Infer(InferConst::Var(vid)), _) => {
+                return self.unify_const_variable(vid, b, relation.param_env()).map(|_| ());
+            }
+
+            (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
+                return self.unify_const_variable(vid, a, relation.param_env()).map(|_| ());
+            }
+            (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
+                if self.tcx.features().generic_const_exprs || self.next_trait_solver() =>
+            {
+                let (a, b) = if relation.a_is_expected() { (a, b) } else { (b, a) };
+
+                relation.register_predicates([ty::Binder::dummy(if self.next_trait_solver() {
+                    ty::PredicateKind::AliasRelate(
+                        a.into(),
+                        b.into(),
+                        ty::AliasRelationDirection::Equate,
+                    )
+                } else {
+                    ty::PredicateKind::ConstEquate(a, b)
+                })]);
+
+                return Ok(());
+            }
+            _ => {}
+        }
+
+        ty::relate::structurally_relate_consts2(relation, a, b)
     }
 
     /// Unifies the const variable `target_vid` with the given constant.
@@ -453,7 +650,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     }
 }
 
-pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
+pub trait ObligationEmittingRelation<'tcx> {
     /// Register obligations that must hold in order for this relation to hold
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>);
 

@@ -2,7 +2,7 @@ use super::combine::CombineFields;
 use super::{DefineOpaqueTypes, ObligationEmittingRelation, SubregionOrigin};
 
 use crate::traits::{Obligation, PredicateObligations};
-use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{Relate2, RelateResult2, TypeRelation2};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -29,7 +29,7 @@ impl<'combine, 'infcx, 'tcx> Sub<'combine, 'infcx, 'tcx> {
     }
 }
 
-impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
+impl<'tcx> TypeRelation2<'tcx> for Sub<'_, '_, 'tcx> {
     fn tag(&self) -> &'static str {
         "Sub"
     }
@@ -46,25 +46,25 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         self.a_is_expected
     }
 
-    fn relate_with_variance<T: Relate<'tcx>>(
+    fn relate_with_variance<T: Relate2<'tcx>>(
         &mut self,
         variance: ty::Variance,
         _info: ty::VarianceDiagInfo<'tcx>,
         a: T,
         b: T,
-    ) -> RelateResult<'tcx, T> {
+    ) -> RelateResult2<'tcx> {
         match variance {
             ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
-            ty::Bivariant => Ok(a),
+            ty::Bivariant => Ok(()),
             ty::Contravariant => self.with_expected_switched(|this| this.relate(b, a)),
         }
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult2<'tcx> {
         if a == b {
-            return Ok(a);
+            return Ok(());
         }
 
         let infcx = self.fields.infcx;
@@ -92,28 +92,28 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                     })),
                 ));
 
-                Ok(a)
+                Ok(())
             }
             (&ty::Infer(TyVar(a_id)), _) => {
                 self.fields.instantiate(b, ty::Contravariant, a_id, !self.a_is_expected)?;
-                Ok(a)
+                Ok(())
             }
             (_, &ty::Infer(TyVar(b_id))) => {
                 self.fields.instantiate(a, ty::Covariant, b_id, self.a_is_expected)?;
-                Ok(a)
+                Ok(())
             }
 
             (&ty::Error(e), _) | (_, &ty::Error(e)) => {
                 infcx.set_tainted_by_errors(e);
-                Ok(Ty::new_error(self.tcx(), e))
+                Ok(())
             }
 
             (
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id => {
-                self.fields.infcx.super_combine_tys(self, a, b)?;
-                Ok(a)
+                self.fields.infcx.super_combine_tys2(self, a, b)?;
+                Ok(())
             }
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
@@ -132,7 +132,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                         )?
                         .obligations,
                 );
-                Ok(a)
+                Ok(())
             }
             // Optimization of GeneratorWitness relation since we know that all
             // free regions are replaced with bound regions during construction.
@@ -147,24 +147,20 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                     for (a, b) in std::iter::zip(a_types, b_types) {
                         self.relate(a, b)?;
                     }
-                    Ok(a)
+                    Ok(())
                 } else {
-                    Err(ty::error::TypeError::Sorts(ty::relate::expected_found(self, a, b)))
+                    Err(ty::error::TypeError::Sorts(ty::relate::expected_found2(self, a, b)))
                 }
             }
 
             _ => {
-                self.fields.infcx.super_combine_tys(self, a, b)?;
-                Ok(a)
+                self.fields.infcx.super_combine_tys2(self, a, b)?;
+                Ok(())
             }
         }
     }
 
-    fn regions(
-        &mut self,
-        a: ty::Region<'tcx>,
-        b: ty::Region<'tcx>,
-    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+    fn regions(&mut self, a: ty::Region<'tcx>, b: ty::Region<'tcx>) -> RelateResult2<'tcx> {
         // FIXME -- we have more fine-grained information available
         // from the "cause" field, we could perhaps give more tailored
         // error messages.
@@ -177,32 +173,24 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
             .unwrap_region_constraints()
             .make_subregion(origin, b, a);
 
-        Ok(a)
+        Ok(())
     }
 
-    fn consts(
-        &mut self,
-        a: ty::Const<'tcx>,
-        b: ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        self.fields.infcx.super_combine_consts(self, a, b)
+    fn consts(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>) -> RelateResult2<'tcx> {
+        self.fields.infcx.super_combine_consts2(self, a, b)
     }
 
-    fn binders<T>(
-        &mut self,
-        a: ty::Binder<'tcx, T>,
-        b: ty::Binder<'tcx, T>,
-    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
+    fn binders<T>(&mut self, a: ty::Binder<'tcx, T>, b: ty::Binder<'tcx, T>) -> RelateResult2<'tcx>
     where
-        T: Relate<'tcx>,
+        T: Relate2<'tcx>,
     {
         // A binder is always a subtype of itself if it's structurally equal to itself
         if a == b {
-            return Ok(a);
+            return Ok(());
         }
 
         self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
-        Ok(a)
+        Ok(())
     }
 }
 

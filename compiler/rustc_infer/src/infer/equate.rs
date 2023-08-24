@@ -4,7 +4,7 @@ use crate::traits::PredicateObligations;
 use super::combine::{CombineFields, ObligationEmittingRelation};
 use super::Subtype;
 
-use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{Relate2, RelateResult2, TypeRelation2};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
@@ -26,7 +26,7 @@ impl<'combine, 'infcx, 'tcx> Equate<'combine, 'infcx, 'tcx> {
     }
 }
 
-impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
+impl<'tcx> TypeRelation2<'tcx> for Equate<'_, '_, 'tcx> {
     fn tag(&self) -> &'static str {
         "Equate"
     }
@@ -48,7 +48,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         _item_def_id: DefId,
         a_args: GenericArgsRef<'tcx>,
         b_args: GenericArgsRef<'tcx>,
-    ) -> RelateResult<'tcx, GenericArgsRef<'tcx>> {
+    ) -> RelateResult2<'tcx> {
         // N.B., once we are equating types, we don't care about
         // variance, so don't try to lookup the variance here. This
         // also avoids some cycles (e.g., #41849) since looking up
@@ -58,20 +58,20 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         self.relate(a_args, b_args)
     }
 
-    fn relate_with_variance<T: Relate<'tcx>>(
+    fn relate_with_variance<T: Relate2<'tcx>>(
         &mut self,
         _: ty::Variance,
         _info: ty::VarianceDiagInfo<'tcx>,
         a: T,
         b: T,
-    ) -> RelateResult<'tcx, T> {
+    ) -> RelateResult2<'tcx> {
         self.relate(a, b)
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult2<'tcx> {
         if a == b {
-            return Ok(a);
+            return Ok(());
         }
 
         trace!(a = ?a.kind(), b = ?b.kind());
@@ -98,7 +98,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id => {
-                self.fields.infcx.super_combine_tys(self, a, b)?;
+                self.fields.infcx.super_combine_tys2(self, a, b)?;
             }
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
@@ -132,25 +132,21 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                         self.relate(a, b)?;
                     }
                 } else {
-                    return Err(ty::error::TypeError::Sorts(ty::relate::expected_found(
+                    return Err(ty::error::TypeError::Sorts(ty::relate::expected_found2(
                         self, a, b,
                     )));
                 }
             }
 
             _ => {
-                self.fields.infcx.super_combine_tys(self, a, b)?;
+                self.fields.infcx.super_combine_tys2(self, a, b)?;
             }
         }
 
-        Ok(a)
+        Ok(())
     }
 
-    fn regions(
-        &mut self,
-        a: ty::Region<'tcx>,
-        b: ty::Region<'tcx>,
-    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+    fn regions(&mut self, a: ty::Region<'tcx>, b: ty::Region<'tcx>) -> RelateResult2<'tcx> {
         debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
         let origin = Subtype(Box::new(self.fields.trace.clone()));
         self.fields
@@ -159,28 +155,20 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
             .borrow_mut()
             .unwrap_region_constraints()
             .make_eqregion(origin, a, b);
-        Ok(a)
+        Ok(())
     }
 
-    fn consts(
-        &mut self,
-        a: ty::Const<'tcx>,
-        b: ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        self.fields.infcx.super_combine_consts(self, a, b)
+    fn consts(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>) -> RelateResult2<'tcx> {
+        self.fields.infcx.super_combine_consts2(self, a, b)
     }
 
-    fn binders<T>(
-        &mut self,
-        a: ty::Binder<'tcx, T>,
-        b: ty::Binder<'tcx, T>,
-    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
+    fn binders<T>(&mut self, a: ty::Binder<'tcx, T>, b: ty::Binder<'tcx, T>) -> RelateResult2<'tcx>
     where
-        T: Relate<'tcx>,
+        T: Relate2<'tcx>,
     {
         // A binder is equal to itself if it's structurally equal to itself
         if a == b {
-            return Ok(a);
+            return Ok(());
         }
 
         if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
@@ -190,7 +178,8 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
             // Fast path for the common case.
             self.relate(a.skip_binder(), b.skip_binder())?;
         }
-        Ok(a)
+
+        Ok(())
     }
 }
 

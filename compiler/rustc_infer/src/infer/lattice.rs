@@ -22,7 +22,7 @@ use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{DefineOpaqueTypes, InferCtxt};
 
 use crate::traits::ObligationCause;
-use rustc_middle::ty::relate::RelateResult;
+use rustc_middle::ty::relate::{RelateResult, TypeRelation};
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty};
 
@@ -55,7 +55,7 @@ pub fn super_lattice_tys<'a, 'tcx: 'a, L>(
     b: Ty<'tcx>,
 ) -> RelateResult<'tcx, Ty<'tcx>>
 where
-    L: LatticeDir<'a, 'tcx>,
+    L: LatticeDir<'a, 'tcx> + TypeRelation<'tcx>,
 {
     debug!("{}", this.tag());
 

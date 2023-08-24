@@ -69,7 +69,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::Node;
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
-use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{self, RelateResult2, TypeRelation2};
 use rustc_middle::ty::{
     self, error::TypeError, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt,
@@ -2753,7 +2753,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// with the other type. A TyVar inference type is compatible with any type, and an IntVar or
     /// FloatVar inference type are compatible with themselves or their concrete types (Int and
     /// Float types, respectively). When comparing two ADTs, these rules apply recursively.
-    pub fn same_type_modulo_infer<T: relate::Relate<'tcx>>(&self, a: T, b: T) -> bool {
+    pub fn same_type_modulo_infer<T: relate::Relate2<'tcx>>(&self, a: T, b: T) -> bool {
         let (a, b) = self.resolve_vars_if_possible((a, b));
         SameTypeModuloInfer(self).relate(a, b).is_ok()
     }
@@ -2761,7 +2761,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
 struct SameTypeModuloInfer<'a, 'tcx>(&'a InferCtxt<'tcx>);
 
-impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
+impl<'tcx> TypeRelation2<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.0.tcx
     }
@@ -2779,17 +2779,17 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         true
     }
 
-    fn relate_with_variance<T: relate::Relate<'tcx>>(
+    fn relate_with_variance<T: relate::Relate2<'tcx>>(
         &mut self,
         _variance: ty::Variance,
         _info: ty::VarianceDiagInfo<'tcx>,
         a: T,
         b: T,
-    ) -> relate::RelateResult<'tcx, T> {
+    ) -> RelateResult2<'tcx> {
         self.relate(a, b)
     }
 
-    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult2<'tcx> {
         match (a.kind(), b.kind()) {
             (ty::Int(_) | ty::Uint(_), ty::Infer(ty::InferTy::IntVar(_)))
             | (
@@ -2802,23 +2802,19 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
                 ty::Float(_) | ty::Infer(ty::InferTy::FloatVar(_)),
             )
             | (ty::Infer(ty::InferTy::TyVar(_)), _)
-            | (_, ty::Infer(ty::InferTy::TyVar(_))) => Ok(a),
+            | (_, ty::Infer(ty::InferTy::TyVar(_))) => Ok(()),
             (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Mismatch),
-            _ => relate::structurally_relate_tys(self, a, b),
+            _ => relate::structurally_relate_tys2(self, a, b),
         }
     }
 
-    fn regions(
-        &mut self,
-        a: ty::Region<'tcx>,
-        b: ty::Region<'tcx>,
-    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+    fn regions(&mut self, a: ty::Region<'tcx>, b: ty::Region<'tcx>) -> RelateResult2<'tcx> {
         if (a.is_var() && b.is_free_or_static())
             || (b.is_var() && a.is_free_or_static())
             || (a.is_var() && b.is_var())
             || a == b
         {
-            Ok(a)
+            Ok(())
         } else {
             Err(TypeError::Mismatch)
         }
@@ -2828,21 +2824,17 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         &mut self,
         a: ty::Binder<'tcx, T>,
         b: ty::Binder<'tcx, T>,
-    ) -> relate::RelateResult<'tcx, ty::Binder<'tcx, T>>
+    ) -> relate::RelateResult2<'tcx>
     where
-        T: relate::Relate<'tcx>,
+        T: relate::Relate2<'tcx>,
     {
-        Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
+        self.relate(a.skip_binder(), b.skip_binder())
     }
 
-    fn consts(
-        &mut self,
-        a: ty::Const<'tcx>,
-        _b: ty::Const<'tcx>,
-    ) -> relate::RelateResult<'tcx, ty::Const<'tcx>> {
+    fn consts(&mut self, _a: ty::Const<'tcx>, _b: ty::Const<'tcx>) -> relate::RelateResult2<'tcx> {
         // FIXME(compiler-errors): This could at least do some first-order
         // relation
-        Ok(a)
+        Ok(())
     }
 }
 

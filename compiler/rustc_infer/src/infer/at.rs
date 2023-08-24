@@ -27,7 +27,7 @@
 
 use super::*;
 
-use rustc_middle::ty::relate::{Relate, TypeRelation};
+use rustc_middle::ty::relate::{Relate, Relate2, TypeRelation, TypeRelation2};
 use rustc_middle::ty::{Const, ImplSubject};
 
 /// Whether we should define opaque types or just treat them opaquely.
@@ -109,7 +109,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         b: T,
     ) -> InferResult<'tcx, ()>
     where
-        T: ToTrace<'tcx>,
+        T: ToTrace<'tcx> + Relate2<'tcx>,
     {
         self.trace_exp(a_is_expected, a, b).sub(define_opaque_types, a, b)
     }
@@ -128,7 +128,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         actual: T,
     ) -> InferResult<'tcx, ()>
     where
-        T: ToTrace<'tcx>,
+        T: ToTrace<'tcx> + Relate2<'tcx>,
     {
         self.sub_exp(define_opaque_types, false, actual, expected)
     }
@@ -144,7 +144,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         actual: T,
     ) -> InferResult<'tcx, ()>
     where
-        T: ToTrace<'tcx>,
+        T: ToTrace<'tcx> + Relate2<'tcx>,
     {
         self.sub_exp(define_opaque_types, true, expected, actual)
     }
@@ -161,7 +161,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         b: T,
     ) -> InferResult<'tcx, ()>
     where
-        T: ToTrace<'tcx>,
+        T: ToTrace<'tcx> + Relate2<'tcx>,
     {
         self.trace_exp(a_is_expected, a, b).eq(define_opaque_types, a, b)
     }
@@ -177,7 +177,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         actual: T,
     ) -> InferResult<'tcx, ()>
     where
-        T: ToTrace<'tcx>,
+        T: ToTrace<'tcx> + Relate2<'tcx>,
     {
         self.trace(expected, actual).eq(define_opaque_types, expected, actual)
     }
@@ -190,7 +190,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         actual: T,
     ) -> InferResult<'tcx, ()>
     where
-        T: ToTrace<'tcx>,
+        T: ToTrace<'tcx> + Relate2<'tcx>,
     {
         match variance {
             ty::Variance::Covariant => self.sub(define_opaque_types, expected, actual),
@@ -273,7 +273,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn sub<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
     where
-        T: Relate<'tcx>,
+        T: Relate2<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
@@ -290,7 +290,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn eq<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
     where
-        T: Relate<'tcx>,
+        T: Relate2<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {

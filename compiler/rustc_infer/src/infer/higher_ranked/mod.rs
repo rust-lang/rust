@@ -5,7 +5,7 @@ use super::combine::CombineFields;
 use super::{HigherRankedType, InferCtxt};
 use crate::infer::CombinedSnapshot;
 use rustc_middle::ty::fold::FnMutDelegate;
-use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{Relate2, RelateResult, RelateResult2, TypeRelation2};
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt, TypeFoldable};
 
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
@@ -30,9 +30,9 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         sub: Binder<'tcx, T>,
         sup: Binder<'tcx, T>,
         sub_is_expected: bool,
-    ) -> RelateResult<'tcx, ()>
+    ) -> RelateResult2<'tcx>
     where
-        T: Relate<'tcx>,
+        T: Relate2<'tcx>,
     {
         let span = self.trace.cause.span;
         // First, we instantiate each bound region in the supertype with a
@@ -50,9 +50,8 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         debug!("b_prime={:?}", sup_prime);
 
         // Compare types now that bound regions have been replaced.
-        let result = self.sub(sub_is_expected).relate(sub_prime, sup_prime)?;
+        self.sub(sub_is_expected).relate(sub_prime, sup_prime)?;
 
-        debug!("OK result={result:?}");
         // NOTE: returning the result here would be dangerous as it contains
         // placeholders which **must not** be named afterwards.
         Ok(())
