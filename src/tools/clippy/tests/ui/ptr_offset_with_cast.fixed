@@ -1,4 +1,3 @@
-//@run-rustfix
 #![allow(clippy::unnecessary_cast, clippy::useless_vec)]
 
 fn main() {

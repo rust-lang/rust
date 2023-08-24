@@ -1,7 +1,8 @@
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:12:1
+  --> $DIR/derive.rs:11:1
    |
 LL | / impl Clone for Qux {
+LL | |
 LL | |     fn clone(&self) -> Self {
 LL | |         Qux
 LL | |     }
@@ -9,9 +10,10 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:12:1
+  --> $DIR/derive.rs:11:1
    |
 LL | / impl Clone for Qux {
+LL | |
 LL | |     fn clone(&self) -> Self {
 LL | |         Qux
 LL | |     }
@@ -23,6 +25,7 @@ error: you are implementing `Clone` explicitly on a `Copy` type
   --> $DIR/derive.rs:36:1
    |
 LL | / impl<'a> Clone for Lt<'a> {
+LL | |
 LL | |     fn clone(&self) -> Self {
 LL | |         unimplemented!()
 LL | |     }
@@ -33,6 +36,7 @@ note: consider deriving `Clone` or removing `Copy`
   --> $DIR/derive.rs:36:1
    |
 LL | / impl<'a> Clone for Lt<'a> {
+LL | |
 LL | |     fn clone(&self) -> Self {
 LL | |         unimplemented!()
 LL | |     }
@@ -40,9 +44,10 @@ LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:47:1
+  --> $DIR/derive.rs:48:1
    |
 LL | / impl Clone for BigArray {
+LL | |
 LL | |     fn clone(&self) -> Self {
 LL | |         unimplemented!()
 LL | |     }
@@ -50,9 +55,10 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:47:1
+  --> $DIR/derive.rs:48:1
    |
 LL | / impl Clone for BigArray {
+LL | |
 LL | |     fn clone(&self) -> Self {
 LL | |         unimplemented!()
 LL | |     }
@@ -60,9 +66,10 @@ LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:58:1
+  --> $DIR/derive.rs:60:1
    |
 LL | / impl Clone for FnPtr {
+LL | |
 LL | |     fn clone(&self) -> Self {
 LL | |         unimplemented!()
 LL | |     }
@@ -70,9 +77,10 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:58:1
+  --> $DIR/derive.rs:60:1
    |
 LL | / impl Clone for FnPtr {
+LL | |
 LL | |     fn clone(&self) -> Self {
 LL | |         unimplemented!()
 LL | |     }
@@ -80,9 +88,10 @@ LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:78:1
+  --> $DIR/derive.rs:81:1
    |
 LL | / impl<T: Clone> Clone for Generic2<T> {
+LL | |
 LL | |     fn clone(&self) -> Self {
 LL | |         Self(self.0.clone())
 LL | |     }
@@ -90,9 +99,10 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:78:1
+  --> $DIR/derive.rs:81:1
    |
 LL | / impl<T: Clone> Clone for Generic2<T> {
+LL | |
 LL | |     fn clone(&self) -> Self {
 LL | |         Self(self.0.clone())
 LL | |     }

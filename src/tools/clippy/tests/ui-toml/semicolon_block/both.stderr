@@ -1,5 +1,5 @@
 error: consider moving the `;` outside the block for consistent formatting
-  --> $DIR/both.rs:43:5
+  --> $DIR/both.rs:42:5
    |
 LL |     { unit_fn_block(); }
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL +     { unit_fn_block() };
    |
 
 error: consider moving the `;` outside the block for consistent formatting
-  --> $DIR/both.rs:44:5
+  --> $DIR/both.rs:43:5
    |
 LL |     unsafe { unit_fn_block(); }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL +     unsafe { unit_fn_block() };
    |
 
 error: consider moving the `;` inside the block for consistent formatting
-  --> $DIR/both.rs:49:5
+  --> $DIR/both.rs:48:5
    |
 LL | /     {
 LL | |         unit_fn_block();
@@ -40,7 +40,7 @@ LL ~     }
    |
 
 error: consider moving the `;` outside the block for consistent formatting
-  --> $DIR/both.rs:63:5
+  --> $DIR/both.rs:62:5
    |
 LL |     { m!(()); }
    |     ^^^^^^^^^^^

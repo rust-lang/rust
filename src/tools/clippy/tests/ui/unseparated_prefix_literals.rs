@@ -1,5 +1,4 @@
-//@run-rustfix
-//@aux-build:proc_macro_derive.rs:proc-macro
+//@aux-build:proc_macro_derive.rs
 
 #![warn(clippy::unseparated_literal_suffix)]
 #![allow(dead_code)]

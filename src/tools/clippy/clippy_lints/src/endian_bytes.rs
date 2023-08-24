@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// let _x = 2i32.to_ne_bytes();
     /// let _y = 2i64.to_ne_bytes();
     /// ```
-    #[clippy::version = "1.71.0"]
+    #[clippy::version = "1.72.0"]
     pub HOST_ENDIAN_BYTES,
     restriction,
     "disallows usage of the `to_ne_bytes` method"
@@ -40,7 +40,7 @@ declare_clippy_lint! {
     /// let _x = 2i32.to_le_bytes();
     /// let _y = 2i64.to_le_bytes();
     /// ```
-    #[clippy::version = "1.71.0"]
+    #[clippy::version = "1.72.0"]
     pub LITTLE_ENDIAN_BYTES,
     restriction,
     "disallows usage of the `to_le_bytes` method"
@@ -59,7 +59,7 @@ declare_clippy_lint! {
     /// let _x = 2i32.to_be_bytes();
     /// let _y = 2i64.to_be_bytes();
     /// ```
-    #[clippy::version = "1.71.0"]
+    #[clippy::version = "1.72.0"]
     pub BIG_ENDIAN_BYTES,
     restriction,
     "disallows usage of the `to_be_bytes` method"

@@ -13,7 +13,10 @@ fn main() {
 
     // These should fail:
     let _ = f == a;
+    //~^ ERROR: comparing with a non-unique address of a function item
+    //~| NOTE: `-D clippy::fn-address-comparisons` implied by `-D warnings`
     let _ = f != a;
+    //~^ ERROR: comparing with a non-unique address of a function item
 
     // These should be fine:
     let _ = f == g;

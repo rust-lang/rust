@@ -5,20 +5,25 @@
 use std::io;
 
 pub fn pub_fn_missing_errors_header() -> Result<(), ()> {
+    //~^ ERROR: docs for function returning `Result` missing `# Errors` section
+    //~| NOTE: `-D clippy::missing-errors-doc` implied by `-D warnings`
     unimplemented!();
 }
 
 pub async fn async_pub_fn_missing_errors_header() -> Result<(), ()> {
+    //~^ ERROR: docs for function returning `Result` missing `# Errors` section
     unimplemented!();
 }
 
 /// This is not sufficiently documented.
 pub fn pub_fn_returning_io_result() -> io::Result<()> {
+    //~^ ERROR: docs for function returning `Result` missing `# Errors` section
     unimplemented!();
 }
 
 /// This is not sufficiently documented.
 pub async fn async_pub_fn_returning_io_result() -> io::Result<()> {
+    //~^ ERROR: docs for function returning `Result` missing `# Errors` section
     unimplemented!();
 }
 
@@ -49,11 +54,13 @@ pub struct Struct1;
 impl Struct1 {
     /// This is not sufficiently documented.
     pub fn pub_method_missing_errors_header() -> Result<(), ()> {
+        //~^ ERROR: docs for function returning `Result` missing `# Errors` section
         unimplemented!();
     }
 
     /// This is not sufficiently documented.
     pub async fn async_pub_method_missing_errors_header() -> Result<(), ()> {
+        //~^ ERROR: docs for function returning `Result` missing `# Errors` section
         unimplemented!();
     }
 
@@ -83,6 +90,7 @@ impl Struct1 {
 pub trait Trait1 {
     /// This is not sufficiently documented.
     fn trait_method_missing_errors_header() -> Result<(), ()>;
+    //~^ ERROR: docs for function returning `Result` missing `# Errors` section
 
     /// # Errors
     /// A description of the errors goes here.

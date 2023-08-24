@@ -6,7 +6,9 @@
 fn one_liners() {
     unsafe {
         let _: fn() = std::mem::transmute(0 as *const ());
+        //~^ ERROR: transmuting a known null pointer into a function pointer
         let _: fn() = std::mem::transmute(std::ptr::null::<()>());
+        //~^ ERROR: transmuting a known null pointer into a function pointer
     }
 }
 
@@ -17,6 +19,7 @@ fn transmute_const() {
     unsafe {
         // Should raise a lint.
         let _: fn() = std::mem::transmute(ZPTR);
+        //~^ ERROR: transmuting a known null pointer into a function pointer
         // Should NOT raise a lint.
         let _: fn() = std::mem::transmute(NOT_ZPTR);
     }

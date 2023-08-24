@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::or_fun_call)]
 #![allow(dead_code)]
 #![allow(

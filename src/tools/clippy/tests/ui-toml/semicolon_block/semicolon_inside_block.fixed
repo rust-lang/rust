@@ -1,4 +1,3 @@
-//@run-rustfix
 #![allow(
     unused,
     clippy::unused_unit,

@@ -1,5 +1,4 @@
-//@run-rustfix
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![allow(irrefutable_let_patterns, unused)]
 #![warn(clippy::redundant_at_rest_pattern)]
 

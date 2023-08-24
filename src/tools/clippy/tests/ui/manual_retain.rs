@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::manual_retain)]
 #![allow(unused, clippy::redundant_clone)]
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque};
@@ -18,22 +17,31 @@ fn main() {
 }
 
 fn binary_heap_retain() {
-    // NOTE: Do not lint now, because binary_heap_retain is nightly API.
-    // And we need to add a test case for msrv if we update this implementation.
-    // https://github.com/rust-lang/rust/issues/71503
-    let mut heap = BinaryHeap::from([1, 2, 3]);
-    heap = heap.into_iter().filter(|x| x % 2 == 0).collect();
-    heap = heap.iter().filter(|&x| x % 2 == 0).copied().collect();
-    heap = heap.iter().filter(|&x| x % 2 == 0).cloned().collect();
+    let mut binary_heap = BinaryHeap::from([1, 2, 3]);
+    // Do lint.
+    binary_heap = binary_heap.into_iter().filter(|x| x % 2 == 0).collect();
+    binary_heap = binary_heap.iter().filter(|&x| x % 2 == 0).copied().collect();
+    binary_heap = binary_heap.iter().filter(|&x| x % 2 == 0).cloned().collect();
 
     // Do not lint, because type conversion is performed
-    heap = heap.into_iter().filter(|x| x % 2 == 0).collect::<BinaryHeap<i8>>();
-    heap = heap.iter().filter(|&x| x % 2 == 0).copied().collect::<BinaryHeap<i8>>();
-    heap = heap.iter().filter(|&x| x % 2 == 0).cloned().collect::<BinaryHeap<i8>>();
+    binary_heap = binary_heap
+        .into_iter()
+        .filter(|x| x % 2 == 0)
+        .collect::<BinaryHeap<i8>>();
+    binary_heap = binary_heap
+        .iter()
+        .filter(|&x| x % 2 == 0)
+        .copied()
+        .collect::<BinaryHeap<i8>>();
+    binary_heap = binary_heap
+        .iter()
+        .filter(|&x| x % 2 == 0)
+        .cloned()
+        .collect::<BinaryHeap<i8>>();
 
     // Do not lint, because this expression is not assign.
-    let mut bar: BinaryHeap<i8> = heap.iter().filter(|&x| x % 2 == 0).copied().collect();
-    let mut foobar: BinaryHeap<i8> = heap.into_iter().filter(|x| x % 2 == 0).collect();
+    let mut bar: BinaryHeap<i8> = binary_heap.iter().filter(|&x| x % 2 == 0).copied().collect();
+    let mut foobar: BinaryHeap<i8> = binary_heap.into_iter().filter(|x| x % 2 == 0).collect();
 
     // Do not lint, because it is an assignment to a different variable.
     bar = foobar.iter().filter(|&x| x % 2 == 0).copied().collect();
@@ -214,6 +222,12 @@ fn vec_deque_retain() {
     bar = foobar.iter().filter(|&x| x % 2 == 0).copied().collect();
     bar = foobar.iter().filter(|&x| x % 2 == 0).cloned().collect();
     bar = foobar.into_iter().filter(|x| x % 2 == 0).collect();
+}
+
+#[clippy::msrv = "1.69"]
+fn _msrv_169() {
+    let mut binary_heap = BinaryHeap::from([1, 2, 3]);
+    binary_heap = binary_heap.into_iter().filter(|x| x % 2 == 0).collect();
 }
 
 #[clippy::msrv = "1.52"]

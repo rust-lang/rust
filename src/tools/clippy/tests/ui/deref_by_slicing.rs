@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::deref_by_slicing)]
 #![allow(clippy::borrow_deref_ref)]
 

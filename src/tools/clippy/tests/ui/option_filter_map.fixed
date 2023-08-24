@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::option_filter_map)]
 #![allow(clippy::map_flatten)]
 

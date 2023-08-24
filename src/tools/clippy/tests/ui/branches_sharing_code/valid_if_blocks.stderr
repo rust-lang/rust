@@ -3,11 +3,12 @@ error: this `if` has identical blocks
    |
 LL |       if false {
    |  ______________^
+LL | |
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:110:12
+  --> $DIR/valid_if_blocks.rs:111:12
    |
 LL |       } else {
    |  ____________^
@@ -20,10 +21,11 @@ LL | #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:120:15
+  --> $DIR/valid_if_blocks.rs:121:15
    |
 LL |       if x == 0 {
    |  _______________^
+LL | |
 LL | |         let u = 19;
 LL | |         println!("How are u today?");
 LL | |         let _ = "This is a string";
@@ -31,7 +33,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:124:12
+  --> $DIR/valid_if_blocks.rs:126:12
    |
 LL |       } else {
    |  ____________^
@@ -42,22 +44,23 @@ LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:131:23
+  --> $DIR/valid_if_blocks.rs:133:23
    |
 LL |     let _ = if x == 6 { 7 } else { 7 };
    |                       ^^^^^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:131:34
+  --> $DIR/valid_if_blocks.rs:133:34
    |
 LL |     let _ = if x == 6 { 7 } else { 7 };
    |                                  ^^^^^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:137:23
+  --> $DIR/valid_if_blocks.rs:140:23
    |
 LL |       } else if x == 68 {
    |  _______________________^
+LL | |
 LL | |         println!("I'm a doppelgänger");
 LL | |         // Don't listen to my clone below
 LL | |
@@ -66,7 +69,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:142:12
+  --> $DIR/valid_if_blocks.rs:146:12
    |
 LL |       } else {
    |  ____________^
@@ -78,17 +81,18 @@ LL | |     };
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:151:23
+  --> $DIR/valid_if_blocks.rs:155:23
    |
 LL |       } else if x == 68 {
    |  _______________________^
+LL | |
 LL | |         println!("I'm a doppelgänger");
 LL | |         // Don't listen to my clone below
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:154:12
+  --> $DIR/valid_if_blocks.rs:159:12
    |
 LL |       } else {
    |  ____________^

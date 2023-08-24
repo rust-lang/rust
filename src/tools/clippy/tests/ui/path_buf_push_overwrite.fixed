@@ -1,4 +1,3 @@
-//@run-rustfix
 use std::path::PathBuf;
 
 #[warn(clippy::all, clippy::path_buf_push_overwrite)]

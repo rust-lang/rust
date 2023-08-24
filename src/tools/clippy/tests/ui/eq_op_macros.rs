@@ -21,7 +21,9 @@ fn main() {
 
     // lint identical args in `assert_eq!`
     assert_eq!(a, a);
+    //~^ ERROR: identical args used in this `assert_eq!` macro call
     assert_eq!(a + 1, a + 1);
+    //~^ ERROR: identical args used in this `assert_eq!` macro call
     // ok
     assert_eq!(a, b);
     assert_eq!(a, a + 1);
@@ -29,7 +31,9 @@ fn main() {
 
     // lint identical args in `assert_ne!`
     assert_ne!(a, a);
+    //~^ ERROR: identical args used in this `assert_ne!` macro call
     assert_ne!(a + 1, a + 1);
+    //~^ ERROR: identical args used in this `assert_ne!` macro call
     // ok
     assert_ne!(a, b);
     assert_ne!(a, a + 1);
@@ -37,7 +41,9 @@ fn main() {
 
     // lint identical args in `debug_assert_eq!`
     debug_assert_eq!(a, a);
+    //~^ ERROR: identical args used in this `debug_assert_eq!` macro call
     debug_assert_eq!(a + 1, a + 1);
+    //~^ ERROR: identical args used in this `debug_assert_eq!` macro call
     // ok
     debug_assert_eq!(a, b);
     debug_assert_eq!(a, a + 1);
@@ -45,7 +51,9 @@ fn main() {
 
     // lint identical args in `debug_assert_ne!`
     debug_assert_ne!(a, a);
+    //~^ ERROR: identical args used in this `debug_assert_ne!` macro call
     debug_assert_ne!(a + 1, a + 1);
+    //~^ ERROR: identical args used in this `debug_assert_ne!` macro call
     // ok
     debug_assert_ne!(a, b);
     debug_assert_ne!(a, a + 1);

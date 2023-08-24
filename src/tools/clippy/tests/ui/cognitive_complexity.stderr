@@ -8,7 +8,7 @@ LL | fn main() {
    = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
 
 error: the function has a cognitive complexity of (7/1)
-  --> $DIR/cognitive_complexity.rs:91:4
+  --> $DIR/cognitive_complexity.rs:92:4
    |
 LL | fn kaboom() {
    |    ^^^^^^
@@ -16,7 +16,7 @@ LL | fn kaboom() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:149:4
+  --> $DIR/cognitive_complexity.rs:151:4
    |
 LL | fn baa() {
    |    ^^^
@@ -24,7 +24,7 @@ LL | fn baa() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:150:13
+  --> $DIR/cognitive_complexity.rs:153:13
    |
 LL |     let x = || match 99 {
    |             ^^
@@ -32,7 +32,7 @@ LL |     let x = || match 99 {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:167:4
+  --> $DIR/cognitive_complexity.rs:171:4
    |
 LL | fn bar() {
    |    ^^^
@@ -40,7 +40,7 @@ LL | fn bar() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:178:4
+  --> $DIR/cognitive_complexity.rs:183:4
    |
 LL | fn dont_warn_on_tests() {
    |    ^^^^^^^^^^^^^^^^^^
@@ -48,7 +48,7 @@ LL | fn dont_warn_on_tests() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:186:4
+  --> $DIR/cognitive_complexity.rs:192:4
    |
 LL | fn barr() {
    |    ^^^^
@@ -56,7 +56,7 @@ LL | fn barr() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (3/1)
-  --> $DIR/cognitive_complexity.rs:196:4
+  --> $DIR/cognitive_complexity.rs:203:4
    |
 LL | fn barr2() {
    |    ^^^^^
@@ -64,7 +64,7 @@ LL | fn barr2() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:212:4
+  --> $DIR/cognitive_complexity.rs:220:4
    |
 LL | fn barrr() {
    |    ^^^^^
@@ -72,7 +72,7 @@ LL | fn barrr() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (3/1)
-  --> $DIR/cognitive_complexity.rs:222:4
+  --> $DIR/cognitive_complexity.rs:231:4
    |
 LL | fn barrr2() {
    |    ^^^^^^
@@ -80,7 +80,7 @@ LL | fn barrr2() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:238:4
+  --> $DIR/cognitive_complexity.rs:248:4
    |
 LL | fn barrrr() {
    |    ^^^^^^
@@ -88,7 +88,7 @@ LL | fn barrrr() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (3/1)
-  --> $DIR/cognitive_complexity.rs:248:4
+  --> $DIR/cognitive_complexity.rs:259:4
    |
 LL | fn barrrr2() {
    |    ^^^^^^^
@@ -96,7 +96,7 @@ LL | fn barrrr2() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:264:4
+  --> $DIR/cognitive_complexity.rs:276:4
    |
 LL | fn cake() {
    |    ^^^^
@@ -104,7 +104,7 @@ LL | fn cake() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (4/1)
-  --> $DIR/cognitive_complexity.rs:274:8
+  --> $DIR/cognitive_complexity.rs:287:8
    |
 LL | pub fn read_file(input_path: &str) -> String {
    |        ^^^^^^^^^
@@ -112,7 +112,7 @@ LL | pub fn read_file(input_path: &str) -> String {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:305:4
+  --> $DIR/cognitive_complexity.rs:319:4
    |
 LL | fn void(void: Void) {
    |    ^^^^
@@ -120,7 +120,7 @@ LL | fn void(void: Void) {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (8/1)
-  --> $DIR/cognitive_complexity.rs:356:4
+  --> $DIR/cognitive_complexity.rs:371:4
    |
 LL | fn early_ret() -> i32 {
    |    ^^^^^^^^^
@@ -128,7 +128,7 @@ LL | fn early_ret() -> i32 {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:377:13
+  --> $DIR/cognitive_complexity.rs:393:13
    |
 LL |     let x = |a: i32, b: i32| -> i32 {
    |             ^^^^^^^^^^^^^^^^
@@ -136,7 +136,7 @@ LL |     let x = |a: i32, b: i32| -> i32 {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:390:8
+  --> $DIR/cognitive_complexity.rs:407:8
    |
 LL |     fn moo(&self) {
    |        ^^^
@@ -144,7 +144,7 @@ LL |     fn moo(&self) {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:399:14
+  --> $DIR/cognitive_complexity.rs:417:14
    |
 LL |     async fn a() {
    |              ^
@@ -152,7 +152,7 @@ LL |     async fn a() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
-  --> $DIR/cognitive_complexity.rs:406:22
+  --> $DIR/cognitive_complexity.rs:425:22
    |
 LL |         pub async fn async_method() {
    |                      ^^^^^^^^^^^^

@@ -56,7 +56,7 @@ declare_clippy_lint! {
     /// // lib.rs
     /// pub mod a;
     /// ```
-    #[clippy::version = "1.70.0"]
+    #[clippy::version = "1.72.0"]
     pub EXCESSIVE_NESTING,
     complexity,
     "checks for blocks nested beyond a certain threshold"

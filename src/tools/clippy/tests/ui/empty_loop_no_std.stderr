@@ -8,7 +8,7 @@ LL |     loop {}
    = note: `-D clippy::empty-loop` implied by `-D warnings`
 
 error: empty `loop {}` wastes CPU cycles
-  --> $DIR/empty_loop_no_std.rs:25:5
+  --> $DIR/empty_loop_no_std.rs:26:5
    |
 LL |     loop {}
    |     ^^^^^^^

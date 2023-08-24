@@ -1,4 +1,3 @@
-//@run-rustfix
 #![deny(clippy::trait_duplication_in_bounds)]
 #![allow(unused)]
 

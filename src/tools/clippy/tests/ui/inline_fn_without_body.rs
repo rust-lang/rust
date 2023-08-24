@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::inline_fn_without_body)]
 #![allow(clippy::inline_always)]
 

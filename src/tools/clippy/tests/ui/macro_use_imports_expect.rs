@@ -1,6 +1,6 @@
 //@aux-build:macro_rules.rs
 //@aux-build:macro_use_helper.rs
-//@aux-build:proc_macro_derive.rs:proc-macro
+//@aux-build:proc_macro_derive.rs
 //@ignore-32bit
 
 #![feature(lint_reasons)]

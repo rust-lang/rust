@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![allow(irrefutable_let_patterns, nonstandard_style, unused)]
 #![warn(clippy::min_ident_chars)]
 

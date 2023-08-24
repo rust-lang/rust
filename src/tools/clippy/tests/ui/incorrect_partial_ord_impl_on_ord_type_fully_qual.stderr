@@ -2,6 +2,8 @@ error: incorrect implementation of `partial_cmp` on an `Ord` type
   --> $DIR/incorrect_partial_ord_impl_on_ord_type_fully_qual.rs:23:1
    |
 LL | /  impl PartialOrd for A {
+LL | |
+LL | |
 LL | |      fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
    | | _____________________________________________________________-
 LL | ||         // NOTE: This suggestion is wrong, as `Ord` is not in scope. But this should be fine as it isn't
@@ -15,9 +17,10 @@ LL | |  }
    = note: `#[deny(clippy::incorrect_partial_ord_impl_on_ord_type)]` on by default
 
 error: incorrect implementation of `partial_cmp` on an `Ord` type
-  --> $DIR/incorrect_partial_ord_impl_on_ord_type_fully_qual.rs:46:1
+  --> $DIR/incorrect_partial_ord_impl_on_ord_type_fully_qual.rs:48:1
    |
 LL | /  impl PartialOrd for B {
+LL | |
 LL | |      fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
    | | _____________________________________________________________-
 LL | ||         // This calls `B.cmp`, not `Ord::cmp`!

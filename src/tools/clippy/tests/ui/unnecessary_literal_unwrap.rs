@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::unnecessary_literal_unwrap)]
 #![allow(unreachable_code)]
 #![allow(
