@@ -1,4 +1,4 @@
-//@aux-build:proc_macro_unsafe.rs:proc-macro
+//@aux-build:proc_macro_unsafe.rs
 
 #![warn(clippy::undocumented_unsafe_blocks, clippy::unnecessary_safety_comment)]
 #![allow(deref_nullptr, clippy::let_unit_value, clippy::missing_safety_doc)]

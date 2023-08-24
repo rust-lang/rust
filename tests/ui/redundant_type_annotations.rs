@@ -79,8 +79,12 @@ impl Pie {
         // Everything here should be lint
 
         let v: u32 = self.return_an_int();
+        //~^ ERROR: redundant type annotation
+        //~| NOTE: `-D clippy::redundant-type-annotations` implied by `-D warnings`
         let v: &u32 = self.return_a_ref();
+        //~^ ERROR: redundant type annotation
         let v: &Slice = self.return_a_ref_to_struct();
+        //~^ ERROR: redundant type annotation
     }
 }
 
@@ -153,36 +157,50 @@ fn test_functions() {
     // Everything here should be lint
 
     let _return: String = return_a_string();
+    //~^ ERROR: redundant type annotation
 
     let _return: Pie = return_a_struct();
+    //~^ ERROR: redundant type annotation
 
     let _return: Pizza = return_an_enum();
+    //~^ ERROR: redundant type annotation
 
     let _return: u32 = return_an_int();
+    //~^ ERROR: redundant type annotation
 
     let _return: String = String::new();
+    //~^ ERROR: redundant type annotation
 
     let new_pie: Pie = Pie::new();
+    //~^ ERROR: redundant type annotation
 
     let _return: u32 = new_pie.return_an_int();
+    //~^ ERROR: redundant type annotation
 
     let _return: u32 = Pie::associated_return_an_int();
+    //~^ ERROR: redundant type annotation
 
     let _return: String = Pie::associated_return_a_string();
+    //~^ ERROR: redundant type annotation
 }
 
 fn test_simple_types() {
     // Everything here should be lint
 
     let _var: u32 = u32::MAX;
+    //~^ ERROR: redundant type annotation
 
     let _var: u32 = 5_u32;
+    //~^ ERROR: redundant type annotation
 
     let _var: &str = "test";
+    //~^ ERROR: redundant type annotation
 
     let _var: &[u8] = b"test";
+    //~^ ERROR: redundant type annotation
 
     let _var: bool = false;
+    //~^ ERROR: redundant type annotation
 }
 
 fn issue11190() {}

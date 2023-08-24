@@ -1,5 +1,4 @@
-//@run-rustfix
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 
 #![warn(clippy::ptr_cast_constness)]
 #![allow(clippy::transmute_ptr_to_ref, clippy::unnecessary_cast, unused)]

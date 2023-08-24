@@ -7,19 +7,19 @@ LL | /// fn main() {
    = note: `-D clippy::needless-doctest-main` implied by `-D warnings`
 
 error: needless `fn main` in doctest
-  --> $DIR/needless_doc_main.rs:14:4
+  --> $DIR/needless_doc_main.rs:16:4
    |
 LL | /// fn main() -> () {
    |    ^^^^^^^^^^^^^^^^^^
 
 error: needless `fn main` in doctest
-  --> $DIR/needless_doc_main.rs:21:4
+  --> $DIR/needless_doc_main.rs:24:4
    |
 LL | /// fn main() {
    |    ^^^^^^^^^^^^
 
 error: needless `fn main` in doctest
-  --> $DIR/needless_doc_main.rs:28:4
+  --> $DIR/needless_doc_main.rs:32:4
    |
 LL | /// fn main() {
    |    ^^^^^^^^^^^^

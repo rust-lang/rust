@@ -2,6 +2,7 @@ error: implementation of inherent method `to_string(&self) -> String` for type `
   --> $DIR/inherent_to_string.rs:22:5
    |
 LL | /     fn to_string(&self) -> String {
+LL | |
 LL | |         "A.to_string()".to_string()
 LL | |     }
    | |_____^
@@ -10,9 +11,10 @@ LL | |     }
    = note: `-D clippy::inherent-to-string` implied by `-D warnings`
 
 error: type `C` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`
-  --> $DIR/inherent_to_string.rs:46:5
+  --> $DIR/inherent_to_string.rs:47:5
    |
 LL | /     fn to_string(&self) -> String {
+LL | |
 LL | |         "C.to_string()".to_string()
 LL | |     }
    | |_____^

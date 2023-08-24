@@ -8,7 +8,7 @@ LL |         Some(ref opt) => {},
    = note: `-D clippy::ref-patterns` implied by `-D warnings`
 
 error: usage of ref pattern
-  --> $DIR/ref_patterns.rs:14:9
+  --> $DIR/ref_patterns.rs:15:9
    |
 LL |     let ref y = x;
    |         ^^^^^
@@ -16,7 +16,7 @@ LL |     let ref y = x;
    = help: consider using `&` for clarity instead
 
 error: usage of ref pattern
-  --> $DIR/ref_patterns.rs:17:21
+  --> $DIR/ref_patterns.rs:19:21
    |
 LL | fn use_in_parameter(ref x: i32) {}
    |                     ^^^^^

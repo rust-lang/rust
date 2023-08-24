@@ -2,13 +2,14 @@ error: all if blocks contain the same code at both the start and the end
   --> $DIR/shared_at_top_and_bottom.rs:17:5
    |
 LL | /     if x == 7 {
+LL | |
 LL | |         let t = 7;
 LL | |         let _overlap_start = t * 2;
 LL | |         let _overlap_end = 2 * t;
    | |_________________________________^
    |
 note: this code is shared at the end
-  --> $DIR/shared_at_top_and_bottom.rs:29:5
+  --> $DIR/shared_at_top_and_bottom.rs:30:5
    |
 LL | /         let _u = 9;
 LL | |     }
@@ -32,16 +33,17 @@ LL +     let _u = 9;
    |
 
 error: all if blocks contain the same code at both the start and the end
-  --> $DIR/shared_at_top_and_bottom.rs:33:5
+  --> $DIR/shared_at_top_and_bottom.rs:34:5
    |
 LL | /     if x == 99 {
+LL | |
 LL | |         let r = 7;
 LL | |         let _overlap_start = r;
 LL | |         let _overlap_middle = r * r;
    | |____________________________________^
    |
 note: this code is shared at the end
-  --> $DIR/shared_at_top_and_bottom.rs:44:5
+  --> $DIR/shared_at_top_and_bottom.rs:46:5
    |
 LL | /         let _overlap_end = r * r * r;
 LL | |         let z = "end";
@@ -63,16 +65,17 @@ LL +     let z = "end";
    |
 
 error: all if blocks contain the same code at both the start and the end
-  --> $DIR/shared_at_top_and_bottom.rs:62:5
+  --> $DIR/shared_at_top_and_bottom.rs:64:5
    |
 LL | /     if (x > 7 && y < 13) || (x + y) % 2 == 1 {
+LL | |
 LL | |         let a = 0xcafe;
 LL | |         let b = 0xffff00ff;
 LL | |         let e_id = gen_id(a, b);
    | |________________________________^
    |
 note: this code is shared at the end
-  --> $DIR/shared_at_top_and_bottom.rs:82:5
+  --> $DIR/shared_at_top_and_bottom.rs:85:5
    |
 LL | /         let pack = DataPack {
 LL | |             id: e_id,
@@ -102,14 +105,15 @@ LL +     process_data(pack);
    |
 
 error: all if blocks contain the same code at both the start and the end
-  --> $DIR/shared_at_top_and_bottom.rs:95:5
+  --> $DIR/shared_at_top_and_bottom.rs:98:5
    |
 LL | /     let _ = if x == 7 {
+LL | |
 LL | |         let _ = 19;
    | |___________________^
    |
 note: this code is shared at the end
-  --> $DIR/shared_at_top_and_bottom.rs:104:5
+  --> $DIR/shared_at_top_and_bottom.rs:108:5
    |
 LL | /         x << 2
 LL | |     };
@@ -127,14 +131,15 @@ LL ~     x << 2;
    |
 
 error: all if blocks contain the same code at both the start and the end
-  --> $DIR/shared_at_top_and_bottom.rs:107:5
+  --> $DIR/shared_at_top_and_bottom.rs:111:5
    |
 LL | /     if x == 9 {
+LL | |
 LL | |         let _ = 17;
    | |___________________^
    |
 note: this code is shared at the end
-  --> $DIR/shared_at_top_and_bottom.rs:116:5
+  --> $DIR/shared_at_top_and_bottom.rs:121:5
    |
 LL | /         x * 4
 LL | |     }

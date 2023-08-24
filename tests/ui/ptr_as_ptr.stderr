@@ -1,5 +1,5 @@
 error: `as` casting between raw pointers without changing its mutability
-  --> $DIR/ptr_as_ptr.rs:19:33
+  --> $DIR/ptr_as_ptr.rs:18:33
    |
 LL |         *unsafe { Box::from_raw(Box::into_raw(Box::new(o)) as *mut super::issue_11278_a::T<String>) }
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `Box::into_raw(Box::new(o)).cast::<super::issue_11278_a::T<String>>()`
@@ -7,37 +7,37 @@ LL |         *unsafe { Box::from_raw(Box::into_raw(Box::new(o)) as *mut super::i
    = note: `-D clippy::ptr-as-ptr` implied by `-D warnings`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> $DIR/ptr_as_ptr.rs:28:13
+  --> $DIR/ptr_as_ptr.rs:27:13
    |
 LL |     let _ = ptr as *const i32;
    |             ^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `ptr.cast::<i32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> $DIR/ptr_as_ptr.rs:29:13
+  --> $DIR/ptr_as_ptr.rs:28:13
    |
 LL |     let _ = mut_ptr as *mut i32;
    |             ^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `mut_ptr.cast::<i32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> $DIR/ptr_as_ptr.rs:34:17
+  --> $DIR/ptr_as_ptr.rs:33:17
    |
 LL |         let _ = *ptr_ptr as *const i32;
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `(*ptr_ptr).cast::<i32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> $DIR/ptr_as_ptr.rs:47:25
+  --> $DIR/ptr_as_ptr.rs:46:25
    |
 LL |     let _: *const i32 = ptr as *const _;
    |                         ^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `ptr.cast()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> $DIR/ptr_as_ptr.rs:48:23
+  --> $DIR/ptr_as_ptr.rs:47:23
    |
 LL |     let _: *mut i32 = mut_ptr as _;
    |                       ^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `mut_ptr.cast()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> $DIR/ptr_as_ptr.rs:51:21
+  --> $DIR/ptr_as_ptr.rs:50:21
    |
 LL |     let _ = inline!($ptr as *const i32);
    |                     ^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `$ptr.cast::<i32>()`
@@ -45,13 +45,13 @@ LL |     let _ = inline!($ptr as *const i32);
    = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `as` casting between raw pointers without changing its mutability
-  --> $DIR/ptr_as_ptr.rs:72:13
+  --> $DIR/ptr_as_ptr.rs:71:13
    |
 LL |     let _ = ptr as *const i32;
    |             ^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `ptr.cast::<i32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> $DIR/ptr_as_ptr.rs:73:13
+  --> $DIR/ptr_as_ptr.rs:72:13
    |
 LL |     let _ = mut_ptr as *mut i32;
    |             ^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `mut_ptr.cast::<i32>()`

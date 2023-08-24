@@ -11,7 +11,7 @@ LL |         Some(x) => &x,
    |              ~     ~~
 
 error: this pattern creates a reference to a reference
-  --> $DIR/ref_binding_to_reference.rs:37:14
+  --> $DIR/ref_binding_to_reference.rs:39:14
    |
 LL |         Some(ref x) => {
    |              ^^^^^
@@ -19,13 +19,14 @@ LL |         Some(ref x) => {
 help: try
    |
 LL ~         Some(x) => {
+LL |
 LL |             f1(x);
 LL ~             f1(x);
 LL ~             &x
    |
 
 error: this pattern creates a reference to a reference
-  --> $DIR/ref_binding_to_reference.rs:47:14
+  --> $DIR/ref_binding_to_reference.rs:50:14
    |
 LL |         Some(ref x) => m2!(x),
    |              ^^^^^
@@ -36,7 +37,7 @@ LL |         Some(x) => m2!(&x),
    |              ~         ~~
 
 error: this pattern creates a reference to a reference
-  --> $DIR/ref_binding_to_reference.rs:52:15
+  --> $DIR/ref_binding_to_reference.rs:56:15
    |
 LL |     let _ = |&ref x: &&String| {
    |               ^^^^^
@@ -44,11 +45,12 @@ LL |     let _ = |&ref x: &&String| {
 help: try
    |
 LL ~     let _ = |&x: &&String| {
+LL |
 LL ~         let _: &&String = &x;
    |
 
 error: this pattern creates a reference to a reference
-  --> $DIR/ref_binding_to_reference.rs:58:12
+  --> $DIR/ref_binding_to_reference.rs:63:12
    |
 LL | fn f2<'a>(&ref x: &&'a String) -> &'a String {
    |            ^^^^^
@@ -56,12 +58,13 @@ LL | fn f2<'a>(&ref x: &&'a String) -> &'a String {
 help: try
    |
 LL ~ fn f2<'a>(&x: &&'a String) -> &'a String {
+LL |
 LL ~     let _: &&String = &x;
 LL ~     x
    |
 
 error: this pattern creates a reference to a reference
-  --> $DIR/ref_binding_to_reference.rs:65:11
+  --> $DIR/ref_binding_to_reference.rs:71:11
    |
 LL |     fn f(&ref x: &&String) {
    |           ^^^^^
@@ -69,11 +72,12 @@ LL |     fn f(&ref x: &&String) {
 help: try
    |
 LL ~     fn f(&x: &&String) {
+LL |
 LL ~         let _: &&String = &x;
    |
 
 error: this pattern creates a reference to a reference
-  --> $DIR/ref_binding_to_reference.rs:73:11
+  --> $DIR/ref_binding_to_reference.rs:80:11
    |
 LL |     fn f(&ref x: &&String) {
    |           ^^^^^
@@ -81,6 +85,7 @@ LL |     fn f(&ref x: &&String) {
 help: try
    |
 LL ~     fn f(&x: &&String) {
+LL |
 LL ~         let _: &&String = &x;
    |
 

@@ -10,12 +10,22 @@ fn main() {
     let index_from: usize = 2;
     let index_to: usize = 3;
     &x[index..];
+    //~^ ERROR: slicing may panic
     &x[..index];
+    //~^ ERROR: slicing may panic
     &x[index_from..index_to];
-    &x[index_from..][..index_to]; // Two lint reports, one for [index_from..] and another for [..index_to].
-    &x[5..][..10]; // Two lint reports, one for out of bounds [5..] and another for slicing [..10].
+    //~^ ERROR: slicing may panic
+    &x[index_from..][..index_to];
+    //~^ ERROR: slicing may panic
+    //~| ERROR: slicing may panic
+    &x[5..][..10];
+    //~^ ERROR: slicing may panic
+    //~| ERROR: range is out of bounds
+    //~| NOTE: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
     &x[0..][..3];
+    //~^ ERROR: slicing may panic
     &x[1..][..5];
+    //~^ ERROR: slicing may panic
 
     &x[0..].get(..3); // Ok, should not produce stderr.
     &x[0..3]; // Ok, should not produce stderr.
@@ -23,15 +33,22 @@ fn main() {
     let y = &x;
     &y[1..2];
     &y[0..=4];
+    //~^ ERROR: range is out of bounds
     &y[..=4];
+    //~^ ERROR: range is out of bounds
 
     &y[..]; // Ok, should not produce stderr.
 
     let v = vec![0; 5];
     &v[10..100];
-    &x[10..][..100]; // Two lint reports, one for [10..] and another for [..100].
+    //~^ ERROR: slicing may panic
+    &x[10..][..100];
+    //~^ ERROR: slicing may panic
+    //~| ERROR: range is out of bounds
     &v[10..];
+    //~^ ERROR: slicing may panic
     &v[..100];
+    //~^ ERROR: slicing may panic
 
     &v[..]; // Ok, should not produce stderr.
 }

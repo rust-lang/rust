@@ -1,7 +1,4 @@
-//@aux-build:proc_macro_attr.rs:proc-macro
-// Flaky test, see https://github.com/rust-lang/rust/issues/113585.
-//@ignore-32bit
-//@ignore-64bit
+//@aux-build:proc_macro_attr.rs
 
 #![warn(clippy::needless_arbitrary_self_type)]
 

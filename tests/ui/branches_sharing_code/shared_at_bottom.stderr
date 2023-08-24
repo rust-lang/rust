@@ -2,6 +2,8 @@ error: all if blocks contain the same code at the end
   --> $DIR/shared_at_bottom.rs:31:5
    |
 LL | /         let result = false;
+LL | |
+LL | |
 LL | |         println!("Block end!");
 LL | |         result
 LL | |     };
@@ -17,14 +19,17 @@ help: consider moving these statements after the if
    |
 LL ~     }
 LL +     let result = false;
+LL +
+LL +
 LL +     println!("Block end!");
 LL ~     result;
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:49:5
+  --> $DIR/shared_at_bottom.rs:51:5
    |
 LL | /         println!("Same end of block");
+LL | |
 LL | |     }
    | |_____^
    |
@@ -35,9 +40,10 @@ LL +     println!("Same end of block");
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:66:5
+  --> $DIR/shared_at_bottom.rs:69:5
    |
 LL | /         println!(
+LL | |
 LL | |             "I'm moveable because I know: `outer_scope_value`: '{}'",
 LL | |             outer_scope_value
 LL | |         );
@@ -48,15 +54,17 @@ help: consider moving these statements after the if
    |
 LL ~     }
 LL +     println!(
+LL +
 LL +         "I'm moveable because I know: `outer_scope_value`: '{}'",
 LL +         outer_scope_value
 LL +     );
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:78:9
+  --> $DIR/shared_at_bottom.rs:82:9
    |
 LL | /             println!("Hello World");
+LL | |
 LL | |         }
    | |_________^
    |
@@ -67,9 +75,10 @@ LL +         println!("Hello World");
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:94:5
+  --> $DIR/shared_at_bottom.rs:99:5
    |
 LL | /         let later_used_value = "A string value";
+LL | |
 LL | |         println!("{}", later_used_value);
 LL | |         // I'm expecting a note about this
 LL | |     }
@@ -80,13 +89,15 @@ help: consider moving these statements after the if
    |
 LL ~     }
 LL +     let later_used_value = "A string value";
+LL +
 LL +     println!("{}", later_used_value);
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:107:5
+  --> $DIR/shared_at_bottom.rs:113:5
    |
 LL | /         let simple_examples = "I now identify as a &str :)";
+LL | |
 LL | |         println!("This is the new simple_example: {}", simple_examples);
 LL | |     }
    | |_____^
@@ -96,13 +107,16 @@ help: consider moving these statements after the if
    |
 LL ~     }
 LL +     let simple_examples = "I now identify as a &str :)";
+LL +
 LL +     println!("This is the new simple_example: {}", simple_examples);
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:172:5
+  --> $DIR/shared_at_bottom.rs:179:5
    |
 LL | /         x << 2
+LL | |
+LL | |
 LL | |     };
    | |_____^
    |
@@ -114,9 +128,11 @@ LL ~     x << 2;
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:179:5
+  --> $DIR/shared_at_bottom.rs:188:5
    |
 LL | /         x * 4
+LL | |
+LL | |
 LL | |     }
    | |_____^
    |
@@ -128,7 +144,7 @@ LL +     x * 4
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:191:44
+  --> $DIR/shared_at_bottom.rs:202:44
    |
 LL |     if x == 17 { b = 1; a = 0x99; } else { a = 0x99; }
    |                                            ^^^^^^^^^^^

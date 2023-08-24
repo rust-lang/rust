@@ -5,11 +5,11 @@
 )]
 #![warn(clippy::expl_impl_clone_on_copy)]
 
-
 #[derive(Copy)]
 struct Qux;
 
 impl Clone for Qux {
+    //~^ ERROR: you are implementing `Clone` explicitly on a `Copy` type
     fn clone(&self) -> Self {
         Qux
     }
@@ -34,6 +34,7 @@ struct Lt<'a> {
 }
 
 impl<'a> Clone for Lt<'a> {
+    //~^ ERROR: you are implementing `Clone` explicitly on a `Copy` type
     fn clone(&self) -> Self {
         unimplemented!()
     }
@@ -45,6 +46,7 @@ struct BigArray {
 }
 
 impl Clone for BigArray {
+    //~^ ERROR: you are implementing `Clone` explicitly on a `Copy` type
     fn clone(&self) -> Self {
         unimplemented!()
     }
@@ -56,6 +58,7 @@ struct FnPtr {
 }
 
 impl Clone for FnPtr {
+    //~^ ERROR: you are implementing `Clone` explicitly on a `Copy` type
     fn clone(&self) -> Self {
         unimplemented!()
     }
@@ -76,6 +79,7 @@ impl<T> Clone for Generic<T> {
 #[derive(Copy)]
 struct Generic2<T>(T);
 impl<T: Clone> Clone for Generic2<T> {
+    //~^ ERROR: you are implementing `Clone` explicitly on a `Copy` type
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }

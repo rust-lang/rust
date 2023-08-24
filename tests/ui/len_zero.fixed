@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::len_zero)]
 #![allow(dead_code, unused, clippy::needless_if, clippy::len_without_is_empty)]
 

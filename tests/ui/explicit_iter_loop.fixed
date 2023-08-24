@@ -1,4 +1,3 @@
-//@run-rustfix
 #![deny(clippy::explicit_iter_loop)]
 #![allow(
     clippy::linkedlist,

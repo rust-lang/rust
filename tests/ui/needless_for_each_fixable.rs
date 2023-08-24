@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::needless_for_each)]
 #![allow(unused)]
 #![allow(

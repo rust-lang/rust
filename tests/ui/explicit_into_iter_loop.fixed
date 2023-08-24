@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::explicit_into_iter_loop)]
 
 fn main() {

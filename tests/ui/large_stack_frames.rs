@@ -23,6 +23,8 @@ impl<const N: usize> Default for ArrayDefault<N> {
 }
 
 fn many_small_arrays() {
+    //~^ ERROR: this function allocates a large amount of stack space
+    //~| NOTE: allocating large amounts of stack space can overflow the stack
     let x = [0u8; 500_000];
     let x2 = [0u8; 500_000];
     let x3 = [0u8; 500_000];
@@ -32,10 +34,14 @@ fn many_small_arrays() {
 }
 
 fn large_return_value() -> ArrayDefault<1_000_000> {
+    //~^ ERROR: this function allocates a large amount of stack space
+    //~| NOTE: allocating large amounts of stack space can overflow the stack
     Default::default()
 }
 
 fn large_fn_arg(x: ArrayDefault<1_000_000>) {
+    //~^ ERROR: this function allocates a large amount of stack space
+    //~| NOTE: allocating large amounts of stack space can overflow the stack
     black_box(&x);
 }
 

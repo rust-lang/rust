@@ -2,6 +2,7 @@ error: more than 3 bools in a struct
   --> $DIR/struct_excessive_bools.rs:22:1
    |
 LL | / struct BadFoo {
+LL | |
 LL | |     a: bool,
 LL | |     b: bool,
 LL | |     c: bool,
@@ -13,9 +14,10 @@ LL | | }
    = note: `-D clippy::struct-excessive-bools` implied by `-D warnings`
 
 error: more than 3 bools in a struct
-  --> $DIR/struct_excessive_bools.rs:38:5
+  --> $DIR/struct_excessive_bools.rs:39:5
    |
 LL | /     struct FooFoo {
+LL | |
 LL | |         a: bool,
 LL | |         b: bool,
 LL | |         c: bool,
