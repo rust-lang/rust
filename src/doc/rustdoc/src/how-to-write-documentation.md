@@ -254,7 +254,7 @@ characters:
 
 So, no need to manually enter those Unicode characters!
 
-### Adding a warning block
+### Adding a note/warning/danger block
 
 If you want to make a warning or similar note stand out in the documentation,
 you can wrap it like this:
@@ -266,6 +266,11 @@ you can wrap it like this:
 ///
 /// more documentation
 ```
+
+There are three levels available:
+ * note
+ * warning
+ * danger
 
 [`backtrace`]: https://docs.rs/backtrace/0.3.50/backtrace/
 [commonmark markdown specification]: https://commonmark.org/
