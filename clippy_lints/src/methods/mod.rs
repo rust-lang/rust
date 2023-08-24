@@ -3557,7 +3557,7 @@ declare_clippy_lint! {
     /// ```rust
     /// for _ in [1, 2, 3].iter() {}
     /// ```
-    #[clippy::version = "1.73.0"]
+    #[clippy::version = "1.74.0"]
     pub ITER_OUT_OF_BOUNDS,
     suspicious,
     "calls to `.take()` or `.skip()` that are out of bounds"

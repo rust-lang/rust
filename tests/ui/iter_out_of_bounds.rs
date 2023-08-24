@@ -1,4 +1,7 @@
+//@no-rustfix
+
 #![deny(clippy::iter_out_of_bounds)]
+#![allow(clippy::useless_vec)]
 
 fn opaque_empty_iter() -> impl Iterator<Item = ()> {
     std::iter::empty()
@@ -21,12 +24,25 @@ fn main() {
     for _ in [1, 2, 3].iter().skip(4) {}
     //~^ ERROR: this `.skip()` call skips more items than the iterator will produce
 
+    for _ in [1; 3].iter().skip(4) {}
+    //~^ ERROR: this `.skip()` call skips more items than the iterator will produce
+
     // Should not lint
     for _ in opaque_empty_iter().skip(1) {}
 
-    // Should not lint
-    let empty: [i8; 0] = [];
-    for _ in empty.iter().skip(1) {}
+    for _ in vec![1, 2, 3].iter().skip(4) {}
+    //~^ ERROR: this `.skip()` call skips more items than the iterator will produce
+
+    for _ in vec![1; 3].iter().skip(4) {}
+    //~^ ERROR: this `.skip()` call skips more items than the iterator will produce
+
+    let x = [1, 2, 3];
+    for _ in x.iter().skip(4) {}
+    //~^ ERROR: this `.skip()` call skips more items than the iterator will produce
+
+    let n = 4;
+    for _ in x.iter().skip(n) {}
+    //~^ ERROR: this `.skip()` call skips more items than the iterator will produce
 
     let empty = std::iter::empty::<i8>;
 

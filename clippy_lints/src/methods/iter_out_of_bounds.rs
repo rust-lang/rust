@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_note;
-use clippy_utils::{is_trait_method, match_def_path, paths};
+use clippy_utils::higher::VecArgs;
+use clippy_utils::{expr_or_init, is_trait_method, match_def_path, paths};
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -8,34 +9,49 @@ use rustc_span::sym;
 
 use super::ITER_OUT_OF_BOUNDS;
 
+fn expr_as_u128(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<u128> {
+    if let ExprKind::Lit(lit) = expr_or_init(cx, e).kind
+        && let LitKind::Int(n, _) = lit.node
+    {
+        Some(n)
+    } else {
+        None
+    }
+}
+
 /// Attempts to extract the length out of an iterator expression.
 fn get_iterator_length<'tcx>(cx: &LateContext<'tcx>, iter: &'tcx Expr<'tcx>) -> Option<u128> {
-    let iter_ty = cx.typeck_results().expr_ty(iter);
+    let ty::Adt(adt, substs) = cx.typeck_results().expr_ty(iter).kind() else {
+        return None;
+    };
+    let did = adt.did();
 
-    if let ty::Adt(adt, substs) = iter_ty.kind() {
-        let did = adt.did();
-
-        if match_def_path(cx, did, &paths::ARRAY_INTO_ITER) {
-            // For array::IntoIter<T, const N: usize>, the length is the second generic
-            // parameter.
-            substs
-                .const_at(1)
-                .try_eval_target_usize(cx.tcx, cx.param_env)
-                .map(u128::from)
-        } else if match_def_path(cx, did, &paths::SLICE_ITER)
-            && let ExprKind::MethodCall(_, recv, ..) = iter.kind
-            && let ExprKind::Array(array) = recv.peel_borrows().kind
-        {
+    if match_def_path(cx, did, &paths::ARRAY_INTO_ITER) {
+        // For array::IntoIter<T, const N: usize>, the length is the second generic
+        // parameter.
+        substs
+            .const_at(1)
+            .try_eval_target_usize(cx.tcx, cx.param_env)
+            .map(u128::from)
+    } else if match_def_path(cx, did, &paths::SLICE_ITER)
+        && let ExprKind::MethodCall(_, recv, ..) = iter.kind
+    {
+        if let ty::Array(_, len) = cx.typeck_results().expr_ty(recv).peel_refs().kind() {
             // For slice::Iter<'_, T>, the receiver might be an array literal: [1,2,3].iter().skip(..)
-            array.len().try_into().ok()
-        } else if match_def_path(cx, did, &paths::ITER_EMPTY) {
-            Some(0)
-        } else if match_def_path(cx, did, &paths::ITER_ONCE) {
-            Some(1)
+            len.try_eval_target_usize(cx.tcx, cx.param_env).map(u128::from)
+        } else if let Some(args) = VecArgs::hir(cx, expr_or_init(cx, recv)) {
+            match args {
+                VecArgs::Vec(vec) => vec.len().try_into().ok(),
+                VecArgs::Repeat(_, len) => expr_as_u128(cx, len),
+            }
         } else {
             None
         }
-    } else {
+    } else if match_def_path(cx, did, &paths::ITER_EMPTY) {
+        Some(0)
+    } else if match_def_path(cx, did, &paths::ITER_ONCE) {
+        Some(1)
+    }  else {
         None
     }
 }
@@ -50,9 +66,8 @@ fn check<'tcx>(
 ) {
     if is_trait_method(cx, expr, sym::Iterator)
         && let Some(len) = get_iterator_length(cx, recv)
-        && let ExprKind::Lit(lit) = arg.kind
-        && let LitKind::Int(skip, _) = lit.node
-        && skip > len
+        && let Some(skipped) = expr_as_u128(cx, arg)
+        && skipped > len
     {
         span_lint_and_note(cx, ITER_OUT_OF_BOUNDS, expr.span, message, None, note);
     }
