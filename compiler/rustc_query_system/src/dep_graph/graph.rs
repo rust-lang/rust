@@ -1166,7 +1166,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             )),
             new_node_to_index: Sharded::new(|| {
                 FxHashMap::with_capacity_and_hasher(
-                    new_node_count_estimate / sharded::SHARDS,
+                    new_node_count_estimate / sharded::shards(),
                     Default::default(),
                 )
             }),
