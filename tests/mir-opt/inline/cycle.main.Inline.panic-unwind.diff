@@ -36,7 +36,7 @@
 +     }
 + 
 +     bb3 (cleanup): {
-+         drop(_2) -> [return: bb4, unwind terminate (panic in a destructor during cleanup)];
++         drop(_2) -> [return: bb4, unwind terminate(cleanup)];
 +     }
 + 
 +     bb4 (cleanup): {

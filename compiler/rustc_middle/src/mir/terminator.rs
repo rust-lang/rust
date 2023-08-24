@@ -119,6 +119,14 @@ impl UnwindTerminateReason {
         }
     }
 
+    /// A short representation of this used for MIR printing.
+    pub fn as_short_str(self) -> &'static str {
+        match self {
+            UnwindTerminateReason::Abi => "abi",
+            UnwindTerminateReason::InCleanup => "cleanup",
+        }
+    }
+
     pub fn lang_item(self) -> LangItem {
         match self {
             UnwindTerminateReason::Abi => LangItem::PanicCannotUnwind,
@@ -301,13 +309,14 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
         // `Cleanup` is already included in successors
         let show_unwind = !matches!(self.unwind(), None | Some(UnwindAction::Cleanup(_)));
         let fmt_unwind = |fmt: &mut Formatter<'_>| -> fmt::Result {
+            write!(fmt, "unwind ")?;
             match self.unwind() {
                 // Not needed or included in successors
                 None | Some(UnwindAction::Cleanup(_)) => unreachable!(),
-                Some(UnwindAction::Continue) => write!(fmt, "unwind continue"),
-                Some(UnwindAction::Unreachable) => write!(fmt, "unwind unreachable"),
+                Some(UnwindAction::Continue) => write!(fmt, "continue"),
+                Some(UnwindAction::Unreachable) => write!(fmt, "unreachable"),
                 Some(UnwindAction::Terminate(reason)) => {
-                    write!(fmt, "unwind terminate ({})", reason.as_str())
+                    write!(fmt, "terminate({})", reason.as_short_str())
                 }
             }
         };
@@ -350,7 +359,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             GeneratorDrop => write!(fmt, "generator_drop"),
             UnwindResume => write!(fmt, "resume"),
             UnwindTerminate(reason) => {
-                write!(fmt, "abort(\"{}\")", reason.as_str())
+                write!(fmt, "abort({})", reason.as_short_str())
             }
             Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
             Unreachable => write!(fmt, "unreachable"),
