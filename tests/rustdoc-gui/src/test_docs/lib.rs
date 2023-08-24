@@ -68,7 +68,11 @@ impl Foo {
 
     /// hello
     ///
+    /// <div id="doc-note" class="note">this is a note</div>
+    ///
     /// <div id="doc-warning-1" class="warning">this is a warning</div>
+    ///
+    /// <div id="doc-danger" class="danger">this is a danger</div>
     ///
     /// done
     pub fn warning1() {}
