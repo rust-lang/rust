@@ -139,7 +139,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     }
                     Some([item]) if item.has_name(sym::on) => {
                         // Allow #[coverage(on)] for being explicit, maybe also in future to enable
-                        // coverage on a smaller scope within an excluded larger scopy.
+                        // coverage on a smaller scope within an excluded larger scope.
                     }
                     Some(_) | None => {
                         tcx.sess.emit_err(ExpectedCoverageSymbol { span: attr.span });
