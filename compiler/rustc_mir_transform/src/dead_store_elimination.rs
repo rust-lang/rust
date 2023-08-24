@@ -12,7 +12,7 @@
 //!     will still not cause any further changes.
 //!
 
-use crate::util::is_disaligned;
+use crate::util::is_within_packed;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -32,8 +32,6 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
         .iterate_to_fixpoint()
         .into_results_cursor(body);
 
-    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-
     // For blocks with a call terminator, if an argument copy can be turned into a move,
     // record it as (block, argument index).
     let mut call_operands_to_move = Vec::new();
@@ -52,7 +50,11 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
                     && !place.is_indirect()
                     && !borrowed.contains(place.local)
                     && !state.contains(place.local)
-                    && !is_disaligned(tcx, body, param_env, place)
+                    // If `place` is a projection of a disaligned field in a packed ADT,
+                    // the move may be codegened as a pointer to that field.
+                    // Using that disaligned pointer may trigger UB in the callee,
+                    // so do nothing.
+                    && is_within_packed(tcx, body, place).is_none()
                 {
                     call_operands_to_move.push((bb, index));
                 }
