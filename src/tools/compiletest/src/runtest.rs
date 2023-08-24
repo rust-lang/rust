@@ -1430,6 +1430,15 @@ impl<'test> TestCx<'test> {
             "^core::num::([a-z_]+::)*NonZero.+$",
         ];
 
+        // In newer versions of lldb, persistent results (the `$N =` part at the start of
+        // expressions you have evaluated that let you re-use the result) aren't printed, but lots
+        // of rustc's debuginfo tests rely on these, so re-enable this.
+        // See <https://reviews.llvm.org/rG385496385476fc9735da5fa4acabc34654e8b30d>.
+        script_str.push_str("command unalias print\n");
+        script_str.push_str("command alias print expr --\n");
+        script_str.push_str("command unalias p\n");
+        script_str.push_str("command alias p expr --\n");
+
         script_str
             .push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[..])[..]);
         script_str.push_str("type synthetic add -l lldb_lookup.synthetic_lookup -x '.*' ");
