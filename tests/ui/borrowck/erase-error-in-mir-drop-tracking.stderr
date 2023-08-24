@@ -19,6 +19,73 @@ error: `C` does not live long enough
 LL |     async move { c.connect().await }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0310]: the parameter type `C` may not live long enough
+  --> $DIR/erase-error-in-mir-drop-tracking.rs:19:5
+   |
+LL |     async move { c.connect().await }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `C` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL |     C: Client + Send + Sync + 'static,
+   |                             +++++++++
 
-For more information about this error, try `rustc --explain E0261`.
+error[E0310]: the parameter type `C` may not live long enough
+  --> $DIR/erase-error-in-mir-drop-tracking.rs:19:5
+   |
+LL |     async move { c.connect().await }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `C` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL |     C: Client + Send + Sync + 'static,
+   |                             +++++++++
+
+error[E0310]: the parameter type `C` may not live long enough
+  --> $DIR/erase-error-in-mir-drop-tracking.rs:19:18
+   |
+LL |     async move { c.connect().await }
+   |                  ^^^^^^^^^^^ ...so that the type `C` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL |     C: Client + Send + Sync + 'static,
+   |                             +++++++++
+
+error[E0310]: the parameter type `C` may not live long enough
+  --> $DIR/erase-error-in-mir-drop-tracking.rs:19:18
+   |
+LL |     async move { c.connect().await }
+   |                  ^^^^^^^^^^^ ...so that the type `C` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL |     C: Client + Send + Sync + 'static,
+   |                             +++++++++
+
+error[E0310]: the parameter type `C` may not live long enough
+  --> $DIR/erase-error-in-mir-drop-tracking.rs:19:30
+   |
+LL |     async move { c.connect().await }
+   |                              ^^^^^ ...so that the type `C` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL |     C: Client + Send + Sync + 'static,
+   |                             +++++++++
+
+error[E0310]: the parameter type `C` may not live long enough
+  --> $DIR/erase-error-in-mir-drop-tracking.rs:19:30
+   |
+LL |     async move { c.connect().await }
+   |                              ^^^^^ ...so that the type `C` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL |     C: Client + Send + Sync + 'static,
+   |                             +++++++++
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0261, E0310.
+For more information about an error, try `rustc --explain E0261`.
