@@ -1,9 +1,12 @@
 // run-fail
+// exec-env:RUST_BACKTRACE=0
 // check-run-results
 // error-pattern: panic in a destructor during cleanup
 // normalize-stderr-test: "\n +[0-9]+:[^\n]+" -> ""
 // normalize-stderr-test: "\n +at [^\n]+" -> ""
-// ignore-emscripten no processes
+// needs-unwind
+// ignore-emscripten "RuntimeError" junk in output
+// ignore-msvc SEH doesn't do panic-during-cleanup the same way as everyone else
 
 struct Bomb;
 
