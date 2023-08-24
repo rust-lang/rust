@@ -6658,7 +6658,7 @@ mod test_map {
     use allocator_api2::alloc::{AllocError, Allocator, Global};
     use core::alloc::Layout;
     use core::ptr::NonNull;
-    use core::sync::atomic::{AtomicBool, Ordering};
+    use core::sync::atomic::{AtomicI8, Ordering};
     use rand::{rngs::SmallRng, Rng, SeedableRng};
     use std::borrow::ToOwned;
     use std::cell::RefCell;
@@ -8510,47 +8510,44 @@ mod test_map {
         let _map2 = map1.clone();
     }
 
+    struct MyAllocInner {
+        drop_count: Arc<AtomicI8>,
+    }
+
+    #[derive(Clone)]
+    struct MyAlloc {
+        _inner: Arc<MyAllocInner>,
+    }
+
+    impl Drop for MyAllocInner {
+        fn drop(&mut self) {
+            println!("MyAlloc freed.");
+            self.drop_count.fetch_sub(1, Ordering::SeqCst);
+        }
+    }
+
+    unsafe impl Allocator for MyAlloc {
+        fn allocate(&self, layout: Layout) -> std::result::Result<NonNull<[u8]>, AllocError> {
+            let g = Global;
+            g.allocate(layout)
+        }
+
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            let g = Global;
+            g.deallocate(ptr, layout)
+        }
+    }
+
     #[test]
     fn test_hashmap_into_iter_bug() {
-        let dropped: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+        let dropped: Arc<AtomicI8> = Arc::new(AtomicI8::new(1));
 
         {
-            struct MyAllocInner {
-                drop_flag: Arc<AtomicBool>,
-            }
-
-            #[derive(Clone)]
-            struct MyAlloc {
-                _inner: Arc<MyAllocInner>,
-            }
-
-            impl Drop for MyAllocInner {
-                fn drop(&mut self) {
-                    println!("MyAlloc freed.");
-                    self.drop_flag.store(true, Ordering::SeqCst);
-                }
-            }
-
-            unsafe impl Allocator for MyAlloc {
-                fn allocate(
-                    &self,
-                    layout: Layout,
-                ) -> std::result::Result<NonNull<[u8]>, AllocError> {
-                    let g = Global;
-                    g.allocate(layout)
-                }
-
-                unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-                    let g = Global;
-                    g.deallocate(ptr, layout)
-                }
-            }
-
             let mut map = crate::HashMap::with_capacity_in(
                 10,
                 MyAlloc {
                     _inner: Arc::new(MyAllocInner {
-                        drop_flag: dropped.clone(),
+                        drop_count: dropped.clone(),
                     }),
                 },
             );
@@ -8563,6 +8560,96 @@ mod test_map {
             }
         }
 
-        assert!(dropped.load(Ordering::SeqCst));
+        // All allocator clones should already be dropped.
+        assert_eq!(dropped.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    #[should_panic = "panic in clone"]
+    fn test_clone_memory_leaks_and_double_drop() {
+        let dropped: Arc<AtomicI8> = Arc::new(AtomicI8::new(2));
+
+        {
+            let mut map = crate::HashMap::with_capacity_in(
+                10,
+                MyAlloc {
+                    _inner: Arc::new(MyAllocInner {
+                        drop_count: dropped.clone(),
+                    }),
+                },
+            );
+
+            const DISARMED: bool = false;
+            const ARMED: bool = true;
+
+            struct CheckedCloneDrop {
+                panic_in_clone: bool,
+                dropped: bool,
+                need_drop: Vec<i32>,
+            }
+
+            impl Clone for CheckedCloneDrop {
+                fn clone(&self) -> Self {
+                    if self.panic_in_clone {
+                        panic!("panic in clone")
+                    }
+                    Self {
+                        panic_in_clone: self.panic_in_clone,
+                        dropped: self.dropped,
+                        need_drop: self.need_drop.clone(),
+                    }
+                }
+            }
+
+            impl Drop for CheckedCloneDrop {
+                fn drop(&mut self) {
+                    if self.dropped {
+                        panic!("double drop");
+                    }
+                    self.dropped = true;
+                }
+            }
+
+            let armed_flags = [
+                DISARMED, DISARMED, ARMED, DISARMED, DISARMED, DISARMED, DISARMED,
+            ];
+
+            // Hash and Key must be equal to each other for controlling the elements placement
+            // so that we can be sure that we first clone elements that don't panic during cloning.
+            for (idx, &panic_in_clone) in armed_flags.iter().enumerate() {
+                let idx = idx as u64;
+                map.table.insert(
+                    idx,
+                    (
+                        idx,
+                        CheckedCloneDrop {
+                            panic_in_clone,
+                            dropped: false,
+                            need_drop: vec![0, 1, 2, 3],
+                        },
+                    ),
+                    |(k, _)| *k,
+                );
+            }
+
+            let mut count = 0;
+            // Let's check that all elements are located as we wanted
+            //
+            // SAFETY: We know for sure that `RawTable` will outlive
+            // the returned `RawIter` iterator.
+            for ((key, value), panic_in_clone) in map.iter().zip(armed_flags) {
+                assert_eq!(*key, count);
+                assert_eq!(value.panic_in_clone, panic_in_clone);
+                count += 1;
+            }
+            assert_eq!(map.len(), 7);
+            assert_eq!(count, 7);
+
+            // Clone should normally clone a few elements, and then (when the
+            // clone function panics), deallocate both its own memory, memory
+            // of `dropped: Arc<AtomicI8>` and the memory of already cloned
+            // elements (Vec<i32> memory inside CheckedCloneDrop).
+            let _table2 = map.clone();
+        }
     }
 }
