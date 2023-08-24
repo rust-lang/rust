@@ -4,7 +4,7 @@ use crate::traits::PredicateObligations;
 use super::combine::{CombineFields, ObligationEmittingRelation};
 use super::Subtype;
 
-use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
@@ -46,8 +46,8 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
     fn relate_item_args(
         &mut self,
         _item_def_id: DefId,
-        a_arg: GenericArgsRef<'tcx>,
-        b_arg: GenericArgsRef<'tcx>,
+        a_args: GenericArgsRef<'tcx>,
+        b_args: GenericArgsRef<'tcx>,
     ) -> RelateResult<'tcx, GenericArgsRef<'tcx>> {
         // N.B., once we are equating types, we don't care about
         // variance, so don't try to lookup the variance here. This
@@ -55,8 +55,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         // variance requires computing types which can require
         // performing trait matching (which then performs equality
         // unification).
-
-        relate::relate_args(self, a_arg, b_arg)
+        self.relate(a_args, b_args)
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(

@@ -2,11 +2,10 @@ use super::combine::CombineFields;
 use super::{DefineOpaqueTypes, ObligationEmittingRelation, SubregionOrigin};
 
 use crate::traits::{Obligation, PredicateObligations};
-use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
 pub struct Sub<'combine, 'a, 'tcx> {
@@ -45,18 +44,6 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         self.a_is_expected
-    }
-
-    fn with_cause<F, R>(&mut self, cause: Cause, f: F) -> R
-    where
-        F: FnOnce(&mut Self) -> R,
-    {
-        debug!("sub with_cause={:?}", cause);
-        let old_cause = mem::replace(&mut self.fields.cause, Some(cause));
-        let r = f(self);
-        debug!("sub old_cause={:?}", old_cause);
-        self.fields.cause = old_cause;
-        r
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
@@ -178,8 +165,6 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("{}.regions({:?}, {:?}) self.cause={:?}", self.tag(), a, b, self.fields.cause);
-
         // FIXME -- we have more fine-grained information available
         // from the "cause" field, we could perhaps give more tailored
         // error messages.

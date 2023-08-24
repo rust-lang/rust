@@ -14,11 +14,6 @@ use std::iter;
 
 pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
-#[derive(Clone, Debug)]
-pub enum Cause {
-    ExistentialRegionBound, // relating an existential region bound
-}
-
 pub trait TypeRelation<'tcx>: Sized {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
@@ -30,13 +25,6 @@ pub trait TypeRelation<'tcx>: Sized {
     /// Returns `true` if the value `a` is the "expected" type in the
     /// relation. Just affects error messages.
     fn a_is_expected(&self) -> bool;
-
-    fn with_cause<F, R>(&mut self, _cause: Cause, f: F) -> R
-    where
-        F: FnOnce(&mut Self) -> R,
-    {
-        f(self)
-    }
 
     /// Generic relation routine suitable for most anything.
     fn relate<T: Relate<'tcx>>(&mut self, a: T, b: T) -> RelateResult<'tcx, T> {
@@ -131,17 +119,6 @@ pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
         let ty = relation.relate_with_variance(variance, info, a.ty, b.ty)?;
         Ok(ty::TypeAndMut { ty, mutbl })
     }
-}
-
-#[inline]
-pub fn relate_args<'tcx, R: TypeRelation<'tcx>>(
-    relation: &mut R,
-    a_arg: GenericArgsRef<'tcx>,
-    b_arg: GenericArgsRef<'tcx>,
-) -> RelateResult<'tcx, GenericArgsRef<'tcx>> {
-    relation.tcx().mk_args_from_iter(iter::zip(a_arg, b_arg).map(|(a, b)| {
-        relation.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)
-    }))
 }
 
 pub fn relate_args_with_variances<'tcx, R: TypeRelation<'tcx>>(
@@ -315,7 +292,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
         } else {
-            let args = relate_args(relation, a.args, b.args)?;
+            let args = relation.relate(a.args, b.args)?;
             Ok(ty::TraitRef::new(relation.tcx(), a.def_id, args))
         }
     }
@@ -331,7 +308,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
         } else {
-            let args = relate_args(relation, a.args, b.args)?;
+            let args = relation.relate(a.args, b.args)?;
             Ok(ty::ExistentialTraitRef { def_id: a.def_id, args })
         }
     }
@@ -437,9 +414,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (&ty::Dynamic(a_obj, a_region, a_repr), &ty::Dynamic(b_obj, b_region, b_repr))
             if a_repr == b_repr =>
         {
-            let region_bound = relation.with_cause(Cause::ExistentialRegionBound, |relation| {
-                relation.relate(a_region, b_region)
-            })?;
+            let region_bound = relation.relate(a_region, b_region)?;
             Ok(Ty::new_dynamic(tcx, relation.relate(a_obj, b_obj)?, region_bound, a_repr))
         }
 
@@ -719,7 +694,7 @@ impl<'tcx> Relate<'tcx> for ty::ClosureArgs<'tcx> {
         a: ty::ClosureArgs<'tcx>,
         b: ty::ClosureArgs<'tcx>,
     ) -> RelateResult<'tcx, ty::ClosureArgs<'tcx>> {
-        let args = relate_args(relation, a.args, b.args)?;
+        let args = relation.relate(a.args, b.args)?;
         Ok(ty::ClosureArgs { args })
     }
 }
@@ -730,7 +705,7 @@ impl<'tcx> Relate<'tcx> for ty::GeneratorArgs<'tcx> {
         a: ty::GeneratorArgs<'tcx>,
         b: ty::GeneratorArgs<'tcx>,
     ) -> RelateResult<'tcx, ty::GeneratorArgs<'tcx>> {
-        let args = relate_args(relation, a.args, b.args)?;
+        let args = relation.relate(a.args, b.args)?;
         Ok(ty::GeneratorArgs { args })
     }
 }
@@ -741,7 +716,9 @@ impl<'tcx> Relate<'tcx> for GenericArgsRef<'tcx> {
         a: GenericArgsRef<'tcx>,
         b: GenericArgsRef<'tcx>,
     ) -> RelateResult<'tcx, GenericArgsRef<'tcx>> {
-        relate_args(relation, a, b)
+        relation.tcx().mk_args_from_iter(iter::zip(a, b).map(|(a, b)| {
+            relation.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)
+        }))
     }
 }
 
