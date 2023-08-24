@@ -52,9 +52,14 @@ fn main() {
     // Force all crates compiled by this compiler to (a) be unstable and (b)
     // allow the `rustc_private` feature to link to other unstable crates
     // also in the sysroot.
-    if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
+    if env::var_os("RUSTC_FORCE_UNSTABLE").is_some()
+        // We don't want to enable this flag on std as this makes bootstrap ignoring the doctests
+        // errors.
+        && env::var_os("__CARGO_DEFAULT_LIB_METADATA") != Some(OsString::from("devstd"))
+    {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
+
     if let Some(linker) = env::var_os("RUSTDOC_LINKER") {
         let mut arg = OsString::from("-Clinker=");
         arg.push(&linker);
