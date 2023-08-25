@@ -108,6 +108,23 @@ impl<'tcx> Context for Tables<'tcx> {
         let generic_def = self.tcx.generics_of(def_id);
         generic_def.stable(self)
     }
+
+    fn predicates_of(
+        &mut self,
+        trait_def: &stable_mir::ty::TraitDef,
+    ) -> stable_mir::GenericPredicates {
+        let trait_def_id = self.trait_def_id(trait_def);
+        let ty::GenericPredicates { parent, predicates } = self.tcx.predicates_of(trait_def_id);
+        stable_mir::GenericPredicates {
+            parent: parent.map(|did| self.trait_def(did)),
+            predicates: predicates
+                .iter()
+                .map(|(clause, span)| {
+                    (clause.as_predicate().kind().skip_binder().stable(self), span.stable(self))
+                })
+                .collect(),
+        }
+    }
 }
 
 pub struct Tables<'tcx> {
@@ -200,7 +217,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 stable_mir::mir::Rvalue::Repeat(op.stable(tables), len)
             }
             Ref(region, kind, place) => stable_mir::mir::Rvalue::Ref(
-                opaque(region),
+                region.stable(tables),
                 kind.stable(tables),
                 place.stable(tables),
             ),
@@ -842,12 +859,9 @@ impl<'tcx> Stable<'tcx> for ty::GenericArgKind<'tcx> {
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::GenericArgKind;
         match self {
-            ty::GenericArgKind::Lifetime(region) => GenericArgKind::Lifetime(opaque(region)),
+            ty::GenericArgKind::Lifetime(region) => GenericArgKind::Lifetime(region.stable(tables)),
             ty::GenericArgKind::Type(ty) => GenericArgKind::Type(tables.intern_ty(*ty)),
-            ty::GenericArgKind::Const(cnst) => {
-                let cnst = ConstantKind::from_const(*cnst, tables.tcx);
-                GenericArgKind::Const(stable_mir::ty::Const { literal: cnst.stable(tables) })
-            }
+            ty::GenericArgKind::Const(cnst) => GenericArgKind::Const(cnst.stable(tables)),
         }
     }
 }
@@ -950,12 +964,12 @@ impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
 impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
     type T = stable_mir::ty::BoundRegionKind;
 
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::BoundRegionKind;
 
         match self {
             ty::BoundRegionKind::BrAnon(option_span) => {
-                BoundRegionKind::BrAnon(option_span.map(|span| opaque(&span)))
+                BoundRegionKind::BrAnon(option_span.map(|span| span.stable(tables)))
             }
             ty::BoundRegionKind::BrNamed(def_id, symbol) => {
                 BoundRegionKind::BrNamed(rustc_internal::br_named_def(*def_id), symbol.to_string())
@@ -1053,16 +1067,14 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
             }
             ty::Str => TyKind::RigidTy(RigidTy::Str),
             ty::Array(ty, constant) => {
-                let cnst = ConstantKind::from_const(*constant, tables.tcx);
-                let cnst = stable_mir::ty::Const { literal: cnst.stable(tables) };
-                TyKind::RigidTy(RigidTy::Array(tables.intern_ty(*ty), cnst))
+                TyKind::RigidTy(RigidTy::Array(tables.intern_ty(*ty), constant.stable(tables)))
             }
             ty::Slice(ty) => TyKind::RigidTy(RigidTy::Slice(tables.intern_ty(*ty))),
             ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
                 TyKind::RigidTy(RigidTy::RawPtr(tables.intern_ty(*ty), mutbl.stable(tables)))
             }
             ty::Ref(region, ty, mutbl) => TyKind::RigidTy(RigidTy::Ref(
-                opaque(region),
+                region.stable(tables),
                 tables.intern_ty(*ty),
                 mutbl.stable(tables),
             )),
@@ -1077,7 +1089,7 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
                         .iter()
                         .map(|existential_predicate| existential_predicate.stable(tables))
                         .collect(),
-                    opaque(region),
+                    region.stable(tables),
                     dyn_kind.stable(tables),
                 ))
             }
@@ -1109,6 +1121,15 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
                 unreachable!();
             }
         }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
+    type T = stable_mir::ty::Const;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let cnst = ConstantKind::from_const(*self, tables.tcx);
+        stable_mir::ty::Const { literal: cnst.stable(tables) }
     }
 }
 
@@ -1238,14 +1259,6 @@ impl<'tcx> Stable<'tcx> for ty::Generics {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_span::Span {
-    type T = stable_mir::ty::Span;
-
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        opaque(self)
-    }
-}
-
 impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDefKind {
     type T = stable_mir::ty::GenericParamDefKind;
 
@@ -1274,5 +1287,190 @@ impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDef {
             pure_wrt_drop: self.pure_wrt_drop,
             kind: self.kind.stable(tables),
         }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
+    type T = stable_mir::ty::PredicateKind;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use ty::PredicateKind;
+        match self {
+            PredicateKind::Clause(clause_kind) => {
+                stable_mir::ty::PredicateKind::Clause(clause_kind.stable(tables))
+            }
+            PredicateKind::ObjectSafe(did) => {
+                stable_mir::ty::PredicateKind::ObjectSafe(tables.trait_def(*did))
+            }
+            PredicateKind::ClosureKind(did, generic_args, closure_kind) => {
+                stable_mir::ty::PredicateKind::ClosureKind(
+                    tables.closure_def(*did),
+                    generic_args.stable(tables),
+                    closure_kind.stable(tables),
+                )
+            }
+            PredicateKind::Subtype(subtype_predicate) => {
+                stable_mir::ty::PredicateKind::SubType(subtype_predicate.stable(tables))
+            }
+            PredicateKind::Coerce(coerce_predicate) => {
+                stable_mir::ty::PredicateKind::Coerce(coerce_predicate.stable(tables))
+            }
+            PredicateKind::ConstEquate(a, b) => {
+                stable_mir::ty::PredicateKind::ConstEquate(a.stable(tables), b.stable(tables))
+            }
+            PredicateKind::Ambiguous => stable_mir::ty::PredicateKind::Ambiguous,
+            PredicateKind::AliasRelate(a, b, alias_relation_direction) => {
+                stable_mir::ty::PredicateKind::AliasRelate(
+                    a.unpack().stable(tables),
+                    b.unpack().stable(tables),
+                    alias_relation_direction.stable(tables),
+                )
+            }
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
+    type T = stable_mir::ty::ClauseKind;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use ty::ClauseKind::*;
+        match *self {
+            Trait(trait_object) => stable_mir::ty::ClauseKind::Trait(trait_object.stable(tables)),
+            RegionOutlives(region_outlives) => {
+                stable_mir::ty::ClauseKind::RegionOutlives(region_outlives.stable(tables))
+            }
+            TypeOutlives(type_outlives) => {
+                let ty::OutlivesPredicate::<_, _>(a, b) = type_outlives;
+                stable_mir::ty::ClauseKind::TypeOutlives(stable_mir::ty::OutlivesPredicate(
+                    tables.intern_ty(a),
+                    b.stable(tables),
+                ))
+            }
+            Projection(projection_predicate) => {
+                stable_mir::ty::ClauseKind::Projection(projection_predicate.stable(tables))
+            }
+            ConstArgHasType(const_, ty) => stable_mir::ty::ClauseKind::ConstArgHasType(
+                const_.stable(tables),
+                tables.intern_ty(ty),
+            ),
+            WellFormed(generic_arg) => {
+                stable_mir::ty::ClauseKind::WellFormed(generic_arg.unpack().stable(tables))
+            }
+            ConstEvaluatable(const_) => {
+                stable_mir::ty::ClauseKind::ConstEvaluatable(const_.stable(tables))
+            }
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ClosureKind {
+    type T = stable_mir::ty::ClosureKind;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use ty::ClosureKind::*;
+        match self {
+            Fn => stable_mir::ty::ClosureKind::Fn,
+            FnMut => stable_mir::ty::ClosureKind::FnMut,
+            FnOnce => stable_mir::ty::ClosureKind::FnOnce,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::SubtypePredicate<'tcx> {
+    type T = stable_mir::ty::SubtypePredicate;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let ty::SubtypePredicate { a, b, a_is_expected: _ } = self;
+        stable_mir::ty::SubtypePredicate { a: tables.intern_ty(*a), b: tables.intern_ty(*b) }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::CoercePredicate<'tcx> {
+    type T = stable_mir::ty::CoercePredicate;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let ty::CoercePredicate { a, b } = self;
+        stable_mir::ty::CoercePredicate { a: tables.intern_ty(*a), b: tables.intern_ty(*b) }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::AliasRelationDirection {
+    type T = stable_mir::ty::AliasRelationDirection;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use ty::AliasRelationDirection::*;
+        match self {
+            Equate => stable_mir::ty::AliasRelationDirection::Equate,
+            Subtype => stable_mir::ty::AliasRelationDirection::Subtype,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::TraitPredicate<'tcx> {
+    type T = stable_mir::ty::TraitPredicate;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let ty::TraitPredicate { trait_ref, polarity } = self;
+        stable_mir::ty::TraitPredicate {
+            trait_ref: trait_ref.stable(tables),
+            polarity: polarity.stable(tables),
+        }
+    }
+}
+
+impl<'tcx, A, B, U, V> Stable<'tcx> for ty::OutlivesPredicate<A, B>
+where
+    A: Stable<'tcx, T = U>,
+    B: Stable<'tcx, T = V>,
+{
+    type T = stable_mir::ty::OutlivesPredicate<U, V>;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let ty::OutlivesPredicate(a, b) = self;
+        stable_mir::ty::OutlivesPredicate(a.stable(tables), b.stable(tables))
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ProjectionPredicate<'tcx> {
+    type T = stable_mir::ty::ProjectionPredicate;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let ty::ProjectionPredicate { projection_ty, term } = self;
+        stable_mir::ty::ProjectionPredicate {
+            projection_ty: projection_ty.stable(tables),
+            term: term.unpack().stable(tables),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ImplPolarity {
+    type T = stable_mir::ty::ImplPolarity;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use ty::ImplPolarity::*;
+        match self {
+            Positive => stable_mir::ty::ImplPolarity::Positive,
+            Negative => stable_mir::ty::ImplPolarity::Negative,
+            Reservation => stable_mir::ty::ImplPolarity::Reservation,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::Region<'tcx> {
+    type T = stable_mir::ty::Region;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        // FIXME: add a real implementation of stable regions
+        opaque(self)
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_span::Span {
+    type T = stable_mir::ty::Span;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        // FIXME: add a real implementation of stable spans
+        opaque(self)
     }
 }

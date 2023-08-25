@@ -158,12 +158,14 @@ lint_builtin_while_true = denote infinite loops with `loop {"{"} ... {"}"}`
 
 lint_check_name_deprecated = lint name `{$lint_name}` is deprecated and does not have an effect anymore. Use: {$new_name}
 
+lint_check_name_removed = lint `{$lint_name}` has been removed: {$reason}
+
+lint_check_name_renamed = lint `{$lint_name}` has been renamed to `{$replace}`
+
 lint_check_name_unknown = unknown lint: `{$lint_name}`
     .help = did you mean: `{$suggestion}`
 
 lint_check_name_unknown_tool = unknown lint tool: `{$tool_name}`
-
-lint_check_name_warning = {$msg}
 
 lint_command_line_source = `forbid` lint level was set on command line
 
@@ -484,8 +486,11 @@ lint_redundant_semicolons =
         *[false] this semicolon
     }
 
-lint_renamed_or_removed_lint = {$msg}
+lint_removed_lint = lint `{$name}` has been removed: {$reason}
+
+lint_renamed_lint = lint `{$name}` has been renamed to `{$replace}`
     .suggestion = use the new name
+    .help = use the new name `{$replace}`
 
 lint_requested_level = requested on the command line with `{$level} {$lint_name}`
 

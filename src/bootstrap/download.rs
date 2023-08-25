@@ -91,8 +91,8 @@ impl Config {
             // NOTE: this intentionally comes after the Linux check:
             // - patchelf only works with ELF files, so no need to run it on Mac or Windows
             // - On other Unix systems, there is no stable syscall interface, so Nix doesn't manage the global libc.
-            if self.patch_binaries_for_nix {
-                return true;
+            if let Some(explicit_value) = self.patch_binaries_for_nix {
+                return explicit_value;
             }
 
             // Use `/etc/os-release` instead of `/etc/NIXOS`.
@@ -105,6 +105,15 @@ impl Config {
                     matches!(l.trim(), "ID=nixos" | "ID='nixos'" | "ID=\"nixos\"")
                 }),
             };
+            if !is_nixos {
+                let in_nix_shell = env::var("IN_NIX_SHELL");
+                if let Ok(in_nix_shell) = in_nix_shell {
+                    eprintln!(
+                        "The IN_NIX_SHELL environment variable is `{in_nix_shell}`; \
+                         you may need to set `patch-binaries-for-nix=true` in config.toml"
+                    );
+                }
+            }
             is_nixos
         });
         if val {

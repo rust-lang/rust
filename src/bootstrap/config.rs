@@ -137,7 +137,7 @@ pub struct Config {
     pub json_output: bool,
     pub test_compare_mode: bool,
     pub color: Color,
-    pub patch_binaries_for_nix: bool,
+    pub patch_binaries_for_nix: Option<bool>,
     pub stage0_metadata: Stage0Metadata,
 
     pub stdout_is_tty: bool,
@@ -1339,7 +1339,7 @@ impl Config {
         set(&mut config.local_rebuild, build.local_rebuild);
         set(&mut config.print_step_timings, build.print_step_timings);
         set(&mut config.print_step_rusage, build.print_step_rusage);
-        set(&mut config.patch_binaries_for_nix, build.patch_binaries_for_nix);
+        config.patch_binaries_for_nix = build.patch_binaries_for_nix;
 
         config.verbose = cmp::max(config.verbose, flags.verbose as usize);
 

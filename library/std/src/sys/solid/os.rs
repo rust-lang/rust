@@ -8,7 +8,7 @@ use crate::os::{
     solid::ffi::{OsStrExt, OsStringExt},
 };
 use crate::path::{self, PathBuf};
-use crate::sync::RwLock;
+use crate::sync::{PoisonError, RwLock};
 use crate::sys::common::small_c_string::run_with_cstr;
 use crate::vec;
 
