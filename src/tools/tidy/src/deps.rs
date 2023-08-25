@@ -387,8 +387,11 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
         .manifest_path(root.join("Cargo.toml"))
         .features(cargo_metadata::CargoOpt::AllFeatures);
     let metadata = t!(cmd.exec());
+
     let runtime_ids = compute_runtime_crates(&metadata);
-    check_license_exceptions(&metadata, EXCEPTIONS, runtime_ids, bad);
+    check_runtime_license_exceptions(&metadata, runtime_ids, bad);
+
+    check_license_exceptions(&metadata, EXCEPTIONS, bad);
     check_permitted_dependencies(
         &metadata,
         "rustc",
@@ -403,8 +406,7 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
         .manifest_path(root.join("src/tools/cargo/Cargo.toml"))
         .features(cargo_metadata::CargoOpt::AllFeatures);
     let cargo_metadata = t!(cmd.exec());
-    let runtime_ids = HashSet::new();
-    check_license_exceptions(&cargo_metadata, EXCEPTIONS_CARGO, runtime_ids, bad);
+    check_license_exceptions(&cargo_metadata, EXCEPTIONS_CARGO, bad);
     check_rustfix(&metadata, &cargo_metadata, bad);
 
     // Check rustc_codegen_cranelift independently as it has it's own workspace.
@@ -413,8 +415,7 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
         .manifest_path(root.join("compiler/rustc_codegen_cranelift/Cargo.toml"))
         .features(cargo_metadata::CargoOpt::AllFeatures);
     let metadata = t!(cmd.exec());
-    let runtime_ids = HashSet::new();
-    check_license_exceptions(&metadata, EXCEPTIONS_CRANELIFT, runtime_ids, bad);
+    check_license_exceptions(&metadata, EXCEPTIONS_CRANELIFT, bad);
     check_permitted_dependencies(
         &metadata,
         "cranelift",
@@ -428,19 +429,54 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
         .manifest_path(root.join("src/bootstrap/Cargo.toml"))
         .features(cargo_metadata::CargoOpt::AllFeatures);
     let metadata = t!(cmd.exec());
-    let runtime_ids = HashSet::new();
-    check_license_exceptions(&metadata, EXCEPTIONS_BOOTSTRAP, runtime_ids, bad);
+    check_license_exceptions(&metadata, EXCEPTIONS_BOOTSTRAP, bad);
 }
 
-/// Check that all licenses are in the valid list in `LICENSES`.
+/// Check that all licenses of runtime dependencies are in the valid list in `LICENSES`.
 ///
-/// Packages listed in `exceptions` are allowed for tools.
-fn check_license_exceptions(
+/// Unlike for tools we don't allow exceptions to the `LICENSES` list for the runtime with the sole
+/// exception of `fortanix-sgx-abi` which is only used on x86_64-fortanix-unknown-sgx.
+fn check_runtime_license_exceptions(
     metadata: &Metadata,
-    exceptions: &[(&str, &str)],
     runtime_ids: HashSet<&PackageId>,
     bad: &mut bool,
 ) {
+    for pkg in &metadata.packages {
+        if !runtime_ids.contains(&pkg.id) {
+            // Only checking dependencies of runtime libraries here.
+            continue;
+        }
+        if pkg.source.is_none() {
+            // No need to check local packages.
+            continue;
+        }
+        let license = match &pkg.license {
+            Some(license) => license,
+            None => {
+                tidy_error!(bad, "dependency `{}` does not define a license expression", pkg.id);
+                continue;
+            }
+        };
+        if !LICENSES.contains(&license.as_str()) {
+            if pkg.name == "fortanix-sgx-abi" {
+                // This is a specific exception because SGX is considered
+                // "third party". See
+                // https://github.com/rust-lang/rust/issues/62620 for more. In
+                // general, these should never be added.
+                if pkg.license.as_deref() != Some("MPL-2.0") {
+                    tidy_error!(bad, "invalid license `{}` in `{}`", license, pkg.id);
+                }
+                continue;
+            }
+            tidy_error!(bad, "invalid license `{}` in `{}`", license, pkg.id);
+        }
+    }
+}
+
+/// Check that all licenses of tool dependencies are in the valid list in `LICENSES`.
+///
+/// Packages listed in `exceptions` are allowed for tools.
+fn check_license_exceptions(metadata: &Metadata, exceptions: &[(&str, &str)], bad: &mut bool) {
     // Validate the EXCEPTIONS list hasn't changed.
     for (name, license) in exceptions {
         // Check that the package actually exists.
@@ -482,7 +518,7 @@ fn check_license_exceptions(
             // No need to check local packages.
             continue;
         }
-        if !runtime_ids.contains(&pkg.id) && exception_names.contains(&pkg.name.as_str()) {
+        if exception_names.contains(&pkg.name.as_str()) {
             continue;
         }
         let license = match &pkg.license {
@@ -493,13 +529,6 @@ fn check_license_exceptions(
             }
         };
         if !LICENSES.contains(&license.as_str()) {
-            if pkg.name == "fortanix-sgx-abi" {
-                // This is a specific exception because SGX is considered
-                // "third party". See
-                // https://github.com/rust-lang/rust/issues/62620 for more. In
-                // general, these should never be added.
-                continue;
-            }
             tidy_error!(bad, "invalid license `{}` in `{}`", license, pkg.id);
         }
     }
