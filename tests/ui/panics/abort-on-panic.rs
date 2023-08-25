@@ -3,7 +3,6 @@
 //@[next] compile-flags: -Znext-solver
 
 #![allow(unused_must_use)]
-#![feature(c_unwind)]
 #![feature(panic_always_abort)]
 // Since we mark some ABIs as "nounwind" to LLVM, we must make sure that
 // we never unwind through them.

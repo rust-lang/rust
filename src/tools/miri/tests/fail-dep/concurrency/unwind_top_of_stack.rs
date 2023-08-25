@@ -4,8 +4,6 @@
 
 //! Unwinding past the top frame of a stack is Undefined Behavior.
 
-#![feature(c_unwind)]
-
 use std::{mem, ptr};
 
 extern "C-unwind" fn thread_start(_null: *mut libc::c_void) -> *mut libc::c_void {
