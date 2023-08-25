@@ -215,11 +215,12 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                             }
                             VarValue::Value(cur_region) => {
                                 let lub = match *cur_region {
-                                    // If the empty and placeholder regions are in the same universe,
-                                    // then the LUB is the Placeholder region (which is the cur_region).
-                                    // If they are not in the same universe, the LUB is the Static lifetime.
+                                    // If this empty region is from a universe that can name the
+                                    // placeholder universe, then the LUB is the Placeholder region
+                                    // (which is the cur_region). Otherwise, the LUB is the Static
+                                    // lifetime.
                                     RePlaceholder(placeholder)
-                                        if a_universe != placeholder.universe =>
+                                        if !a_universe.can_name(placeholder.universe) =>
                                     {
                                         self.tcx().lifetimes.re_static
                                     }
