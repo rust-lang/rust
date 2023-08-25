@@ -16,7 +16,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{Span, Symbol};
 
 mod min_specialization;
@@ -82,6 +82,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
         );
         return;
     }
+
     let impl_generics = tcx.generics_of(impl_def_id);
     let impl_predicates = tcx.predicates_of(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
@@ -119,7 +120,13 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
             ty::GenericParamDefKind::Type { .. } => {
                 let param_ty = ty::ParamTy::for_def(param);
                 if !input_parameters.contains(&cgp::Parameter::from(param_ty)) {
-                    report_unused_parameter(tcx, tcx.def_span(param.def_id), "type", param_ty.name);
+                    report_unused_parameter(
+                        tcx,
+                        tcx.def_span(param.def_id),
+                        "type",
+                        param_ty.name,
+                        impl_self_ty,
+                    );
                 }
             }
             ty::GenericParamDefKind::Lifetime => {
@@ -132,6 +139,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                         tcx.def_span(param.def_id),
                         "lifetime",
                         param.name,
+                        impl_self_ty,
                     );
                 }
             }
@@ -143,6 +151,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                         tcx.def_span(param.def_id),
                         "const",
                         param_ct.name,
+                        impl_self_ty,
                     );
                 }
             }
@@ -169,7 +178,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
     // used elsewhere are not projected back out.
 }
 
-fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol) {
+fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol, ty: Ty<'_>) {
     let mut err = struct_span_err!(
         tcx.sess,
         span,
@@ -180,6 +189,9 @@ fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol
         name
     );
     err.span_label(span, format!("unconstrained {kind} parameter"));
+    err.note(format!(
+        "consider using {kind} parameter `{name}` in the impl on `{ty}` or otherwise constrain `{name}`"
+    ));
     if kind == "const" {
         err.note(
             "expressions using a const parameter must map each value to a distinct output value",
