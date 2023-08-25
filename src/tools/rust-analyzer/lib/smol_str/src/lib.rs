@@ -334,10 +334,27 @@ impl From<Box<str>> for SmolStr {
     }
 }
 
+impl From<Arc<str>> for SmolStr {
+    #[inline]
+    fn from(s: Arc<str>) -> SmolStr {
+        SmolStr(Repr::Heap(s))
+    }
+}
+
 impl<'a> From<Cow<'a, str>> for SmolStr {
     #[inline]
     fn from(s: Cow<'a, str>) -> SmolStr {
         SmolStr::new(s)
+    }
+}
+
+impl From<SmolStr> for Arc<str> {
+    #[inline(always)]
+    fn from(text: SmolStr) -> Self {
+        match text.0 {
+            Repr::Heap(data) => data,
+            _ => text.as_str().into(),
+        }
     }
 }
 
