@@ -196,13 +196,25 @@ fn collect_unwrap_info<'tcx>(
 }
 
 /// A HIR visitor delegate that checks if a local variable of type `Option<_>` is mutated,
-/// unless `Option::as_mut` is called.
+/// *except* for if `Option::as_mut` is called.
+/// The reason for why we allow that one specifically is that `.as_mut()` cannot change
+/// the option to `None`, and that is important because this lint relies on the fact that
+/// `is_some` + `unwrap` is equivalent to `if let Some(..) = ..`, which it would not be if
+/// the option is changed to None between `is_some` and `unwrap`.
+/// (And also `.as_mut()` is a somewhat common method that is still worth linting on.)
 struct MutationVisitor<'tcx> {
     is_mutated: bool,
     local_id: HirId,
     tcx: TyCtxt<'tcx>,
 }
 
+/// Checks if the parent of the expression pointed at by the given `HirId` is a call to
+/// `Option::as_mut`.
+///
+/// Used by the mutation visitor to specifically allow `.as_mut()` calls.
+/// In particular, the `HirId` that the visitor receives is the id of the local expression
+/// (i.e. the `x` in `x.as_mut()`), and that is the reason for why we care about its parent
+/// expression: that will be where the actual method call is.
 fn is_option_as_mut_use(tcx: TyCtxt<'_>, expr_id: HirId) -> bool {
     if let Node::Expr(mutating_expr) = tcx.hir().get_parent(expr_id)
         && let ExprKind::MethodCall(path, ..) = mutating_expr.kind
@@ -260,7 +272,8 @@ impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
             vis.walk_expr(branch);
 
             if delegate.is_mutated {
-                // if the variable is mutated, we don't know whether it can be unwrapped:
+                // if the variable is mutated, we don't know whether it can be unwrapped.
+                // it might have been changed to `None` in between `is_some` + `unwrap`.
                 continue;
             }
             self.unwrappables.push(unwrap_info);

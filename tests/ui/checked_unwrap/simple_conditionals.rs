@@ -166,6 +166,17 @@ fn issue11371() {
         result.as_mut().unwrap();
         //~^ ERROR: this call to `unwrap()` will always panic
     }
+
+    // This should not lint. Statics are, at the time of writing, not linted on anyway,
+    // but if at some point they are supported by this lint, it should correctly see that
+    // `X` is being mutated and not suggest `if let Some(..) = X {}`
+    static mut X: Option<i32> = Some(123);
+    unsafe {
+        if X.is_some() {
+            X = None;
+            X.unwrap();
+        }
+    }
 }
 
 fn check_expect() {
