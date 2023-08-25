@@ -5,7 +5,7 @@ use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 use self::metadata::{file_metadata, type_di_node};
 use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
 use self::namespace::mangled_name_of_instance;
-use self::utils::{create_DIArray, debug_context, is_node_local_to_unit, DIB};
+use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
 
 use crate::abi::FnAbi;
 use crate::builder::Builder;
@@ -67,8 +67,6 @@ pub struct CodegenUnitDebugContext<'ll, 'tcx> {
     type_map: metadata::TypeMap<'ll, 'tcx>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
-    /// Maps a variable (name, scope, kind (argument or local), span) to its debug information.
-    variables: RefCell<FxHashMap<(Symbol, &'ll DIScope, VariableKind, Span), &'ll DIVariable>>,
 }
 
 impl Drop for CodegenUnitDebugContext<'_, '_> {
@@ -93,7 +91,6 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             type_map: Default::default(),
             namespace_map: RefCell::new(Default::default()),
             recursion_marker_type: OnceCell::new(),
-            variables: RefCell::new(Default::default()),
         }
     }
 
@@ -295,7 +292,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: &'ll Value,
         mir: &mir::Body<'tcx>,
-    ) -> Option<FunctionDebugContext<'tcx, &'ll DIScope, &'ll DILocation>> {
+    ) -> Option<FunctionDebugContext<&'ll DIScope, &'ll DILocation>> {
         if self.sess().opts.debuginfo == DebugInfo::None {
             return None;
         }
@@ -307,11 +304,8 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             file_start_pos: BytePos(0),
             file_end_pos: BytePos(0),
         };
-        let mut fn_debug_context = FunctionDebugContext {
-            scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes),
-            inlined_function_scopes: Default::default(),
-            lexical_blocks: Default::default(),
-        };
+        let mut fn_debug_context =
+            FunctionDebugContext { scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes) };
 
         // Fill in all the scopes, with the information from the MIR body.
         compute_mir_scopes(self, instance, mir, &mut fn_debug_context);
@@ -612,39 +606,33 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         variable_kind: VariableKind,
         span: Span,
     ) -> &'ll DIVariable {
-        debug_context(self)
-            .variables
-            .borrow_mut()
-            .entry((variable_name, scope_metadata, variable_kind, span))
-            .or_insert_with(|| {
-                let loc = self.lookup_debug_loc(span.lo());
-                let file_metadata = file_metadata(self, &loc.file);
+        let loc = self.lookup_debug_loc(span.lo());
+        let file_metadata = file_metadata(self, &loc.file);
 
-                let type_metadata = type_di_node(self, variable_type);
+        let type_metadata = type_di_node(self, variable_type);
 
-                let (argument_index, dwarf_tag) = match variable_kind {
-                    ArgumentVariable(index) => (index as c_uint, DW_TAG_arg_variable),
-                    LocalVariable => (0, DW_TAG_auto_variable),
-                };
-                let align = self.align_of(variable_type);
+        let (argument_index, dwarf_tag) = match variable_kind {
+            ArgumentVariable(index) => (index as c_uint, DW_TAG_arg_variable),
+            LocalVariable => (0, DW_TAG_auto_variable),
+        };
+        let align = self.align_of(variable_type);
 
-                let name = variable_name.as_str();
-                unsafe {
-                    llvm::LLVMRustDIBuilderCreateVariable(
-                        DIB(self),
-                        dwarf_tag,
-                        scope_metadata,
-                        name.as_ptr().cast(),
-                        name.len(),
-                        file_metadata,
-                        loc.line,
-                        type_metadata,
-                        true,
-                        DIFlags::FlagZero,
-                        argument_index,
-                        align.bytes() as u32,
-                    )
-                }
-            })
+        let name = variable_name.as_str();
+        unsafe {
+            llvm::LLVMRustDIBuilderCreateVariable(
+                DIB(self),
+                dwarf_tag,
+                scope_metadata,
+                name.as_ptr().cast(),
+                name.len(),
+                file_metadata,
+                loc.line,
+                type_metadata,
+                true,
+                DIFlags::FlagZero,
+                argument_index,
+                align.bytes() as u32,
+            )
+        }
     }
 }
