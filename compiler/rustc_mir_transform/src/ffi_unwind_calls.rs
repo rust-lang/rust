@@ -10,36 +10,6 @@ use rustc_target::spec::PanicStrategy;
 
 use crate::errors;
 
-fn abi_can_unwind(abi: Abi) -> bool {
-    use Abi::*;
-    match abi {
-        C { unwind }
-        | System { unwind }
-        | Cdecl { unwind }
-        | Stdcall { unwind }
-        | Fastcall { unwind }
-        | Vectorcall { unwind }
-        | Thiscall { unwind }
-        | Aapcs { unwind }
-        | Win64 { unwind }
-        | SysV64 { unwind } => unwind,
-        PtxKernel
-        | Msp430Interrupt
-        | X86Interrupt
-        | EfiApi
-        | AvrInterrupt
-        | AvrNonBlockingInterrupt
-        | RiscvInterruptM
-        | RiscvInterruptS
-        | CCmseNonSecureCall
-        | Wasm
-        | RustIntrinsic
-        | PlatformIntrinsic
-        | Unadjusted => false,
-        Rust | RustCall | RustCold => true,
-    }
-}
-
 // Check if the body of this def_id can possibly leak a foreign unwind into Rust code.
 fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
     debug!("has_ffi_unwind_calls({local_def_id:?})");
@@ -82,7 +52,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
         let sig = ty.fn_sig(tcx);
 
         // Rust calls cannot themselves create foreign unwinds.
-        if let Abi::Rust | Abi::RustCall | Abi::RustCold = sig.abi() {
+        if let Abi::Rust | Abi::RustCall | Abi::RustCold | Abi::RustIntrinsic = sig.abi() {
             continue;
         };
 
@@ -98,7 +68,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
             _ => bug!("invalid callee of type {:?}", ty),
         };
 
-        if layout::fn_can_unwind(tcx, fn_def_id, sig.abi()) && abi_can_unwind(sig.abi()) {
+        if layout::fn_can_unwind(tcx, fn_def_id, sig.abi()) {
             // We have detected a call that can possibly leak foreign unwind.
             //
             // Because the function body itself can unwind, we are not aborting this function call
