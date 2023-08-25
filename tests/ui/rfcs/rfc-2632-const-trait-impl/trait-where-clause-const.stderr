@@ -2,7 +2,7 @@ error[E0277]: the trait bound `T: ~const Bar` is not satisfied
   --> $DIR/trait-where-clause-const.rs:21:5
    |
 LL |     T::b();
-   |     ^^^^ the trait `Bar` is not implemented for `T`
+   |     ^ the trait `Bar` is not implemented for `T`
    |
 note: required by a bound in `Foo::b`
   --> $DIR/trait-where-clause-const.rs:15:24

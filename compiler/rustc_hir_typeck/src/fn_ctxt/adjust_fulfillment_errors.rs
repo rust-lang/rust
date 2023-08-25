@@ -165,6 +165,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     return true;
                 }
+                // Handle `Self` param specifically, since it's separated in
+                // the method call representation
+                if self_param_to_point_at.is_some() {
+                    error.obligation.cause.span = receiver
+                        .span
+                        .find_ancestor_in_same_ctxt(error.obligation.cause.span)
+                        .unwrap_or(receiver.span);
+                    return true;
+                }
             }
             hir::ExprKind::Struct(qpath, fields, ..) => {
                 if let Res::Def(DefKind::Struct | DefKind::Variant, variant_def_id) =
@@ -214,7 +223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &hir::QPath<'tcx>,
     ) -> bool {
         match qpath {
-            hir::QPath::Resolved(_, path) => {
+            hir::QPath::Resolved(self_ty, path) => {
                 for segment in path.segments.iter().rev() {
                     if let Res::Def(kind, def_id) = segment.res
                         && !matches!(kind, DefKind::Mod | DefKind::ForeignMod)
@@ -223,9 +232,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return true;
                     }
                 }
+                // Handle `Self` param specifically, since it's separated in
+                // the path representation
+                if let Some(self_ty) = self_ty
+                    && let ty::GenericArgKind::Type(ty) = param.unpack()
+                    && ty == self.tcx.types.self_param
+                {
+                    error.obligation.cause.span = self_ty
+                        .span
+                        .find_ancestor_in_same_ctxt(error.obligation.cause.span)
+                        .unwrap_or(self_ty.span);
+                    return true;
+                }
             }
-            hir::QPath::TypeRelative(_, segment) => {
+            hir::QPath::TypeRelative(self_ty, segment) => {
                 if self.point_at_generic_if_possible(error, def_id, param, segment) {
+                    return true;
+                }
+                // Handle `Self` param specifically, since it's separated in
+                // the path representation
+                if let ty::GenericArgKind::Type(ty) = param.unpack()
+                    && ty == self.tcx.types.self_param
+                {
+                    error.obligation.cause.span = self_ty
+                        .span
+                        .find_ancestor_in_same_ctxt(error.obligation.cause.span)
+                        .unwrap_or(self_ty.span);
                     return true;
                 }
             }
