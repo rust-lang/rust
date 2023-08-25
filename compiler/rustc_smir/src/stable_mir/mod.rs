@@ -109,6 +109,10 @@ pub fn trait_impl(trait_impl: &ImplDef) -> ImplTrait {
     with(|cx| cx.trait_impl(trait_impl))
 }
 
+pub fn generics_of(generic_def: &GenericDef) -> Generics {
+    with(|cx| cx.generics_of(generic_def))
+}
+
 pub fn predicates_of(trait_def: &TraitDef) -> GenericPredicates {
     with(|cx| cx.predicates_of(trait_def))
 }
