@@ -975,9 +975,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx.start_panic_nounwind(msg)
     }
 
-    fn unwind_terminate(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn unwind_terminate(ecx: &mut InterpCx<'mir, 'tcx, Self>, reason: mir::UnwindTerminateReason) -> InterpResult<'tcx> {
         // Call the lang item.
-        let panic = ecx.tcx.lang_items().panic_cannot_unwind().unwrap();
+        let panic = ecx.tcx.lang_items().get(reason.lang_item()).unwrap();
         let panic = ty::Instance::mono(ecx.tcx.tcx, panic);
         ecx.call_function(
             panic,

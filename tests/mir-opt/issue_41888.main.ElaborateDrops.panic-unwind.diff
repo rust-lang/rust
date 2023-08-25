@@ -58,7 +58,7 @@
 +         _8 = const true;
 +         _9 = const true;
           _1 = move _3;
--         drop(_3) -> [return: bb11, unwind terminate];
+-         drop(_3) -> [return: bb11, unwind terminate(cleanup)];
 +         goto -> bb11;
       }
   
@@ -102,7 +102,7 @@
       }
   
       bb11 (cleanup): {
--         drop(_1) -> [return: bb12, unwind terminate];
+-         drop(_1) -> [return: bb12, unwind terminate(cleanup)];
 +         goto -> bb12;
       }
   
@@ -124,7 +124,7 @@
 +     }
 + 
 +     bb16 (cleanup): {
-+         drop(_1) -> [return: bb12, unwind terminate];
++         drop(_1) -> [return: bb12, unwind terminate(cleanup)];
 +     }
 + 
 +     bb17: {

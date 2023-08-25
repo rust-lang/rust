@@ -292,7 +292,7 @@ fn check_terminator<'tcx>(
         | TerminatorKind::Goto { .. }
         | TerminatorKind::Return
         | TerminatorKind::UnwindResume
-        | TerminatorKind::UnwindTerminate
+        | TerminatorKind::UnwindTerminate(_)
         | TerminatorKind::Unreachable => Ok(()),
         TerminatorKind::Drop { place, .. } => {
             if !is_ty_const_destruct(tcx, place.ty(&body.local_decls, tcx).ty, body) {

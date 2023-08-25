@@ -570,10 +570,10 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 TerminatorKind::Drop {
                     place: dest_field,
                     target: unwind,
-                    unwind: UnwindAction::Terminate,
+                    unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                     replace: false,
                 },
-                true,
+                /* is_cleanup */ true,
             );
             unwind = next_unwind;
         }
@@ -851,10 +851,10 @@ fn build_call_shim<'tcx>(
             TerminatorKind::Drop {
                 place: rcvr_place(),
                 target: BasicBlock::new(4),
-                unwind: UnwindAction::Terminate,
+                unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                 replace: false,
             },
-            true,
+            /* is_cleanup */ true,
         );
 
         // BB #4 - resume

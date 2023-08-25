@@ -104,7 +104,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
 
         for id in calls_to_terminate {
             let cleanup = body.basic_blocks_mut()[id].terminator_mut().unwind_mut().unwrap();
-            *cleanup = UnwindAction::Terminate;
+            *cleanup = UnwindAction::Terminate(UnwindTerminateReason::Abi);
         }
 
         for id in cleanups_to_remove {

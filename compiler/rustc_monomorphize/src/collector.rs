@@ -737,6 +737,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         let source = self.body.source_info(location).span;
 
         let tcx = self.tcx;
+        let push_mono_lang_item = |this: &mut Self, lang_item: LangItem| {
+            let instance = Instance::mono(tcx, tcx.require_lang_item(lang_item, Some(source)));
+            if should_codegen_locally(tcx, &instance) {
+                this.output.push(create_fn_mono_item(tcx, instance, source));
+            }
+        };
+
         match terminator.kind {
             mir::TerminatorKind::Call { ref func, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
@@ -771,19 +778,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     mir::AssertKind::BoundsCheck { .. } => LangItem::PanicBoundsCheck,
                     _ => LangItem::Panic,
                 };
-                let instance = Instance::mono(tcx, tcx.require_lang_item(lang_item, Some(source)));
-                if should_codegen_locally(tcx, &instance) {
-                    self.output.push(create_fn_mono_item(tcx, instance, source));
-                }
+                push_mono_lang_item(self, lang_item);
             }
-            mir::TerminatorKind::UnwindTerminate { .. } => {
-                let instance = Instance::mono(
-                    tcx,
-                    tcx.require_lang_item(LangItem::PanicCannotUnwind, Some(source)),
-                );
-                if should_codegen_locally(tcx, &instance) {
-                    self.output.push(create_fn_mono_item(tcx, instance, source));
-                }
+            mir::TerminatorKind::UnwindTerminate(reason) => {
+                push_mono_lang_item(self, reason.lang_item());
             }
             mir::TerminatorKind::Goto { .. }
             | mir::TerminatorKind::SwitchInt { .. }
@@ -796,14 +794,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             | mir::TerminatorKind::FalseUnwind { .. } => bug!(),
         }
 
-        if let Some(mir::UnwindAction::Terminate) = terminator.unwind() {
-            let instance = Instance::mono(
-                tcx,
-                tcx.require_lang_item(LangItem::PanicCannotUnwind, Some(source)),
-            );
-            if should_codegen_locally(tcx, &instance) {
-                self.output.push(create_fn_mono_item(tcx, instance, source));
-            }
+        if let Some(mir::UnwindAction::Terminate(reason)) = terminator.unwind() {
+            push_mono_lang_item(self, reason.lang_item());
         }
 
         self.super_terminator(terminator, location);

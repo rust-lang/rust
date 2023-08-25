@@ -1104,6 +1104,7 @@ symbols! {
         panic_handler,
         panic_impl,
         panic_implementation,
+        panic_in_cleanup,
         panic_info,
         panic_location,
         panic_misaligned_pointer_dereference,

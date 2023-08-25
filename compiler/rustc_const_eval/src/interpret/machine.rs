@@ -222,7 +222,10 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     fn panic_nounwind(_ecx: &mut InterpCx<'mir, 'tcx, Self>, msg: &str) -> InterpResult<'tcx>;
 
     /// Called when unwinding reached a state where execution should be terminated.
-    fn unwind_terminate(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx>;
+    fn unwind_terminate(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        reason: mir::UnwindTerminateReason,
+    ) -> InterpResult<'tcx>;
 
     /// Called for all binary operations where the LHS has pointer type.
     ///
@@ -462,6 +465,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
 
     /// Called immediately after a stack frame got popped, but before jumping back to the caller.
     /// The `locals` have already been destroyed!
+    #[inline(always)]
     fn after_stack_pop(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _frame: Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
@@ -501,7 +505,10 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn unwind_terminate(_ecx: &mut InterpCx<$mir, $tcx, Self>) -> InterpResult<$tcx> {
+    fn unwind_terminate(
+        _ecx: &mut InterpCx<$mir, $tcx, Self>,
+        _reason: mir::UnwindTerminateReason,
+    ) -> InterpResult<$tcx> {
         unreachable!("unwinding cannot happen during compile-time evaluation")
     }
 

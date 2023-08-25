@@ -3622,26 +3622,30 @@ impl<'test> TestCx<'test> {
         let expected_stderr = self.load_expected_output(stderr_kind);
         let expected_stdout = self.load_expected_output(stdout_kind);
 
-        let normalized_stdout = match output_kind {
+        let mut normalized_stdout =
+            self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
+        match output_kind {
             TestOutput::Run if self.config.remote_test_client.is_some() => {
                 // When tests are run using the remote-test-client, the string
                 // 'uploaded "$TEST_BUILD_DIR/<test_executable>, waiting for result"'
                 // is printed to stdout by the client and then captured in the ProcRes,
-                // so it needs to be removed when comparing the run-pass test execution output
+                // so it needs to be removed when comparing the run-pass test execution output.
                 static REMOTE_TEST_RE: Lazy<Regex> = Lazy::new(|| {
                     Regex::new(
                         "^uploaded \"\\$TEST_BUILD_DIR(/[[:alnum:]_\\-.]+)+\", waiting for result\n"
                     )
                     .unwrap()
                 });
-                REMOTE_TEST_RE
-                    .replace(
-                        &self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout),
-                        "",
-                    )
-                    .to_string()
+                normalized_stdout = REMOTE_TEST_RE.replace(&normalized_stdout, "").to_string();
+                // When there is a panic, the remote-test-client also prints "died due to signal";
+                // that needs to be removed as well.
+                static SIGNAL_DIED_RE: Lazy<Regex> =
+                    Lazy::new(|| Regex::new("^died due to signal [0-9]+\n").unwrap());
+                normalized_stdout = SIGNAL_DIED_RE.replace(&normalized_stdout, "").to_string();
+                // FIXME: it would be much nicer if we could just tell the remote-test-client to not
+                // print these things.
             }
-            _ => self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout),
+            _ => {}
         };
 
         let stderr = if explicit_format {

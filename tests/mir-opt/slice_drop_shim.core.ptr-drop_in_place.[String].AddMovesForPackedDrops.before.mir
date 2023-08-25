@@ -24,7 +24,7 @@ fn std::ptr::drop_in_place(_1: *mut [String]) -> () {
     bb3 (cleanup): {
         _4 = &raw mut (*_1)[_3];
         _3 = Add(move _3, const 1_usize);
-        drop((*_4)) -> [return: bb4, unwind terminate];
+        drop((*_4)) -> [return: bb4, unwind terminate(cleanup)];
     }
 
     bb4 (cleanup): {

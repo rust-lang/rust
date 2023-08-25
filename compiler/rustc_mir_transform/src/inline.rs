@@ -906,12 +906,12 @@ impl Integrator<'_, '_> {
                 UnwindAction::Cleanup(_) | UnwindAction::Continue => {
                     bug!("cleanup on cleanup block");
                 }
-                UnwindAction::Unreachable | UnwindAction::Terminate => return unwind,
+                UnwindAction::Unreachable | UnwindAction::Terminate(_) => return unwind,
             }
         }
 
         match unwind {
-            UnwindAction::Unreachable | UnwindAction::Terminate => unwind,
+            UnwindAction::Unreachable | UnwindAction::Terminate(_) => unwind,
             UnwindAction::Cleanup(target) => UnwindAction::Cleanup(self.map_block(target)),
             // Add an unwind edge to the original call's cleanup block
             UnwindAction::Continue => self.cleanup_block,
@@ -1022,10 +1022,10 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                     UnwindAction::Cleanup(tgt) => TerminatorKind::Goto { target: tgt },
                     UnwindAction::Continue => TerminatorKind::UnwindResume,
                     UnwindAction::Unreachable => TerminatorKind::Unreachable,
-                    UnwindAction::Terminate => TerminatorKind::UnwindTerminate,
+                    UnwindAction::Terminate(reason) => TerminatorKind::UnwindTerminate(reason),
                 };
             }
-            TerminatorKind::UnwindTerminate => {}
+            TerminatorKind::UnwindTerminate(_) => {}
             TerminatorKind::Unreachable => {}
             TerminatorKind::FalseEdge { ref mut real_target, ref mut imaginary_target } => {
                 *real_target = self.map_block(*real_target);

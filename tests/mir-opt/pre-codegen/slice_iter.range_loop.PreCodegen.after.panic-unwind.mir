@@ -143,7 +143,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb12 (cleanup): {
-        drop(_2) -> [return: bb13, unwind terminate];
+        drop(_2) -> [return: bb13, unwind terminate(cleanup)];
     }
 
     bb13 (cleanup): {

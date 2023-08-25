@@ -75,7 +75,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
     }
 
     bb9 (cleanup): {
-        drop(_5) -> [return: bb10, unwind terminate];
+        drop(_5) -> [return: bb10, unwind terminate(cleanup)];
     }
 
     bb10 (cleanup): {

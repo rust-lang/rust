@@ -196,8 +196,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            UnwindTerminate => {
-                M::unwind_terminate(self)?;
+            UnwindTerminate(reason) => {
+                M::unwind_terminate(self, reason)?;
             }
 
             // When we encounter Resume, we've finished unwinding
