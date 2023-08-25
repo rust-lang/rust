@@ -1828,7 +1828,11 @@ impl ModCollector<'_, '_> {
             let Some(paths) = attr.parse_path_comma_token_tree(db.upcast(), &hygiene) else {
                 // `#[macro_use]` (without any paths) found, forget collected names and just import
                 // all visible macros.
-                self.def_collector.import_macros_from_extern_crate(target_crate, None, Some(extern_crate_id));
+                self.def_collector.import_macros_from_extern_crate(
+                    target_crate,
+                    None,
+                    Some(extern_crate_id),
+                );
                 return;
             };
             for path in paths {

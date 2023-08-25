@@ -1201,7 +1201,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     let Some(values) = elements
                         .iter()
                         .map(|it| {
-                            let Some((o, c)) = self.lower_expr_to_some_operand(*it, current)? else {
+                            let Some((o, c)) = self.lower_expr_to_some_operand(*it, current)?
+                            else {
                                 return Ok(None);
                             };
                             current = c;
@@ -1259,7 +1260,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         *expr,
                         rhs.project(ProjectionElem::TupleOrClosureField(i)),
                         span,
-                    )? else {
+                    )?
+                    else {
                         return Ok(None);
                     };
                     current = c;
@@ -1268,8 +1270,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             }
             Expr::Underscore => Ok(Some(current)),
             _ => {
-                let Some((lhs_place, current)) =
-                    self.lower_expr_as_place(current, lhs, false)?
+                let Some((lhs_place, current)) = self.lower_expr_as_place(current, lhs, false)?
                 else {
                     return Ok(None);
                 };
@@ -1286,9 +1287,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
         rhs: ExprId,
         span: MirSpan,
     ) -> Result<Option<BasicBlockId>> {
-        let Some((rhs_op, current)) =
-            self.lower_expr_to_some_operand(rhs, current)?
-        else {
+        let Some((rhs_op, current)) = self.lower_expr_to_some_operand(rhs, current)? else {
             return Ok(None);
         };
         if matches!(&self.body.exprs[lhs], Expr::Underscore) {
@@ -1303,9 +1302,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             self.push_assignment(current, temp.clone(), rhs_op.into(), span);
             return self.lower_destructing_assignment(current, lhs, temp, span);
         }
-        let Some((lhs_place, current)) =
-            self.lower_expr_as_place(current, lhs, false)?
-        else {
+        let Some((lhs_place, current)) = self.lower_expr_as_place(current, lhs, false)? else {
             return Ok(None);
         };
         self.push_assignment(current, lhs_place, rhs_op.into(), span);
