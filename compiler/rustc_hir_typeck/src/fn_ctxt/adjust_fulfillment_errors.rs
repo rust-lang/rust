@@ -1,6 +1,6 @@
 use crate::FnCtxt;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_infer::{infer::type_variable::TypeVariableOriginKind, traits::ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
@@ -133,15 +133,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                // Notably, we only point to params that are local to the
-                // item we're checking, since those are the ones we are able
-                // to look in the final `hir::PathSegment` for. Everything else
-                // would require a deeper search into the `qpath` than I think
-                // is worthwhile.
-                if let Some(param_to_point_at) = param_to_point_at
-                    && self.point_at_path_if_possible(error, def_id, param_to_point_at, qpath)
+
+                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                    .into_iter()
+                    .flatten()
                 {
-                    return true;
+                    if self.point_at_path_if_possible(error, def_id, param, qpath) {
+                        return true;
+                    }
                 }
             }
             hir::ExprKind::MethodCall(segment, receiver, args, ..) => {
@@ -168,10 +167,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             hir::ExprKind::Struct(qpath, fields, ..) => {
-                if let Res::Def(
-                    hir::def::DefKind::Struct | hir::def::DefKind::Variant,
-                    variant_def_id,
-                ) = self.typeck_results.borrow().qpath_res(qpath, hir_id)
+                if let Res::Def(DefKind::Struct | DefKind::Variant, variant_def_id) =
+                    self.typeck_results.borrow().qpath_res(qpath, hir_id)
                 {
                     for param in
                         [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
@@ -193,10 +190,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                if let Some(param_to_point_at) = param_to_point_at
-                    && self.point_at_path_if_possible(error, def_id, param_to_point_at, qpath)
+
+                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                    .into_iter()
+                    .flatten()
                 {
-                    return true;
+                    if self.point_at_path_if_possible(error, def_id, param, qpath) {
+                        return true;
+                    }
                 }
             }
             _ => {}
@@ -214,10 +215,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         match qpath {
             hir::QPath::Resolved(_, path) => {
-                if let Some(segment) = path.segments.last()
-                    && self.point_at_generic_if_possible(error, def_id, param, segment)
-                {
-                    return true;
+                for segment in path.segments.iter().rev() {
+                    if let Res::Def(kind, def_id) = segment.res
+                        && !matches!(kind, DefKind::Mod | DefKind::ForeignMod)
+                        && self.point_at_generic_if_possible(error, def_id, param, segment)
+                    {
+                        return true;
+                    }
                 }
             }
             hir::QPath::TypeRelative(_, segment) => {
@@ -618,14 +622,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             let variant_def_id = match expr_struct_def_kind {
-                hir::def::DefKind::Struct => {
+                DefKind::Struct => {
                     if in_ty_adt.did() != expr_struct_def_id {
                         // FIXME: Deal with type aliases?
                         return Err(expr);
                     }
                     expr_struct_def_id
                 }
-                hir::def::DefKind::Variant => {
+                DefKind::Variant => {
                     // If this is a variant, its parent is the type definition.
                     if in_ty_adt.did() != self.tcx.parent(expr_struct_def_id) {
                         // FIXME: Deal with type aliases?
@@ -727,14 +731,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             let variant_def_id = match expr_struct_def_kind {
-                hir::def::DefKind::Ctor(hir::def::CtorOf::Struct, hir::def::CtorKind::Fn) => {
+                DefKind::Ctor(hir::def::CtorOf::Struct, hir::def::CtorKind::Fn) => {
                     if in_ty_adt.did() != self.tcx.parent(expr_ctor_def_id) {
                         // FIXME: Deal with type aliases?
                         return Err(expr);
                     }
                     self.tcx.parent(expr_ctor_def_id)
                 }
-                hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, hir::def::CtorKind::Fn) => {
+                DefKind::Ctor(hir::def::CtorOf::Variant, hir::def::CtorKind::Fn) => {
                     // For a typical enum like
                     // `enum Blah<T> { Variant(T) }`
                     // we get the following resolutions:
