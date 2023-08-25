@@ -115,11 +115,6 @@ pub struct ParallelGuard {
 }
 
 impl ParallelGuard {
-    #[inline]
-    pub fn new() -> Self {
-        ParallelGuard { panic: Mutex::new(None) }
-    }
-
     pub fn run<R>(&self, f: impl FnOnce() -> R) -> Option<R> {
         catch_unwind(AssertUnwindSafe(f))
             .map_err(|err| {
@@ -127,13 +122,18 @@ impl ParallelGuard {
             })
             .ok()
     }
+}
 
-    #[inline]
-    pub fn unwind(self) {
-        if let Some(panic) = self.panic.into_inner() {
-            resume_unwind(panic);
-        }
+/// This gives access to a fresh parallel guard in the closure and will unwind any panics
+/// caught in it after the closure returns.
+#[inline]
+pub fn parallel_guard<R>(f: impl FnOnce(&ParallelGuard) -> R) -> R {
+    let guard = ParallelGuard { panic: Mutex::new(None) };
+    let ret = f(&guard);
+    if let Some(panic) = guard.panic.into_inner() {
+        resume_unwind(panic);
     }
+    ret
 }
 
 cfg_if! {
@@ -231,38 +231,38 @@ cfg_if! {
             where A: FnOnce() -> RA,
                   B: FnOnce() -> RB
         {
-            let guard = ParallelGuard::new();
-            let a = guard.run(oper_a);
-            let b = guard.run(oper_b);
-            guard.unwind();
+            let (a, b) = parallel_guard(|guard| {
+                let a = guard.run(oper_a);
+                let b = guard.run(oper_b);
+                (a, b)
+            });
             (a.unwrap(), b.unwrap())
         }
 
         #[macro_export]
         macro_rules! parallel {
             ($($blocks:block),*) => {{
-                let mut guard = $crate::sync::ParallelGuard::new();
-                $(guard.run(|| $blocks);)*
-                guard.unwind();
+                $crate::sync::parallel_guard(|guard| {
+                    $(guard.run(|| $blocks);)*
+                });
             }}
         }
 
         pub fn par_for_each_in<T: IntoIterator>(t: T, mut for_each: impl FnMut(T::Item) + Sync + Send) {
-            let guard = ParallelGuard::new();
-            t.into_iter().for_each(|i| {
-                guard.run(|| for_each(i));
-            });
-            guard.unwind();
+            parallel_guard(|guard| {
+                t.into_iter().for_each(|i| {
+                    guard.run(|| for_each(i));
+                });
+            })
         }
 
         pub fn par_map<T: IntoIterator, R, C: FromIterator<R>>(
             t: T,
             mut map: impl FnMut(<<T as IntoIterator>::IntoIter as Iterator>::Item) -> R,
         ) -> C {
-            let guard = ParallelGuard::new();
-            let r = t.into_iter().filter_map(|i| guard.run(|| map(i))).collect();
-            guard.unwind();
-            r
+            parallel_guard(|guard| {
+                t.into_iter().filter_map(|i| guard.run(|| map(i))).collect()
+            })
         }
 
         pub use std::rc::Rc as Lrc;
@@ -382,10 +382,11 @@ cfg_if! {
                 let (a, b) = rayon::join(move || FromDyn::from(oper_a.into_inner()()), move || FromDyn::from(oper_b.into_inner()()));
                 (a.into_inner(), b.into_inner())
             } else {
-                let guard = ParallelGuard::new();
-                let a = guard.run(oper_a);
-                let b = guard.run(oper_b);
-                guard.unwind();
+                let (a, b) = parallel_guard(|guard| {
+                    let a = guard.run(oper_a);
+                    let b = guard.run(oper_b);
+                    (a, b)
+                });
                 (a.unwrap(), b.unwrap())
             }
         }
@@ -421,10 +422,10 @@ cfg_if! {
                     // of a single threaded rustc.
                     parallel!(impl $fblock [] [$($blocks),*]);
                 } else {
-                    let guard = $crate::sync::ParallelGuard::new();
-                    guard.run(|| $fblock);
-                    $(guard.run(|| $blocks);)*
-                    guard.unwind();
+                    $crate::sync::parallel_guard(|guard| {
+                        guard.run(|| $fblock);
+                        $(guard.run(|| $blocks);)*
+                    });
                 }
             };
         }
@@ -435,20 +436,18 @@ cfg_if! {
             t: T,
             for_each: impl Fn(I) + DynSync + DynSend
         ) {
-            if mode::is_dyn_thread_safe() {
-                let for_each = FromDyn::from(for_each);
-                let guard = ParallelGuard::new();
-                t.into_par_iter().for_each(|i| {
-                    guard.run(|| for_each(i));
-                });
-                guard.unwind();
-            } else {
-                let guard = ParallelGuard::new();
-                t.into_iter().for_each(|i| {
-                    guard.run(|| for_each(i));
-                });
-                guard.unwind();
-            }
+            parallel_guard(|guard| {
+                if mode::is_dyn_thread_safe() {
+                    let for_each = FromDyn::from(for_each);
+                    t.into_par_iter().for_each(|i| {
+                        guard.run(|| for_each(i));
+                    });
+                } else {
+                    t.into_iter().for_each(|i| {
+                        guard.run(|| for_each(i));
+                    });
+                }
+            });
         }
 
         pub fn par_map<
@@ -460,18 +459,14 @@ cfg_if! {
             t: T,
             map: impl Fn(I) -> R + DynSync + DynSend
         ) -> C {
-            if mode::is_dyn_thread_safe() {
-                let map = FromDyn::from(map);
-                let guard = ParallelGuard::new();
-                let r = t.into_par_iter().filter_map(|i| guard.run(|| map(i))).collect();
-                guard.unwind();
-                r
-            } else {
-                let guard = ParallelGuard::new();
-                let r = t.into_iter().filter_map(|i| guard.run(|| map(i))).collect();
-                guard.unwind();
-                r
-            }
+            parallel_guard(|guard| {
+                if mode::is_dyn_thread_safe() {
+                    let map = FromDyn::from(map);
+                    t.into_par_iter().filter_map(|i| guard.run(|| map(i))).collect()
+                } else {
+                    t.into_iter().filter_map(|i| guard.run(|| map(i))).collect()
+                }
+            })
         }
 
         /// This makes locks panic if they are already held.
