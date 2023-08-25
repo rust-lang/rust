@@ -42,21 +42,21 @@ type ExceptionList = &'static [(&'static str, &'static str)];
 /// * Optionally a tuple of:
 ///     * A list of crates for which dependencies need to be explicitly allowed.
 ///     * The list of allowed dependencies.
-const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)] = &[
+pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)] = &[
     // The root workspace has to be first for check_rustfix to work.
-    ("Cargo.toml", EXCEPTIONS, Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES))),
+    (".", EXCEPTIONS, Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES))),
     // Outside of the alphabetical section because rustfmt formats it using multiple lines.
     (
-        "compiler/rustc_codegen_cranelift/Cargo.toml",
+        "compiler/rustc_codegen_cranelift",
         EXCEPTIONS_CRANELIFT,
         Some((&["rustc_codegen_cranelift"], PERMITTED_CRANELIFT_DEPENDENCIES)),
     ),
     // tidy-alphabetical-start
-    ("compiler/rustc_codegen_gcc/Cargo.toml", EXCEPTIONS_GCC, None),
-    ("src/bootstrap/Cargo.toml", EXCEPTIONS_BOOTSTRAP, None),
-    ("src/tools/cargo/Cargo.toml", EXCEPTIONS_CARGO, None),
-    ("src/tools/rust-analyzer/Cargo.toml", EXCEPTIONS_RUST_ANALYZER, None),
-    ("src/tools/x/Cargo.toml", &[], None),
+    ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None),
+    ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None),
+    ("src/tools/cargo", EXCEPTIONS_CARGO, None),
+    ("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None),
+    ("src/tools/x", &[], None),
     // tidy-alphabetical-end
 ];
 
@@ -438,7 +438,7 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
     for &(workspace, exceptions, permitted_deps) in WORKSPACES {
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.cargo_path(cargo)
-            .manifest_path(root.join(workspace))
+            .manifest_path(root.join(workspace).join("Cargo.toml"))
             .features(cargo_metadata::CargoOpt::AllFeatures);
         let metadata = t!(cmd.exec());
 
@@ -447,12 +447,12 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
             check_permitted_dependencies(&metadata, workspace, permitted_deps, crates, bad);
         }
 
-        if workspace == "Cargo.toml" {
+        if workspace == "." {
             let runtime_ids = compute_runtime_crates(&metadata);
             check_runtime_license_exceptions(&metadata, runtime_ids, bad);
             checked_runtime_licenses = true;
             rust_metadata = Some(metadata);
-        } else if workspace == "src/tools/cargo/Cargo.toml" {
+        } else if workspace == "src/tools/cargo" {
             check_rustfix(
                 rust_metadata
                     .as_ref()
