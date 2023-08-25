@@ -1153,8 +1153,8 @@ fn render_assoc_items_inner(
         // don't normally constrain on them anyway.
         // https://github.com/rust-lang/rust/issues/21903
         //
-        // If that changes, then this will need to check them with type
-        // unification.
+        // FIXME(lazy_type_alias): Once the feature is complete or stable, rewrite this to use type unification.
+        // Be aware of `tests/rustdoc/issue-112515-impl-ty-alias.rs` which might regress.
         let aliased_ty = tcx.type_of(alias_def_id).skip_binder();
         let reject_cx = DeepRejectCtxt {
             treat_obligation_params: TreatParams::AsCandidateKey,
