@@ -11,38 +11,6 @@ use rustc_target::spec::PanicStrategy;
 
 use crate::errors;
 
-/// Some of the functions declared as "may unwind" by `fn_can_unwind` can't actually unwind. In
-/// particular, `extern "C"` is still considered as can-unwind on stable, but we need to consider
-/// it cannot-unwind here. So below we check `fn_can_unwind() && abi_can_unwind()` before concluding
-/// that a function call can unwind.
-fn abi_can_unwind(abi: Abi) -> bool {
-    use Abi::*;
-    match abi {
-        C { unwind }
-        | System { unwind }
-        | Cdecl { unwind }
-        | Stdcall { unwind }
-        | Fastcall { unwind }
-        | Vectorcall { unwind }
-        | Thiscall { unwind }
-        | Aapcs { unwind }
-        | Win64 { unwind }
-        | SysV64 { unwind } => unwind,
-        PtxKernel
-        | Msp430Interrupt
-        | X86Interrupt
-        | EfiApi
-        | AvrInterrupt
-        | AvrNonBlockingInterrupt
-        | RiscvInterruptM
-        | RiscvInterruptS
-        | CCmseNonSecureCall
-        | Wasm
-        | Unadjusted => false,
-        RustIntrinsic | Rust | RustCall | RustCold => unreachable!(), // these ABIs are already skipped earlier
-    }
-}
-
 // Check if the body of this def_id can possibly leak a foreign unwind into Rust code.
 fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
     debug!("has_ffi_unwind_calls({local_def_id:?})");
@@ -103,7 +71,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
             _ => bug!("invalid callee of type {:?}", ty),
         };
 
-        if layout::fn_can_unwind(tcx, fn_def_id, sig.abi()) && abi_can_unwind(sig.abi()) {
+        if layout::fn_can_unwind(tcx, fn_def_id, sig.abi()) {
             // We have detected a call that can possibly leak foreign unwind.
             //
             // Because the function body itself can unwind, we are not aborting this function call
