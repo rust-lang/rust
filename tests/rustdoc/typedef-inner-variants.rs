@@ -38,7 +38,8 @@ pub enum IrTyKind<A, I: Interner> {
 }
 
 // @has 'inner_variants/type.NearlyTyKind.html'
-// @count - '//*[@id="variants"]' 0
+// @count - '//*[@id="aliased-type"]' 1
+// @count - '//*[@id="variants"]' 1
 // @count - '//*[@id="fields"]' 0
 pub type NearlyTyKind<A> = IrTyKind<A, TyCtxt>;
 
@@ -103,11 +104,12 @@ pub struct HighlyGenericStruct<A, B, C, D> {
     pub z: (A, B, C, D)
 }
 
-// VERIFY that we NOT show the Aliased Type
 // @has 'inner_variants/type.HighlyGenericAABB.html'
 // @count - '//*[@id="aliased-type"]' 1
 // @count - '//*[@id="variants"]' 0
-// @count - '//*[@id="fields"]' 0
+// @count - '//*[@id="fields"]' 1
+// @matches - '//pre[@class="rust item-decl"]//code' "struct HighlyGenericAABB<A, B>"
+// @matches - '//pre[@class="rust item-decl"]//code' "pub z"
 pub type HighlyGenericAABB<A, B> = HighlyGenericStruct<A, A, B, B>;
 
 // @has 'inner_variants/type.InlineU64.html'

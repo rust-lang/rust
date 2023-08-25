@@ -1237,7 +1237,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
 
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
-    if let Some(inner_type) = &t.inner_type && t.should_display_inner_type() {
+    if let Some(inner_type) = &t.inner_type {
         write!(
             w,
             "<h2 id=\"aliased-type\" class=\"small-section-header\">\
@@ -1256,7 +1256,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
                     render_enum_fields(
                         w,
                         cx,
-                        None,
+                        Some(&t.generics),
                         variants_iter(),
                         variants_count,
                         has_stripped_entries,
@@ -1271,7 +1271,16 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
                     let has_stripped_fields = fields.len() != fields_count;
 
                     write!(w, "union {}{}", it.name.unwrap(), t.generics.print(cx));
-                    render_struct_fields(w, None, None, fields, "", true, has_stripped_fields, cx);
+                    render_struct_fields(
+                        w,
+                        Some(&t.generics),
+                        None,
+                        fields,
+                        "",
+                        true,
+                        has_stripped_fields,
+                        cx,
+                    );
                 });
                 item_fields(w, cx, it, fields, None);
             }
@@ -1283,7 +1292,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
                     write!(w, "struct {}{}", it.name.unwrap(), t.generics.print(cx));
                     render_struct_fields(
                         w,
-                        None,
+                        Some(&t.generics),
                         *ctor_kind,
                         fields,
                         "",
