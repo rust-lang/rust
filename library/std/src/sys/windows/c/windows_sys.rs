@@ -156,6 +156,10 @@ extern "system" {
 }
 #[link(name = "kernel32")]
 extern "system" {
+    pub fn DeleteProcThreadAttributeList(lpattributelist: LPPROC_THREAD_ATTRIBUTE_LIST) -> ();
+}
+#[link(name = "kernel32")]
+extern "system" {
     pub fn DeviceIoControl(
         hdevice: HANDLE,
         dwiocontrolcode: u32,
@@ -372,6 +376,15 @@ extern "system" {
 }
 #[link(name = "kernel32")]
 extern "system" {
+    pub fn InitializeProcThreadAttributeList(
+        lpattributelist: LPPROC_THREAD_ATTRIBUTE_LIST,
+        dwattributecount: u32,
+        dwflags: u32,
+        lpsize: *mut usize,
+    ) -> BOOL;
+}
+#[link(name = "kernel32")]
+extern "system" {
     pub fn MoveFileExW(
         lpexistingfilename: PCWSTR,
         lpnewfilename: PCWSTR,
@@ -541,6 +554,18 @@ extern "system" {
 #[link(name = "kernel32")]
 extern "system" {
     pub fn TryAcquireSRWLockShared(srwlock: *mut RTL_SRWLOCK) -> BOOLEAN;
+}
+#[link(name = "kernel32")]
+extern "system" {
+    pub fn UpdateProcThreadAttribute(
+        lpattributelist: LPPROC_THREAD_ATTRIBUTE_LIST,
+        dwflags: u32,
+        attribute: usize,
+        lpvalue: *const ::core::ffi::c_void,
+        cbsize: usize,
+        lppreviousvalue: *mut ::core::ffi::c_void,
+        lpreturnsize: *const usize,
+    ) -> BOOL;
 }
 #[link(name = "kernel32")]
 extern "system" {
@@ -3567,6 +3592,7 @@ pub type LPOVERLAPPED_COMPLETION_ROUTINE = ::core::option::Option<
         lpoverlapped: *mut OVERLAPPED,
     ) -> (),
 >;
+pub type LPPROC_THREAD_ATTRIBUTE_LIST = *mut ::core::ffi::c_void;
 pub type LPPROGRESS_ROUTINE = ::core::option::Option<
     unsafe extern "system" fn(
         totalfilesize: i64,
@@ -3832,6 +3858,17 @@ pub const STARTF_USEPOSITION: STARTUPINFOW_FLAGS = 4u32;
 pub const STARTF_USESHOWWINDOW: STARTUPINFOW_FLAGS = 1u32;
 pub const STARTF_USESIZE: STARTUPINFOW_FLAGS = 2u32;
 pub const STARTF_USESTDHANDLES: STARTUPINFOW_FLAGS = 256u32;
+#[repr(C)]
+pub struct STARTUPINFOEXW {
+    pub StartupInfo: STARTUPINFOW,
+    pub lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST,
+}
+impl ::core::marker::Copy for STARTUPINFOEXW {}
+impl ::core::clone::Clone for STARTUPINFOEXW {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 #[repr(C)]
 pub struct STARTUPINFOW {
     pub cb: u32,

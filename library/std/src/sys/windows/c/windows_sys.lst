@@ -2510,6 +2510,7 @@ Windows.Win32.System.Threading.CreateProcessW
 Windows.Win32.System.Threading.CreateThread
 Windows.Win32.System.Threading.DEBUG_ONLY_THIS_PROCESS
 Windows.Win32.System.Threading.DEBUG_PROCESS
+Windows.Win32.System.Threading.DeleteProcThreadAttributeList
 Windows.Win32.System.Threading.DETACHED_PROCESS
 Windows.Win32.System.Threading.ExitProcess
 Windows.Win32.System.Threading.EXTENDED_STARTUPINFO_PRESENT
@@ -2524,8 +2525,10 @@ Windows.Win32.System.Threading.INFINITE
 Windows.Win32.System.Threading.INHERIT_CALLER_PRIORITY
 Windows.Win32.System.Threading.INHERIT_PARENT_AFFINITY
 Windows.Win32.System.Threading.INIT_ONCE_INIT_FAILED
+Windows.Win32.System.Threading.InitializeProcThreadAttributeList
 Windows.Win32.System.Threading.InitOnceBeginInitialize
 Windows.Win32.System.Threading.InitOnceComplete
+Windows.Win32.System.Threading.LPPROC_THREAD_ATTRIBUTE_LIST
 Windows.Win32.System.Threading.LPTHREAD_START_ROUTINE
 Windows.Win32.System.Threading.NORMAL_PRIORITY_CLASS
 Windows.Win32.System.Threading.OpenProcessToken
@@ -2561,6 +2564,7 @@ Windows.Win32.System.Threading.STARTF_USEPOSITION
 Windows.Win32.System.Threading.STARTF_USESHOWWINDOW
 Windows.Win32.System.Threading.STARTF_USESIZE
 Windows.Win32.System.Threading.STARTF_USESTDHANDLES
+Windows.Win32.System.Threading.STARTUPINFOEXW
 Windows.Win32.System.Threading.STARTUPINFOW
 Windows.Win32.System.Threading.STARTUPINFOW_FLAGS
 Windows.Win32.System.Threading.SwitchToThread
@@ -2575,6 +2579,7 @@ Windows.Win32.System.Threading.TlsGetValue
 Windows.Win32.System.Threading.TlsSetValue
 Windows.Win32.System.Threading.TryAcquireSRWLockExclusive
 Windows.Win32.System.Threading.TryAcquireSRWLockShared
+Windows.Win32.System.Threading.UpdateProcThreadAttribute
 Windows.Win32.System.Threading.WaitForMultipleObjects
 Windows.Win32.System.Threading.WaitForSingleObject
 Windows.Win32.System.Threading.WakeAllConditionVariable
