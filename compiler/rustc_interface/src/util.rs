@@ -5,6 +5,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync;
 use rustc_metadata::{load_symbol_from_dylib, DylibError};
+use rustc_middle::ty::CurrentGcx;
 use rustc_parse::validate_attr;
 use rustc_session as session;
 use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes};
@@ -64,7 +65,7 @@ fn init_stack_size() -> usize {
     })
 }
 
-pub(crate) fn run_in_thread_with_globals<F: FnOnce() -> R + Send, R: Send>(
+pub(crate) fn run_in_thread_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     edition: Edition,
     f: F,
 ) -> R {
@@ -82,7 +83,9 @@ pub(crate) fn run_in_thread_with_globals<F: FnOnce() -> R + Send, R: Send>(
         // `unwrap` is ok here because `spawn_scoped` only panics if the thread
         // name contains null bytes.
         let r = builder
-            .spawn_scoped(s, move || rustc_span::create_session_globals_then(edition, f))
+            .spawn_scoped(s, move || {
+                rustc_span::create_session_globals_then(edition, || f(CurrentGcx::new()))
+            })
             .unwrap()
             .join();
 
@@ -94,7 +97,7 @@ pub(crate) fn run_in_thread_with_globals<F: FnOnce() -> R + Send, R: Send>(
 }
 
 #[cfg(not(parallel_compiler))]
-pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     edition: Edition,
     _threads: usize,
     f: F,
@@ -103,7 +106,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 }
 
 #[cfg(parallel_compiler)]
-pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
     f: F,
@@ -117,24 +120,34 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     let registry = sync::Registry::new(std::num::NonZero::new(threads).unwrap());
 
     if !sync::is_dyn_thread_safe() {
-        return run_in_thread_with_globals(edition, || {
+        return run_in_thread_with_globals(edition, |current_gcx| {
             // Register the thread for use with the `WorkerLocal` type.
             registry.register();
 
-            f()
+            f(current_gcx)
         });
     }
+
+    let current_gcx = FromDyn::from(CurrentGcx::new());
+    let current_gcx2 = current_gcx.clone();
 
     let builder = rayon::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
         .num_threads(threads)
-        .deadlock_handler(|| {
+        .deadlock_handler(move || {
             // On deadlock, creates a new thread and forwards information in thread
             // locals to it. The new thread runs the deadlock handler.
-            let query_map =
-                FromDyn::from(tls::with(|tcx| QueryCtxt::new(tcx).collect_active_jobs()));
+
+            // Get a `GlobalCtxt` reference from `CurrentGcx` as we cannot rely on having a
+            // `TyCtxt` TLS reference here.
+            let query_map = current_gcx2.access(|gcx| {
+                tls::enter_context(&tls::ImplicitCtxt::new(gcx), || {
+                    tls::with(|tcx| QueryCtxt::new(tcx).collect_active_jobs())
+                })
+            });
+            let query_map = FromDyn::from(query_map);
             let registry = rayon_core::Registry::current();
             thread::Builder::new()
                 .name("rustc query cycle handler".to_string())
@@ -171,7 +184,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
                         })
                     },
                     // Run `f` on the first thread in the thread pool.
-                    move |pool: &rayon::ThreadPool| pool.install(f),
+                    move |pool: &rayon::ThreadPool| pool.install(|| f(current_gcx.into_inner())),
                 )
                 .unwrap()
         })

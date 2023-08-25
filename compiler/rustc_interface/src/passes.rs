@@ -680,6 +680,7 @@ pub fn create_global_ctxt<'tcx>(
                     incremental,
                 ),
                 providers.hooks,
+                compiler.current_gcx.clone(),
             )
         })
     })
