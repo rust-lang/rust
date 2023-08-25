@@ -618,29 +618,23 @@ fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
     let mut maybe_global_var = false;
     for (_, node) in map.parent_iter(body.hir_id) {
         match node {
-            Node::Expr(e) => {
-                span = e.span;
-                // Note: setting this to `false` is to making sure a "in-function defined"
-                // const/static variable not mistakenly processed as global variable,
-                // since global var doesn't have an `Expr` parent as its parent???
-                maybe_global_var = false;
-            }
-            Node::Block(_)
-            | Node::Arm(_)
-            | Node::Stmt(_)
-            | Node::Local(_) => (),
-            Node::Item(hir::Item { kind, span: item_span, .. }) => {
-                if matches!(kind, hir::ItemKind::Const(..) | ItemKind::Static(..)) {
-                    maybe_global_var = true;
-                } else if maybe_global_var && let hir::ItemKind::Mod(_) = kind {
-                    span = *item_span;
-                } else {
-                    break;
-                }
-            }
+            Node::Expr(e) => span = e.span,
+            Node::Block(_) | Node::Arm(_) | Node::Stmt(_) | Node::Local(_) => (),
+            Node::Item(hir::Item {
+                kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
+                ..
+            }) => maybe_global_var = true,
+            Node::Item(hir::Item {
+                kind: hir::ItemKind::Mod(_),
+                span: item_span,
+                ..
+            }) => {
+                span = *item_span;
+                break;
+            },
             Node::Crate(mod_) if maybe_global_var => {
                 span = mod_.spans.inner_span;
-            }
+            },
             _ => break,
         }
     }
