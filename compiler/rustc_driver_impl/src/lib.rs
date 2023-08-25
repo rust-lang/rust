@@ -140,12 +140,6 @@ pub const EXIT_FAILURE: i32 = 1;
 pub const DEFAULT_BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/issues/new\
     ?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md";
 
-const ICE_REPORT_COMPILER_FLAGS: &[&str] = &["-Z", "-C", "--crate-type"];
-
-const ICE_REPORT_COMPILER_FLAGS_EXCLUDE: &[&str] = &["metadata", "extra-filename"];
-
-const ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE: &[&str] = &["incremental"];
-
 pub fn abort_on_err<T>(result: Result<T, ErrorGuaranteed>, sess: &Session) -> T {
     match result {
         Err(..) => {
@@ -1250,47 +1244,6 @@ fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
     }
 }
 
-/// Gets a list of extra command-line flags provided by the user, as strings.
-///
-/// This function is used during ICEs to show more information useful for
-/// debugging, since some ICEs only happens with non-default compiler flags
-/// (and the users don't always report them).
-fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
-    let mut args = env::args_os().map(|arg| arg.to_string_lossy().to_string()).peekable();
-
-    let mut result = Vec::new();
-    let mut excluded_cargo_defaults = false;
-    while let Some(arg) = args.next() {
-        if let Some(a) = ICE_REPORT_COMPILER_FLAGS.iter().find(|a| arg.starts_with(*a)) {
-            let content = if arg.len() == a.len() {
-                // A space-separated option, like `-C incremental=foo` or `--crate-type rlib`
-                match args.next() {
-                    Some(arg) => arg.to_string(),
-                    None => continue,
-                }
-            } else if arg.get(a.len()..a.len() + 1) == Some("=") {
-                // An equals option, like `--crate-type=rlib`
-                arg[a.len() + 1..].to_string()
-            } else {
-                // A non-space option, like `-Cincremental=foo`
-                arg[a.len()..].to_string()
-            };
-            let option = content.split_once('=').map(|s| s.0).unwrap_or(&content);
-            if ICE_REPORT_COMPILER_FLAGS_EXCLUDE.iter().any(|exc| option == *exc) {
-                excluded_cargo_defaults = true;
-            } else {
-                result.push(a.to_string());
-                match ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.iter().find(|s| option == **s) {
-                    Some(s) => result.push(format!("{s}=[REDACTED]")),
-                    None => result.push(content),
-                }
-            }
-        }
-    }
-
-    if !result.is_empty() { Some((result, excluded_cargo_defaults)) } else { None }
-}
-
 /// Runs a closure and catches unwinds triggered by fatal errors.
 ///
 /// The compiler currently unwinds with a special sentinel value to abort
@@ -1449,7 +1402,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
         None
     };
 
-    if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
+    if let Some((flags, excluded_cargo_defaults)) = rustc_session::utils::extra_compiler_flags() {
         handler.emit_note(session_diagnostics::IceFlags { flags: flags.join(" ") });
         if excluded_cargo_defaults {
             handler.emit_note(session_diagnostics::IceExcludeCargoDefaults);
