@@ -1,4 +1,5 @@
 use crate::dep_graph::DepNodeIndex;
+use std::cell::RefCell;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::{self, Sharded};
@@ -41,7 +42,7 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<'tcx, V> for DefaultCacheSelecto
 }
 
 pub struct DefaultCache<K, V> {
-    cache: Lock<FxHashMap<K, (V, DepNodeIndex)>>,
+    cache: RefCell<FxHashMap<K, (V, DepNodeIndex)>>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
@@ -61,7 +62,7 @@ where
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
         let key_hash = sharded::make_hash(key);
-        let lock = self.cache.lock();
+        let lock = self.cache.borrow_mut();
         let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
         if let Some((_, value)) = result { Some(*value) } else { None }
@@ -69,14 +70,14 @@ where
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        let mut lock = self.cache.lock();
+        let mut lock = self.cache.borrow_mut();
         // We may be overwriting another value. This is all right, since the dep-graph
         // will check that the fingerprint matches.
         lock.insert(key, (value, index));
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        let map = self.cache.lock();
+        let map = self.cache.borrow_mut();
         for (k, v) in map.iter() {
             f(k, &v.0, v.1);
         }
@@ -186,7 +187,7 @@ impl<'tcx, K: Idx, V: 'tcx> CacheSelector<'tcx, V> for VecCacheSelector<K> {
 }
 
 pub struct VecCache<K: Idx, V> {
-    cache: Lock<IndexVec<K, Option<(V, DepNodeIndex)>>>,
+    cache: RefCell<IndexVec<K, Option<(V, DepNodeIndex)>>>,
 }
 
 impl<K: Idx, V> Default for VecCache<K, V> {
@@ -205,18 +206,18 @@ where
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
-        let lock = self.cache.lock();
+        let lock = self.cache.borrow_mut();
         if let Some(Some(value)) = lock.get(*key) { Some(*value) } else { None }
     }
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        let mut lock = self.cache.lock();
+        let mut lock = self.cache.borrow_mut();
         lock.insert(key, (value, index));
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        let map = self.cache.lock();
+        let map = self.cache.borrow_mut();
         for (k, v) in map.iter_enumerated() {
             if let Some(v) = v {
                 f(&k, &v.0, v.1);

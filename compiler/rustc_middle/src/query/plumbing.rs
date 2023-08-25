@@ -13,6 +13,8 @@ use field_offset::FieldOffset;
 use measureme::StringId;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::AtomicU64;
+#[cfg(parallel_compiler)]
+use rustc_data_structures::sync::DynSync;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
@@ -96,6 +98,10 @@ pub struct QuerySystem<'tcx> {
 
     pub jobs: AtomicU64,
 }
+
+// It's thread safe since `QueryCaches` only used under single thread
+#[cfg(parallel_compiler)]
+unsafe impl<'tcx> DynSync for QuerySystem<'tcx> {}
 
 #[derive(Copy, Clone)]
 pub struct TyCtxtAt<'tcx> {
@@ -428,18 +434,46 @@ macro_rules! define_callbacks {
             })*
         }
 
+        #[cfg(not(parallel_compiler))]
+        impl<'tcx> TyCtxtAt<'tcx> {
+            $($(#[$attr])*
+
+            #[inline(always)]
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
+            {
+                restore::<$V>(query_get_at(
+                    self.tcx,
+                    self.tcx.query_system.fns.engine.$name,
+                    &self.tcx.query_system.caches.$name,
+                    self.span,
+                    key.into_query_param(),
+                ))
+            })*
+        }
+
+        #[cfg(parallel_compiler)]
         impl<'tcx> TyCtxtAt<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
-                restore::<$V>(with_query_caches!(query_get_at(
-                    self.tcx,
-                    self.tcx.query_system.fns.engine.$name,
-                    :self.tcx, $name,
-                    self.span,
-                    key.into_query_param(),
-                )))
+                if std::intrinsics::likely(self.tcx.query_system.single_thread) {
+                    restore::<$V>(query_get_at(
+                        self.tcx,
+                        self.tcx.query_system.fns.engine.$name,
+                        &self.tcx.query_system.caches.$name,
+                        self.span,
+                        key.into_query_param(),
+                    ))
+                } else {
+                    restore::<$V>(query_get_at(
+                        self.tcx,
+                        self.tcx.query_system.fns.engine.$name,
+                        &self.tcx.query_system.mt_caches.$name,
+                        self.span,
+                        key.into_query_param(),
+                    ))
+                }
             })*
         }
 
