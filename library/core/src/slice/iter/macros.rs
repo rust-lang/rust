@@ -241,6 +241,52 @@ macro_rules! iterator {
                 acc
             }
 
+            #[inline]
+            fn try_fold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
+                where
+                    F: FnMut(Acc, Self::Item) -> R,
+                    R: Try<Output = Acc>,
+            {
+                // Similar optimizations as fold(), except that here we must ensure
+                // that the index is updated at the end.
+                if is_empty!(self) {
+                    return try { init };
+                }
+
+                struct Guard<'a, 'b: 'a, T>(usize, &'a mut $name<'b, T>);
+
+                impl<T> Drop for Guard<'_, '_, T> {
+                    fn drop(&mut self) {
+                        // SAFETY: `self.0` gets incremented at most self.len() times,
+                        unsafe { self.1.post_inc_start(self.0) };
+                    }
+                }
+
+                let mut acc = init;
+                let len = len!(self);
+                let mut i = Guard(0, self);
+
+                loop {
+                    // SAFETY: the loop iterates `i in 0..len`, which always is in bounds of
+                    // the slice allocation
+                    let r = f(acc, unsafe { & $( $mut_ )? *i.1.ptr.add(i.0).as_ptr() });
+                    // SAFETY: `i` can't overflow since it'll only reach usize::MAX if the
+                    // slice had that length, in which case we'll break out of the loop
+                    // after the increment
+                    i.0 = unsafe { i.0.unchecked_add(1) };
+
+                    // Place the two loop exits next to each other to give the optimizer
+                    // an opportunity to optimize them together.
+                    // Placed after the unchecked_add to signal that the loop is always
+                    // finite.
+                    acc = r?;
+                    if i.0 == len {
+                        break;
+                    }
+                }
+                try { acc }
+            }
+
             // We override the default implementation, which uses `try_fold`,
             // because this simple implementation generates less LLVM IR and is
             // faster to compile.

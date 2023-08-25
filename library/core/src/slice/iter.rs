@@ -13,6 +13,7 @@ use crate::iter::{
 use crate::marker::{PhantomData, Send, Sized, Sync};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
+use crate::ops::Try;
 use crate::ptr::{self, invalid, invalid_mut, NonNull};
 
 use super::{from_raw_parts, from_raw_parts_mut};
