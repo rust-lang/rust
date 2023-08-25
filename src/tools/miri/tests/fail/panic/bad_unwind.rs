@@ -1,5 +1,3 @@
-#![feature(c_unwind)]
-
 //! Unwinding when the caller ABI is "C" (without "-unwind") is UB.
 // The opposite version (callee does not allow unwinding) is impossible to
 // even write: MIR validation catches functions that have `UnwindContinue` but

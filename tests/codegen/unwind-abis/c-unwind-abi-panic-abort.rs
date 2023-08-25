@@ -4,7 +4,6 @@
 // when the code is compiled with `panic=abort`.
 
 #![crate_type = "lib"]
-#![feature(c_unwind)]
 
 // CHECK: @rust_item_that_can_unwind() unnamed_addr [[ATTR0:#[0-9]+]]
 #[no_mangle]
