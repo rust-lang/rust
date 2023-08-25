@@ -184,6 +184,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "is-terminal",
     "itertools",
     "itoa",
+    "jemalloc-sys",
     "jobserver",
     "lazy_static",
     "libc",
@@ -396,7 +397,7 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
         &metadata,
         "rustc",
         PERMITTED_RUSTC_DEPENDENCIES,
-        &["rustc_driver", "rustc_codegen_llvm"],
+        &["rustc-main"],
         bad,
     );
 
