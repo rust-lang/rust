@@ -43,14 +43,21 @@ type ExceptionList = &'static [(&'static str, &'static str)];
 ///     * A list of crates for which dependencies need to be explicitly allowed.
 ///     * The list of allowed dependencies.
 const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)] = &[
+    // The root workspace has to be first for check_rustfix to work.
     ("Cargo.toml", EXCEPTIONS, Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES))),
-    ("src/tools/cargo/Cargo.toml", EXCEPTIONS_CARGO, None),
+    // Outside of the alphabetical section because rustfmt formats it using multiple lines.
     (
         "compiler/rustc_codegen_cranelift/Cargo.toml",
         EXCEPTIONS_CRANELIFT,
         Some((&["rustc_codegen_cranelift"], PERMITTED_CRANELIFT_DEPENDENCIES)),
     ),
+    // tidy-alphabetical-start
+    ("compiler/rustc_codegen_gcc/Cargo.toml", EXCEPTIONS_GCC, None),
     ("src/bootstrap/Cargo.toml", EXCEPTIONS_BOOTSTRAP, None),
+    ("src/tools/cargo/Cargo.toml", EXCEPTIONS_CARGO, None),
+    ("src/tools/rust-analyzer/Cargo.toml", EXCEPTIONS_RUST_ANALYZER, None),
+    ("src/tools/x/Cargo.toml", &[], None),
+    // tidy-alphabetical-end
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
@@ -100,6 +107,19 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     // tidy-alphabetical-end
 ];
 
+const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
+    // tidy-alphabetical-start
+    ("anymap", "BlueOak-1.0.0 OR MIT OR Apache-2.0"),
+    ("dissimilar", "Apache-2.0"),
+    ("instant", "BSD-3-Clause"),
+    ("notify", "CC0-1.0 OR Artistic-2.0"),
+    ("pulldown-cmark-to-cmark", "Apache-2.0"),
+    ("ryu", "Apache-2.0 OR BSL-1.0"),
+    ("scip", "Apache-2.0"),
+    ("snap", "BSD-3-Clause"),
+    // tidy-alphabetical-end
+];
+
 const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     // tidy-alphabetical-start
     ("cranelift-bforest", "Apache-2.0 WITH LLVM-exception"),
@@ -118,6 +138,13 @@ const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
     ("wasmtime-jit-icache-coherence", "Apache-2.0 WITH LLVM-exception"),
+    // tidy-alphabetical-end
+];
+
+const EXCEPTIONS_GCC: ExceptionList = &[
+    // tidy-alphabetical-start
+    ("gccjit", "GPL-3.0"),
+    ("gccjit_sys", "GPL-3.0"),
     // tidy-alphabetical-end
 ];
 
