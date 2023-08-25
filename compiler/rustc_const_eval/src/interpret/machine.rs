@@ -472,6 +472,9 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         Ok(StackPopJump::Normal)
     }
 
+    /// Called immediately after actual memory was allocated for a local
+    /// but before the local's stack frame is updated to point to that memory.
+    #[inline(always)]
     fn after_local_allocated(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _frame: usize,
