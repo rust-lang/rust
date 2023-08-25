@@ -1,8 +1,8 @@
 use crate::rustc_internal::Opaque;
 use crate::stable_mir::ty::{
-    AdtDef, ClosureDef, Const, GeneratorDef, GenericArgs, Movability, Region,
+    AdtDef, ClosureDef, Const, ConstantKind, GeneratorDef, GenericArgs, Movability, Region,
 };
-use crate::stable_mir::{self, ty::Ty};
+use crate::stable_mir::{self, ty::Ty, Span};
 
 #[derive(Clone, Debug)]
 pub struct Body {
@@ -359,7 +359,7 @@ pub enum AggregateKind {
 pub enum Operand {
     Copy(Place),
     Move(Place),
-    Constant(String),
+    Constant(Constant),
 }
 
 #[derive(Clone, Debug)]
@@ -382,6 +382,13 @@ type FieldIdx = usize;
 pub type VariantIdx = usize;
 
 type UserTypeAnnotationIndex = usize;
+
+#[derive(Clone, Debug)]
+pub struct Constant {
+    pub span: Span,
+    pub user_ty: Option<UserTypeAnnotationIndex>,
+    pub literal: ConstantKind,
+}
 
 #[derive(Clone, Debug)]
 pub struct SwitchTarget {

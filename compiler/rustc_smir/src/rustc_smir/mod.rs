@@ -481,7 +481,19 @@ impl<'tcx> Stable<'tcx> for mir::Operand<'tcx> {
         match self {
             Copy(place) => stable_mir::mir::Operand::Copy(place.stable(tables)),
             Move(place) => stable_mir::mir::Operand::Move(place.stable(tables)),
-            Constant(c) => stable_mir::mir::Operand::Constant(c.to_string()),
+            Constant(c) => stable_mir::mir::Operand::Constant(c.stable(tables)),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::Constant<'tcx> {
+    type T = stable_mir::mir::Constant;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        stable_mir::mir::Constant {
+            span: self.span.stable(tables),
+            user_ty: self.user_ty.map(|u| u.as_usize()).or(None),
+            literal: self.literal.stable(tables),
         }
     }
 }
