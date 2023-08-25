@@ -56,39 +56,6 @@ extern "unadjusted" {
     fn _xperm4_64(rs1: i64, rs2: i64) -> i64;
 }
 
-/// Pack the low bytes of rs1 and rs2 into rd.
-///
-/// And the packh instruction packs the least-significant bytes of rs1 and rs2 into the 16
-/// least-significant bits of rd, zero extending the rest of rd.
-///
-/// Source: RISC-V Cryptography Extensions Volume I: Scalar & Entropy Source Instructions
-///
-/// Version: v1.0.1
-///
-/// Section: 3.18
-///
-/// # Safety
-///
-/// This function is safe to use if the `zbkb` target feature is present.
-#[target_feature(enable = "zbkb")]
-#[cfg_attr(test, assert_instr(packh))]
-#[inline]
-pub unsafe fn packh(rs1: usize, rs2: usize) -> usize {
-    // Note: There is no LLVM intrinsic for this instruction currently.
-
-    let value: usize;
-    unsafe {
-        asm!(
-            "packh {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
-}
-
 /// Byte-wise lookup of indicies into a vector in registers.
 ///
 /// The xperm8 instruction operates on bytes. The rs1 register contains a vector of XLEN/8

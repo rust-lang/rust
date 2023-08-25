@@ -189,40 +189,6 @@ pub unsafe fn aes64ks2(rs1: u64, rs2: u64) -> u64 {
     _aes64ks2(rs1 as i64, rs2 as i64) as u64
 }
 
-/// Pack the low 16-bits of rs1 and rs2 into rd on RV64
-///
-/// This instruction packs the low 16 bits of rs1 and rs2 into the 32 least-significant bits of
-/// rd, sign extending the 32-bit result to the rest of rd. This instruction only exists on
-/// RV64 based systems.
-///
-/// Source: RISC-V Cryptography Extensions Volume I: Scalar & Entropy Source Instructions
-///
-/// Version: v1.0.1
-///
-/// Section: 3.26
-///
-/// # Safety
-///
-/// This function is safe to use if the `zbkb` target feature is present.
-#[target_feature(enable = "zbkb")]
-#[cfg_attr(test, assert_instr(packw))]
-#[inline]
-pub unsafe fn packw(rs1: u64, rs2: u64) -> u64 {
-    // Note: There is no LLVM intrinsic for this instruction currently.
-
-    let value: u64;
-    unsafe {
-        asm!(
-            "packw {rd},{rs1},{rs2}",
-            rd = lateout(reg) value,
-            rs1 = in(reg) rs1,
-            rs2 = in(reg) rs2,
-            options(pure, nomem, nostack),
-        )
-    }
-    value
-}
-
 /// Implements the Sigma0 transformation function as used in the SHA2-512 hash function \[49\]
 /// (Section 4.1.3).
 ///
