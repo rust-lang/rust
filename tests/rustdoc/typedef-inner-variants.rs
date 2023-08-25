@@ -43,14 +43,15 @@ pub enum IrTyKind<A, I: Interner> {
 pub type NearlyTyKind<A> = IrTyKind<A, TyCtxt>;
 
 // @has 'inner_variants/type.TyKind.html'
+// @count - '//*[@id="aliased-type"]' 1
 // @count - '//*[@id="variants"]' 1
 // @count - '//*[@id="fields"]' 0
 // @count - '//*[@class="variant"]' 3
-// @matches - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code' "enum TyKind"
-// @has - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code/a[1]' "Adt"
-// @has - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code/a[2]' "Adt"
-// @has - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code/a[3]' "Ty"
-// @has - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code/a[4]' "i64"
+// @matches - '//pre[@class="rust item-decl"]//code' "enum TyKind"
+// @has - '//pre[@class="rust item-decl"]//code/a[1]' "Adt"
+// @has - '//pre[@class="rust item-decl"]//code/a[2]' "Adt"
+// @has - '//pre[@class="rust item-decl"]//code/a[3]' "Ty"
+// @has - '//pre[@class="rust item-decl"]//code/a[4]' "i64"
 pub type TyKind = IrTyKind<i64, TyCtxt>;
 
 // @has 'inner_variants/union.OneOr.html'
@@ -60,10 +61,11 @@ pub union OneOr<A: Copy> {
 }
 
 // @has 'inner_variants/type.OneOrF64.html'
+// @count - '//*[@id="aliased-type"]' 1
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 1
 // @count - '//*[@class="structfield small-section-header"]' 2
-// @matches - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code' "union OneOrF64"
+// @matches - '//pre[@class="rust item-decl"]//code' "union OneOrF64"
 pub type OneOrF64 = OneOr<f64>;
 
 // @has 'inner_variants/struct.One.html'
@@ -75,10 +77,12 @@ pub struct One<T> {
 }
 
 // @has 'inner_variants/type.OneU64.html'
+// @count - '//*[@id="aliased-type"]' 1
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 1
 // @count - '//*[@class="structfield small-section-header"]' 1
-// @matches - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code' "struct OneU64"
+// @matches - '//pre[@class="rust item-decl"]//code' "struct OneU64"
+// @matches - '//pre[@class="rust item-decl"]//code' "pub val"
 pub type OneU64 = One<u64>;
 
 // @has 'inner_variants/struct.OnceA.html'
@@ -87,10 +91,11 @@ pub struct OnceA<'a, A> {
 }
 
 // @has 'inner_variants/type.Once.html'
+// @count - '//*[@id="aliased-type"]' 1
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 1
-// @matches - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code' "struct Once<'a>"
-// @matches - '//details[@class="toggle"]//pre[@class="rust item-decl"]//code' "&'a"
+// @matches - '//pre[@class="rust item-decl"]//code' "struct Once<'a>"
+// @matches - '//pre[@class="rust item-decl"]//code' "&'a"
 pub type Once<'a> = OnceA<'a, i64>;
 
 // @has 'inner_variants/struct.HighlyGenericStruct.html'
@@ -100,12 +105,13 @@ pub struct HighlyGenericStruct<A, B, C, D> {
 
 // VERIFY that we NOT show the Aliased Type
 // @has 'inner_variants/type.HighlyGenericAABB.html'
-// @count - '//details[@class="toggle"]' 0
+// @count - '//*[@id="aliased-type"]' 1
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 0
 pub type HighlyGenericAABB<A, B> = HighlyGenericStruct<A, A, B, B>;
 
 // @has 'inner_variants/type.InlineU64.html'
+// @count - '//*[@id="aliased-type"]' 1
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 1
 pub use cross_crate_generic_typedef::InlineU64;

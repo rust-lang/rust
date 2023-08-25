@@ -1237,104 +1237,63 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
 
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
-    // Only show inner variants if:
-    //  - the typealias does NOT have any generics (modulo lifetimes)
-    //  - AND the aliased type has some generics
-    //
-    // Otherwise, showing a non-generic type is rendurant with its own page, or
-    // if it still has some generics, it's not as useful.
-    let should_print_inner_type = t
-        .generics
-        .params
-        .iter()
-        .all(|param| matches!(param.kind, clean::GenericParamDefKind::Lifetime { .. }))
-        && t.generics.where_predicates.is_empty()
-        && t.type_.generics().is_some_and(|generics| !generics.is_empty());
+    if let Some(inner_type) = &t.inner_type && t.should_display_inner_type() {
+        write!(
+            w,
+            "<h2 id=\"aliased-type\" class=\"small-section-header\">\
+                Aliased Type<a href=\"#aliased-type\" class=\"anchor\">§</a></h2>"
+        );
 
-    if should_print_inner_type {
-        fn toggle<W, F>(w: &mut W, f: F)
-        where
-            W: fmt::Write,
-            F: FnOnce(&mut W),
-        {
-            write!(
-                w,
-                "<details class=\"toggle\">\
-                    <summary>\
-                        <span>Show Aliased Type</span>\
-                    </summary>",
-            )
-            .unwrap();
-            f(w);
-            write!(w, "</details>").unwrap();
-        }
+        match inner_type {
+            clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive } => {
+                let variants_iter = || variants.iter().filter(|i| !i.is_stripped());
+                wrap_item(w, |w| {
+                    let variants_len = variants.len();
+                    let variants_count = variants_iter().count();
+                    let has_stripped_entries = variants_len != variants_count;
 
-        match &t.inner_type {
-            Some(clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive }) => {
-                toggle(w, |w| {
-                    let variants_iter = || variants.iter().filter(|i| !i.is_stripped());
-                    wrap_item(w, |w| {
-                        let variants_len = variants.len();
-                        let variants_count = variants_iter().count();
-                        let has_stripped_entries = variants_len != variants_count;
-
-                        write!(w, "enum {}{}", it.name.unwrap(), t.generics.print(cx));
-                        render_enum_fields(
-                            w,
-                            cx,
-                            None,
-                            variants_iter(),
-                            variants_count,
-                            has_stripped_entries,
-                            *is_non_exhaustive,
-                        )
-                    });
-                    item_variants(w, cx, it, variants_iter());
+                    write!(w, "enum {}{}", it.name.unwrap(), t.generics.print(cx));
+                    render_enum_fields(
+                        w,
+                        cx,
+                        None,
+                        variants_iter(),
+                        variants_count,
+                        has_stripped_entries,
+                        *is_non_exhaustive,
+                    )
                 });
+                item_variants(w, cx, it, variants_iter());
             }
-            Some(clean::TypeAliasInnerType::Union { fields }) => {
-                toggle(w, |w| {
-                    wrap_item(w, |w| {
-                        let fields_count = fields.iter().filter(|i| !i.is_stripped()).count();
-                        let has_stripped_fields = fields.len() != fields_count;
+            clean::TypeAliasInnerType::Union { fields } => {
+                wrap_item(w, |w| {
+                    let fields_count = fields.iter().filter(|i| !i.is_stripped()).count();
+                    let has_stripped_fields = fields.len() != fields_count;
 
-                        write!(w, "union {}{}", it.name.unwrap(), t.generics.print(cx));
-                        render_struct_fields(
-                            w,
-                            None,
-                            None,
-                            fields,
-                            "",
-                            true,
-                            has_stripped_fields,
-                            cx,
-                        );
-                    });
-                    item_fields(w, cx, it, fields, None);
+                    write!(w, "union {}{}", it.name.unwrap(), t.generics.print(cx));
+                    render_struct_fields(w, None, None, fields, "", true, has_stripped_fields, cx);
                 });
+                item_fields(w, cx, it, fields, None);
             }
-            Some(clean::TypeAliasInnerType::Struct { ctor_kind, fields }) => {
-                toggle(w, |w| {
-                    wrap_item(w, |w| {
-                        let fields_count = fields.iter().filter(|i| !i.is_stripped()).count();
-                        let has_stripped_fields = fields.len() != fields_count;
+            clean::TypeAliasInnerType::Struct { ctor_kind, fields } => {
+                wrap_item(w, |w| {
+                    let fields_count = fields.iter().filter(|i| !i.is_stripped()).count();
+                    let has_stripped_fields = fields.len() != fields_count;
 
-                        write!(w, "struct {}{}", it.name.unwrap(), t.generics.print(cx));
-                        render_struct_fields(
-                            w,
-                            None,
-                            *ctor_kind,
-                            fields,
-                            "",
-                            true,
-                            has_stripped_fields,
-                            cx,
-                        );
-                    });
-                    item_fields(w, cx, it, fields, None);
+                    write!(w, "struct {}{}", it.name.unwrap(), t.generics.print(cx));
+                    render_struct_fields(
+                        w,
+                        None,
+                        *ctor_kind,
+                        fields,
+                        "",
+                        true,
+                        has_stripped_fields,
+                        cx,
+                    );
                 });
+                item_fields(w, cx, it, fields, None);
             }
-            None => {}
         }
     }
 

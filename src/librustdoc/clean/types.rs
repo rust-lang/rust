@@ -2252,6 +2252,23 @@ pub(crate) struct TypeAlias {
     pub(crate) item_type: Option<Type>,
 }
 
+impl TypeAlias {
+    pub(crate) fn should_display_inner_type(&self) -> bool {
+        // Only show inner variants if:
+        //  - the typealias does NOT have any generics (modulo lifetimes)
+        //  - AND the aliased type has some generics
+        //
+        // Otherwise, showing a non-generic type is rendurant with its own page, or
+        // if it still has some generics, it's not as useful.
+        self.generics
+            .params
+            .iter()
+            .all(|param| matches!(param.kind, GenericParamDefKind::Lifetime { .. }))
+            && self.generics.where_predicates.is_empty()
+            && self.type_.generics().is_some_and(|generics| !generics.is_empty())
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct OpaqueTy {
     pub(crate) bounds: Vec<GenericBound>,
