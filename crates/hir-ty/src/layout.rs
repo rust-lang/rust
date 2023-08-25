@@ -109,7 +109,8 @@ fn layout_of_simd_ty(
     // * the homogeneous field type and the number of fields.
     let (e_ty, e_len, is_array) = if let TyKind::Array(e_ty, _) = f0_ty.kind(Interner) {
         // Extract the number of elements from the layout of the array field:
-        let FieldsShape::Array { count, .. } = db.layout_of_ty(f0_ty.clone(), env.clone())?.fields else {
+        let FieldsShape::Array { count, .. } = db.layout_of_ty(f0_ty.clone(), env.clone())?.fields
+        else {
             user_error!("Array with non array layout");
         };
 

@@ -692,7 +692,7 @@ pub(crate) fn include_arg_to_tt(
     arg_id: MacroCallId,
 ) -> Result<(triomphe::Arc<(::tt::Subtree<::tt::TokenId>, TokenMap)>, FileId), ExpandError> {
     let loc = db.lookup_intern_macro_call(arg_id);
-    let Some(EagerCallInfo { arg,arg_id, .. }) = loc.eager.as_deref() else {
+    let Some(EagerCallInfo { arg, arg_id, .. }) = loc.eager.as_deref() else {
         panic!("include_arg_to_tt called on non include macro call: {:?}", &loc.eager);
     };
     let path = parse_string(&arg.0)?;
