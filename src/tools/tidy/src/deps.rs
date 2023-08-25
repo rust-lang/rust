@@ -31,12 +31,34 @@ const LICENSES: &[&str] = &[
     // tidy-alphabetical-end
 ];
 
+type ExceptionList = &'static [(&'static str, &'static str)];
+
+/// The workspaces to check for licensing and optionally permitted dependencies.
+///
+/// Each entry consists of a tuple with the following elements:
+///
+/// * The path to the workspace root Cargo.toml file.
+/// * The list of license exceptions.
+/// * Optionally a tuple of:
+///     * A list of crates for which dependencies need to be explicitly allowed.
+///     * The list of allowed dependencies.
+const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)] = &[
+    ("Cargo.toml", EXCEPTIONS, Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES))),
+    ("src/tools/cargo/Cargo.toml", EXCEPTIONS_CARGO, None),
+    (
+        "compiler/rustc_codegen_cranelift/Cargo.toml",
+        EXCEPTIONS_CRANELIFT,
+        Some((&["rustc_codegen_cranelift"], PERMITTED_CRANELIFT_DEPENDENCIES)),
+    ),
+    ("src/bootstrap/Cargo.toml", EXCEPTIONS_BOOTSTRAP, None),
+];
+
 /// These are exceptions to Rust's permissive licensing policy, and
 /// should be considered bugs. Exceptions are only allowed in Rust
 /// tooling. It is _crucial_ that no exception crates be dependencies
 /// of the Rust runtime (std/test).
 #[rustfmt::skip]
-const EXCEPTIONS: &[(&str, &str)] = &[
+const EXCEPTIONS: ExceptionList = &[
     // tidy-alphabetical-start
     ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
     ("colored", "MPL-2.0"),                                  // rustfmt
@@ -55,7 +77,7 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     // tidy-alphabetical-end
 ];
 
-const EXCEPTIONS_CARGO: &[(&str, &str)] = &[
+const EXCEPTIONS_CARGO: ExceptionList = &[
     // tidy-alphabetical-start
     ("bitmaps", "MPL-2.0+"),
     ("bytesize", "Apache-2.0"),
@@ -78,7 +100,7 @@ const EXCEPTIONS_CARGO: &[(&str, &str)] = &[
     // tidy-alphabetical-end
 ];
 
-const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
+const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     // tidy-alphabetical-start
     ("cranelift-bforest", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
@@ -99,7 +121,7 @@ const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
     // tidy-alphabetical-end
 ];
 
-const EXCEPTIONS_BOOTSTRAP: &[(&str, &str)] = &[
+const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[
     ("ryu", "Apache-2.0 OR BSL-1.0"), // through serde
 ];
 
@@ -383,54 +405,40 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
 /// `root` is path to the directory with the root `Cargo.toml` (for the workspace). `cargo` is path
 /// to the cargo executable.
 pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
-    let mut cmd = cargo_metadata::MetadataCommand::new();
-    cmd.cargo_path(cargo)
-        .manifest_path(root.join("Cargo.toml"))
-        .features(cargo_metadata::CargoOpt::AllFeatures);
-    let metadata = t!(cmd.exec());
+    let mut checked_runtime_licenses = false;
+    let mut rust_metadata = None;
 
-    let runtime_ids = compute_runtime_crates(&metadata);
-    check_runtime_license_exceptions(&metadata, runtime_ids, bad);
+    for &(workspace, exceptions, permitted_deps) in WORKSPACES {
+        let mut cmd = cargo_metadata::MetadataCommand::new();
+        cmd.cargo_path(cargo)
+            .manifest_path(root.join(workspace))
+            .features(cargo_metadata::CargoOpt::AllFeatures);
+        let metadata = t!(cmd.exec());
 
-    check_license_exceptions(&metadata, EXCEPTIONS, bad);
-    check_permitted_dependencies(
-        &metadata,
-        "rustc",
-        PERMITTED_RUSTC_DEPENDENCIES,
-        &["rustc-main"],
-        bad,
-    );
+        check_license_exceptions(&metadata, exceptions, bad);
+        if let Some((crates, permitted_deps)) = permitted_deps {
+            check_permitted_dependencies(&metadata, workspace, permitted_deps, crates, bad);
+        }
 
-    // Check cargo independently as it has it's own workspace.
-    let mut cmd = cargo_metadata::MetadataCommand::new();
-    cmd.cargo_path(cargo)
-        .manifest_path(root.join("src/tools/cargo/Cargo.toml"))
-        .features(cargo_metadata::CargoOpt::AllFeatures);
-    let cargo_metadata = t!(cmd.exec());
-    check_license_exceptions(&cargo_metadata, EXCEPTIONS_CARGO, bad);
-    check_rustfix(&metadata, &cargo_metadata, bad);
+        if workspace == "Cargo.toml" {
+            let runtime_ids = compute_runtime_crates(&metadata);
+            check_runtime_license_exceptions(&metadata, runtime_ids, bad);
+            checked_runtime_licenses = true;
+            rust_metadata = Some(metadata);
+        } else if workspace == "src/tools/cargo/Cargo.toml" {
+            check_rustfix(
+                rust_metadata
+                    .as_ref()
+                    .expect("The root workspace should be the first to be checked"),
+                &metadata,
+                bad,
+            );
+        }
+    }
 
-    // Check rustc_codegen_cranelift independently as it has it's own workspace.
-    let mut cmd = cargo_metadata::MetadataCommand::new();
-    cmd.cargo_path(cargo)
-        .manifest_path(root.join("compiler/rustc_codegen_cranelift/Cargo.toml"))
-        .features(cargo_metadata::CargoOpt::AllFeatures);
-    let metadata = t!(cmd.exec());
-    check_license_exceptions(&metadata, EXCEPTIONS_CRANELIFT, bad);
-    check_permitted_dependencies(
-        &metadata,
-        "cranelift",
-        PERMITTED_CRANELIFT_DEPENDENCIES,
-        &["rustc_codegen_cranelift"],
-        bad,
-    );
-
-    let mut cmd = cargo_metadata::MetadataCommand::new();
-    cmd.cargo_path(cargo)
-        .manifest_path(root.join("src/bootstrap/Cargo.toml"))
-        .features(cargo_metadata::CargoOpt::AllFeatures);
-    let metadata = t!(cmd.exec());
-    check_license_exceptions(&metadata, EXCEPTIONS_BOOTSTRAP, bad);
+    // Sanity check to ensure we don't accidentally remove the workspace containing the runtime
+    // crates.
+    assert!(checked_runtime_licenses);
 }
 
 /// Check that all licenses of runtime dependencies are in the valid list in `LICENSES`.
