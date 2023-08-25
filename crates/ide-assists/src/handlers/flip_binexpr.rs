@@ -19,8 +19,19 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let expr = ctx.find_node_at_offset::<BinExpr>()?;
-    let lhs = expr.lhs()?.syntax().clone();
     let rhs = expr.rhs()?.syntax().clone();
+    let lhs = expr.lhs()?.syntax().clone();
+
+    let lhs = if let Some(bin_expr) = BinExpr::cast(lhs.clone()) {
+        if bin_expr.op_kind() == expr.op_kind() {
+            bin_expr.rhs()?.syntax().clone()
+        } else {
+            lhs
+        }
+    } else {
+        lhs
+    };
+
     let op_range = expr.op_token()?.text_range();
     // The assist should be applied only if the cursor is on the operator
     let cursor_in_range = op_range.contains_range(ctx.selection_trimmed());
@@ -32,15 +43,6 @@ pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     if let FlipAction::DontFlip = action {
         return None;
     }
-
-    // If the lhs is a binary expression we check if its rhs can be used as the lhs of the current expression
-    let lhs = match BinExpr::cast(lhs.clone()) {
-        Some(lhs) => match lhs.rhs() {
-            Some(lhs) => lhs,
-            None => lhs,
-        },
-        None => lhs,
-    };
 
     acc.add(
         AssistId("flip_binexpr", AssistKind::RefactorRewrite),
@@ -124,11 +126,20 @@ mod tests {
     }
 
     #[test]
-    fn flip_binexpr_works_for_lhs_binexpr() {
+    fn flip_binexpr_works_for_lhs_arith() {
         check_assist(
             flip_binexpr,
             r"fn f() { let res = 1 + (2 - 3) +$0 4 + 5; }",
             r"fn f() { let res = 1 + 4 + (2 - 3) + 5; }",
+        )
+    }
+
+    #[test]
+    fn flip_binexpr_works_for_lhs_cmp() {
+        check_assist(
+            flip_binexpr,
+            r"fn f() { let res = 1 + (2 - 3) >$0 4 + 5; }",
+            r"fn f() { let res = 4 + 5 < 1 + (2 - 3); }",
         )
     }
 
