@@ -11,28 +11,47 @@
 // Note, however, that we run on lots older linuxes, as well as cross
 // compiling from a newer linux to an older linux, so we also have a
 // fallback implementation to use as well.
+#[allow(unexpected_cfgs)]
 #[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "redox", target_os = "hurd"))]
+// FIXME: The Rust compiler currently omits weakly function definitions (i.e.,
+// __cxa_thread_atexit_impl) and its metadata from LLVM IR.
+#[no_sanitize(cfi, kcfi)]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::mem;
     use crate::sys_common::thread_local_dtor::register_dtor_fallback;
+
+    /// This is necessary because the __cxa_thread_atexit_impl implementation
+    /// std links to by default may be a C or C++ implementation that was not
+    /// compiled using the Clang integer normalization option.
+    #[cfg(not(sanitizer_cfi_normalize_integers))]
+    #[cfi_encoding = "i"]
+    #[repr(transparent)]
+    pub struct c_int(pub libc::c_int);
 
     extern "C" {
         #[linkage = "extern_weak"]
         static __dso_handle: *mut u8;
         #[linkage = "extern_weak"]
-        static __cxa_thread_atexit_impl: *const libc::c_void;
+        static __cxa_thread_atexit_impl: Option<
+            extern "C" fn(
+                unsafe extern "C" fn(*mut libc::c_void),
+                *mut libc::c_void,
+                *mut libc::c_void,
+            ) -> c_int,
+        >;
     }
-    if !__cxa_thread_atexit_impl.is_null() {
-        type F = unsafe extern "C" fn(
-            dtor: unsafe extern "C" fn(*mut u8),
-            arg: *mut u8,
-            dso_handle: *mut u8,
-        ) -> libc::c_int;
-        mem::transmute::<*const libc::c_void, F>(__cxa_thread_atexit_impl)(
-            dtor,
-            t,
-            &__dso_handle as *const _ as *mut _,
-        );
+
+    if let Some(f) = __cxa_thread_atexit_impl {
+        unsafe {
+            f(
+                mem::transmute::<
+                    unsafe extern "C" fn(*mut u8),
+                    unsafe extern "C" fn(*mut libc::c_void),
+                >(dtor),
+                t.cast(),
+                &__dso_handle as *const _ as *mut _,
+            );
+        }
         return;
     }
     register_dtor_fallback(t, dtor);

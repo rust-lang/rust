@@ -133,6 +133,10 @@ impl<'a> Argument<'a> {
         Self::new(x, USIZE_MARKER)
     }
 
+    // FIXME: Transmuting formatter in new and indirectly branching to/calling
+    // it here is an explicit CFI violation.
+    #[allow(inline_no_sanitize)]
+    #[no_sanitize(cfi, kcfi)]
     #[inline(always)]
     pub(super) fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         (self.formatter)(self.value, f)
