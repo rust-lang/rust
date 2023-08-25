@@ -1,4 +1,15 @@
 error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/assoc-type-const-bound-usage.rs:12:6
+   |
+LL |     <T as Foo>::Assoc::foo();
+   |      ^ the trait `Foo` is not implemented for `T`
+   |
+help: consider further restricting this bound
+   |
+LL | const fn foo<T: ~const Foo + Foo>() {
+   |                            +++++
+
+error[E0277]: the trait bound `T: Foo` is not satisfied
   --> $DIR/assoc-type-const-bound-usage.rs:12:5
    |
 LL |     <T as Foo>::Assoc::foo();
@@ -9,6 +20,6 @@ help: consider further restricting this bound
 LL | const fn foo<T: ~const Foo + Foo>() {
    |                            +++++
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
