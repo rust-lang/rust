@@ -11,16 +11,17 @@ use rustc_target::abi::{HasDataLayout, TargetDataLayout};
 use crate::errors::{Abi, Align, HomogeneousAggregate, LayoutOf, Size, UnrecognizedField};
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
-    if tcx.features().rustc_attrs {
+    if !tcx.features().rustc_attrs {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
-        for id in tcx.hir().items() {
-            if matches!(
-                tcx.def_kind(id.owner_id),
-                DefKind::TyAlias { .. } | DefKind::Enum | DefKind::Struct | DefKind::Union
-            ) {
-                for attr in tcx.get_attrs(id.owner_id, sym::rustc_layout) {
-                    dump_layout_of(tcx, id.owner_id.def_id, attr);
-                }
+        return;
+    }
+    for id in tcx.hir().items() {
+        if matches!(
+            tcx.def_kind(id.owner_id),
+            DefKind::TyAlias { .. } | DefKind::Enum | DefKind::Struct | DefKind::Union
+        ) {
+            for attr in tcx.get_attrs(id.owner_id, sym::rustc_layout) {
+                dump_layout_of(tcx, id.owner_id.def_id, attr);
             }
         }
     }

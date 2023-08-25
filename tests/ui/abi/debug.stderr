@@ -1,0 +1,260 @@
+error: fn_abi_of_instance(test) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: u8,
+                       layout: Layout {
+                           size: Size(1 bytes),
+                           align: AbiAndPrefAlign {
+                               abi: $SOME_ALIGN,
+                               pref: $SOME_ALIGN,
+                           },
+                           abi: Scalar(
+                               Initialized {
+                                   value: Int(
+                                       I8,
+                                       false,
+                                   ),
+                                   valid_range: 0..=255,
+                               },
+                           ),
+                           fields: Primitive,
+                           largest_niche: None,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: $SOME_ALIGN,
+                       },
+                   },
+                   mode: Direct(
+                       ArgAttributes {
+                           regular: NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(0 bytes),
+                           pointee_align: None,
+                       },
+                   ),
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: bool,
+                   layout: Layout {
+                       size: Size(1 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: $SOME_ALIGN,
+                           pref: $SOME_ALIGN,
+                       },
+                       abi: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                       ),
+                       fields: Primitive,
+                       largest_niche: Some(
+                           Niche {
+                               offset: Size(0 bytes),
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                       ),
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: $SOME_ALIGN,
+                   },
+               },
+               mode: Direct(
+                   ArgAttributes {
+                       regular: NoUndef,
+                       arg_ext: Zext,
+                       pointee_size: Size(0 bytes),
+                       pointee_align: None,
+                   },
+               ),
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: Rust,
+           can_unwind: $SOME_BOOL,
+       }
+  --> $DIR/debug.rs:13:1
+   |
+LL | fn test(_x: u8) -> bool { true }
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of_instance(test_generic) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: *const T,
+                       layout: Layout {
+                           size: $SOME_SIZE,
+                           align: AbiAndPrefAlign {
+                               abi: $SOME_ALIGN,
+                               pref: $SOME_ALIGN,
+                           },
+                           abi: Scalar(
+                               Initialized {
+                                   value: Pointer(
+                                       AddressSpace(
+                                           0,
+                                       ),
+                                   ),
+                                   valid_range: $FULL,
+                               },
+                           ),
+                           fields: Primitive,
+                           largest_niche: None,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: $SOME_ALIGN,
+                       },
+                   },
+                   mode: Direct(
+                       ArgAttributes {
+                           regular: NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(0 bytes),
+                           pointee_align: None,
+                       },
+                   ),
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: $SOME_ALIGN,
+                           pref: $SOME_ALIGN,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: $SOME_ALIGN,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: Rust,
+           can_unwind: $SOME_BOOL,
+       }
+  --> $DIR/debug.rs:17:1
+   |
+LL | fn test_generic<T>(_x: *const T) { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of_instance(assoc_test) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: &S,
+                       layout: Layout {
+                           size: $SOME_SIZE,
+                           align: AbiAndPrefAlign {
+                               abi: $SOME_ALIGN,
+                               pref: $SOME_ALIGN,
+                           },
+                           abi: Scalar(
+                               Initialized {
+                                   value: Pointer(
+                                       AddressSpace(
+                                           0,
+                                       ),
+                                   ),
+                                   valid_range: $NON_NULL,
+                               },
+                           ),
+                           fields: Primitive,
+                           largest_niche: Some(
+                               Niche {
+                                   offset: Size(0 bytes),
+                                   value: Pointer(
+                                       AddressSpace(
+                                           0,
+                                       ),
+                                   ),
+                                   valid_range: $NON_NULL,
+                               },
+                           ),
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: $SOME_ALIGN,
+                       },
+                   },
+                   mode: Direct(
+                       ArgAttributes {
+                           regular: NoAlias | NonNull | ReadOnly | NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(2 bytes),
+                           pointee_align: Some(
+                               Align(2 bytes),
+                           ),
+                       },
+                   ),
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: $SOME_ALIGN,
+                           pref: $SOME_ALIGN,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: $SOME_ALIGN,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: Rust,
+           can_unwind: $SOME_BOOL,
+       }
+  --> $DIR/debug.rs:22:5
+   |
+LL |     fn assoc_test(&self) { }
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
