@@ -33,6 +33,15 @@ pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         return None;
     }
 
+    // If the lhs is a binary expression we check if its rhs can be used as the lhs of the current expression
+    let lhs = match BinExpr::cast(lhs.clone()) {
+        Some(lhs) => match lhs.rhs() {
+            Some(lhs) => lhs,
+            None => lhs,
+        },
+        None => lhs,
+    };
+
     acc.add(
         AssistId("flip_binexpr", AssistKind::RefactorRewrite),
         "Flip binary expression",
@@ -111,6 +120,15 @@ mod tests {
             flip_binexpr,
             "fn f() { let res = (1 + 1) ==$0 (2 + 2); }",
             "fn f() { let res = (2 + 2) == (1 + 1); }",
+        )
+    }
+
+    #[test]
+    fn flip_binexpr_works_for_lhs_binexpr() {
+        check_assist(
+            flip_binexpr,
+            r"fn f() { let res = 1 + (2 - 3) +$0 4 + 5; }",
+            r"fn f() { let res = 1 + 4 + (2 - 3) + 5; }",
         )
     }
 
