@@ -1,6 +1,5 @@
 // compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
 // only-64bit
-// ignore-debug
 
 // Checks that we do not have any branches in the MIR for the two tested functions.
 

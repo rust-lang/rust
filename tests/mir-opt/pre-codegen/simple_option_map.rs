@@ -1,6 +1,5 @@
 // compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
 // only-64bit
-// ignore-debug
 
 #[inline(always)]
 fn map<T, U, F>(slf: Option<T>, f: F) -> Option<U>
