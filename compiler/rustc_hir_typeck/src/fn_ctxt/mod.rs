@@ -322,7 +322,6 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                 ty.kind()
             {
                 self.add_required_obligations_for_hir(span, *def_id, args, hir_id);
-                self.select_obligations_where_possible(|_| {});
             }
             self.normalize(span, ty)
         } else {
