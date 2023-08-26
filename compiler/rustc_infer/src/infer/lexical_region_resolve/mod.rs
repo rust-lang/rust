@@ -214,7 +214,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                                 true
                             }
                             VarValue::Value(cur_region) => {
-                                let lub = match *cur_region {
+                                match *cur_region {
                                     // If this empty region is from a universe that can name the
                                     // placeholder universe, then the LUB is the Placeholder region
                                     // (which is the cur_region). Otherwise, the LUB is the Static
@@ -222,22 +222,17 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                                     RePlaceholder(placeholder)
                                         if !a_universe.can_name(placeholder.universe) =>
                                     {
-                                        self.tcx().lifetimes.re_static
+                                        let lub = self.tcx().lifetimes.re_static;
+                                        debug!(
+                                            "Expanding value of {:?} from {:?} to {:?}",
+                                            b_vid, cur_region, lub
+                                        );
+
+                                        *b_data = VarValue::Value(lub);
+                                        true
                                     }
 
-                                    _ => cur_region,
-                                };
-
-                                if lub == cur_region {
-                                    false
-                                } else {
-                                    debug!(
-                                        "Expanding value of {:?} from {:?} to {:?}",
-                                        b_vid, cur_region, lub
-                                    );
-
-                                    *b_data = VarValue::Value(lub);
-                                    true
+                                    _ => false,
                                 }
                             }
 
