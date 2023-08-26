@@ -12,13 +12,13 @@ use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobI
 use crate::query::SerializedDepNodeIndex;
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use crate::HandleCycleError;
-#[cfg(parallel_compiler)]
-use rustc_data_structures::cold_path;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
+#[cfg(parallel_compiler)]
+use rustc_data_structures::{cold_path, sync};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
@@ -223,7 +223,6 @@ where
 
 #[cold]
 #[inline(never)]
-#[cfg(not(parallel_compiler))]
 fn cycle_error<Q, Qcx>(
     query: Q,
     qcx: Qcx,
@@ -336,22 +335,24 @@ where
         }
         Entry::Occupied(mut entry) => {
             match entry.get_mut() {
-                #[cfg(not(parallel_compiler))]
                 QueryResult::Started(job) => {
+                    #[cfg(parallel_compiler)]
+                    if sync::is_dyn_thread_safe() {
+                        // Get the latch out
+                        let latch = job.latch();
+                        drop(state_lock);
+
+                        // Only call `wait_for_query` if we're using a Rayon thread pool
+                        // as it will attempt to mark the worker thread as blocked.
+                        return wait_for_query(query, qcx, span, key, latch, current_job_id);
+                    }
+
                     let id = job.id;
                     drop(state_lock);
 
                     // If we are single-threaded we know that we have cycle error,
                     // so we just return the error.
                     cycle_error(query, qcx, id, span)
-                }
-                #[cfg(parallel_compiler)]
-                QueryResult::Started(job) => {
-                    // Get the latch out
-                    let latch = job.latch();
-                    drop(state_lock);
-
-                    wait_for_query(query, qcx, span, key, latch, current_job_id)
                 }
                 QueryResult::Poisoned => FatalError.raise(),
             }
