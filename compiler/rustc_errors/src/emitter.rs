@@ -2709,23 +2709,48 @@ impl Style {
     }
 }
 
-/// Whether the original and suggested code are visually similar enough to warrant extra wording.
+/// Determines if the original code and the suggested code have sufficient visual similarity 
+/// to include extra textual information or descriptions to highlight the similarities or 
+/// differences between them. 
+/// 
+/// # Returns
+///
+/// Returns `true` if the original and suggested code are visually similar enough to warrant 
+/// extra wording, otherwise `false`.
 pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
     // FIXME: this should probably be extended to also account for `FO0` → `FOO` and unicode.
+    // Retrieve code
     let found = match sm.span_to_snippet(sp) {
-        Ok(snippet) => snippet,
+        Ok(snippet) => {
+            snippet
+        }
         Err(e) => {
             warn!(error = ?e, "Invalid span {:?}", sp);
             return false;
         }
     };
-    let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
-    // All the chars that differ in capitalization are confusable (above):
-    let confusable = iter::zip(found.chars(), suggested.chars())
-        .filter(|(f, s)| f != s)
-        .all(|(f, s)| (ascii_confusables.contains(&f) || ascii_confusables.contains(&s)));
-    confusable && found.to_lowercase() == suggested.to_lowercase()
-            // FIXME: We sometimes suggest the same thing we already have, which is a
-            //        bug, but be defensive against that here.
-            && found != suggested
+
+    // ASCII confusable characters when capitalization.
+    const ASCII_CONFUSABLES: [char; 12] = ['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
+
+    // # CHECK 1
+    // 'zip' function is used to iterate over two sequences in parallel
+    found.chars()
+        .zip(suggested.chars())
+        // - Check if the characters are equal, OR
+        // - Check character `f` is present in the `ASCII_CONFUSABLES` array, OR
+        // - Check character `s` is present in the `ASCII_CONFUSABLES` array
+        //
+        // This line equivalent to the: .filter(|(f, s)| f != s).all(|(f, s)| (ascii_confusables.contains(&f) || ascii_confusables.contains(&s)));
+        .all(|(f, s)| f == s || ASCII_CONFUSABLES.contains(&f) || ASCII_CONFUSABLES.contains(&s))
+        // # CHECK 2
+        // Compare the strings in a 'case-insensitive' comparison to avoid new allocations.
+        // Equivalent to: found.to_lowercase() == suggested.to_lowercase()
+        && found.eq_ignore_ascii_case(suggested)
+        // # CHECK 3
+        // Ensure the found string is not equal to the suggested string.
+        //
+        // This line addressing potential issue where a code suggestion 
+        // is generated even though it is the same as the original code.
+        && found != suggested
 }
