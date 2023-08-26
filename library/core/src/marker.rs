@@ -77,6 +77,7 @@ macro marker_impls {
 #[cfg_attr(not(test), rustc_diagnostic_item = "Send")]
 #[rustc_on_unimplemented(
     on(_Self = "std::rc::Rc<T, A>", note = "use `std::sync::Arc` instead of `std::rc::Rc`"),
+    on(_Self = "alloc::rc::Rc<T, A>", note = "use `alloc::sync::Arc` instead of `alloc::rc::Rc`"),
     message = "`{Self}` cannot be sent between threads safely",
     label = "`{Self}` cannot be sent between threads safely",
     note = "consider using `std::sync::Arc<{Self}>`; for more information visit \
@@ -632,6 +633,7 @@ impl<T: ?Sized> Copy for &T {}
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead",
     ),
     on(_Self = "std::rc::Rc<T, A>", note = "use `std::sync::Arc` instead of `std::rc::Rc`"),
+    on(_Self = "alloc::rc::Rc<T, A>", note = "use `alloc::sync::Arc` instead of `alloc::rc::Rc`"),
     message = "`{Self}` cannot be shared between threads safely",
     label = "`{Self}` cannot be shared between threads safely",
     note = "consider using `std::sync::Arc<{Self}>`; for more information visit \
