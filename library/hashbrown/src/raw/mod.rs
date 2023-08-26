@@ -3376,7 +3376,7 @@ impl FullBucketsIndices {
             //    the start of the array of control bytes, and never try to iterate after
             //    getting all the elements, the last `self.ctrl` will be equal to
             //    the `self.buckets() - Group::WIDTH`, so `self.current_group.next()`
-            //    will always contains bytes within the table range (0..self.buckets()),
+            //    will always contains indices within the range `0..Group::WIDTH`,
             //    and subsequent `self.group_first_index + index` will always return a
             //    number less than `self.buckets()`.
             self.ctrl = NonNull::new_unchecked(self.ctrl.as_ptr().add(Group::WIDTH));
