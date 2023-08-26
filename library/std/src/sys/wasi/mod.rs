@@ -76,6 +76,11 @@ cfg_if::cfg_if! {
 mod common;
 pub use common::*;
 
+#[inline]
+pub fn is_interrupted(errno: i32) -> bool {
+    errno == wasi::ERRNO_INTR.raw().into()
+}
+
 pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
     use std_io::ErrorKind::*;
     if errno > u16::MAX as i32 || errno < 0 {
