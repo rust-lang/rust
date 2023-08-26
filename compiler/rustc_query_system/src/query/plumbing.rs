@@ -300,7 +300,18 @@ where
     match result {
         Ok(()) => {
             let Some((v, index)) = query.query_cache(qcx).lookup(&key) else {
-                cold_path(|| panic!("value must be in cache after waiting"))
+                cold_path(|| {
+                    // We didn't find the query result in the query cache. Check if it was
+                    // poisoned due to a panic instead.
+                    let lock = query.query_state(qcx).active.get_shard_by_value(&key).lock();
+                    match lock.get(&key) {
+                        // The query we waited on panicked. Continue unwinding here.
+                        Some(QueryResult::Poisoned) => FatalError.raise(),
+                        _ => panic!(
+                            "query result must in the cache or the query must be poisoned after a wait"
+                        ),
+                    }
+                })
             };
 
             qcx.dep_context().profiler().query_cache_hit(index.into());
