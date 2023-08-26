@@ -14,6 +14,11 @@ pub fn check(root: &Path, bad: &mut bool) {
         // `Cargo.lock` of rust.
         let path = root.join(workspace).join("Cargo.lock");
 
+        if !path.exists() {
+            tidy_error!(bad, "the `{workspace}` workspace doesn't have a Cargo.lock");
+            continue;
+        }
+
         // Open and read the whole file.
         let cargo_lock = t!(fs::read_to_string(&path));
 

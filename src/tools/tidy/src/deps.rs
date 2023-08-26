@@ -436,6 +436,11 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
     let mut rust_metadata = None;
 
     for &(workspace, exceptions, permitted_deps) in WORKSPACES {
+        if !root.join(workspace).join("Cargo.lock").exists() {
+            tidy_error!(bad, "the `{workspace}` workspace doesn't have a Cargo.lock");
+            continue;
+        }
+
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.cargo_path(cargo)
             .manifest_path(root.join(workspace).join("Cargo.toml"))
