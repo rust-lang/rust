@@ -78,7 +78,7 @@ const EXCEPTIONS: ExceptionList = &[
     ("openssl", "Apache-2.0"),                               // opt-dist
     ("option-ext", "MPL-2.0"),                               // cargo-miri (via `directories`)
     ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),     // rustc (license is the same as LLVM uses)
-    ("ryu", "Apache-2.0 OR BSL-1.0"),                        // cargo/... (because of serde)
+    ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
     ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
     ("snap", "BSD-3-Clause"),                                // rustc
     // tidy-alphabetical-end
@@ -98,7 +98,7 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("im-rc", "MPL-2.0+"),
     ("normalize-line-endings", "Apache-2.0"),
     ("openssl", "Apache-2.0"),
-    ("ryu", "Apache-2.0 OR BSL-1.0"),
+    ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("sha1_smol", "BSD-3-Clause"),
     ("similar", "Apache-2.0"),
     ("sized-chunks", "MPL-2.0+"),
@@ -109,12 +109,12 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
 
 const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     // tidy-alphabetical-start
-    ("anymap", "BlueOak-1.0.0 OR MIT OR Apache-2.0"),
+    ("anymap", "BlueOak-1.0.0 OR MIT OR Apache-2.0"), // BlueOak is not acceptable, but we use it under MIT OR Apache-2 .0
     ("dissimilar", "Apache-2.0"),
     ("instant", "BSD-3-Clause"),
     ("notify", "CC0-1.0 OR Artistic-2.0"),
     ("pulldown-cmark-to-cmark", "Apache-2.0"),
-    ("ryu", "Apache-2.0 OR BSL-1.0"),
+    ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("scip", "Apache-2.0"),
     ("snap", "BSD-3-Clause"),
     // tidy-alphabetical-end
@@ -149,7 +149,7 @@ const EXCEPTIONS_GCC: ExceptionList = &[
 ];
 
 const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // through serde
+    ("ryu", "Apache-2.0 OR BSL-1.0"), // through serde. BSL is not acceptble, but we use it under Apache-2.0
 ];
 
 /// These are the root crates that are part of the runtime. The licenses for
@@ -494,14 +494,11 @@ fn check_runtime_license_exceptions(
             }
         };
         if !LICENSES.contains(&license.as_str()) {
-            if pkg.name == "fortanix-sgx-abi" {
-                // This is a specific exception because SGX is considered
-                // "third party". See
-                // https://github.com/rust-lang/rust/issues/62620 for more. In
-                // general, these should never be added.
-                if pkg.license.as_deref() != Some("MPL-2.0") {
-                    tidy_error!(bad, "invalid license `{}` in `{}`", license, pkg.id);
-                }
+            // This is a specific exception because SGX is considered "third party".
+            // See https://github.com/rust-lang/rust/issues/62620 for more.
+            // In general, these should never be added and this exception
+            // should not be taken as precedent for any new target.
+            if pkg.name == "fortanix-sgx-abi" && pkg.license.as_deref() == Some("MPL-2.0") {
                 continue;
             }
             tidy_error!(bad, "invalid license `{}` in `{}`", license, pkg.id);
