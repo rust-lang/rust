@@ -744,7 +744,27 @@ impl ExprCollector<'_> {
     fn collect_while_loop(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::WhileExpr) -> ExprId {
         let label = e.label().map(|label| self.collect_label(label));
         let body = self.collect_labelled_block_opt(label, e.loop_body());
-        let condition = self.collect_expr_opt(e.condition());
+
+        // Labels can also be used in the condition expression, like this:
+        // ```
+        // fn main() {
+        //     let mut optional = Some(0);
+        //     'my_label: while let Some(a) = match optional {
+        //         None => break 'my_label,
+        //         Some(val) => Some(val),
+        //     } {
+        //         println!("{}", a);
+        //         optional = None;
+        //     }
+        // }
+        // ```
+        let condition = match label {
+            Some(label) => {
+                self.with_labeled_rib(label, |this| this.collect_expr_opt(e.condition()))
+            }
+            None => self.collect_expr_opt(e.condition()),
+        };
+
         let break_expr =
             self.alloc_expr(Expr::Break { expr: None, label: None }, syntax_ptr.clone());
         let if_expr = self.alloc_expr(
