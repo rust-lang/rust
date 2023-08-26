@@ -10,7 +10,7 @@ use std::{
 };
 
 use base_db::{CrateId, FileId};
-use chalk_ir::Mutability;
+use chalk_ir::{cast::Cast, Mutability};
 use either::Either;
 use hir_def::{
     builtin_type::BuiltinType,
@@ -40,8 +40,8 @@ use crate::{
     name, static_lifetime,
     traits::FnTrait,
     utils::{detect_variant_from_bytes, ClosureSubst},
-    CallableDefId, ClosureId, Const, ConstScalar, FnDefId, GenericArgData, Interner, MemoryMap,
-    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
+    CallableDefId, ClosureId, Const, ConstScalar, FnDefId, Interner, MemoryMap, Substitution,
+    TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::{
@@ -2007,7 +2007,28 @@ impl Evaluator<'_> {
                     }
                 }
                 AdtId::UnionId(_) => (),
-                AdtId::EnumId(_) => (),
+                AdtId::EnumId(e) => {
+                    if let Some((variant, layout)) = detect_variant_from_bytes(
+                        &layout,
+                        self.db,
+                        self.trait_env.clone(),
+                        self.read_memory(addr, layout.size.bytes_usize())?,
+                        e,
+                    ) {
+                        let ev = EnumVariantId { parent: e, local_id: variant };
+                        for (i, (_, ty)) in self.db.field_types(ev.into()).iter().enumerate() {
+                            let offset = layout.fields.offset(i).bytes_usize();
+                            let ty = ty.clone().substitute(Interner, subst);
+                            self.patch_addresses(
+                                patch_map,
+                                old_vtable,
+                                addr.offset(offset),
+                                &ty,
+                                locals,
+                            )?;
+                        }
+                    }
+                }
             },
             TyKind::Tuple(_, subst) => {
                 for (id, ty) in subst.iter(Interner).enumerate() {
@@ -2248,7 +2269,7 @@ impl Evaluator<'_> {
                     interval: args_for_target[0].interval.slice(0..self.ptr_size()),
                     ty: ty.clone(),
                 };
-                let ty = GenericArgData::Ty(ty.clone()).intern(Interner);
+                let ty = ty.clone().cast(Interner);
                 let generics_for_target = Substitution::from_iter(
                     Interner,
                     generic_args.iter(Interner).enumerate().map(|(i, it)| {

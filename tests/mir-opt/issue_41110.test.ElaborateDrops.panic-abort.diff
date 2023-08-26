@@ -47,7 +47,7 @@
   
       bb3 (cleanup): {
           _2 = move _5;
--         drop(_5) -> [return: bb8, unwind terminate];
+-         drop(_5) -> [return: bb8, unwind terminate(cleanup)];
 +         goto -> bb8;
       }
   
@@ -70,17 +70,17 @@
       }
   
       bb7 (cleanup): {
--         drop(_4) -> [return: bb8, unwind terminate];
+-         drop(_4) -> [return: bb8, unwind terminate(cleanup)];
 +         goto -> bb8;
       }
   
       bb8 (cleanup): {
--         drop(_2) -> [return: bb9, unwind terminate];
+-         drop(_2) -> [return: bb9, unwind terminate(cleanup)];
 +         goto -> bb9;
       }
   
       bb9 (cleanup): {
--         drop(_1) -> [return: bb10, unwind terminate];
+-         drop(_1) -> [return: bb10, unwind terminate(cleanup)];
 +         goto -> bb12;
       }
   
@@ -89,7 +89,7 @@
 +     }
 + 
 +     bb11 (cleanup): {
-+         drop(_1) -> [return: bb10, unwind terminate];
++         drop(_1) -> [return: bb10, unwind terminate(cleanup)];
 +     }
 + 
 +     bb12 (cleanup): {

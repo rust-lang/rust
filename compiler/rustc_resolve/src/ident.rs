@@ -1,7 +1,5 @@
 use rustc_ast::{self as ast, NodeId};
-use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{DefKind, Namespace, NonMacroAttrKind, PartialRes, PerNS};
-use rustc_hir::PrimTy;
 use rustc_middle::bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
@@ -9,7 +7,7 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::late::{
@@ -423,32 +421,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             orig_ident.span.ctxt(),
             |this, scope, use_prelude, ctxt| {
                 let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
-                let ok = |res, span, arenas| {
-                    Ok((
-                        (res, Visibility::Public, span, LocalExpnId::ROOT).to_name_binding(arenas),
-                        Flags::empty(),
-                    ))
-                };
                 let result = match scope {
                     Scope::DeriveHelpers(expn_id) => {
-                        if let Some(attr) = this
-                            .helper_attrs
-                            .get(&expn_id)
-                            .and_then(|attrs| attrs.iter().rfind(|i| ident == **i))
-                        {
-                            let binding = (
-                                Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
-                                Visibility::Public,
-                                attr.span,
-                                expn_id,
-                            )
-                                .to_name_binding(this.arenas);
+                        if let Some(binding) = this.helper_attrs.get(&expn_id).and_then(|attrs| {
+                            attrs.iter().rfind(|(i, _)| ident == *i).map(|(_, binding)| *binding)
+                        }) {
                             Ok((binding, Flags::empty()))
                         } else {
                             Err(Determinacy::Determined)
                         }
                     }
                     Scope::DeriveHelpersCompat => {
+                        // FIXME: Try running this logic eariler, to allocate name bindings for
+                        // legacy derive helpers when creating an attribute invocation with
+                        // following derives. Legacy derive helpers are not common, so it shouldn't
+                        // affect performance. It should also allow to remove the `derives`
+                        // component from `ParentScope`.
                         let mut result = Err(Determinacy::Determined);
                         for derive in parent_scope.derives {
                             let parent_scope = &ParentScope { derives: &[], ..*parent_scope };
@@ -461,11 +449,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             ) {
                                 Ok((Some(ext), _)) => {
                                     if ext.helper_attrs.contains(&ident.name) {
-                                        result = ok(
+                                        let binding = (
                                             Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat),
+                                            Visibility::Public,
                                             derive.span,
-                                            this.arenas,
-                                        );
+                                            LocalExpnId::ROOT,
+                                        )
+                                            .to_name_binding(this.arenas);
+                                        result = Ok((binding, Flags::empty()));
                                         break;
                                     }
                                 }
@@ -562,17 +553,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             )),
                         }
                     }
-                    Scope::BuiltinAttrs => {
-                        if is_builtin_attr_name(ident.name) {
-                            ok(
-                                Res::NonMacroAttr(NonMacroAttrKind::Builtin(ident.name)),
-                                DUMMY_SP,
-                                this.arenas,
-                            )
-                        } else {
-                            Err(Determinacy::Determined)
-                        }
-                    }
+                    Scope::BuiltinAttrs => match this.builtin_attrs_bindings.get(&ident.name) {
+                        Some(binding) => Ok((*binding, Flags::empty())),
+                        None => Err(Determinacy::Determined),
+                    },
                     Scope::ExternPrelude => {
                         match this.extern_prelude_get(ident, finalize.is_some()) {
                             Some(binding) => Ok((binding, Flags::empty())),
@@ -581,8 +565,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             )),
                         }
                     }
-                    Scope::ToolPrelude => match this.registered_tools.get(&ident).cloned() {
-                        Some(ident) => ok(Res::ToolMod, ident.span, this.arenas),
+                    Scope::ToolPrelude => match this.registered_tool_bindings.get(&ident) {
+                        Some(binding) => Ok((*binding, Flags::empty())),
                         None => Err(Determinacy::Determined),
                     },
                     Scope::StdLibPrelude => {
@@ -603,8 +587,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         result
                     }
-                    Scope::BuiltinTypes => match PrimTy::from_name(ident.name) {
-                        Some(prim_ty) => ok(Res::PrimTy(prim_ty), DUMMY_SP, this.arenas),
+                    Scope::BuiltinTypes => match this.builtin_types_bindings.get(&ident.name) {
+                        Some(binding) => Ok((*binding, Flags::empty())),
                         None => Err(Determinacy::Determined),
                     },
                 };
@@ -842,9 +826,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if ns == TypeNS {
                     if ident.name == kw::Crate || ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
-                        let binding = (module, Visibility::Public, module.span, LocalExpnId::ROOT)
-                            .to_name_binding(self.arenas);
-                        return Ok(binding);
+                        return Ok(self.module_self_bindings[&module]);
                     } else if ident.name == kw::Super || ident.name == kw::SelfLower {
                         // FIXME: Implement these with renaming requirements so that e.g.
                         // `use super;` doesn't work, but `use super as name;` does.

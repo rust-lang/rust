@@ -370,7 +370,7 @@ impl DropTree {
                     let terminator = TerminatorKind::Drop {
                         target: blocks[drop_data.1].unwrap(),
                         // The caller will handle this if needed.
-                        unwind: UnwindAction::Terminate,
+                        unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                         place: drop_data.0.local.into(),
                         replace: false,
                     };
@@ -1507,7 +1507,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::UnwindResume
-            | TerminatorKind::UnwindTerminate
+            | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }

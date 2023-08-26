@@ -656,6 +656,9 @@ fn opts() -> Vec<RustcOptGroup> {
                 "[rust]",
             )
         }),
+        unstable("html-no-source", |o| {
+            o.optflag("", "html-no-source", "Disable HTML source code pages generation")
+        }),
     ]
 }
 

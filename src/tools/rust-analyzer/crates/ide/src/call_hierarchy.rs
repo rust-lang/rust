@@ -74,18 +74,20 @@ pub(crate) fn incoming_calls(
     Some(calls.into_items())
 }
 
-pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Option<Vec<CallItem>> {
+pub(crate) fn outgoing_calls(
+    db: &RootDatabase,
+    FilePosition { file_id, offset }: FilePosition,
+) -> Option<Vec<CallItem>> {
     let sema = Semantics::new(db);
-    let file_id = position.file_id;
     let file = sema.parse(file_id);
     let file = file.syntax();
-    let token = pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
+    let token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT => 1,
         _ => 0,
     })?;
     let mut calls = CallLocations::default();
 
-    sema.descend_into_macros(token)
+    sema.descend_into_macros(token, offset)
         .into_iter()
         .filter_map(|it| it.parent_ancestors().nth(1).and_then(ast::Item::cast))
         .filter_map(|item| match item {

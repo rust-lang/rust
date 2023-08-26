@@ -756,6 +756,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ///
     /// If `target` is `UnwindAction::Unreachable`, that indicates the function does not allow
     /// unwinding, and doing so is UB.
+    #[cold] // usually we have normal returns, not unwinding
     pub fn unwind_to_block(&mut self, target: mir::UnwindAction) -> InterpResult<'tcx> {
         self.frame_mut().loc = match target {
             mir::UnwindAction::Cleanup(block) => Left(mir::Location { block, statement_index: 0 }),
@@ -763,9 +764,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             mir::UnwindAction::Unreachable => {
                 throw_ub_custom!(fluent::const_eval_unreachable_unwind);
             }
-            mir::UnwindAction::Terminate => {
+            mir::UnwindAction::Terminate(reason) => {
                 self.frame_mut().loc = Right(self.frame_mut().body.span);
-                M::unwind_terminate(self)?;
+                M::unwind_terminate(self, reason)?;
                 // This might have pushed a new stack frame, or it terminated execution.
                 // Either way, `loc` will not be updated.
                 return Ok(());

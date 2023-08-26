@@ -44,20 +44,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         false
     }
 
-    fn check_asm_operand_type(
-        &self,
-        idx: usize,
-        reg: InlineAsmRegOrRegClass,
-        expr: &'tcx hir::Expr<'tcx>,
-        template: &[InlineAsmTemplatePiece],
-        is_input: bool,
-        tied_input: Option<(&'tcx hir::Expr<'tcx>, Option<InlineAsmType>)>,
-        target_features: &FxIndexSet<Symbol>,
-    ) -> Option<InlineAsmType> {
-        let ty = (self.get_operand_ty)(expr);
-        if ty.has_non_region_infer() {
-            bug!("inference variable in asm operand ty: {:?} {:?}", expr, ty);
-        }
+    fn get_asm_ty(&self, ty: Ty<'tcx>) -> Option<InlineAsmType> {
         let asm_ty_isize = match self.tcx.sess.target.pointer_width {
             16 => InlineAsmType::I16,
             32 => InlineAsmType::I32,
@@ -65,10 +52,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             _ => unreachable!(),
         };
 
-        let asm_ty = match *ty.kind() {
-            // `!` is allowed for input but not for output (issue #87802)
-            ty::Never if is_input => return None,
-            _ if ty.references_error() => return None,
+        match *ty.kind() {
             ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Some(InlineAsmType::I8),
             ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Some(InlineAsmType::I16),
             ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Some(InlineAsmType::I32),
@@ -99,7 +83,6 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 };
 
                 match ty.kind() {
-                    ty::Never | ty::Error(_) => return None,
                     ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Some(InlineAsmType::VecI8(size)),
                     ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => {
                         Some(InlineAsmType::VecI16(size))
@@ -128,6 +111,38 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             }
             ty::Infer(_) => unreachable!(),
             _ => None,
+        }
+    }
+
+    fn check_asm_operand_type(
+        &self,
+        idx: usize,
+        reg: InlineAsmRegOrRegClass,
+        expr: &'tcx hir::Expr<'tcx>,
+        template: &[InlineAsmTemplatePiece],
+        is_input: bool,
+        tied_input: Option<(&'tcx hir::Expr<'tcx>, Option<InlineAsmType>)>,
+        target_features: &FxIndexSet<Symbol>,
+    ) -> Option<InlineAsmType> {
+        let ty = (self.get_operand_ty)(expr);
+        if ty.has_non_region_infer() {
+            bug!("inference variable in asm operand ty: {:?} {:?}", expr, ty);
+        }
+
+        let asm_ty = match *ty.kind() {
+            // `!` is allowed for input but not for output (issue #87802)
+            ty::Never if is_input => return None,
+            _ if ty.references_error() => return None,
+            ty::Adt(adt, args) if Some(adt.did()) == self.tcx.lang_items().maybe_uninit() => {
+                let fields = &adt.non_enum_variant().fields;
+                let ty = fields[FieldIdx::from_u32(1)].ty(self.tcx, args);
+                let ty::Adt(ty, args) = ty.kind() else { unreachable!() };
+                assert!(ty.is_manually_drop());
+                let fields = &ty.non_enum_variant().fields;
+                let ty = fields[FieldIdx::from_u32(0)].ty(self.tcx, args);
+                self.get_asm_ty(ty)
+            }
+            _ => self.get_asm_ty(ty),
         };
         let Some(asm_ty) = asm_ty else {
             let msg = format!("cannot use value of type `{ty}` for inline assembly");

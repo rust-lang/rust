@@ -15,7 +15,7 @@
 #![feature(box_patterns)]
 #![feature(error_reporter)]
 #![allow(incomplete_features)]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![allow(internal_features)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -197,8 +197,14 @@ impl CodeSuggestion {
 
         use rustc_span::{CharPos, Pos};
 
-        /// Append to a buffer the remainder of the line of existing source code, and return the
-        /// count of lines that have been added for accurate highlighting.
+        /// Extracts a substring from the provided `line_opt` based on the specified low and high indices,
+        /// appends it to the given buffer `buf`, and returns the count of newline characters in the substring
+        /// for accurate highlighting.
+        /// If `line_opt` is `None`, a newline character is appended to the buffer, and 0 is returned.
+        ///
+        /// ## Returns
+        ///
+        /// The count of newline characters in the extracted substring.
         fn push_trailing(
             buf: &mut String,
             line_opt: Option<&Cow<'_, str>>,
@@ -206,22 +212,30 @@ impl CodeSuggestion {
             hi_opt: Option<&Loc>,
         ) -> usize {
             let mut line_count = 0;
+            // Convert CharPos to Usize, as CharPose is character offset
+            // Extract low index and high index
             let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
             if let Some(line) = line_opt {
                 if let Some(lo) = line.char_indices().map(|(i, _)| i).nth(lo) {
+                    // Get high index while account for rare unicode and emoji with char_indices
                     let hi_opt = hi_opt.and_then(|hi| line.char_indices().map(|(i, _)| i).nth(hi));
                     match hi_opt {
+                        // If high index exist, take string from low to high index
                         Some(hi) if hi > lo => {
+                            // count how many '\n' exist
                             line_count = line[lo..hi].matches('\n').count();
                             buf.push_str(&line[lo..hi])
                         }
                         Some(_) => (),
+                        // If high index absence, take string from low index till end string.len
                         None => {
+                            // count how many '\n' exist
                             line_count = line[lo..].matches('\n').count();
                             buf.push_str(&line[lo..])
                         }
                     }
                 }
+                // If high index is None
                 if hi_opt.is_none() {
                     buf.push('\n');
                 }

@@ -5,9 +5,9 @@ $DIR/auxiliary/inline_always_with_dead_code.rs:
    LL|       |
    LL|       |mod foo {
    LL|       |    #[inline(always)]
-   LL|      2|    pub fn called() { }
+   LL|      2|    pub fn called() {}
    LL|       |
-   LL|      0|    fn uncalled() { }
+   LL|      0|    fn uncalled() {}
    LL|       |}
    LL|       |
    LL|       |pub mod bar {
@@ -24,6 +24,7 @@ $DIR/auxiliary/inline_always_with_dead_code.rs:
 
 $DIR/issue-85461.rs:
    LL|       |// Regression test for #85461: MSVC sometimes fail to link with dead code and #[inline(always)]
+   LL|       |
    LL|       |// aux-build:inline_always_with_dead_code.rs
    LL|       |extern crate inline_always_with_dead_code;
    LL|       |

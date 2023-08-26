@@ -98,13 +98,8 @@ fn check_redundant_explicit_link<'md>(
 
                 let explicit_link = dest.to_string();
                 let display_link = link_data.resolvable_link.clone()?;
-                let explicit_len = explicit_link.len();
-                let display_len = display_link.len();
 
-                if (explicit_len >= display_len
-                    && &explicit_link[(explicit_len - display_len)..] == display_link)
-                    || (display_len >= explicit_len
-                        && &display_link[(display_len - explicit_len)..] == explicit_link)
+                if explicit_link.ends_with(&display_link) || display_link.ends_with(&explicit_link)
                 {
                     match link_type {
                         LinkType::Inline | LinkType::ReferenceUnknown => {

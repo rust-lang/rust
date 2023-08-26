@@ -1,8 +1,8 @@
 use crate::rustc_internal::Opaque;
 use crate::stable_mir::ty::{
-    AdtDef, ClosureDef, Const, GeneratorDef, GenericArgs, Movability, Region,
+    AdtDef, ClosureDef, Const, ConstantKind, GeneratorDef, GenericArgs, Movability, Region,
 };
-use crate::stable_mir::{self, ty::Ty};
+use crate::stable_mir::{self, ty::Ty, Span};
 
 #[derive(Clone, Debug)]
 pub struct Body {
@@ -135,9 +135,10 @@ pub enum AsyncGeneratorKind {
 }
 
 pub(crate) type LocalDefId = Opaque;
-pub(crate) type CounterValueReference = Opaque;
-pub(crate) type InjectedExpressionId = Opaque;
-pub(crate) type ExpressionOperandId = Opaque;
+/// [`rustc_middle::mir::Coverage`] is heavily tied to internal details of the
+/// coverage implementation that are likely to change, and are unlikely to be
+/// useful to third-party tools for the foreseeable future.
+pub(crate) type Coverage = Opaque;
 
 /// The FakeReadCause describes the type of pattern why a FakeRead statement exists.
 #[derive(Clone, Debug)]
@@ -164,42 +165,6 @@ pub enum Variance {
     Invariant,
     Contravariant,
     Bivariant,
-}
-
-#[derive(Clone, Debug)]
-pub enum Op {
-    Subtract,
-    Add,
-}
-
-#[derive(Clone, Debug)]
-pub enum CoverageKind {
-    Counter {
-        function_source_hash: usize,
-        id: CounterValueReference,
-    },
-    Expression {
-        id: InjectedExpressionId,
-        lhs: ExpressionOperandId,
-        op: Op,
-        rhs: ExpressionOperandId,
-    },
-    Unreachable,
-}
-
-#[derive(Clone, Debug)]
-pub struct CodeRegion {
-    pub file_name: String,
-    pub start_line: usize,
-    pub start_col: usize,
-    pub end_line: usize,
-    pub end_col: usize,
-}
-
-#[derive(Clone, Debug)]
-pub struct Coverage {
-    pub kind: CoverageKind,
-    pub code_region: Option<CodeRegion>,
 }
 
 #[derive(Clone, Debug)]
@@ -359,7 +324,7 @@ pub enum AggregateKind {
 pub enum Operand {
     Copy(Place),
     Move(Place),
-    Constant(String),
+    Constant(Constant),
 }
 
 #[derive(Clone, Debug)]
@@ -382,6 +347,13 @@ type FieldIdx = usize;
 pub type VariantIdx = usize;
 
 type UserTypeAnnotationIndex = usize;
+
+#[derive(Clone, Debug)]
+pub struct Constant {
+    pub span: Span,
+    pub user_ty: Option<UserTypeAnnotationIndex>,
+    pub literal: ConstantKind,
+}
 
 #[derive(Clone, Debug)]
 pub struct SwitchTarget {

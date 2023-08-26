@@ -104,7 +104,7 @@ yields ()
 
     bb13 (cleanup): {
         StorageDead(_3);
-        drop(_1) -> [return: bb14, unwind terminate];
+        drop(_1) -> [return: bb14, unwind terminate(cleanup)];
     }
 
     bb14 (cleanup): {
@@ -113,6 +113,6 @@ yields ()
 
     bb15 (cleanup): {
         StorageDead(_3);
-        drop(_1) -> [return: bb14, unwind terminate];
+        drop(_1) -> [return: bb14, unwind terminate(cleanup)];
     }
 }

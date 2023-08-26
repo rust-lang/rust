@@ -37,7 +37,7 @@
       }
   
       bb4 (cleanup): {
-          drop(_1) -> [return: bb5, unwind terminate];
+          drop(_1) -> [return: bb5, unwind terminate(cleanup)];
       }
   
       bb5 (cleanup): {

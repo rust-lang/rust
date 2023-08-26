@@ -240,6 +240,11 @@ pub use crate::sys::android::signal;
 #[cfg(not(target_os = "android"))]
 pub use libc::signal;
 
+#[inline]
+pub(crate) fn is_interrupted(errno: i32) -> bool {
+    errno == libc::EINTR
+}
+
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     use ErrorKind::*;
     match errno as libc::c_int {

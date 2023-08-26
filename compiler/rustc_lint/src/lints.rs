@@ -764,11 +764,13 @@ pub enum InvalidFromUtf8Diag {
 #[derive(LintDiagnostic)]
 pub enum InvalidReferenceCastingDiag {
     #[diag(lint_invalid_reference_casting_borrow_as_mut)]
+    #[note(lint_invalid_reference_casting_note_book)]
     BorrowAsMut {
         #[label]
         orig_cast: Option<Span>,
     },
     #[diag(lint_invalid_reference_casting_assign_to_ref)]
+    #[note(lint_invalid_reference_casting_note_book)]
     AssignToRef {
         #[label]
         orig_cast: Option<Span>,
@@ -1010,21 +1012,27 @@ pub struct DeprecatedLintName<'a> {
     pub replace: &'a str,
 }
 
-// FIXME: Non-translatable msg
 #[derive(LintDiagnostic)]
-#[diag(lint_renamed_or_removed_lint)]
-pub struct RenamedOrRemovedLint<'a> {
-    pub msg: &'a str,
+#[diag(lint_renamed_lint)]
+pub struct RenamedLint<'a> {
+    pub name: &'a str,
     #[subdiagnostic]
-    pub suggestion: Option<RenamedOrRemovedLintSuggestion<'a>>,
+    pub suggestion: RenamedLintSuggestion<'a>,
 }
 
 #[derive(Subdiagnostic)]
 #[suggestion(lint_suggestion, code = "{replace}", applicability = "machine-applicable")]
-pub struct RenamedOrRemovedLintSuggestion<'a> {
+pub struct RenamedLintSuggestion<'a> {
     #[primary_span]
     pub suggestion: Span,
     pub replace: &'a str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_removed_lint)]
+pub struct RemovedLint<'a> {
+    pub name: &'a str,
+    pub reason: &'a str,
 }
 
 #[derive(LintDiagnostic)]

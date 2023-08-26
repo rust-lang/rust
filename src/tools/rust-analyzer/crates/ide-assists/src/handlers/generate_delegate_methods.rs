@@ -95,6 +95,9 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
         let Some(impl_def) = find_struct_impl(ctx, &adt, std::slice::from_ref(&name)) else {
             continue;
         };
+
+        let field = make::ext::field_from_idents(["self", &field_name])?;
+
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
             AssistId("generate_delegate_methods", AssistKind::Generate),
@@ -115,11 +118,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     Some(list) => convert_param_list_to_arg_list(list),
                     None => make::arg_list([]),
                 };
-                let tail_expr = make::expr_method_call(
-                    make::ext::field_from_idents(["self", &field_name]).unwrap(), // This unwrap is ok because we have at least 1 arg in the list
-                    make::name_ref(&name),
-                    arg_list,
-                );
+                let tail_expr = make::expr_method_call(field, make::name_ref(&name), arg_list);
                 let ret_type = method_source.ret_type();
                 let is_async = method_source.async_token().is_some();
                 let is_const = method_source.const_token().is_some();

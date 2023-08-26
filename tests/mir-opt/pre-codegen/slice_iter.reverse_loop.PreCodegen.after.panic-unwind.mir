@@ -196,7 +196,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb11 (cleanup): {
-        drop(_2) -> [return: bb12, unwind terminate];
+        drop(_2) -> [return: bb12, unwind terminate(cleanup)];
     }
 
     bb12 (cleanup): {

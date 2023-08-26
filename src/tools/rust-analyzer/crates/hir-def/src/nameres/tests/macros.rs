@@ -203,8 +203,8 @@ macro_rules! bar {
         expect![[r#"
             crate
             Foo: t
-            bar: m
-            foo: m
+            bar: mi
+            foo: mi
         "#]],
     );
 }
@@ -251,7 +251,7 @@ mod priv_mod {
             Bar: t v
             Foo: t v
             bar: t
-            foo: t
+            foo: te
 
             crate::bar
             Baz: t v
@@ -318,9 +318,9 @@ macro_rules! baz3 { () => { struct OkBaz3; } }
             OkBaz1: t v
             OkBaz2: t v
             OkBaz3: t v
-            all: t
-            empty: t
-            multiple: t
+            all: te
+            empty: te
+            multiple: te
         "#]],
     );
 }
@@ -551,8 +551,8 @@ fn baz() {}
 "#,
         expect![[r#"
             crate
-            bar: t m
-            baz: t v m
+            bar: ti mi
+            baz: ti v mi
             foo: t m
         "#]],
     );
@@ -583,7 +583,7 @@ mod m {
             crate
             Alias: t v
             Direct: t v
-            foo: t
+            foo: te
         "#]],
     );
 }
@@ -628,9 +628,9 @@ mod m {
             m: t
 
             crate::m
-            alias1: m
-            alias2: m
-            alias3: m
+            alias1: mi
+            alias2: mi
+            alias3: mi
             not_found: _
         "#]],
     );
@@ -682,11 +682,11 @@ pub struct Baz;
 "#,
         expect![[r#"
             crate
-            Bar: t v
-            Baz: t v
+            Bar: ti vi
+            Baz: ti vi
             Foo: t v
-            FooSelf: t v
-            foo: t
+            FooSelf: ti vi
+            foo: te
             m: t
 
             crate::m
@@ -725,7 +725,7 @@ pub struct bar;
 "#,
         expect![[r#"
             crate
-            bar: t v
+            bar: ti vi
         "#]],
     );
 }
@@ -1340,7 +1340,7 @@ pub mod prelude {
             crate
             Ok: t v
             bar: m
-            dep: t
+            dep: te
             foo: m
             ok: v
         "#]],
@@ -1370,13 +1370,13 @@ macro_rules! mk_foo {
 }
     "#,
         expect![[r#"
-        crate
-        a: t
-        lib: t
+            crate
+            a: t
+            lib: te
 
-        crate::a
-        Ok: t v
-    "#]],
+            crate::a
+            Ok: t v
+        "#]],
     );
 }
 
@@ -1427,8 +1427,8 @@ pub mod prelude {
         expect![[r#"
             crate
             Ok: t v
-            bar: m
-            foo: m
+            bar: mi
+            foo: mi
             ok: v
         "#]],
     );

@@ -99,7 +99,7 @@ pub(crate) fn moniker(
         });
     }
     let navs = sema
-        .descend_into_macros(original_token.clone())
+        .descend_into_macros(original_token.clone(), offset)
         .into_iter()
         .filter_map(|token| {
             IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops).map(|it| {

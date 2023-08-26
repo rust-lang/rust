@@ -40,7 +40,7 @@
   
       bb4 (cleanup): {
           _8 = &mut _3;
-          _9 = <Box<[i32]> as Drop>::drop(move _8) -> [return: bb1, unwind terminate];
+          _9 = <Box<[i32]> as Drop>::drop(move _8) -> [return: bb1, unwind terminate(cleanup)];
       }
   }
   

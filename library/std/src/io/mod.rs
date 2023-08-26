@@ -390,7 +390,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
         let mut cursor = read_buf.unfilled();
         match r.read_buf(cursor.reborrow()) {
             Ok(()) => {}
-            Err(e) if e.kind() == ErrorKind::Interrupted => continue,
+            Err(e) if e.is_interrupted() => continue,
             Err(e) => return Err(e),
         }
 
@@ -421,7 +421,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
                         buf.extend_from_slice(&probe[..n]);
                         break;
                     }
-                    Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                    Err(ref e) if e.is_interrupted() => continue,
                     Err(e) => return Err(e),
                 }
             }
@@ -470,7 +470,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
                 let tmp = buf;
                 buf = &mut tmp[n..];
             }
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+            Err(ref e) if e.is_interrupted() => {}
             Err(e) => return Err(e),
         }
     }
@@ -860,7 +860,7 @@ pub trait Read {
             let prev_written = cursor.written();
             match self.read_buf(cursor.reborrow()) {
                 Ok(()) => {}
-                Err(e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(e) if e.is_interrupted() => continue,
                 Err(e) => return Err(e),
             }
 
@@ -1579,7 +1579,7 @@ pub trait Write {
                     ));
                 }
                 Ok(n) => buf = &buf[n..],
-                Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }
@@ -1943,7 +1943,7 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> R
         let (done, used) = {
             let available = match r.fill_buf() {
                 Ok(n) => n,
-                Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(ref e) if e.is_interrupted() => continue,
                 Err(e) => return Err(e),
             };
             match memchr::memchr(delim, available) {
@@ -2734,7 +2734,7 @@ impl<R: Read> Iterator for Bytes<R> {
             return match self.inner.read(slice::from_mut(&mut byte)) {
                 Ok(0) => None,
                 Ok(..) => Some(Ok(byte)),
-                Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(ref e) if e.is_interrupted() => continue,
                 Err(e) => Some(Err(e)),
             };
         }

@@ -1,11 +1,11 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
-use hir::{Semantics, Type, TypeInfo, Variant};
+use hir::{HasSource, Semantics, Type, TypeInfo, Variant};
 use ide_db::{active_parameter::ActiveParameter, RootDatabase};
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
-    ast::{self, AttrKind, HasArgList, HasLoopBody, HasName, NameOrNameRef},
+    ast::{self, AttrKind, HasArgList, HasGenericParams, HasLoopBody, HasName, NameOrNameRef},
     match_ast, AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode,
     SyntaxToken, TextRange, TextSize, T,
 };
@@ -624,6 +624,10 @@ fn classify_name_ref(
                 });
                 return Some(make_res(kind));
             },
+            ast::ExternCrate(_) => {
+                let kind = NameRefKind::ExternCrate;
+                return Some(make_res(kind));
+            },
             ast::MethodCallExpr(method) => {
                 let receiver = find_opt_node_in_file(original_file, method.receiver());
                 let kind = NameRefKind::DotAccess(DotAccess {
@@ -719,6 +723,136 @@ fn classify_name_ref(
         None
     };
 
+    let generic_arg_location = |arg: ast::GenericArg| {
+        let mut override_location = None;
+        let location = find_opt_node_in_file_compensated(
+            sema,
+            original_file,
+            arg.syntax().parent().and_then(ast::GenericArgList::cast),
+        )
+        .map(|args| {
+            let mut in_trait = None;
+            let param = (|| {
+                let parent = args.syntax().parent()?;
+                let params = match_ast! {
+                    match parent {
+                        ast::PathSegment(segment) => {
+                            match sema.resolve_path(&segment.parent_path().top_path())? {
+                                hir::PathResolution::Def(def) => match def {
+                                    hir::ModuleDef::Function(func) => {
+                                        func.source(sema.db)?.value.generic_param_list()
+                                    }
+                                    hir::ModuleDef::Adt(adt) => {
+                                        adt.source(sema.db)?.value.generic_param_list()
+                                    }
+                                    hir::ModuleDef::Variant(variant) => {
+                                        variant.parent_enum(sema.db).source(sema.db)?.value.generic_param_list()
+                                    }
+                                    hir::ModuleDef::Trait(trait_) => {
+                                        if let ast::GenericArg::AssocTypeArg(arg) = &arg {
+                                            let arg_name = arg.name_ref()?;
+                                            let arg_name = arg_name.text();
+                                            for item in trait_.items_with_supertraits(sema.db) {
+                                                match item {
+                                                    hir::AssocItem::TypeAlias(assoc_ty) => {
+                                                        if assoc_ty.name(sema.db).as_str()? == arg_name {
+                                                            override_location = Some(TypeLocation::AssocTypeEq);
+                                                            return None;
+                                                        }
+                                                    },
+                                                    hir::AssocItem::Const(const_) => {
+                                                        if const_.name(sema.db)?.as_str()? == arg_name {
+                                                            override_location =  Some(TypeLocation::AssocConstEq);
+                                                            return None;
+                                                        }
+                                                    },
+                                                    _ => (),
+                                                }
+                                            }
+                                            return None;
+                                        } else {
+                                            in_trait = Some(trait_);
+                                            trait_.source(sema.db)?.value.generic_param_list()
+                                        }
+                                    }
+                                    hir::ModuleDef::TraitAlias(trait_) => {
+                                        trait_.source(sema.db)?.value.generic_param_list()
+                                    }
+                                    hir::ModuleDef::TypeAlias(ty_) => {
+                                        ty_.source(sema.db)?.value.generic_param_list()
+                                    }
+                                    _ => None,
+                                },
+                                _ => None,
+                            }
+                        },
+                        ast::MethodCallExpr(call) => {
+                            let func = sema.resolve_method_call(&call)?;
+                            func.source(sema.db)?.value.generic_param_list()
+                        },
+                        ast::AssocTypeArg(arg) => {
+                            let trait_ = ast::PathSegment::cast(arg.syntax().parent()?.parent()?)?;
+                            match sema.resolve_path(&trait_.parent_path().top_path())? {
+                                hir::PathResolution::Def(def) => match def {
+                                    hir::ModuleDef::Trait(trait_) => {
+                                        let arg_name = arg.name_ref()?;
+                                        let arg_name = arg_name.text();
+                                        let trait_items = trait_.items_with_supertraits(sema.db);
+                                        let assoc_ty = trait_items.iter().find_map(|item| match item {
+                                            hir::AssocItem::TypeAlias(assoc_ty) => {
+                                                (assoc_ty.name(sema.db).as_str()? == arg_name)
+                                                    .then_some(assoc_ty)
+                                            },
+                                            _ => None,
+                                        })?;
+                                        assoc_ty.source(sema.db)?.value.generic_param_list()
+                                    }
+                                    _ => None,
+                                },
+                                _ => None,
+                            }
+                        },
+                        _ => None,
+                    }
+                }?;
+                // Determine the index of the argument in the `GenericArgList` and match it with
+                // the corresponding parameter in the `GenericParamList`. Since lifetime parameters
+                // are often omitted, ignore them for the purposes of matching the argument with
+                // its parameter unless a lifetime argument is provided explicitly. That is, for
+                // `struct S<'a, 'b, T>`, match `S::<$0>` to `T` and `S::<'a, $0, _>` to `'b`.
+                // FIXME: This operates on the syntax tree and will produce incorrect results when
+                // generic parameters are disabled by `#[cfg]` directives. It should operate on the
+                // HIR, but the functionality necessary to do so is not exposed at the moment.
+                let mut explicit_lifetime_arg = false;
+                let arg_idx = arg
+                    .syntax()
+                    .siblings(Direction::Prev)
+                    // Skip the node itself
+                    .skip(1)
+                    .map(|arg| if ast::LifetimeArg::can_cast(arg.kind()) { explicit_lifetime_arg = true })
+                    .count();
+                let param_idx = if explicit_lifetime_arg {
+                    arg_idx
+                } else {
+                    // Lifetimes parameters always precede type and generic parameters,
+                    // so offset the argument index by the total number of lifetime params
+                    arg_idx + params.lifetime_params().count()
+                };
+                params.generic_params().nth(param_idx)
+            })();
+            (args, in_trait, param)
+        });
+        let (arg_list, of_trait, corresponding_param) = match location {
+            Some((arg_list, of_trait, param)) => (Some(arg_list), of_trait, param),
+            _ => (None, None, None),
+        };
+        override_location.unwrap_or(TypeLocation::GenericArg {
+            args: arg_list,
+            of_trait,
+            corresponding_param,
+        })
+    };
+
     let type_location = |node: &SyntaxNode| {
         let parent = node.parent()?;
         let res = match_ast! {
@@ -774,9 +908,12 @@ fn classify_name_ref(
                 ast::TypeBound(_) => TypeLocation::TypeBound,
                 // is this case needed?
                 ast::TypeBoundList(_) => TypeLocation::TypeBound,
-                ast::GenericArg(it) => TypeLocation::GenericArgList(find_opt_node_in_file_compensated(sema, original_file, it.syntax().parent().and_then(ast::GenericArgList::cast))),
+                ast::GenericArg(it) => generic_arg_location(it),
                 // is this case needed?
-                ast::GenericArgList(it) => TypeLocation::GenericArgList(find_opt_node_in_file_compensated(sema, original_file, Some(it))),
+                ast::GenericArgList(it) => {
+                    let args = find_opt_node_in_file_compensated(sema, original_file, Some(it));
+                    TypeLocation::GenericArg { args, of_trait: None, corresponding_param: None }
+                },
                 ast::TupleField(_) => TypeLocation::TupleField,
                 _ => return None,
             }

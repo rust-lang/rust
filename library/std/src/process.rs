@@ -1535,7 +1535,7 @@ impl From<fs::File> for Stdio {
 pub struct ExitStatus(imp::ExitStatus);
 
 /// The default value is one which indicates successful completion.
-#[stable(feature = "process-exitcode-default", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "process-exitcode-default", since = "1.73.0")]
 impl Default for ExitStatus {
     fn default() -> Self {
         // Ideally this would be done by ExitCode::default().into() but that is complicated.

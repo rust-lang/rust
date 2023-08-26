@@ -11,9 +11,14 @@ pub struct Mmap(Vec<u8>);
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Mmap {
+    /// # Safety
+    ///
+    /// The given file must not be mutated (i.e., not written, not truncated, ...) until the mapping is closed.
+    ///
+    /// However in practice most callers do not ensure this, so uses of this function are likely unsound.
     #[inline]
     pub unsafe fn map(file: File) -> io::Result<Self> {
-        // Safety: this is in fact not safe.
+        // Safety: the caller must ensure that this is safe.
         unsafe { memmap2::Mmap::map(&file).map(Mmap) }
     }
 }

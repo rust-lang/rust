@@ -686,6 +686,12 @@ impl fmt::Display for Edition {
     }
 }
 
+impl Extend<(String, String)> for Env {
+    fn extend<T: IntoIterator<Item = (String, String)>>(&mut self, iter: T) {
+        self.entries.extend(iter);
+    }
+}
+
 impl FromIterator<(String, String)> for Env {
     fn from_iter<T: IntoIterator<Item = (String, String)>>(iter: T) -> Self {
         Env { entries: FromIterator::from_iter(iter) }

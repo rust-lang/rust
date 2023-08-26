@@ -80,7 +80,7 @@ impl Unwind {
     fn into_action(self) -> UnwindAction {
         match self {
             Unwind::To(bb) => UnwindAction::Cleanup(bb),
-            Unwind::InCleanup => UnwindAction::Terminate,
+            Unwind::InCleanup => UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
         }
     }
 

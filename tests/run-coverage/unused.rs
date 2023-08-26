@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_assignments, unused_must_use, unused_variables)]
+
 fn foo<T>(x: T) {
     let mut i = 0;
     while i < 10 {

@@ -167,11 +167,11 @@ fn main() -> () {
     }
 
     bb7 (cleanup): {
-        drop(_21) -> [return: bb9, unwind terminate];
+        drop(_21) -> [return: bb9, unwind terminate(cleanup)];
     }
 
     bb8 (cleanup): {
-        drop(_5) -> [return: bb9, unwind terminate];
+        drop(_5) -> [return: bb9, unwind terminate(cleanup)];
     }
 
     bb9 (cleanup): {

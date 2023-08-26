@@ -1,3 +1,4 @@
+use rustc_hir::LangItem;
 use smallvec::SmallVec;
 
 use super::{BasicBlock, InlineAsmOperand, Operand, SourceInfo, TerminatorKind, UnwindAction};
@@ -100,6 +101,40 @@ impl<'a> Iterator for SwitchTargetsIter<'a> {
 
 impl<'a> ExactSizeIterator for SwitchTargetsIter<'a> {}
 
+impl UnwindAction {
+    fn cleanup_block(self) -> Option<BasicBlock> {
+        match self {
+            UnwindAction::Cleanup(bb) => Some(bb),
+            UnwindAction::Continue | UnwindAction::Unreachable | UnwindAction::Terminate(_) => None,
+        }
+    }
+}
+
+impl UnwindTerminateReason {
+    pub fn as_str(self) -> &'static str {
+        // Keep this in sync with the messages in `core/src/panicking.rs`.
+        match self {
+            UnwindTerminateReason::Abi => "panic in a function that cannot unwind",
+            UnwindTerminateReason::InCleanup => "panic in a destructor during cleanup",
+        }
+    }
+
+    /// A short representation of this used for MIR printing.
+    pub fn as_short_str(self) -> &'static str {
+        match self {
+            UnwindTerminateReason::Abi => "abi",
+            UnwindTerminateReason::InCleanup => "cleanup",
+        }
+    }
+
+    pub fn lang_item(self) -> LangItem {
+        match self {
+            UnwindTerminateReason::Abi => LangItem::PanicCannotUnwind,
+            UnwindTerminateReason::InCleanup => LangItem::PanicInCleanup,
+        }
+    }
+}
+
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Terminator<'tcx> {
     pub source_info: SourceInfo,
@@ -156,7 +191,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 Some(t).into_iter().chain((&[]).into_iter().copied())
             }
             UnwindResume
-            | UnwindTerminate
+            | UnwindTerminate(_)
             | GeneratorDrop
             | Return
             | Unreachable
@@ -198,7 +233,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 Some(t).into_iter().chain(&mut [])
             }
             UnwindResume
-            | UnwindTerminate
+            | UnwindTerminate(_)
             | GeneratorDrop
             | Return
             | Unreachable
@@ -215,7 +250,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume
-            | TerminatorKind::UnwindTerminate
+            | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
@@ -234,7 +269,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume
-            | TerminatorKind::UnwindTerminate
+            | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
@@ -271,18 +306,28 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
         let labels = self.fmt_successor_labels();
         assert_eq!(successor_count, labels.len());
 
-        let unwind = match self.unwind() {
-            // Not needed or included in successors
-            None | Some(UnwindAction::Cleanup(_)) => None,
-            Some(UnwindAction::Continue) => Some("unwind continue"),
-            Some(UnwindAction::Unreachable) => Some("unwind unreachable"),
-            Some(UnwindAction::Terminate) => Some("unwind terminate"),
+        // `Cleanup` is already included in successors
+        let show_unwind = !matches!(self.unwind(), None | Some(UnwindAction::Cleanup(_)));
+        let fmt_unwind = |fmt: &mut Formatter<'_>| -> fmt::Result {
+            write!(fmt, "unwind ")?;
+            match self.unwind() {
+                // Not needed or included in successors
+                None | Some(UnwindAction::Cleanup(_)) => unreachable!(),
+                Some(UnwindAction::Continue) => write!(fmt, "continue"),
+                Some(UnwindAction::Unreachable) => write!(fmt, "unreachable"),
+                Some(UnwindAction::Terminate(reason)) => {
+                    write!(fmt, "terminate({})", reason.as_short_str())
+                }
+            }
         };
 
-        match (successor_count, unwind) {
-            (0, None) => Ok(()),
-            (0, Some(unwind)) => write!(fmt, " -> {unwind}"),
-            (1, None) => write!(fmt, " -> {:?}", self.successors().next().unwrap()),
+        match (successor_count, show_unwind) {
+            (0, false) => Ok(()),
+            (0, true) => {
+                write!(fmt, " -> ")?;
+                fmt_unwind(fmt)
+            }
+            (1, false) => write!(fmt, " -> {:?}", self.successors().next().unwrap()),
             _ => {
                 write!(fmt, " -> [")?;
                 for (i, target) in self.successors().enumerate() {
@@ -291,8 +336,9 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
                     }
                     write!(fmt, "{}: {:?}", labels[i], target)?;
                 }
-                if let Some(unwind) = unwind {
-                    write!(fmt, ", {unwind}")?;
+                if show_unwind {
+                    write!(fmt, ", ")?;
+                    fmt_unwind(fmt)?;
                 }
                 write!(fmt, "]")
             }
@@ -312,7 +358,9 @@ impl<'tcx> TerminatorKind<'tcx> {
             Return => write!(fmt, "return"),
             GeneratorDrop => write!(fmt, "generator_drop"),
             UnwindResume => write!(fmt, "resume"),
-            UnwindTerminate => write!(fmt, "abort"),
+            UnwindTerminate(reason) => {
+                write!(fmt, "abort({})", reason.as_short_str())
+            }
             Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
             Unreachable => write!(fmt, "unreachable"),
             Drop { place, .. } => write!(fmt, "drop({place:?})"),
@@ -391,7 +439,7 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::TerminatorKind::*;
         match *self {
-            Return | UnwindResume | UnwindTerminate | Unreachable | GeneratorDrop => vec![],
+            Return | UnwindResume | UnwindTerminate(_) | Unreachable | GeneratorDrop => vec![],
             Goto { .. } => vec!["".into()],
             SwitchInt { ref targets, .. } => targets
                 .values
@@ -443,7 +491,8 @@ pub enum TerminatorEdges<'mir, 'tcx> {
     /// Special action for `Yield`, `Call` and `InlineAsm` terminators.
     AssignOnReturn {
         return_: Option<BasicBlock>,
-        unwind: UnwindAction,
+        /// The cleanup block, if it exists.
+        cleanup: Option<BasicBlock>,
         place: CallReturnPlaces<'mir, 'tcx>,
     },
     /// Special edge for `SwitchInt`.
@@ -486,7 +535,7 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn edges(&self) -> TerminatorEdges<'_, 'tcx> {
         use TerminatorKind::*;
         match *self {
-            Return | UnwindResume | UnwindTerminate | GeneratorDrop | Unreachable => {
+            Return | UnwindResume | UnwindTerminate(_) | GeneratorDrop | Unreachable => {
                 TerminatorEdges::None
             }
 
@@ -496,7 +545,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | Drop { target, unwind, place: _, replace: _ }
             | FalseUnwind { real_target: target, unwind } => match unwind {
                 UnwindAction::Cleanup(unwind) => TerminatorEdges::Double(target, unwind),
-                UnwindAction::Continue | UnwindAction::Terminate | UnwindAction::Unreachable => {
+                UnwindAction::Continue | UnwindAction::Terminate(_) | UnwindAction::Unreachable => {
                     TerminatorEdges::Single(target)
                 }
             },
@@ -508,7 +557,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             Yield { resume: target, drop, resume_arg, value: _ } => {
                 TerminatorEdges::AssignOnReturn {
                     return_: Some(target),
-                    unwind: drop.map_or(UnwindAction::Terminate, UnwindAction::Cleanup),
+                    cleanup: drop,
                     place: CallReturnPlaces::Yield(resume_arg),
                 }
             }
@@ -516,7 +565,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             Call { unwind, destination, target, func: _, args: _, fn_span: _, call_source: _ } => {
                 TerminatorEdges::AssignOnReturn {
                     return_: target,
-                    unwind,
+                    cleanup: unwind.cleanup_block(),
                     place: CallReturnPlaces::Call(destination),
                 }
             }
@@ -530,7 +579,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 unwind,
             } => TerminatorEdges::AssignOnReturn {
                 return_: destination,
-                unwind,
+                cleanup: unwind.cleanup_block(),
                 place: CallReturnPlaces::InlineAsm(operands),
             },
 

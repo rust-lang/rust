@@ -23,6 +23,10 @@ pub fn unsupported_err() -> std_io::Error {
     )
 }
 
+pub fn is_interrupted(_code: i32) -> bool {
+    false
+}
+
 pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
     crate::io::ErrorKind::Uncategorized
 }

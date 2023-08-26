@@ -2,7 +2,9 @@
 //! It also serves as an input to the parser itself.
 
 use crate::config::CheckCfg;
-use crate::errors::{FeatureDiagnosticForIssue, FeatureDiagnosticHelp, FeatureGateError};
+use crate::errors::{
+    CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp, FeatureGateError,
+};
 use crate::lint::{
     builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId,
 };
@@ -110,7 +112,7 @@ pub fn feature_err_issue(
     }
 
     let mut err = sess.create_err(FeatureGateError { span, explain: explain.into() });
-    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue);
+    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false);
     err
 }
 
@@ -139,7 +141,7 @@ pub fn feature_warn_issue(
     explain: &'static str,
 ) {
     let mut err = sess.span_diagnostic.struct_span_warn(span, explain);
-    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue);
+    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false);
 
     // Decorate this as a future-incompatibility lint as in rustc_middle::lint::struct_lint_level
     let lint = UNSTABLE_SYNTAX_PRE_EXPANSION;
@@ -158,7 +160,7 @@ pub fn feature_warn_issue(
 
 /// Adds the diagnostics for a feature to an existing error.
 pub fn add_feature_diagnostics(err: &mut Diagnostic, sess: &ParseSess, feature: Symbol) {
-    add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language);
+    add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language, false);
 }
 
 /// Adds the diagnostics for a feature to an existing error.
@@ -171,6 +173,7 @@ pub fn add_feature_diagnostics_for_issue(
     sess: &ParseSess,
     feature: Symbol,
     issue: GateIssue,
+    feature_from_cli: bool,
 ) {
     if let Some(n) = find_feature_issue(feature, issue) {
         err.subdiagnostic(FeatureDiagnosticForIssue { n });
@@ -178,7 +181,11 @@ pub fn add_feature_diagnostics_for_issue(
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
     if sess.unstable_features.is_nightly_build() {
-        err.subdiagnostic(FeatureDiagnosticHelp { feature });
+        if feature_from_cli {
+            err.subdiagnostic(CliFeatureDiagnosticHelp { feature });
+        } else {
+            err.subdiagnostic(FeatureDiagnosticHelp { feature });
+        }
     }
 }
 

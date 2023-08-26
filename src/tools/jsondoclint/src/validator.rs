@@ -5,7 +5,7 @@ use rustdoc_json_types::{
     Constant, Crate, DynTrait, Enum, FnDecl, Function, FunctionPointer, GenericArg, GenericArgs,
     GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, ItemSummary, Module,
     OpaqueTy, Path, Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias,
-    Type, TypeBinding, TypeBindingKind, Typedef, Union, Variant, VariantKind, WherePredicate,
+    Type, TypeAlias, TypeBinding, TypeBindingKind, Union, Variant, VariantKind, WherePredicate,
 };
 use serde_json::Value;
 
@@ -37,7 +37,7 @@ pub struct Validator<'a> {
 
 enum PathKind {
     Trait,
-    /// Structs, Enums, Unions and Typedefs.
+    /// Structs, Enums, Unions and TypeAliases.
     ///
     /// This doesn't include trait's because traits are not types.
     Type,
@@ -99,7 +99,7 @@ impl<'a> Validator<'a> {
                 ItemEnum::Trait(x) => self.check_trait(x, id),
                 ItemEnum::TraitAlias(x) => self.check_trait_alias(x),
                 ItemEnum::Impl(x) => self.check_impl(x, id),
-                ItemEnum::Typedef(x) => self.check_typedef(x),
+                ItemEnum::TypeAlias(x) => self.check_type_alias(x),
                 ItemEnum::OpaqueTy(x) => self.check_opaque_ty(x),
                 ItemEnum::Constant(x) => self.check_constant(x),
                 ItemEnum::Static(x) => self.check_static(x),
@@ -221,7 +221,7 @@ impl<'a> Validator<'a> {
         }
     }
 
-    fn check_typedef(&mut self, x: &'a Typedef) {
+    fn check_type_alias(&mut self, x: &'a TypeAlias) {
         self.check_generics(&x.generics);
         self.check_type(&x.type_);
     }
@@ -450,7 +450,7 @@ impl<'a> Validator<'a> {
     }
 
     fn add_type_id(&mut self, id: &'a Id) {
-        self.add_id_checked(id, Kind::is_type, "Type (Struct, Enum, Union or Typedef)");
+        self.add_id_checked(id, Kind::is_type, "Type (Struct, Enum, Union or TypeAlias)");
     }
 
     /// Add an Id that appeared in a trait

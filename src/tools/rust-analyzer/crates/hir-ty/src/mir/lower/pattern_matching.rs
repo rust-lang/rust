@@ -323,7 +323,7 @@ impl MirLowerCtx<'_> {
                                 break 'b (c, x.1);
                             }
                         }
-                        if let ResolveValueResult::ValueNs(v) = pr {
+                        if let ResolveValueResult::ValueNs(v, _) = pr {
                             if let ValueNs::ConstId(c) = v {
                                 break 'b (c, Substitution::empty(Interner));
                             }

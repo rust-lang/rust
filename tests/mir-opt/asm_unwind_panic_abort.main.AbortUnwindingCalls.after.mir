@@ -9,7 +9,7 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);
         _1 = const ();
-        asm!("", options(MAY_UNWIND)) -> [return: bb1, unwind terminate];
+        asm!("", options(MAY_UNWIND)) -> [return: bb1, unwind terminate(abi)];
     }
 
     bb1: {

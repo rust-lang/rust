@@ -18,7 +18,7 @@
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
 #![allow(rustc::potential_query_instability)]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![allow(internal_features)]
 
 #[macro_use]
 extern crate tracing;
@@ -39,13 +39,15 @@ use rustc_errors::{
     Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, SubdiagnosticMessage,
 };
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
+use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_fluent_macro::fluent_messages;
 use rustc_hir::def::Namespace::{self, *};
+use rustc_hir::def::NonMacroAttrKind;
 use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, LocalDefIdSet};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
-use rustc_hir::TraitCandidate;
+use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
@@ -517,7 +519,7 @@ struct ModuleData<'a> {
 
 /// All modules are unique and allocated on a same arena,
 /// so we can use referential equality to compare them.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[rustc_pass_by_value]
 struct Module<'a>(Interned<'a, ModuleData<'a>>);
 
@@ -883,8 +885,14 @@ impl<'a> NameBindingData<'a> {
 
 #[derive(Default, Clone)]
 struct ExternPreludeEntry<'a> {
-    extern_crate_item: Option<NameBinding<'a>>,
+    binding: Option<NameBinding<'a>>,
     introduced_by_item: bool,
+}
+
+impl ExternPreludeEntry<'_> {
+    fn is_import(&self) -> bool {
+        self.binding.is_some_and(|binding| binding.is_import())
+    }
 }
 
 /// Used for better errors for E0773
@@ -996,6 +1004,12 @@ pub struct Resolver<'a, 'tcx> {
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: NameBinding<'a>,
+    builtin_types_bindings: FxHashMap<Symbol, NameBinding<'a>>,
+    builtin_attrs_bindings: FxHashMap<Symbol, NameBinding<'a>>,
+    registered_tool_bindings: FxHashMap<Ident, NameBinding<'a>>,
+    /// Binding for implicitly declared names that come with a module,
+    /// like `self` (not yet used), or `crate`/`$crate` (for root modules).
+    module_self_bindings: FxHashMap<Module<'a>, NameBinding<'a>>,
 
     used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
@@ -1033,7 +1047,7 @@ pub struct Resolver<'a, 'tcx> {
     /// `macro_rules` scopes produced by `macro_rules` item definitions.
     macro_rules_scopes: FxHashMap<LocalDefId, MacroRulesScopeRef<'a>>,
     /// Helper attributes that are in scope for the given expansion.
-    helper_attrs: FxHashMap<LocalExpnId, Vec<Ident>>,
+    helper_attrs: FxHashMap<LocalExpnId, Vec<(Ident, NameBinding<'a>)>>,
     /// Ready or in-progress results of resolving paths inside the `#[derive(...)]` attribute
     /// with the given `ExpnId`.
     derive_data: FxHashMap<LocalExpnId, DeriveData>,
@@ -1111,6 +1125,7 @@ impl<'a> ResolverArenas<'a> {
         span: Span,
         no_implicit_prelude: bool,
         module_map: &mut FxHashMap<DefId, Module<'a>>,
+        module_self_bindings: &mut FxHashMap<Module<'a>, NameBinding<'a>>,
     ) -> Module<'a> {
         let module = Module(Interned::new_unchecked(self.modules.alloc(ModuleData::new(
             parent,
@@ -1125,6 +1140,9 @@ impl<'a> ResolverArenas<'a> {
         }
         if let Some(def_id) = def_id {
             module_map.insert(def_id, module);
+            let vis = ty::Visibility::<DefId>::Public;
+            let binding = (module, vis, module.span, LocalExpnId::ROOT).to_name_binding(self);
+            module_self_bindings.insert(module, binding);
         }
         module
     }
@@ -1236,6 +1254,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) -> Resolver<'a, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
         let mut module_map = FxHashMap::default();
+        let mut module_self_bindings = FxHashMap::default();
         let graph_root = arenas.new_module(
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
@@ -1243,6 +1262,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             crate_span,
             attr::contains_name(attrs, sym::no_implicit_prelude),
             &mut module_map,
+            &mut module_self_bindings,
         );
         let empty_module = arenas.new_module(
             None,
@@ -1250,6 +1270,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ExpnId::root(),
             DUMMY_SP,
             true,
+            &mut FxHashMap::default(),
             &mut FxHashMap::default(),
         );
 
@@ -1283,6 +1304,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let registered_tools = tcx.registered_tools(());
 
         let features = tcx.features();
+        let pub_vis = ty::Visibility::<DefId>::Public;
 
         let mut resolver = Resolver {
             tcx,
@@ -1330,14 +1352,33 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             macro_expanded_macro_export_errors: BTreeSet::new(),
 
             arenas,
-            dummy_binding: arenas.alloc_name_binding(NameBindingData {
-                kind: NameBindingKind::Res(Res::Err),
-                ambiguity: None,
-                warn_ambiguity: false,
-                expansion: LocalExpnId::ROOT,
-                span: DUMMY_SP,
-                vis: ty::Visibility::Public,
-            }),
+            dummy_binding: (Res::Err, pub_vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(arenas),
+            builtin_types_bindings: PrimTy::ALL
+                .iter()
+                .map(|prim_ty| {
+                    let binding = (Res::PrimTy(*prim_ty), pub_vis, DUMMY_SP, LocalExpnId::ROOT)
+                        .to_name_binding(arenas);
+                    (prim_ty.name(), binding)
+                })
+                .collect(),
+            builtin_attrs_bindings: BUILTIN_ATTRIBUTES
+                .iter()
+                .map(|builtin_attr| {
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(builtin_attr.name));
+                    let binding =
+                        (res, pub_vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(arenas);
+                    (builtin_attr.name, binding)
+                })
+                .collect(),
+            registered_tool_bindings: registered_tools
+                .iter()
+                .map(|ident| {
+                    let binding = (Res::ToolMod, pub_vis, ident.span, LocalExpnId::ROOT)
+                        .to_name_binding(arenas);
+                    (*ident, binding)
+                })
+                .collect(),
+            module_self_bindings,
 
             used_extern_options: Default::default(),
             macro_names: FxHashSet::default(),
@@ -1407,7 +1448,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         no_implicit_prelude: bool,
     ) -> Module<'a> {
         let module_map = &mut self.module_map;
-        self.arenas.new_module(parent, kind, expn_id, span, no_implicit_prelude, module_map)
+        let module_self_bindings = &mut self.module_self_bindings;
+        self.arenas.new_module(
+            parent,
+            kind,
+            expn_id,
+            span,
+            no_implicit_prelude,
+            module_map,
+            module_self_bindings,
+        )
     }
 
     fn next_node_id(&mut self) -> NodeId {
@@ -1727,7 +1777,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // but not introduce it, as used if they are accessed from lexical scope.
             if is_lexical_scope {
                 if let Some(entry) = self.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
-                    if !entry.introduced_by_item && entry.extern_crate_item == Some(used_binding) {
+                    if !entry.introduced_by_item && entry.binding == Some(used_binding) {
                         return;
                     }
                 }
@@ -1885,12 +1935,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // Make sure `self`, `super` etc produce an error when passed to here.
             return None;
         }
-        self.extern_prelude.get(&ident.normalize_to_macros_2_0()).cloned().and_then(|entry| {
-            if let Some(binding) = entry.extern_crate_item {
-                if finalize && entry.introduced_by_item {
-                    self.record_use(ident, binding, false);
+
+        let norm_ident = ident.normalize_to_macros_2_0();
+        let binding = self.extern_prelude.get(&norm_ident).cloned().and_then(|entry| {
+            Some(if let Some(binding) = entry.binding {
+                if finalize {
+                    if !entry.is_import() {
+                        self.crate_loader(|c| c.process_path_extern(ident.name, ident.span));
+                    } else if entry.introduced_by_item {
+                        self.record_use(ident, binding, false);
+                    }
                 }
-                Some(binding)
+                binding
             } else {
                 let crate_id = if finalize {
                     let Some(crate_id) =
@@ -1903,10 +1959,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.crate_loader(|c| c.maybe_process_path_extern(ident.name))?
                 };
                 let crate_root = self.expect_module(crate_id.as_def_id());
-                let vis = ty::Visibility::<LocalDefId>::Public;
-                Some((crate_root, vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(self.arenas))
-            }
-        })
+                let vis = ty::Visibility::<DefId>::Public;
+                (crate_root, vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(self.arenas)
+            })
+        });
+
+        if let Some(entry) = self.extern_prelude.get_mut(&norm_ident) {
+            entry.binding = binding;
+        }
+
+        binding
     }
 
     /// Rustdoc uses this to resolve doc link paths in a recoverable way. `PathResult<'a>`

@@ -2,8 +2,10 @@
 
 use base_db::FileRange;
 use hir_def::{
-    src::HasSource, AdtId, AssocItemId, DefWithBodyId, HasModule, ImplId, Lookup, MacroId,
-    ModuleDefId, ModuleId, TraitId,
+    item_scope::ItemInNs,
+    src::{HasChildSource, HasSource},
+    AdtId, AssocItemId, DefWithBodyId, HasModule, ImplId, Lookup, MacroId, ModuleDefId, ModuleId,
+    TraitId,
 };
 use hir_expand::{HirFileId, InFile};
 use hir_ty::db::HirDatabase;
@@ -165,6 +167,40 @@ impl<'a> SymbolCollector<'a> {
 
         for impl_id in scope.impls() {
             self.collect_from_impl(impl_id);
+        }
+
+        // Record renamed imports.
+        // In case it imports multiple items under different namespaces we just pick one arbitrarily
+        // for now.
+        for id in scope.imports() {
+            let loc = id.import.lookup(self.db.upcast());
+            loc.id.item_tree(self.db.upcast());
+            let source = id.import.child_source(self.db.upcast());
+            let Some(use_tree_src) = source.value.get(id.idx) else { continue };
+            let Some(rename) = use_tree_src.rename() else { continue };
+            let Some(name) = rename.name() else { continue };
+
+            let res = scope.fully_resolve_import(self.db.upcast(), id);
+            res.iter_items().for_each(|(item, _)| {
+                let def = match item {
+                    ItemInNs::Types(def) | ItemInNs::Values(def) => def,
+                    ItemInNs::Macros(def) => ModuleDefId::from(def),
+                }
+                .into();
+                let dec_loc = DeclarationLocation {
+                    hir_file_id: source.file_id,
+                    ptr: SyntaxNodePtr::new(use_tree_src.syntax()),
+                    name_ptr: SyntaxNodePtr::new(name.syntax()),
+                };
+
+                self.symbols.push(FileSymbol {
+                    name: name.text().into(),
+                    def,
+                    container_name: self.current_container_name.clone(),
+                    loc: dec_loc,
+                    is_alias: false,
+                });
+            });
         }
 
         for const_id in scope.unnamed_consts() {

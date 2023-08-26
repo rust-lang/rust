@@ -12,7 +12,7 @@ use crate::MemFlags;
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::{self, AssertKind, SwitchTargets};
+use rustc_middle::mir::{self, AssertKind, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty};
@@ -178,7 +178,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             mir::UnwindAction::Cleanup(cleanup) => Some(self.llbb_with_cleanup(fx, cleanup)),
             mir::UnwindAction::Continue => None,
             mir::UnwindAction::Unreachable => None,
-            mir::UnwindAction::Terminate => {
+            mir::UnwindAction::Terminate(reason) => {
                 if fx.mir[self.bb].is_cleanup && base::wants_new_eh_instructions(fx.cx.tcx().sess) {
                     // MSVC SEH will abort automatically if an exception tries to
                     // propagate out from cleanup.
@@ -191,7 +191,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
                     None
                 } else {
-                    Some(fx.terminate_block())
+                    Some(fx.terminate_block(reason))
                 }
             }
         };
@@ -264,7 +264,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     ) -> MergingSucc {
         let unwind_target = match unwind {
             mir::UnwindAction::Cleanup(cleanup) => Some(self.llbb_with_cleanup(fx, cleanup)),
-            mir::UnwindAction::Terminate => Some(fx.terminate_block()),
+            mir::UnwindAction::Terminate(reason) => Some(fx.terminate_block(reason)),
             mir::UnwindAction::Continue => None,
             mir::UnwindAction::Unreachable => None,
         };
@@ -649,12 +649,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         helper: TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
+        reason: UnwindTerminateReason,
     ) {
         let span = terminator.source_info.span;
         self.set_debug_loc(bx, terminator.source_info);
 
         // Obtain the panic entry point.
-        let (fn_abi, llfn) = common::build_langcall(bx, Some(span), LangItem::PanicCannotUnwind);
+        let (fn_abi, llfn) = common::build_langcall(bx, Some(span), reason.lang_item());
 
         // Codegen the actual panic invoke/call.
         let merging_succ = helper.do_call(
@@ -1229,8 +1230,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 MergingSucc::False
             }
 
-            mir::TerminatorKind::UnwindTerminate => {
-                self.codegen_terminate_terminator(helper, bx, terminator);
+            mir::TerminatorKind::UnwindTerminate(reason) => {
+                self.codegen_terminate_terminator(helper, bx, terminator, reason);
                 MergingSucc::False
             }
 
@@ -1579,79 +1580,81 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         })
     }
 
-    fn terminate_block(&mut self) -> Bx::BasicBlock {
-        self.terminate_block.unwrap_or_else(|| {
-            let funclet;
-            let llbb;
-            let mut bx;
-            if base::wants_msvc_seh(self.cx.sess()) {
-                // This is a basic block that we're aborting the program for,
-                // notably in an `extern` function. These basic blocks are inserted
-                // so that we assert that `extern` functions do indeed not panic,
-                // and if they do we abort the process.
-                //
-                // On MSVC these are tricky though (where we're doing funclets). If
-                // we were to do a cleanuppad (like below) the normal functions like
-                // `longjmp` would trigger the abort logic, terminating the
-                // program. Instead we insert the equivalent of `catch(...)` for C++
-                // which magically doesn't trigger when `longjmp` files over this
-                // frame.
-                //
-                // Lots more discussion can be found on #48251 but this codegen is
-                // modeled after clang's for:
-                //
-                //      try {
-                //          foo();
-                //      } catch (...) {
-                //          bar();
-                //      }
-                //
-                // which creates an IR snippet like
-                //
-                //      cs_terminate:
-                //         %cs = catchswitch within none [%cp_terminate] unwind to caller
-                //      cp_terminate:
-                //         %cp = catchpad within %cs [null, i32 64, null]
-                //         ...
+    fn terminate_block(&mut self, reason: UnwindTerminateReason) -> Bx::BasicBlock {
+        if let Some((cached_bb, cached_reason)) = self.terminate_block && reason == cached_reason {
+            return cached_bb;
+        }
 
-                llbb = Bx::append_block(self.cx, self.llfn, "cs_terminate");
-                let cp_llbb = Bx::append_block(self.cx, self.llfn, "cp_terminate");
+        let funclet;
+        let llbb;
+        let mut bx;
+        if base::wants_msvc_seh(self.cx.sess()) {
+            // This is a basic block that we're aborting the program for,
+            // notably in an `extern` function. These basic blocks are inserted
+            // so that we assert that `extern` functions do indeed not panic,
+            // and if they do we abort the process.
+            //
+            // On MSVC these are tricky though (where we're doing funclets). If
+            // we were to do a cleanuppad (like below) the normal functions like
+            // `longjmp` would trigger the abort logic, terminating the
+            // program. Instead we insert the equivalent of `catch(...)` for C++
+            // which magically doesn't trigger when `longjmp` files over this
+            // frame.
+            //
+            // Lots more discussion can be found on #48251 but this codegen is
+            // modeled after clang's for:
+            //
+            //      try {
+            //          foo();
+            //      } catch (...) {
+            //          bar();
+            //      }
+            //
+            // which creates an IR snippet like
+            //
+            //      cs_terminate:
+            //         %cs = catchswitch within none [%cp_terminate] unwind to caller
+            //      cp_terminate:
+            //         %cp = catchpad within %cs [null, i32 64, null]
+            //         ...
 
-                let mut cs_bx = Bx::build(self.cx, llbb);
-                let cs = cs_bx.catch_switch(None, None, &[cp_llbb]);
+            llbb = Bx::append_block(self.cx, self.llfn, "cs_terminate");
+            let cp_llbb = Bx::append_block(self.cx, self.llfn, "cp_terminate");
 
-                // The "null" here is actually a RTTI type descriptor for the
-                // C++ personality function, but `catch (...)` has no type so
-                // it's null. The 64 here is actually a bitfield which
-                // represents that this is a catch-all block.
-                bx = Bx::build(self.cx, cp_llbb);
-                let null =
-                    bx.const_null(bx.type_ptr_ext(bx.cx().data_layout().instruction_address_space));
-                let sixty_four = bx.const_i32(64);
-                funclet = Some(bx.catch_pad(cs, &[null, sixty_four, null]));
-            } else {
-                llbb = Bx::append_block(self.cx, self.llfn, "terminate");
-                bx = Bx::build(self.cx, llbb);
+            let mut cs_bx = Bx::build(self.cx, llbb);
+            let cs = cs_bx.catch_switch(None, None, &[cp_llbb]);
 
-                let llpersonality = self.cx.eh_personality();
-                bx.filter_landing_pad(llpersonality);
+            // The "null" here is actually a RTTI type descriptor for the
+            // C++ personality function, but `catch (...)` has no type so
+            // it's null. The 64 here is actually a bitfield which
+            // represents that this is a catch-all block.
+            bx = Bx::build(self.cx, cp_llbb);
+            let null =
+                bx.const_null(bx.type_ptr_ext(bx.cx().data_layout().instruction_address_space));
+            let sixty_four = bx.const_i32(64);
+            funclet = Some(bx.catch_pad(cs, &[null, sixty_four, null]));
+        } else {
+            llbb = Bx::append_block(self.cx, self.llfn, "terminate");
+            bx = Bx::build(self.cx, llbb);
 
-                funclet = None;
-            }
+            let llpersonality = self.cx.eh_personality();
+            bx.filter_landing_pad(llpersonality);
 
-            self.set_debug_loc(&mut bx, mir::SourceInfo::outermost(self.mir.span));
+            funclet = None;
+        }
 
-            let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, LangItem::PanicCannotUnwind);
-            let fn_ty = bx.fn_decl_backend_type(&fn_abi);
+        self.set_debug_loc(&mut bx, mir::SourceInfo::outermost(self.mir.span));
 
-            let llret = bx.call(fn_ty, None, Some(&fn_abi), fn_ptr, &[], funclet.as_ref());
-            bx.do_not_inline(llret);
+        let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, reason.lang_item());
+        let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
-            bx.unreachable();
+        let llret = bx.call(fn_ty, None, Some(&fn_abi), fn_ptr, &[], funclet.as_ref());
+        bx.do_not_inline(llret);
 
-            self.terminate_block = Some(llbb);
-            llbb
-        })
+        bx.unreachable();
+
+        self.terminate_block = Some((llbb, reason));
+        llbb
     }
 
     /// Get the backend `BasicBlock` for a MIR `BasicBlock`, either already

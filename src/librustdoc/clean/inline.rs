@@ -80,9 +80,9 @@ pub(crate) fn try_inline(
             clean::UnionItem(build_union(cx, did))
         }
         Res::Def(DefKind::TyAlias { .. }, did) => {
-            record_extern_fqn(cx, did, ItemType::Typedef);
+            record_extern_fqn(cx, did, ItemType::TypeAlias);
             build_impls(cx, did, attrs_without_docs, &mut ret);
-            clean::TypedefItem(build_type_alias(cx, did))
+            clean::TypeAliasItem(build_type_alias(cx, did))
         }
         Res::Def(DefKind::Enum, did) => {
             record_extern_fqn(cx, did, ItemType::Enum);
@@ -287,7 +287,7 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
     clean::Union { generics, fields }
 }
 
-fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> Box<clean::Typedef> {
+fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> Box<clean::TypeAlias> {
     let predicates = cx.tcx.explicit_predicates_of(did);
     let type_ = clean_middle_ty(
         ty::Binder::dummy(cx.tcx.type_of(did).instantiate_identity()),
@@ -296,7 +296,7 @@ fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> Box<clean::Typedef> 
         None,
     );
 
-    Box::new(clean::Typedef {
+    Box::new(clean::TypeAlias {
         type_,
         generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
         item_type: None,

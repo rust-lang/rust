@@ -58,10 +58,9 @@ use crate::{
         InTypeConstIdMetadata,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, Const, ConstScalar, DebruijnIndex, DynTy,
-    FnPointer, FnSig, FnSubst, GenericArgData, ImplTraitId, Interner, ParamKind, PolyFnSig,
-    ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses, ReturnTypeImplTrait,
-    ReturnTypeImplTraits, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder,
-    TyKind, WhereClause,
+    FnPointer, FnSig, FnSubst, ImplTraitId, Interner, ParamKind, PolyFnSig, ProjectionTy,
+    QuantifiedWhereClause, QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits,
+    Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
 };
 
 #[derive(Debug)]
@@ -213,6 +212,19 @@ impl<'a> TyLoweringContext<'a> {
         self.lower_ty_ext(type_ref).0
     }
 
+    pub fn lower_const(&self, const_ref: &ConstRef, const_type: Ty) -> Const {
+        const_or_path_to_chalk(
+            self.db,
+            self.resolver,
+            self.owner,
+            const_type,
+            const_ref,
+            self.type_param_mode,
+            || self.generics(),
+            self.in_binders,
+        )
+    }
+
     fn generics(&self) -> Generics {
         generics(
             self.db.upcast(),
@@ -242,17 +254,7 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeRef::Array(inner, len) => {
                 let inner_ty = self.lower_ty(inner);
-                let const_len = const_or_path_to_chalk(
-                    self.db,
-                    self.resolver,
-                    self.owner,
-                    TyBuilder::usize(),
-                    len,
-                    self.type_param_mode,
-                    || self.generics(),
-                    self.in_binders,
-                );
-
+                let const_len = self.lower_const(len, TyBuilder::usize());
                 TyKind::Array(inner_ty, const_len).intern(Interner)
             }
             TypeRef::Slice(inner) => {
@@ -391,11 +393,9 @@ impl<'a> TyLoweringContext<'a> {
                 let ty = {
                     let macro_call = macro_call.to_node(self.db.upcast());
                     let resolver = |path| {
-                        self.resolver.resolve_path_as_macro(
-                            self.db.upcast(),
-                            &path,
-                            Some(MacroSubNs::Bang),
-                        )
+                        self.resolver
+                            .resolve_path_as_macro(self.db.upcast(), &path, Some(MacroSubNs::Bang))
+                            .map(|(it, _)| it)
                     };
                     match expander.enter_expand::<ast::Type>(self.db.upcast(), macro_call, resolver)
                     {
@@ -447,7 +447,7 @@ impl<'a> TyLoweringContext<'a> {
             return None;
         }
         let resolution = match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path) {
-            Some((it, None)) => it,
+            Some((it, None, _)) => it,
             _ => return None,
         };
         match resolution {
@@ -627,7 +627,7 @@ impl<'a> TyLoweringContext<'a> {
             return self.lower_ty_relative_path(ty, res, path.segments());
         }
 
-        let (resolution, remaining_index) =
+        let (resolution, remaining_index, _) =
             match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path) {
                 Some(it) => it,
                 None => return (TyKind::Error.intern(Interner), None),
@@ -847,18 +847,7 @@ impl<'a> TyLoweringContext<'a> {
                         arg,
                         &mut (),
                         |_, type_ref| self.lower_ty(type_ref),
-                        |_, c, ty| {
-                            const_or_path_to_chalk(
-                                self.db,
-                                self.resolver,
-                                self.owner,
-                                ty,
-                                c,
-                                self.type_param_mode,
-                                || self.generics(),
-                                self.in_binders,
-                            )
-                        },
+                        |_, const_ref, ty| self.lower_const(const_ref, ty),
                     ) {
                         had_explicit_args = true;
                         substs.push(x);
@@ -1604,24 +1593,35 @@ pub(crate) fn generic_defaults_query(
             .iter()
             .enumerate()
             .map(|(idx, (id, p))| {
-                let p = match p {
-                    TypeOrConstParamData::TypeParamData(p) => p,
-                    TypeOrConstParamData::ConstParamData(_) => {
-                        // FIXME: implement const generic defaults
-                        let val = unknown_const_as_generic(
-                            db.const_param_ty(ConstParamId::from_unchecked(id)),
-                        );
-                        return make_binders(db, &generic_params, val);
+                match p {
+                    TypeOrConstParamData::TypeParamData(p) => {
+                        let mut ty = p
+                            .default
+                            .as_ref()
+                            .map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
+                        // Each default can only refer to previous parameters.
+                        // Type variable default referring to parameter coming
+                        // after it is forbidden (FIXME: report diagnostic)
+                        ty = fallback_bound_vars(ty, idx, parent_start_idx);
+                        crate::make_binders(db, &generic_params, ty.cast(Interner))
                     }
-                };
-                let mut ty =
-                    p.default.as_ref().map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
-
-                // Each default can only refer to previous parameters.
-                // Type variable default referring to parameter coming
-                // after it is forbidden (FIXME: report diagnostic)
-                ty = fallback_bound_vars(ty, idx, parent_start_idx);
-                crate::make_binders(db, &generic_params, ty.cast(Interner))
+                    TypeOrConstParamData::ConstParamData(p) => {
+                        let mut val = p.default.as_ref().map_or_else(
+                            || {
+                                unknown_const_as_generic(
+                                    db.const_param_ty(ConstParamId::from_unchecked(id)),
+                                )
+                            },
+                            |c| {
+                                let c = ctx.lower_const(c, ctx.lower_ty(&p.ty));
+                                c.cast(Interner)
+                            },
+                        );
+                        // Each default can only refer to previous parameters, see above.
+                        val = fallback_bound_vars(val, idx, parent_start_idx);
+                        make_binders(db, &generic_params, val)
+                    }
+                }
             })
             // FIXME: use `Arc::from_iter` when it becomes available
             .collect::<Vec<_>>(),
@@ -1643,9 +1643,7 @@ pub(crate) fn generic_defaults_recover(
             .iter_id()
             .map(|id| {
                 let val = match id {
-                    Either::Left(_) => {
-                        GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
-                    }
+                    Either::Left(_) => TyKind::Error.intern(Interner).cast(Interner),
                     Either::Right(id) => unknown_const_as_generic(db.const_param_ty(id)),
                 };
                 crate::make_binders(db, &generic_params, val)
@@ -1991,16 +1989,9 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
         }
     };
     Some(match (arg, kind) {
-        (GenericArg::Type(type_ref), ParamKind::Type) => {
-            let ty = for_type(this, type_ref);
-            GenericArgData::Ty(ty).intern(Interner)
-        }
-        (GenericArg::Const(c), ParamKind::Const(c_ty)) => {
-            GenericArgData::Const(for_const(this, c, c_ty)).intern(Interner)
-        }
-        (GenericArg::Const(_), ParamKind::Type) => {
-            GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
-        }
+        (GenericArg::Type(type_ref), ParamKind::Type) => for_type(this, type_ref).cast(Interner),
+        (GenericArg::Const(c), ParamKind::Const(c_ty)) => for_const(this, c, c_ty).cast(Interner),
+        (GenericArg::Const(_), ParamKind::Type) => TyKind::Error.intern(Interner).cast(Interner),
         (GenericArg::Type(t), ParamKind::Const(c_ty)) => {
             // We want to recover simple idents, which parser detects them
             // as types. Maybe here is not the best place to do it, but
@@ -2010,9 +2001,7 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
                 if p.kind == PathKind::Plain {
                     if let [n] = p.segments() {
                         let c = ConstRef::Path(n.clone());
-                        return Some(
-                            GenericArgData::Const(for_const(this, &c, c_ty)).intern(Interner),
-                        );
+                        return Some(for_const(this, &c, c_ty).cast(Interner));
                     }
                 }
             }

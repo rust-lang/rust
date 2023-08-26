@@ -1219,7 +1219,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                     None,
                 );
                 AssocTypeItem(
-                    Box::new(Typedef {
+                    Box::new(TypeAlias {
                         type_: clean_ty(default, cx),
                         generics,
                         item_type: Some(item_type),
@@ -1264,7 +1264,7 @@ pub(crate) fn clean_impl_item<'tcx>(
                     None,
                 );
                 AssocTypeItem(
-                    Box::new(Typedef { type_, generics, item_type: Some(item_type) }),
+                    Box::new(TypeAlias { type_, generics, item_type: Some(item_type) }),
                     Vec::new(),
                 )
             }
@@ -1461,7 +1461,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
 
                 if tcx.defaultness(assoc_item.def_id).has_value() {
                     AssocTypeItem(
-                        Box::new(Typedef {
+                        Box::new(TypeAlias {
                             type_: clean_middle_ty(
                                 ty::Binder::dummy(
                                     tcx.type_of(assoc_item.def_id).instantiate_identity(),
@@ -1480,7 +1480,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                 }
             } else {
                 AssocTypeItem(
-                    Box::new(Typedef {
+                    Box::new(TypeAlias {
                         type_: clean_middle_ty(
                             ty::Binder::dummy(
                                 tcx.type_of(assoc_item.def_id).instantiate_identity(),
@@ -2617,7 +2617,11 @@ fn clean_maybe_renamed_item<'tcx>(
                         cx.current_type_aliases.remove(&def_id);
                     }
                 }
-                TypedefItem(Box::new(Typedef { type_: rustdoc_ty, generics, item_type: Some(ty) }))
+                TypeAliasItem(Box::new(TypeAlias {
+                    type_: rustdoc_ty,
+                    generics,
+                    item_type: Some(ty),
+                }))
             }
             ItemKind::Enum(ref def, generics) => EnumItem(Enum {
                 variants: def.variants.iter().map(|v| clean_variant(v, cx)).collect(),

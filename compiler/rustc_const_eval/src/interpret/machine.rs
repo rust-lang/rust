@@ -18,7 +18,7 @@ use crate::const_eval::CheckAlignment;
 
 use super::{
     AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, FnArg, Frame, ImmTy, InterpCx,
-    InterpResult, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar,
+    InterpResult, MPlaceTy, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -222,7 +222,10 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     fn panic_nounwind(_ecx: &mut InterpCx<'mir, 'tcx, Self>, msg: &str) -> InterpResult<'tcx>;
 
     /// Called when unwinding reached a state where execution should be terminated.
-    fn unwind_terminate(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx>;
+    fn unwind_terminate(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        reason: mir::UnwindTerminateReason,
+    ) -> InterpResult<'tcx>;
 
     /// Called for all binary operations where the LHS has pointer type.
     ///
@@ -462,6 +465,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
 
     /// Called immediately after a stack frame got popped, but before jumping back to the caller.
     /// The `locals` have already been destroyed!
+    #[inline(always)]
     fn after_stack_pop(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _frame: Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
@@ -470,6 +474,18 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         // By default, we do not support unwinding from panics
         assert!(!unwinding);
         Ok(StackPopJump::Normal)
+    }
+
+    /// Called immediately after actual memory was allocated for a local
+    /// but before the local's stack frame is updated to point to that memory.
+    #[inline(always)]
+    fn after_local_allocated(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _frame: usize,
+        _local: mir::Local,
+        _mplace: &MPlaceTy<'tcx, Self::Provenance>,
+    ) -> InterpResult<'tcx> {
+        Ok(())
     }
 }
 
@@ -501,7 +517,10 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn unwind_terminate(_ecx: &mut InterpCx<$mir, $tcx, Self>) -> InterpResult<$tcx> {
+    fn unwind_terminate(
+        _ecx: &mut InterpCx<$mir, $tcx, Self>,
+        _reason: mir::UnwindTerminateReason,
+    ) -> InterpResult<$tcx> {
         unreachable!("unwinding cannot happen during compile-time evaluation")
     }
 

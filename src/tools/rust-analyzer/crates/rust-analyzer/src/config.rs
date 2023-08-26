@@ -150,18 +150,22 @@ config_data! {
         ///
         /// Set to `"all"` to pass `--all-features` to Cargo.
         check_features | checkOnSave_features: Option<CargoFeaturesDef>  = "null",
+        /// List of `cargo check` (or other command specified in `check.command`) diagnostics to ignore.
+        ///
+        /// For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`,...
+        check_ignore: FxHashSet<String> = "[]",
         /// Specifies the working directory for running checks.
         /// - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
         // FIXME: Ideally we would support this in some way
-        ///   This falls back to "root" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.
+        ///   This falls back to "root" if `#rust-analyzer.cargo.check.invocationStrategy#` is set to `once`.
         /// - "root": run checks in the project's root directory.
-        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// This config only has an effect when `#rust-analyzer.cargo.check.overrideCommand#`
         /// is set.
         check_invocationLocation | checkOnSave_invocationLocation: InvocationLocation = "\"workspace\"",
-        /// Specifies the invocation strategy to use when running the checkOnSave command.
+        /// Specifies the invocation strategy to use when running the check command.
         /// If `per_workspace` is set, the command will be executed for each workspace.
         /// If `once` is set, the command will be executed once.
-        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// This config only has an effect when `#rust-analyzer.cargo.check.overrideCommand#`
         /// is set.
         check_invocationStrategy | checkOnSave_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Whether to pass `--no-default-features` to Cargo. Defaults to
@@ -1098,6 +1102,7 @@ impl Config {
             remap_prefix: self.data.diagnostics_remapPrefix.clone(),
             warnings_as_info: self.data.diagnostics_warningsAsInfo.clone(),
             warnings_as_hint: self.data.diagnostics_warningsAsHint.clone(),
+            check_ignore: self.data.check_ignore.clone(),
         }
     }
 

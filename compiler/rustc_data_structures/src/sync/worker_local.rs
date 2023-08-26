@@ -171,3 +171,9 @@ impl<T> Deref for WorkerLocal<T> {
         unsafe { &self.locals.get_unchecked(self.registry.id().verify()).0 }
     }
 }
+
+impl<T: Default> Default for WorkerLocal<T> {
+    fn default() -> Self {
+        WorkerLocal::new(|_| T::default())
+    }
+}

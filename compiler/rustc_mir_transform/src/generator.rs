@@ -1091,7 +1091,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                 UnwindAction::Cleanup(tgt) => tgt,
                 UnwindAction::Continue => elaborator.patch.resume_block(),
                 UnwindAction::Unreachable => elaborator.patch.unreachable_cleanup_block(),
-                UnwindAction::Terminate => elaborator.patch.terminate_block(),
+                UnwindAction::Terminate(reason) => elaborator.patch.terminate_block(reason),
             })
         };
         elaborate_drop(
@@ -1239,7 +1239,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             // These never unwind.
             TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::UnwindTerminate
+            | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
@@ -1759,7 +1759,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::UnwindResume
-            | TerminatorKind::UnwindTerminate
+            | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }

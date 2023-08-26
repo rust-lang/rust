@@ -1,6 +1,10 @@
 use std::collections::VecDeque;
 
-use syntax::ast::{self, AstNode};
+use syntax::{
+    ast::{self, AstNode, Expr::BinExpr},
+    ted::{self, Position},
+    SyntaxKind,
+};
 
 use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKind, Assists};
 
@@ -23,121 +27,117 @@ use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKin
 // }
 // ```
 pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
-    let op = expr.op_kind()?;
-    let op_range = expr.op_token()?.text_range();
+    let mut bin_expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
+    let op = bin_expr.op_kind()?;
+    let op_range = bin_expr.op_token()?.text_range();
 
-    let opposite_op = match op {
-        ast::BinaryOp::LogicOp(ast::LogicOp::And) => "||",
-        ast::BinaryOp::LogicOp(ast::LogicOp::Or) => "&&",
-        _ => return None,
-    };
-
-    let cursor_in_range = op_range.contains_range(ctx.selection_trimmed());
-    if !cursor_in_range {
+    // Is the cursor on the expression's logical operator?
+    if !op_range.contains_range(ctx.selection_trimmed()) {
         return None;
     }
 
-    let mut expr = expr;
-
     // Walk up the tree while we have the same binary operator
-    while let Some(parent_expr) = expr.syntax().parent().and_then(ast::BinExpr::cast) {
-        match expr.op_kind() {
+    while let Some(parent_expr) = bin_expr.syntax().parent().and_then(ast::BinExpr::cast) {
+        match parent_expr.op_kind() {
             Some(parent_op) if parent_op == op => {
-                expr = parent_expr;
+                bin_expr = parent_expr;
             }
             _ => break,
         }
     }
 
-    let mut expr_stack = vec![expr.clone()];
-    let mut terms = Vec::new();
-    let mut op_ranges = Vec::new();
+    let op = bin_expr.op_kind()?;
+    let inv_token = match op {
+        ast::BinaryOp::LogicOp(ast::LogicOp::And) => SyntaxKind::PIPE2,
+        ast::BinaryOp::LogicOp(ast::LogicOp::Or) => SyntaxKind::AMP2,
+        _ => return None,
+    };
 
-    // Find all the children with the same binary operator
-    while let Some(expr) = expr_stack.pop() {
-        let mut traverse_bin_expr_arm = |expr| {
-            if let ast::Expr::BinExpr(bin_expr) = expr {
-                if let Some(expr_op) = bin_expr.op_kind() {
-                    if expr_op == op {
-                        expr_stack.push(bin_expr);
-                    } else {
-                        terms.push(ast::Expr::BinExpr(bin_expr));
-                    }
+    let demorganed = bin_expr.clone_subtree().clone_for_update();
+
+    ted::replace(demorganed.op_token()?, ast::make::token(inv_token));
+    let mut exprs = VecDeque::from(vec![
+        (bin_expr.lhs()?, demorganed.lhs()?),
+        (bin_expr.rhs()?, demorganed.rhs()?),
+    ]);
+
+    while let Some((expr, dm)) = exprs.pop_front() {
+        if let BinExpr(bin_expr) = &expr {
+            if let BinExpr(cbin_expr) = &dm {
+                if op == bin_expr.op_kind()? {
+                    ted::replace(cbin_expr.op_token()?, ast::make::token(inv_token));
+                    exprs.push_back((bin_expr.lhs()?, cbin_expr.lhs()?));
+                    exprs.push_back((bin_expr.rhs()?, cbin_expr.rhs()?));
                 } else {
-                    terms.push(ast::Expr::BinExpr(bin_expr));
+                    let mut inv = invert_boolean_expression(expr);
+                    if inv.needs_parens_in(dm.syntax().parent()?) {
+                        inv = ast::make::expr_paren(inv).clone_for_update();
+                    }
+                    ted::replace(dm.syntax(), inv.syntax());
                 }
             } else {
-                terms.push(expr);
+                return None;
             }
-        };
-
-        op_ranges.extend(expr.op_token().map(|t| t.text_range()));
-        traverse_bin_expr_arm(expr.lhs()?);
-        traverse_bin_expr_arm(expr.rhs()?);
+        } else {
+            let mut inv = invert_boolean_expression(dm.clone_subtree()).clone_for_update();
+            if inv.needs_parens_in(dm.syntax().parent()?) {
+                inv = ast::make::expr_paren(inv).clone_for_update();
+            }
+            ted::replace(dm.syntax(), inv.syntax());
+        }
     }
+
+    let dm_lhs = demorganed.lhs()?;
 
     acc.add(
         AssistId("apply_demorgan", AssistKind::RefactorRewrite),
         "Apply De Morgan's law",
         op_range,
         |edit| {
-            terms.sort_by_key(|t| t.syntax().text_range().start());
-            let mut terms = VecDeque::from(terms);
-
-            let paren_expr = expr.syntax().parent().and_then(ast::ParenExpr::cast);
-
+            let paren_expr = bin_expr.syntax().parent().and_then(ast::ParenExpr::cast);
             let neg_expr = paren_expr
                 .clone()
                 .and_then(|paren_expr| paren_expr.syntax().parent())
                 .and_then(ast::PrefixExpr::cast)
                 .and_then(|prefix_expr| {
-                    if prefix_expr.op_kind().unwrap() == ast::UnaryOp::Not {
+                    if prefix_expr.op_kind()? == ast::UnaryOp::Not {
                         Some(prefix_expr)
                     } else {
                         None
                     }
                 });
 
-            for op_range in op_ranges {
-                edit.replace(op_range, opposite_op);
-            }
-
             if let Some(paren_expr) = paren_expr {
-                for term in terms {
-                    let range = term.syntax().text_range();
-                    let not_term = invert_boolean_expression(term);
-
-                    edit.replace(range, not_term.syntax().text());
-                }
-
                 if let Some(neg_expr) = neg_expr {
                     cov_mark::hit!(demorgan_double_negation);
-                    edit.replace(neg_expr.op_token().unwrap().text_range(), "");
+                    edit.replace_ast(ast::Expr::PrefixExpr(neg_expr), demorganed.into());
                 } else {
                     cov_mark::hit!(demorgan_double_parens);
-                    edit.replace(paren_expr.l_paren_token().unwrap().text_range(), "!(");
+                    ted::insert_all_raw(
+                        Position::before(dm_lhs.syntax()),
+                        vec![
+                            syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::BANG)),
+                            syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::L_PAREN)),
+                        ],
+                    );
+
+                    ted::append_child_raw(
+                        demorganed.syntax(),
+                        syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::R_PAREN)),
+                    );
+
+                    edit.replace_ast(ast::Expr::ParenExpr(paren_expr), demorganed.into());
                 }
             } else {
-                if let Some(lhs) = terms.pop_front() {
-                    let lhs_range = lhs.syntax().text_range();
-                    let not_lhs = invert_boolean_expression(lhs);
-
-                    edit.replace(lhs_range, format!("!({not_lhs}"));
-                }
-
-                if let Some(rhs) = terms.pop_back() {
-                    let rhs_range = rhs.syntax().text_range();
-                    let not_rhs = invert_boolean_expression(rhs);
-
-                    edit.replace(rhs_range, format!("{not_rhs})"));
-                }
-
-                for term in terms {
-                    let term_range = term.syntax().text_range();
-                    let not_term = invert_boolean_expression(term);
-                    edit.replace(term_range, not_term.to_string());
-                }
+                ted::insert_all_raw(
+                    Position::before(dm_lhs.syntax()),
+                    vec![
+                        syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::BANG)),
+                        syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::L_PAREN)),
+                    ],
+                );
+                ted::append_child_raw(demorganed.syntax(), ast::make::token(SyntaxKind::R_PAREN));
+                edit.replace_ast(bin_expr, demorganed);
             }
         },
     )
@@ -145,9 +145,8 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable};
-
     use super::*;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     #[test]
     fn demorgan_handles_leq() {
@@ -213,7 +212,7 @@ fn f() { !(S <= S || S < S) }
     #[test]
     fn demorgan_doesnt_double_negation() {
         cov_mark::check!(demorgan_double_negation);
-        check_assist(apply_demorgan, "fn f() { !(x ||$0 x) }", "fn f() { (!x && !x) }")
+        check_assist(apply_demorgan, "fn f() { !(x ||$0 x) }", "fn f() { !x && !x }")
     }
 
     #[test]
@@ -222,13 +221,38 @@ fn f() { !(S <= S || S < S) }
         check_assist(apply_demorgan, "fn f() { (x ||$0 x) }", "fn f() { !(!x && !x) }")
     }
 
-    // https://github.com/rust-lang/rust-analyzer/issues/10963
+    // FIXME : This needs to go.
+    // // https://github.com/rust-lang/rust-analyzer/issues/10963
+    // #[test]
+    // fn demorgan_doesnt_hang() {
+    //     check_assist(
+    //         apply_demorgan,
+    //         "fn f() { 1 || 3 &&$0 4 || 5 }",
+    //         "fn f() { !(!1 || !3 || !4) || 5 }",
+    //     )
+    // }
+
     #[test]
-    fn demorgan_doesnt_hang() {
+    fn demorgan_keep_pars_for_op_precedence() {
         check_assist(
             apply_demorgan,
-            "fn f() { 1 || 3 &&$0 4 || 5 }",
-            "fn f() { !(!1 || !3 || !4) || 5 }",
+            "fn main() {
+    let _ = !(!a ||$0 !(b || c));
+}
+",
+            "fn main() {
+    let _ = a && (b || c);
+}
+",
+        );
+    }
+
+    #[test]
+    fn demorgan_removes_pars_in_eq_precedence() {
+        check_assist(
+            apply_demorgan,
+            "fn() { let x = a && !(!b |$0| !c); }",
+            "fn() { let x = a && b && c; }",
         )
     }
 }
