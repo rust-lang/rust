@@ -29,17 +29,15 @@ pub struct ZstSlice<'input> {
 
 #[no_mangle]
 pub fn zst(s: &[u8]) {
+    // The field `extra` is a ZST. The fragment for the field `slice` encompasses the whole
+    // variable, so is not a fragment. In that case, the variable must have no fragment.
+
 // CHECK: void @zst(
-// CHECK: %slice.dbg.spill1 = alloca { ptr, i64 },
-// CHECK: %slice.dbg.spill = alloca %Zst,
-// CHECK: %s.dbg.spill = alloca { ptr, i64 },
-// CHECK: call void @llvm.dbg.declare(metadata ptr %s.dbg.spill, metadata ![[S_ZST:.*]], metadata !DIExpression()),
-// CHECK: call void @llvm.dbg.declare(metadata ptr %slice.dbg.spill, metadata ![[SLICE_ZST:.*]], metadata !DIExpression(DW_OP_LLVM_fragment, 0, 0)),
-// CHECK: call void @llvm.dbg.declare(metadata ptr %slice.dbg.spill1, metadata ![[SLICE_ZST]], metadata !DIExpression()),
+// CHECK-NOT: call void @llvm.dbg.declare(metadata ptr %slice.dbg.spill, metadata !{}, metadata !DIExpression(DW_OP_LLVM_fragment,
+// CHECK: call void @llvm.dbg.declare(metadata ptr %{{.*}}, metadata ![[SLICE_ZST:.*]], metadata !DIExpression()),
+// CHECK-NOT: call void @llvm.dbg.declare(metadata ptr %{{.*}}, metadata ![[SLICE_ZST]],
     let slice = ZstSlice { slice: s, extra: Zst };
 }
 
 // CHECK: ![[S_EXTRA]] = !DILocalVariable(name: "s",
 // CHECK: ![[SLICE_EXTRA]] = !DILocalVariable(name: "slice",
-// CHECK: ![[S_ZST]] = !DILocalVariable(name: "s",
-// CHECK: ![[SLICE_ZST]] = !DILocalVariable(name: "slice",

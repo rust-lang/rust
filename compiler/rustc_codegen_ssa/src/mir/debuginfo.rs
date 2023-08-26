@@ -574,17 +574,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
 
                         let place = fragment.contents;
+                        let fragment = if fragment_layout.size == Size::ZERO {
+                            // Fragment is a ZST, so does not represent anything.
+                            continue;
+                        } else if fragment_layout.size == var_layout.size {
+                            // Fragment covers entire variable, so as far as
+                            // DWARF is concerned, it's not really a fragment.
+                            None
+                        } else {
+                            Some(fragment_start..fragment_start + fragment_layout.size)
+                        };
+
                         per_local[place.local].push(PerLocalVarDebugInfo {
                             name: var.name,
                             source_info: var.source_info,
                             dbg_var,
-                            fragment: if fragment_layout.size == var_layout.size {
-                                // Fragment covers entire variable, so as far as
-                                // DWARF is concerned, it's not really a fragment.
-                                None
-                            } else {
-                                Some(fragment_start..fragment_start + fragment_layout.size)
-                            },
+                            fragment,
                             projection: place.projection,
                         });
                     }
