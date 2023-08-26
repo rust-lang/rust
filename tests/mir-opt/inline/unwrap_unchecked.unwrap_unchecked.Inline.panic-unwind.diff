@@ -7,9 +7,8 @@
       let mut _2: std::option::Option<T>;
 +     scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) {
 +         debug self => _2;
-+         let mut _3: &std::option::Option<T>;
-+         let mut _4: isize;
-+         let mut _5: bool;
++         let mut _3: isize;
++         let mut _4: bool;
 +         scope 2 {
 +             debug val => _0;
 +         }
@@ -22,7 +21,7 @@
 +             }
 +         }
 +         scope 4 (inlined Option::<T>::is_some) {
-+             debug self => _3;
++             debug (*(self: &Option<T>)) => _2;
 +         }
 +     }
   
@@ -35,12 +34,10 @@
 -     bb1: {
 +         StorageLive(_3);
 +         StorageLive(_4);
-+         StorageLive(_5);
-+         _4 = discriminant(_2);
-+         _5 = Eq(_4, const 1_isize);
-+         assume(move _5);
++         _3 = discriminant(_2);
++         _4 = Eq(_3, const 1_isize);
++         assume(move _4);
 +         _0 = move ((_2 as Some).0: T);
-+         StorageDead(_5);
 +         StorageDead(_4);
 +         StorageDead(_3);
           StorageDead(_2);
