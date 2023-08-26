@@ -317,7 +317,18 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span) {
         // FIXME: normalization and escaping regions
-        let ty = if !ty.has_escaping_bound_vars() { self.normalize(span, ty) } else { ty };
+        let ty = if !ty.has_escaping_bound_vars() {
+            if let ty::Alias(
+                ty::AliasKind::Projection | ty::AliasKind::Weak,
+                ty::AliasTy { args, def_id, .. },
+            ) = ty.kind()
+            {
+                self.add_required_obligations_for_hir(span, *def_id, args, hir_id);
+            }
+            self.normalize(span, ty)
+        } else {
+            ty
+        };
         self.write_ty(hir_id, ty)
     }
 

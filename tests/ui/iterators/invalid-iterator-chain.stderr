@@ -17,10 +17,12 @@ note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `()`
-  --> $DIR/invalid-iterator-chain.rs:15:27
+  --> $DIR/invalid-iterator-chain.rs:15:33
    |
 LL |     println!("{}", scores.sum::<i32>());
-   |                           ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
+   |                           ---   ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
+   |                           |
+   |                           required by a bound introduced by this call
    |
    = help: the trait `Sum<()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
@@ -42,10 +44,12 @@ note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `()`
-  --> $DIR/invalid-iterator-chain.rs:26:14
+  --> $DIR/invalid-iterator-chain.rs:26:20
    |
 LL |             .sum::<i32>(),
-   |              ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
+   |              ---   ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
+   |              |
+   |              required by a bound introduced by this call
    |
    = help: the trait `Sum<()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
@@ -74,10 +78,12 @@ note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `f64`
-  --> $DIR/invalid-iterator-chain.rs:36:14
+  --> $DIR/invalid-iterator-chain.rs:36:20
    |
 LL |             .sum::<i32>(),
-   |              ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=f64>`
+   |              ---   ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=f64>`
+   |              |
+   |              required by a bound introduced by this call
    |
    = help: the trait `Sum<f64>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
@@ -102,10 +108,12 @@ note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `()`
-  --> $DIR/invalid-iterator-chain.rs:38:54
+  --> $DIR/invalid-iterator-chain.rs:38:60
    |
 LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
-   |                                                      ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
+   |                                                      ---   ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
+   |                                                      |
+   |                                                      required by a bound introduced by this call
    |
    = help: the trait `Sum<()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
@@ -123,10 +131,12 @@ note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `&()`
-  --> $DIR/invalid-iterator-chain.rs:39:40
+  --> $DIR/invalid-iterator-chain.rs:39:46
    |
 LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
-   |                                        ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=&()>`
+   |                                        ---   ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=&()>`
+   |                                        |
+   |                                        required by a bound introduced by this call
    |
    = help: the trait `Sum<&()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
