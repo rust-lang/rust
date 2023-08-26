@@ -298,7 +298,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// oft-instantiated `Vec::push()`, which does its own capacity check.
     #[cfg(not(no_global_oom_handling))]
     #[inline(never)]
-    pub fn reserve_for_push(&mut self, len: usize) {
+    pub extern "rust-cold" fn reserve_for_push(&mut self, len: usize) {
         handle_reserve(self.grow_amortized(len, 1));
     }
 

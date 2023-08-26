@@ -190,6 +190,7 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(pointer_is_aligned)]
+#![feature(rust_cold_cc)]
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
 #![feature(slice_internals)]
