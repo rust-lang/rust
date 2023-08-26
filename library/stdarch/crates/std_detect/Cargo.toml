@@ -30,7 +30,6 @@ compiler_builtins = { version = "0.1.2", optional = true }
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 
 [dev-dependencies]
-auxv = "0.3.3"
 cupid = "0.6.0"
 
 [features]
