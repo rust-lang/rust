@@ -3,6 +3,8 @@ error[E0207]: the type parameter `I` is not constrained by the impl trait, self 
    |
 LL | impl<'q, Q, I, F> A for TestB<Q, F>
    |             ^ unconstrained type parameter
+   |
+   = note: consider using type parameter `I` in the impl on `TestB<Q, F>` or otherwise constrain `I`
 
 error: aborting due to previous error
 

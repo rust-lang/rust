@@ -3,6 +3,8 @@ error[E0207]: the type parameter `U` is not constrained by the impl trait, self 
    |
 LL | impl<'b, T, U> AsRef2 for Foo<T>
    |             ^ unconstrained type parameter
+   |
+   = note: consider using type parameter `U` in the impl on `Foo<T>` or otherwise constrain `U`
 
 error: aborting due to previous error
 

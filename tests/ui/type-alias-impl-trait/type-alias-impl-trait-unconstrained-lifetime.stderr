@@ -3,6 +3,8 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a, I: Iterator<Item = i32>> Trait for (i32, I) {
    |      ^^ unconstrained lifetime parameter
+   |
+   = note: consider using lifetime parameter `'a` in the impl on `(i32, I)` or otherwise constrain `'a`
 
 error: aborting due to previous error
 

@@ -3,6 +3,8 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T> Allocator for DefaultAllocator {
    |      ^ unconstrained type parameter
+   |
+   = note: consider using type parameter `T` in the impl on `DefaultAllocator` or otherwise constrain `T`
 
 error: aborting due to previous error
 

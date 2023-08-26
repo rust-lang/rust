@@ -59,6 +59,8 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T,T> Qux<T,T> for Option<T> {}
    |        ^ unconstrained type parameter
+   |
+   = note: consider using type parameter `T` in the impl on `Option<T>` or otherwise constrain `T`
 
 error: aborting due to 8 previous errors
 

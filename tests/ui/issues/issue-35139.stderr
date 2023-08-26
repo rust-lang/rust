@@ -3,6 +3,8 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a> MethodType for MTFn {
    |      ^^ unconstrained lifetime parameter
+   |
+   = note: consider using lifetime parameter `'a` in the impl on `MTFn` or otherwise constrain `'a`
 
 error: aborting due to previous error
 
