@@ -22,7 +22,7 @@ fn std::ptr::drop_in_place(_1: *mut Vec<i32>) -> () {
     }
 
     bb4 (cleanup): {
-        drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> [return: bb2, unwind terminate];
+        drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> [return: bb2, unwind terminate(cleanup)];
     }
 
     bb5: {

@@ -916,6 +916,16 @@ impl Error {
             ErrorData::SimpleMessage(m) => m.kind,
         }
     }
+
+    #[inline]
+    pub(crate) fn is_interrupted(&self) -> bool {
+        match self.repr.data() {
+            ErrorData::Os(code) => sys::is_interrupted(code),
+            ErrorData::Custom(c) => c.kind == ErrorKind::Interrupted,
+            ErrorData::Simple(kind) => kind == ErrorKind::Interrupted,
+            ErrorData::SimpleMessage(m) => m.kind == ErrorKind::Interrupted,
+        }
+    }
 }
 
 impl fmt::Debug for Repr {

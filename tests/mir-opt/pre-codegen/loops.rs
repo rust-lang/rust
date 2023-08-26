@@ -1,6 +1,5 @@
 // compile-flags: -O -Zmir-opt-level=2 -g
 // needs-unwind
-// ignore-debug
 
 #![crate_type = "lib"]
 

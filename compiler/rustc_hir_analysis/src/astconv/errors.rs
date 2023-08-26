@@ -597,7 +597,21 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
         }
-        if !suggestions.is_empty() {
+        suggestions.sort_by_key(|&(span, _)| span);
+        // There are cases where one bound points to a span within another bound's span, like when
+        // you have code like the following (#115019), so we skip providing a suggestion in those
+        // cases to avoid having a malformed suggestion.
+        //
+        // pub struct Flatten<I> {
+        //     inner: <IntoIterator<Item: IntoIterator<Item: >>::IntoIterator as Item>::core,
+        //             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        //             |                  ^^^^^^^^^^^^^^^^^^^^^
+        //             |                  |
+        //             |                  associated types `Item`, `IntoIter` must be specified
+        //             associated types `Item`, `IntoIter` must be specified
+        // }
+        let overlaps = suggestions.windows(2).any(|pair| pair[0].0.overlaps(pair[1].0));
+        if !suggestions.is_empty() && !overlaps {
             err.multipart_suggestion(
                 format!("specify the associated type{}", pluralize!(types_count)),
                 suggestions,

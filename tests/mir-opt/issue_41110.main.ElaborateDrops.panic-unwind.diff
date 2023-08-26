@@ -40,17 +40,17 @@
       }
   
       bb3 (cleanup): {
--         drop(_3) -> [return: bb5, unwind terminate];
+-         drop(_3) -> [return: bb5, unwind terminate(cleanup)];
 +         goto -> bb5;
       }
   
       bb4 (cleanup): {
--         drop(_4) -> [return: bb5, unwind terminate];
+-         drop(_4) -> [return: bb5, unwind terminate(cleanup)];
 +         goto -> bb5;
       }
   
       bb5 (cleanup): {
--         drop(_2) -> [return: bb6, unwind terminate];
+-         drop(_2) -> [return: bb6, unwind terminate(cleanup)];
 +         goto -> bb8;
       }
   
@@ -59,7 +59,7 @@
 +     }
 + 
 +     bb7 (cleanup): {
-+         drop(_2) -> [return: bb6, unwind terminate];
++         drop(_2) -> [return: bb6, unwind terminate(cleanup)];
 +     }
 + 
 +     bb8 (cleanup): {

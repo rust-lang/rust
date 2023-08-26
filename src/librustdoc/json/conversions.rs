@@ -311,7 +311,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         StaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignStaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignTypeItem => ItemEnum::ForeignType,
-        TypedefItem(t) => ItemEnum::Typedef(t.into_tcx(tcx)),
+        TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_tcx(tcx)),
         OpaqueTyItem(t) => ItemEnum::OpaqueTy(t.into_tcx(tcx)),
         ConstantItem(c) => ItemEnum::Constant(c.into_tcx(tcx)),
         MacroItem(m) => ItemEnum::Macro(m.source),
@@ -787,10 +787,10 @@ pub(crate) fn from_macro_kind(kind: rustc_span::hygiene::MacroKind) -> MacroKind
     }
 }
 
-impl FromWithTcx<Box<clean::Typedef>> for Typedef {
-    fn from_tcx(typedef: Box<clean::Typedef>, tcx: TyCtxt<'_>) -> Self {
-        let clean::Typedef { type_, generics, item_type: _ } = *typedef;
-        Typedef { type_: type_.into_tcx(tcx), generics: generics.into_tcx(tcx) }
+impl FromWithTcx<Box<clean::TypeAlias>> for TypeAlias {
+    fn from_tcx(type_alias: Box<clean::TypeAlias>, tcx: TyCtxt<'_>) -> Self {
+        let clean::TypeAlias { type_, generics, item_type: _ } = *type_alias;
+        TypeAlias { type_: type_.into_tcx(tcx), generics: generics.into_tcx(tcx) }
     }
 }
 
@@ -827,7 +827,7 @@ impl FromWithTcx<ItemType> for ItemKind {
             Union => ItemKind::Union,
             Enum => ItemKind::Enum,
             Function | TyMethod | Method => ItemKind::Function,
-            Typedef => ItemKind::Typedef,
+            TypeAlias => ItemKind::TypeAlias,
             OpaqueTy => ItemKind::OpaqueTy,
             Static => ItemKind::Static,
             Constant => ItemKind::Constant,

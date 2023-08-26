@@ -1,6 +1,6 @@
 // compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
 // only-64bit
-// ignore-debug
+// ignore-debug the standard library debug assertions leak into this test
 
 #![crate_type = "lib"]
 

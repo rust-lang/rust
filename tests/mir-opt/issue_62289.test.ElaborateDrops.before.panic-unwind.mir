@@ -100,11 +100,11 @@ fn test() -> Option<Box<u32>> {
     }
 
     bb11 (cleanup): {
-        drop(_1) -> [return: bb13, unwind terminate];
+        drop(_1) -> [return: bb13, unwind terminate(cleanup)];
     }
 
     bb12 (cleanup): {
-        drop(_5) -> [return: bb13, unwind terminate];
+        drop(_5) -> [return: bb13, unwind terminate(cleanup)];
     }
 
     bb13 (cleanup): {

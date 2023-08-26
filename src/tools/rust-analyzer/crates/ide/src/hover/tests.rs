@@ -1557,6 +1557,49 @@ fn test_hover_function_show_types() {
 }
 
 #[test]
+fn test_hover_function_associated_type_params() {
+    check(
+        r#"
+trait Foo { type Bar; }
+impl Foo for i32 { type Bar = i64; }
+fn foo(arg: <i32 as Foo>::Bar) {}
+fn main() { foo$0; }
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn foo(arg: <i32 as Foo>::Bar)
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+trait Foo<T> { type Bar<U>; }
+impl Foo<i64> for i32 { type Bar<U> = i32; }
+fn foo(arg: <<i32 as Foo<i64>>::Bar<i8> as Foo<i64>>::Bar<i8>) {}
+fn main() { foo$0; }
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn foo(arg: <<i32 as Foo<i64>>::Bar<i8> as Foo<i64>>::Bar<i8>)
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_function_pointer_show_identifiers() {
     check(
         r#"type foo$0 = fn(a: i32, b: i32) -> i32;"#,
@@ -3292,7 +3335,50 @@ struct S$0T<const C: usize = 1, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize, T = Foo>
+            struct ST<const C: usize = 1, T = Foo>
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn const_generic_default_value() {
+    check(
+        r#"
+struct Foo;
+struct S$0T<const C: usize = {40 + 2}, T = Foo>(T);
+"#,
+        expect![[r#"
+            *ST*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            struct ST<const C: usize = {const}, T = Foo>
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn const_generic_default_value_2() {
+    check(
+        r#"
+struct Foo;
+const VAL = 1;
+struct S$0T<const C: usize = VAL, T = Foo>(T);
+"#,
+        expect![[r#"
+            *ST*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            struct ST<const C: usize = VAL, T = Foo>
             ```
         "#]],
     );
@@ -6465,6 +6551,25 @@ fn test() {
 
             ```rust
             f: u32 // size = 4, align = 4, offset = 0
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn generic_params_disabled_by_cfg() {
+    check(
+        r#"
+struct S<#[cfg(never)] T>;
+fn test() {
+    let s$0: S = S;
+}
+"#,
+        expect![[r#"
+            *s*
+
+            ```rust
+            let s: S // size = 0, align = 1
             ```
         "#]],
     );

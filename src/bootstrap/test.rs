@@ -630,6 +630,10 @@ impl Step for Miri {
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", sysroot);
         cargo.env("MIRI", &miri);
+        if builder.config.locked_deps {
+            // enforce lockfiles
+            cargo.env("CARGO_EXTRA_FLAGS", "--locked");
+        }
 
         // Set the target.
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
@@ -675,6 +679,9 @@ impl Step for Miri {
         );
         cargo.add_rustc_lib_path(builder, compiler);
         cargo.arg("--").arg("miri").arg("test");
+        if builder.config.locked_deps {
+            cargo.arg("--locked");
+        }
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join("src/tools/miri/test-cargo-miri/Cargo.toml"));
@@ -1167,6 +1174,11 @@ impl Step for ExpandYamlAnchors {
     /// appropriate configuration for all our CI providers. This step ensures the tool was called
     /// by the user before committing CI changes.
     fn run(self, builder: &Builder<'_>) {
+        // Note: `.github/` is not included in dist-src tarballs
+        if !builder.src.join(".github/workflows/ci.yml").exists() {
+            builder.info("Skipping YAML anchors check: GitHub Actions config not found");
+            return;
+        }
         builder.info("Ensuring the YAML anchors in the GitHub Actions config were expanded");
         builder.run_delaying_failure(
             &mut builder.tool_cmd(Tool::ExpandYamlAnchors).arg("check").arg(&builder.src),

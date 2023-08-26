@@ -33,7 +33,7 @@ fn main() -> () {
 
     bb1 (cleanup): {
         (_1.0: Aligned) = move _4;
-        drop(_1) -> [return: bb3, unwind terminate];
+        drop(_1) -> [return: bb3, unwind terminate(cleanup)];
     }
 
     bb2: {

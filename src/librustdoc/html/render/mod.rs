@@ -235,7 +235,7 @@ struct AllTypes {
     traits: FxHashSet<ItemEntry>,
     macros: FxHashSet<ItemEntry>,
     functions: FxHashSet<ItemEntry>,
-    typedefs: FxHashSet<ItemEntry>,
+    type_aliases: FxHashSet<ItemEntry>,
     opaque_tys: FxHashSet<ItemEntry>,
     statics: FxHashSet<ItemEntry>,
     constants: FxHashSet<ItemEntry>,
@@ -255,7 +255,7 @@ impl AllTypes {
             traits: new_set(100),
             macros: new_set(100),
             functions: new_set(100),
-            typedefs: new_set(100),
+            type_aliases: new_set(100),
             opaque_tys: new_set(100),
             statics: new_set(100),
             constants: new_set(100),
@@ -279,7 +279,7 @@ impl AllTypes {
                 ItemType::Trait => self.traits.insert(ItemEntry::new(new_url, name)),
                 ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
                 ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
-                ItemType::Typedef => self.typedefs.insert(ItemEntry::new(new_url, name)),
+                ItemType::TypeAlias => self.type_aliases.insert(ItemEntry::new(new_url, name)),
                 ItemType::OpaqueTy => self.opaque_tys.insert(ItemEntry::new(new_url, name)),
                 ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
                 ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
@@ -317,8 +317,8 @@ impl AllTypes {
         if !self.functions.is_empty() {
             sections.insert(ItemSection::Functions);
         }
-        if !self.typedefs.is_empty() {
-            sections.insert(ItemSection::TypeDefinitions);
+        if !self.type_aliases.is_empty() {
+            sections.insert(ItemSection::TypeAliases);
         }
         if !self.opaque_tys.is_empty() {
             sections.insert(ItemSection::OpaqueTypes);
@@ -374,7 +374,7 @@ impl AllTypes {
         print_entries(f, &self.attribute_macros, ItemSection::AttributeMacros);
         print_entries(f, &self.derive_macros, ItemSection::DeriveMacros);
         print_entries(f, &self.functions, ItemSection::Functions);
-        print_entries(f, &self.typedefs, ItemSection::TypeDefinitions);
+        print_entries(f, &self.type_aliases, ItemSection::TypeAliases);
         print_entries(f, &self.trait_aliases, ItemSection::TraitAliases);
         print_entries(f, &self.opaque_tys, ItemSection::OpaqueTypes);
         print_entries(f, &self.statics, ItemSection::Statics);
@@ -1237,7 +1237,7 @@ fn render_deref_methods(
         .iter()
         .find_map(|item| match *item.kind {
             clean::AssocTypeItem(box ref t, _) => Some(match *t {
-                clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
+                clean::TypeAlias { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
             _ => None,
@@ -2035,7 +2035,7 @@ pub(crate) enum ItemSection {
     Statics,
     Traits,
     Functions,
-    TypeDefinitions,
+    TypeAliases,
     Unions,
     Implementations,
     TypeMethods,
@@ -2067,7 +2067,7 @@ impl ItemSection {
             Statics,
             Traits,
             Functions,
-            TypeDefinitions,
+            TypeAliases,
             Unions,
             Implementations,
             TypeMethods,
@@ -2093,7 +2093,7 @@ impl ItemSection {
             Self::Unions => "unions",
             Self::Enums => "enums",
             Self::Functions => "functions",
-            Self::TypeDefinitions => "types",
+            Self::TypeAliases => "types",
             Self::Statics => "statics",
             Self::Constants => "constants",
             Self::Traits => "traits",
@@ -2123,7 +2123,7 @@ impl ItemSection {
             Self::Unions => "Unions",
             Self::Enums => "Enums",
             Self::Functions => "Functions",
-            Self::TypeDefinitions => "Type Definitions",
+            Self::TypeAliases => "Type Aliases",
             Self::Statics => "Statics",
             Self::Constants => "Constants",
             Self::Traits => "Traits",
@@ -2154,7 +2154,7 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
         ItemType::Union => ItemSection::Unions,
         ItemType::Enum => ItemSection::Enums,
         ItemType::Function => ItemSection::Functions,
-        ItemType::Typedef => ItemSection::TypeDefinitions,
+        ItemType::TypeAlias => ItemSection::TypeAliases,
         ItemType::Static => ItemSection::Statics,
         ItemType::Constant => ItemSection::Constants,
         ItemType::Trait => ItemSection::Traits,

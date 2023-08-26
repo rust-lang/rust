@@ -60,6 +60,11 @@ pub unsafe fn cleanup() {
     net::cleanup();
 }
 
+#[inline]
+pub fn is_interrupted(_errno: i32) -> bool {
+    false
+}
+
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     use ErrorKind::*;
 

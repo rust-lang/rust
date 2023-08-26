@@ -23,8 +23,9 @@ pub mod builtin;
 
 #[macro_export]
 macro_rules! pluralize {
+    // Pluralize based on count (e.g., apples)
     ($x:expr) => {
-        if $x != 1 { "s" } else { "" }
+        if $x == 1 { "" } else { "s" }
     };
     ("has", $x:expr) => {
         if $x == 1 { "has" } else { "have" }
@@ -571,6 +572,10 @@ pub enum BuiltinLintDiagnostics {
     UnusedQualifications {
         /// The span of the unnecessarily-qualified path to remove.
         removal_span: Span,
+    },
+    AssociatedConstElidedLifetime {
+        elided: bool,
+        span: Span,
     },
 }
 

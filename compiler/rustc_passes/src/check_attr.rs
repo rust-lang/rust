@@ -1732,6 +1732,7 @@ impl CheckAttrVisitor<'_> {
             }
 
             match hint.name_or_empty() {
+                sym::Rust => {}
                 sym::C => {
                     is_c = true;
                     match target {

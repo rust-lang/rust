@@ -1,5 +1,4 @@
 // compile-flags: -O -Zmir-opt-level=2 -Cdebuginfo=2
-// ignore-debug
 
 #![crate_type = "lib"]
 

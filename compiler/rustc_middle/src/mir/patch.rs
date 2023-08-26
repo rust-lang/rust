@@ -14,7 +14,8 @@ pub struct MirPatch<'tcx> {
     resume_block: Option<BasicBlock>,
     // Only for unreachable in cleanup path.
     unreachable_cleanup_block: Option<BasicBlock>,
-    terminate_block: Option<BasicBlock>,
+    // Cached block for UnwindTerminate (with reason)
+    terminate_block: Option<(BasicBlock, UnwindTerminateReason)>,
     body_span: Span,
     next_local: usize,
 }
@@ -35,13 +36,15 @@ impl<'tcx> MirPatch<'tcx> {
 
         for (bb, block) in body.basic_blocks.iter_enumerated() {
             // Check if we already have a resume block
-            if let TerminatorKind::UnwindResume = block.terminator().kind && block.statements.is_empty() {
+            if matches!(block.terminator().kind, TerminatorKind::UnwindResume)
+                && block.statements.is_empty()
+            {
                 result.resume_block = Some(bb);
                 continue;
             }
 
             // Check if we already have an unreachable block
-            if let TerminatorKind::Unreachable = block.terminator().kind
+            if matches!(block.terminator().kind, TerminatorKind::Unreachable)
                 && block.statements.is_empty()
                 && block.is_cleanup
             {
@@ -50,8 +53,10 @@ impl<'tcx> MirPatch<'tcx> {
             }
 
             // Check if we already have a terminate block
-            if let TerminatorKind::UnwindTerminate = block.terminator().kind && block.statements.is_empty() {
-                result.terminate_block = Some(bb);
+            if let TerminatorKind::UnwindTerminate(reason) = block.terminator().kind
+                && block.statements.is_empty()
+            {
+                result.terminate_block = Some((bb, reason));
                 continue;
             }
         }
@@ -93,20 +98,20 @@ impl<'tcx> MirPatch<'tcx> {
         bb
     }
 
-    pub fn terminate_block(&mut self) -> BasicBlock {
-        if let Some(bb) = self.terminate_block {
-            return bb;
+    pub fn terminate_block(&mut self, reason: UnwindTerminateReason) -> BasicBlock {
+        if let Some((cached_bb, cached_reason)) = self.terminate_block && reason == cached_reason {
+            return cached_bb;
         }
 
         let bb = self.new_block(BasicBlockData {
             statements: vec![],
             terminator: Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
-                kind: TerminatorKind::UnwindTerminate,
+                kind: TerminatorKind::UnwindTerminate(reason),
             }),
             is_cleanup: true,
         });
-        self.terminate_block = Some(bb);
+        self.terminate_block = Some((bb, reason));
         bb
     }
 

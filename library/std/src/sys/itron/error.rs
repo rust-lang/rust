@@ -79,6 +79,11 @@ pub fn error_name(er: abi::ER) -> Option<&'static str> {
     }
 }
 
+#[inline]
+pub fn is_interrupted(er: abi::ER) -> bool {
+    er == abi::E_RLWAI
+}
+
 pub fn decode_error_kind(er: abi::ER) -> ErrorKind {
     match er {
         // Success

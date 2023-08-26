@@ -2150,6 +2150,7 @@ impl<'tcx> TyCtxt<'tcx> {
         for attr in self.get_attrs(did, sym::repr) {
             for r in attr::parse_repr_attr(&self.sess, attr) {
                 flags.insert(match r {
+                    attr::ReprRust => ReprFlags::empty(),
                     attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked(pack) => {
                         let pack = Align::from_bytes(pack as u64).unwrap();

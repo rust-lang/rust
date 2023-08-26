@@ -88,7 +88,7 @@ fn const_param(p: &mut Parser<'_>, m: Marker) {
 
         // test const_param_default_path
         // struct A<const N: i32 = i32::MAX>;
-        generic_args::const_arg_expr(p);
+        generic_args::const_arg(p);
     }
 
     m.complete(p, CONST_PARAM);

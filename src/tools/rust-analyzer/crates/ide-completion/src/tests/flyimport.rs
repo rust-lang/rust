@@ -1286,3 +1286,57 @@ macro_rules! println {
         expect![""],
     )
 }
+
+#[test]
+fn no_completions_for_external_doc_hidden_in_path() {
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    Span$0
+}
+//- /lib.rs crate:dep
+#[doc(hidden)]
+pub mod bridge {
+    pub mod server {
+        pub trait Span
+    }
+}
+pub mod bridge2 {
+    #[doc(hidden)]
+    pub mod server2 {
+        pub trait Span
+    }
+}
+"#,
+        expect![""],
+    );
+    // unless re-exported
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    Span$0
+}
+//- /lib.rs crate:dep
+#[doc(hidden)]
+pub mod bridge {
+    pub mod server {
+        pub trait Span
+    }
+}
+pub use bridge::server::Span;
+pub mod bridge2 {
+    #[doc(hidden)]
+    pub mod server2 {
+        pub trait Span2
+    }
+}
+pub use bridge2::server2::Span2;
+"#,
+        expect![[r#"
+            tt Span (use dep::Span)
+            tt Span2 (use dep::Span2)
+        "#]],
+    );
+}

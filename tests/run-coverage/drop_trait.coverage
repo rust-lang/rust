@@ -11,7 +11,7 @@
    LL|      2|    }
    LL|       |}
    LL|       |
-   LL|      1|fn main() -> Result<(),u8> {
+   LL|      1|fn main() -> Result<(), u8> {
    LL|      1|    let _firecracker = Firework { strength: 1 };
    LL|      1|
    LL|      1|    let _tnt = Firework { strength: 100 };

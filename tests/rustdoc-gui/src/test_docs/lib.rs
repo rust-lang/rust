@@ -65,6 +65,18 @@ impl Foo {
     pub fn must_use(&self) -> bool {
         true
     }
+
+    /// hello
+    ///
+    /// <div id="doc-warning-1" class="warning">this is a warning</div>
+    ///
+    /// done
+    pub fn warning1() {}
+
+    /// Checking there is no bottom margin if "warning" is the last element.
+    ///
+    /// <div id="doc-warning-2" class="warning">this is a warning</div>
+    pub fn warning2() {}
 }
 
 impl AsRef<str> for Foo {

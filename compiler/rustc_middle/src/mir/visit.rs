@@ -470,7 +470,7 @@ macro_rules! make_mir_visitor {
                 match kind {
                     TerminatorKind::Goto { .. } |
                     TerminatorKind::UnwindResume |
-                    TerminatorKind::UnwindTerminate |
+                    TerminatorKind::UnwindTerminate(_) |
                     TerminatorKind::GeneratorDrop |
                     TerminatorKind::Unreachable |
                     TerminatorKind::FalseEdge { .. } |

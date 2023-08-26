@@ -99,7 +99,11 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
     };
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
 
-    pm::run_passes(
+    // We don't validate MIR here because the shims may generate code that's
+    // only valid in a reveal-all param-env. However, since we do initial
+    // validation with the MirBuilt phase, which uses a user-facing param-env.
+    // This causes validation errors when TAITs are involved.
+    pm::run_passes_no_validate(
         tcx,
         &mut result,
         &[
@@ -566,10 +570,10 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 TerminatorKind::Drop {
                     place: dest_field,
                     target: unwind,
-                    unwind: UnwindAction::Terminate,
+                    unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                     replace: false,
                 },
-                true,
+                /* is_cleanup */ true,
             );
             unwind = next_unwind;
         }
@@ -847,10 +851,10 @@ fn build_call_shim<'tcx>(
             TerminatorKind::Drop {
                 place: rcvr_place(),
                 target: BasicBlock::new(4),
-                unwind: UnwindAction::Terminate,
+                unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                 replace: false,
             },
-            true,
+            /* is_cleanup */ true,
         );
 
         // BB #4 - resume

@@ -25,6 +25,20 @@ pub fn box_uninitialized2() -> Box<MaybeUninit<[usize; 1024 * 1024]>> {
     Box::new(MaybeUninit::uninit())
 }
 
+#[repr(align(1024))]
+pub struct LotsaPadding(usize);
+
+// Boxing a value with padding should not copy junk from the stack
+#[no_mangle]
+pub fn box_lotsa_padding() -> Box<LotsaPadding> {
+    // CHECK-LABEL: @box_lotsa_padding
+    // CHECK-NOT: alloca
+    // CHECK-NOT: getelementptr
+    // CHECK-NOT: memcpy
+    // CHECK-NOT: memset
+    Box::new(LotsaPadding(42))
+}
+
 // Hide the `allocalign` attribute in the declaration of __rust_alloc
 // from the CHECK-NOT above, and also verify the attributes got set reasonably.
 // CHECK: declare {{(dso_local )?}}noalias noundef ptr @__rust_alloc(i{{[0-9]+}} noundef, i{{[0-9]+}} allocalign noundef) unnamed_addr [[RUST_ALLOC_ATTRS:#[0-9]+]]

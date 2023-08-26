@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `(): Foo<N>` is not satisfied
-  --> $DIR/exhaustive-value.rs:262:5
+  --> $DIR/exhaustive-value.rs:262:16
    |
 LL |     <() as Foo<N>>::test()
-   |     ^^^^^^^^^^^^^^^^^^^^ the trait `Foo<N>` is not implemented for `()`
+   |                ^ the trait `Foo<N>` is not implemented for `()`
    |
    = help: the following other types implement trait `Foo<N>`:
              <() as Foo<0>>

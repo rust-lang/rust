@@ -14,10 +14,10 @@ pub use i32 as int;
         expect![[r#"
             crate
             foo: t
-            int: t
+            int: ti
 
             crate::foo
-            int: t
+            int: ti
         "#]],
     );
 }

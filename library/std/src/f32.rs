@@ -822,6 +822,7 @@ impl f32 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[doc(alias = "log1p")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -988,7 +989,9 @@ impl f32 {
         unsafe { cmath::tgammaf(self) }
     }
 
-    /// Returns the natural logarithm of the gamma function.
+    /// Natural logarithm of the absolute value of the gamma function
+    ///
+    /// The integer part of the tuple indicates the sign of the gamma function.
     ///
     /// # Examples
     ///

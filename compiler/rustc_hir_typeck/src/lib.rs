@@ -436,6 +436,12 @@ fn fatally_break_rust(tcx: TyCtxt<'_>) {
         tcx.sess.cfg_version,
         config::host_triple(),
     ));
+    if let Some((flags, excluded_cargo_defaults)) = rustc_session::utils::extra_compiler_flags() {
+        handler.note_without_error(format!("compiler flags: {}", flags.join(" ")));
+        if excluded_cargo_defaults {
+            handler.note_without_error("some of the compiler flags provided by cargo are hidden");
+        }
+    }
 }
 
 fn has_expected_num_generic_args(tcx: TyCtxt<'_>, trait_did: DefId, expected: usize) -> bool {

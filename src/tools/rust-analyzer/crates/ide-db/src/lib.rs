@@ -94,18 +94,21 @@ impl fmt::Debug for RootDatabase {
 }
 
 impl Upcast<dyn ExpandDatabase> for RootDatabase {
+    #[inline]
     fn upcast(&self) -> &(dyn ExpandDatabase + 'static) {
         &*self
     }
 }
 
 impl Upcast<dyn DefDatabase> for RootDatabase {
+    #[inline]
     fn upcast(&self) -> &(dyn DefDatabase + 'static) {
         &*self
     }
 }
 
 impl Upcast<dyn HirDatabase> for RootDatabase {
+    #[inline]
     fn upcast(&self) -> &(dyn HirDatabase + 'static) {
         &*self
     }

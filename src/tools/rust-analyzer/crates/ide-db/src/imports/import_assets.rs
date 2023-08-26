@@ -6,7 +6,7 @@ use hir::{
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
-    ast::{self, HasName},
+    ast::{self, make, HasName},
     utils::path_to_string_stripping_turbo_fish,
     AstNode, SyntaxNode,
 };
@@ -607,7 +607,7 @@ impl ImportCandidate {
     fn for_name(sema: &Semantics<'_, RootDatabase>, name: &ast::Name) -> Option<Self> {
         if sema
             .scope(name.syntax())?
-            .speculative_resolve(&ast::make::ext::ident_path(&name.text()))
+            .speculative_resolve(&make::ext::ident_path(&name.text()))
             .is_some()
         {
             return None;

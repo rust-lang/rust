@@ -20,6 +20,8 @@ note: we would appreciate a joke overview: https://github.com/rust-lang/rust/iss
 
 note: rustc $VERSION running on $TARGET
 
+note: compiler flags: ... -Z ui-testing ... -Z track-diagnostics
+
 error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0268, E0425.

@@ -24,7 +24,7 @@ pub struct Baz;
             foo: t
 
             crate::foo
-            Baz: t v
+            Baz: ti vi
             Foo: t v
             bar: t
 
@@ -237,9 +237,9 @@ pub mod baz { pub struct Bar; }
 "#,
         expect![[r#"
             crate
-            Bar: t v
+            Bar: ti vi
             bar: t
-            baz: t
+            baz: ti
             foo: t
 
             crate::bar
@@ -276,9 +276,9 @@ pub mod baz { pub struct Bar; }
 "#,
         expect![[r#"
             crate
-            Bar: t v
+            Bar: ti vi
             bar: t
-            baz: t
+            baz: ti
             foo: t
 
             crate::bar
@@ -323,7 +323,7 @@ mod d {
             X: t v
 
             crate::b
-            foo: t
+            foo: ti
 
             crate::c
             foo: t
@@ -332,8 +332,8 @@ mod d {
             Y: t v
 
             crate::d
-            Y: t v
-            foo: t
+            Y: ti vi
+            foo: ti
         "#]],
     );
 }
@@ -355,7 +355,7 @@ use event::Event;
         "#,
         expect![[r#"
             crate
-            Event: t
+            Event: ti
             event: t
 
             crate::event

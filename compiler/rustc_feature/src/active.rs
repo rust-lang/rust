@@ -282,7 +282,7 @@ declare_features! (
     (active, arm_target_feature, "1.27.0", Some(44839), None),
     (active, avx512_target_feature, "1.27.0", Some(44839), None),
     (active, bpf_target_feature, "1.54.0", Some(44839), None),
-    (active, csky_target_feature, "CURRENT_RUSTC_VERSION", Some(44839), None),
+    (active, csky_target_feature, "1.73.0", Some(44839), None),
     (active, ermsb_target_feature, "1.49.0", Some(44839), None),
     (active, hexagon_target_feature, "1.27.0", Some(44839), None),
     (active, mips_target_feature, "1.27.0", Some(44839), None),
@@ -315,7 +315,7 @@ declare_features! (
     /// Allows `extern "ptx-*" fn()`.
     (active, abi_ptx, "1.15.0", Some(38788), None),
     /// Allows `extern "riscv-interrupt-m" fn()` and `extern "riscv-interrupt-s" fn()`.
-    (active, abi_riscv_interrupt, "CURRENT_RUSTC_VERSION", Some(111889), None),
+    (active, abi_riscv_interrupt, "1.73.0", Some(111889), None),
     /// Allows `extern "x86-interrupt" fn()`.
     (active, abi_x86_interrupt, "1.17.0", Some(40180), None),
     /// Allows additional const parameter types, such as `&'static str` or user defined types
@@ -341,7 +341,7 @@ declare_features! (
     /// Allows async functions to be declared, implemented, and used in traits.
     (active, async_fn_in_trait, "1.66.0", Some(91611), None),
     /// Allows `#[track_caller]` on async functions.
-    (active, async_fn_track_caller, "CURRENT_RUSTC_VERSION", Some(110011), None),
+    (active, async_fn_track_caller, "1.73.0", Some(110011), None),
     /// Allows builtin # foo() syntax
     (active, builtin_syntax, "1.71.0", Some(110680), None),
     /// Allows `c"foo"` literals.
@@ -353,7 +353,7 @@ declare_features! (
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
     (active, cfg_overflow_checks, "1.71.0", Some(111466), None),
     /// Provides the relocation model information as cfg entry
-    (active, cfg_relocation_model, "CURRENT_RUSTC_VERSION", Some(114929), None),
+    (active, cfg_relocation_model, "1.73.0", Some(114929), None),
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
     /// Allows `cfg(target_abi = "...")`.
@@ -411,7 +411,7 @@ declare_features! (
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (active, deprecated_suggestion, "1.61.0", Some(94785), None),
     /// Allows using the `#[diagnostic]` attribute tool namespace
-    (active, diagnostic_namespace, "CURRENT_RUSTC_VERSION", Some(94785), None),
+    (active, diagnostic_namespace, "1.73.0", Some(94785), None),
     /// Controls errors in trait implementations.
     (active, do_not_recommend, "1.67.0", Some(51992), None),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
@@ -456,7 +456,7 @@ declare_features! (
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
     (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
     /// Allows generic parameters and where-clauses on free & associated const items.
-    (incomplete, generic_const_items, "CURRENT_RUSTC_VERSION", Some(113521), None),
+    (incomplete, generic_const_items, "1.73.0", Some(113521), None),
     /// Allows using `..=X` as a patterns in slices.
     (active, half_open_range_patterns_in_slices, "1.66.0", Some(67264), None),
     /// Allows `if let` guard in match arms.
@@ -584,6 +584,8 @@ declare_features! (
     (active, type_privacy_lints, "1.72.0", Some(48054), None),
     /// Enables rustc to generate code that instructs libstd to NOT ignore SIGPIPE.
     (active, unix_sigpipe, "1.65.0", Some(97889), None),
+    /// Allows unnamed fields of struct and union type
+    (incomplete, unnamed_fields, "CURRENT_RUSTC_VERSION", Some(49804), None),
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
     /// Allows unsized rvalues at arguments and parameters.

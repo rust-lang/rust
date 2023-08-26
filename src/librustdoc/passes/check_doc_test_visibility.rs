@@ -60,7 +60,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::VariantItem(_)
                 | clean::AssocConstItem(..)
                 | clean::AssocTypeItem(..)
-                | clean::TypedefItem(_)
+                | clean::TypeAliasItem(_)
                 | clean::StaticItem(_)
                 | clean::ConstantItem(_)
                 | clean::ExternCrateItem { .. }

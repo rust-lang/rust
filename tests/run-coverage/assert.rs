@@ -6,7 +6,7 @@ fn might_fail_assert(one_plus_one: u32) {
     assert_eq!(1 + 1, one_plus_one, "the argument was wrong");
 }
 
-fn main() -> Result<(),u8> {
+fn main() -> Result<(), u8> {
     let mut countdown = 10;
     while countdown > 0 {
         if countdown == 1 {

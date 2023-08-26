@@ -243,7 +243,7 @@
       }
   
 -     bb25 (cleanup): {
--         drop(_2) -> [return: bb26, unwind terminate];
+-         drop(_2) -> [return: bb26, unwind terminate(cleanup)];
 +     bb22 (cleanup): {
 +         goto -> bb27;
       }

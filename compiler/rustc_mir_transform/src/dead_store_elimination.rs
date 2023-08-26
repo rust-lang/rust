@@ -12,6 +12,7 @@
 //!     will still not cause any further changes.
 //!
 
+use crate::util::is_within_packed;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -49,6 +50,11 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
                     && !place.is_indirect()
                     && !borrowed.contains(place.local)
                     && !state.contains(place.local)
+                    // If `place` is a projection of a disaligned field in a packed ADT,
+                    // the move may be codegened as a pointer to that field.
+                    // Using that disaligned pointer may trigger UB in the callee,
+                    // so do nothing.
+                    && is_within_packed(tcx, body, place).is_none()
                 {
                     call_operands_to_move.push((bb, index));
                 }

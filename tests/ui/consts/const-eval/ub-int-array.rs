@@ -1,4 +1,3 @@
-// stderr-per-bitwidth
 //! Test the "array of int" fast path in validity checking, and in particular whether it
 //! points at the right array element.
 
@@ -19,7 +18,12 @@ impl<T: Copy> MaybeUninit<T> {
 const UNINIT_INT_0: [u32; 3] = unsafe {
     //~^ ERROR it is undefined behavior to use this value
     //~| invalid value at [0]
-    mem::transmute([MaybeUninit { uninit: () }, MaybeUninit::new(1), MaybeUninit::new(2)])
+    mem::transmute([
+        MaybeUninit { uninit: () },
+        // Constants chosen to achieve endianness-independent hex dump.
+        MaybeUninit::new(0x11111111),
+        MaybeUninit::new(0x22222222),
+    ])
 };
 const UNINIT_INT_1: [u32; 3] = unsafe {
     //~^ ERROR it is undefined behavior to use this value

@@ -98,7 +98,7 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
     };
 
     if true {
-        // FIXME: should emit "this `if` has identical blocks"
+        //~^ ERROR: this `if` has identical blocks
         Ok("foo")?;
     } else {
         Ok("foo")?;

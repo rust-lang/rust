@@ -67,7 +67,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     }
 
     bb9 (cleanup): {
-        drop(_3) -> [return: bb10, unwind terminate];
+        drop(_3) -> [return: bb10, unwind terminate(cleanup)];
     }
 
     bb10 (cleanup): {

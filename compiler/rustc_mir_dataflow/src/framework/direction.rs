@@ -1,5 +1,5 @@
 use rustc_middle::mir::{
-    self, BasicBlock, CallReturnPlaces, Location, SwitchTargets, TerminatorEdges, UnwindAction,
+    self, BasicBlock, CallReturnPlaces, Location, SwitchTargets, TerminatorEdges,
 };
 use std::ops::RangeInclusive;
 
@@ -486,10 +486,10 @@ impl Direction for Forward {
                 propagate(target, exit_state);
                 propagate(unwind, exit_state);
             }
-            TerminatorEdges::AssignOnReturn { return_, unwind, place } => {
+            TerminatorEdges::AssignOnReturn { return_, cleanup, place } => {
                 // This must be done *first*, otherwise the unwind path will see the assignments.
-                if let UnwindAction::Cleanup(unwind) = unwind {
-                    propagate(unwind, exit_state);
+                if let Some(cleanup) = cleanup {
+                    propagate(cleanup, exit_state);
                 }
                 if let Some(return_) = return_ {
                     analysis.apply_call_return_effect(exit_state, bb, place);

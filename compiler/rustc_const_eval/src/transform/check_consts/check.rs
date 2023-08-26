@@ -1037,7 +1037,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 self.check_op(ops::Generator(hir::GeneratorKind::Gen))
             }
 
-            TerminatorKind::UnwindTerminate => {
+            TerminatorKind::UnwindTerminate(_) => {
                 // Cleanup blocks are skipped for const checking (see `visit_basic_block_data`).
                 span_bug!(self.span, "`Terminate` terminator outside of cleanup block")
             }

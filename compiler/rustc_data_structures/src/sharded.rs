@@ -1,31 +1,26 @@
 use crate::fx::{FxHashMap, FxHasher};
 #[cfg(parallel_compiler)]
-use crate::sync::is_dyn_thread_safe;
-use crate::sync::{CacheAligned, Lock, LockGuard};
+use crate::sync::{is_dyn_thread_safe, CacheAligned};
+use crate::sync::{Lock, LockGuard};
 use std::borrow::Borrow;
 use std::collections::hash_map::RawEntryMut;
 use std::hash::{Hash, Hasher};
 use std::mem;
 
-#[cfg(parallel_compiler)]
 // 32 shards is sufficient to reduce contention on an 8-core Ryzen 7 1700,
 // but this should be tested on higher core count CPUs. How the `Sharded` type gets used
 // may also affect the ideal number of shards.
 const SHARD_BITS: usize = 5;
 
-#[cfg(not(parallel_compiler))]
-const SHARD_BITS: usize = 0;
-
-pub const SHARDS: usize = 1 << SHARD_BITS;
+#[cfg(parallel_compiler)]
+const SHARDS: usize = 1 << SHARD_BITS;
 
 /// An array of cache-line aligned inner locked structures with convenience methods.
-pub struct Sharded<T> {
-    /// This mask is used to ensure that accesses are inbounds of `shards`.
-    /// When dynamic thread safety is off, this field is set to 0 causing only
-    /// a single shard to be used for greater cache efficiency.
+/// A single field is used when the compiler uses only one thread.
+pub enum Sharded<T> {
+    Single(Lock<T>),
     #[cfg(parallel_compiler)]
-    mask: usize,
-    shards: [CacheAligned<Lock<T>>; SHARDS],
+    Shards(Box<[CacheAligned<Lock<T>>; SHARDS]>),
 }
 
 impl<T: Default> Default for Sharded<T> {
@@ -38,35 +33,24 @@ impl<T: Default> Default for Sharded<T> {
 impl<T> Sharded<T> {
     #[inline]
     pub fn new(mut value: impl FnMut() -> T) -> Self {
-        Sharded {
-            #[cfg(parallel_compiler)]
-            mask: if is_dyn_thread_safe() { SHARDS - 1 } else { 0 },
-            shards: [(); SHARDS].map(|()| CacheAligned(Lock::new(value()))),
-        }
-    }
-
-    #[inline(always)]
-    fn mask(&self) -> usize {
         #[cfg(parallel_compiler)]
-        {
-            if SHARDS == 1 { 0 } else { self.mask }
+        if is_dyn_thread_safe() {
+            return Sharded::Shards(Box::new(
+                [(); SHARDS].map(|()| CacheAligned(Lock::new(value()))),
+            ));
         }
-        #[cfg(not(parallel_compiler))]
-        {
-            0
-        }
-    }
 
-    #[inline(always)]
-    fn count(&self) -> usize {
-        // `self.mask` is always one below the used shard count
-        self.mask() + 1
+        Sharded::Single(Lock::new(value()))
     }
 
     /// The shard is selected by hashing `val` with `FxHasher`.
     #[inline]
-    pub fn get_shard_by_value<K: Hash + ?Sized>(&self, val: &K) -> &Lock<T> {
-        self.get_shard_by_hash(if SHARDS == 1 { 0 } else { make_hash(val) })
+    pub fn get_shard_by_value<K: Hash + ?Sized>(&self, _val: &K) -> &Lock<T> {
+        match self {
+            Self::Single(single) => &single,
+            #[cfg(parallel_compiler)]
+            Self::Shards(..) => self.get_shard_by_hash(make_hash(_val)),
+        }
     }
 
     #[inline]
@@ -75,18 +59,42 @@ impl<T> Sharded<T> {
     }
 
     #[inline]
-    pub fn get_shard_by_index(&self, i: usize) -> &Lock<T> {
-        // SAFETY: The index get ANDed with the mask, ensuring it is always inbounds.
-        unsafe { &self.shards.get_unchecked(i & self.mask()).0 }
+    pub fn get_shard_by_index(&self, _i: usize) -> &Lock<T> {
+        match self {
+            Self::Single(single) => &single,
+            #[cfg(parallel_compiler)]
+            Self::Shards(shards) => {
+                // SAFETY: The index gets ANDed with the shard mask, ensuring it is always inbounds.
+                unsafe { &shards.get_unchecked(_i & (SHARDS - 1)).0 }
+            }
+        }
     }
 
     pub fn lock_shards(&self) -> Vec<LockGuard<'_, T>> {
-        (0..self.count()).map(|i| self.get_shard_by_index(i).lock()).collect()
+        match self {
+            Self::Single(single) => vec![single.lock()],
+            #[cfg(parallel_compiler)]
+            Self::Shards(shards) => shards.iter().map(|shard| shard.0.lock()).collect(),
+        }
     }
 
     pub fn try_lock_shards(&self) -> Option<Vec<LockGuard<'_, T>>> {
-        (0..self.count()).map(|i| self.get_shard_by_index(i).try_lock()).collect()
+        match self {
+            Self::Single(single) => Some(vec![single.try_lock()?]),
+            #[cfg(parallel_compiler)]
+            Self::Shards(shards) => shards.iter().map(|shard| shard.0.try_lock()).collect(),
+        }
     }
+}
+
+#[inline]
+pub fn shards() -> usize {
+    #[cfg(parallel_compiler)]
+    if is_dyn_thread_safe() {
+        return SHARDS;
+    }
+
+    1
 }
 
 pub type ShardedHashMap<K, V> = Sharded<FxHashMap<K, V>>;

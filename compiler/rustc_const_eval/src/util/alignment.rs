@@ -40,7 +40,7 @@ where
     }
 }
 
-fn is_within_packed<'tcx, L>(
+pub fn is_within_packed<'tcx, L>(
     tcx: TyCtxt<'tcx>,
     local_decls: &L,
     place: Place<'tcx>,

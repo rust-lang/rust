@@ -104,7 +104,7 @@ pub mod glob_reexport {
     // @count - '//*[@id="main-content"]/*[@class="small-section-header"]' 3
     // @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Re-exports'
     // @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Structs'
-    // @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Type Definitions'
+    // @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Type Aliases'
 
     // Now we check we have 1 re-export and 2 inlined items.
     // If not item from a glob re-export is visible, we don't show the re-export.
@@ -135,9 +135,9 @@ pub mod doc_hidden_reexport {
     // @has - '//a[@class="struct"]' 'Reexport'
     // Check that the `#[doc(hidden)]` re-export's attributes are not taken into account.
     // @has - '//*[@class="desc docblock-short"]' 'Visible. Original.'
+    /// Visible.
+    pub use self::Bar3 as Reexport;
     /// Hidden.
     #[doc(hidden)]
     pub use crate::private::Bar3;
-    /// Visible.
-    pub use self::Bar3 as Reexport;
 }

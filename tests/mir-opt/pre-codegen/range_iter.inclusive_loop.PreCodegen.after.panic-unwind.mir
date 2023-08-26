@@ -82,7 +82,7 @@ fn inclusive_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     }
 
     bb8 (cleanup): {
-        drop(_3) -> [return: bb9, unwind terminate];
+        drop(_3) -> [return: bb9, unwind terminate(cleanup)];
     }
 
     bb9 (cleanup): {

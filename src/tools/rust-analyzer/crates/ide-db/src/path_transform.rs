@@ -5,7 +5,7 @@ use either::Either;
 use hir::{AsAssocItem, HirDisplay, SemanticsScope};
 use rustc_hash::FxHashMap;
 use syntax::{
-    ast::{self, AstNode},
+    ast::{self, make, AstNode},
     ted, SyntaxNode,
 };
 
@@ -21,6 +21,7 @@ enum TypeOrConst {
 }
 
 type LifetimeName = String;
+type DefaultedParam = Either<hir::TypeParam, hir::ConstParam>;
 
 /// `PathTransform` substitutes path in SyntaxNodes in bulk.
 ///
@@ -115,7 +116,7 @@ impl<'a> PathTransform<'a> {
         };
         let mut type_substs: FxHashMap<hir::TypeParam, ast::Type> = Default::default();
         let mut const_substs: FxHashMap<hir::ConstParam, SyntaxNode> = Default::default();
-        let mut default_types: Vec<hir::TypeParam> = Default::default();
+        let mut defaulted_params: Vec<DefaultedParam> = Default::default();
         self.generic_def
             .into_iter()
             .flat_map(|it| it.type_params(db))
@@ -138,8 +139,8 @@ impl<'a> PathTransform<'a> {
                         if let Some(default) =
                             &default.display_source_code(db, source_module.into(), false).ok()
                         {
-                            type_substs.insert(k, ast::make::ty(default).clone_for_update());
-                            default_types.push(k);
+                            type_substs.insert(k, make::ty(default).clone_for_update());
+                            defaulted_params.push(Either::Left(k));
                         }
                     }
                 }
@@ -155,11 +156,19 @@ impl<'a> PathTransform<'a> {
                         // is a standalone statement or a part of another expresson)
                         // and sometimes require slight modifications; see
                         // https://doc.rust-lang.org/reference/statements.html#expression-statements
+                        // (default values in curly brackets can cause the same problem)
                         const_substs.insert(k, expr.syntax().clone());
                     }
                 }
-                (Either::Left(_), None) => (), // FIXME: get default const value
-                _ => (),                       // ignore mismatching params
+                (Either::Left(k), None) => {
+                    if let Some(default) = k.default(db) {
+                        if let Some(default) = default.expr() {
+                            const_substs.insert(k, default.syntax().clone_for_update());
+                            defaulted_params.push(Either::Right(k));
+                        }
+                    }
+                }
+                _ => (), // ignore mismatching params
             });
         let lifetime_substs: FxHashMap<_, _> = self
             .generic_def
@@ -175,7 +184,7 @@ impl<'a> PathTransform<'a> {
             target_module,
             source_scope: self.source_scope,
         };
-        ctx.transform_default_type_substs(default_types);
+        ctx.transform_default_values(defaulted_params);
         ctx
     }
 }
@@ -212,13 +221,19 @@ impl Ctx<'_> {
         });
     }
 
-    fn transform_default_type_substs(&self, default_types: Vec<hir::TypeParam>) {
-        for k in default_types {
-            let v = self.type_substs.get(&k).unwrap();
+    fn transform_default_values(&self, defaulted_params: Vec<DefaultedParam>) {
+        // By now the default values are simply copied from where they are declared
+        // and should be transformed. As any value is allowed to refer to previous
+        // generic (both type and const) parameters, they should be all iterated left-to-right.
+        for param in defaulted_params {
+            let value = match param {
+                Either::Left(k) => self.type_substs.get(&k).unwrap().syntax(),
+                Either::Right(k) => self.const_substs.get(&k).unwrap(),
+            };
             // `transform_path` may update a node's parent and that would break the
             // tree traversal. Thus all paths in the tree are collected into a vec
             // so that such operation is safe.
-            let paths = postorder(&v.syntax()).filter_map(ast::Path::cast).collect::<Vec<_>>();
+            let paths = postorder(value).filter_map(ast::Path::cast).collect::<Vec<_>>();
             for path in paths {
                 self.transform_path(path);
             }
@@ -263,15 +278,14 @@ impl Ctx<'_> {
                                 hir::ModuleDef::Trait(trait_ref),
                                 false,
                             )?;
-                            match ast::make::ty_path(mod_path_to_ast(&found_path)) {
+                            match make::ty_path(mod_path_to_ast(&found_path)) {
                                 ast::Type::PathType(path_ty) => Some(path_ty),
                                 _ => None,
                             }
                         });
 
-                        let segment = ast::make::path_segment_ty(subst.clone(), trait_ref);
-                        let qualified =
-                            ast::make::path_from_segments(std::iter::once(segment), false);
+                        let segment = make::path_segment_ty(subst.clone(), trait_ref);
+                        let qualified = make::path_from_segments(std::iter::once(segment), false);
                         ted::replace(path.syntax(), qualified.clone_for_update().syntax());
                     } else if let Some(path_ty) = ast::PathType::cast(parent) {
                         ted::replace(

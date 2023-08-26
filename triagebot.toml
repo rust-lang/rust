@@ -177,6 +177,98 @@ exclude_labels = [
     "T-*",
 ]
 
+[autolabel."O-android"]
+trigger_files = [
+    "library/std/src/os/android"
+]
+
+[autolabel."O-fuchsia"]
+trigger_files = [
+    "library/std/src/os/fuchsia"
+]
+
+[autolabel."O-hermit"]
+trigger_files = [
+    "library/std/src/sys/hermit",
+    "library/std/src/os/hermit"
+]
+
+[autolabel."O-ios"]
+trigger_files = [
+    "library/std/src/os/ios"
+]
+
+[autolabel."O-itron"]
+trigger_files = [
+    "library/std/src/sys/itron"
+]
+
+[autolabel."O-linux"]
+trigger_files = [
+    "library/std/src/os/linux"
+]
+
+[autolabel."O-macos"]
+trigger_files = [
+    "library/std/src/os/macos"
+]
+
+[autolabel."O-netbsd"]
+trigger_files = [
+    "library/std/src/os/netbsd"
+]
+
+[autolabel."O-redox"]
+trigger_files = [
+    "library/std/src/os/redox"
+]
+
+[autolabel."O-SGX"]
+trigger_files = [
+    "library/std/src/sys/sgx",
+    "library/std/src/os/fortanix_sgx"
+]
+
+[autolabel."O-solaris"]
+trigger_files = [
+    "library/std/src/os/solaris"
+]
+
+[autolabel."O-solid"]
+trigger_files = [
+    "library/std/src/sys/solid",
+    "library/std/src/os/solid"
+]
+
+[autolabel."O-unix"]
+trigger_files = [
+    "library/std/src/sys/unix",
+    "library/std/src/os/unix"
+]
+
+[autolabel."O-wasi"]
+trigger_files = [
+    "library/std/src/sys/wasi",
+    "library/std/src/os/wasi"
+]
+
+[autolabel."O-wasm"]
+trigger_files = [
+    "library/std/src/sys/wasm",
+    "library/std/src/os/wasm"
+]
+
+[autolabel."O-watchos"]
+trigger_files = [
+    "library/std/src/os/watchos"
+]
+
+[autolabel."O-windows"]
+trigger_files = [
+    "library/std/src/sys/windows",
+    "library/std/src/os/windows"
+]
+
 [autolabel."T-bootstrap"]
 trigger_files = [
     "x.py",
@@ -470,6 +562,10 @@ Otherwise, you can ignore this comment.
 [mentions."src/tools/x"]
 message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
 
+[mentions."src/tools/tidy/src/deps.rs"]
+message = "Third-party dependency whitelist may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
+cc = ["@davidtwco", "@wesleywiser"]
+
 [mentions."src/bootstrap/defaults/config.compiler.toml"]
 message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appropriate, please also update `config.codegen.toml` so the defaults are in sync."
 [mentions."src/bootstrap/defaults/config.codegen.toml"]
@@ -505,7 +601,6 @@ compiler-team-contributors = [
     "@TaKO8Ki",
     "@WaffleLapkin",
     "@b-naber",
-    "@fee1-dead",
 ]
 compiler = [
     "compiler-team",

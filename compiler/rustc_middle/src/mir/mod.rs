@@ -1275,9 +1275,11 @@ impl<O> AssertKind<O> {
         matches!(self, OverflowNeg(..) | Overflow(Add | Sub | Mul | Shl | Shr, ..))
     }
 
-    /// Getting a description does not require `O` to be printable, and does not
-    /// require allocation.
-    /// The caller is expected to handle `BoundsCheck` and `MisalignedPointerDereference` separately.
+    /// Get the message that is printed at runtime when this assertion fails.
+    ///
+    /// The caller is expected to handle `BoundsCheck` and `MisalignedPointerDereference` by
+    /// invoking the appropriate lang item (panic_bounds_check/panic_misaligned_pointer_dereference)
+    /// instead of printing a static message.
     pub fn description(&self) -> &'static str {
         use AssertKind::*;
         match self {
@@ -1303,6 +1305,11 @@ impl<O> AssertKind<O> {
     }
 
     /// Format the message arguments for the `assert(cond, msg..)` terminator in MIR printing.
+    ///
+    /// Needs to be kept in sync with the run-time behavior (which is defined by
+    /// `AssertKind::description` and the lang items mentioned in its docs).
+    /// Note that we deliberately show more details here than we do at runtime, such as the actual
+    /// numbers that overflowed -- it is much easier to do so here than at runtime.
     pub fn fmt_assert_args<W: Write>(&self, f: &mut W) -> fmt::Result
     where
         O: Debug,
@@ -1358,6 +1365,12 @@ impl<O> AssertKind<O> {
         }
     }
 
+    /// Format the diagnostic message for use in a lint (e.g. when the assertion fails during const-eval).
+    ///
+    /// Needs to be kept in sync with the run-time behavior (which is defined by
+    /// `AssertKind::description` and the lang items mentioned in its docs).
+    /// Note that we deliberately show more details here than we do at runtime, such as the actual
+    /// numbers that overflowed -- it is much easier to do so here than at runtime.
     pub fn diagnostic_message(&self) -> DiagnosticMessage {
         use crate::fluent_generated::*;
         use AssertKind::*;

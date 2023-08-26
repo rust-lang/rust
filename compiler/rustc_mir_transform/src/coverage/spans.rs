@@ -868,7 +868,7 @@ pub(super) fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Sp
 
         // Retain spans from all other terminators
         TerminatorKind::UnwindResume
-        | TerminatorKind::UnwindTerminate
+        | TerminatorKind::UnwindTerminate(_)
         | TerminatorKind::Return
         | TerminatorKind::Yield { .. }
         | TerminatorKind::GeneratorDrop
