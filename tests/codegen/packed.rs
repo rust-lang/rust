@@ -119,14 +119,22 @@ pub struct Packed2Pair(u8, u32);
 // CHECK-LABEL: @pkd1_pair
 #[no_mangle]
 pub fn pkd1_pair(pair1: &mut Packed1Pair, pair2: &mut Packed1Pair) {
-// CHECK: call void @llvm.memcpy.{{.*}}(ptr align 1 %{{.*}}, ptr align 1 %{{.*}}, i{{[0-9]+}} 5, i1 false)
+// CHECK: [[ALLOCA:%.+]] = alloca %Packed1Pair, align 1
+// CHECK: [[TEMP1:%.+]] = load i40, ptr %pair1, align 1
+// CHECK: store i40 [[TEMP1]], ptr [[ALLOCA]], align 1
+// CHECK: [[TEMP2:%.+]] = load i40, ptr [[ALLOCA]], align 1
+// CHECK: store i40 [[TEMP2]], ptr %pair2, align 1
     *pair2 = *pair1;
 }
 
 // CHECK-LABEL: @pkd2_pair
 #[no_mangle]
 pub fn pkd2_pair(pair1: &mut Packed2Pair, pair2: &mut Packed2Pair) {
-// CHECK: call void @llvm.memcpy.{{.*}}(ptr align 2 %{{.*}}, ptr align 2 %{{.*}}, i{{[0-9]+}} 6, i1 false)
+// CHECK: [[ALLOCA:%.+]] = alloca %Packed2Pair, align 2
+// CHECK: [[TEMP1:%.+]] = load i48, ptr %pair1, align 2
+// CHECK: store i48 [[TEMP1]], ptr [[ALLOCA]], align 2
+// CHECK: [[TEMP2:%.+]] = load i48, ptr [[ALLOCA]], align 2
+// CHECK: store i48 [[TEMP2]], ptr %pair2, align 2
     *pair2 = *pair1;
 }
 
@@ -141,13 +149,21 @@ pub struct Packed2NestedPair((u32, u32));
 // CHECK-LABEL: @pkd1_nested_pair
 #[no_mangle]
 pub fn pkd1_nested_pair(pair1: &mut Packed1NestedPair, pair2: &mut Packed1NestedPair) {
-// CHECK: call void @llvm.memcpy.{{.*}}(ptr align 1 %{{.*}}, ptr align 1 %{{.*}}, i{{[0-9]+}} 8, i1 false)
+// CHECK: [[ALLOCA:%.+]] = alloca %Packed1NestedPair, align 1
+// CHECK: [[TEMP1:%.+]] = load i64, ptr %pair1, align 1
+// CHECK: store i64 [[TEMP1]], ptr [[ALLOCA]], align 1
+// CHECK: [[TEMP2:%.+]] = load i64, ptr [[ALLOCA]], align 1
+// CHECK: store i64 [[TEMP2]], ptr %pair2, align 1
     *pair2 = *pair1;
 }
 
 // CHECK-LABEL: @pkd2_nested_pair
 #[no_mangle]
 pub fn pkd2_nested_pair(pair1: &mut Packed2NestedPair, pair2: &mut Packed2NestedPair) {
-// CHECK: call void @llvm.memcpy.{{.*}}(ptr align 2 %{{.*}}, ptr align 2 %{{.*}}, i{{[0-9]+}} 8, i1 false)
+// CHECK: [[ALLOCA:%.+]] = alloca %Packed2NestedPair, align 2
+// CHECK: [[TEMP1:%.+]] = load i64, ptr %pair1, align 2
+// CHECK: store i64 [[TEMP1]], ptr [[ALLOCA]], align 2
+// CHECK: [[TEMP2:%.+]] = load i64, ptr [[ALLOCA]], align 2
+// CHECK: store i64 [[TEMP2]], ptr %pair2, align 2
     *pair2 = *pair1;
 }

@@ -37,8 +37,19 @@ pub fn replace_ref_str<'a>(r: &mut &'a str, v: &'a str) -> &'a str {
 pub fn replace_short_array(r: &mut [u32; 3], v: [u32; 3]) -> [u32; 3] {
     // CHECK-NOT: alloca
     // CHECK: %[[R:.+]] = load <3 x i32>, ptr %r, align 4
-    // CHECK: store <3 x i32> %[[R]], ptr %result
+    // CHECK: store <3 x i32> %[[R]], ptr %result, align 4
     // CHECK: %[[V:.+]] = load <3 x i32>, ptr %v, align 4
-    // CHECK: store <3 x i32> %[[V]], ptr %r
+    // CHECK: store <3 x i32> %[[V]], ptr %r, align 4
+    std::mem::replace(r, v)
+}
+
+#[no_mangle]
+// CHECK-LABEL: @replace_string(
+pub fn replace_string(r: &mut String, v: String) -> String {
+    // CHECK-NOT: alloca
+    // CHECK: %[[R:.+]] = load i192, ptr %r, align 8
+    // CHECK: store i192 %[[R]], ptr %result, align 8
+    // CHECK: %[[V:.+]] = load i192, ptr %v, align 8
+    // CHECK: store i192 %[[V]], ptr %r, align 8
     std::mem::replace(r, v)
 }

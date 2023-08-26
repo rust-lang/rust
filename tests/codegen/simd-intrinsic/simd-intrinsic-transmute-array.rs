@@ -35,7 +35,8 @@ pub fn vector_align() -> usize {
 // CHECK-LABEL: @build_array_s
 #[no_mangle]
 pub fn build_array_s(x: [f32; 4]) -> S<4> {
-    // CHECK: call void @llvm.memcpy.{{.+}}({{.*}} align [[VECTOR_ALIGN]] {{.*}} align [[ARRAY_ALIGN]] {{.*}}, [[USIZE]] 16, i1 false)
+    // CHECK: %[[VAL:.+]] = load <4 x float>, ptr %x, align [[ARRAY_ALIGN]]
+    // CHECK: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
     S::<4>(x)
 }
 
@@ -50,7 +51,8 @@ pub fn build_array_transmute_s(x: [f32; 4]) -> S<4> {
 // CHECK-LABEL: @build_array_t
 #[no_mangle]
 pub fn build_array_t(x: [f32; 4]) -> T {
-    // CHECK: call void @llvm.memcpy.{{.+}}({{.*}} align [[VECTOR_ALIGN]] {{.*}} align [[ARRAY_ALIGN]] {{.*}}, [[USIZE]] 16, i1 false)
+    // CHECK: %[[VAL:.+]] = load <4 x float>, ptr %x, align [[ARRAY_ALIGN]]
+    // CHECK: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
     T(x)
 }
 
