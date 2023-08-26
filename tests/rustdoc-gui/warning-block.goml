@@ -14,13 +14,13 @@ define-function: (
             "margin-bottom": "12px",
             "color": |color|,
             "border-left": "2px solid " + |border_color|,
-            "background-color": |background_color|,
+            "background-color": "transparent",
         })
         assert-css: ("#doc-warning-2", {
             "margin-bottom": "0px",
             "color": |color|,
             "border-left": "2px solid " + |border_color|,
-            "background-color": |background_color|,
+            "background-color": "transparent",
         })
     },
 )
@@ -29,17 +29,14 @@ call-function: ("check-warning", {
     "theme": "ayu",
     "color": "#c5c5c5",
     "border_color": "#ff8e00",
-    "background_color": "transparent",
 })
 call-function: ("check-warning", {
     "theme": "dark",
     "color": "#ddd",
     "border_color": "#ff8e00",
-    "background_color": "transparent",
 })
 call-function: ("check-warning", {
     "theme": "light",
     "color": "black",
     "border_color": "#ff8e00",
-    "background_color": "transparent",
 })
