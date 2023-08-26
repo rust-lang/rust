@@ -241,6 +241,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             let dbginfo = VarDebugInfo {
                 name,
                 source_info: SourceInfo { span, scope: self.source_scope },
+                composite: None,
                 argument_index: None,
                 value,
             };

@@ -823,6 +823,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     name,
                     source_info: SourceInfo::outermost(captured_place.var_ident.span),
                     value: VarDebugInfoContents::Place(use_place),
+                    composite: None,
                     argument_index: None,
                 });
 
@@ -852,6 +853,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     name,
                     source_info,
                     value: VarDebugInfoContents::Place(arg_local.into()),
+                    composite: None,
                     argument_index: Some(argument_index as u16 + 1),
                 });
             }

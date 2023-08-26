@@ -33,7 +33,8 @@
 +     let _32: u32;
       scope 1 {
 -         debug foo => _1;
-+         debug foo => Foo<T>{ .0 => _31, .1 => _32, };
++         debug ((foo: Foo<T>).0: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>) => _31;
++         debug ((foo: Foo<T>).1: u32) => _32;
           let _5: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>;
           scope 2 {
               debug x => _5;

@@ -554,10 +554,7 @@ fn write_scope_tree(
             continue;
         }
 
-        let indented_debug_info = format!(
-            "{0:1$}debug {2} => {3:?};",
-            INDENT, indent, var_debug_info.name, var_debug_info.value,
-        );
+        let indented_debug_info = format!("{0:1$}debug {2:?};", INDENT, indent, var_debug_info);
 
         if tcx.sess.opts.unstable_opts.mir_include_spans {
             writeln!(

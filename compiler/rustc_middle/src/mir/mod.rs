@@ -1028,19 +1028,6 @@ pub enum VarDebugInfoContents<'tcx> {
     /// This `Place` only contains projection which satisfy `can_use_in_debuginfo`.
     Place(Place<'tcx>),
     Const(Constant<'tcx>),
-    /// The user variable's data is split across several fragments,
-    /// each described by a `VarDebugInfoFragment`.
-    /// See DWARF 5's "2.6.1.2 Composite Location Descriptions"
-    /// and LLVM's `DW_OP_LLVM_fragment` for more details on
-    /// the underlying debuginfo feature this relies on.
-    Composite {
-        /// Type of the original user variable.
-        /// This cannot contain a union or an enum.
-        ty: Ty<'tcx>,
-        /// All the parts of the original user variable, which ended
-        /// up in disjoint places, due to optimizations.
-        fragments: Vec<VarDebugInfoFragment<'tcx>>,
-    },
 }
 
 impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
@@ -1048,19 +1035,16 @@ impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
         match self {
             VarDebugInfoContents::Const(c) => write!(fmt, "{c}"),
             VarDebugInfoContents::Place(p) => write!(fmt, "{p:?}"),
-            VarDebugInfoContents::Composite { ty, fragments } => {
-                write!(fmt, "{ty:?}{{ ")?;
-                for f in fragments.iter() {
-                    write!(fmt, "{f:?}, ")?;
-                }
-                write!(fmt, "}}")
-            }
         }
     }
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct VarDebugInfoFragment<'tcx> {
+    /// Type of the original user variable.
+    /// This cannot contain a union or an enum.
+    pub ty: Ty<'tcx>,
+
     /// Where in the composite user variable this fragment is,
     /// represented as a "projection" into the composite variable.
     /// At lower levels, this corresponds to a byte/bit range.
@@ -1071,29 +1055,10 @@ pub struct VarDebugInfoFragment<'tcx> {
     // to match on the discriminant, or by using custom type debuginfo
     // with non-overlapping variants for the composite variable.
     pub projection: Vec<PlaceElem<'tcx>>,
-
-    /// Where the data for this fragment can be found.
-    /// This `Place` only contains projection which satisfy `can_use_in_debuginfo`.
-    pub contents: Place<'tcx>,
-}
-
-impl Debug for VarDebugInfoFragment<'_> {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        for elem in self.projection.iter() {
-            match elem {
-                ProjectionElem::Field(field, _) => {
-                    write!(fmt, ".{:?}", field.index())?;
-                }
-                _ => bug!("unsupported fragment projection `{:?}`", elem),
-            }
-        }
-
-        write!(fmt, " => {:?}", self.contents)
-    }
 }
 
 /// Debug information pertaining to a user variable.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct VarDebugInfo<'tcx> {
     pub name: Symbol,
 
@@ -1102,6 +1067,13 @@ pub struct VarDebugInfo<'tcx> {
     /// (see `LocalDecl`'s `source_info` field for more details).
     pub source_info: SourceInfo,
 
+    /// The user variable's data is split across several fragments,
+    /// each described by a `VarDebugInfoFragment`.
+    /// See DWARF 5's "2.6.1.2 Composite Location Descriptions"
+    /// and LLVM's `DW_OP_LLVM_fragment` for more details on
+    /// the underlying debuginfo feature this relies on.
+    pub composite: Option<Box<VarDebugInfoFragment<'tcx>>>,
+
     /// Where the data for this user variable is to be found.
     pub value: VarDebugInfoContents<'tcx>,
 
@@ -1109,6 +1081,20 @@ pub struct VarDebugInfo<'tcx> {
     /// originated from (starting from 1). Note, if MIR inlining is enabled, then this is the
     /// argument number in the original function before it was inlined.
     pub argument_index: Option<u16>,
+}
+
+impl Debug for VarDebugInfo<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        if let Some(box VarDebugInfoFragment { ty, ref projection }) = self.composite {
+            pre_fmt_projection(&projection[..], fmt)?;
+            write!(fmt, "({}: {})", self.name, ty)?;
+            post_fmt_projection(&projection[..], fmt)?;
+        } else {
+            write!(fmt, "{}", self.name)?;
+        }
+
+        write!(fmt, " => {:?}", self.value)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -3070,6 +3056,6 @@ mod size_asserts {
     static_assert_size!(StatementKind<'_>, 16);
     static_assert_size!(Terminator<'_>, 104);
     static_assert_size!(TerminatorKind<'_>, 88);
-    static_assert_size!(VarDebugInfo<'_>, 80);
+    static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end
 }

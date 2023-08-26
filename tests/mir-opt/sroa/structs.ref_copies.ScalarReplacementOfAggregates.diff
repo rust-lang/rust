@@ -11,7 +11,10 @@
 +     let _8: std::option::Option<isize>;
       scope 1 {
 -         debug y => _2;
-+         debug y => Foo{ .0 => _5, .1 => _6, .2 => _7, .3 => _8, };
++         debug ((y: Foo).0: u8) => _5;
++         debug ((y: Foo).1: ()) => _6;
++         debug ((y: Foo).2: &str) => _7;
++         debug ((y: Foo).3: std::option::Option<isize>) => _8;
           let _3: u8;
           scope 2 {
               debug t => _3;

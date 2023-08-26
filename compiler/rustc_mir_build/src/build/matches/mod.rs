@@ -2287,6 +2287,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             name,
             source_info: debug_source_info,
             value: VarDebugInfoContents::Place(for_arm_body.into()),
+            composite: None,
             argument_index: None,
         });
         let locals = if has_guard.0 {
@@ -2306,6 +2307,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 name,
                 source_info: debug_source_info,
                 value: VarDebugInfoContents::Place(ref_for_guard.into()),
+                composite: None,
                 argument_index: None,
             });
             LocalsForNode::ForGuard { ref_for_guard, for_arm_body }

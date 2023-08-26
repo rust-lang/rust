@@ -8,19 +8,22 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
     let mut _4: usize;
     scope 1 (inlined core::slice::<impl [u32]>::get_unchecked_mut::<std::ops::Range<usize>>) {
         debug self => _1;
-        debug index => std::ops::Range<usize>{ .0 => _3, .1 => _4, };
+        debug ((index: std::ops::Range<usize>).0: usize) => _3;
+        debug ((index: std::ops::Range<usize>).1: usize) => _4;
         let mut _5: *mut [u32];
         let mut _13: *mut [u32];
         scope 2 {
             scope 3 (inlined <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked_mut) {
-                debug self => std::ops::Range<usize>{ .0 => _3, .1 => _4, };
+                debug ((self: std::ops::Range<usize>).0: usize) => _3;
+                debug ((self: std::ops::Range<usize>).1: usize) => _4;
                 debug slice => _5;
                 let mut _7: *mut u32;
                 let mut _8: *mut u32;
                 let _15: usize;
                 let _16: usize;
                 scope 4 {
-                    debug this => std::ops::Range<usize>{ .0 => _15, .1 => _16, };
+                    debug ((this: std::ops::Range<usize>).0: usize) => _15;
+                    debug ((this: std::ops::Range<usize>).1: usize) => _16;
                     scope 5 {
                         let _6: usize;
                         scope 6 {
@@ -53,7 +56,8 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
                             }
                         }
                         scope 7 (inlined <std::ops::Range<usize> as SliceIndex<[T]>>::get_unchecked_mut::runtime::<u32>) {
-                            debug this => std::ops::Range<usize>{ .0 => _15, .1 => _16, };
+                            debug ((this: std::ops::Range<usize>).0: usize) => _15;
+                            debug ((this: std::ops::Range<usize>).1: usize) => _16;
                             debug slice => _5;
                             scope 8 (inlined ptr::mut_ptr::<impl *mut [u32]>::len) {
                                 debug self => _5;
