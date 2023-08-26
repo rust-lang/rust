@@ -2,7 +2,9 @@ error[E0277]: `T` cannot be sent between threads safely
   --> $DIR/bad-method-typaram-kind.rs:2:13
    |
 LL |     1.bar::<T>();
-   |             ^ `T` cannot be sent between threads safely
+   |       ---   ^ `T` cannot be sent between threads safely
+   |       |
+   |       required by a bound introduced by this call
    |
    = note: consider using `std::sync::Arc<T>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required by a bound in `Bar::bar`

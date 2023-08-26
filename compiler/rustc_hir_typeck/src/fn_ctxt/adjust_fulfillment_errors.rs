@@ -43,6 +43,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return false,
         };
 
+        let direct_param = if let ty::ClauseKind::Trait(pred) = unsubstituted_pred.kind().skip_binder()
+            && let ty = pred.trait_ref.self_ty()
+            && let ty::Param(_param) = ty.kind()
+            && let Some(arg) = predicate_args.get(0)
+            && let ty::GenericArgKind::Type(arg_ty) = arg.unpack()
+            && arg_ty == ty
+        {
+            Some(*arg)
+        } else {
+            None
+        };
         let find_param_matching = |matches: &dyn Fn(ty::ParamTerm) -> bool| {
             predicate_args.iter().find_map(|arg| {
                 arg.walk().find_map(|arg| {
@@ -63,32 +74,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
         };
 
-        // Account for enum variant constructors, where the type param corresponds to the enum
-        // itself.
-        let enum_def_id =
-            if let DefKind::Ctor(hir::def::CtorOf::Variant, _) = self.tcx.def_kind(def_id) {
-                // `def_id` corresponds to a constructor, and its parent is the variant, and we want
-                // the enum.
-                Some(self.tcx.parent(self.tcx.parent(def_id)))
-            } else {
-                None
-            };
-        let variant_param_to_point_at = find_param_matching(&|param_term| {
-            // FIXME: It would be nice to make this not use string manipulation,
-            // but it's pretty hard to do this, since `ty::ParamTy` is missing
-            // sufficient info to determine if it is synthetic, and we don't
-            // always have a convenient way of getting `ty::Generics` at the call
-            // sites we invoke `IsSuggestable::is_suggestable`.
-            let include = match param_term {
-                ty::ParamTerm::Ty(param_ty) => !param_ty.name.as_str().starts_with("impl "),
-                _ => true,
-            };
-            // Account for enum variant constructors, where the type param corresponds to the enum
-            // itself.
-            let def_id = if let Some(def_id) = enum_def_id { def_id } else { def_id };
-            self.tcx.parent(generics.param_at(param_term.index(), self.tcx).def_id) == def_id
-                && include
-        });
         // Prefer generics that are local to the fn item, since these are likely
         // to be the cause of the unsatisfied predicate.
         let mut param_to_point_at = find_param_matching(&|param_term| {
@@ -134,20 +119,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if let Some(qpath) = qpath {
-            let def_id = if let Some(def_id) = enum_def_id { def_id } else { def_id };
-            if let hir::QPath::Resolved(None, path) = qpath {
-                for segment in path.segments {
-                    if let Some(param) = variant_param_to_point_at
-                        && self.point_at_generic_if_possible(error, def_id, param, segment)
-                    {
-                        return true;
-                    }
-                }
-            }
-            if let hir::QPath::TypeRelative(_ty, segment) = qpath {
-                if let Some(param) = variant_param_to_point_at
-                    && self.point_at_generic_if_possible(error, def_id, param, segment)
-                {
+            if let Some(param) = direct_param {
+                if self.point_at_path_if_possible(error, def_id, param, &qpath) {
                     return true;
                 }
             }
@@ -195,6 +168,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match expr.map(|e| e.kind) {
             Some(hir::ExprKind::MethodCall(segment, receiver, args, ..)) => {
+                if let Some(param) = direct_param
+                    && self.point_at_generic_if_possible(error, def_id, param, segment)
+                {
+                    error.obligation.cause.map_code(|parent_code| {
+                        ObligationCauseCode::FunctionArgumentObligation {
+                            arg_hir_id: receiver.hir_id,
+                            call_hir_id: hir_id,
+                            parent_code,
+                        }
+                    });
+                    return true;
+                }
                 for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                     .into_iter()
                     .flatten()
@@ -251,9 +236,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
-                    .into_iter()
-                    .flatten()
+                for param in [
+                    direct_param,
+                    param_to_point_at,
+                    fallback_param_to_point_at,
+                    self_param_to_point_at,
+                ]
+                .into_iter()
+                .flatten()
                 {
                     if self.point_at_path_if_possible(error, def_id, param, qpath) {
                         return true;
@@ -485,7 +475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /**
-     * Recursively searches for the most-specific blamable expression.
+     * Recursively searches for the most-specific blameable expression.
      * For example, if you have a chain of constraints like:
      * - want `Vec<i32>: Copy`
      * - because `Option<Vec<i32>>: Copy` needs `Vec<i32>: Copy` because `impl <T: Copy> Copy for Option<T>`
