@@ -7,7 +7,6 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
         debug self => _1;
         let mut _2: isize;
         let mut _3: bool;
-        let mut _4: &std::option::Option<T>;
         scope 2 {
             debug val => _0;
         }
@@ -20,12 +19,11 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
             }
         }
         scope 4 (inlined Option::<T>::is_some) {
-            debug self => _4;
+            debug (*(self: &Option<T>)) => _1;
         }
     }
 
     bb0: {
-        StorageLive(_4);
         StorageLive(_2);
         StorageLive(_3);
         _2 = discriminant(_1);
@@ -34,7 +32,6 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
         _0 = ((_1 as Some).0: T);
         StorageDead(_3);
         StorageDead(_2);
-        StorageDead(_4);
         return;
     }
 }
