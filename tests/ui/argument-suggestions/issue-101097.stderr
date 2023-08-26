@@ -149,6 +149,10 @@ LL |     c1: C,
    |     -----
 LL |     c2: C,
    |     -----
+help: try directly constructing the struct instead
+   |
+LL |     f(C, C, B, B, A, A);
+   |             ~
 help: did you mean
    |
 LL |     f(A, A, /* B */, B, C, C);

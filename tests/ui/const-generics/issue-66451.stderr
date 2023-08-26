@@ -14,6 +14,10 @@ LL | |     }> = x;
    |
    = note: expected struct `Test<Foo { value: 3, nested: &Bar::<i32>(5) }>`
               found struct `Test<Foo { value: 3, nested: &Bar::<i32>(4) }>`
+help: try directly constructing the struct instead
+   |
+LL |     }> = Test;
+   |          ~~~~
 
 error: aborting due to previous error
 

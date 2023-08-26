@@ -6,6 +6,11 @@ LL | fn can() -> impl NotObjectSafe {
 ...
 LL |     B
    |     ^ expected `A`, found `B`
+   |
+help: try directly constructing the struct instead
+   |
+LL |     A
+   |     ~
 
 error[E0308]: mismatched types
   --> $DIR/object-unsafe-trait-in-return-position-impl-trait.rs:43:5
@@ -15,6 +20,11 @@ LL | fn cat() -> impl ObjectSafe {
 ...
 LL |     B
    |     ^ expected `A`, found `B`
+   |
+help: try directly constructing the struct instead
+   |
+LL |     A
+   |     ~
 
 error: aborting due to 2 previous errors
 

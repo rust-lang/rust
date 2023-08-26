@@ -4,6 +4,11 @@ error[E0308]: mismatched types
 LL | const S: A = B;
    |              ^ expected `A`, found `B`
 -Ztrack-diagnostics: created at compiler/rustc_infer/src/infer/error_reporting/mod.rs:LL:CC
+   |
+help: try directly constructing the struct instead
+   |
+LL | const S: A = A;
+   |              ~
 
 error: aborting due to previous error
 

@@ -5,6 +5,11 @@ LL |     let _: issue_56943::S = issue_56943::S2;
    |            --------------   ^^^^^^^^^^^^^^^ expected `S`, found `S2`
    |            |
    |            expected due to this
+   |
+help: try directly constructing the struct instead
+   |
+LL |     let _: issue_56943::S = issue_56943::S;
+   |                             ~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

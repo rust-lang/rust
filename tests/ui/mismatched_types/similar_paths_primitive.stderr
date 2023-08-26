@@ -18,6 +18,10 @@ note: function defined here
    |
 LL | fn foo(_: bool) {}
    |    ^^^ -------
+help: try directly constructing the struct instead
+   |
+LL |     foo(bool);
+   |         ~~~~
 
 error: aborting due to previous error
 

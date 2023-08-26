@@ -11,6 +11,10 @@ note: function defined here
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
+help: try directly constructing the struct instead
+   |
+LL |     want::<foo>(foo);
+   |                 ~~~
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:18:17
@@ -25,6 +29,10 @@ note: function defined here
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
+help: try directly constructing the struct instead
+   |
+LL |     want::<bar>(bar);
+   |                 ~~~
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:19:24
@@ -149,6 +157,10 @@ note: function defined here
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
+help: try directly constructing the struct instead
+   |
+LL |     want::<bar>(bar);
+   |                 ~~~
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:30:24
@@ -277,6 +289,10 @@ note: function defined here
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
+help: try directly constructing the struct instead
+   |
+LL |     want::<foo>(foo);
+   |                 ~~~
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:41:17
@@ -293,6 +309,10 @@ note: function defined here
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
+help: try directly constructing the struct instead
+   |
+LL |     want::<bar>(bar);
+   |                 ~~~
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:42:24
@@ -441,6 +461,10 @@ note: function defined here
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
+help: try directly constructing the struct instead
+   |
+LL |     want::<foo>(foo);
+   |                 ~~~
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:54:17
@@ -457,6 +481,10 @@ note: function defined here
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
+help: try directly constructing the struct instead
+   |
+LL |     want::<bar>(bar);
+   |                 ~~~
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:55:24
@@ -605,6 +633,10 @@ note: function defined here
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
+help: try directly constructing the struct instead
+   |
+LL |     want::<foo>(foo);
+   |                 ~~~
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:67:17
@@ -621,6 +653,10 @@ note: function defined here
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
+help: try directly constructing the struct instead
+   |
+LL |     want::<bar>(bar);
+   |                 ~~~
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:68:24

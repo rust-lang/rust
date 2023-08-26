@@ -29,6 +29,10 @@ note: function defined here
    |
 LL | fn bar(_: T) {}
    |    ^^^ ----
+help: try directly constructing the struct instead
+   |
+LL |     bar(T);
+   |         ~
 
 error: aborting due to 2 previous errors
 

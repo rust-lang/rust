@@ -21,7 +21,7 @@ fn foo() -> Box<dyn Trait> {
 fn bar() -> Box<dyn Trait> {
     match true {
         true => Box::new(S),
-        false => Box::new(Y), //~ ERROR `match` arms have incompatible types
+        false => Box::new(S), //~ ERROR `match` arms have incompatible types
     }
 }
 

@@ -4,7 +4,7 @@ fn wat<T: Clone>(t: &T) -> T {
 }
 
 #[derive(Clone)]
-struct Foo;
+struct Foo(usize);
 
 fn wut(t: &Foo) -> Foo {
     t.clone() //~ ERROR E0308
@@ -12,5 +12,5 @@ fn wut(t: &Foo) -> Foo {
 
 fn main() {
     wat(&42);
-    wut(&Foo);
+    wut(&Foo(42));
 }

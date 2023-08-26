@@ -1406,6 +1406,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         true
     }
 
+    #[instrument(skip(self, err))]
+    pub(crate) fn suggest_unit_or_empty_struct_construction(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        // It's useless to suggest a fix if it's from a foreign macro
+        if in_external_macro(self.tcx.sess, expr.span) {
+            return false;
+        }
+
+        // Expected type needs to be an ADT
+        let Some(adt_def) = expected_ty.ty_adt_def() else {
+            return false;
+        };
+
+        // ADT needs to be a struct and have no fields
+        if !adt_def.is_struct() || !adt_def.is_payloadfree() {
+            return false;
+        }
+
+        // Get the name of the expected type
+        let mut type_name = with_no_trimmed_paths!(self.tcx.def_path_str(adt_def.did()));
+
+        // Depending on the constructor if one exists, generate the necessary
+        // constructor method
+        let ctor_str = match adt_def.non_enum_variant().ctor_kind() {
+            // The type name is also a constant value
+            Some(CtorKind::Const) => "",
+            // There's a function to construct the instance of the type
+            Some(CtorKind::Fn) => "()",
+            // There is no constructor, which means this is an empty type
+            None => " {}",
+        };
+        type_name.push_str(ctor_str);
+
+        err.multipart_suggestion_verbose(
+            format!("try directly constructing the struct instead"),
+            vec![(expr.span, type_name)],
+            Applicability::MaybeIncorrect,
+        );
+
+        true
+    }
+
     pub(crate) fn suggest_associated_const(
         &self,
         err: &mut Diagnostic,

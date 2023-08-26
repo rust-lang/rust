@@ -12,6 +12,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |     nc.clone()
    |     ^^
+help: try directly constructing the struct instead
+   |
+LL |     NotClone
+   |
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -31,6 +35,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |     let nc: NotClone = nc.clone();
    |                        ^^
+help: try directly constructing the struct instead
+   |
+LL |     let nc: NotClone = NotClone;
+   |                        ~~~~~~~~
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -51,6 +59,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |     let nc = nc.clone();
    |              ^^
+help: try directly constructing the struct instead
+   |
+LL |     NotClone
+   |
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -71,6 +83,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |     let nc = nc.clone();
    |              ^^
+help: try directly constructing the struct instead
+   |
+LL |     NotClone
+   |
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -91,6 +107,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |     let nc = nc.clone();
    |              ^^
+help: try directly constructing the struct instead
+   |
+LL |     NotClone
+   |
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -111,6 +131,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |     let (ret, _) = (nc.clone(), 1);
    |                     ^^
+help: try directly constructing the struct instead
+   |
+LL |     NotClone
+   |
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -131,6 +155,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |     let ret = nc[0].clone();
    |               ^^^^^
+help: try directly constructing the struct instead
+   |
+LL |     NotClone
+   |
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -151,6 +179,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |         let a = nc.clone();
    |                 ^^
+help: try directly constructing the struct instead
+   |
+LL |     NotClone
+   |
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -171,6 +203,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |     let cl = || nc.clone();
    |                 ^^
+help: try directly constructing the struct instead
+   |
+LL |     NotClone
+   |
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -188,6 +224,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |         let a = nc.clone();
    |                 ^^
+help: try directly constructing the struct instead
+   |
+LL |     (NotClone, b)
+   |      ~~~~~~~~
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -205,6 +245,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |         (a, nc.clone())
    |             ^^
+help: try directly constructing the struct instead
+   |
+LL |     (a, NotClone)
+   |         ~~~~~~~~
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -225,6 +269,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |         let a = nc.clone();
    |                 ^^
+help: try directly constructing the struct instead
+   |
+LL |     NotClone
+   |
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

@@ -17,6 +17,10 @@ note: `baz::Foo` is defined in module `crate::blah::baz` of the current crate
    |
 LL |         pub struct Foo;
    |         ^^^^^^^^^^^^^^
+help: try directly constructing the struct instead
+   |
+LL |     blah::baz::Foo
+   |
 
 error: aborting due to previous error
 

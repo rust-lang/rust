@@ -41,6 +41,10 @@ help: if you change the return type to expect trait objects, box the returned ex
 LL ~         true => Box::new(S),
 LL ~         false => Box::new(Y),
    |
+help: try directly constructing the struct instead
+   |
+LL |         false => S,
+   |                  ~
 
 error: aborting due to 2 previous errors
 

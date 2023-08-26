@@ -8,6 +8,10 @@ LL |     let _: ConstString<"Hello"> = ConstString::<"World">;
    |
    = note: expected struct `ConstString<"Hello">`
               found struct `ConstString<"World">`
+help: try directly constructing the struct instead
+   |
+LL |     let _: ConstString<"Hello"> = ConstString;
+   |                                   ~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/slice-const-param-mismatch.rs:16:33
@@ -19,6 +23,10 @@ LL |     let _: ConstString<"ℇ㇈↦"> = ConstString::<"ℇ㇈↥">;
    |
    = note: expected struct `ConstString<"ℇ㇈↦">`
               found struct `ConstString<"ℇ㇈↥">`
+help: try directly constructing the struct instead
+   |
+LL |     let _: ConstString<"ℇ㇈↦"> = ConstString;
+   |                                  ~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/slice-const-param-mismatch.rs:18:33
@@ -30,6 +38,10 @@ LL |     let _: ConstBytes<b"AAA"> = ConstBytes::<b"BBB">;
    |
    = note: expected struct `ConstBytes<b"AAA">`
               found struct `ConstBytes<b"BBB">`
+help: try directly constructing the struct instead
+   |
+LL |     let _: ConstBytes<b"AAA"> = ConstBytes;
+   |                                 ~~~~~~~~~~
 
 error: aborting due to 3 previous errors
 

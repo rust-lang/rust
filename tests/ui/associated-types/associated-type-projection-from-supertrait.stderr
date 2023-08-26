@@ -11,6 +11,10 @@ note: function defined here
    |
 LL | fn dent<C:Car>(c: C, color: C::Color) { c.chip_paint(color) }
    |    ^^^^              ---------------
+help: try directly constructing the struct instead
+   |
+LL | fn b() { dent(ModelT, Black); }
+   |                       ~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/associated-type-projection-from-supertrait.rs:28:23
@@ -25,6 +29,10 @@ note: function defined here
    |
 LL | fn dent<C:Car>(c: C, color: C::Color) { c.chip_paint(color) }
    |    ^^^^              ---------------
+help: try directly constructing the struct instead
+   |
+LL | fn c() { dent(ModelU, Blue); }
+   |                       ~~~~
 
 error[E0308]: mismatched types
   --> $DIR/associated-type-projection-from-supertrait.rs:32:28
@@ -39,6 +47,10 @@ note: method defined here
    |
 LL |     fn chip_paint(&self, c: Self::Color) { }
    |        ^^^^^^^^^^        --------------
+help: try directly constructing the struct instead
+   |
+LL | fn f() { ModelT.chip_paint(Black); }
+   |                            ~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/associated-type-projection-from-supertrait.rs:33:28
@@ -53,6 +65,10 @@ note: method defined here
    |
 LL |     fn chip_paint(&self, c: Self::Color) { }
    |        ^^^^^^^^^^        --------------
+help: try directly constructing the struct instead
+   |
+LL | fn g() { ModelU.chip_paint(Blue); }
+   |                            ~~~~
 
 error: aborting due to 4 previous errors
 

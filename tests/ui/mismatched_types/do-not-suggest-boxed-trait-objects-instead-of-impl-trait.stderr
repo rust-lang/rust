@@ -20,6 +20,11 @@ LL | |         false => Y,
    | |                  ^ expected `S`, found `Y`
 LL | |     }
    | |_____- `match` arms have incompatible types
+   |
+help: try directly constructing the struct instead
+   |
+LL |         false => S,
+   |                  ~
 
 error: aborting due to 2 previous errors
 

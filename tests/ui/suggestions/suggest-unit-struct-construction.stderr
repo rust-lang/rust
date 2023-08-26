@@ -1,0 +1,88 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-unit-struct-construction.rs:17:23
+   |
+LL |     WrappedUnitStruct(());
+   |     ----------------- ^^ expected `UnitStruct`, found `()`
+   |     |
+   |     arguments to this struct are incorrect
+   |
+note: tuple struct defined here
+  --> $DIR/suggest-unit-struct-construction.rs:2:8
+   |
+LL | struct WrappedUnitStruct(UnitStruct);
+   |        ^^^^^^^^^^^^^^^^^
+help: try directly constructing the struct instead
+   |
+LL |     WrappedUnitStruct(UnitStruct);
+   |                       ~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-unit-struct-construction.rs:21:16
+   |
+LL |         inner: 0,
+   |                ^ expected `UnitStruct`, found integer
+   |
+help: try directly constructing the struct instead
+   |
+LL |         inner: UnitStruct,
+   |                ~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-unit-struct-construction.rs:25:24
+   |
+LL |     WrappedPhantomData(());
+   |     ------------------ ^^ expected `PhantomData<()>`, found `()`
+   |     |
+   |     arguments to this struct are incorrect
+   |
+   = note: expected struct `PhantomData<()>`
+           found unit type `()`
+note: tuple struct defined here
+  --> $DIR/suggest-unit-struct-construction.rs:7:8
+   |
+LL | struct WrappedPhantomData(std::marker::PhantomData<()>);
+   |        ^^^^^^^^^^^^^^^^^^
+help: try directly constructing the struct instead
+   |
+LL |     WrappedPhantomData(std::marker::PhantomData);
+   |                        ~~~~~~~~~~~~~~~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-unit-struct-construction.rs:28:22
+   |
+LL |     WrappedUnitTuple(());
+   |     ---------------- ^^ expected `UnitTuple`, found `()`
+   |     |
+   |     arguments to this struct are incorrect
+   |
+note: tuple struct defined here
+  --> $DIR/suggest-unit-struct-construction.rs:10:8
+   |
+LL | struct WrappedUnitTuple(UnitTuple);
+   |        ^^^^^^^^^^^^^^^^
+help: try directly constructing the struct instead
+   |
+LL |     WrappedUnitTuple(UnitTuple());
+   |                      ~~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-unit-struct-construction.rs:31:24
+   |
+LL |     WrappedEmptyStruct(());
+   |     ------------------ ^^ expected `EmptyStruct`, found `()`
+   |     |
+   |     arguments to this struct are incorrect
+   |
+note: tuple struct defined here
+  --> $DIR/suggest-unit-struct-construction.rs:13:8
+   |
+LL | struct WrappedEmptyStruct(EmptyStruct);
+   |        ^^^^^^^^^^^^^^^^^^
+help: try directly constructing the struct instead
+   |
+LL |     WrappedEmptyStruct(EmptyStruct {});
+   |                        ~~~~~~~~~~~~~~
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

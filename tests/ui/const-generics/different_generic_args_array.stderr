@@ -6,6 +6,10 @@ LL |     x = Const::<{ [4] }> {};
    |
    = note: expected struct `Const<[3]>`
               found struct `Const<[4]>`
+help: try directly constructing the struct instead
+   |
+LL |     x = Const {};
+   |         ~~~~~~~~
 
 error: aborting due to previous error
 

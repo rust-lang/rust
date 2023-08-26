@@ -39,6 +39,14 @@ note: function defined here
    |
 LL | fn f(b1: B, b2: B, a2: C) {}
    |    ^ -----  -----  -----
+help: try directly constructing the struct instead
+   |
+LL |     f(B, A, B, C);
+   |       ~
+help: try directly constructing the struct instead
+   |
+LL |     f(A, B, B, C);
+   |          ~
 help: remove the extra argument
    |
 LL -     f(A, A, B, C);

@@ -6,6 +6,10 @@ LL |     u = ConstUsize::<4> {};
    |
    = note: expected struct `ConstUsize<3>`
               found struct `ConstUsize<4>`
+help: try directly constructing the struct instead
+   |
+LL |     u = ConstUsize {};
+   |         ~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

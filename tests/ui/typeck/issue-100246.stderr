@@ -7,6 +7,10 @@ LL |     let other: Other = downcast()?;
    = note: `?` operator cannot convert from `&_` to `Other`
    = note: expected struct `Other`
            found reference `&_`
+help: try directly constructing the struct instead
+   |
+LL |     let other: Other = Other;
+   |                        ~~~~~
 
 error: aborting due to previous error
 
