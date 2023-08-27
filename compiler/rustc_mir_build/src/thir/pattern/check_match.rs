@@ -735,17 +735,21 @@ fn non_exhaustive_match<'p, 'tcx>(
         collect_non_exhaustive_tys(&witnesses[0], &mut non_exhaustive_tys);
 
         for ty in non_exhaustive_tys {
-            if ty == cx.tcx.types.usize || ty == cx.tcx.types.isize {
+            if ty.is_ptr_sized_integral() {
                 err.note(format!(
                     "`{ty}` does not have a fixed maximum value, so a wildcard `_` is necessary to match \
-                     exhaustively",
-                ));
+                         exhaustively",
+                    ));
                 if cx.tcx.sess.is_nightly_build() {
                     err.help(format!(
-                        "add `#![feature(precise_pointer_size_matching)]` to the crate attributes to \
-                         enable precise `{ty}` matching",
-                    ));
+                            "add `#![feature(precise_pointer_size_matching)]` to the crate attributes to \
+                             enable precise `{ty}` matching",
+                        ));
                 }
+            } else if ty == cx.tcx.types.str_ {
+                err.note(format!(
+                    "`{ty}` cannot be matched exhaustively, so a wildcard `_` is necessary",
+                ));
             }
         }
     }
