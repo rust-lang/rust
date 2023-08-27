@@ -111,10 +111,6 @@ impl CoverageCounters {
         BcbCounter::Expression { id, lhs, op, rhs }
     }
 
-    pub fn make_identity_counter(&mut self, counter_operand: Operand) -> BcbCounter {
-        self.make_expression(counter_operand, Op::Add, Operand::Zero)
-    }
-
     /// Counter IDs start from one and go up.
     fn next_counter(&mut self) -> CounterId {
         let next = self.next_counter_id;

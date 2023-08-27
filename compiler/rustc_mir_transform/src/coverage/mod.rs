@@ -13,9 +13,7 @@ use self::spans::CoverageSpans;
 
 use crate::MirPass;
 
-use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::sync::Lrc;
-use rustc_index::IndexVec;
 use rustc_middle::hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
@@ -223,16 +221,10 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let body_span = self.body_span;
         let file_name = Symbol::intern(&self.source_file.name.prefer_remapped().to_string_lossy());
 
-        let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
         for (bcb, spans) in coverage_spans.bcbs_with_coverage_spans() {
-            let counter_kind = if let Some(&counter_operand) = bcb_counters[bcb].as_ref() {
-                self.coverage_counters.make_identity_counter(counter_operand)
-            } else if let Some(counter_kind) = self.coverage_counters.take_bcb_counter(bcb) {
-                bcb_counters[bcb] = Some(counter_kind.as_operand());
-                counter_kind
-            } else {
+            let counter_kind = self.coverage_counters.take_bcb_counter(bcb).unwrap_or_else(|| {
                 bug!("Every BasicCoverageBlock should have a Counter or Expression");
-            };
+            });
 
             // Convert the coverage spans into a vector of code regions to be
             // associated with this BCB's coverage statement.
