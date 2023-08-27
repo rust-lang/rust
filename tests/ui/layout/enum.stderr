@@ -1,0 +1,14 @@
+error: align: AbiAndPrefAlign { abi: Align(2 bytes), pref: $PREF_ALIGN }
+  --> $DIR/enum.rs:9:1
+   |
+LL | enum UninhabitedVariantAlign {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(16 bytes)
+  --> $DIR/enum.rs:15:1
+   |
+LL | enum UninhabitedVariantSpace {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
