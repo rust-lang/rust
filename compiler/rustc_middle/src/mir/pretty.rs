@@ -16,7 +16,7 @@ use rustc_middle::mir::interpret::{
     Pointer, Provenance,
 };
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::*;
+use rustc_middle::mir::{self, *};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::abi::Size;
 
@@ -685,10 +685,13 @@ impl Debug for Statement<'_> {
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({place:?}, {variance:?}, {c_ty:?})")
             }
-            Coverage(box self::Coverage { ref kind, code_region: Some(ref rgn) }) => {
-                write!(fmt, "Coverage::{kind:?} for {rgn:?}")
+            Coverage(box mir::Coverage { ref kind, ref code_regions }) => {
+                if code_regions.is_empty() {
+                    write!(fmt, "Coverage::{kind:?}")
+                } else {
+                    write!(fmt, "Coverage::{kind:?} for {code_regions:?}")
+                }
             }
-            Coverage(box ref coverage) => write!(fmt, "Coverage::{:?}", coverage.kind),
             Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
             ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
             Nop => write!(fmt, "nop"),

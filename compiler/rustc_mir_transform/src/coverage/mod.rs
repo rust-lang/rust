@@ -243,7 +243,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 self.mir_body,
                 self.make_mir_coverage_kind(&counter_kind),
                 self.bcb_leader_bb(bcb),
-                Some(code_region),
+                vec![code_region],
             );
         }
     }
@@ -302,7 +302,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                         self.mir_body,
                         self.make_mir_coverage_kind(&counter_kind),
                         inject_to_bb,
-                        None,
+                        Vec::new(),
                     );
                 }
                 BcbCounter::Expression { .. } => inject_intermediate_expression(
@@ -367,20 +367,14 @@ fn inject_statement(
     mir_body: &mut mir::Body<'_>,
     counter_kind: CoverageKind,
     bb: BasicBlock,
-    some_code_region: Option<CodeRegion>,
+    code_regions: Vec<CodeRegion>,
 ) {
-    debug!(
-        "  injecting statement {:?} for {:?} at code region: {:?}",
-        counter_kind, bb, some_code_region
-    );
+    debug!("  injecting statement {counter_kind:?} for {bb:?} at code regions: {code_regions:?}");
     let data = &mut mir_body[bb];
     let source_info = data.terminator().source_info;
     let statement = Statement {
         source_info,
-        kind: StatementKind::Coverage(Box::new(Coverage {
-            kind: counter_kind,
-            code_region: some_code_region,
-        })),
+        kind: StatementKind::Coverage(Box::new(Coverage { kind: counter_kind, code_regions })),
     };
     data.statements.insert(0, statement);
 }
@@ -394,7 +388,10 @@ fn inject_intermediate_expression(mir_body: &mut mir::Body<'_>, expression: Cove
     let source_info = data.terminator().source_info;
     let statement = Statement {
         source_info,
-        kind: StatementKind::Coverage(Box::new(Coverage { kind: expression, code_region: None })),
+        kind: StatementKind::Coverage(Box::new(Coverage {
+            kind: expression,
+            code_regions: Vec::new(),
+        })),
     };
     data.statements.push(statement);
 }

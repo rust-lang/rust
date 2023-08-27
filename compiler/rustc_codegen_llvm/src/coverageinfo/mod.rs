@@ -108,25 +108,15 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             .entry(instance)
             .or_insert_with(|| FunctionCoverage::new(bx.tcx(), instance));
 
-        let Coverage { kind, code_region } = coverage.clone();
-        match kind {
+        let Coverage { kind, code_regions } = coverage;
+        match *kind {
             CoverageKind::Counter { function_source_hash, id } => {
                 debug!(
                     "ensuring function source hash is set for instance={:?}; function_source_hash={}",
                     instance, function_source_hash,
                 );
                 func_coverage.set_function_source_hash(function_source_hash);
-
-                if let Some(code_region) = code_region {
-                    // Note: Some counters do not have code regions, but may still be referenced
-                    // from expressions. In that case, don't add the counter to the coverage map,
-                    // but do inject the counter intrinsic.
-                    debug!(
-                        "adding counter to coverage_map: instance={:?}, id={:?}, region={:?}",
-                        instance, id, code_region,
-                    );
-                    func_coverage.add_counter(id, code_region);
-                }
+                func_coverage.add_counter(id, code_regions);
                 // We need to explicitly drop the `RefMut` before calling into `instrprof_increment`,
                 // as that needs an exclusive borrow.
                 drop(coverage_map);
@@ -144,20 +134,10 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 bx.instrprof_increment(fn_name, hash, num_counters, index);
             }
             CoverageKind::Expression { id, lhs, op, rhs } => {
-                debug!(
-                    "adding counter expression to coverage_map: instance={:?}, id={:?}, {:?} {:?} {:?}; region: {:?}",
-                    instance, id, lhs, op, rhs, code_region,
-                );
-                func_coverage.add_counter_expression(id, lhs, op, rhs, code_region);
+                func_coverage.add_counter_expression(id, lhs, op, rhs, code_regions);
             }
             CoverageKind::Unreachable => {
-                let code_region =
-                    code_region.expect("unreachable regions always have code regions");
-                debug!(
-                    "adding unreachable code to coverage_map: instance={:?}, at {:?}",
-                    instance, code_region,
-                );
-                func_coverage.add_unreachable_region(code_region);
+                func_coverage.add_unreachable_regions(code_regions);
             }
         }
     }
@@ -226,7 +206,8 @@ fn add_unused_function_coverage<'tcx>(
 
     let mut function_coverage = FunctionCoverage::unused(tcx, instance);
     for &code_region in tcx.covered_code_regions(def_id) {
-        function_coverage.add_unreachable_region(code_region.clone());
+        let code_region = std::slice::from_ref(code_region);
+        function_coverage.add_unreachable_regions(code_region);
     }
 
     if let Some(coverage_context) = cx.coverage_context() {
