@@ -684,15 +684,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         }
                         _ => {
                             // Not there yet, search for the only non-ZST field.
+                            // (The rules for `DispatchFromDyn` ensure there's exactly one such field.)
                             let mut non_zst_field = None;
                             for i in 0..receiver.layout.fields.count() {
                                 let field = self.project_field(&receiver, i)?;
-                                let zst =
-                                    field.layout.is_zst() && field.layout.align.abi.bytes() == 1;
+                                let zst = field.layout.is_1zst();
                                 if !zst {
                                     assert!(
                                         non_zst_field.is_none(),
-                                        "multiple non-ZST fields in dyn receiver type {}",
+                                        "multiple non-1-ZST fields in dyn receiver type {}",
                                         receiver.layout.ty
                                     );
                                     non_zst_field = Some(field);
@@ -700,7 +700,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             }
                             receiver = non_zst_field.unwrap_or_else(|| {
                                 panic!(
-                                    "no non-ZST fields in dyn receiver type {}",
+                                    "no non-1-ZST fields in dyn receiver type {}",
                                     receiver.layout.ty
                                 )
                             });

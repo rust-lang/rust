@@ -114,7 +114,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     bx.struct_gep(ty, self.llval, 1)
                 }
                 Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } if field.is_zst() => {
-                    // ZST fields are not included in Scalar, ScalarPair, and Vector layouts, so manually offset the pointer.
+                    // ZST fields (even some that require alignment) are not included in Scalar,
+                    // ScalarPair, and Vector layouts, so manually offset the pointer.
                     bx.gep(bx.cx().type_i8(), self.llval, &[bx.const_usize(offset.bytes())])
                 }
                 Abi::Scalar(_) | Abi::ScalarPair(..) => {

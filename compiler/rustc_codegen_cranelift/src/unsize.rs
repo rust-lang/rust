@@ -88,7 +88,8 @@ fn unsize_ptr<'tcx>(
                 let src_f = src_layout.field(fx, i);
                 assert_eq!(src_layout.fields.offset(i).bytes(), 0);
                 assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
-                if src_f.is_zst() {
+                if src_f.is_1zst() {
+                    // We are looking for the one non-1-ZST field; this is not it.
                     continue;
                 }
                 assert_eq!(src_layout.size, src_f.size);
@@ -151,6 +152,7 @@ pub(crate) fn coerce_unsized_into<'tcx>(
                 let dst_f = dst.place_field(fx, FieldIdx::new(i));
 
                 if dst_f.layout().is_zst() {
+                    // No data here, nothing to copy/coerce.
                     continue;
                 }
 

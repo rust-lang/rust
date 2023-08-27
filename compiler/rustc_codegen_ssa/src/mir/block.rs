@@ -933,8 +933,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         {
                             for i in 0..op.layout.fields.count() {
                                 let field = op.extract_field(bx, i);
-                                if !field.layout.is_zst() {
-                                    // we found the one non-zero-sized field that is allowed
+                                if !field.layout.is_1zst() {
+                                    // we found the one non-1-ZST field that is allowed
                                     // now find *its* non-zero-sized field, or stop if it's a
                                     // pointer
                                     op = field;
@@ -975,10 +975,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         {
                             for i in 0..op.layout.fields.count() {
                                 let field = op.extract_field(bx, i);
-                                if !field.layout.is_zst() {
-                                    // we found the one non-zero-sized field that is allowed
-                                    // now find *its* non-zero-sized field, or stop if it's a
-                                    // pointer
+                                if !field.layout.is_1zst() {
+                                    // We found the one non-1-ZST field that is allowed. (The rules
+                                    // for `DispatchFromDyn` ensure there's exactly one such field.)
+                                    // Now find *its* non-zero-sized field, or stop if it's a
+                                    // pointer.
                                     op = field;
                                     continue 'descend_newtypes;
                                 }
