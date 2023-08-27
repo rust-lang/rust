@@ -35,7 +35,7 @@ fn download_ci_llvm() {
     ));
 }
 
-// FIXME(ozkanonur): extend scope of the test
+// FIXME(onur-ozkan): extend scope of the test
 // refs:
 //   - https://github.com/rust-lang/rust/issues/109120
 //   - https://github.com/rust-lang/rust/pull/109162#issuecomment-1496782487

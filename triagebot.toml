@@ -616,7 +616,7 @@ libs = [
 bootstrap = [
     "@Mark-Simulacrum",
     "@albertlarsan68",
-    "@ozkanonur",
+    "@onur-ozkan",
     "@clubby789",
 ]
 infra-ci = [
@@ -749,4 +749,4 @@ style-team = [
 "/src/tools/rustdoc-themes" =                ["rustdoc"]
 "/src/tools/tidy" =                          ["bootstrap"]
 "/src/tools/x" =                             ["bootstrap"]
-"/src/tools/rustdoc-gui-test" =              ["bootstrap", "@ozkanonur"]
+"/src/tools/rustdoc-gui-test" =              ["bootstrap", "@onur-ozkan"]
