@@ -579,10 +579,9 @@ pub enum Conv {
     C,
     Rust,
 
-    /// For things unlikely to be called, where smaller caller codegen is
-    /// preferred over raw speed.
-    /// Stronger than just `#[cold]` because `fn` pointers might be incompatible.
-    RustCold,
+    Cold,
+    PreserveMost,
+    PreserveAll,
 
     // Target-specific calling conventions.
     ArmAapcs,
@@ -605,9 +604,7 @@ pub enum Conv {
     AvrInterrupt,
     AvrNonBlockingInterrupt,
 
-    RiscvInterrupt {
-        kind: RiscvInterruptKind,
-    },
+    RiscvInterrupt { kind: RiscvInterruptKind },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
