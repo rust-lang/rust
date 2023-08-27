@@ -400,7 +400,12 @@ constructs. For example, a macro use `foo!(a, b, c)` can be parsed like a
 function call (ignoring the `!`), so format it using the rules for function
 calls.
 
-### Special case macros
+The style guide defines specific formatting for particular macros in the
+language or standard library. The style guide does not define formatting for
+any third-party macros, even if similar to those in the language or standard
+library.
+
+### Format string macros
 
 For macros which take a format string, if all other arguments are *small*,
 format the arguments before the format string on a single line if they fit, and
