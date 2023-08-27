@@ -630,3 +630,6 @@ impl<'tcx> TyCtxtAt<'tcx> {
             .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
     }
 }
+
+#[derive(Copy, Clone, Debug, HashStable)]
+pub struct CyclePlaceholder(pub ErrorGuaranteed);

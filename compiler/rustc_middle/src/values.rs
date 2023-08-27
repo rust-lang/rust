@@ -1,4 +1,5 @@
 use crate::dep_graph::DepKind;
+use crate::query::plumbing::CyclePlaceholder;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_hir as hir;
@@ -21,6 +22,16 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for Ty<'_> {
         // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
         unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(Ty::new_error(tcx, guar)) }
+    }
+}
+
+impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder> {
+    fn from_cycle_error(
+        _tcx: TyCtxt<'tcx>,
+        _: &[QueryInfo<DepKind>],
+        guar: ErrorGuaranteed,
+    ) -> Self {
+        Err(CyclePlaceholder(guar))
     }
 }
 

@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+error[E0391]: cycle detected when computing type of opaque `Foo::{opaque#0}`
   --> $DIR/reveal_local.rs:5:12
    |
 LL | type Foo = impl Debug;
@@ -10,21 +10,15 @@ note: ...which requires type-checking `not_good`...
 LL |     is_send::<Foo>();
    |     ^^^^^^^^^^^^^^
    = note: ...which requires evaluating trait selection obligation `Foo: core::marker::Send`...
-   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
-note: cycle used when checking item types in top-level module
-  --> $DIR/reveal_local.rs:1:1
+   = note: ...which again requires computing type of opaque `Foo::{opaque#0}`, completing the cycle
+note: cycle used when computing type of `Foo::{opaque#0}`
+  --> $DIR/reveal_local.rs:5:12
    |
-LL | / #![feature(type_alias_impl_trait)]
-LL | |
-LL | | use std::fmt::Debug;
-LL | |
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
+LL | type Foo = impl Debug;
+   |            ^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+error[E0391]: cycle detected when computing type of opaque `Foo::{opaque#0}`
   --> $DIR/reveal_local.rs:5:12
    |
 LL | type Foo = impl Debug;
@@ -35,18 +29,12 @@ note: ...which requires type-checking `not_good`...
    |
 LL | fn not_good() {
    | ^^^^^^^^^^^^^
-   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
-note: cycle used when checking item types in top-level module
-  --> $DIR/reveal_local.rs:1:1
+   = note: ...which again requires computing type of opaque `Foo::{opaque#0}`, completing the cycle
+note: cycle used when computing type of `Foo::{opaque#0}`
+  --> $DIR/reveal_local.rs:5:12
    |
-LL | / #![feature(type_alias_impl_trait)]
-LL | |
-LL | | use std::fmt::Debug;
-LL | |
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
+LL | type Foo = impl Debug;
+   |            ^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: cannot check whether the hidden type of `reveal_local[9507]::Foo::{opaque#0}` satisfies auto traits
@@ -71,7 +59,7 @@ note: required by a bound in `is_send`
 LL | fn is_send<T: Send>() {}
    |               ^^^^ required by this bound in `is_send`
 
-error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+error[E0391]: cycle detected when computing type of opaque `Foo::{opaque#0}`
   --> $DIR/reveal_local.rs:5:12
    |
 LL | type Foo = impl Debug;
@@ -82,18 +70,12 @@ note: ...which requires type-checking `not_gooder`...
    |
 LL | fn not_gooder() -> Foo {
    | ^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
-note: cycle used when checking item types in top-level module
-  --> $DIR/reveal_local.rs:1:1
+   = note: ...which again requires computing type of opaque `Foo::{opaque#0}`, completing the cycle
+note: cycle used when computing type of `Foo::{opaque#0}`
+  --> $DIR/reveal_local.rs:5:12
    |
-LL | / #![feature(type_alias_impl_trait)]
-LL | |
-LL | | use std::fmt::Debug;
-LL | |
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
+LL | type Foo = impl Debug;
+   |            ^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: cannot check whether the hidden type of `reveal_local[9507]::Foo::{opaque#0}` satisfies auto traits
