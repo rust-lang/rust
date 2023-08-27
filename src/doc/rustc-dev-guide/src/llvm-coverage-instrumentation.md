@@ -282,7 +282,7 @@ done in the `run-make-fulldeps` tests, with sample Rust programs (to be
 instrumented) in the [`tests/run-coverage`] directory,
 together with the actual tests and expected results.
 
-Finally, the [`coverage-llvmir`] test compares compiles a simple Rust program
+Finally, the [`coverage-llvmir`] test compiles a simple Rust program
 with `-C instrument-coverage` and compares the compiled program's LLVM IR to
 expected LLVM IR instructions and structured data for a coverage-enabled
 program, including various checks for Coverage Map-related metadata and the LLVM
