@@ -31,7 +31,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
 	--codeblock-ignore-color: rgba(255, 142, 0, .6);
-	--warning-border-color: rgb(255, 142, 0);
+	--warning-border-color: #ff8e00;
 	--type-link-color: #ffa0a5;
 	--trait-link-color: #39afd7;
 	--assoc-item-link-color: #39afd7;
@@ -96,8 +96,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--codeblock-link-background: #333;
 	--scrape-example-toggle-line-background: #999;
 	--scrape-example-toggle-line-hover-background: #c5c5c5;
-	--scrape-example-code-line-highlight: rgb(91, 59, 1);
-	--scrape-example-code-line-highlight-focus: rgb(124, 75, 15);
+	--scrape-example-code-line-highlight: #5b3b01;
+	--scrape-example-code-line-highlight-focus: #7c4b0f;
 	--scrape-example-help-border-color: #aaa;
 	--scrape-example-help-color: #eee;
 	--scrape-example-help-hover-border-color: #fff;
