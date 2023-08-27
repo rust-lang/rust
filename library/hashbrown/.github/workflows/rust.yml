@@ -24,8 +24,17 @@ jobs:
         TARGET: i586-unknown-linux-gnu
       run: sh ci/tools.sh
 
+  basics:
+    runs-on: ubuntu-latest
+    needs:
+      - miri
+      - rustfmt_clippy
+    steps:
+      - run: exit 0
+
   test:
     runs-on: ${{ matrix.os }}
+    needs: basics
     steps:
     - uses: actions/checkout@v3
     - uses: actions-rs/toolchain@v1
