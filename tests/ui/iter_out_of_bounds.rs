@@ -57,4 +57,14 @@ fn main() {
 
     for _ in std::iter::once(1).take(2) {}
     //~^ ERROR: this `.take()` call takes more items than the iterator will produce
+
+    for x in [].iter().take(1) {
+        //~^ ERROR: this `.take()` call takes more items than the iterator will produce
+        let _: &i32 = x;
+    }
+
+    // ok, not out of bounds
+    for _ in [1].iter().take(1) {}
+    for _ in [1, 2, 3].iter().take(2) {}
+    for _ in [1, 2, 3].iter().skip(2) {}
 }

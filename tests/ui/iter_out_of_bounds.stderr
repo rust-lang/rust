@@ -107,5 +107,13 @@ LL |     for _ in std::iter::once(1).take(2) {}
    |
    = note: this operation is useless and the returned iterator will simply yield the same items
 
-error: aborting due to 13 previous errors
+error: this `.take()` call takes more items than the iterator will produce
+  --> $DIR/iter_out_of_bounds.rs:61:14
+   |
+LL |     for x in [].iter().take(1) {
+   |              ^^^^^^^^^^^^^^^^^
+   |
+   = note: this operation is useless and the returned iterator will simply yield the same items
+
+error: aborting due to 14 previous errors
 
