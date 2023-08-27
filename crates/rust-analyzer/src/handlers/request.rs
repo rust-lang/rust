@@ -11,8 +11,8 @@ use anyhow::Context;
 
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, Query, RangeInfo, ReferenceCategory, Runnable, RunnableKind,
-    SingleResolve, SourceChange, TextEdit,
+    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory,
+    Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use lsp_server::ErrorCode;
@@ -30,7 +30,7 @@ use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 use triomphe::Arc;
-use vfs::{AbsPath, AbsPathBuf, VfsPath};
+use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -1412,17 +1412,71 @@ pub(crate) fn handle_inlay_hints(
         snap.analysis
             .inlay_hints(&inlay_hints_config, file_id, Some(range))?
             .into_iter()
-            .map(|it| to_proto::inlay_hint(&snap, &line_index, it))
+            .map(|it| {
+                to_proto::inlay_hint(
+                    &snap,
+                    &inlay_hints_config.fields_to_resolve,
+                    &line_index,
+                    file_id,
+                    it,
+                )
+            })
             .collect::<Cancellable<Vec<_>>>()?,
     ))
 }
 
 pub(crate) fn handle_inlay_hints_resolve(
-    _snap: GlobalStateSnapshot,
-    hint: InlayHint,
+    snap: GlobalStateSnapshot,
+    mut original_hint: InlayHint,
 ) -> anyhow::Result<InlayHint> {
     let _p = profile::span("handle_inlay_hints_resolve");
-    Ok(hint)
+
+    let data = match original_hint.data.take() {
+        Some(it) => it,
+        None => return Ok(original_hint),
+    };
+
+    let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
+    let file_id = FileId(resolve_data.file_id);
+    let line_index = snap.file_line_index(file_id)?;
+    let range = from_proto::text_range(
+        &line_index,
+        lsp_types::Range { start: original_hint.position, end: original_hint.position },
+    )?;
+    let range_start = range.start();
+    let range_end = range.end();
+    let large_range = TextRange::new(
+        range_start.checked_sub(1.into()).unwrap_or(range_start),
+        range_end.checked_add(1.into()).unwrap_or(range_end),
+    );
+    let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
+    forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
+    let resolve_hints = snap.analysis.inlay_hints(
+        &forced_resolve_inlay_hints_config,
+        file_id,
+        Some(large_range),
+    )?;
+
+    let mut resolved_hints = resolve_hints
+        .into_iter()
+        .filter_map(|it| {
+            to_proto::inlay_hint(
+                &snap,
+                &forced_resolve_inlay_hints_config.fields_to_resolve,
+                &line_index,
+                file_id,
+                it,
+            )
+            .ok()
+        })
+        .filter(|hint| hint.position == original_hint.position)
+        .filter(|hint| hint.kind == original_hint.kind);
+    if let Some(resolved_hint) = resolved_hints.next() {
+        if resolved_hints.next().is_none() {
+            return Ok(resolved_hint);
+        }
+    }
+    Ok(original_hint)
 }
 
 pub(crate) fn handle_call_hierarchy_prepare(

@@ -91,9 +91,9 @@ pub use crate::{
         MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
     },
     inlay_hints::{
-        AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints, InlayHint,
-        InlayHintLabel, InlayHintLabelPart, InlayHintPosition, InlayHintsConfig, InlayKind,
-        InlayTooltip, LifetimeElisionHints,
+        AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints,
+        InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayHintPosition,
+        InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,

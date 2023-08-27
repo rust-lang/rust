@@ -52,6 +52,42 @@ pub struct InlayHintsConfig {
     pub closure_style: ClosureStyle,
     pub max_length: Option<usize>,
     pub closing_brace_hints_min_lines: Option<usize>,
+    pub fields_to_resolve: InlayFieldsToResolve,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InlayFieldsToResolve {
+    pub client_capability_fields: Vec<String>,
+}
+
+impl InlayFieldsToResolve {
+    pub const fn empty() -> Self {
+        Self { client_capability_fields: Vec::new() }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.client_capability_fields.is_empty()
+    }
+
+    pub fn resolve_text_edits(&self) -> bool {
+        self.client_capability_fields.iter().find(|s| s.as_str() == "textEdits").is_some()
+    }
+
+    pub fn resolve_hint_tooltip(&self) -> bool {
+        self.client_capability_fields.iter().find(|s| s.as_str() == "tooltip").is_some()
+    }
+
+    pub fn resolve_label_tooltip(&self) -> bool {
+        self.client_capability_fields.iter().find(|s| s.as_str() == "label.tooltip").is_some()
+    }
+
+    pub fn resolve_label_location(&self) -> bool {
+        self.client_capability_fields.iter().find(|s| s.as_str() == "label.location").is_some()
+    }
+
+    pub fn resolve_label_command(&self) -> bool {
+        self.client_capability_fields.iter().find(|s| s.as_str() == "label.command").is_some()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -529,6 +565,7 @@ fn closure_has_block_body(closure: &ast::ClosureExpr) -> bool {
 
 #[cfg(test)]
 mod tests {
+
     use expect_test::Expect;
     use hir::ClosureStyle;
     use itertools::Itertools;
@@ -538,7 +575,7 @@ mod tests {
     use crate::DiscriminantHints;
     use crate::{fixture, inlay_hints::InlayHintsConfig, LifetimeElisionHints};
 
-    use super::ClosureReturnTypeHints;
+    use super::{ClosureReturnTypeHints, InlayFieldsToResolve};
 
     pub(super) const DISABLED_CONFIG: InlayHintsConfig = InlayHintsConfig {
         discriminant_hints: DiscriminantHints::Never,
@@ -559,6 +596,7 @@ mod tests {
         param_names_for_lifetime_elision_hints: false,
         max_length: None,
         closing_brace_hints_min_lines: None,
+        fields_to_resolve: InlayFieldsToResolve::empty(),
     };
     pub(super) const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
         type_hints: true,
@@ -567,7 +605,19 @@ mod tests {
         closure_return_type_hints: ClosureReturnTypeHints::WithBlock,
         binding_mode_hints: true,
         lifetime_elision_hints: LifetimeElisionHints::Always,
-        ..DISABLED_CONFIG
+        discriminant_hints: DiscriminantHints::Never,
+        render_colons: false,
+        closure_capture_hints: false,
+        adjustment_hints: AdjustmentHints::Never,
+        adjustment_hints_mode: AdjustmentHintsMode::Prefix,
+        adjustment_hints_hide_outside_unsafe: false,
+        hide_named_constructor_hints: false,
+        hide_closure_initialization_hints: false,
+        closure_style: ClosureStyle::ImplFn,
+        param_names_for_lifetime_elision_hints: false,
+        max_length: None,
+        closing_brace_hints_min_lines: None,
+        fields_to_resolve: InlayFieldsToResolve::empty(),
     };
 
     #[track_caller]

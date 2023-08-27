@@ -15,7 +15,10 @@ use hir_def::{
     hir::{ExprId, PatId},
 };
 use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
-use ide::{Analysis, AnnotationConfig, DiagnosticsConfig, InlayHintsConfig, LineCol, RootDatabase};
+use ide::{
+    Analysis, AnnotationConfig, DiagnosticsConfig, InlayFieldsToResolve, InlayHintsConfig, LineCol,
+    RootDatabase,
+};
 use ide_db::{
     base_db::{
         salsa::{self, debug::DebugQueryTable, ParallelDatabase},
@@ -782,6 +785,7 @@ impl flags::AnalysisStats {
                     closure_style: hir::ClosureStyle::ImplFn,
                     max_length: Some(25),
                     closing_brace_hints_min_lines: Some(20),
+                    fields_to_resolve: InlayFieldsToResolve::empty(),
                 },
                 file_id,
                 None,

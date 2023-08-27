@@ -13,8 +13,9 @@ use cfg::{CfgAtom, CfgDiff};
 use flycheck::FlycheckConfig;
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
-    HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayHintsConfig,
-    JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind, Snippet, SnippetScope,
+    HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayFieldsToResolve,
+    InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
+    Snippet, SnippetScope,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -1335,6 +1336,18 @@ impl Config {
     }
 
     pub fn inlay_hints(&self) -> InlayHintsConfig {
+        let client_capability_fields = self
+            .caps
+            .text_document
+            .as_ref()
+            .and_then(|text| text.inlay_hint.as_ref())
+            .and_then(|inlay_hint_caps| inlay_hint_caps.resolve_support.as_ref())
+            .map(|inlay_resolve| inlay_resolve.properties.iter())
+            .into_iter()
+            .flatten()
+            .cloned()
+            .collect::<Vec<_>>();
+
         InlayHintsConfig {
             render_colons: self.data.inlayHints_renderColons,
             type_hints: self.data.inlayHints_typeHints_enable,
@@ -1395,6 +1408,7 @@ impl Config {
             } else {
                 None
             },
+            fields_to_resolve: InlayFieldsToResolve { client_capability_fields },
         }
     }
 
