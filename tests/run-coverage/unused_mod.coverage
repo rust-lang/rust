@@ -1,4 +1,5 @@
 $DIR/auxiliary/unused_mod_helper.rs:
+   LL|       |#[allow(dead_code)]
    LL|      0|pub fn never_called_function() {
    LL|      0|    println!("I am never called");
    LL|      0|}

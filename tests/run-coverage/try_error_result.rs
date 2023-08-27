@@ -1,7 +1,7 @@
 #![allow(unused_assignments)]
 // failure-status: 1
 
-fn call(return_error: bool) -> Result<(),()> {
+fn call(return_error: bool) -> Result<(), ()> {
     if return_error {
         Err(())
     } else {
@@ -9,7 +9,7 @@ fn call(return_error: bool) -> Result<(),()> {
     }
 }
 
-fn test1() -> Result<(),()> {
+fn test1() -> Result<(), ()> {
     let mut
         countdown = 10
     ;
@@ -37,18 +37,18 @@ fn test1() -> Result<(),()> {
 
 struct Thing1;
 impl Thing1 {
-    fn get_thing_2(&self, return_error: bool) -> Result<Thing2,()> {
+    fn get_thing_2(&self, return_error: bool) -> Result<Thing2, ()> {
         if return_error {
             Err(())
         } else {
-            Ok(Thing2{})
+            Ok(Thing2 {})
         }
     }
 }
 
 struct Thing2;
 impl Thing2 {
-    fn call(&self, return_error: bool) -> Result<u32,()> {
+    fn call(&self, return_error: bool) -> Result<u32, ()> {
         if return_error {
             Err(())
         } else {
@@ -57,7 +57,7 @@ impl Thing2 {
     }
 }
 
-fn test2() -> Result<(),()> {
+fn test2() -> Result<(), ()> {
     let thing1 = Thing1{};
     let mut
         countdown = 10
@@ -109,7 +109,7 @@ fn test2() -> Result<(),()> {
     Ok(())
 }
 
-fn main() -> Result<(),()> {
+fn main() -> Result<(), ()> {
     test1().expect_err("test1 should fail");
     test2()
     ?

@@ -59,7 +59,6 @@
    LL|       |        }
    LL|      0|    }
    LL|       |
-   LL|       |
    LL|      1|    let mut countdown = 0;
    LL|      1|    if true {
    LL|      1|        countdown = 1;

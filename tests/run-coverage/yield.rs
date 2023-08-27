@@ -7,7 +7,7 @@ use std::pin::Pin;
 fn main() {
     let mut generator = || {
         yield 1;
-        return "foo"
+        return "foo";
     };
 
     match Pin::new(&mut generator).resume(()) {
@@ -23,7 +23,7 @@ fn main() {
         yield 1;
         yield 2;
         yield 3;
-        return "foo"
+        return "foo";
     };
 
     match Pin::new(&mut generator).resume(()) {

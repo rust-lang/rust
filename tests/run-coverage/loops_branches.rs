@@ -9,8 +9,7 @@ impl std::fmt::Debug for DebugTest {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if true {
             if false {
-                while true {
-                }
+                while true {}
             }
             write!(f, "cool")?;
         } else {

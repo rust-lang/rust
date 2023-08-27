@@ -12,7 +12,7 @@ fn might_overflow(to_add: u32) -> u32 {
     result
 }
 
-fn main() -> Result<(),u8> {
+fn main() -> Result<(), u8> {
     let mut countdown = 10;
     while countdown > 0 {
         if countdown == 1 {
