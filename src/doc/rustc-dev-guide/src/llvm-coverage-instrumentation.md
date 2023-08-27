@@ -28,7 +28,7 @@ them), and generate various reports for analysis, for example:
 <br/>
 
 Detailed instructions and examples are documented in the
-[Rustc Book][rustc-book-instrument-coverage].
+[rustc book][rustc-book-instrument-coverage].
 
 [llvm-instrprof-increment]: https://llvm.org/docs/LangRef.html#llvm-instrprof-increment-intrinsic
 [coverage map]: https://llvm.org/docs/CoverageMappingFormat.html
