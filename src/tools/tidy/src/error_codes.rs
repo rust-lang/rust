@@ -354,7 +354,11 @@ fn check_error_codes_used(
 
     for code in error_codes {
         if !found_codes.contains(code) && !no_longer_emitted.contains(code) {
-            errors.push(format!("Error code `{code}` exists, but is not emitted by the compiler!"))
+            errors.push(format!(
+                "Error code `{code}` exists, but is not emitted by the compiler!\n\
+                Please mark the code as no longer emitted by adding the following note to the top of the `EXXXX.md` file:\n\
+                `#### Note: this error code is no longer emitted by the compiler`"
+            ));
         }
 
         if found_codes.contains(code) && no_longer_emitted.contains(code) {
