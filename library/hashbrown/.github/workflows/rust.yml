@@ -75,9 +75,6 @@ jobs:
           channel: 1.64.0
         - os: ubuntu-latest
           target: x86_64-unknown-linux-gnu
-          channel: 1.64.0
-        - os: ubuntu-latest
-          target: x86_64-unknown-linux-gnu
           channel: beta
         - os: ubuntu-latest
           target: x86_64-unknown-linux-gnu
