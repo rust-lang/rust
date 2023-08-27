@@ -1783,7 +1783,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// [`RawTableInner::ctrl`]: RawTableInner::ctrl
     /// [`RawTableInner::set_ctrl_h2`]: RawTableInner::set_ctrl_h2
     #[inline]
-    unsafe fn prepare_insert_slot(&self, hash: u64) -> (usize, u8) {
+    unsafe fn prepare_insert_slot(&mut self, hash: u64) -> (usize, u8) {
         let index: usize = self.find_insert_slot(hash).index;
         // SAFETY:
         // 1. The `find_insert_slot` function either returns an `index` less than or
@@ -2054,7 +2054,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// [`Bucket::as_ptr`]: Bucket::as_ptr
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
-    unsafe fn set_ctrl_h2(&self, index: usize, hash: u64) {
+    unsafe fn set_ctrl_h2(&mut self, index: usize, hash: u64) {
         // SAFETY: The caller must uphold the safety rules for the [`RawTableInner::set_ctrl_h2`]
         self.set_ctrl(index, h2(hash));
     }
@@ -2088,7 +2088,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// [`Bucket::as_ptr`]: Bucket::as_ptr
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
-    unsafe fn replace_ctrl_h2(&self, index: usize, hash: u64) -> u8 {
+    unsafe fn replace_ctrl_h2(&mut self, index: usize, hash: u64) -> u8 {
         // SAFETY: The caller must uphold the safety rules for the [`RawTableInner::replace_ctrl_h2`]
         let prev_ctrl = *self.ctrl(index);
         self.set_ctrl_h2(index, hash);
@@ -2120,7 +2120,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// [`Bucket::as_ptr`]: Bucket::as_ptr
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
-    unsafe fn set_ctrl(&self, index: usize, ctrl: u8) {
+    unsafe fn set_ctrl(&mut self, index: usize, ctrl: u8) {
         // Replicate the first Group::WIDTH control bytes at the end of
         // the array without using a branch. If the tables smaller than
         // the group width (self.buckets() < Group::WIDTH),
@@ -2909,7 +2909,7 @@ impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
         {
             self.clear();
 
-            let guard_self = guard(&mut *self, |self_| {
+            let mut guard_self = guard(&mut *self, |self_| {
                 // Clear the partially copied table if a panic occurs, otherwise
                 // items and growth_left will be out of sync with the contents
                 // of the table.
