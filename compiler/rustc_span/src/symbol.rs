@@ -1489,6 +1489,7 @@ symbols! {
         sreg,
         sreg_low16,
         sse,
+        sse2,
         sse4a_target_feature,
         stable,
         staged_api,

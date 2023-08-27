@@ -328,7 +328,7 @@ macro_rules! assert_f32_biteq {
 
 // Ignore test on x87 floating point, these platforms do not guarantee NaN
 // payloads are preserved and flush denormals to zero, failing the tests.
-#[cfg(not(target_arch = "x86"))]
+#[cfg(not(all(target_arch = "x86", not(target_feature = "sse2"))))]
 #[test]
 fn test_next_up() {
     let tiny = f32::from_bits(1);
@@ -361,7 +361,7 @@ fn test_next_up() {
 
 // Ignore test on x87 floating point, these platforms do not guarantee NaN
 // payloads are preserved and flush denormals to zero, failing the tests.
-#[cfg(not(target_arch = "x86"))]
+#[cfg(not(all(target_arch = "x86", not(target_feature = "sse2"))))]
 #[test]
 fn test_next_down() {
     let tiny = f32::from_bits(1);

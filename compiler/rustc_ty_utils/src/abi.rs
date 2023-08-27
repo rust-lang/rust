@@ -7,6 +7,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
+use rustc_span::symbol::sym;
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
     RiscvInterruptKind,
@@ -371,6 +372,8 @@ fn fn_abi_new_uncached<'tcx>(
     let target = &cx.tcx.sess.target;
     let target_env_gnu_like = matches!(&target.env[..], "gnu" | "musl" | "uclibc");
     let win_x64_gnu = target.os == "windows" && target.arch == "x86_64" && target.env == "gnu";
+    let x86_sse2 = target.arch == "x86"
+        && cx.tcx.sess.parse_sess.config.contains(&(sym::target_feature, Some(sym::sse2)));
     let linux_s390x_gnu_like =
         target.os == "linux" && target.arch == "s390x" && target_env_gnu_like;
     let linux_sparc64_gnu_like =
@@ -415,6 +418,10 @@ fn fn_abi_new_uncached<'tcx>(
                 is_return,
                 drop_target_pointee,
             );
+            // Use XMM0 instead of FP0 to preserve NaN payloads
+            if x86_sse2 && rust_abi && is_return && matches!(scalar.primitive(), F32 | F64) {
+                attrs.set(ArgAttribute::InReg);
+            }
             attrs
         });
 
