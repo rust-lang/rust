@@ -126,7 +126,7 @@ You may have a couple of followup questions…
  definition. For example, `tcx.type_of(def_id_of_my_struct)` would return the “self-view” of
  `MyStruct`: `Adt(Foo, &[Param(0), Param(1)])`.
 
-**`instantiate`** How do we actually do the substitutions? There is a function for that too! You
+How do we actually do the substitutions? There is a function for that too! You
 use [`instantiate`] to replace a `GenericArgsRef` with  another list of types.
 
 [Here is an example of actually using `instantiate` in the compiler][instantiatex].
