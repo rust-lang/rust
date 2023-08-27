@@ -65,8 +65,8 @@ Also, using `x` rather than `x.py` is recommended as:
 Notice that this is not absolute, for instance, using Nushell in VSCode on Win10,
 typing `x` or `./x` still open the `x.py` in editor rather invoke the program :)
 
-In the rest of documents, we use `x` to represent the straightly usage of `x.py`, which
-means the following command:
+In the rest of this guilde, we use `x` rather than `x.py` directly. The following
+command:
 
 ```bash
 ./x check
