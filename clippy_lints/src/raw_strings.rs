@@ -1,7 +1,7 @@
 use std::iter::once;
 use std::ops::ControlFlow;
 
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_ast::token::LitKind;
@@ -9,6 +9,7 @@ use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::{BytePos, Pos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -76,14 +77,24 @@ impl EarlyLintPass for RawStrings {
             }
 
             if !str.contains(['\\', '"']) {
-                span_lint_and_sugg(
+                span_lint_and_then(
                     cx,
                     NEEDLESS_RAW_STRINGS,
                     expr.span,
                     "unnecessary raw string literal",
-                    "try",
-                    format!("{}\"{}\"", prefix.replace('r', ""), lit.symbol),
-                    Applicability::MachineApplicable,
+                    |diag| {
+                        let (start, end) = hash_spans(expr.span, prefix, 0, max);
+
+                        // BytePos: skip over the `b` in `br`, we checked the prefix appears in the source text
+                        let r_pos = expr.span.lo() + BytePos::from_usize(prefix.len() - 1);
+                        let start = start.with_lo(r_pos);
+
+                        diag.multipart_suggestion(
+                            "try",
+                            vec![(start, String::new()), (end, String::new())],
+                            Applicability::MachineApplicable,
+                        );
+                    },
                 );
 
                 return;
@@ -96,13 +107,6 @@ impl EarlyLintPass for RawStrings {
                 let num = str.as_bytes().iter().chain(once(&0)).try_fold(0u8, |acc, &b| {
                     match b {
                         b'"' if !following_quote => (following_quote, req) = (true, 1),
-                        // I'm a bit surprised the compiler didn't optimize this out, there's no
-                        // branch but it still ends up doing an unnecessary comparison, it's:
-                        // - cmp r9b,1h
-                        // - sbb cl,-1h
-                        // which will add 1 if it's true. With this change, it becomes:
-                        // - add cl,r9b
-                        // isn't that so much nicer?
                         b'#' => req += u8::from(following_quote),
                         _ => {
                             if following_quote {
@@ -126,18 +130,58 @@ impl EarlyLintPass for RawStrings {
             };
 
             if req < max {
-                let hashes = "#".repeat(req as usize);
-
-                span_lint_and_sugg(
+                span_lint_and_then(
                     cx,
                     NEEDLESS_RAW_STRING_HASHES,
                     expr.span,
                     "unnecessary hashes around raw string literal",
-                    "try",
-                    format!(r#"{prefix}{hashes}"{}"{hashes}"#, lit.symbol),
-                    Applicability::MachineApplicable,
+                    |diag| {
+                        let (start, end) = hash_spans(expr.span, prefix, req, max);
+
+                        let message = match max - req {
+                            _ if req == 0 => "remove all the hashes around the literal".to_string(),
+                            1 => "remove one hash from both sides of the literal".to_string(),
+                            n => format!("remove {n} hashes from both sides of the literal"),
+                        };
+
+                        diag.multipart_suggestion(
+                            message,
+                            vec![(start, String::new()), (end, String::new())],
+                            Applicability::MachineApplicable,
+                        );
+                    },
                 );
             }
         }
     }
+}
+
+/// Returns spans pointing at the unneeded hashes, e.g. for a `req` of `1` and `max` of `3`:
+///
+/// ```ignore
+/// r###".."###
+///   ^^    ^^
+/// ```
+fn hash_spans(literal_span: Span, prefix: &str, req: u8, max: u8) -> (Span, Span) {
+    let literal_span = literal_span.data();
+
+    // BytePos: we checked prefix appears literally in the source text
+    let hash_start = literal_span.lo + BytePos::from_usize(prefix.len());
+    let hash_end = literal_span.hi;
+
+    // BytePos: req/max are counts of the ASCII character #
+    let start = Span::new(
+        hash_start + BytePos(req.into()),
+        hash_start + BytePos(max.into()),
+        literal_span.ctxt,
+        None,
+    );
+    let end = Span::new(
+        hash_end - BytePos(req.into()),
+        hash_end - BytePos(max.into()),
+        literal_span.ctxt,
+        None,
+    );
+
+    (start, end)
 }
