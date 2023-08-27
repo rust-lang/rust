@@ -54,7 +54,7 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)
     ),
     // tidy-alphabetical-start
     ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None),
-    ("library/backtrace", &[], None),
+    //("library/backtrace", &[], None), // FIXME uncomment once rust-lang/backtrace#562 lands
     //("library/portable-simd", &[], None), // FIXME uncomment once rust-lang/portable-simd#363 has been synced back to the rust repo
     //("library/stdarch", EXCEPTIONS_STDARCH, None), // FIXME uncomment once rust-lang/stdarch#1462 lands
     ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None),
@@ -467,7 +467,8 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.cargo_path(cargo)
             .manifest_path(root.join(workspace).join("Cargo.toml"))
-            .features(cargo_metadata::CargoOpt::AllFeatures);
+            .features(cargo_metadata::CargoOpt::AllFeatures)
+            .other_options(vec!["--locked".to_owned()]);
         let metadata = t!(cmd.exec());
 
         check_license_exceptions(&metadata, exceptions, bad);
