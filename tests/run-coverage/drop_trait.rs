@@ -11,7 +11,7 @@ impl Drop for Firework {
     }
 }
 
-fn main() -> Result<(),u8> {
+fn main() -> Result<(), u8> {
     let _firecracker = Firework { strength: 1 };
 
     let _tnt = Firework { strength: 100 };

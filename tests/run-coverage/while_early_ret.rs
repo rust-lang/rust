@@ -1,7 +1,7 @@
 #![allow(unused_assignments)]
 // failure-status: 1
 
-fn main() -> Result<(),u8> {
+fn main() -> Result<(), u8> {
     let mut countdown = 10;
     while
         countdown

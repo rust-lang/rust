@@ -12,6 +12,7 @@ fn do_not_add_coverage_2() {
 }
 
 #[no_coverage]
+#[allow(dead_code)]
 fn do_not_add_coverage_not_called() {
     println!("not called and not covered");
 }
@@ -24,6 +25,7 @@ fn add_coverage_2() {
     println!("called and covered");
 }
 
+#[allow(dead_code)]
 fn add_coverage_not_called() {
     println!("not called but covered");
 }

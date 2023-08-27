@@ -55,7 +55,6 @@ fn main() {
         }
     }
 
-
     let mut countdown = 0;
     if true {
         countdown = 1;

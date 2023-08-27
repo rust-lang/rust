@@ -42,7 +42,7 @@
    LL|       |
    LL|       |#[no_coverage]
    LL|       |fn main() {
-   LL|       |    executor::block_on(test());
+   LL|       |    executor::block_on(test()).unwrap();
    LL|       |}
    LL|       |
    LL|       |mod executor {
@@ -57,16 +57,12 @@
    LL|       |        let mut future = unsafe { Pin::new_unchecked(&mut future) };
    LL|       |        use std::hint::unreachable_unchecked;
    LL|       |        static VTABLE: RawWakerVTable = RawWakerVTable::new(
-   LL|       |
    LL|       |            #[no_coverage]
    LL|       |            |_| unsafe { unreachable_unchecked() }, // clone
-   LL|       |
    LL|       |            #[no_coverage]
    LL|       |            |_| unsafe { unreachable_unchecked() }, // wake
-   LL|       |
    LL|       |            #[no_coverage]
    LL|       |            |_| unsafe { unreachable_unchecked() }, // wake_by_ref
-   LL|       |
    LL|       |            #[no_coverage]
    LL|       |            |_| (),
    LL|       |        );
