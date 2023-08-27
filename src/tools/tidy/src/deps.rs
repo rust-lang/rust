@@ -42,6 +42,7 @@ type ExceptionList = &'static [(&'static str, &'static str)];
 /// * Optionally a tuple of:
 ///     * A list of crates for which dependencies need to be explicitly allowed.
 ///     * The list of allowed dependencies.
+// FIXME auto detect all cargo workspaces
 pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)] = &[
     // The root workspace has to be first for check_rustfix to work.
     (".", EXCEPTIONS, Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES))),
@@ -53,8 +54,15 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)
     ),
     // tidy-alphabetical-start
     ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None),
+    ("library/backtrace", &[], None),
+    //("library/portable-simd", &[], None), // FIXME uncomment once rust-lang/portable-simd#363 has been synced back to the rust repo
+    //("library/stdarch", EXCEPTIONS_STDARCH, None), // FIXME uncomment once rust-lang/stdarch#1462 lands
     ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None),
+    ("src/ci/docker/host-x86_64/test-various/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None),
+    ("src/etc/test-float-parse", &[], None),
     ("src/tools/cargo", EXCEPTIONS_CARGO, None),
+    ("src/tools/miri/test-cargo-miri", &[], None),
+    ("src/tools/miri/test_dependencies", &[], None),
     ("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None),
     ("src/tools/x", &[], None),
     // tidy-alphabetical-end
@@ -83,6 +91,17 @@ const EXCEPTIONS: ExceptionList = &[
     ("snap", "BSD-3-Clause"),                                // rustc
     // tidy-alphabetical-end
 ];
+
+// FIXME uncomment once rust-lang/stdarch#1462 lands
+/*
+const EXCEPTIONS_STDARCH: ExceptionList = &[
+    // tidy-alphabetical-start
+    ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
+    ("wasmparser", "Apache-2.0 WITH LLVM-exception"),
+    ("wasmprinter", "Apache-2.0 WITH LLVM-exception"),
+    // tidy-alphabetical-end
+];
+*/
 
 const EXCEPTIONS_CARGO: ExceptionList = &[
     // tidy-alphabetical-start
@@ -150,6 +169,10 @@ const EXCEPTIONS_GCC: ExceptionList = &[
 
 const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[
     ("ryu", "Apache-2.0 OR BSL-1.0"), // through serde. BSL is not acceptble, but we use it under Apache-2.0
+];
+
+const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[
+    ("r-efi", "MIT OR Apache-2.0 OR LGPL-2.1-or-later"), // LGPL is not acceptible, but we use it under MIT OR Apache-2.0
 ];
 
 /// These are the root crates that are part of the runtime. The licenses for
