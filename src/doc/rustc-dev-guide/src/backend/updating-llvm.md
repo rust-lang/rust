@@ -2,7 +2,7 @@
 
 <!-- toc -->
 
-<!-- date-check: Feb 2023 -->
+<!-- date-check: Jul 2023 -->
 There is no formal policy about when to update LLVM or what it can be updated to,
 but a few guidelines are applied:
 
@@ -52,7 +52,7 @@ An example PR:
 
 ## New LLVM Release Updates
 
-<!-- date-check: Aug 2022 -->
+<!-- date-check: Jul 2023 -->
 
 Unlike bugfixes,
 updating to a new release of LLVM typically requires a lot more work.
@@ -139,6 +139,7 @@ so let's go through each in detail.
    > - [LLVM 13](https://github.com/rust-lang/rust/pull/87570)
    > - [LLVM 14](https://github.com/rust-lang/rust/pull/93577)
    > - [LLVM 15](https://github.com/rust-lang/rust/pull/99464)
+   > - [LLVM 16](https://github.com/rust-lang/rust/pull/109474)
 
    Note that sometimes it's easiest to land [`llvm-wrapper`] compatibility as a PR
    before actually updating `src/llvm-project`.
