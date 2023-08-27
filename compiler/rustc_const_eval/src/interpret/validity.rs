@@ -911,9 +911,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Complain about any other kind of error -- those are bad because we'd like to
             // report them in a way that shows *where* in the value the issue lies.
             Err(err) => {
-                let (err, backtrace) = err.into_parts();
-                backtrace.print_backtrace();
-                bug!("Unexpected Undefined Behavior error during validation: {err:?}");
+                bug!(
+                    "Unexpected Undefined Behavior error during validation: {}",
+                    self.format_error(err)
+                );
             }
         }
     }

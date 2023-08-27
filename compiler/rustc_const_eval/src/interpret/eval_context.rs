@@ -25,8 +25,8 @@ use super::{
     Scalar, StackPopJump,
 };
 use crate::errors::{self, ErroneousConstUsed};
-use crate::fluent_generated as fluent;
 use crate::util;
+use crate::{fluent_generated as fluent, ReportErrorExt};
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
@@ -430,6 +430,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .iter()
             .find_map(|frame| frame.body.source.def_id().as_local())
             .map_or(CRATE_HIR_ID, |def_id| self.tcx.hir().local_def_id_to_hir_id(def_id))
+    }
+
+    /// Turn the given error into a human-readable string. Expects the string to be printed, so if
+    /// `RUSTC_CTFE_BACKTRACE` is set this will show a backtrace of the rustc internals that
+    /// triggered the error.
+    ///
+    /// This is NOT the preferred way to render an error; use `report` from `const_eval` instead.
+    /// However, this is useful when error messages appear in ICEs.
+    pub fn format_error(&self, e: InterpErrorInfo<'tcx>) -> String {
+        let (e, backtrace) = e.into_parts();
+        backtrace.print_backtrace();
+        // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
+        // label and arguments from the InterpError.
+        let handler = &self.tcx.sess.parse_sess.span_diagnostic;
+        #[allow(rustc::untranslatable_diagnostic)]
+        let mut diag = self.tcx.sess.struct_allow("");
+        let msg = e.diagnostic_message();
+        e.add_args(handler, &mut diag);
+        let s = handler.eagerly_translate_to_string(msg, diag.args());
+        diag.cancel();
+        s
     }
 
     #[inline(always)]
