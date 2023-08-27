@@ -56,14 +56,14 @@ statically links coverage-instrumented binaries with LLVM runtime code
 ([compiler-rt][compiler-rt-profile]) that implements program hooks
 (such as an `exit` hook) to write the counter values to the `.profraw` file.
 
-In the `rustc` source tree, `library/profiler_builtins` bundles the LLVM
-`compiler-rt` code into a Rust library crate. (When building `rustc`, the
-`profiler_builtins` library is only included when `profiler = true` is set
-in `rustc`'s `config.toml`.)
+In the `rustc` source tree,
+`library/profiler_builtins` bundles the LLVM `compiler-rt` code into a Rust library crate.
+Note that when building `rustc`,
+`profiler_builtins` is only included when `build.profiler = true` is set in `config.toml`.
 
 When compiling with `-C instrument-coverage`,
-[`CrateLoader::postprocess()`][crate-loader-postprocess] dynamically loads the
-`profiler_builtins` library by calling `inject_profiler_runtime()`.
+[`CrateLoader::postprocess()`][crate-loader-postprocess] dynamically loads
+`profiler_builtins` by calling `inject_profiler_runtime()`.
 
 [compiler-rt-profile]: https://github.com/llvm/llvm-project/tree/main/compiler-rt/lib/profile
 [crate-loader-postprocess]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/creader/struct.CrateLoader.html#method.postprocess
