@@ -288,12 +288,13 @@ expected LLVM IR instructions and structured data for a coverage-enabled
 program, including various checks for Coverage Map-related metadata and the LLVM
 intrinsic calls to increment the runtime counters.
 
-Expected results for both the `mir-opt` tests and the `coverage*` tests under
-`run-make-fulldeps` can be refreshed by running:
+Expected results for both the `mir-opt` tests and the `coverage*` tests
+can be refreshed by running:
 
 ```shell
-$ ./x test mir-opt --bless
-$ ./x test tests/run-make-fulldeps/coverage --bless
+./x test tests/mir-opt --bless
+./x test tests/run-coverage --bless
+./x test tests/run-coverage-rustdoc --bless
 ```
 
 [mir-opt-test]: https://github.com/rust-lang/rust/blob/master/tests/mir-opt/instrument_coverage.rs
