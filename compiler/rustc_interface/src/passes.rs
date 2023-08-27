@@ -22,7 +22,7 @@ use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
-use rustc_passes::{self, hir_stats, layout_test};
+use rustc_passes::{self, abi_test, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_resolve::Resolver;
 use rustc_session::code_stats::VTableSizeInfo;
@@ -818,6 +818,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     }
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));
+    sess.time("abi_testing", || abi_test::test_abi(tcx));
 
     // Avoid overwhelming user with errors if borrow checking failed.
     // I'm not sure how helpful this is, to be honest, but it avoids a

@@ -1281,6 +1281,7 @@ symbols! {
         rust_eh_catch_typeinfo,
         rust_eh_personality,
         rustc,
+        rustc_abi,
         rustc_allocator,
         rustc_allocator_zeroed,
         rustc_allow_const_fn_unstable,
