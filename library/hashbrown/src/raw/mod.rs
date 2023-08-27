@@ -938,7 +938,9 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     #[inline]
     #[cfg(feature = "raw")]
     pub fn allocation_info(&self) -> (NonNull<u8>, Layout) {
-        self.table.allocation_info_or_zero(Self::TABLE_LAYOUT)
+        // SAFETY: We use the same `table_layout` that was used to allocate
+        // this table.
+        unsafe { self.table.allocation_info_or_zero(Self::TABLE_LAYOUT) }
     }
 
     /// Returns the index of a bucket from a `Bucket`.
@@ -1067,11 +1069,16 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
                 *self = Self::with_capacity_in(min_size, self.table.alloc.clone());
             } else {
                 // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
-                if self
-                    .resize(min_size, hasher, Fallibility::Infallible)
-                    .is_err()
-                {
-                    unsafe { hint::unreachable_unchecked() }
+                unsafe {
+                    // SAFETY: We check that `capacity > 0`.
+                    if self
+                        .resize(min_size, hasher, Fallibility::Infallible)
+                        .is_err()
+                    {
+                        // SAFETY: The result of calling the `resize` function cannot be an error
+                        // because `fallibility == Fallibility::Infallible.
+                        hint::unreachable_unchecked()
+                    }
                 }
             }
         }
@@ -1133,20 +1140,35 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
 
     /// Allocates a new table of a different size and moves the contents of the
     /// current table into it.
-    fn resize(
+    ///
+    /// # Safety
+    ///
+    /// If `self.table.items != 0`, calling of this function with `capacity` equal to 0
+    /// (`capacity == 0`) results in [`undefined behavior`].
+    ///
+    /// Note: It is recommended (but not required) that the new table's `capacity`
+    /// be greater than or equal to `self.items`. In case if `capacity <= self.items`
+    /// this function can never return. See [`RawTableInner::find_insert_slot`] for
+    /// more information.
+    ///
+    /// [`RawTableInner::find_insert_slot`]: RawTableInner::find_insert_slot
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    unsafe fn resize(
         &mut self,
         capacity: usize,
         hasher: impl Fn(&T) -> u64,
         fallibility: Fallibility,
     ) -> Result<(), TryReserveError> {
-        unsafe {
-            self.table.resize_inner(
-                capacity,
-                &|table, index| hasher(table.bucket::<T>(index).as_ref()),
-                fallibility,
-                Self::TABLE_LAYOUT,
-            )
-        }
+        // SAFETY:
+        // 1. The caller of this function guarantees that `capacity > 0`.
+        // 2. The `table_layout` is the same [`TableLayout`] that was used
+        //    to allocate this table.
+        self.table.resize_inner(
+            capacity,
+            &|table, index| hasher(table.bucket::<T>(index).as_ref()),
+            fallibility,
+            Self::TABLE_LAYOUT,
+        )
     }
 
     /// Inserts a new element into the table, and returns its raw bucket.
@@ -1720,13 +1742,55 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
-    /// Searches for an empty or deleted bucket which is suitable for inserting
-    /// a new element and sets the hash for that slot.
+    /// Searches for an empty or deleted bucket which is suitable for inserting a new
+    /// element and sets the hash for that slot. Returns an index of that slot and the
+    /// old control byte stored in the found index.
     ///
-    /// There must be at least 1 empty bucket in the table.
+    /// This function does not check if the given element exists in the table. Also,
+    /// this function does not check if there is enough space in the table to insert
+    /// a new element, so the caller must make ensure that the table has at least 1
+    /// empty or deleted `bucket` or this function will never return (will go into
+    /// an infinite loop).
+    ///
+    /// This function does not make any changes to the `data` parts of the table,
+    /// or any changes to the the `items` or `growth_left` field of the table.
+    ///
+    /// # Safety
+    ///
+    /// The safety rules are directly derived from the safety rule for the
+    /// [`RawTableInner::set_ctrl_h2`] methods. Thus, in order to uphold the safety
+    /// contracts for that method, as well as for the correct logic of the work of this
+    /// crate, you must observe the following rules when calling this function:
+    ///
+    /// * The [`RawTableInner`] has already been allocated;
+    ///
+    /// * The caller of this function must ensure that the "data" parts of the table
+    ///   will have an entry in the returned index (matching the given hash) right
+    ///   after calling this function.
+    ///
+    /// Calling this function on a table that has not been allocated results in
+    /// [`undefined behavior`].
+    ///
+    /// The caller must independently increase the `items` field of the table, and also,
+    /// if the old control byte was [`EMPTY`], then decrease the table's `growth_left`
+    /// field, and do not change it if the old control byte was [`DELETED`].
+    ///
+    /// See also [`Bucket::as_ptr`] method, for more information about of properly removing
+    /// or saving `element` from / into the [`RawTable`] / [`RawTableInner`].
+    ///
+    /// [`Bucket::as_ptr`]: Bucket::as_ptr
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    /// [`RawTableInner::ctrl`]: RawTableInner::ctrl
+    /// [`RawTableInner::set_ctrl_h2`]: RawTableInner::set_ctrl_h2
     #[inline]
     unsafe fn prepare_insert_slot(&self, hash: u64) -> (usize, u8) {
-        let index = self.find_insert_slot(hash).index;
+        let index: usize = self.find_insert_slot(hash).index;
+        // SAFETY:
+        // 1. The `find_insert_slot` function either returns an `index` less than or
+        //    equal to `self.bucket_mask = self.buckets() - 1` of the table, or never
+        //    returns if it cannot find an empty or deleted slot.
+        // 2. The caller of this function guarantees that the table has already been
+        //    allocated
         let old_ctrl = *self.ctrl(index);
         self.set_ctrl_h2(index, hash);
         (index, old_ctrl)
@@ -2058,7 +2122,10 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     #[inline]
     unsafe fn set_ctrl(&self, index: usize, ctrl: u8) {
         // Replicate the first Group::WIDTH control bytes at the end of
-        // the array without using a branch:
+        // the array without using a branch. If the tables smaller than
+        // the group width (self.buckets() < Group::WIDTH),
+        // `index2 = Group::WIDTH + index`, otherwise `index2` is:
+        //
         // - If index >= Group::WIDTH then index == index2.
         // - Otherwise index2 == self.bucket_mask + 1 + index.
         //
@@ -2141,9 +2208,28 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         self.bucket_mask == 0
     }
 
+    /// Attempts to allocate a new hash table with at least enough capacity
+    /// for inserting the given number of elements without reallocating,
+    /// and return it inside ScopeGuard to protect against panic in the hash
+    /// function.
+    ///
+    /// # Note
+    ///
+    /// It is recommended (but not required):
+    ///
+    /// * That the new table's `capacity` be greater than or equal to `self.items`.
+    ///
+    /// * The `table_layout` is the same [`TableLayout`] as the `TableLayout` that
+    ///   was used to allocate this table.
+    ///
+    /// If `table_layout` does not match the `TableLayout` that was used to allocate
+    /// this table, then using `mem::swap` with the `self` and the new table returned
+    /// by this function results in [`undefined behavior`].
+    ///
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[allow(clippy::mut_mut)]
     #[inline]
-    unsafe fn prepare_resize(
+    fn prepare_resize(
         &self,
         table_layout: TableLayout,
         capacity: usize,
@@ -2152,14 +2238,12 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         debug_assert!(self.items <= capacity);
 
         // Allocate and initialize the new table.
-        let mut new_table = RawTableInner::fallible_with_capacity(
+        let new_table = RawTableInner::fallible_with_capacity(
             self.alloc.clone(),
             table_layout,
             capacity,
             fallibility,
         )?;
-        new_table.growth_left -= self.items;
-        new_table.items = self.items;
 
         // The hash function may panic, in which case we simply free the new
         // table without dropping any elements that may have been copied into
@@ -2169,7 +2253,11 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         // the comment at the bottom of this function.
         Ok(guard(new_table, move |self_| {
             if !self_.is_empty_singleton() {
-                self_.free_buckets(table_layout);
+                // SAFETY:
+                // 1. We have checked that our table is allocated.
+                // 2. We know for sure that `table_layout` matches the [`TableLayout`]
+                // that was used to allocate this table.
+                unsafe { self_.free_buckets(table_layout) };
             }
         }))
     }
@@ -2202,6 +2290,11 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         } else {
             // Otherwise, conservatively resize to at least the next size up
             // to avoid churning deletes into frequent rehashes.
+            //
+            // SAFETY:
+            // 1. The `capacity` is guaranteed to be greater than zero (`capacity > 0`).
+            // 2. The caller ensures that `table_layout` matches the [`TableLayout`]
+            //    that was used to allocate this table.
             self.resize_inner(
                 usize::max(new_items, full_capacity + 1),
                 hasher,
@@ -2211,11 +2304,70 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
+    /// Returns an iterator over full buckets indices in the table.
+    ///
+    /// # Safety
+    ///
+    /// The caller has to ensure that the `RawTableInner` outlives the
+    /// `FullBucketsIndices`. Because we cannot make the `next` method
+    /// unsafe on the `FullBucketsIndices` struct, we have to make the
+    /// `full_buckets_indices` method unsafe.
+    #[inline(always)]
+    unsafe fn full_buckets_indices(&self) -> FullBucketsIndices {
+        // SAFETY:
+        // 1. The first `self.ctrl` pointed to the start of the array of control
+        //    bytes, and therefore: `ctrl` is valid for reads, properly aligned
+        //    to `Group::WIDTH` and points to the properly initialized control
+        //    bytes.
+        // 2. The value of `items` is equal to the amount of data (values) added
+        //    to the table.
+        //
+        //                         `ctrl` points here (to the start
+        //                         of the first control byte `CT0`)
+        //                          ∨
+        // [Pad], T_n, ..., T1, T0, |CT0, CT1, ..., CT_n|, Group::WIDTH
+        //                           \________  ________/
+        //                                    \/
+        //       `n = buckets - 1`, i.e. `RawIndexTableInner::buckets() - 1`
+        //
+        // where: T0...T_n  - our stored data;
+        //        CT0...CT_n - control bytes or metadata for `data`.
+        let ctrl = NonNull::new_unchecked(self.ctrl(0));
+
+        FullBucketsIndices {
+            // Load the first group
+            // SAFETY: See explanation above.
+            current_group: Group::load_aligned(ctrl.as_ptr()).match_full().into_iter(),
+            group_first_index: 0,
+            ctrl,
+            items: self.items,
+        }
+    }
+
     /// Allocates a new table of a different size and moves the contents of the
     /// current table into it.
     ///
     /// This uses dynamic dispatch to reduce the amount of
     /// code generated, but it is eliminated by LLVM optimizations when inlined.
+    ///
+    /// # Safety
+    ///
+    /// Caller of this function must observe the following safety rules:
+    ///
+    /// * The `table_layout` must be the same [`TableLayout`] as the `TableLayout`
+    ///   that was used to allocate this table, otherwise calling this function
+    ///   results in [`undefined behavior`]
+    ///
+    /// * If `self.items != 0`, calling of this function with `capacity` equal to 0
+    ///   (`capacity == 0`) results in [`undefined behavior`].
+    ///
+    /// Note: It is recommended (but not required) that the new table's `capacity`
+    /// be greater than or equal to `self.items`. In case if `capacity <= self.items`
+    /// this function can never return. See [`RawTableInner::find_insert_slot`] for
+    /// more information.
+    ///
+    /// [`RawTableInner::find_insert_slot`]: RawTableInner::find_insert_slot
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[allow(clippy::inline_always)]
     #[inline(always)]
     unsafe fn resize_inner(
@@ -2227,32 +2379,58 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     ) -> Result<(), TryReserveError> {
         let mut new_table = self.prepare_resize(layout, capacity, fallibility)?;
 
-        // Copy all elements to the new table.
-        for i in 0..self.buckets() {
-            if !self.is_bucket_full(i) {
-                continue;
-            }
-
+        // SAFETY: We know for sure that `RawTableInner` will outlive
+        // the returned `FullBucketsIndices` iterator.
+        for full_byte_index in self.full_buckets_indices() {
             // This may panic.
-            let hash = hasher(self, i);
+            let hash = hasher(self, full_byte_index);
 
             // We can use a simpler version of insert() here since:
             // - there are no DELETED entries.
             // - we know there is enough space in the table.
             // - all elements are unique.
-            let (index, _) = new_table.prepare_insert_slot(hash);
+            //
+            // SAFETY:
+            // 1. The caller of this function guarantees that `capacity > 0`
+            //    so `new_table` must already have some allocated memory.
+            // 2. We set `growth_left` and `items` fields of the new table
+            //    after the loop.
+            // 3. We insert into the table, at the returned index, the data
+            //    matching the given hash immediately after calling this function.
+            let (new_index, _) = new_table.prepare_insert_slot(hash);
 
+            // SAFETY:
+            //
+            // * `src` is valid for reads of `layout.size` bytes, since the
+            //   table is alive and the `full_byte_index` is guaranteed to be
+            //   within bounds (see `FullBucketsIndices::next_impl`);
+            //
+            // * `dst` is valid for writes of `layout.size` bytes, since the
+            //   caller ensures that `table_layout` matches the [`TableLayout`]
+            //   that was used to allocate old table and we have the `new_index`
+            //   returned by `prepare_insert_slot`.
+            //
+            // * Both `src` and `dst` are properly aligned.
+            //
+            // * Both `src` and `dst` point to different region of memory.
             ptr::copy_nonoverlapping(
-                self.bucket_ptr(i, layout.size),
-                new_table.bucket_ptr(index, layout.size),
+                self.bucket_ptr(full_byte_index, layout.size),
+                new_table.bucket_ptr(new_index, layout.size),
                 layout.size,
             );
         }
+
+        // The hash function didn't panic, so we can safely set the
+        // `growth_left` and `items` fields of the new table.
+        new_table.growth_left -= self.items;
+        new_table.items = self.items;
 
         // We successfully copied all elements without panicking. Now replace
         // self with the new table. The old table will have its memory freed but
         // the items will not be dropped (since they have been moved into the
         // new table).
+        // SAFETY: The caller ensures that `table_layout` matches the [`TableLayout`]
+        // that was used to allocate this table.
         mem::swap(self, &mut new_table);
 
         Ok(())
@@ -2348,14 +2526,57 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         mem::forget(guard);
     }
 
+    /// Deallocates the table without dropping any entries.
+    ///
+    /// # Note
+    ///
+    /// This function must be called only after [`drop_elements`](RawTable::drop_elements),
+    /// else it can lead to leaking of memory. Also calling this function automatically
+    /// makes invalid (dangling) all instances of buckets ([`Bucket`]) and the table itself.
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is [`Undefined Behavior`]:
+    ///
+    /// * The [`RawTableInner`] has already been allocated;
+    ///
+    /// * The `table_layout` must be the same [`TableLayout`] as the `TableLayout` that was used
+    ///   to allocate this table.
+    ///
+    /// See also [`GlobalAlloc::dealloc`] or [`Allocator::deallocate`] for more  information.
+    ///
+    /// [`Undefined Behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    /// [`GlobalAlloc::dealloc`]: https://doc.rust-lang.org/alloc/alloc/trait.GlobalAlloc.html#tymethod.dealloc
+    /// [`Allocator::deallocate`]: https://doc.rust-lang.org/alloc/alloc/trait.Allocator.html#tymethod.deallocate
     #[inline]
     unsafe fn free_buckets(&mut self, table_layout: TableLayout) {
+        // SAFETY: The caller must uphold the safety contract for `free_buckets`
+        // method.
         let (ptr, layout) = self.allocation_info(table_layout);
         self.alloc.deallocate(ptr, layout);
     }
 
+    /// Returns a pointer to the allocated memory and the layout that was used to
+    /// allocate the table.
+    ///
+    /// # Safety
+    ///
+    /// Caller of this function must observe the following safety rules:
+    ///
+    /// * The [`RawTableInner`] has already been allocated, otherwise
+    ///   calling this function results in [`undefined behavior`]
+    ///
+    /// * The `table_layout` must be the same [`TableLayout`] as the `TableLayout`
+    ///   that was used to allocate this table. Failure to comply with this condition
+    ///   may result in [`undefined behavior`].
+    ///
+    /// See also [`GlobalAlloc::dealloc`] or [`Allocator::deallocate`] for more  information.
+    ///
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    /// [`GlobalAlloc::dealloc`]: https://doc.rust-lang.org/alloc/alloc/trait.GlobalAlloc.html#tymethod.dealloc
+    /// [`Allocator::deallocate`]: https://doc.rust-lang.org/alloc/alloc/trait.Allocator.html#tymethod.deallocate
     #[inline]
-    fn allocation_info(&self, table_layout: TableLayout) -> (NonNull<u8>, Layout) {
+    unsafe fn allocation_info(&self, table_layout: TableLayout) -> (NonNull<u8>, Layout) {
         debug_assert!(
             !self.is_empty_singleton(),
             "this function can only be called on non-empty tables"
@@ -2367,17 +2588,37 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             None => unsafe { hint::unreachable_unchecked() },
         };
         (
+            // SAFETY: The caller must uphold the safety contract for `allocation_info` method.
             unsafe { NonNull::new_unchecked(self.ctrl.as_ptr().sub(ctrl_offset)) },
             layout,
         )
     }
 
+    /// Returns a pointer to the allocated memory and the layout that was used to
+    /// allocate the table. If [`RawTableInner`] has not been allocated, this
+    /// function return `dangling` pointer and `()` (unit) layout.
+    ///
+    /// # Safety
+    ///
+    /// The `table_layout` must be the same [`TableLayout`] as the `TableLayout`
+    /// that was used to allocate this table. Failure to comply with this condition
+    /// may result in [`undefined behavior`].
+    ///
+    /// See also [`GlobalAlloc::dealloc`] or [`Allocator::deallocate`] for more  information.
+    ///
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    /// [`GlobalAlloc::dealloc`]: https://doc.rust-lang.org/alloc/alloc/trait.GlobalAlloc.html#tymethod.dealloc
+    /// [`Allocator::deallocate`]: https://doc.rust-lang.org/alloc/alloc/trait.Allocator.html#tymethod.deallocate
     #[cfg(feature = "raw")]
-    fn allocation_info_or_zero(&self, table_layout: TableLayout) -> (NonNull<u8>, Layout) {
+    unsafe fn allocation_info_or_zero(&self, table_layout: TableLayout) -> (NonNull<u8>, Layout) {
         if self.is_empty_singleton() {
             (NonNull::dangling(), Layout::new::<()>())
         } else {
-            self.allocation_info(table_layout)
+            // SAFETY:
+            // 1. We have checked that our table is allocated.
+            // 2. The caller ensures that `table_layout` matches the [`TableLayout`]
+            // that was used to allocate this table.
+            unsafe { self.allocation_info(table_layout) }
         }
     }
 
@@ -3083,6 +3324,125 @@ impl<T> Iterator for RawIter<T> {
 
 impl<T> ExactSizeIterator for RawIter<T> {}
 impl<T> FusedIterator for RawIter<T> {}
+
+/// Iterator which returns an index of every full bucket in the table.
+///
+/// For maximum flexibility this iterator is not bound by a lifetime, but you
+/// must observe several rules when using it:
+/// - You must not free the hash table while iterating (including via growing/shrinking).
+/// - It is fine to erase a bucket that has been yielded by the iterator.
+/// - Erasing a bucket that has not yet been yielded by the iterator may still
+///   result in the iterator yielding index of that bucket.
+/// - It is unspecified whether an element inserted after the iterator was
+///   created will be yielded by that iterator.
+/// - The order in which the iterator yields indices of the buckets is unspecified
+///   and may change in the future.
+pub(crate) struct FullBucketsIndices {
+    // Mask of full buckets in the current group. Bits are cleared from this
+    // mask as each element is processed.
+    current_group: BitMaskIter,
+
+    // Initial value of the bytes' indices of the current group (relative
+    // to the start of the control bytes).
+    group_first_index: usize,
+
+    // Pointer to the current group of control bytes,
+    // Must be aligned to the group size (Group::WIDTH).
+    ctrl: NonNull<u8>,
+
+    // Number of elements in the table.
+    items: usize,
+}
+
+impl FullBucketsIndices {
+    /// Advances the iterator and returns the next value.
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is
+    /// [`Undefined Behavior`]:
+    ///
+    /// * The [`RawTableInner`] / [`RawTable`] must be alive and not moved,
+    ///   i.e. table outlives the `FullBucketsIndices`;
+    ///
+    /// * It never tries to iterate after getting all elements.
+    ///
+    /// [`Undefined Behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    #[inline(always)]
+    unsafe fn next_impl(&mut self) -> Option<usize> {
+        loop {
+            if let Some(index) = self.current_group.next() {
+                // The returned `self.group_first_index + index` will always
+                // be in the range `0..self.buckets()`. See explanation below.
+                return Some(self.group_first_index + index);
+            }
+
+            // SAFETY: The caller of this function ensures that:
+            //
+            // 1. It never tries to iterate after getting all the elements;
+            // 2. The table is alive and did not moved;
+            // 3. The first `self.ctrl` pointed to the start of the array of control bytes.
+            //
+            // Taking the above into account, we always stay within the bounds, because:
+            //
+            // 1. For tables smaller than the group width (self.buckets() <= Group::WIDTH),
+            //    we will never end up in the given branch, since we should have already
+            //    yielded all the elements of the table.
+            //
+            // 2. For tables larger than the group width. The the number of buckets is a
+            //    power of two (2 ^ n), Group::WIDTH is also power of two (2 ^ k). Sinse
+            //    `(2 ^ n) > (2 ^ k)`, than `(2 ^ n) % (2 ^ k) = 0`. As we start from the
+            //    the start of the array of control bytes, and never try to iterate after
+            //    getting all the elements, the last `self.ctrl` will be equal to
+            //    the `self.buckets() - Group::WIDTH`, so `self.current_group.next()`
+            //    will always contains indices within the range `0..Group::WIDTH`,
+            //    and subsequent `self.group_first_index + index` will always return a
+            //    number less than `self.buckets()`.
+            self.ctrl = NonNull::new_unchecked(self.ctrl.as_ptr().add(Group::WIDTH));
+
+            // SAFETY: See explanation above.
+            self.current_group = Group::load_aligned(self.ctrl.as_ptr())
+                .match_full()
+                .into_iter();
+            self.group_first_index += Group::WIDTH;
+        }
+    }
+}
+
+impl Iterator for FullBucketsIndices {
+    type Item = usize;
+
+    /// Advances the iterator and returns the next value. It is up to
+    /// the caller to ensure that the `RawTable` outlives the `FullBucketsIndices`,
+    /// because we cannot make the `next` method unsafe.
+    #[inline(always)]
+    fn next(&mut self) -> Option<usize> {
+        // Return if we already yielded all items.
+        if self.items == 0 {
+            return None;
+        }
+
+        let nxt = unsafe {
+            // SAFETY:
+            // 1. We check number of items to yield using `items` field.
+            // 2. The caller ensures that the table is alive and has not moved.
+            self.next_impl()
+        };
+
+        debug_assert!(nxt.is_some());
+        self.items -= 1;
+
+        nxt
+    }
+
+    #[inline(always)]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.items, Some(self.items))
+    }
+}
+
+impl ExactSizeIterator for FullBucketsIndices {}
+impl FusedIterator for FullBucketsIndices {}
 
 /// Iterator which consumes a table and returns elements.
 pub struct RawIntoIter<T, A: Allocator + Clone = Global> {
