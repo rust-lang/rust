@@ -807,6 +807,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(no_jump_tables, true);
     tracked!(no_link, true);
     tracked!(no_profiler_runtime, true);
+    tracked!(no_trait_vptr, true);
     tracked!(no_unique_section_names, true);
     tracked!(oom, OomStrategy::Panic);
     tracked!(osx_rpath_install_name, true);
