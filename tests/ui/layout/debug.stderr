@@ -117,13 +117,13 @@ error: layout_of(S) = Layout {
            fields: Arbitrary {
                offsets: [
                    Size(0 bytes),
-                   Size(0 bytes),
+                   Size(8 bytes),
                    Size(4 bytes),
                ],
                memory_index: [
-                   1,
                    0,
                    2,
+                   1,
                ],
            },
            largest_niche: None,

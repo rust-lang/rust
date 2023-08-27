@@ -359,13 +359,8 @@ pub trait LayoutCalculator {
                 // It'll fit, but we need to make some adjustments.
                 match layout.fields {
                     FieldsShape::Arbitrary { ref mut offsets, .. } => {
-                        for (j, offset) in offsets.iter_enumerated_mut() {
-                            // keep ZST at offset 0 to simplify Scalar/ScalarPair layout
-                            if !variants[i][j].0.is_zst() {
-                                *offset += this_offset;
-                            } else {
-                                debug_assert_eq!(offset.bytes(), 0);
-                            }
+                        for offset in offsets.iter_mut() {
+                            *offset += this_offset;
                         }
                     }
                     _ => {
@@ -962,11 +957,6 @@ fn univariant(
                         };
 
                         (
-                            // Place ZSTs first to avoid "interesting offsets", especially with only
-                            // one or two non-ZST fields. This helps Scalar/ScalarPair layouts. Note
-                            // that these can ignore even some aligned ZST as long as the alignment
-                            // is less than that of the scalar, hence we treat *all* ZST like that.
-                            !f.0.is_zst(),
                             // Then place largest alignments first.
                             cmp::Reverse(alignment_group_key(f)),
                             // Then prioritize niche placement within alignment group according to
