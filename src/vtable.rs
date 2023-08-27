@@ -51,8 +51,8 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
             'descend_newtypes: while !arg.layout().ty.is_unsafe_ptr() && !arg.layout().ty.is_ref() {
                 for i in 0..arg.layout().fields.count() {
                     let field = arg.value_field(fx, FieldIdx::new(i));
-                    if !field.layout().is_zst() {
-                        // we found the one non-zero-sized field that is allowed
+                    if !field.layout().is_1zst() {
+                        // we found the one non-1-ZST field that is allowed
                         // now find *its* non-zero-sized field, or stop if it's a
                         // pointer
                         arg = field;
