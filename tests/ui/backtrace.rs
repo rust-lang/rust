@@ -94,7 +94,7 @@ fn runtest(me: &str) {
     #[cfg(not(panic = "abort"))]
     {
         // Make sure a stack trace is printed
-        let p = template(me).arg("double-fail").spawn().unwrap();
+        let p = template(me).arg("double-fail").env("RUST_BACKTRACE","0").spawn().unwrap();
         let out = p.wait_with_output().unwrap();
         assert!(!out.status.success());
         let s = str::from_utf8(&out.stderr).unwrap();
@@ -106,18 +106,18 @@ fn runtest(me: &str) {
                 contains_verbose_expected(s, "double"),
             "bad output3: {}", s
         );
+        // Make sure it's only one stack trace.
+        assert_eq!(s.split("stack backtrace").count(), 2);
 
         // Make sure a stack trace isn't printed too many times
-        //
-        // Currently it is printed 3 times ("once", "twice" and "panic in a destructor during
-        // cleanup") but in the future the last one may be removed.
+        // even with RUST_BACKTRACE=1. It should be printed twice.
         let p = template(me).arg("double-fail")
                                     .env("RUST_BACKTRACE", "1").spawn().unwrap();
         let out = p.wait_with_output().unwrap();
         assert!(!out.status.success());
         let s = str::from_utf8(&out.stderr).unwrap();
         let mut i = 0;
-        for _ in 0..3 {
+        for _ in 0..2 {
             i += s[i + 10..].find("stack backtrace").unwrap() + 10;
         }
         assert!(s[i + 10..].find("stack backtrace").is_none(),

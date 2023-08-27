@@ -395,9 +395,10 @@ pub mod __alloc_error_handler {
         if unsafe { __rust_alloc_error_handler_should_panic != 0 } {
             panic!("memory allocation of {size} bytes failed")
         } else {
-            core::panicking::panic_nounwind_fmt(format_args!(
-                "memory allocation of {size} bytes failed"
-            ))
+            core::panicking::panic_nounwind_fmt(
+                format_args!("memory allocation of {size} bytes failed"),
+                /* force_no_backtrace */ false,
+            )
         }
     }
 }
