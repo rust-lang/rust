@@ -148,8 +148,8 @@ where
     use HandleCycleError::*;
     match query.handle_cycle_error() {
         Error => {
-            error.emit();
-            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle)
+            let guar = error.emit();
+            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
         }
         Fatal => {
             error.emit();
@@ -157,8 +157,8 @@ where
             unreachable!()
         }
         DelayBug => {
-            error.delay_as_bug();
-            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle)
+            let guar = error.delay_as_bug();
+            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
         }
     }
 }
