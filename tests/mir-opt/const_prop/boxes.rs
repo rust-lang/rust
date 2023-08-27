@@ -1,8 +1,6 @@
 // unit-test: ConstProp
 // compile-flags: -O
-// ignore-emscripten compiled with panic=abort by default
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// ignore-wasm64
 
 #![feature(rustc_attrs, stmt_expr_attributes)]
 
