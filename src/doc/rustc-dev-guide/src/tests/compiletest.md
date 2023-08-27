@@ -467,9 +467,6 @@ fn main() {
 
 ## Revisions
 
-Certain classes of tests support "revisions" (as of <!-- date-check --> July 2022,
-this includes UI, assembly, codegen, debuginfo, incremental, and rustdoc UI tests,
-though incremental tests are somewhat different).
 Revisions allow a single test file to be used for multiple tests.
 This is done by adding a special header at the top of the file:
 
@@ -502,6 +499,15 @@ For example, the `ignore-test` header (and all "ignore" headers)
 currently only apply to the test as a whole, not to particular
 revisions. The only headers that are intended to really work when
 customized to a revision are error patterns and compiler flags.
+
+<!-- date-check jul 2023 -->
+Following is classes of tests that support revisions:
+- UI
+- assembly
+- codegen
+- debuginfo
+- rustdoc UI tests
+- incremental (these are special in that they inherently cannot be run in parallel)
 
 ## Compare modes
 
