@@ -311,7 +311,7 @@ function, generic, or closure), the `Instrumentor`'s constructor prepares a
 [`inject_counters()`][inject-counters].
 
 ```rust
-        Instrumentor::new(&self.name(), tcx, mir_body).inject_counters();
+Instrumentor::new(&self.name(), tcx, mir_body).inject_counters();
 ```
 
 The `CoverageGraph` is a coverage-specific simplification of the MIR control
