@@ -1,6 +1,7 @@
-use crate::errors::{
-    CheckNameDeprecated, CheckNameRemoved, CheckNameRenamed, CheckNameUnknown,
-    CheckNameUnknownTool, RequestedLevel, UnsupportedGroup,
+use crate::errors::{CheckNameUnknownTool, RequestedLevel, UnsupportedGroup};
+use crate::lints::{
+    DeprecatedLintNameFromCommandLine, RemovedLintFromCommandLine, RenamedLintFromCommandLine,
+    UnknownLintFromCommandLine,
 };
 use crate::{
     builtin::MISSING_DOCS,
@@ -564,33 +565,32 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 self.sess.emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
             }
             match self.store.check_lint_name(lint_name_only, tool_name, self.registered_tools) {
-                CheckLintNameResult::Renamed(replace) => {
-                    self.sess.emit_warning(CheckNameRenamed {
-                        lint_name,
-                        replace: &replace,
-                        sub: RequestedLevel { level, lint_name },
-                    });
+                CheckLintNameResult::Renamed(ref replace) => {
+                    let name = lint_name.as_str();
+                    let suggestion = RenamedLintSuggestion::WithoutSpan { replace };
+                    let requested_level = RequestedLevel { level, lint_name };
+                    let lint = RenamedLintFromCommandLine { name, suggestion, requested_level };
+                    self.emit_lint(RENAMED_AND_REMOVED_LINTS, lint);
                 }
-                CheckLintNameResult::Removed(reason) => {
-                    self.sess.emit_warning(CheckNameRemoved {
-                        lint_name,
-                        reason: &reason,
-                        sub: RequestedLevel { level, lint_name },
-                    });
+                CheckLintNameResult::Removed(ref reason) => {
+                    let name = lint_name.as_str();
+                    let requested_level = RequestedLevel { level, lint_name };
+                    let lint = RemovedLintFromCommandLine { name, reason, requested_level };
+                    self.emit_lint(RENAMED_AND_REMOVED_LINTS, lint);
                 }
                 CheckLintNameResult::NoLint(suggestion) => {
-                    self.sess.emit_err(CheckNameUnknown {
-                        lint_name,
-                        suggestion,
-                        sub: RequestedLevel { level, lint_name },
-                    });
+                    let name = lint_name.clone();
+                    let suggestion =
+                        suggestion.map(|replace| UnknownLintSuggestion::WithoutSpan { replace });
+                    let requested_level = RequestedLevel { level, lint_name };
+                    let lint = UnknownLintFromCommandLine { name, suggestion, requested_level };
+                    self.emit_lint(UNKNOWN_LINTS, lint);
                 }
-                CheckLintNameResult::Tool(Err((Some(_), new_name))) => {
-                    self.sess.emit_warning(CheckNameDeprecated {
-                        lint_name,
-                        new_name: &new_name,
-                        sub: RequestedLevel { level, lint_name },
-                    });
+                CheckLintNameResult::Tool(Err((Some(_), ref replace))) => {
+                    let name = lint_name.clone();
+                    let requested_level = RequestedLevel { level, lint_name };
+                    let lint = DeprecatedLintNameFromCommandLine { name, replace, requested_level };
+                    self.emit_lint(RENAMED_AND_REMOVED_LINTS, lint);
                 }
                 CheckLintNameResult::NoTool => {
                     self.sess.emit_err(CheckNameUnknownTool {
@@ -963,24 +963,18 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
                     _ if !self.warn_about_weird_lints => {}
 
-                    CheckLintNameResult::Renamed(new_name) => {
+                    CheckLintNameResult::Renamed(ref replace) => {
                         let suggestion =
-                            RenamedLintSuggestion { suggestion: sp, replace: new_name.as_str() };
+                            RenamedLintSuggestion::WithSpan { suggestion: sp, replace };
                         let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                        self.emit_spanned_lint(
-                            RENAMED_AND_REMOVED_LINTS,
-                            sp.into(),
-                            RenamedLint { name: name.as_str(), suggestion },
-                        );
+                        let lint = RenamedLint { name: name.as_str(), suggestion };
+                        self.emit_spanned_lint(RENAMED_AND_REMOVED_LINTS, sp.into(), lint);
                     }
 
-                    CheckLintNameResult::Removed(reason) => {
+                    CheckLintNameResult::Removed(ref reason) => {
                         let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                        self.emit_spanned_lint(
-                            RENAMED_AND_REMOVED_LINTS,
-                            sp.into(),
-                            RemovedLint { name: name.as_str(), reason: reason.as_str() },
-                        );
+                        let lint = RemovedLint { name: name.as_str(), reason };
+                        self.emit_spanned_lint(RENAMED_AND_REMOVED_LINTS, sp.into(), lint);
                     }
 
                     CheckLintNameResult::NoLint(suggestion) => {
@@ -989,13 +983,11 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         } else {
                             name.to_string()
                         };
-                        let suggestion = suggestion
-                            .map(|replace| UnknownLintSuggestion { suggestion: sp, replace });
-                        self.emit_spanned_lint(
-                            UNKNOWN_LINTS,
-                            sp.into(),
-                            UnknownLint { name, suggestion },
-                        );
+                        let suggestion = suggestion.map(|replace| {
+                            UnknownLintSuggestion::WithSpan { suggestion: sp, replace }
+                        });
+                        let lint = UnknownLint { name, suggestion };
+                        self.emit_spanned_lint(UNKNOWN_LINTS, sp.into(), lint);
                     }
                 }
                 // If this lint was renamed, apply the new lint instead of ignoring the attribute.
