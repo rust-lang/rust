@@ -4,7 +4,7 @@ use gccjit::{Struct, Type};
 use crate::rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
-use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_target::abi::{self, Abi, Align, F32, F64, FieldsShape, Int, Integer, Pointer, PointeeInfo, Size, TyAbiInterface, Variants};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
@@ -74,8 +74,8 @@ fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
         Abi::ScalarPair(..) => {
             return cx.type_struct(
                 &[
-                    layout.scalar_pair_element_gcc_type(cx, 0, false),
-                    layout.scalar_pair_element_gcc_type(cx, 1, false),
+                    layout.scalar_pair_element_gcc_type(cx, 0),
+                    layout.scalar_pair_element_gcc_type(cx, 1),
                 ],
                 false,
             );
@@ -150,7 +150,7 @@ pub trait LayoutGccExt<'tcx> {
     fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
     fn immediate_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
     fn scalar_gcc_type_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, scalar: &abi::Scalar, offset: Size) -> Type<'gcc>;
-    fn scalar_pair_element_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, index: usize, immediate: bool) -> Type<'gcc>;
+    fn scalar_pair_element_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, index: usize) -> Type<'gcc>;
     fn gcc_field_index(&self, index: usize) -> u64;
     fn pointee_info_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, offset: Size) -> Option<PointeeInfo>;
 }
@@ -265,7 +265,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         }
     }
 
-    fn scalar_pair_element_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, index: usize, immediate: bool) -> Type<'gcc> {
+    fn scalar_pair_element_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, index: usize) -> Type<'gcc> {
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.
@@ -347,8 +347,8 @@ impl<'gcc, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         layout.gcc_field_index(index)
     }
 
-    fn scalar_pair_element_backend_type(&self, layout: TyAndLayout<'tcx>, index: usize, immediate: bool) -> Type<'gcc> {
-        layout.scalar_pair_element_gcc_type(self, index, immediate)
+    fn scalar_pair_element_backend_type(&self, layout: TyAndLayout<'tcx>, index: usize, _immediate: bool) -> Type<'gcc> {
+        layout.scalar_pair_element_gcc_type(self, index)
     }
 
     fn cast_backend_type(&self, ty: &CastTarget) -> Type<'gcc> {
