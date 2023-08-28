@@ -114,6 +114,7 @@ mod handlers {
     mod add_turbo_fish;
     mod apply_demorgan;
     mod auto_import;
+    mod bind_unused_param;
     mod change_visibility;
     mod convert_bool_then;
     mod convert_comment_block;
@@ -224,6 +225,7 @@ mod handlers {
             add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
+            bind_unused_param::bind_unused_param,
             change_visibility::change_visibility,
             convert_bool_then::convert_bool_then_to_if,
             convert_bool_then::convert_if_to_bool_then,

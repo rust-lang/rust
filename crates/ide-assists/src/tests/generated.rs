@@ -266,6 +266,21 @@ pub mod std { pub mod collections { pub struct HashMap { } } }
 }
 
 #[test]
+fn doctest_bind_unused_param() {
+    check_doc_test(
+        "bind_unused_param",
+        r#####"
+fn some_function(x: i32$0) {}
+"#####,
+        r#####"
+fn some_function(x: i32) {
+    let _ = x;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_change_visibility() {
     check_doc_test(
         "change_visibility",
