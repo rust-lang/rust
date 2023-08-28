@@ -872,13 +872,11 @@ pub(crate) fn codegen_place<'tcx>(
 
     for elem in place.projection {
         match elem {
-            PlaceElem::Subtype(_) => {
-                continue;
-            }
             PlaceElem::Deref => {
                 cplace = cplace.place_deref(fx);
             }
             PlaceElem::OpaqueCast(ty) => bug!("encountered OpaqueCast({ty}) in codegen"),
+            PlaceElem::Subtype(ty) => cplace = cplace.place_transmute_type(fx, ty),
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);
             }
