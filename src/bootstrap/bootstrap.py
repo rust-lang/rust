@@ -104,16 +104,15 @@ def _download(path, url, probably_big, verbose, exception):
         # If curl is not present on Win32, we should not sys.exit
         #   but raise `CalledProcessError` or `OSError` instead
         require(["curl", "--version"], exception=platform_is_win32())
-        with open(path, "wb") as outfile:
-            run(["curl", option,
-                "-L", # Follow redirect.
-                "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
-                "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
-                "--retry", "3", "-SRf", url],
-                stdout=outfile,    #Implements cli redirect operator '>'
-                verbose=verbose,
-                exception=True, # Will raise RuntimeError on failure
-            )
+        run(["curl", option,
+            "-L", # Follow redirect.
+            "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
+            "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
+            "-o", path,
+            "--retry", "3", "-SRf", url],
+            verbose=verbose,
+            exception=True, # Will raise RuntimeError on failure
+        )
     except (subprocess.CalledProcessError, OSError, RuntimeError):
         # see http://serverfault.com/questions/301128/how-to-download
         if platform_is_win32():
