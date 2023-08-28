@@ -548,7 +548,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.cause.span,
                     "GATs in trait object shouldn't have been considered",
                 );
-                return Err(SelectionError::Unimplemented);
+                return Err(SelectionError::TraitNotObjectSafe(trait_predicate.trait_ref.def_id));
             }
 
             // This maybe belongs in wf, but that can't (doesn't) handle

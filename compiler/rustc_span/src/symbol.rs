@@ -1366,6 +1366,7 @@ symbols! {
         rustc_trivial_field_reads,
         rustc_unsafe_specialization_marker,
         rustc_variance,
+        rustc_variance_of_opaques,
         rustdoc,
         rustdoc_internals,
         rustdoc_missing_doc_code_examples,
