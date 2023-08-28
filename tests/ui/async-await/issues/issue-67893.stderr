@@ -5,7 +5,6 @@ LL |     g(issue_67893::run())
    |       ^^^^^^^^^^^^^^^^^^ future is not `Send`
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
-   = note: consider using `std::sync::Arc<MutexGuard<'_, ()>>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: future is not `Send` as this value is used across an await
   --> $DIR/auxiliary/issue_67893.rs:12:27
    |

@@ -11,7 +11,6 @@ LL | |     });
    | |_____^ generator is not `Sync`
    |
    = help: within `[main::{closure#0} upvar_tys=() {NotSync, ()}]`, the trait `Sync` is not implemented for `NotSync`
-   = note: consider using `std::sync::Arc<NotSync>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Sync` as this value is used across a yield
   --> $DIR/generator-print-verbose-2.rs:23:9
    |
@@ -41,7 +40,6 @@ LL | |     });
    | |_____^ generator is not `Send`
    |
    = help: within `[main::{closure#1} upvar_tys=() {NotSend, ()}]`, the trait `Send` is not implemented for `NotSend`
-   = note: consider using `std::sync::Arc<NotSend>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/generator-print-verbose-2.rs:30:9
    |
