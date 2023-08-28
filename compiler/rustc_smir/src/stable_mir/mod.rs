@@ -16,7 +16,7 @@ use std::cell::Cell;
 use crate::rustc_smir::Tables;
 
 use self::ty::{
-    Generics, ImplDef, ImplTrait, PredicateKind, Span, TraitDecl, TraitDef, Ty, TyKind,
+    GenericPredicates, Generics, ImplDef, ImplTrait, Span, TraitDecl, TraitDef, Ty, TyKind,
 };
 
 pub mod mir;
@@ -40,12 +40,6 @@ pub type TraitDecls = Vec<TraitDef>;
 
 /// A list of impl trait decls.
 pub type ImplTraitDecls = Vec<ImplDef>;
-
-/// A list of predicates.
-pub struct GenericPredicates {
-    pub parent: Option<TraitDef>,
-    pub predicates: Vec<(PredicateKind, Span)>,
-}
 
 /// Holds information about a crate.
 #[derive(Clone, PartialEq, Eq, Debug)]

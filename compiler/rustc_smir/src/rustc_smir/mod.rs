@@ -108,10 +108,10 @@ impl<'tcx> Context for Tables<'tcx> {
         generics.stable(self)
     }
 
-    fn predicates_of(&mut self, def_id: stable_mir::DefId) -> stable_mir::GenericPredicates {
+    fn predicates_of(&mut self, def_id: stable_mir::DefId) -> stable_mir::ty::GenericPredicates {
         let def_id = self[def_id];
         let ty::GenericPredicates { parent, predicates } = self.tcx.predicates_of(def_id);
-        stable_mir::GenericPredicates {
+        stable_mir::ty::GenericPredicates {
             parent: parent.map(|did| self.trait_def(did)),
             predicates: predicates
                 .iter()

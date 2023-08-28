@@ -499,8 +499,8 @@ pub struct GenericParamDef {
 }
 
 pub struct GenericPredicates {
-    pub parent: Option<DefId>,
-    pub predicates: Vec<PredicateKind>,
+    pub parent: Option<TraitDef>,
+    pub predicates: Vec<(PredicateKind, Span)>,
 }
 
 #[derive(Clone, Debug)]
