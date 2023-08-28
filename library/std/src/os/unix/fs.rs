@@ -155,7 +155,7 @@ pub trait FileExt {
     /// flag fail to respect the offset parameter, always appending to the end
     /// of the file instead.
     ///
-    /// It is possible to inadvertantly set this flag, like in the example below.
+    /// It is possible to inadvertently set this flag, like in the example below.
     /// Therefore, it is important to be vigilant while changing options to mitigate
     /// unexpected behaviour.
     ///
