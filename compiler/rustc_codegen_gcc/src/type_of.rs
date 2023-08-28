@@ -182,23 +182,16 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
     fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
+        // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
+        // In other words, this should generally not look at the type at all, but only at the
+        // layout.
         if let Abi::Scalar(ref scalar) = self.abi {
             // Use a different cache for scalars because pointers to DSTs
             // can be either fat or thin (data pointers of fat pointers).
             if let Some(&ty) = cx.scalar_types.borrow().get(&self.ty) {
                 return ty;
             }
-            let ty =
-                match *self.ty.kind() {
-                    ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
-                        cx.type_ptr_to(cx.layout_of(ty).gcc_type(cx))
-                    }
-                    ty::Adt(def, _) if def.is_box() => {
-                        cx.type_ptr_to(cx.layout_of(self.ty.boxed_ty()).gcc_type(cx))
-                    }
-                    ty::FnPtr(sig) => cx.fn_ptr_backend_type(&cx.fn_abi_of_fn_ptr(sig, ty::List::empty())),
-                    _ => self.scalar_gcc_type_at(cx, scalar, Size::ZERO),
-                };
+            let ty = self.scalar_gcc_type_at(cx, scalar, Size::ZERO);
             cx.scalar_types.borrow_mut().insert(self.ty, ty);
             return ty;
         }
@@ -273,22 +266,9 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     }
 
     fn scalar_pair_element_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, index: usize, immediate: bool) -> Type<'gcc> {
-        // TODO(antoyo): remove llvm hack:
-        // HACK(eddyb) special-case fat pointers until LLVM removes
-        // pointee types, to avoid bitcasting every `OperandRef::deref`.
-        match self.ty.kind() {
-            ty::Ref(..) | ty::RawPtr(_) => {
-                return self.field(cx, index).gcc_type(cx);
-            }
-            // only wide pointer boxes are handled as pointers
-            // thin pointer boxes with scalar allocators are handled by the general logic below
-            ty::Adt(def, args) if def.is_box() && cx.layout_of(args.type_at(1)).is_zst() => {
-                let ptr_ty = Ty::new_mut_ptr(cx.tcx,self.ty.boxed_ty());
-                return cx.layout_of(ptr_ty).scalar_pair_element_gcc_type(cx, index, immediate);
-            }
-            _ => {}
-        }
-
+        // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
+        // In other words, this should generally not look at the type at all, but only at the
+        // layout.
         let (a, b) = match self.abi {
             Abi::ScalarPair(ref a, ref b) => (a, b),
             _ => bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self),
