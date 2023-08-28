@@ -516,7 +516,8 @@ E0793: include_str!("./error_codes/E0793.md"),
 E0794: include_str!("./error_codes/E0794.md"),
 }
 
-// Undocumented removed error codes. Note that many removed error codes are documented.
+// Undocumented removed error codes. Note that many removed error codes are kept in the list above
+// and marked as no-longer emitted with a note in the markdown file (see E0001 for an example).
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
 //  E0019, // merged into E0015
