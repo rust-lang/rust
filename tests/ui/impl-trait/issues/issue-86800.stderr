@@ -7,6 +7,6 @@ LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResu
 error: the compiler unexpectedly panicked. this is a bug.
 
 query stack during panic:
-#0 [type_of] computing type of `TransactionFuture::{opaque#0}`
-#1 [check_mod_item_types] checking item types in top-level module
+#0 [type_of_opaque] computing type of opaque `TransactionFuture::{opaque#0}`
+#1 [type_of] computing type of `TransactionFuture::{opaque#0}`
 end of query stack

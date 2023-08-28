@@ -605,8 +605,8 @@ macro_rules! define_queries {
                     } {
                         |_tcx, _key, _prev_index, _index| None
                     }),
-                    value_from_cycle_error: |tcx, cycle| {
-                        let result: queries::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle);
+                    value_from_cycle_error: |tcx, cycle, guar| {
+                        let result: queries::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle, guar);
                         erase(result)
                     },
                     loadable_from_disk: |_tcx, _key, _index| {

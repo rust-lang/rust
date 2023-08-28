@@ -56,6 +56,7 @@ pub fn provide(providers: &mut Providers) {
     resolve_bound_vars::provide(providers);
     *providers = Providers {
         type_of: type_of::type_of,
+        type_of_opaque: type_of::type_of_opaque,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
         generics_of: generics_of::generics_of,
