@@ -319,6 +319,8 @@ where
             OpaqueCast(ty) => {
                 span_bug!(self.cur_span(), "OpaqueCast({ty}) encountered after borrowck")
             }
+            // We don't want anything happening here, this is here as a dummy.
+            Subtype(_) => base.transmute(base.layout(), self)?,
             Field(field, _) => self.project_field(base, field.index())?,
             Downcast(_, variant) => self.project_downcast(base, variant)?,
             Deref => self.deref_pointer(&base.to_op(self)?)?.into(),
@@ -332,7 +334,6 @@ where
                 self.project_constant_index(base, offset, min_length, from_end)?
             }
             Subslice { from, to, from_end } => self.project_subslice(base, from, to, from_end)?,
-            Subtype(ty) => base.transmute(self.layout_of(ty)?, self)?,
         })
     }
 }

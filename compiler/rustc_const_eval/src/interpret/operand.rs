@@ -665,9 +665,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let mut op = self.local_to_op(self.frame(), mir_place.local, layout)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
-            if elem.is_subtype() {
-                continue;
-            }
             op = self.project(&op, elem)?
         }
 

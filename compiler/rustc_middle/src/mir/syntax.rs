@@ -1076,6 +1076,13 @@ pub enum ProjectionElem<V, T> {
     /// requiring an intermediate variable.
     OpaqueCast(T),
 
+    /// A `Subtype(T)` projection is applied to any `StatementKind::Assign` where
+    /// type of lvalue doesn't match type of rvalue, primary goal being making subtyping
+    /// explicit during optimizations and codegen.
+    ///
+    /// This goal is achieved with mir_transform pass `Subtyper`, which runs right after
+    /// borrowchecker, as we only care about subtyping that can affect trait selection and
+    /// `TypeId`.
     Subtype(T),
 }
 

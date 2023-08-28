@@ -318,13 +318,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             PlaceRef { local, projection: [proj_base @ .., elem] } => match elem {
                 ProjectionElem::Deref
                 | ProjectionElem::Index(..)
-                | ProjectionElem::Subtype(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. } => {
                     PlaceRef { local, projection: proj_base }.ty(self.body, self.infcx.tcx)
                 }
                 ProjectionElem::Downcast(..) => place.ty(self.body, self.infcx.tcx),
-                ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(*ty),
+                ProjectionElem::Subtype(ty) | ProjectionElem::OpaqueCast(ty) => {
+                    PlaceTy::from_ty(*ty)
+                }
                 ProjectionElem::Field(_, field_type) => PlaceTy::from_ty(*field_type),
             },
         };
