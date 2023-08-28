@@ -5,7 +5,6 @@ LL | fn foo(x: NotSync) -> impl Future + Send {
    |                       ^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
    |
    = help: within `NotSync`, the trait `Sync` is not implemented for `*mut ()`
-   = note: consider using `std::sync::Arc<*mut ()>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-70935-complex-spans.rs:24:12
    |
