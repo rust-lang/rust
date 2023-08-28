@@ -98,7 +98,9 @@ jobs:
 
       - name: Run analysis-stats on rust std library
         if: matrix.os == 'ubuntu-latest'
-        run: RUSTC_BOOTSTRAP=1 target/${{ matrix.target }}/debug/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std
+        env:
+          RUSTC_BOOTSTRAP: 1
+        run: target/${{ matrix.target }}/debug/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std
 
   # Weird targets to catch non-portable code
   rust-cross:
