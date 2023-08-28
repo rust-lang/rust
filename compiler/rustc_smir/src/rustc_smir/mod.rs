@@ -54,7 +54,7 @@ impl<'tcx> Context for Tables<'tcx> {
     }
 
     fn trait_decl(&mut self, trait_def: &stable_mir::ty::TraitDef) -> stable_mir::ty::TraitDecl {
-        let def_id = self.trait_def_id(trait_def);
+        let def_id = self[trait_def.0];
         let trait_def = self.tcx.trait_def(def_id);
         trait_def.stable(self)
     }
@@ -68,13 +68,13 @@ impl<'tcx> Context for Tables<'tcx> {
     }
 
     fn trait_impl(&mut self, impl_def: &stable_mir::ty::ImplDef) -> stable_mir::ty::ImplTrait {
-        let def_id = self.impl_trait_def_id(impl_def);
+        let def_id = self[impl_def.0];
         let impl_trait = self.tcx.impl_trait_ref(def_id).unwrap();
         impl_trait.stable(self)
     }
 
     fn mir_body(&mut self, item: &stable_mir::CrateItem) -> stable_mir::mir::Body {
-        let def_id = self.item_def_id(item);
+        let def_id = self[item.0];
         let mir = self.tcx.optimized_mir(def_id);
         stable_mir::mir::Body {
             blocks: mir

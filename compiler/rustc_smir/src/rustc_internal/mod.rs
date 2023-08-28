@@ -21,7 +21,7 @@ fn with_tables<R>(mut f: impl FnMut(&mut Tables<'_>) -> R) -> R {
 }
 
 pub fn item_def_id(item: &stable_mir::CrateItem) -> DefId {
-    with_tables(|t| t.item_def_id(item))
+    with_tables(|t| t[item.0])
 }
 
 pub fn crate_item(did: DefId) -> stable_mir::CrateItem {
@@ -78,22 +78,6 @@ impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
 }
 
 impl<'tcx> Tables<'tcx> {
-    pub fn item_def_id(&self, item: &stable_mir::CrateItem) -> DefId {
-        self[item.0]
-    }
-
-    pub fn trait_def_id(&self, trait_def: &stable_mir::ty::TraitDef) -> DefId {
-        self[trait_def.0]
-    }
-
-    pub fn impl_trait_def_id(&self, impl_def: &stable_mir::ty::ImplDef) -> DefId {
-        self[impl_def.0]
-    }
-
-    pub fn generic_def_id(&self, generic_def: &stable_mir::ty::GenericDef) -> DefId {
-        self[generic_def.0]
-    }
-
     pub fn crate_item(&mut self, did: DefId) -> stable_mir::CrateItem {
         stable_mir::CrateItem(self.create_def_id(did))
     }
