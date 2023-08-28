@@ -53,7 +53,7 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)
         Some((&["rustc_codegen_cranelift"], PERMITTED_CRANELIFT_DEPENDENCIES)),
     ),
     // tidy-alphabetical-start
-    ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None),
+    //("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None), // FIXME uncomment once all deps are vendored
     //("library/backtrace", &[], None), // FIXME uncomment once rust-lang/backtrace#562 lands
     //("library/portable-simd", &[], None), // FIXME uncomment once rust-lang/portable-simd#363 has been synced back to the rust repo
     //("library/stdarch", EXCEPTIONS_STDARCH, None), // FIXME uncomment once rust-lang/stdarch#1462 lands
@@ -160,12 +160,15 @@ const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     // tidy-alphabetical-end
 ];
 
+// FIXME uncomment once all deps are vendored
+/*
 const EXCEPTIONS_GCC: ExceptionList = &[
     // tidy-alphabetical-start
     ("gccjit", "GPL-3.0"),
     ("gccjit_sys", "GPL-3.0"),
     // tidy-alphabetical-end
 ];
+*/
 
 const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[
     ("ryu", "Apache-2.0 OR BSL-1.0"), // through serde. BSL is not acceptble, but we use it under Apache-2.0

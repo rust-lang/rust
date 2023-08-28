@@ -34,15 +34,6 @@ pub fn check(root: &Path, bad: &mut bool) {
 
             // Ensure source is allowed.
             if !ALLOWED_SOURCES.contains(&&*source) {
-                if workspace == "compiler/rustc_codegen_gcc" {
-                    // FIXME stop using git dependencies for rustc_codegen_gcc?
-                    if source
-                        == "\"git+https://github.com/antoyo/gccjit.rs#d6e52626cfc6f487094a5d5ac66302baf3439984\""
-                    {
-                        continue;
-                    }
-                }
-
                 tidy_error!(bad, "invalid source: {}", source);
             }
         }
