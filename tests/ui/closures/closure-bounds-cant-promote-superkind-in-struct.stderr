@@ -4,7 +4,6 @@ error[E0277]: `F` cannot be sent between threads safely
 LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
    |                      ^^^^ `F` cannot be sent between threads safely
    |
-   = note: consider using `std::sync::Arc<F>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required by a bound in `X`
   --> $DIR/closure-bounds-cant-promote-superkind-in-struct.rs:1:43
    |

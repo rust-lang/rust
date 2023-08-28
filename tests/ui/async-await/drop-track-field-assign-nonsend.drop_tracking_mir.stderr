@@ -5,7 +5,6 @@ LL |     assert_send(agent.handle());
    |                 ^^^^^^^^^^^^^^ future returned by `handle` is not `Send`
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<String>`
-   = note: use `std::sync::Arc` instead of `std::rc::Rc`
 note: future is not `Send` as this value is used across an await
   --> $DIR/drop-track-field-assign-nonsend.rs:23:39
    |
