@@ -135,12 +135,6 @@ impl ImplDef {
     }
 }
 
-impl GenericDef {
-    pub fn generics_of(&self) -> Generics {
-        with(|cx| cx.generics_of(self.0))
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);
 
@@ -461,6 +455,16 @@ pub struct TraitDecl {
     pub must_implement_one_of: Option<Vec<Ident>>,
     pub implement_via_object: bool,
     pub deny_explicit_impl: bool,
+}
+
+impl TraitDecl {
+    pub fn generics_of(&self) -> Generics {
+        with(|cx| cx.generics_of(self.def_id.0))
+    }
+
+    pub fn predicates_of(&self) -> GenericPredicates {
+        with(|cx| cx.predicates_of(self.def_id.0))
+    }
 }
 
 pub type ImplTrait = EarlyBinder<TraitRef>;
