@@ -29,7 +29,8 @@ pub type Symbol = String;
 pub type CrateNum = usize;
 
 /// A unique identification number for each item accessible for the current compilation unit.
-pub type DefId = usize;
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct DefId(pub(crate) usize);
 
 /// A list of crate items.
 pub type CrateItems = Vec<CrateItem>;

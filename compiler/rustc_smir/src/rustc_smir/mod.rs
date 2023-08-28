@@ -10,8 +10,8 @@
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
 use crate::stable_mir::ty::{
-    allocation_filter, new_allocation, Const, FloatTy, GenericParamDef, IntTy,
-    Movability, RigidTy, TyKind, UintTy,
+    allocation_filter, new_allocation, Const, FloatTy, GenericParamDef, IntTy, Movability, RigidTy,
+    TyKind, UintTy,
 };
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
@@ -103,16 +103,13 @@ impl<'tcx> Context for Tables<'tcx> {
     }
 
     fn generics_of(&mut self, def_id: stable_mir::DefId) -> stable_mir::ty::Generics {
-        let def_id = self.def_ids[def_id];
+        let def_id = self[def_id];
         let generics = self.tcx.generics_of(def_id);
         generics.stable(self)
     }
 
-    fn predicates_of(
-        &mut self,
-        def_id: stable_mir::DefId,
-    ) -> stable_mir::GenericPredicates {
-        let def_id = self.def_ids[def_id];
+    fn predicates_of(&mut self, def_id: stable_mir::DefId) -> stable_mir::GenericPredicates {
+        let def_id = self[def_id];
         let ty::GenericPredicates { parent, predicates } = self.tcx.predicates_of(def_id);
         stable_mir::GenericPredicates {
             parent: parent.map(|did| self.trait_def(did)),
