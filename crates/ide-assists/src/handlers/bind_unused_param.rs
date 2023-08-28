@@ -60,6 +60,7 @@ pub(crate) fn bind_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     let right_line = line_index.line_col(r_curly_range.start()).line;
 
     if left_line == right_line {
+        cov_mark::hit!(single_line);
         text.push('\n');
     }
 
@@ -75,12 +76,13 @@ pub(crate) fn bind_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_assist;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
     #[test]
     fn bind_unused_empty_block() {
+        cov_mark::check!(single_line);
         check_assist(
             bind_unused_param,
             r#"
@@ -124,6 +126,33 @@ fn foo<T>(y: T)
 where T : Default {
     let _ = y;
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn trait_impl() {
+        cov_mark::check!(trait_impl);
+        check_assist_not_applicable(
+            bind_unused_param,
+            r#"
+trait Trait {
+    fn foo(x: i32);
+}
+impl Trait for () {
+    fn foo($0x: i32) {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn keep_used() {
+        cov_mark::check!(keep_used);
+        check_assist_not_applicable(
+            bind_unused_param,
+            r#"
+fn foo(x: i32, $0y: i32) { y; }
 "#,
         );
     }
