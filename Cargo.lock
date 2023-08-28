@@ -5857,7 +5857,7 @@ checksum = "bc1f16b778125675feee0d15d6dd9f6af0e3ac52b3233d63a10aa39230c1cd75"
 dependencies = [
  "proc-macro2",
  "rayon",
- "syn 2.0.27",
+ "syn 2.0.29",
  "windows-metadata",
 ]
 

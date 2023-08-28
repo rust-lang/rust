@@ -2330,7 +2330,6 @@ Windows.Win32.Storage.FileSystem.FileStandardInfo
 Windows.Win32.Storage.FileSystem.FileStorageInfo
 Windows.Win32.Storage.FileSystem.FileStreamInfo
 Windows.Win32.Storage.FileSystem.FindClose
-Windows.Win32.Storage.FileSystem.FindFileHandle
 Windows.Win32.Storage.FileSystem.FindFirstFileW
 Windows.Win32.Storage.FileSystem.FindNextFileW
 Windows.Win32.Storage.FileSystem.FlushFileBuffers
@@ -2542,9 +2541,6 @@ Windows.Win32.System.Threading.PROFILE_USER
 Windows.Win32.System.Threading.REALTIME_PRIORITY_CLASS
 Windows.Win32.System.Threading.ReleaseSRWLockExclusive
 Windows.Win32.System.Threading.ReleaseSRWLockShared
-Windows.Win32.System.Threading.RTL_CONDITION_VARIABLE
-Windows.Win32.System.Threading.RTL_RUN_ONCE
-Windows.Win32.System.Threading.RTL_SRWLOCK
 Windows.Win32.System.Threading.SetThreadStackGuarantee
 Windows.Win32.System.Threading.Sleep
 Windows.Win32.System.Threading.SleepConditionVariableSRW
@@ -2584,8 +2580,6 @@ Windows.Win32.System.Threading.WaitForMultipleObjects
 Windows.Win32.System.Threading.WaitForSingleObject
 Windows.Win32.System.Threading.WakeAllConditionVariable
 Windows.Win32.System.Threading.WakeConditionVariable
-Windows.Win32.System.WindowsProgramming.IO_STATUS_BLOCK
-Windows.Win32.System.WindowsProgramming.OBJECT_ATTRIBUTES
 Windows.Win32.System.WindowsProgramming.PROGRESS_CONTINUE
 Windows.Win32.UI.Shell.GetUserProfileDirectoryW
 // tidy-alphabetical-end
