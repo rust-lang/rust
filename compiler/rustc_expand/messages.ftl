@@ -80,6 +80,9 @@ expand_meta_var_dif_seq_matchers = {$msg}
 expand_meta_var_expr_unrecognized_var =
     variable `{$key}` is not recognized in meta-variable expression
 
+expand_missing_count_fragment =
+    related fragment that refers the `count` meta-variable expression was not found
+
 expand_module_circular =
     circular modules: {$modules}
 

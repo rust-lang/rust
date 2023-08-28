@@ -11,7 +11,7 @@ use rustc_span::Span;
 #[derive(Debug, Clone, PartialEq, Encodable, Decodable)]
 pub(crate) enum MetaVarExpr {
     /// The number of repetitions of an identifier, optionally limited to a number
-    /// of outer-most repetition depths. If the depth limit is `None` then the depth is unlimited.
+    /// of outer-most repetition depths.
     Count(Ident, Option<usize>),
 
     /// Ignore a meta-variable for repetition without expansion.

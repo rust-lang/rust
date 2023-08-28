@@ -5,7 +5,7 @@ macro_rules! a {
         (
             ${count(foo, 0)},
             ${count(foo, 10)},
-            //~^ ERROR depth parameter on meta-variable expression `count` must be less than 4
+            //~^ ERROR depth parameter of meta-variable expression `count` must be less than 4
         )
     };
 }
@@ -17,7 +17,7 @@ macro_rules! b {
                 ${ignore(foo)}
                 ${index(0)},
                 ${index(10)},
-                //~^ ERROR depth parameter on meta-variable expression `index` must be less than 3
+                //~^ ERROR depth parameter of meta-variable expression `index` must be less than 3
             )* )* )*
         )
     };
@@ -30,7 +30,7 @@ macro_rules! c {
                 ${ignore(foo)}
                 ${length(0)}
                 ${length(10)}
-                //~^ ERROR depth parameter on meta-variable expression `length` must be less than 2
+                //~^ ERROR depth parameter of meta-variable expression `length` must be less than 2
             )* )*
         )
     };

@@ -1,0 +1,14 @@
+error: related fragment that refers the `count` meta-variable expression was not found
+  --> $DIR/issue-111905.rs:4:26
+   |
+LL |     ($($t:ident)*) => { ${count(t, 4294967296)} };
+   |                          ^^^^^^^^^^^^^^^^^^^^^^
+
+error: related fragment that refers the `count` meta-variable expression was not found
+  --> $DIR/issue-111905.rs:9:60
+   |
+LL |     ( $( { $( [ $( ( $( $t:ident )* ) )* ] )* } )* ) => { ${count(t, 4294967296)} }
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

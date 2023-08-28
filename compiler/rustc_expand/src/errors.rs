@@ -408,3 +408,10 @@ pub struct DuplicateMatcherBinding {
     #[label(expand_label2)]
     pub prev: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(expand_missing_count_fragment)]
+pub(crate) struct MissingCountFragment {
+    #[primary_span]
+    pub span: Span,
+}

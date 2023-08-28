@@ -1,7 +1,7 @@
 use crate::base::ExtCtxt;
 use crate::errors::{
-    CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
-    NoSyntaxVarsExprRepeat, VarStillRepeating,
+    CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers,
+    MissingCountFragment, MustRepeatOnce, NoSyntaxVarsExprRepeat, VarStillRepeating,
 };
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
 use crate::mbe::{self, MetaVarExpr};
@@ -447,6 +447,9 @@ fn count_repetitions<'a>(
                 }
             }
             MatchedSeq(named_matches) => {
+                if named_matches.is_empty() {
+                    return Err(cx.create_err(MissingCountFragment { span: sp.entire() }));
+                }
                 let new_declared_lhs_depth = declared_lhs_depth + 1;
                 match depth_opt {
                     None => named_matches
@@ -505,7 +508,7 @@ fn out_of_bounds_err<'a>(
         )
     } else {
         format!(
-            "depth parameter on meta-variable expression `{ty}` \
+            "depth parameter of meta-variable expression `{ty}` \
              must be less than {max}"
         )
     };
