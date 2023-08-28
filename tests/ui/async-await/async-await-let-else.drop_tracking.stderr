@@ -5,7 +5,6 @@ LL |     is_send(foo(Some(true)));
    |             ^^^^^^^^^^^^^^^ future returned by `foo` is not `Send`
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
-   = note: use `std::sync::Arc` instead of `std::rc::Rc`
 note: future is not `Send` as this value is used across an await
   --> $DIR/async-await-let-else.rs:11:15
    |
@@ -33,7 +32,6 @@ LL |     is_send(foo2(Some(true)));
    |     required by a bound introduced by this call
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
-   = note: use `std::sync::Arc` instead of `std::rc::Rc`
 note: required because it's used within this `async fn` body
   --> $DIR/async-await-let-else.rs:27:29
    |
@@ -66,7 +64,6 @@ LL |     is_send(foo3(Some(true)));
    |             ^^^^^^^^^^^^^^^^ future returned by `foo3` is not `Send`
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
-   = note: use `std::sync::Arc` instead of `std::rc::Rc`
 note: future is not `Send` as this value is used across an await
   --> $DIR/async-await-let-else.rs:33:29
    |
@@ -88,7 +85,6 @@ LL |     is_send(foo4(Some(true)));
    |             ^^^^^^^^^^^^^^^^ future returned by `foo4` is not `Send`
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
-   = note: use `std::sync::Arc` instead of `std::rc::Rc`
 note: future is not `Send` as this value is used across an await
   --> $DIR/async-await-let-else.rs:41:15
    |

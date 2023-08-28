@@ -8,7 +8,6 @@ LL | |                 }
 LL | |             )
    | |_____________^ future created by async block is not `Send`
    |
-   = note: consider using `std::sync::Arc<T>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
   --> $DIR/issue-86507.rs:22:29
    |
