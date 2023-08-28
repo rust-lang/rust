@@ -3,7 +3,7 @@ use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
 
-use crate::framework::{Analysis, Results, ResultsVisitor, visit_results};
+use crate::framework::{Analysis, Direction, Results, ResultsVisitor, visit_results};
 
 /// Maps between a `Location` and a `PointIndex` (and vice versa).
 pub struct DenseLocationMap {
@@ -105,27 +105,47 @@ where
     N: Idx,
     A: Analysis<'tcx, Domain = DenseBitSet<N>>,
 {
-    let values = SparseIntervalMatrix::new(elements.num_points());
-    let mut visitor = Visitor { elements, values };
-    visit_results(
-        body,
-        body.basic_blocks.reverse_postorder().iter().copied(),
-        &mut analysis,
-        &results,
-        &mut visitor,
-    );
-    visitor.values
+    let mut values = SparseIntervalMatrix::new(elements.num_points());
+    let reachable_blocks = mir::traversal::reachable_as_bitset(body);
+    if A::Direction::IS_BACKWARD {
+        // Iterate blocks in decreasing order, to visit locations in decreasing order. This
+        // allows to use the more efficient `prepend` method to interval sets.
+        let callback = |state: &DenseBitSet<N>, location| {
+            let point = elements.point_from_location(location);
+            // Use internal iterator manually as it is much more efficient.
+            state.iter().for_each(|node| values.prepend(node, point));
+        };
+        let mut visitor = Visitor { callback };
+        visit_results(
+            body,
+            // Note the `.rev()`.
+            body.basic_blocks.indices().filter(|&bb| reachable_blocks.contains(bb)).rev(),
+            &mut analysis,
+            &results,
+            &mut visitor,
+        );
+    } else {
+        // Iterate blocks in increasing order, to visit locations in increasing order. This
+        // allows to use the more efficient `append` method to interval sets.
+        let callback = |state: &DenseBitSet<N>, location| {
+            let point = elements.point_from_location(location);
+            // Use internal iterator manually as it is much more efficient.
+            state.iter().for_each(|node| values.append(node, point));
+        };
+        let mut visitor = Visitor { callback };
+        visit_results(body, reachable_blocks.iter(), &mut analysis, &results, &mut visitor);
+    }
+    values
 }
 
-struct Visitor<'a, N: Idx> {
-    elements: &'a DenseLocationMap,
-    values: SparseIntervalMatrix<N, PointIndex>,
+struct Visitor<F> {
+    callback: F,
 }
 
-impl<'tcx, A, N> ResultsVisitor<'tcx, A> for Visitor<'_, N>
+impl<'tcx, A, F> ResultsVisitor<'tcx, A> for Visitor<F>
 where
-    A: Analysis<'tcx, Domain = DenseBitSet<N>>,
-    N: Idx,
+    A: Analysis<'tcx>,
+    F: FnMut(&A::Domain, Location),
 {
     fn visit_after_primary_statement_effect<'mir>(
         &mut self,
@@ -134,11 +154,7 @@ where
         _statement: &'mir mir::Statement<'tcx>,
         location: Location,
     ) {
-        let point = self.elements.point_from_location(location);
-        // Use internal iterator manually as it is much more efficient.
-        state.iter().for_each(|node| {
-            self.values.insert(node, point);
-        });
+        (self.callback)(state, location);
     }
 
     fn visit_after_primary_terminator_effect<'mir>(
@@ -148,10 +164,6 @@ where
         _terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) {
-        let point = self.elements.point_from_location(location);
-        // Use internal iterator manually as it is much more efficient.
-        state.iter().for_each(|node| {
-            self.values.insert(node, point);
-        });
+        (self.callback)(state, location);
     }
 }
