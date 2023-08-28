@@ -472,17 +472,11 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
     let mut types_without_default_bounds = FxIndexSet::default();
     let sized_trait = tcx.lang_items().sized_trait();
 
-    if !args.is_empty() {
+    let arg_names = args.iter().map(|k| k.to_string()).filter(|k| k != "'_").collect::<Vec<_>>();
+    if !arg_names.is_empty() {
         types_without_default_bounds.extend(args.types());
         w.push('<');
-        w.push_str(
-            &args
-                .iter()
-                .map(|k| k.to_string())
-                .filter(|k| k != "'_")
-                .collect::<Vec<_>>()
-                .join(", "),
-        );
+        w.push_str(&arg_names.join(", "));
         w.push('>');
     }
 
