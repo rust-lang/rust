@@ -54,7 +54,7 @@ pub(crate) fn look_for_custom_classes<'tcx>(cx: &DocContext<'tcx>, item: &Item) 
 
     let mut tests = TestsWithCustomClasses { custom_classes_found: vec![] };
 
-    let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
+    let dox = item.attrs.doc_value();
     find_codes(&dox, &mut tests, ErrorCodes::No, false, None, true);
 
     if !tests.custom_classes_found.is_empty() && !cx.tcx.features().custom_code_classes_in_docs {
@@ -70,8 +70,7 @@ pub(crate) fn look_for_custom_classes<'tcx>(cx: &DocContext<'tcx>, item: &Item) 
             format!(
                 "found these custom classes: class={}",
                 tests.custom_classes_found.join(",class=")
-            )
-            .as_str(),
+            ),
         )
         .emit();
     }

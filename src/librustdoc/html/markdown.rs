@@ -921,7 +921,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
         Self { inner: data.char_indices().peekable(), data, is_in_attribute_block: false, extra }
     }
 
-    fn emit_error(&self, err: &str) {
+    fn emit_error(&self, err: impl Into<DiagnosticMessage>) {
         if let Some(extra) = self.extra {
             extra.error_invalid_codeblock_attr(err);
         }
@@ -954,7 +954,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
             } else {
                 let class = &self.data[start + 1..pos];
                 if class.is_empty() {
-                    self.emit_error(&format!("unexpected `{c}` character after `.`"));
+                    self.emit_error(format!("unexpected `{c}` character after `.`"));
                     return None;
                 } else if self.check_after_token() {
                     return Some(LangStringToken::ClassAttribute(class));
@@ -995,7 +995,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
 
         if let Some((_, c)) = self.inner.next() {
             if c != '=' {
-                self.emit_error(&format!("expected `=`, found `{}`", c));
+                self.emit_error(format!("expected `=`, found `{}`", c));
                 return None;
             }
         } else {
@@ -1006,7 +1006,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
             Some((pos, '"')) => self.parse_string(pos)?,
             Some((pos, c)) if is_bareword_char(c) => self.parse_token(pos)?,
             Some((_, c)) => {
-                self.emit_error(&format!("unexpected `{c}` character after `=`"));
+                self.emit_error(format!("unexpected `{c}` character after `=`"));
                 return None;
             }
             None => {
@@ -1033,7 +1033,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
             if c == '}' || is_separator(c) || c == '(' {
                 true
             } else {
-                self.emit_error(&format!("unexpected `{c}` character"));
+                self.emit_error(format!("unexpected `{c}` character"));
                 false
             }
         } else {
@@ -1052,7 +1052,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
             } else if c == '"' || is_bareword_char(c) {
                 return self.parse_key_value(c, pos);
             } else {
-                self.emit_error(&format!("unexpected character `{c}`"));
+                self.emit_error(format!("unexpected character `{c}`"));
                 return None;
             }
         }
@@ -1080,7 +1080,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
                 }
                 let indices = self.parse_string(pos)?;
                 if let Some((_, c)) = self.inner.peek().copied() && c != '{' && !is_separator(c) && c != '(' {
-                    self.emit_error(&format!("expected ` `, `{{` or `,` after `\"`, found `{c}`"));
+                    self.emit_error(format!("expected ` `, `{{` or `,` after `\"`, found `{c}`"));
                     return None;
                 }
                 return Some(LangStringToken::LangToken(&self.data[indices.start..indices.end]));
@@ -1103,7 +1103,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
                 }
                 return self.next();
             } else {
-                self.emit_error(&format!("unexpected character `{c}`"));
+                self.emit_error(format!("unexpected character `{c}`"));
                 return None;
             }
         }
