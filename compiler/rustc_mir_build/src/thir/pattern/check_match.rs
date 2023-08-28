@@ -720,15 +720,8 @@ fn non_exhaustive_match<'p, 'tcx>(
         };
     };
 
-    let is_variant_list_non_exhaustive = matches!(scrut_ty.kind(),
-        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local());
-
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
-    err.note(format!(
-        "the matched value is of type `{}`{}",
-        scrut_ty,
-        if is_variant_list_non_exhaustive { ", which is marked as non-exhaustive" } else { "" }
-    ));
+    err.note(format!("the matched value is of type `{}`", scrut_ty));
 
     if !is_empty_match && witnesses.len() == 1 {
         let mut non_exhaustive_tys = FxHashSet::default();
@@ -750,6 +743,8 @@ fn non_exhaustive_match<'p, 'tcx>(
                 err.note(format!(
                     "`{ty}` cannot be matched exhaustively, so a wildcard `_` is necessary",
                 ));
+            } else if cx.is_foreign_non_exhaustive_enum(ty) {
+                err.note(format!("`{ty}` is marked as non-exhaustive"));
             }
         }
     }
