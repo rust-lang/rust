@@ -1,0 +1,81 @@
+error: argument never used
+  --> $DIR/issue-105225.rs:3:21
+   |
+LL |     println!("{x}", x);
+   |                     ^ argument never used
+   |
+help: the formatting string already captures the binding directly, it doesn't need to be included in the argument list
+  --> $DIR/issue-105225.rs:3:21
+   |
+LL |     println!("{x}", x);
+   |                -    ^ this can be removed
+   |                |
+   |                this formatting specifier is referencing the `x` binding
+
+error: argument never used
+  --> $DIR/issue-105225.rs:6:27
+   |
+LL |     println!("{x} {}", x, x);
+   |                           ^ argument never used
+   |
+help: the formatting string already captures the binding directly, it doesn't need to be included in the argument list
+  --> $DIR/issue-105225.rs:6:27
+   |
+LL |     println!("{x} {}", x, x);
+   |                -          ^ this can be removed
+   |                |
+   |                this formatting specifier is referencing the `x` binding
+
+error: argument never used
+  --> $DIR/issue-105225.rs:9:27
+   |
+LL |     println!("{} {x}", x, x);
+   |                           ^ argument never used
+   |
+help: the formatting string already captures the binding directly, it doesn't need to be included in the argument list
+  --> $DIR/issue-105225.rs:9:27
+   |
+LL |     println!("{} {x}", x, x);
+   |                   -       ^ this can be removed
+   |                   |
+   |                   this formatting specifier is referencing the `x` binding
+
+error: multiple unused formatting arguments
+  --> $DIR/issue-105225.rs:13:25
+   |
+LL |     println!("{x} {y}", x, y);
+   |              ---------  ^  ^ argument never used
+   |              |          |
+   |              |          argument never used
+   |              multiple missing formatting specifiers
+   |
+help: the formatting strings already captures the bindings directly, they don't need to be included in the argument list
+  --> $DIR/issue-105225.rs:13:25
+   |
+LL |     println!("{x} {y}", x, y);
+   |                -   -    ^  ^ this can be removed
+   |                |   |    |
+   |                |   |    this can be removed
+   |                |   this formatting specifier is referencing the `y` binding
+   |                this formatting specifier is referencing the `x` binding
+
+error: multiple unused formatting arguments
+  --> $DIR/issue-105225.rs:17:43
+   |
+LL |     println!("{} {} {x} {y} {}", x, x, x, y, y);
+   |              ------------------           ^  ^ argument never used
+   |              |                            |
+   |              |                            argument never used
+   |              multiple missing formatting specifiers
+   |
+help: the formatting string already captures the binding directly, it doesn't need to be included in the argument list
+  --> $DIR/issue-105225.rs:17:43
+   |
+LL |     println!("{} {} {x} {y} {}", x, x, x, y, y);
+   |                          -                ^  ^ this can be removed
+   |                          |                |
+   |                          |                this can be removed
+   |                          this formatting specifier is referencing the `y` binding
+
+error: aborting due to 5 previous errors
+

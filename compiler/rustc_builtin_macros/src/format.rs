@@ -1,3 +1,4 @@
+use parse::Position::ArgumentNamed;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{token, StmtKind};
@@ -6,7 +7,7 @@ use rustc_ast::{
     FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
     FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
 };
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Applicability, MultiSpan, PResult, SingleLabelManySpans};
 use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
@@ -357,8 +358,8 @@ fn make_format_args(
     let mut unfinished_literal = String::new();
     let mut placeholder_index = 0;
 
-    for piece in pieces {
-        match piece {
+    for piece in &pieces {
+        match *piece {
             parse::Piece::String(s) => {
                 unfinished_literal.push_str(s);
             }
@@ -506,7 +507,17 @@ fn make_format_args(
         // If there's a lot of unused arguments,
         // let's check if this format arguments looks like another syntax (printf / shell).
         let detect_foreign_fmt = unused.len() > args.explicit_args().len() / 2;
-        report_missing_placeholders(ecx, unused, detect_foreign_fmt, str_style, fmt_str, fmt_span);
+        report_missing_placeholders(
+            ecx,
+            unused,
+            &used,
+            &args,
+            &pieces,
+            detect_foreign_fmt,
+            str_style,
+            fmt_str,
+            fmt_span,
+        );
     }
 
     // Only check for unused named argument names if there are no other errors to avoid causing
@@ -573,6 +584,9 @@ fn invalid_placeholder_type_error(
 fn report_missing_placeholders(
     ecx: &mut ExtCtxt<'_>,
     unused: Vec<(Span, bool)>,
+    used: &[bool],
+    args: &FormatArguments,
+    pieces: &[parse::Piece<'_>],
     detect_foreign_fmt: bool,
     str_style: Option<usize>,
     fmt_str: &str,
@@ -590,6 +604,68 @@ fn report_missing_placeholders(
             unused_labels,
         })
     };
+
+    let placeholders = pieces
+        .iter()
+        .filter_map(|piece| {
+            if let parse::Piece::NextArgument(argument) = piece && let ArgumentNamed(binding) = argument.position {
+                let span = fmt_span.from_inner(InnerSpan::new(argument.position_span.start, argument.position_span.end));
+                Some((span, binding))
+            } else { None }
+        })
+        .collect::<Vec<_>>();
+
+    let mut args_spans = vec![];
+    let mut fmt_spans = FxIndexSet::default();
+
+    for (i, unnamed_arg) in args.unnamed_args().iter().enumerate().rev() {
+        let Some(ty) = unnamed_arg.expr.to_ty() else { continue };
+        let Some(argument_binding) = ty.kind.is_simple_path() else { continue };
+        let argument_binding = argument_binding.as_str();
+
+        if used[i] {
+            continue;
+        }
+
+        let matching_placeholders = placeholders
+            .iter()
+            .filter(|(_, inline_binding)| argument_binding == *inline_binding)
+            .collect::<Vec<_>>();
+
+        if !matching_placeholders.is_empty() {
+            args_spans.push(unnamed_arg.expr.span);
+            for placeholder in &matching_placeholders {
+                fmt_spans.insert(*placeholder);
+            }
+        }
+    }
+
+    if !args_spans.is_empty() {
+        let mut multispan = MultiSpan::from(args_spans.clone());
+
+        let msg = if fmt_spans.len() > 1 {
+            "the formatting strings already captures the bindings \
+            directly, they don't need to be included in the argument list"
+        } else {
+            "the formatting string already captures the binding \
+            directly, it doesn't need to be included in the argument list"
+        };
+
+        for (span, binding) in fmt_spans {
+            multispan.push_span_label(
+                *span,
+                format!("this formatting specifier is referencing the `{binding}` binding"),
+            );
+        }
+
+        for span in &args_spans {
+            multispan.push_span_label(*span, "this can be removed");
+        }
+
+        diag.span_help(multispan, msg);
+        diag.emit();
+        return;
+    }
 
     // Used to ensure we only report translations for *one* kind of foreign format.
     let mut found_foreign = false;
