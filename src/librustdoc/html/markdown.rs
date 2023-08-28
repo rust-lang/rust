@@ -1166,6 +1166,7 @@ impl LangString {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
+        let mut seen_custom_tag = false;
         let mut data = LangString::default();
         let mut ignores = vec![];
 
@@ -1194,6 +1195,9 @@ impl LangString {
                 LangStringToken::LangToken("rust") => {
                     data.rust = true;
                     seen_rust_tags = true;
+                }
+                LangStringToken::LangToken("custom") => {
+                    seen_custom_tag = true;
                 }
                 LangStringToken::LangToken("test_harness") => {
                     data.test_harness = true;
@@ -1264,7 +1268,6 @@ impl LangString {
                     data.unknown.push(x.to_owned());
                 }
                 LangStringToken::KeyValueAttribute(key, value) => {
-                    seen_other_tags = true;
                     if key == "class" {
                         data.added_classes.push(value.to_owned());
                     } else if let Some(extra) = extra {
@@ -1273,7 +1276,6 @@ impl LangString {
                     }
                 }
                 LangStringToken::ClassAttribute(class) => {
-                    seen_other_tags = true;
                     data.added_classes.push(class.to_owned());
                 }
             }
@@ -1284,7 +1286,7 @@ impl LangString {
             data.ignore = Ignore::Some(ignores);
         }
 
-        data.rust &= !seen_other_tags || seen_rust_tags;
+        data.rust &= !seen_custom_tag && (!seen_other_tags || seen_rust_tags);
 
         data
     }

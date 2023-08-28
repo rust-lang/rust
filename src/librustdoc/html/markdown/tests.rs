@@ -64,6 +64,12 @@ fn test_lang_string_parse() {
     t(LangString { original: "{rust}".into(), rust: true, ..Default::default() });
     t(LangString {
         original: "{.rust}".into(),
+        rust: true,
+        added_classes: vec!["rust".into()],
+        ..Default::default()
+    });
+    t(LangString {
+        original: "custom,{.rust}".into(),
         rust: false,
         added_classes: vec!["rust".into()],
         ..Default::default()
@@ -154,11 +160,23 @@ fn test_lang_string_parse() {
     t(LangString {
         original: "{class=test}".into(),
         added_classes: vec!["test".into()],
+        rust: true,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "custom,{class=test}".into(),
+        added_classes: vec!["test".into()],
         rust: false,
         ..Default::default()
     });
     t(LangString {
         original: "{.test}".into(),
+        added_classes: vec!["test".into()],
+        rust: true,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "custom,{.test}".into(),
         added_classes: vec!["test".into()],
         rust: false,
         ..Default::default()
@@ -172,11 +190,23 @@ fn test_lang_string_parse() {
     t(LangString {
         original: "{class=test:with:colon .test1}".into(),
         added_classes: vec!["test:with:colon".into(), "test1".into()],
+        rust: true,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "custom,{class=test:with:colon .test1}".into(),
+        added_classes: vec!["test:with:colon".into(), "test1".into()],
         rust: false,
         ..Default::default()
     });
     t(LangString {
         original: "{class=first,class=second}".into(),
+        added_classes: vec!["first".into(), "second".into()],
+        rust: true,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "custom,{class=first,class=second}".into(),
         added_classes: vec!["first".into(), "second".into()],
         rust: false,
         ..Default::default()
@@ -205,6 +235,12 @@ fn test_lang_string_parse() {
     t(LangString { original: "{class=.first}".into(), rust: true, ..Default::default() });
     t(LangString {
         original: r#"{class="first"}"#.into(),
+        added_classes: vec!["first".into()],
+        rust: true,
+        ..Default::default()
+    });
+    t(LangString {
+        original: r#"custom,{class="first"}"#.into(),
         added_classes: vec!["first".into()],
         rust: false,
         ..Default::default()
