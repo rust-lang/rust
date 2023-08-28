@@ -1,3 +1,7 @@
+use crate::errors::{
+    CheckNameDeprecated, CheckNameRemoved, CheckNameRenamed, CheckNameUnknown,
+    CheckNameUnknownTool, RequestedLevel, UnsupportedGroup,
+};
 use crate::{
     builtin::MISSING_DOCS,
     context::{CheckLintNameResult, LintStore},
@@ -552,12 +556,56 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
     fn add_command_line(&mut self) {
         for &(ref lint_name, level) in &self.sess.opts.lint_opts {
-            self.store.check_lint_name_cmdline(self.sess, &lint_name, level, self.registered_tools);
+            // Checks the validity of lint names derived from the command line.
+            let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name);
+            if lint_name_only == crate::WARNINGS.name_lower()
+                && matches!(level, Level::ForceWarn(_))
+            {
+                self.sess.emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
+            }
+            match self.store.check_lint_name(lint_name_only, tool_name, self.registered_tools) {
+                CheckLintNameResult::Renamed(replace) => {
+                    self.sess.emit_warning(CheckNameRenamed {
+                        lint_name,
+                        replace: &replace,
+                        sub: RequestedLevel { level, lint_name },
+                    });
+                }
+                CheckLintNameResult::Removed(reason) => {
+                    self.sess.emit_warning(CheckNameRemoved {
+                        lint_name,
+                        reason: &reason,
+                        sub: RequestedLevel { level, lint_name },
+                    });
+                }
+                CheckLintNameResult::NoLint(suggestion) => {
+                    self.sess.emit_err(CheckNameUnknown {
+                        lint_name,
+                        suggestion,
+                        sub: RequestedLevel { level, lint_name },
+                    });
+                }
+                CheckLintNameResult::Tool(Err((Some(_), new_name))) => {
+                    self.sess.emit_warning(CheckNameDeprecated {
+                        lint_name,
+                        new_name: &new_name,
+                        sub: RequestedLevel { level, lint_name },
+                    });
+                }
+                CheckLintNameResult::NoTool => {
+                    self.sess.emit_err(CheckNameUnknownTool {
+                        tool_name: tool_name.unwrap(),
+                        sub: RequestedLevel { level, lint_name },
+                    });
+                }
+                _ => {}
+            };
+
             let orig_level = level;
             let lint_flag_val = Symbol::intern(lint_name);
 
             let Ok(ids) = self.store.find_lints(&lint_name) else {
-                // errors handled in check_lint_name_cmdline above
+                // errors already handled above
                 continue;
             };
             for id in ids {
@@ -1091,4 +1139,15 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { shallow_lint_levels_on, lint_expectations, ..*providers };
+}
+
+pub fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {
+    match lint_name.split_once("::") {
+        Some((tool_name, lint_name)) => {
+            let tool_name = Symbol::intern(tool_name);
+
+            (Some(tool_name), lint_name)
+        }
+        None => (None, lint_name),
+    }
 }
