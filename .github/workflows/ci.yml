@@ -2,7 +2,7 @@ name: CI
 on:
   push:
     branches:
-      - '**'
+      - "**"
   pull_request:
   workflow_call:
 jobs:
@@ -22,7 +22,7 @@ jobs:
           repository: wasix-org/wasix-libc
           ref: main
           path: wasix-libc
-          submodules: 'recursive'
+          submodules: "recursive"
 
       - name: OS Setup (Ubuntu)
         run: |
@@ -86,7 +86,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         if: ${{ !contains(matrix.os, 'windows') }}
         with:
-            toolchain: stable
+          toolchain: stable
 
       - name: Download wasix-libc artifact
         uses: actions/download-artifact@v3
@@ -97,7 +97,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           path: wasix-rust
-          submodules: 'recursive'
+          submodules: "recursive"
           # Don't clean so downloaded LLVM etc can be reused.
           clean: false
 
@@ -134,7 +134,7 @@ jobs:
         if: matrix.arch == 'x86' && contains(matrix.os, 'ubuntu')
         shell: bash
         env:
-          WASIX_NO_UPDATE_REPOS: '1'
+          WASIX_NO_UPDATE_REPOS: "1"
           WASIX_COMPONENTS: rust
           WASIX_RUST_HOST: x86_64-unknown-linux-gnu
         run: |
@@ -167,13 +167,13 @@ jobs:
         shell: bash
         if: contains(matrix.os, 'macos-12') && matrix.arch == 'x86'
         env:
-          WASIX_NO_UPDATE_REPOS: '1'
-          GITHUB_ACTIONS: 'false'
+          WASIX_NO_UPDATE_REPOS: "1"
+          GITHUB_ACTIONS: "false"
           WASIX_COMPONENTS: rust
           WASIX_RUST_HOST: x86_64-apple-darwin
         run: |
           cd cargo-wasix
-          # NOTE: must unset GITHUB_ACTIONS env var, because Rst bootstrap checks for it.
+          # NOTE: must unset GITHUB_ACTIONS env var, because Rust bootstrap checks for it.
           # (see bootstrap config.rs)
           GITHUB_ACTIONS=false WASIX_BUILD_DIR=$GITHUB_WORKSPACE cargo run -- wasix build-toolchain
 
@@ -193,8 +193,8 @@ jobs:
         shell: bash
         if: contains(matrix.os, 'macos-12') && matrix.arch == 'aarch64'
         env:
-          WASIX_NO_UPDATE_REPOS: '1'
-          GITHUB_ACTIONS: 'false'
+          WASIX_NO_UPDATE_REPOS: "1"
+          GITHUB_ACTIONS: "false"
           WASIX_COMPONENTS: rust
           WASIX_RUST_HOST: aarch64-apple-darwin
         run: |
@@ -240,10 +240,10 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
-          WASIX_NO_UPDATE_REPOS: '1'
+          WASIX_NO_UPDATE_REPOS: "1"
           WASIX_COMPONENTS: rust
-          WASIX_RUST_HOST: x86_64-pc-windows-gnu
-          # WASIX_RUST_HOST: x86_64-pc-windows-msvc
+          WASIX_RUST_HOST: x86_64-pc-windows-msvc
+          # WASIX_RUST_HOST: x86_64-pc-windows-gnu
         run: |
           cd cargo-wasix
           # NOTE: must unset GITHUB_ACTIONS env var, because Rst bootstrap checks for it.
@@ -254,9 +254,9 @@ jobs:
         if: contains(matrix.os, 'windows') && matrix.arch == 'x86'
         uses: actions/upload-artifact@v3
         with:
-          # name: rust-toolchain-x86_64-pc-windows-msvc
-          name: rust-toolchain-x86_64-pc-windows-gnu
+          name: rust-toolchain-x86_64-pc-windows-msvc
+          # name: rust-toolchain-x86_64-pc-windows-gnu
           path: |
-            wasix-rust/build/x86_64-pc-windows-gnu/stage2
-            !wasix-rust/build/x86_64-pc-windows-gnu/stage2/lib/rustlib/src
-            !wasix-rust/build/x86_64-pc-windows-gnu/stage2/lib/rustlib/rustc-src
+            wasix-rust/build/x86_64-pc-windows-msvc/stage2
+            !wasix-rust/build/x86_64-pc-windows-msvc/stage2/lib/rustlib/src
+            !wasix-rust/build/x86_64-pc-windows-msvc/stage2/lib/rustlib/rustc-src
