@@ -12,6 +12,7 @@
           debug _r => _1;
       }
 +     scope 2 (inlined g) {
++         let mut _5: [generator@$DIR/inline_generator.rs:16:5: 16:8];
 +     }
 +     scope 3 (inlined Pin::<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}>::new) {
 +         debug pointer => _3;

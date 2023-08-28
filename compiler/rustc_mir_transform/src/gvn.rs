@@ -306,6 +306,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 }
                 ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
                 ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
+                ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
             };
             value = self.insert(Value::Projection(value, proj));
         }

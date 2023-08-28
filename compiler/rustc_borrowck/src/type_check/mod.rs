@@ -621,7 +621,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     span_mirbug_and_err!(self, place, "deref of non-pointer {:?}", base_ty)
                 }))
             }
-            ProjectionElem::Subtype(ty) => PlaceTy::from_ty(ty),
             ProjectionElem::Index(i) => {
                 let index_ty = Place::from(i).ty(self.body(), tcx).ty;
                 if index_ty != tcx.types.usize {
@@ -716,6 +715,14 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     ),
                 }
                 PlaceTy::from_ty(fty)
+            }
+            ProjectionElem::Subtype(_) => {
+                let guard = span_mirbug_and_err!(
+                    self,
+                    place,
+                    "ProjectionElem::Subtype shouldn't exist in borrowck"
+                );
+                PlaceTy::from_ty(Ty::new_error(tcx, guard))
             }
             ProjectionElem::OpaqueCast(ty) => {
                 let ty = self.sanitize_type(place, ty);

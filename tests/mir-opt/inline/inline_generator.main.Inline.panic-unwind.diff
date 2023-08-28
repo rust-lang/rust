@@ -12,6 +12,7 @@
           debug _r => _1;
       }
 +     scope 2 (inlined g) {
++         let mut _5: [generator@$DIR/inline_generator.rs:16:5: 16:8];
 +     }
 +     scope 3 (inlined Pin::<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}>::new) {
 +         debug pointer => _3;
@@ -55,7 +56,7 @@
   
 -     bb3: {
 +     bb1: {
-+         StorageDead(_5);
++         StorageDead(_6);
           StorageDead(_2);
 -         drop(_4) -> [return: bb4, unwind: bb6];
 +         drop(_4) -> [return: bb2, unwind: bb4];
