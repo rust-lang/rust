@@ -125,8 +125,8 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Ignore => continue,
                 PassMode::Direct(_) => arg.layout.immediate_gcc_type(cx),
                 PassMode::Pair(..) => {
-                    argument_tys.push(arg.layout.scalar_pair_element_gcc_type(cx, 0, true));
-                    argument_tys.push(arg.layout.scalar_pair_element_gcc_type(cx, 1, true));
+                    argument_tys.push(arg.layout.scalar_pair_element_gcc_type(cx, 0));
+                    argument_tys.push(arg.layout.scalar_pair_element_gcc_type(cx, 1));
                     continue;
                 }
                 PassMode::Indirect { extra_attrs: Some(_), .. } => {
