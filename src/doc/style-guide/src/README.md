@@ -109,12 +109,13 @@ lexicographical.)
 
 For the purposes of the Rust style, to compare two strings for version-sorting:
 
-- Compare the strings by (Unicode) character as normal, finding the index of
-  the first differing character. (If the two strings do not have the same
-  length, this may be the end of the shorter string.)
+- Compare the strings by (Unicode) character lexicographically, finding the
+  index of the first differing character. (If the two strings do not have the
+  same length, this may be the end of the shorter string.)
 - For both strings, determine the longest sequence of ASCII digits that either
   contains or ends at that index. (If either string doesn't have such a
-  sequence of ASCII digits, fall back to comparing the strings as normal.)
+  sequence of ASCII digits, fall back to comparing the strings
+  lexicographically.)
 - Compare the numeric values of the number specified by the sequence of digits.
   (Note that an implementation of this algorithm can easily check this without
   accumulating copies of the digits or converting to a number: after skipping
