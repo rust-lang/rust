@@ -21,6 +21,44 @@ macro_rules! caller_location_from_macro {
     };
 }
 
+fn test_basic() {
+    let location = Location::caller();
+    let expected_line = line!() - 1;
+    assert_eq!(location.file(), file!());
+    assert_eq!(location.line(), expected_line);
+    assert_eq!(location.column(), 20);
+
+    let tracked = tracked();
+    let expected_line = line!() - 1;
+    assert_eq!(tracked.file(), file!());
+    assert_eq!(tracked.line(), expected_line);
+    assert_eq!(tracked.column(), 19);
+
+    let nested = nested_intrinsic();
+    assert_eq!(nested.file(), file!());
+    assert_eq!(nested.line(), 11);
+    assert_eq!(nested.column(), 5);
+
+    let contained = nested_tracked();
+    assert_eq!(contained.file(), file!());
+    assert_eq!(contained.line(), 15);
+    assert_eq!(contained.column(), 5);
+
+    // `Location::caller()` in a macro should behave similarly to `file!` and `line!`,
+    // i.e. point to where the macro was invoked, instead of the macro itself.
+    let inmacro = caller_location_from_macro!();
+    let expected_line = line!() - 1;
+    assert_eq!(inmacro.file(), file!());
+    assert_eq!(inmacro.line(), expected_line);
+    assert_eq!(inmacro.column(), 19);
+
+    let intrinsic = core::intrinsics::caller_location();
+    let expected_line = line!() - 1;
+    assert_eq!(intrinsic.file(), file!());
+    assert_eq!(intrinsic.line(), expected_line);
+    assert_eq!(intrinsic.column(), 21);
+}
+
 fn test_fn_ptr() {
     fn pass_to_ptr_call<T>(f: fn(T), x: T) {
         f(x);
@@ -88,42 +126,7 @@ fn test_trait_obj2() {
 }
 
 fn main() {
-    let location = Location::caller();
-    let expected_line = line!() - 1;
-    assert_eq!(location.file(), file!());
-    assert_eq!(location.line(), expected_line);
-    assert_eq!(location.column(), 20);
-
-    let tracked = tracked();
-    let expected_line = line!() - 1;
-    assert_eq!(tracked.file(), file!());
-    assert_eq!(tracked.line(), expected_line);
-    assert_eq!(tracked.column(), 19);
-
-    let nested = nested_intrinsic();
-    assert_eq!(nested.file(), file!());
-    assert_eq!(nested.line(), 11);
-    assert_eq!(nested.column(), 5);
-
-    let contained = nested_tracked();
-    assert_eq!(contained.file(), file!());
-    assert_eq!(contained.line(), 15);
-    assert_eq!(contained.column(), 5);
-
-    // `Location::caller()` in a macro should behave similarly to `file!` and `line!`,
-    // i.e. point to where the macro was invoked, instead of the macro itself.
-    let inmacro = caller_location_from_macro!();
-    let expected_line = line!() - 1;
-    assert_eq!(inmacro.file(), file!());
-    assert_eq!(inmacro.line(), expected_line);
-    assert_eq!(inmacro.column(), 19);
-
-    let intrinsic = core::intrinsics::caller_location();
-    let expected_line = line!() - 1;
-    assert_eq!(intrinsic.file(), file!());
-    assert_eq!(intrinsic.line(), expected_line);
-    assert_eq!(intrinsic.column(), 21);
-
+    test_basic();
     test_fn_ptr();
     test_trait_obj();
     test_trait_obj2();
