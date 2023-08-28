@@ -16,6 +16,9 @@ if [ "${CHANNEL}" = "nightly" ]; then
     FEATURES="${FEATURES},nightly"
     export RUSTFLAGS="$RUSTFLAGS -D warnings"
 fi
+if [ "${CHANNEL}" = "1.63.0" ]; then
+    cargo update --package allocator-api2 --precise 0.2.9
+fi
 
 CARGO=cargo
 if [ "${CROSS}" = "1" ]; then
