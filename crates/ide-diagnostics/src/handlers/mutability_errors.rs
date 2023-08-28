@@ -76,7 +76,7 @@ pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Di
         "variable does not need to be mutable",
         ast,
     )
-    .experimental() // Not supporting `#[allow(unused_mut)]` leads to false positive.
+    .experimental() // Not supporting `#[allow(unused_mut)]` in proc macros leads to false positive.
     .with_fixes(fixes)
 }
 
