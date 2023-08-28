@@ -120,20 +120,8 @@ pub struct GenericDef(pub(crate) DefId);
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ConstDef(pub(crate) DefId);
 
-impl TraitDef {
-    pub fn trait_decl(&self) -> TraitDecl {
-        with(|cx| cx.trait_decl(self))
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ImplDef(pub(crate) DefId);
-
-impl ImplDef {
-    pub fn trait_impl(&self) -> ImplTrait {
-        with(|cx| cx.trait_impl(self))
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);
