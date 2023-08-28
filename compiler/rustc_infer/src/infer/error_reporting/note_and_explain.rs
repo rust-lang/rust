@@ -266,12 +266,10 @@ impl<T> Trait<T> for X {
                             }
                         }
                     }
-                    (ty::FnPtr(_), ty::FnDef(def, _))
-                    if let hir::def::DefKind::Fn = tcx.def_kind(def) => {
-                        diag.note(
-                            "when the arguments and return types match, functions can be coerced \
-                             to function pointers",
-                        );
+                    (ty::FnPtr(sig), ty::FnDef(def_id, _)) | (ty::FnDef(def_id, _), ty::FnPtr(sig)) => {
+                        if tcx.fn_sig(*def_id).skip_binder().unsafety() < sig.unsafety() {
+                            diag.note("unsafe functions cannot be coerced into safe function pointers");
+                        }
                     }
                     _ => {}
                 }

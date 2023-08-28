@@ -8,7 +8,6 @@ LL |     needs_ptr(foo);
    |
    = note: expected fn pointer `fn(i32, u32)`
                  found fn item `fn(i32, i32) {foo}`
-   = note: when the arguments and return types match, functions can be coerced to function pointers
 note: function defined here
   --> $DIR/signature-error-reporting-under-verbose.rs:5:4
    |
