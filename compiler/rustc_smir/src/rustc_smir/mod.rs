@@ -10,7 +10,7 @@
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
 use crate::stable_mir::ty::{
-    allocation_filter, new_allocation, Const, FloatTy, GenericDef, GenericParamDef, IntTy,
+    allocation_filter, new_allocation, Const, FloatTy, GenericParamDef, IntTy,
     Movability, RigidTy, TyKind, UintTy,
 };
 use crate::stable_mir::{self, Context};
@@ -102,18 +102,18 @@ impl<'tcx> Context for Tables<'tcx> {
         ty.stable(self)
     }
 
-    fn generics_of(&mut self, generic_def: &GenericDef) -> stable_mir::ty::Generics {
-        let def_id = self.generic_def_id(generic_def);
-        let generic_def = self.tcx.generics_of(def_id);
-        generic_def.stable(self)
+    fn generics_of(&mut self, def_id: stable_mir::DefId) -> stable_mir::ty::Generics {
+        let def_id = self.def_ids[def_id];
+        let generics = self.tcx.generics_of(def_id);
+        generics.stable(self)
     }
 
     fn predicates_of(
         &mut self,
-        trait_def: &stable_mir::ty::TraitDef,
+        def_id: stable_mir::DefId,
     ) -> stable_mir::GenericPredicates {
-        let trait_def_id = self.trait_def_id(trait_def);
-        let ty::GenericPredicates { parent, predicates } = self.tcx.predicates_of(trait_def_id);
+        let def_id = self.def_ids[def_id];
+        let ty::GenericPredicates { parent, predicates } = self.tcx.predicates_of(def_id);
         stable_mir::GenericPredicates {
             parent: parent.map(|did| self.trait_def(did)),
             predicates: predicates

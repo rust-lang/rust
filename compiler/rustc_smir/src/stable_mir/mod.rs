@@ -16,7 +16,7 @@ use std::cell::Cell;
 use crate::rustc_smir::Tables;
 
 use self::ty::{
-    GenericDef, Generics, ImplDef, ImplTrait, PredicateKind, Span, TraitDecl, TraitDef, Ty, TyKind,
+    Generics, ImplDef, ImplTrait, PredicateKind, Span, TraitDecl, TraitDef, Ty, TyKind,
 };
 
 pub mod mir;
@@ -118,8 +118,8 @@ pub trait Context {
     fn trait_decl(&mut self, trait_def: &TraitDef) -> TraitDecl;
     fn all_trait_impls(&mut self) -> ImplTraitDecls;
     fn trait_impl(&mut self, trait_impl: &ImplDef) -> ImplTrait;
-    fn generics_of(&mut self, generic_def: &GenericDef) -> Generics;
-    fn predicates_of(&mut self, trait_def: &TraitDef) -> GenericPredicates;
+    fn generics_of(&mut self, def_id: DefId) -> Generics;
+    fn predicates_of(&mut self, def_id: DefId) -> GenericPredicates;
     /// Get information about the local crate.
     fn local_crate(&self) -> Crate;
     /// Retrieve a list of all external crates.

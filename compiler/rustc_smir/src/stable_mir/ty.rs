@@ -137,7 +137,7 @@ impl ImplDef {
 
 impl GenericDef {
     pub fn generics_of(&self) -> Generics {
-        with(|tcx| tcx.generics_of(self))
+        with(|cx| cx.generics_of(self.0))
     }
 }
 
