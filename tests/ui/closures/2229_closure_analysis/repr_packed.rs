@@ -3,7 +3,8 @@
 #![feature(rustc_attrs)]
 
 // `u8` aligned at a byte and are unaffected by repr(packed).
-// Therefore we can precisely (and safely) capture references to both the fields.
+// Therefore we *could* precisely (and safely) capture references to both the fields,
+// but we don't, since we don't want capturing to change when field types change alignment.
 fn test_alignment_not_affected() {
     #[repr(packed)]
     struct Foo { x: u8, y: u8 }
@@ -17,11 +18,10 @@ fn test_alignment_not_affected() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let z1: &u8 = &foo.x;
-        //~^ NOTE: Capturing foo[(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture foo[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing foo[] -> ImmBorrow
         let z2: &mut u8 = &mut foo.y;
-        //~^ NOTE: Capturing foo[(1, 0)] -> MutBorrow
-        //~| NOTE: Min Capture foo[(1, 0)] -> MutBorrow
+        //~^ NOTE: Capturing foo[] -> MutBorrow
+        //~| NOTE: Min Capture foo[] -> MutBorrow
 
         *z2 = 42;
 
