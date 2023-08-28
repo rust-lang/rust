@@ -1,4 +1,7 @@
-use crate::back::write::{self, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers};
+use crate::back::write::{
+    self, bitcode_section_name, save_temp_bitcode, target_is_aix, target_is_apple,
+    CodegenDiagnosticsStage, DiagnosticHandlers,
+};
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib,
 };
@@ -121,8 +124,12 @@ fn prepare_lto(
                 .filter(|&(name, _)| looks_like_rust_object_file(name));
             for (name, child) in obj_files {
                 info!("adding bitcode from {}", name);
+                let is_apple = target_is_apple(cgcx);
+                let is_aix = target_is_aix(cgcx);
                 match get_bitcode_slice_from_object_data(
                     child.data(&*archive_data).expect("corrupt rlib"),
+                    is_apple,
+                    is_aix,
                 ) {
                     Ok(data) => {
                         let module = SerializedModule::FromRlib(data.to_vec());
@@ -144,19 +151,19 @@ fn prepare_lto(
     Ok((symbols_below_threshold, upstream_modules))
 }
 
-fn get_bitcode_slice_from_object_data(obj: &[u8]) -> Result<&[u8], LtoBitcodeFromRlib> {
+fn get_bitcode_slice_from_object_data(
+    obj: &[u8],
+    is_apple: bool,
+    is_aix: bool,
+) -> Result<&[u8], LtoBitcodeFromRlib> {
     // The object crate doesn't understand bitcode files, but we can just sniff for the possible
     // magic strings here and return the whole slice directly.
     if obj.starts_with(b"\xDE\xC0\x17\x0B") || obj.starts_with(b"BC\xC0\xDE") {
         return Ok(obj);
     }
+    let section = bitcode_section_name(is_apple, is_aix).trim_end_matches('\0');
     match object::read::File::parse(obj) {
-        Ok(f) => match f
-            .section_by_name(".llvmbc")
-            .or_else(|| f.section_by_name(".llvm.lto"))
-            .or_else(|| f.section_by_name("__LLVM,__bitcode"))
-            .or_else(|| f.section_by_name(".ipa"))
-        {
+        Ok(f) => match f.section_by_name(section) {
             Some(d) => Ok(d.data().unwrap()),
             None => Err(LtoBitcodeFromRlib {
                 llvm_err: "Bitcode section not found in object file".to_string(),
