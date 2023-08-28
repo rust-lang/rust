@@ -140,6 +140,49 @@ impl<I: Idx> IntervalSet<I> {
         result
     }
 
+    /// Specialized version of `insert` when we know that the inserted point is *before* any
+    /// contained.
+    pub fn prepend(&mut self, point: I) {
+        let point = point.index() as u32;
+
+        if let Some((first_start, _)) = self.map.first_mut() {
+            assert!(point < *first_start);
+            if point + 1 == *first_start {
+                *first_start = point;
+            } else {
+                self.map.insert(0, (point, point));
+            }
+        } else {
+            // If the map is empty, push is faster than insert.
+            self.map.push((point, point));
+        }
+
+        debug_assert!(
+            self.check_invariants(),
+            "wrong intervals after prepend {point:?} to {self:?}"
+        );
+    }
+
+    /// Specialized version of `insert` when we know that the inserted point is *after* any
+    /// contained.
+    pub fn append(&mut self, point: I) {
+        let point = point.index() as u32;
+
+        if let Some((_, last_end)) = self.map.last_mut()
+            && let _ = assert!(*last_end < point)
+            && point == *last_end + 1
+        {
+            *last_end = point;
+        } else {
+            self.map.push((point, point));
+        }
+
+        debug_assert!(
+            self.check_invariants(),
+            "wrong intervals after append {point:?} to {self:?}"
+        );
+    }
+
     pub fn contains(&self, needle: I) -> bool {
         let needle = needle.index() as u32;
         let Some(last) = self.map.partition_point(|r| r.0 <= needle).checked_sub(1) else {
@@ -323,6 +366,14 @@ impl<R: Idx, C: Step + Idx> SparseIntervalMatrix<R, C> {
 
     pub fn insert(&mut self, row: R, point: C) -> bool {
         self.ensure_row(row).insert(point)
+    }
+
+    pub fn prepend(&mut self, row: R, point: C) {
+        self.ensure_row(row).prepend(point)
+    }
+
+    pub fn append(&mut self, row: R, point: C) {
+        self.ensure_row(row).append(point)
     }
 
     pub fn contains(&self, row: R, point: C) -> bool {
