@@ -609,10 +609,14 @@ declare_clippy_lint! {
 
 pub struct Loops {
     msrv: Msrv,
+    enforce_iter_loop_reborrow: bool,
 }
 impl Loops {
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(msrv: Msrv, enforce_iter_loop_reborrow: bool) -> Self {
+        Self {
+            msrv,
+            enforce_iter_loop_reborrow,
+        }
     }
 }
 impl_lint_pass!(Loops => [
@@ -719,7 +723,7 @@ impl Loops {
         if let ExprKind::MethodCall(method, self_arg, [], _) = arg.kind {
             match method.ident.as_str() {
                 "iter" | "iter_mut" => {
-                    explicit_iter_loop::check(cx, self_arg, arg, &self.msrv);
+                    explicit_iter_loop::check(cx, self_arg, arg, &self.msrv, self.enforce_iter_loop_reborrow);
                 },
                 "into_iter" => {
                     explicit_into_iter_loop::check(cx, self_arg, arg);

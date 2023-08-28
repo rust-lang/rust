@@ -561,6 +561,26 @@ define_Conf! {
     /// Which crates to allow absolute paths from
     (absolute_paths_allowed_crates: rustc_data_structures::fx::FxHashSet<String> =
         rustc_data_structures::fx::FxHashSet::default()),
+    /// Lint: EXPLICIT_ITER_LOOP
+    ///
+    /// Whether to recommend using implicit into iter for reborrowed values.
+    ///
+    /// #### Example
+    /// ```
+    /// let mut vec = vec![1, 2, 3];
+    /// let rmvec = &mut vec;
+    /// for _ in rmvec.iter() {}
+    /// for _ in rmvec.iter_mut() {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```
+    /// let mut vec = vec![1, 2, 3];
+    /// let rmvec = &mut vec;
+    /// for _ in &*rmvec {}
+    /// for _ in &mut *rmvec {}
+    /// ```
+    (enforce_iter_loop_reborrow: bool = false),
 }
 
 /// Search for the configuration file.
