@@ -631,7 +631,7 @@ to jump to a type definition.
 ```rust
 #![feature(custom_code_classes_in_docs)]
 
-/// ```{class=language-c}
+/// ```custom,{class=language-c}
 /// int main(void) { return 0; }
 /// ```
 pub struct Bar;
@@ -641,12 +641,16 @@ The text `int main(void) { return 0; }` is rendered without highlighting in a co
 with the class `language-c`. This can be used to highlight other languages through JavaScript
 libraries for example.
 
+Without the `custom` attribute, it would be generated as a Rust code example with an additional
+`language-C` CSS class. Therefore, if you specifically don't want it to be a Rust code example,
+don't forget to add the `custom` attribute.
+
 To be noted that you can replace `class=` with `.` to achieve the same result:
 
 ```rust
 #![feature(custom_code_classes_in_docs)]
 
-/// ```{.language-c}
+/// ```custom,{.language-c}
 /// int main(void) { return 0; }
 /// ```
 pub struct Bar;
