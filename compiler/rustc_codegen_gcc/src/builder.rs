@@ -821,7 +821,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 let mut load = |i, scalar: &abi::Scalar, align| {
                     let llptr = self.struct_gep(pair_type, place.llval, i as u64);
-                    let llty = place.layout.scalar_pair_element_gcc_type(self, i, false);
+                    let llty = place.layout.scalar_pair_element_gcc_type(self, i);
                     let load = self.load(llty, llptr, align);
                     scalar_load_metadata(self, load, scalar);
                     if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }

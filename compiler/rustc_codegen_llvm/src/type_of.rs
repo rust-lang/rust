@@ -3,7 +3,7 @@ use crate::context::TypeLowering;
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::abi::HasDataLayout;
@@ -215,20 +215,16 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
     fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
+        // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
+        // In other words, this should generally not look at the type at all, but only at the
+        // layout.
         if let Abi::Scalar(scalar) = self.abi {
             // Use a different cache for scalars because pointers to DSTs
             // can be either fat or thin (data pointers of fat pointers).
             if let Some(&llty) = cx.scalar_lltypes.borrow().get(&self.ty) {
                 return llty;
             }
-            let llty = match *self.ty.kind() {
-                ty::Ref(..) | ty::RawPtr(_) => cx.type_ptr(),
-                ty::Adt(def, _) if def.is_box() => cx.type_ptr(),
-                ty::FnPtr(sig) => {
-                    cx.fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
-                }
-                _ => self.scalar_llvm_type_at(cx, scalar),
-            };
+            let llty = self.scalar_llvm_type_at(cx, scalar);
             cx.scalar_lltypes.borrow_mut().insert(self.ty, llty);
             return llty;
         }
@@ -303,27 +299,9 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         index: usize,
         immediate: bool,
     ) -> &'a Type {
-        // HACK(eddyb) special-case fat pointers until LLVM removes
-        // pointee types, to avoid bitcasting every `OperandRef::deref`.
-        match *self.ty.kind() {
-            ty::Ref(..) | ty::RawPtr(_) => {
-                return self.field(cx, index).llvm_type(cx);
-            }
-            // only wide pointer boxes are handled as pointers
-            // thin pointer boxes with scalar allocators are handled by the general logic below
-            ty::Adt(def, args) if def.is_box() && cx.layout_of(args.type_at(1)).is_zst() => {
-                let ptr_ty = Ty::new_mut_ptr(cx.tcx, self.ty.boxed_ty());
-                return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index, immediate);
-            }
-            // `dyn* Trait` has the same ABI as `*mut dyn Trait`
-            ty::Dynamic(bounds, region, ty::DynStar) => {
-                let ptr_ty =
-                    Ty::new_mut_ptr(cx.tcx, Ty::new_dynamic(cx.tcx, bounds, region, ty::Dyn));
-                return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index, immediate);
-            }
-            _ => {}
-        }
-
+        // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
+        // In other words, this should generally not look at the type at all, but only at the
+        // layout.
         let Abi::ScalarPair(a, b) = self.abi else {
             bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self);
         };
