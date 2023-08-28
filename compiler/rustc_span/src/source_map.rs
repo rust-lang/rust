@@ -190,6 +190,11 @@ pub struct SourceMap {
     /// The address space below this value is currently used by the files in the source map.
     used_address_space: AtomicU32,
 
+    /// A list of source files starting positions along with their index in `self.files` sorted
+    /// by the starting positions. This is used for fast lookup of a position in
+    /// `lookup_source_file_idx`.
+    sorted_files: Lock<Vec<(BytePos, usize)>>,
+
     files: RwLock<SourceMapFiles>,
     file_loader: IntoDynSyncSend<Box<dyn FileLoader + Sync + Send>>,
     // This is used to apply the file path remapping as specified via
@@ -216,6 +221,7 @@ impl SourceMap {
     ) -> SourceMap {
         SourceMap {
             used_address_space: AtomicU32::new(0),
+            sorted_files: Default::default(),
             files: Default::default(),
             file_loader: IntoDynSyncSend(file_loader),
             path_mapping,
@@ -327,15 +333,37 @@ impl SourceMap {
                 // the ID we generate for the SourceFile we just created.
                 debug_assert_eq!(StableSourceFileId::new(&source_file), file_id);
 
-                let mut files = self.files.borrow_mut();
-
-                files.source_files.push(source_file.clone());
-                files.stable_id_to_source_file.insert(file_id, source_file.clone());
+                self.insert_source_file(&source_file, file_id);
 
                 source_file
             }
         };
         Ok(lrc_sf)
+    }
+
+    fn insert_source_file(&self, file: &Lrc<SourceFile>, file_id: StableSourceFileId) {
+        let file_idx = {
+            let mut files = self.files.borrow_mut();
+
+            let file_idx = files.source_files.len();
+            files.source_files.push(file.clone());
+            files.stable_id_to_source_file.insert(file_id, file.clone());
+
+            file_idx
+        };
+
+        {
+            let mut sorted_files = self.sorted_files.lock();
+            let idx = sorted_files.partition_point(|&(start_pos, _)| start_pos < file.start_pos);
+            sorted_files.insert(idx, (file.start_pos, file_idx));
+            debug_assert!(sorted_files.iter().map(|&(start_pos, _)| start_pos).is_sorted());
+        }
+
+        // Ensure both start and end belong to the new source file
+        debug_assert!(
+            Lrc::as_ptr(&self.lookup_byte_offset(file.start_pos).sf) == Lrc::as_ptr(file)
+        );
+        debug_assert!(Lrc::as_ptr(&self.lookup_byte_offset(file.end_pos).sf) == Lrc::as_ptr(file));
     }
 
     /// Allocates a new `SourceFile` representing a source file from an external
@@ -411,12 +439,7 @@ impl SourceMap {
             cnum,
         });
 
-        let mut files = self.files.borrow_mut();
-
-        files.source_files.push(source_file.clone());
-        files
-            .stable_id_to_source_file
-            .insert(StableSourceFileId::new(&source_file), source_file.clone());
+        self.insert_source_file(&source_file, StableSourceFileId::new(&source_file));
 
         source_file
     }
@@ -1082,7 +1105,9 @@ impl SourceMap {
     /// This index is guaranteed to be valid for the lifetime of this `SourceMap`,
     /// since `source_files` is a `MonotonicVec`
     pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
-        self.files.borrow().source_files.partition_point(|x| x.start_pos <= pos) - 1
+        let sorted_files = self.sorted_files.lock();
+        let idx = sorted_files.partition_point(|&(start_pos, _)| start_pos <= pos) - 1;
+        sorted_files[idx].1
     }
 
     pub fn count_lines(&self) -> usize {
