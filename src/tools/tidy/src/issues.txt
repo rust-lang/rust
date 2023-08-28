@@ -2756,7 +2756,6 @@ ui/lint/issue-57410-1.rs
 ui/lint/issue-57410.rs
 ui/lint/issue-63364.rs
 ui/lint/issue-70819-dont-override-forbid-in-same-scope.rs
-ui/lint/issue-79546-fuel-ice.rs
 ui/lint/issue-79744.rs
 ui/lint/issue-81218.rs
 ui/lint/issue-83477.rs
