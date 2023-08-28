@@ -305,7 +305,6 @@ pub enum FileName {
 
 impl From<PathBuf> for FileName {
     fn from(p: PathBuf) -> Self {
-        assert!(!p.to_string_lossy().ends_with('>'));
         FileName::Real(RealFileName::LocalPath(p))
     }
 }
