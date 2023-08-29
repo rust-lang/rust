@@ -849,6 +849,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
         let scope = Scope::TraitRefBoundary { s: self.scope };
         self.with(scope, |this| {
+            walk_list!(this, visit_generic_param, generics.params);
             for param in generics.params {
                 match param.kind {
                     GenericParamKind::Lifetime { .. } => {}
@@ -865,90 +866,86 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     }
                 }
             }
-            for predicate in generics.predicates {
-                match predicate {
-                    &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                        hir_id,
-                        bounded_ty,
-                        bounds,
-                        bound_generic_params,
-                        origin,
-                        ..
-                    }) => {
-                        let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) =
-                            bound_generic_params
-                                .iter()
-                                .enumerate()
-                                .map(|(late_bound_idx, param)| {
-                                    let pair = ResolvedArg::late(late_bound_idx as u32, param);
-                                    let r = late_arg_as_bound_arg(this.tcx, &pair.1, param);
-                                    (pair, r)
-                                })
-                                .unzip();
-                        this.record_late_bound_vars(hir_id, binders.clone());
-                        // Even if there are no lifetimes defined here, we still wrap it in a binder
-                        // scope. If there happens to be a nested poly trait ref (an error), that
-                        // will be `Concatenating` anyways, so we don't have to worry about the depth
-                        // being wrong.
-                        let scope = Scope::Binder {
-                            hir_id,
-                            bound_vars,
-                            s: this.scope,
-                            scope_type: BinderScopeType::Normal,
-                            where_bound_origin: Some(origin),
-                        };
-                        this.with(scope, |this| {
-                            this.visit_ty(&bounded_ty);
-                            walk_list!(this, visit_param_bound, bounds);
-                        })
-                    }
-                    &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
-                        lifetime,
-                        bounds,
-                        ..
-                    }) => {
-                        this.visit_lifetime(lifetime);
-                        walk_list!(this, visit_param_bound, bounds);
+            walk_list!(this, visit_where_predicate, generics.predicates);
+        })
+    }
 
-                        if lifetime.res != hir::LifetimeName::Static {
-                            for bound in bounds {
-                                let hir::GenericBound::Outlives(lt) = bound else {
-                                    continue;
-                                };
-                                if lt.res != hir::LifetimeName::Static {
-                                    continue;
-                                }
-                                this.insert_lifetime(lt, ResolvedArg::StaticLifetime);
-                                this.tcx.struct_span_lint_hir(
-                                    lint::builtin::UNUSED_LIFETIMES,
-                                    lifetime.hir_id,
-                                    lifetime.ident.span,
-                                    format!(
-                                        "unnecessary lifetime parameter `{}`",
-                                        lifetime.ident
-                                    ),
-                                    |lint| {
-                                        let help = format!(
-                                            "you can use the `'static` lifetime directly, in place of `{}`",
-                                            lifetime.ident,
-                                        );
-                                        lint.help(help)
-                                    },
-                                );
-                            }
+    fn visit_where_predicate(&mut self, predicate: &'tcx hir::WherePredicate<'tcx>) {
+        match predicate {
+            &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                hir_id,
+                bounded_ty,
+                bounds,
+                bound_generic_params,
+                origin,
+                ..
+            }) => {
+                let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) =
+                    bound_generic_params
+                        .iter()
+                        .enumerate()
+                        .map(|(late_bound_idx, param)| {
+                            let pair = ResolvedArg::late(late_bound_idx as u32, param);
+                            let r = late_arg_as_bound_arg(self.tcx, &pair.1, param);
+                            (pair, r)
+                        })
+                        .unzip();
+                self.record_late_bound_vars(hir_id, binders.clone());
+                // Even if there are no lifetimes defined here, we still wrap it in a binder
+                // scope. If there happens to be a nested poly trait ref (an error), that
+                // will be `Concatenating` anyways, so we don't have to worry about the depth
+                // being wrong.
+                let scope = Scope::Binder {
+                    hir_id,
+                    bound_vars,
+                    s: self.scope,
+                    scope_type: BinderScopeType::Normal,
+                    where_bound_origin: Some(origin),
+                };
+                self.with(scope, |this| {
+                    walk_list!(this, visit_generic_param, bound_generic_params);
+                    this.visit_ty(&bounded_ty);
+                    walk_list!(this, visit_param_bound, bounds);
+                })
+            }
+            &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
+                lifetime,
+                bounds,
+                ..
+            }) => {
+                self.visit_lifetime(lifetime);
+                walk_list!(self, visit_param_bound, bounds);
+
+                if lifetime.res != hir::LifetimeName::Static {
+                    for bound in bounds {
+                        let hir::GenericBound::Outlives(lt) = bound else {
+                            continue;
+                        };
+                        if lt.res != hir::LifetimeName::Static {
+                            continue;
                         }
-                    }
-                    &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
-                        lhs_ty,
-                        rhs_ty,
-                        ..
-                    }) => {
-                        this.visit_ty(lhs_ty);
-                        this.visit_ty(rhs_ty);
+                        self.insert_lifetime(lt, ResolvedArg::StaticLifetime);
+                        self.tcx.struct_span_lint_hir(
+                            lint::builtin::UNUSED_LIFETIMES,
+                            lifetime.hir_id,
+                            lifetime.ident.span,
+                            format!("unnecessary lifetime parameter `{}`", lifetime.ident),
+                            |lint| {
+                                let help = format!(
+                                    "you can use the `'static` lifetime directly, in place of `{}`",
+                                    lifetime.ident,
+                                );
+                                lint.help(help)
+                            },
+                        );
                     }
                 }
             }
-        })
+            &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate { lhs_ty, rhs_ty, .. }) => {
+                self.visit_ty(lhs_ty);
+                self.visit_ty(rhs_ty);
+            }
+        }
     }
 
     fn visit_param_bound(&mut self, bound: &'tcx hir::GenericBound<'tcx>) {
@@ -985,6 +982,18 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         self.with(Scope::AnonConstBoundary { s: self.scope }, |this| {
             intravisit::walk_anon_const(this, c);
         });
+    }
+
+    fn visit_generic_param(&mut self, p: &'tcx GenericParam<'tcx>) {
+        match p.kind {
+            GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
+                self.resolve_type_ref(p.def_id, p.hir_id);
+            }
+            GenericParamKind::Lifetime { .. } => {
+                // No need to resolve lifetime params, we don't use them for things
+                // like implicit `?Sized` or const-param-has-ty predicates.
+            }
+        }
     }
 }
 
