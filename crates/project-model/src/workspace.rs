@@ -2,7 +2,7 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{collections::VecDeque, fmt, fs, process::Command, str::FromStr, sync};
+use std::{collections::VecDeque, fmt, fs, iter, process::Command, str::FromStr, sync};
 
 use anyhow::{format_err, Context};
 use base_db::{
@@ -730,6 +730,7 @@ fn project_json_to_crate_graph(
         )
     });
 
+    let r_a_cfg_flag = CfgFlag::Atom("rust_analyzer".to_owned());
     let mut cfg_cache: FxHashMap<&str, Vec<CfgFlag>> = FxHashMap::default();
     let crates: FxHashMap<CrateId, CrateId> = project
         .crates()
@@ -765,7 +766,12 @@ fn project_json_to_crate_graph(
                     *edition,
                     display_name.clone(),
                     version.clone(),
-                    target_cfgs.iter().chain(cfg.iter()).cloned().collect(),
+                    target_cfgs
+                        .iter()
+                        .chain(cfg.iter())
+                        .chain(iter::once(&r_a_cfg_flag))
+                        .cloned()
+                        .collect(),
                     None,
                     env,
                     *is_proc_macro,
@@ -820,7 +826,7 @@ fn cargo_to_crate_graph(
     sysroot: Option<&Sysroot>,
     rustc_cfg: Vec<CfgFlag>,
     override_cfg: &CfgOverrides,
-    // Don't compute cfg and use this if present
+    // Don't compute cfg and use this if present, only used for the sysroot experiment hack
     forced_cfg: Option<CfgOptions>,
     build_scripts: &WorkspaceBuildScripts,
     target_layout: TargetLayoutLoadResult,
@@ -842,12 +848,7 @@ fn cargo_to_crate_graph(
         None => (SysrootPublicDeps::default(), None),
     };
 
-    let cfg_options = {
-        let mut cfg_options = CfgOptions::default();
-        cfg_options.extend(rustc_cfg);
-        cfg_options.insert_atom("debug_assertions".into());
-        cfg_options
-    };
+    let cfg_options = create_cfg_options(rustc_cfg);
 
     // Mapping of a package to its library target
     let mut pkg_to_lib_crate = FxHashMap::default();
@@ -1029,8 +1030,7 @@ fn detached_files_to_crate_graph(
         None => (SysrootPublicDeps::default(), None),
     };
 
-    let mut cfg_options = CfgOptions::default();
-    cfg_options.extend(rustc_cfg);
+    let cfg_options = create_cfg_options(rustc_cfg);
 
     for detached_file in detached_files {
         let file_id = match load(detached_file) {
@@ -1295,8 +1295,7 @@ fn sysroot_to_crate_graph(
     channel: Option<ReleaseChannel>,
 ) -> (SysrootPublicDeps, Option<CrateId>) {
     let _p = profile::span("sysroot_to_crate_graph");
-    let mut cfg_options = CfgOptions::default();
-    cfg_options.extend(rustc_cfg.clone());
+    let cfg_options = create_cfg_options(rustc_cfg.clone());
     let sysroot_crates: FxHashMap<SysrootCrate, CrateId> = match &sysroot.hack_cargo_workspace {
         Some(cargo) => handle_hack_cargo_workspace(
             load,
@@ -1474,4 +1473,12 @@ fn inject_cargo_env(package: &PackageData, env: &mut Env) {
     env.set("CARGO_PKG_LICENSE", String::new());
 
     env.set("CARGO_PKG_LICENSE_FILE", String::new());
+}
+
+fn create_cfg_options(rustc_cfg: Vec<CfgFlag>) -> CfgOptions {
+    let mut cfg_options = CfgOptions::default();
+    cfg_options.extend(rustc_cfg);
+    cfg_options.insert_atom("debug_assertions".into());
+    cfg_options.insert_atom("rust_analyzer".into());
+    cfg_options
 }
