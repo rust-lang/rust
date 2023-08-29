@@ -1083,8 +1083,21 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
     type T = stable_mir::ty::Const;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        let cnst = ConstantKind::from_const(*self, tables.tcx);
-        stable_mir::ty::Const { literal: cnst.stable(tables) }
+        stable_mir::ty::Const {
+            literal: match self.kind() {
+                ty::Value(val) => {
+                    let const_val = tables.tcx.valtree_to_const_val((self.ty(), val));
+                    stable_mir::ty::ConstantKind::Allocated(new_allocation(
+                        self.ty(),
+                        const_val,
+                        tables,
+                    ))
+                }
+                ty::ParamCt(param) => stable_mir::ty::ConstantKind::ParamCt(opaque(&param)),
+                ty::ErrorCt(_) => unreachable!(),
+                _ => unimplemented!(),
+            },
+        }
     }
 }
 
@@ -1155,26 +1168,18 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
     type T = stable_mir::ty::ConstantKind;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        match self {
-            ConstantKind::Ty(c) => match c.kind() {
-                ty::Value(val) => {
-                    let const_val = tables.tcx.valtree_to_const_val((c.ty(), val));
-                    stable_mir::ty::ConstantKind::Allocated(new_allocation(self, const_val, tables))
-                }
-                ty::ParamCt(param) => stable_mir::ty::ConstantKind::ParamCt(opaque(&param)),
-                ty::ErrorCt(_) => unreachable!(),
-                _ => unimplemented!(),
-            },
+        match *self {
+            ConstantKind::Ty(c) => c.stable(tables).literal,
             ConstantKind::Unevaluated(unev_const, ty) => {
                 stable_mir::ty::ConstantKind::Unevaluated(stable_mir::ty::UnevaluatedConst {
-                    ty: tables.intern_ty(*ty),
+                    ty: tables.intern_ty(ty),
                     def: tables.const_def(unev_const.def),
                     args: unev_const.args.stable(tables),
                     promoted: unev_const.promoted.map(|u| u.as_u32()),
                 })
             }
-            ConstantKind::Val(val, _) => {
-                stable_mir::ty::ConstantKind::Allocated(new_allocation(self, *val, tables))
+            ConstantKind::Val(val, ty) => {
+                stable_mir::ty::ConstantKind::Allocated(new_allocation(ty, val, tables))
             }
         }
     }

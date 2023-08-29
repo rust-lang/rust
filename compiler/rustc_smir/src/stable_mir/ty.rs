@@ -301,8 +301,9 @@ impl Allocation {
 // We need this method instead of a Stable implementation
 // because we need to get `Ty` of the const we are trying to create, to do that
 // we need to have access to `ConstantKind` but we can't access that inside Stable impl.
+#[allow(rustc::usage_of_qualified_ty)]
 pub fn new_allocation<'tcx>(
-    const_kind: &rustc_middle::mir::ConstantKind<'tcx>,
+    ty: rustc_middle::ty::Ty<'tcx>,
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx>,
 ) -> Allocation {
@@ -311,7 +312,7 @@ pub fn new_allocation<'tcx>(
             let size = scalar.size();
             let align = tables
                 .tcx
-                .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(const_kind.ty()))
+                .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(ty))
                 .unwrap()
                 .align;
             let mut allocation = rustc_middle::mir::interpret::Allocation::uninit(size, align.abi);
@@ -321,11 +322,8 @@ pub fn new_allocation<'tcx>(
             allocation.stable(tables)
         }
         ConstValue::ZeroSized => {
-            let align = tables
-                .tcx
-                .layout_of(rustc_middle::ty::ParamEnv::empty().and(const_kind.ty()))
-                .unwrap()
-                .align;
+            let align =
+                tables.tcx.layout_of(rustc_middle::ty::ParamEnv::empty().and(ty)).unwrap().align;
             Allocation::new_empty_allocation(align.abi)
         }
         ConstValue::Slice { data, start, end } => {
@@ -336,10 +334,8 @@ pub fn new_allocation<'tcx>(
                 (end - start) as u64,
                 &tables.tcx,
             );
-            let layout = tables
-                .tcx
-                .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(const_kind.ty()))
-                .unwrap();
+            let layout =
+                tables.tcx.layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(ty)).unwrap();
             let mut allocation =
                 rustc_middle::mir::interpret::Allocation::uninit(layout.size, layout.align.abi);
             allocation
@@ -361,7 +357,7 @@ pub fn new_allocation<'tcx>(
         ConstValue::ByRef { alloc, offset } => {
             let ty_size = tables
                 .tcx
-                .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(const_kind.ty()))
+                .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(ty))
                 .unwrap()
                 .size;
             allocation_filter(&alloc.0, alloc_range(offset, ty_size), tables)
