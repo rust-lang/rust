@@ -1,12 +1,11 @@
 # `*-apple-tvos`
-- aarch64-apple-tvos
-- x86_64-apple-tvos
 
 **Tier: 3**
 
-Apple tvOS targets:
-- Apple tvOS on aarch64
-- Apple tvOS Simulator on x86_64
+Apple tvOS targets
+
+- `aarch64-apple-tvos` (Apple tvOS on aarch64)
+- `x86_64-apple-tvos` (Apple tvOS Simulator on x86_64)
 
 ## Target maintainers
 
