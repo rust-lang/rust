@@ -1095,7 +1095,18 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                 }
                 ty::ParamCt(param) => stable_mir::ty::ConstantKind::ParamCt(opaque(&param)),
                 ty::ErrorCt(_) => unreachable!(),
-                _ => unimplemented!(),
+                ty::InferCt(_) => unreachable!(),
+                ty::BoundCt(_, _) => unimplemented!(),
+                ty::PlaceholderCt(_) => unimplemented!(),
+                ty::Unevaluated(uv) => {
+                    stable_mir::ty::ConstantKind::Unevaluated(stable_mir::ty::UnevaluatedConst {
+                        ty: tables.intern_ty(self.ty()),
+                        def: tables.const_def(uv.def),
+                        args: uv.args.stable(tables),
+                        promoted: None,
+                    })
+                }
+                ty::ExprCt(_) => unimplemented!(),
             },
         }
     }
