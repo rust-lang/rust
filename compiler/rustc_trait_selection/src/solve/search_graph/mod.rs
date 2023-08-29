@@ -51,9 +51,13 @@ pub(super) struct SearchGraph<'tcx> {
 
 impl<'tcx> SearchGraph<'tcx> {
     pub(super) fn new(tcx: TyCtxt<'tcx>, mode: SolverMode) -> SearchGraph<'tcx> {
+        let local_overflow_limit = {
+            let recursion_limit = tcx.recursion_limit().0;
+            if recursion_limit == 0 { 0 } else { recursion_limit.ilog2() as usize }
+        };
         Self {
             mode,
-            local_overflow_limit: tcx.recursion_limit().0.ilog2() as usize,
+            local_overflow_limit,
             stack: Default::default(),
             provisional_cache: ProvisionalCache::empty(),
         }
