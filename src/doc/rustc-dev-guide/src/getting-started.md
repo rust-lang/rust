@@ -123,6 +123,10 @@ compiler. You can see a list of diagnostic issues [here][diagnostic-issues].
 
 [diagnostic-issues]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+label%3AA-diagnostics+no%3Aassignee
 
+### Contributing to std (standard library)
+
+See [std-dev-guide](https://std-dev-guide.rust-lang.org/).
+
 ### Contributing code to other Rust projects
 
 There are a bunch of other projects that you can contribute to outside of the
@@ -170,10 +174,6 @@ incredibly helpful:
 ## Cloning and Building
 
 See ["How to build and run the compiler"](./building/how-to-build-and-run.md).
-
-## How do i contribute to std?
-
-See [std-dev-guide](https://std-dev-guide.rust-lang.org/).
 
 ## Contributor Procedures
 
