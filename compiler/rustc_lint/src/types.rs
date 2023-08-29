@@ -804,7 +804,7 @@ pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
     tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed)
 }
 
-/// `repr(transparent)` structs can have a single non-ZST field, this function returns that
+/// `repr(transparent)` structs can have a single non-1-ZST field, this function returns that
 /// field.
 pub fn transparent_newtype_field<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -813,8 +813,8 @@ pub fn transparent_newtype_field<'a, 'tcx>(
     let param_env = tcx.param_env(variant.def_id);
     variant.fields.iter().find(|field| {
         let field_ty = tcx.type_of(field.did).instantiate_identity();
-        let is_zst = tcx.layout_of(param_env.and(field_ty)).is_ok_and(|layout| layout.is_zst());
-        !is_zst
+        let is_1zst = tcx.layout_of(param_env.and(field_ty)).is_ok_and(|layout| layout.is_1zst());
+        !is_1zst
     })
 }
 
