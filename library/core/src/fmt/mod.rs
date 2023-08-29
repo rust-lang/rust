@@ -318,6 +318,12 @@ union Parts {
     strings_and_placeholders: (*const &'static str, *const rt::Placeholder),
 }
 
+// `Arguments` will never be Send nor Sync, because it may borrow arguments that are not Sync.
+#[stable(feature = "rust1", since = "1.0.0")]
+impl !Sync for Arguments<'_> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl !Send for Arguments<'_> {}
+
 /// Used by the format_args!() macro to create a fmt::Arguments object.
 #[doc(hidden)]
 #[unstable(feature = "fmt_internals", issue = "none")]
