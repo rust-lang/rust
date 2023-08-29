@@ -471,7 +471,7 @@ impl<'a> Arguments<'a> {
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
     #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub const fn as_str(&self) -> Option<&'static str> {
         if self.num_parts.get() == 1 {
             // SAFETY: With num_parts == 1, the `parts` field stores just the string.
