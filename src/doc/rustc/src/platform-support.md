@@ -334,7 +334,7 @@ target | std | host | notes
 `x86_64-pc-windows-msvc` | * |  | 64-bit Windows XP support
 `x86_64-sun-solaris` | ? |  | Deprecated target for 64-bit Solaris 10/11, illumos
 [`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |   | 64-bit Unikraft with musl
-`x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
+[`x86_64-unknown-dragonfly`](platform-support/x86_64_unknown_dragonfly.md) | ✓ | ✓ | 64-bit DragonFlyBSD
 [`x86_64-unknown-haiku`](platform-support/haiku.md) | ✓ | ✓ | 64-bit Haiku
 [`x86_64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | x86_64 Hermit
 [`x86_64-unknown-l4re-uclibc`](platform-support/x86_64_unknown_l4re_uclibc.md) | ? |  | L4 Runtime Environment
