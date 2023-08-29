@@ -268,7 +268,7 @@ target | std | host | notes
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
 `i686-pc-windows-msvc` | * |  | 32-bit Windows XP support
 [`i686-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
-`i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
+[`i686-unknown-haiku`](platform-support/haiku.md) | ✓ | ✓ | 32-bit Haiku
 [`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 with SSE2
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD
 `i686-uwp-windows-gnu` | ? |  |
@@ -335,7 +335,7 @@ target | std | host | notes
 `x86_64-sun-solaris` | ? |  | Deprecated target for 64-bit Solaris 10/11, illumos
 [`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |   | 64-bit Unikraft with musl
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
-`x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
+[`x86_64-unknown-haiku`](platform-support/haiku.md) | ✓ | ✓ | 64-bit Haiku
 [`x86_64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | x86_64 Hermit
 [`x86_64-unknown-l4re-uclibc`](platform-support/x86_64_unknown_l4re_uclibc.md) | ? |  | L4 Runtime Environment
 [`x86_64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | x86_64 OpenHarmony |
