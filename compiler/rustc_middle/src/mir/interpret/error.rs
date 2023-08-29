@@ -2,7 +2,7 @@ use super::{AllocId, AllocRange, ConstAlloc, Pointer, Scalar};
 
 use crate::mir::interpret::ConstValue;
 use crate::query::TyCtxtAt;
-use crate::ty::{layout, tls, Ty, ValTree};
+use crate::ty::{layout, tls, List, Ty, ValTree};
 
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{
@@ -404,6 +404,7 @@ pub enum ValidationErrorKind<'tcx> {
     InvalidBool { value: String },
     InvalidChar { value: String },
     InvalidFnPtr { value: String },
+    GeneratorLayoutAccess { ty: Ty<'tcx>, generators: &'tcx List<Ty<'tcx>> },
 }
 
 /// Error information for when the program did something that might (or might not) be correct

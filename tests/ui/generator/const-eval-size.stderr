@@ -1,0 +1,30 @@
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = note: cannot compute layout of `[generator@$DIR/const-eval-size.rs:15:5: 15:12]`
+   |
+note: inside `std::mem::size_of::<[generator@$DIR/const-eval-size.rs:15:5: 15:12]>`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+note: inside `A`
+  --> $DIR/const-eval-size.rs:10:18
+   |
+LL | const A: usize = std::mem::size_of::<Gen>();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = note: cannot compute layout of `Option<[generator@$DIR/const-eval-size.rs:15:5: 15:12]>`
+   |
+note: inside `std::mem::size_of::<Option<[generator@$DIR/const-eval-size.rs:15:5: 15:12]>>`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+note: inside `B`
+  --> $DIR/const-eval-size.rs:12:18
+   |
+LL | const B: usize = std::mem::size_of::<Option<Gen>>();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: because of contained type `[generator@$DIR/const-eval-size.rs:15:5: 15:12]`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

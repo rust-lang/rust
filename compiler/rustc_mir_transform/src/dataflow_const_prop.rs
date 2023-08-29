@@ -512,6 +512,7 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
     rustc_const_eval::interpret::compile_time_machine!(<'mir, 'tcx>);
     type MemoryKind = !;
     const PANIC_ON_ALLOC_FAIL: bool = true;
+    const ACCESS_GENERATOR_LAYOUT: bool = true;
 
     fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
         unimplemented!()

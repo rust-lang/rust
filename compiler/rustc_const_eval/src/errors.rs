@@ -674,6 +674,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             InvalidBool { .. } => const_eval_validation_invalid_bool,
             InvalidChar { .. } => const_eval_validation_invalid_char,
             InvalidFnPtr { .. } => const_eval_validation_invalid_fn_ptr,
+            GeneratorLayoutAccess { .. } => const_eval_validation_generator_layout_access,
         }
     }
 
@@ -772,6 +773,20 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             }
             DanglingPtrNoProvenance { pointer, .. } => {
                 err.set_arg("pointer", pointer);
+            }
+            GeneratorLayoutAccess { ty, generators } => {
+                err.set_arg("ty", ty);
+                for generator in generators {
+                    if generator != ty {
+                        let message = handler.eagerly_translate_to_string(
+                            fluent::const_eval_generator_layout_indirect,
+                            [("ty".into(), DiagnosticArgValue::Str(generator.to_string().into()))]
+                                .iter()
+                                .map(|(a, b)| (a, b)),
+                        );
+                        err.help(message);
+                    }
+                }
             }
             NullPtr { .. }
             | PtrToStatic { .. }

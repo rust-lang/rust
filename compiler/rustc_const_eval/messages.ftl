@@ -112,6 +112,8 @@ const_eval_frame_note_inner = inside {$where_ ->
     *[other] {""}
 }
 
+const_eval_generator_layout_indirect = because of contained type `{$ty}`
+
 const_eval_in_bounds_test = out-of-bounds pointer use
 const_eval_incompatible_calling_conventions =
     calling a function with calling convention {$callee_conv} using calling convention {$caller_conv}
@@ -430,6 +432,8 @@ const_eval_validation_expected_str = expected a string
 
 const_eval_validation_front_matter_invalid_value = constructing invalid value
 const_eval_validation_front_matter_invalid_value_with_path = constructing invalid value at {$path}
+
+const_eval_validation_generator_layout_access = cannot compute layout of `{$ty}`
 
 const_eval_validation_invalid_bool = {$front_matter}: encountered {$value}, but expected a boolean
 const_eval_validation_invalid_box_meta = {$front_matter}: encountered invalid box metadata: total size is bigger than largest supported object

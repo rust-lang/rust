@@ -16,8 +16,8 @@ use rustc_middle::mir::interpret::{
     ExpectedKind, InterpError, InvalidMetaKind, PointerKind, ValidationErrorInfo,
     ValidationErrorKind, ValidationErrorKind::*,
 };
-use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
     Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
@@ -949,5 +949,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // value, it rules out things like `UnsafeCell` in awkward places. It also can make checking
         // recurse through references which, for now, we don't want here, either.
         self.validate_operand_internal(op, vec![], None, None)
+    }
+
+    /// This function checks if the given `ty`'s layout depends on generators.
+    #[inline(always)]
+    pub fn validate_generator_layout_access(&self, ty: Ty<'tcx>) -> InterpResult<'tcx> {
+        if !M::ACCESS_GENERATOR_LAYOUT {
+            let generators = self.tcx.layout_generators(ty);
+            if !generators.is_empty() {
+                throw_validation_failure!(Vec::new(), GeneratorLayoutAccess { ty, generators });
+            }
+        }
+        Ok(())
     }
 }

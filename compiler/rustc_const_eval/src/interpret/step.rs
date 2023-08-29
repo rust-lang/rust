@@ -267,6 +267,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             NullaryOp(ref null_op, ty) => {
                 let ty = self.subst_from_current_frame_and_normalize_erasing_regions(ty)?;
+
+                // Ensure we don't need the layout of any generators if applicable.
+                // This prevents typeck from depending on MIR optimizations.
+                self.validate_generator_layout_access(ty)?;
+
                 let layout = self.layout_of(ty)?;
                 if let mir::NullOp::SizeOf | mir::NullOp::AlignOf = null_op && layout.is_unsized() {
                     span_bug!(

@@ -357,6 +357,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
 
+    // We don't allow access to generator layout at compile time.
+    const ACCESS_GENERATOR_LAYOUT: bool = false;
+
     #[inline(always)]
     fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
         ecx.machine.check_alignment

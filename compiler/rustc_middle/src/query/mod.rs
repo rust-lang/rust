@@ -1405,6 +1405,15 @@ rustc_queries! {
         desc { "computing layout of `{}`", key.value }
     }
 
+    /// Computes the generators present in the layout of a type.
+    /// This expects a normalized input type with regions erased.
+    query layout_generators(
+        key: Ty<'tcx>
+    ) -> &'tcx ty::List<Ty<'tcx>> {
+        depth_limit
+        desc { "calculating generators in layout of `{}`", key }
+    }
+
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
     ///
     /// NB: this doesn't handle virtual calls - those should use `fn_abi_of_instance`
