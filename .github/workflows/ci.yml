@@ -213,6 +213,14 @@ jobs:
             !wasix-rust/build/aarch64-apple-darwin/stage2/lib/rustlib/src
             !wasix-rust/build/aarch64-apple-darwin/stage2/lib/rustlib/rustc-src
 
+      - name: Archive wasi build output (Mac OS - x86_64)
+        uses: actions/upload-artifact@v3
+        if: contains(matrix.os, 'macos-12') && matrix.arch == 'aarch64'
+        with:
+          name: rust-toolchain-wasix-builds-aarch64-apple-darwin
+          path: |
+            wasix-rust/build/x86_64-apple-darwin/stage2
+
       - name: Print Build Folder recursively (MacOS - aarch64)
         if: contains(matrix.os, 'macos-12') && matrix.arch == 'aarch64'
         run: |
