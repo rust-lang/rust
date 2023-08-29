@@ -1,15 +1,6 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-macro_rules! static_assert_imm_0_until_10 {
-    ($imm:ident) => {
-        static_assert!(
-            $imm <= 10,
-            "Immediate value allowed to be a constant from 0 up to including 10"
-        )
-    };
-}
-
 extern "unadjusted" {
     #[link_name = "llvm.riscv.aes64es"]
     fn _aes64es(rs1: i64, rs2: i64) -> i64;
@@ -157,10 +148,10 @@ pub unsafe fn aes64dsm(rs1: u64, rs2: u64) -> u64 {
 /// This function is safe to use if the `zkne` or `zknd` target feature is present.
 #[target_feature(enable = "zkne", enable = "zknd")]
 #[rustc_legacy_const_generics(1)]
-#[cfg_attr(test, assert_instr(aes64ks1i))]
+#[cfg_attr(test, assert_instr(aes64ks1i, RNUM = 0))]
 #[inline]
 pub unsafe fn aes64ks1i<const RNUM: u8>(rs1: u64) -> u64 {
-    static_assert_imm_0_until_10!(RNUM);
+    static_assert!(RNUM <= 10);
 
     _aes64ks1i(rs1 as i64, RNUM as i32) as u64
 }

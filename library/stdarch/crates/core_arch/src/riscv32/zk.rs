@@ -1,15 +1,6 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-macro_rules! static_assert_imm2 {
-    ($imm:ident) => {
-        static_assert!(
-            $imm < 4,
-            "Immediate value allowed to be a constant from 0 up to including 3"
-        )
-    };
-}
-
 extern "unadjusted" {
     #[link_name = "llvm.riscv.aes32esi"]
     fn _aes32esi(rs1: i32, rs2: i32, bs: i32) -> i32;
@@ -71,10 +62,10 @@ extern "unadjusted" {
 /// This function is safe to use if the `zkne` target feature is present.
 #[target_feature(enable = "zkne")]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(test, assert_instr(aes32esi))]
+#[cfg_attr(test, assert_instr(aes32esi, BS = 0))]
 #[inline]
 pub unsafe fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
-    static_assert_imm2!(BS);
+    static_assert!(BS < 4);
 
     _aes32esi(rs1 as i32, rs2 as i32, BS as i32) as u32
 }
@@ -102,10 +93,10 @@ pub unsafe fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// This function is safe to use if the `zkne` target feature is present.
 #[target_feature(enable = "zkne")]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(test, assert_instr(aes32esmi))]
+#[cfg_attr(test, assert_instr(aes32esmi, BS = 0))]
 #[inline]
 pub unsafe fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
-    static_assert_imm2!(BS);
+    static_assert!(BS < 4);
 
     _aes32esmi(rs1 as i32, rs2 as i32, BS as i32) as u32
 }
@@ -132,10 +123,10 @@ pub unsafe fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// This function is safe to use if the `zknd` target feature is present.
 #[target_feature(enable = "zknd")]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(test, assert_instr(aes32dsi))]
+#[cfg_attr(test, assert_instr(aes32dsi, BS = 0))]
 #[inline]
 pub unsafe fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
-    static_assert_imm2!(BS);
+    static_assert!(BS < 4);
 
     _aes32dsi(rs1 as i32, rs2 as i32, BS as i32) as u32
 }
@@ -163,10 +154,10 @@ pub unsafe fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// This function is safe to use if the `zknd` target feature is present.
 #[target_feature(enable = "zknd")]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(test, assert_instr(aes32dsmi))]
+#[cfg_attr(test, assert_instr(aes32dsmi, BS = 0))]
 #[inline]
 pub unsafe fn aes32dsmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
-    static_assert_imm2!(BS);
+    static_assert!(BS < 4);
 
     _aes32dsmi(rs1 as i32, rs2 as i32, BS as i32) as u32
 }

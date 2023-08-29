@@ -1,15 +1,6 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-macro_rules! static_assert_imm2 {
-    ($imm:ident) => {
-        static_assert!(
-            $imm < 4,
-            "Immediate value allowed to be a constant from 0 up to including 3"
-        )
-    };
-}
-
 extern "unadjusted" {
     #[link_name = "llvm.riscv.sm4ed"]
     fn _sm4ed(rs1: i32, rs2: i32, bs: i32) -> i32;
@@ -291,10 +282,10 @@ pub unsafe fn sha256sum1(rs1: u32) -> u32 {
 /// ```
 #[target_feature(enable = "zksed")]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(test, assert_instr(sm4ed))]
+#[cfg_attr(test, assert_instr(sm4ed, BS = 0))]
 #[inline]
 pub unsafe fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
-    static_assert_imm2!(BS);
+    static_assert!(BS < 4);
 
     _sm4ed(rs1 as i32, rs2 as i32, BS as i32) as u32
 }
@@ -370,10 +361,10 @@ pub unsafe fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// ```
 #[target_feature(enable = "zksed")]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(test, assert_instr(sm4ks))]
+#[cfg_attr(test, assert_instr(sm4ks, BS = 0))]
 #[inline]
 pub unsafe fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
-    static_assert_imm2!(BS);
+    static_assert!(BS < 4);
 
     _sm4ks(rs1 as i32, rs2 as i32, BS as i32) as u32
 }
