@@ -123,7 +123,6 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         #[cfg(feature = "master")]
         let apply_attrs = |ty: Type<'gcc>, attrs: &ArgAttributes| {
             if attrs.regular.contains(rustc_target::abi::call::ArgAttribute::NoAlias)
-                && ty.get_pointee().is_some()
             {
                 ty.make_restrict()
             } else {
@@ -151,9 +150,10 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     let ty = cast.gcc_type(cx);
                     apply_attrs(ty, &cast.attrs)
                 }
-                PassMode::Indirect { attrs, extra_attrs: None, on_stack: true } => {
+                PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: true } => {
+                    // This is a "byval" argument, so we don't apply the `restrict` attribute on it.
                     on_stack_param_indices.insert(argument_tys.len());
-                    apply_attrs(arg.memory_ty(cx), &attrs)
+                    arg.memory_ty(cx)
                 },
                 PassMode::Direct(attrs) => apply_attrs(arg.layout.immediate_gcc_type(cx), &attrs),
                 PassMode::Indirect { attrs, extra_attrs: None, on_stack: false } => {
