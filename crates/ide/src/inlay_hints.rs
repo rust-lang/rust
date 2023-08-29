@@ -55,38 +55,32 @@ pub struct InlayHintsConfig {
     pub fields_to_resolve: InlayFieldsToResolve,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct InlayFieldsToResolve {
-    pub client_capability_fields: Vec<String>,
+    pub resolve_text_edits: bool,
+    pub resolve_hint_tooltip: bool,
+    pub resolve_label_tooltip: bool,
+    pub resolve_label_location: bool,
+    pub resolve_label_command: bool,
 }
 
 impl InlayFieldsToResolve {
     pub const fn empty() -> Self {
-        Self { client_capability_fields: Vec::new() }
+        Self {
+            resolve_text_edits: false,
+            resolve_hint_tooltip: false,
+            resolve_label_tooltip: false,
+            resolve_label_location: false,
+            resolve_label_command: false,
+        }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.client_capability_fields.is_empty()
-    }
-
-    pub fn resolve_text_edits(&self) -> bool {
-        self.client_capability_fields.iter().find(|s| s.as_str() == "textEdits").is_some()
-    }
-
-    pub fn resolve_hint_tooltip(&self) -> bool {
-        self.client_capability_fields.iter().find(|s| s.as_str() == "tooltip").is_some()
-    }
-
-    pub fn resolve_label_tooltip(&self) -> bool {
-        self.client_capability_fields.iter().find(|s| s.as_str() == "label.tooltip").is_some()
-    }
-
-    pub fn resolve_label_location(&self) -> bool {
-        self.client_capability_fields.iter().find(|s| s.as_str() == "label.location").is_some()
-    }
-
-    pub fn resolve_label_command(&self) -> bool {
-        self.client_capability_fields.iter().find(|s| s.as_str() == "label.command").is_some()
+    pub fn can_resolve(&self) -> bool {
+        self.resolve_text_edits
+            || self.resolve_hint_tooltip
+            || self.resolve_label_tooltip
+            || self.resolve_label_location
+            || self.resolve_label_command
     }
 }
 
@@ -605,19 +599,7 @@ mod tests {
         closure_return_type_hints: ClosureReturnTypeHints::WithBlock,
         binding_mode_hints: true,
         lifetime_elision_hints: LifetimeElisionHints::Always,
-        discriminant_hints: DiscriminantHints::Never,
-        render_colons: false,
-        closure_capture_hints: false,
-        adjustment_hints: AdjustmentHints::Never,
-        adjustment_hints_mode: AdjustmentHintsMode::Prefix,
-        adjustment_hints_hide_outside_unsafe: false,
-        hide_named_constructor_hints: false,
-        hide_closure_initialization_hints: false,
-        closure_style: ClosureStyle::ImplFn,
-        param_names_for_lifetime_elision_hints: false,
-        max_length: None,
-        closing_brace_hints_min_lines: None,
-        fields_to_resolve: InlayFieldsToResolve::empty(),
+        ..DISABLED_CONFIG
     };
 
     #[track_caller]

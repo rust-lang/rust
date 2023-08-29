@@ -1346,7 +1346,7 @@ impl Config {
             .into_iter()
             .flatten()
             .cloned()
-            .collect::<Vec<_>>();
+            .collect::<FxHashSet<_>>();
 
         InlayHintsConfig {
             render_colons: self.data.inlayHints_renderColons,
@@ -1408,7 +1408,13 @@ impl Config {
             } else {
                 None
             },
-            fields_to_resolve: InlayFieldsToResolve { client_capability_fields },
+            fields_to_resolve: InlayFieldsToResolve {
+                resolve_text_edits: client_capability_fields.contains("textEdits"),
+                resolve_hint_tooltip: client_capability_fields.contains("tooltip"),
+                resolve_label_tooltip: client_capability_fields.contains("label.tooltip"),
+                resolve_label_location: client_capability_fields.contains("label.location"),
+                resolve_label_command: client_capability_fields.contains("label.command"),
+            },
         }
     }
 
