@@ -14,6 +14,7 @@ measureme = "10.0.0"
 object = { version = "0.32.0", default-features = false, features = [
     "std",
     "read",
+    "wasm",
 ] }
 tracing = "0.1"
 rustc_middle = { path = "../rustc_middle" }
