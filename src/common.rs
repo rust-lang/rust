@@ -480,7 +480,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
         if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
             self.0.sess.span_fatal(span, err.to_string())
         } else {
-            span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
+            self.0.sess.span_fatal(span, format!("failed to get layout for `{}`: {}", ty, err))
         }
     }
 }
