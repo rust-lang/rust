@@ -171,6 +171,10 @@ incredibly helpful:
 
 See ["How to build and run the compiler"](./building/how-to-build-and-run.md).
 
+## How do i contribute to std?
+
+See [std-dev-guide](https://std-dev-guide.rust-lang.org/).
+
 ## Contributor Procedures
 
 This section has moved to the ["Contribution Procedures"](./contributing.md) chapter.
