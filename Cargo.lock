@@ -531,7 +531,7 @@ dependencies = [
  "tester",
  "tokio",
  "toml 0.7.5",
- "ui_test 0.17.0",
+ "ui_test 0.18.1",
  "walkdir",
 ]
 
@@ -1015,12 +1015,6 @@ name = "dissimilar"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "210ec60ae7d710bed8683e333e9d2855a8a56a3e9892b38bad3bb0d4d29b0d5e"
-
-[[package]]
-name = "distance"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d9d8664cf849d7d0f3114a3a387d2f5e4303176d746d5a951aaddc66dfe9240"
 
 [[package]]
 name = "dlmalloc"
@@ -2046,6 +2040,12 @@ name = "lazycell"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
+
+[[package]]
+name = "levenshtein"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db13adb97ab515a3691f56e4dbab09283d0b86cb45abd991d8634a9d6f501760"
 
 [[package]]
 name = "libc"
@@ -5580,9 +5580,9 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.17.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7823f926a62629304c4a47c23949925f6faa0d4f14ddbce4405d55dbaeab324"
+checksum = "640159421816683e558867ffc0e60ed3a3ed97ec6ccb22c03adb41bf87c5cfa4"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -5593,9 +5593,9 @@ dependencies = [
  "colored",
  "comma",
  "crossbeam-channel",
- "distance",
  "indicatif",
  "lazy_static",
+ "levenshtein",
  "prettydiff",
  "regex",
  "rustc_version",

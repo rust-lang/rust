@@ -4,7 +4,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unused_extern_crates)]
 
-use ui_test::{status_emitter, Args, CommandBuilder, Config, Match, Mode, OutputConflictHandling};
+use ui_test::{status_emitter, Args, CommandBuilder, Config, Match, Mode, OutputConflictHandling, RustfixMode};
 
 use std::collections::BTreeMap;
 use std::env::{self, set_var, var_os};
@@ -130,7 +130,7 @@ fn base_config(test_dir: &str) -> (Config, Args) {
     };
 
     let mut config = Config {
-        mode: Mode::Yolo { rustfix: true },
+        mode: Mode::Yolo { rustfix: RustfixMode::Everything },
         stderr_filters: vec![(Match::PathBackslash, b"/")],
         stdout_filters: vec![],
         output_conflict_handling: if bless {
