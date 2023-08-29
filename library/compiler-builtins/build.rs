@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, sync::atomic::Ordering};
+use std::{collections::BTreeMap, env, sync::atomic::Ordering};
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -118,7 +118,7 @@ fn generate_aarch64_outlined_atomics() {
 
     // Generate different macros for add/clr/eor/set so that we can test them separately.
     let sym_names = ["cas", "ldadd", "ldclr", "ldeor", "ldset", "swp"];
-    let mut macros = HashMap::new();
+    let mut macros = BTreeMap::new();
     for sym in sym_names {
         macros.insert(sym, gen_macro(sym));
     }
@@ -146,7 +146,7 @@ fn generate_aarch64_outlined_atomics() {
     let mut buf = String::new();
     for macro_def in macros.values().chain(std::iter::once(&cas16)) {
         buf += macro_def;
-        buf += "}; }";
+        buf += "}; }\n";
     }
     let dst = std::env::var("OUT_DIR").unwrap() + "/outlined_atomics.rs";
     std::fs::write(dst, buf).unwrap();
