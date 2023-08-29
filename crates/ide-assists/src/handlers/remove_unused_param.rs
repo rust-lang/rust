@@ -42,7 +42,13 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         param.syntax().parent()?.children().find_map(ast::SelfParam::cast).is_some();
 
     // check if fn is in impl Trait for ..
-    if is_trait_impl(&func) {
+    if func
+        .syntax()
+        .parent() // AssocItemList
+        .and_then(|x| x.parent())
+        .and_then(ast::Impl::cast)
+        .map_or(false, |imp| imp.trait_().is_some())
+    {
         cov_mark::hit!(trait_impl);
         return None;
     }
@@ -79,14 +85,6 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             }
         },
     )
-}
-
-pub(crate) fn is_trait_impl(func: &ast::Fn) -> bool {
-    func.syntax()
-        .parent() // AssocItemList
-        .and_then(|x| x.parent())
-        .and_then(ast::Impl::cast)
-        .map_or(false, |imp| imp.trait_().is_some())
 }
 
 fn process_usages(
