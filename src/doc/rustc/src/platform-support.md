@@ -231,7 +231,7 @@ target | std | host | notes
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
 `aarch64-unknown-redox` | ? |  | ARM64 Redox OS
-`aarch64-uwp-windows-msvc` | ? |  |
+[`aarch64-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ? |  | ARM64 Universal Windows Platform (UWP) apps using MSVC
 [`aarch64-wrs-vxworks`](platform-support/vxworks.md) | ? |  | ARM64 VxWorks
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
@@ -271,8 +271,8 @@ target | std | host | notes
 [`i686-unknown-haiku`](platform-support/haiku.md) | ✓ | ✓ | 32-bit Haiku
 [`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 with SSE2
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD
-`i686-uwp-windows-gnu` | ? |  |
-`i686-uwp-windows-msvc` | ? |  |
+[`i686-uwp-windows-gnu`](platform-support/uwp_windows_gnu.md) | ? |  | x86 Universal Windows Platform (UWP) apps using MinGW
+[`i686-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ? |  | x86 Universal Windows Platform (UWP) apps using MSVC
 [`i686-wrs-vxworks`](platform-support/vxworks.md) | ? |  | i686 VxWorks
 [`loongarch64-unknown-none`](platform-support/loongarch-none.md) | * |  | LoongArch64 Bare-metal (LP64D ABI)
 [`loongarch64-unknown-none-softfloat`](platform-support/loongarch-none.md) | * |  | LoongArch64 Bare-metal (LP64S ABI)
@@ -323,7 +323,7 @@ target | std | host | notes
 `thumbv4t-none-eabi` | * |  | Thumb-mode Bare ARMv4T
 [`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | Thumb-mode Bare ARMv5TE
 `thumbv7a-pc-windows-msvc` | ? |  |
-`thumbv7a-uwp-windows-msvc` | ✓ |  |
+[`thumbv7a-uwp-windows-msvc`](platform-support/usp-windows-msvc.md) | ✓ |  | Thumb2-mode Universal Windows Platform (UWP) apps using MSVC
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7-A Linux with NEON, MUSL
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
@@ -340,8 +340,8 @@ target | std | host | notes
 [`x86_64-unknown-l4re-uclibc`](platform-support/x86_64_unknown_l4re_uclibc.md) | ? |  | L4 Runtime Environment
 [`x86_64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | x86_64 OpenHarmony |
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
-`x86_64-uwp-windows-gnu` | ✓ |  |
-`x86_64-uwp-windows-msvc` | ✓ |  |
+[`x86_64-uwp-windows-gnu`](platform-support/uwp_windows_gnu.md) | ✓ |  | x86_64 Universal Windows Platform (UWP) apps using MinGW
+[`x86_64-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  | x86_64 Universal Windows Platform (UWP) apps using MSVC
 [`x86_64-wrs-vxworks`](platform-support/vxworks.md) | ? |  | x86_64 VxWorks
 [`x86_64h-apple-darwin`](platform-support/x86_64h_apple_darwin.md) | ✓ | ✓ | macOS with late-gen Intel (at least Haswell)
 
