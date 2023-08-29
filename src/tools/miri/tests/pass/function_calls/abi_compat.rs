@@ -1,15 +1,17 @@
-use std::num;
 use std::mem;
+use std::num;
 
 fn test_abi_compat<T, U>(t: T, u: U) {
-    fn id<T>(x: T) -> T { x }
-    
+    fn id<T>(x: T) -> T {
+        x
+    }
+
     // This checks ABI compatibility both for arguments and return values,
     // in both directions.
     let f: fn(T) -> T = id;
     let f: fn(U) -> U = unsafe { std::mem::transmute(f) };
     drop(f(u));
-    
+
     let f: fn(U) -> U = id;
     let f: fn(T) -> T = unsafe { std::mem::transmute(f) };
     drop(f(t));
