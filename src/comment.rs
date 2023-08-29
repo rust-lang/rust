@@ -482,7 +482,9 @@ impl ItemizedBlock {
         // allowed.
         for suffix in [". ", ") "] {
             if let Some((prefix, _)) = trimmed.split_once(suffix) {
-                if prefix.len() <= 2 && prefix.chars().all(|c| char::is_ascii_digit(&c)) {
+                let has_leading_digits = (1..=2).contains(&prefix.len())
+                    && prefix.chars().all(|c| char::is_ascii_digit(&c));
+                if has_leading_digits {
                     return Some(prefix.len() + suffix.len());
                 }
             }
@@ -2126,6 +2128,9 @@ fn main() {
             // https://spec.commonmark.org/0.30 says: "A start number may not be negative":
             "-1. Not a list item.",
             "-1 Not a list item.",
+            // Marker without prefix are not recognized as item markers:
+            ".   Not a list item.",
+            ")   Not a list item.",
         ];
         for line in test_inputs.iter() {
             let maybe_block = ItemizedBlock::new(line);
