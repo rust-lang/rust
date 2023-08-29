@@ -124,6 +124,11 @@ impl ArgAttributes {
         self
     }
 
+    pub fn unset(&mut self, attr: ArgAttribute) -> &mut Self {
+        self.regular &= !attr;
+        self
+    }
+
     pub fn contains(&self, attr: ArgAttribute) -> bool {
         self.regular.contains(attr)
     }
@@ -517,6 +522,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         match self.mode {
             PassMode::Indirect { ref mut attrs, extra_attrs: _, ref mut on_stack } => {
                 *on_stack = true;
+                // If the argument is passed by value, the `NoAlias` attribute should never be
+                // applied. More information about this in:
+                //  * https://lists.llvm.org/pipermail/llvm-commits/Week-of-Mon-20171218/512066.html
+                //  * https://reviews.llvm.org/D40118
+                attrs.unset(ArgAttribute::NoAlias);
 
                 // Some platforms, like 32-bit x86, change the alignment of the type when passing
                 // `byval`. Account for that.
