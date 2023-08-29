@@ -1028,7 +1028,7 @@ pub unsafe fn _mm_permutevar_ps(a: __m128, b: __m128i) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vpermilps, IMM8 = 9))]
+#[cfg_attr(test, assert_instr(vshufps, IMM8 = 9))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_permute_ps<const IMM8: i32>(a: __m256) -> __m256 {
@@ -1055,7 +1055,7 @@ pub unsafe fn _mm256_permute_ps<const IMM8: i32>(a: __m256) -> __m256 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_permute_ps)
 #[inline]
 #[target_feature(enable = "avx,sse")]
-#[cfg_attr(test, assert_instr(vpermilps, IMM8 = 9))]
+#[cfg_attr(test, assert_instr(vshufps, IMM8 = 9))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_permute_ps<const IMM8: i32>(a: __m128) -> __m128 {
@@ -1102,7 +1102,7 @@ pub unsafe fn _mm_permutevar_pd(a: __m128d, b: __m128i) -> __m128d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vpermilpd, IMM4 = 0x1))]
+#[cfg_attr(test, assert_instr(vshufpd, IMM4 = 0x1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_permute_pd<const IMM4: i32>(a: __m256d) -> __m256d {
@@ -1125,7 +1125,7 @@ pub unsafe fn _mm256_permute_pd<const IMM4: i32>(a: __m256d) -> __m256d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_permute_pd)
 #[inline]
 #[target_feature(enable = "avx,sse2")]
-#[cfg_attr(test, assert_instr(vpermilpd, IMM2 = 0x1))]
+#[cfg_attr(test, assert_instr(vshufpd, IMM2 = 0x1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_permute_pd<const IMM2: i32>(a: __m128d) -> __m128d {

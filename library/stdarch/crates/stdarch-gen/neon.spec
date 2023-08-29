@@ -6791,10 +6791,10 @@ b = 4
 n = 2
 validate 2
 
-aarch64 = srsra
+aarch64 = srshr
 generate i64
 
-/// Ungisned rounding shift right and accumulate.
+/// Unsigned rounding shift right and accumulate.
 name = vrsra
 n-suffix
 constn = N
@@ -6806,7 +6806,7 @@ b = 4
 n = 2
 validate 2
 
-aarch64 = ursra
+aarch64 = urshr
 generate u64
 
 /// Rounding subtract returning high narrow
@@ -7476,7 +7476,7 @@ generate uint8x8_t:uint8x8_t:uint8x8x2_t, uint16x4_t:uint16x4_t:uint16x4x2_t
 generate poly8x8_t:poly8x8_t:poly8x8x2_t, poly16x4_t:poly16x4_t:poly16x4x2_t
 arm = vtrn
 generate int32x2_t:int32x2_t:int32x2x2_t, uint32x2_t:uint32x2_t:uint32x2x2_t
-aarch64 = ext
+aarch64 = zip
 arm = vorr
 generate int8x16_t:int8x16_t:int8x16x2_t, int16x8_t:int16x8_t:int16x8x2_t, int32x4_t:int32x4_t:int32x4x2_t
 generate uint8x16_t:uint8x16_t:uint8x16x2_t, uint16x8_t:uint16x8_t:uint16x8x2_t, uint32x4_t:uint32x4_t:uint32x4x2_t
@@ -7494,7 +7494,7 @@ validate 1., 5., 2., 6., 3., 7., 4., 8.
 aarch64 = zip
 arm = vtrn
 generate float32x2_t:float32x2_t:float32x2x2_t
-aarch64 = ext
+aarch64 = zip
 arm = vorr
 generate float32x4_t:float32x4_t:float32x4x2_t
 

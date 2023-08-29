@@ -19383,7 +19383,7 @@ pub unsafe fn _mm_maskz_srlv_epi64(k: __mmask8, a: __m128i, count: __m128i) -> _
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_permute_ps&expand=4170)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpermilps, MASK = 0b11_00_01_11))]
+#[cfg_attr(test, assert_instr(vshufps, MASK = 0b11_00_01_11))]
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm512_permute_ps<const MASK: i32>(a: __m512) -> __m512 {
     static_assert_uimm_bits!(MASK, 8);
@@ -19416,7 +19416,7 @@ pub unsafe fn _mm512_permute_ps<const MASK: i32>(a: __m512) -> __m512 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_permute_ps&expand=4168)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpermilps, MASK = 0b11_00_01_11))]
+#[cfg_attr(test, assert_instr(vshufps, MASK = 0b11_00_01_11))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_mask_permute_ps<const MASK: i32>(
     src: __m512,
@@ -19433,7 +19433,7 @@ pub unsafe fn _mm512_mask_permute_ps<const MASK: i32>(
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_permute_ps&expand=4169)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpermilps, MASK = 0b11_00_01_11))]
+#[cfg_attr(test, assert_instr(vshufps, MASK = 0b11_00_01_11))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_maskz_permute_ps<const MASK: i32>(k: __mmask16, a: __m512) -> __m512 {
     static_assert_uimm_bits!(MASK, 8);
@@ -19447,7 +19447,7 @@ pub unsafe fn _mm512_maskz_permute_ps<const MASK: i32>(k: __mmask16, a: __m512) 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_permute_ps&expand=4165)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpermilps, MASK = 0b11_00_01_11))]
+#[cfg_attr(test, assert_instr(vshufps, MASK = 0b11_00_01_11))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm256_mask_permute_ps<const MASK: i32>(
     src: __m256,
@@ -19463,7 +19463,7 @@ pub unsafe fn _mm256_mask_permute_ps<const MASK: i32>(
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_permute_ps&expand=4166)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpermilps, MASK = 0b11_00_01_11))]
+#[cfg_attr(test, assert_instr(vshufps, MASK = 0b11_00_01_11))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_maskz_permute_ps<const MASK: i32>(k: __mmask8, a: __m256) -> __m256 {
     let r = _mm256_permute_ps::<MASK>(a);
@@ -19476,7 +19476,7 @@ pub unsafe fn _mm256_maskz_permute_ps<const MASK: i32>(k: __mmask8, a: __m256) -
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_permute_ps&expand=4162)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpermilps, MASK = 0b11_00_01_11))]
+#[cfg_attr(test, assert_instr(vshufps, MASK = 0b11_00_01_11))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm_mask_permute_ps<const MASK: i32>(src: __m128, k: __mmask8, a: __m128) -> __m128 {
     let r = _mm_permute_ps::<MASK>(a);
@@ -19488,7 +19488,7 @@ pub unsafe fn _mm_mask_permute_ps<const MASK: i32>(src: __m128, k: __mmask8, a: 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_permute_ps&expand=4163)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpermilps, MASK = 0b11_00_01_11))]
+#[cfg_attr(test, assert_instr(vshufps, MASK = 0b11_00_01_11))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_maskz_permute_ps<const MASK: i32>(k: __mmask8, a: __m128) -> __m128 {
     let r = _mm_permute_ps::<MASK>(a);
@@ -19501,7 +19501,7 @@ pub unsafe fn _mm_maskz_permute_ps<const MASK: i32>(k: __mmask8, a: __m128) -> _
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_permute_pd&expand=4161)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpermilpd, MASK = 0b11_01_10_01))]
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 0b11_01_10_01))]
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm512_permute_pd<const MASK: i32>(a: __m512d) -> __m512d {
     static_assert_uimm_bits!(MASK, 8);
@@ -19526,7 +19526,7 @@ pub unsafe fn _mm512_permute_pd<const MASK: i32>(a: __m512d) -> __m512d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_permute_pd&expand=4159)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpermilpd, MASK = 0b11_01_10_01))]
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 0b11_01_10_01))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_mask_permute_pd<const MASK: i32>(
     src: __m512d,
@@ -19543,7 +19543,7 @@ pub unsafe fn _mm512_mask_permute_pd<const MASK: i32>(
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_permute_pd&expand=4160)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpermilpd, MASK = 0b11_01_10_01))]
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 0b11_01_10_01))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_maskz_permute_pd<const MASK: i32>(k: __mmask8, a: __m512d) -> __m512d {
     static_assert_uimm_bits!(MASK, 8);
@@ -19557,7 +19557,7 @@ pub unsafe fn _mm512_maskz_permute_pd<const MASK: i32>(k: __mmask8, a: __m512d) 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_permute_pd&expand=4156)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpermilpd, MASK = 0b11_01))]
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 0b11_01))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm256_mask_permute_pd<const MASK: i32>(
     src: __m256d,
@@ -19574,7 +19574,7 @@ pub unsafe fn _mm256_mask_permute_pd<const MASK: i32>(
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_permute_pd&expand=4157)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpermilpd, MASK = 0b11_01))]
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 0b11_01))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_maskz_permute_pd<const MASK: i32>(k: __mmask8, a: __m256d) -> __m256d {
     static_assert_uimm_bits!(MASK, 4);
@@ -19588,7 +19588,7 @@ pub unsafe fn _mm256_maskz_permute_pd<const MASK: i32>(k: __mmask8, a: __m256d) 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_permute_pd&expand=4153)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpermilpd, IMM2 = 0b01))]
+#[cfg_attr(test, assert_instr(vshufpd, IMM2 = 0b01))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm_mask_permute_pd<const IMM2: i32>(
     src: __m128d,
@@ -19605,7 +19605,7 @@ pub unsafe fn _mm_mask_permute_pd<const IMM2: i32>(
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_permute_pd&expand=4154)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpermilpd, IMM2 = 0b01))]
+#[cfg_attr(test, assert_instr(vshufpd, IMM2 = 0b01))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_maskz_permute_pd<const IMM2: i32>(k: __mmask8, a: __m128d) -> __m128d {
     static_assert_uimm_bits!(IMM2, 2);
@@ -21035,7 +21035,7 @@ pub unsafe fn _mm_mask2_permutex2var_pd(
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_shuffle_epi32&expand=5150)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpermilps, MASK = 9))] //should be vpshufd
+#[cfg_attr(test, assert_instr(vshufps, MASK = 9))] //should be vpshufd
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm512_shuffle_epi32<const MASK: _MM_PERM_ENUM>(a: __m512i) -> __m512i {
     static_assert_uimm_bits!(MASK, 8);

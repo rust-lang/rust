@@ -29118,7 +29118,7 @@ pub unsafe fn vzip_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
     let a0: int8x16_t = simd_shuffle!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]);
@@ -29133,7 +29133,7 @@ pub unsafe fn vzipq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
     let a0: int16x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
@@ -29148,7 +29148,7 @@ pub unsafe fn vzipq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
     let a0: int32x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
@@ -29163,7 +29163,7 @@ pub unsafe fn vzipq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
     let a0: uint8x16_t = simd_shuffle!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]);
@@ -29178,7 +29178,7 @@ pub unsafe fn vzipq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
     let a0: uint16x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
@@ -29193,7 +29193,7 @@ pub unsafe fn vzipq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
     let a0: uint32x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
@@ -29208,7 +29208,7 @@ pub unsafe fn vzipq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
     let a0: poly8x16_t = simd_shuffle!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]);
@@ -29223,7 +29223,7 @@ pub unsafe fn vzipq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
     let a0: poly16x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
@@ -29253,7 +29253,7 @@ pub unsafe fn vzip_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
     let a0: float32x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
