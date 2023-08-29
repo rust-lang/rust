@@ -1,5 +1,3 @@
-PR #113833 - https://github.com/rust-lang/rust/pull/113833
-
 # The Rust Programming Language
 
 [![Rust Community](https://img.shields.io/badge/Rust_Community%20-Join_us-brightgreen?style=plastic&logo=rust)](https://www.rust-lang.org/community)
