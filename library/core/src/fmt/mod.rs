@@ -7,9 +7,11 @@ use crate::char::EscapeDebugExtArgs;
 use crate::iter;
 use crate::marker::PhantomData;
 use crate::mem;
-use crate::num::fmt as numfmt;
+use crate::num::{fmt as numfmt, NonZeroUsize};
 use crate::ops::Deref;
+use crate::ptr;
 use crate::result;
+use crate::slice;
 use crate::str;
 
 mod builders;
@@ -277,16 +279,47 @@ impl<'a> Formatter<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
-    // Format string pieces to print.
-    pieces: &'a [&'static str],
+    /// The number of string pieces and place holders combined.
+    ///
+    /// For example:
+    ///  - 1 for `format_args!("abc")`
+    ///  - 2 for `format_args!("abc{}")`
+    ///  - 3 for `format_args!("abc{}xyz")`
+    ///  - 4 for `format_args!("abc{}xyz{}")`
+    ///  - 5 for `format_args!("abc{}xyz{}123")`
+    ///
+    /// The first part is always a string piece, but it may be an empty string.
+    /// E.g. format_args!("{}") has 2 parts, one empty string piece and one placeholder.
+    ///
+    /// The number of placeholders is `num_parts / 2`.
+    /// The number of string pieces is `(num_parts + 1) / 2`.
+    num_parts: NonZeroUsize,
 
-    // Placeholder specs, or `None` if all specs are default (as in "{}{}").
-    fmt: Option<&'a [rt::Placeholder]>,
+    /// The string pieces and the placeholders.
+    ///
+    /// If num_pieces is one, this stores the &'static str directly.
+    /// Otherwise, it stores pointers to both the slice of strings and the slice of placeholders.
+    ///
+    /// The length of those slices are determined by the `num_parts` field above.
+    parts: Parts,
 
-    // Dynamic arguments for interpolation, to be interleaved with string
-    // pieces. (Every argument is preceded by a string piece.)
-    args: &'a [rt::Argument<'a>],
+    /// Pointer to the start of the array of arguments.
+    args: *const rt::Argument<'a>,
 }
+
+#[derive(Copy, Clone)]
+union Parts {
+    /// Used if `num_parts == 1`.
+    string: &'static str,
+    /// Used if `num_parts > 1`.
+    strings_and_placeholders: (*const &'static str, *const rt::Placeholder),
+}
+
+// `Arguments` will never be Send nor Sync, because it may borrow arguments that are not Sync.
+#[stable(feature = "rust1", since = "1.0.0")]
+impl !Sync for Arguments<'_> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl !Send for Arguments<'_> {}
 
 /// Used by the format_args!() macro to create a fmt::Arguments object.
 #[doc(hidden)]
@@ -294,38 +327,68 @@ pub struct Arguments<'a> {
 impl<'a> Arguments<'a> {
     #[inline]
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
+    #[cfg(bootstrap)]
     pub const fn new_const(pieces: &'a [&'static str]) -> Self {
-        if pieces.len() > 1 {
-            panic!("invalid args");
+        match pieces {
+            [] => Self::new_str(""),
+            [s] => Self::new_str(s),
+            _ => panic!("invalid args"),
         }
-        Arguments { pieces, fmt: None, args: &[] }
+    }
+
+    #[inline]
+    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
+    pub const fn new_str(s: &'static str) -> Self {
+        Self { num_parts: NonZeroUsize::MIN, parts: Parts { string: s }, args: ptr::null() }
     }
 
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
     #[inline]
     pub fn new_v1(pieces: &'a [&'static str], args: &'a [rt::Argument<'a>]) -> Arguments<'a> {
-        if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
-            panic!("invalid args");
+        // The number of pieces and args should be the same,
+        // except there may be one additional piece after the last arg.
+        assert!(pieces.len() == args.len() || pieces.len() == args.len() + 1, "invalid args");
+        match NonZeroUsize::new(pieces.len() + args.len()) {
+            None => Self {
+                num_parts: NonZeroUsize::MIN,
+                parts: Parts { string: "" },
+                args: ptr::null(),
+            },
+            Some(NonZeroUsize::MIN) => Self {
+                num_parts: NonZeroUsize::MIN,
+                parts: Parts { string: pieces[0] },
+                args: ptr::null(),
+            },
+            Some(num_parts) => Self {
+                num_parts,
+                parts: Parts { strings_and_placeholders: (pieces.as_ptr(), ptr::null()) },
+                args: args.as_ptr(),
+            },
         }
-        Arguments { pieces, fmt: None, args }
     }
 
     /// This function is used to specify nonstandard formatting parameters.
     ///
     /// An `rt::UnsafeArg` is required because the following invariants must be held
     /// in order for this function to be safe:
-    /// 1. The `pieces` slice must be at least as long as `fmt`.
-    /// 2. Every `rt::Placeholder::position` value within `fmt` must be a valid index of `args`.
-    /// 3. Every `rt::Count::Param` within `fmt` must contain a valid index of `args`.
+    /// 1. `placeholders` must be nonempty.
+    /// 2. The `pieces` slice must be at least as long as `placeholders`.
+    /// 3. Every `rt::Placeholder::position` value within `placeholders` must be a valid index of `args`.
+    /// 4. Every `rt::Count::Param` within `placeholders` must contain a valid index of `args`.
     #[inline]
     pub fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [rt::Argument<'a>],
-        fmt: &'a [rt::Placeholder],
+        placeholders: &'a [rt::Placeholder],
         _unsafe_arg: rt::UnsafeArg,
     ) -> Arguments<'a> {
-        Arguments { pieces, fmt: Some(fmt), args }
+        Arguments {
+            // SAFETY: The caller must guarantee `placeholders` is nonempty.
+            num_parts: unsafe { NonZeroUsize::new_unchecked(pieces.len() + placeholders.len()) },
+            parts: Parts { strings_and_placeholders: (pieces.as_ptr(), placeholders.as_ptr()) },
+            args: args.as_ptr(),
+        }
     }
 
     /// Estimates the length of the formatted text.
@@ -334,21 +397,36 @@ impl<'a> Arguments<'a> {
     /// when using `format!`. Note: this is neither the lower nor upper bound.
     #[inline]
     pub fn estimated_capacity(&self) -> usize {
-        let pieces_length: usize = self.pieces.iter().map(|x| x.len()).sum();
+        let num_parts = self.num_parts.get();
 
-        if self.args.is_empty() {
-            pieces_length
-        } else if !self.pieces.is_empty() && self.pieces[0].is_empty() && pieces_length < 16 {
-            // If the format string starts with an argument,
-            // don't preallocate anything, unless length
-            // of pieces is significant.
-            0
+        if num_parts == 1 {
+            // SAFETY: With num_parts == 1, the `parts` field stores just the string.
+            unsafe { self.parts.string }.len()
         } else {
-            // There are some arguments, so any additional push
-            // will reallocate the string. To avoid that,
-            // we're "pre-doubling" the capacity here.
-            pieces_length.checked_mul(2).unwrap_or(0)
+            // SAFETY: With num_parts > 1, the `parts` field stores the pointers to the strings and
+            // placeholder slices.
+            let strings = unsafe {
+                slice::from_raw_parts(self.parts.strings_and_placeholders.0, (num_parts + 1) / 2)
+            };
+            let pieces_length: usize = strings.iter().map(|s| s.len()).sum();
+            if strings[0].is_empty() && pieces_length < 16 {
+                // If the format string starts with an argument,
+                // don't preallocate anything, unless length
+                // of pieces is significant.
+                0
+            } else {
+                // There are some arguments, so any additional push
+                // will reallocate the string. To avoid that,
+                // we're "pre-doubling" the capacity here.
+                pieces_length.checked_mul(2).unwrap_or(0)
+            }
         }
+    }
+
+    #[inline(always)]
+    unsafe fn arg(&self, n: usize) -> &rt::Argument<'a> {
+        // SAFETY: Caller needs to privde a valid index.
+        unsafe { &*self.args.add(n) }
     }
 }
 
@@ -398,12 +476,13 @@ impl<'a> Arguments<'a> {
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
     #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub const fn as_str(&self) -> Option<&'static str> {
-        match (self.pieces, self.args) {
-            ([], []) => Some(""),
-            ([s], []) => Some(s),
-            _ => None,
+        if self.num_parts.get() == 1 {
+            // SAFETY: With num_parts == 1, the `parts` field stores just the string.
+            Some(unsafe { self.parts.string })
+        } else {
+            None
         }
     }
 }
@@ -1077,80 +1156,69 @@ pub trait UpperExp {
 ///
 /// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
+pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
     let mut formatter = Formatter::new(output);
-    let mut idx = 0;
 
-    match args.fmt {
-        None => {
-            // We can use default formatting parameters for all arguments.
-            for (i, arg) in args.args.iter().enumerate() {
-                // SAFETY: args.args and args.pieces come from the same Arguments,
-                // which guarantees the indexes are always within bounds.
-                let piece = unsafe { args.pieces.get_unchecked(i) };
-                if !piece.is_empty() {
-                    formatter.buf.write_str(*piece)?;
-                }
-                arg.fmt(&mut formatter)?;
-                idx += 1;
-            }
-        }
-        Some(fmt) => {
-            // Every spec has a corresponding argument that is preceded by
-            // a string piece.
-            for (i, arg) in fmt.iter().enumerate() {
-                // SAFETY: fmt and args.pieces come from the same Arguments,
-                // which guarantees the indexes are always within bounds.
-                let piece = unsafe { args.pieces.get_unchecked(i) };
-                if !piece.is_empty() {
-                    formatter.buf.write_str(*piece)?;
-                }
-                // SAFETY: arg and args.args come from the same Arguments,
-                // which guarantees the indexes are always within bounds.
-                unsafe { run(&mut formatter, arg, args.args) }?;
-                idx += 1;
-            }
-        }
+    if let Some(s) = fmt.as_str() {
+        return formatter.buf.write_str(s);
     }
 
-    // There can be only one trailing string piece left.
-    if let Some(piece) = args.pieces.get(idx) {
-        formatter.buf.write_str(*piece)?;
+    // SAFETY: Since as_str() returned None, we know that `fmt.parts` contains the
+    // strings and placeholders pointers.
+    let (strings, placeholders) = unsafe { fmt.parts.strings_and_placeholders };
+
+    // Use default formatting parameters for all arguments.
+    for i in 0..fmt.num_parts.get() {
+        if i % 2 == 0 {
+            // SAFETY: The Arguments type guarantees the indexes are always within bounds.
+            let piece = unsafe { &*strings.add(i / 2) };
+            if !piece.is_empty() {
+                formatter.buf.write_str(piece)?;
+            }
+        } else {
+            if placeholders.is_null() {
+                // Use default formatting.
+                // SAFETY: The Arguments type guarantees the indexes are always within bounds.
+                unsafe { fmt.arg(i / 2) }.fmt(&mut formatter)?;
+            } else {
+                // SAFETY: The Arguments type guarantees the indexes are always within bounds.
+                unsafe { run(&mut formatter, &fmt, &*placeholders.add(i / 2)) }?;
+            }
+        }
     }
 
     Ok(())
 }
 
-unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argument<'_>]) -> Result {
-    fmt.fill = arg.fill;
-    fmt.align = arg.align;
-    fmt.flags = arg.flags;
-    // SAFETY: arg and args come from the same Arguments,
-    // which guarantees the indexes are always within bounds.
+unsafe fn run(
+    out: &mut Formatter<'_>,
+    fmt: &Arguments<'_>,
+    placeholder: &rt::Placeholder,
+) -> Result {
+    out.fill = placeholder.fill;
+    out.align = placeholder.align;
+    out.flags = placeholder.flags;
+
+    // SAFETY: The Arguments type guarantees the indexes are always within bounds.
     unsafe {
-        fmt.width = getcount(args, &arg.width);
-        fmt.precision = getcount(args, &arg.precision);
+        out.width = getcount(fmt, &placeholder.width);
+        out.precision = getcount(fmt, &placeholder.precision);
     }
 
-    // Extract the correct argument
-    debug_assert!(arg.position < args.len());
-    // SAFETY: arg and args come from the same Arguments,
-    // which guarantees its index is always within bounds.
-    let value = unsafe { args.get_unchecked(arg.position) };
+    // SAFETY: The Arguments type guarantees the indexes are always within bounds.
+    let arg = unsafe { fmt.arg(placeholder.position) };
 
-    // Then actually do some printing
-    value.fmt(fmt)
+    arg.fmt(out)
 }
 
-unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> Option<usize> {
+unsafe fn getcount(fmt: &Arguments<'_>, cnt: &rt::Count) -> Option<usize> {
     match *cnt {
         rt::Count::Is(n) => Some(n),
         rt::Count::Implied => None,
         rt::Count::Param(i) => {
-            debug_assert!(i < args.len());
-            // SAFETY: cnt and args come from the same Arguments,
-            // which guarantees this index is always within bounds.
-            unsafe { args.get_unchecked(i).as_usize() }
+            // SAFETY: The Arguments type guarantees the indexes are always within bounds,
+            // and the caller must give a `Count` from this same `Arguments` object.
+            unsafe { fmt.arg(i).as_usize() }
         }
     }
 }
