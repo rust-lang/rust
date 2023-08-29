@@ -10,7 +10,7 @@
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
 use crate::stable_mir::ty::{
-    allocation_filter, new_allocation, Const, FloatTy, GenericParamDef, IntTy, Movability, RigidTy,
+    allocation_filter, new_allocation, FloatTy, GenericParamDef, IntTy, Movability, RigidTy,
     TyKind, UintTy,
 };
 use crate::stable_mir::{self, Context};
@@ -205,8 +205,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
         match self {
             Use(op) => stable_mir::mir::Rvalue::Use(op.stable(tables)),
             Repeat(op, len) => {
-                let cnst = ConstantKind::from_const(*len, tables.tcx);
-                let len = Const { literal: cnst.stable(tables) };
+                let len = len.stable(tables);
                 stable_mir::mir::Rvalue::Repeat(op.stable(tables), len)
             }
             Ref(region, kind, place) => stable_mir::mir::Rvalue::Ref(
@@ -394,8 +393,7 @@ impl<'tcx> Stable<'tcx> for ty::TermKind<'tcx> {
         match self {
             ty::TermKind::Ty(ty) => TermKind::Type(tables.intern_ty(*ty)),
             ty::TermKind::Const(cnst) => {
-                let cnst = ConstantKind::from_const(*cnst, tables.tcx);
-                let cnst = Const { literal: cnst.stable(tables) };
+                let cnst = cnst.stable(tables);
                 TermKind::Const(cnst)
             }
         }
