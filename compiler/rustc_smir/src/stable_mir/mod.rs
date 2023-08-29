@@ -13,11 +13,10 @@
 
 use std::cell::Cell;
 
-use crate::rustc_smir::Tables;
-
 use self::ty::{
-    GenericDef, Generics, ImplDef, ImplTrait, PredicateKind, Span, TraitDecl, TraitDef, Ty, TyKind,
+    GenericPredicates, Generics, ImplDef, ImplTrait, Span, TraitDecl, TraitDef, Ty, TyKind,
 };
+use crate::rustc_smir::Tables;
 
 pub mod mir;
 pub mod ty;
@@ -29,7 +28,8 @@ pub type Symbol = String;
 pub type CrateNum = usize;
 
 /// A unique identification number for each item accessible for the current compilation unit.
-pub type DefId = usize;
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct DefId(pub(crate) usize);
 
 /// A list of crate items.
 pub type CrateItems = Vec<CrateItem>;
@@ -39,12 +39,6 @@ pub type TraitDecls = Vec<TraitDef>;
 
 /// A list of impl trait decls.
 pub type ImplTraitDecls = Vec<ImplDef>;
-
-/// A list of predicates.
-pub struct GenericPredicates {
-    pub parent: Option<TraitDef>,
-    pub predicates: Vec<(PredicateKind, Span)>,
-}
 
 /// Holds information about a crate.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -109,14 +103,6 @@ pub fn trait_impl(trait_impl: &ImplDef) -> ImplTrait {
     with(|cx| cx.trait_impl(trait_impl))
 }
 
-pub fn generics_of(generic_def: &GenericDef) -> Generics {
-    with(|cx| cx.generics_of(generic_def))
-}
-
-pub fn predicates_of(trait_def: &TraitDef) -> GenericPredicates {
-    with(|cx| cx.predicates_of(trait_def))
-}
-
 pub trait Context {
     fn entry_fn(&mut self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.
@@ -126,8 +112,8 @@ pub trait Context {
     fn trait_decl(&mut self, trait_def: &TraitDef) -> TraitDecl;
     fn all_trait_impls(&mut self) -> ImplTraitDecls;
     fn trait_impl(&mut self, trait_impl: &ImplDef) -> ImplTrait;
-    fn generics_of(&mut self, generic_def: &GenericDef) -> Generics;
-    fn predicates_of(&mut self, trait_def: &TraitDef) -> GenericPredicates;
+    fn generics_of(&mut self, def_id: DefId) -> Generics;
+    fn predicates_of(&mut self, def_id: DefId) -> GenericPredicates;
     /// Get information about the local crate.
     fn local_crate(&self) -> Crate;
     /// Retrieve a list of all external crates.

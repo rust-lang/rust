@@ -7,6 +7,7 @@ use rustc_errors::{
     IntoDiagnosticArg,
 };
 use rustc_macros::Diagnostic;
+use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
 use rustc_type_ir::FloatTy;
@@ -1028,6 +1029,15 @@ pub struct TargetFeatureSafeTrait {
     pub span: Span,
     #[label(codegen_ssa_label_def)]
     pub def: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_failed_to_get_layout)]
+pub struct FailedToGetLayout<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub err: LayoutError<'tcx>,
 }
 
 #[derive(Diagnostic)]

@@ -35,6 +35,8 @@ codegen_ssa_extract_bundled_libs_parse_archive = failed to parse archive '{$rlib
 codegen_ssa_extract_bundled_libs_read_entry = failed to read entry '{$rlib}': {$error}
 codegen_ssa_extract_bundled_libs_write_file = failed to write file '{$rlib}': {$error}
 
+codegen_ssa_failed_to_get_layout = failed to get layout for {$ty}: {$err}
+
 codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
 codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced

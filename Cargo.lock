@@ -4335,8 +4335,11 @@ dependencies = [
 name = "rustc_smir"
 version = "0.0.0"
 dependencies = [
+ "rustc_driver",
  "rustc_hir",
+ "rustc_interface",
  "rustc_middle",
+ "rustc_session",
  "rustc_span",
  "rustc_target",
  "scoped-tls",

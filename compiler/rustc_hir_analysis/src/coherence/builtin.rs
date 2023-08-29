@@ -195,8 +195,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                     let ty_b = field.ty(tcx, args_b);
 
                     if let Ok(layout) = tcx.layout_of(param_env.and(ty_a)) {
-                        if layout.is_zst() && layout.align.abi.bytes() == 1 {
-                            // ignore ZST fields with alignment of 1 byte
+                        if layout.is_1zst() {
+                            // ignore 1-ZST fields
                             return false;
                         }
                     }
