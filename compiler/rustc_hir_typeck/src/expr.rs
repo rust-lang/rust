@@ -2314,7 +2314,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             field,
             base_ty,
             expr.hir_id,
-            true,
+            false, // don't mention or suggest non-accessible methods
             expected.only_has_type(self),
         ) {
             self.ban_take_value_of_method(expr, base_ty, field)
