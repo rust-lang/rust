@@ -291,7 +291,7 @@ target | std | host | notes
 `powerpc-unknown-linux-gnuspe` | ✓ |  | PowerPC SPE Linux
 `powerpc-unknown-linux-musl` | ? |  |
 [`powerpc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD 32-bit powerpc systems
-`powerpc-unknown-openbsd` | ? |  |
+[`powerpc-unknown-openbsd`](platform-support/openbsd.md) | ✓  | ✓ | OpenBSD/macppc
 [`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ? |  | PowerPC SPE VxWorks
 [`powerpc-wrs-vxworks`](platform-support/vxworks.md) | ? |  | PowerPC VxWorks
 `powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
