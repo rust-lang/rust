@@ -39,7 +39,7 @@ fn clif_sig_from_fn_abi<'tcx>(
 pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: CallConv) -> CallConv {
     match c {
         Conv::Rust | Conv::C => default_call_conv,
-        Conv::RustCold => CallConv::Cold,
+        Conv::Cold | Conv::PreserveMost | Conv::PreserveAll => CallConv::Cold,
         Conv::X86_64SysV => CallConv::SystemV,
         Conv::X86_64Win64 => CallConv::WindowsFastcall,
 

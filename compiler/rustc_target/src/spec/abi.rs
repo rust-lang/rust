@@ -14,15 +14,33 @@ pub enum Abi {
     // hashing tests. These are used in many places, so giving them stable values reduces test
     // churn. The specific values are meaningless.
     Rust,
-    C { unwind: bool },
-    Cdecl { unwind: bool },
-    Stdcall { unwind: bool },
-    Fastcall { unwind: bool },
-    Vectorcall { unwind: bool },
-    Thiscall { unwind: bool },
-    Aapcs { unwind: bool },
-    Win64 { unwind: bool },
-    SysV64 { unwind: bool },
+    C {
+        unwind: bool,
+    },
+    Cdecl {
+        unwind: bool,
+    },
+    Stdcall {
+        unwind: bool,
+    },
+    Fastcall {
+        unwind: bool,
+    },
+    Vectorcall {
+        unwind: bool,
+    },
+    Thiscall {
+        unwind: bool,
+    },
+    Aapcs {
+        unwind: bool,
+    },
+    Win64 {
+        unwind: bool,
+    },
+    SysV64 {
+        unwind: bool,
+    },
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
@@ -32,11 +50,16 @@ pub enum Abi {
     AvrNonBlockingInterrupt,
     CCmseNonSecureCall,
     Wasm,
-    System { unwind: bool },
+    System {
+        unwind: bool,
+    },
     RustIntrinsic,
     RustCall,
     PlatformIntrinsic,
     Unadjusted,
+    /// For things unlikely to be called, where reducing register pressure in
+    /// `extern "Rust"` callers is worth paying extra cost in the callee.
+    /// Stronger than just `#[cold]` because `fn` pointers might be incompatible.
     RustCold,
     RiscvInterruptM,
     RiscvInterruptS,
