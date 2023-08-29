@@ -238,7 +238,7 @@ target | std | host | notes
 [`aarch64_be-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD (big-endian)
 [`arm64_32-apple-watchos`](platform-support/apple_watchos.md) | ✓ | | ARM Apple WatchOS 64-bit with 32-bit pointers
 [`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | ARM BE8 the default ARM big-endian architecture since [ARMv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
-`armv4t-none-eabi` | * |  | Bare ARMv4T
+[`armv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Bare ARMv4T
 `armv4t-unknown-linux-gnueabi` | ? |  | ARMv4T Linux
 [`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | Bare ARMv5TE
 `armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
@@ -320,7 +320,7 @@ target | std | host | notes
 [`sparc-unknown-none-elf`](./platform-support/sparc-unknown-none-elf.md) | * |  | Bare 32-bit SPARC V7+
 [`sparc64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/sparc64
 [`sparc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/sparc64
-`thumbv4t-none-eabi` | * |  | Thumb-mode Bare ARMv4T
+[`thumbv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Thumb-mode Bare ARMv4T
 [`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | Thumb-mode Bare ARMv5TE
 [`thumbv7a-pc-windows-msvc`](platform-support/thumbv7a-pc-windows-msvc.md) | ? |  | Thumb2-mode MSVC Windows
 [`thumbv7a-uwp-windows-msvc`](platform-support/usp-windows-msvc.md) | ✓ |  | Thumb2-mode Universal Windows Platform (UWP) apps using MSVC
