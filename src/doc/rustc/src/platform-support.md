@@ -216,7 +216,7 @@ host tools.
 
 target | std | host | notes
 -------|:---:|:----:|-------
-`aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
+[`aarch64-apple-ios-macabi`](platform-support/apple_ios_macabi.md) | ? |  | Apple Catalyst on ARM64
 [`aarch64-apple-tvos`](platform-support/apple_tvos.md) | ? |  | ARM64 tvOS
 [`aarch64-apple-watchos-sim`](platform-support/apple_watchos.md) | ✓ |  | ARM64 Apple WatchOS Simulator
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
@@ -326,7 +326,7 @@ target | std | host | notes
 [`thumbv7a-uwp-windows-msvc`](platform-support/usp-windows-msvc.md) | ✓ |  | Thumb2-mode Universal Windows Platform (UWP) apps using MSVC
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7-A Linux with NEON, MUSL
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
-`x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
+[`x86_64-apple-ios-macabi`](platform-support/apple_ios_macabi.md) | ✓ |  | Apple Catalyst on x86_64
 [`x86_64-apple-tvos`](platform-support/apple_tvos.md) | ? | | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple_watchos.md) | ✓ | | x86 64-bit Apple WatchOS simulator
 [`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS |
