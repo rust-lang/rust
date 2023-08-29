@@ -380,7 +380,6 @@ fn expand_format_args<'hir>(
                 }
             }
         }));
-    let lit_pieces = ctx.expr_array_ref(fmt.span, lit_pieces);
 
     // Whether we'll use the `Arguments::new_v1_formatted` form (true),
     // or the `Arguments::new_v1` form (false).
@@ -407,6 +406,24 @@ fn expand_format_args<'hir>(
         }
     }
 
+    let arguments = fmt.arguments.all_args();
+
+    if allow_const && lit_pieces.len() <= 1 && arguments.is_empty() && argmap.is_empty() {
+        // Generate:
+        //     <core::fmt::Arguments>::new_str(literal)
+        let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+            macsp,
+            hir::LangItem::FormatArguments,
+            sym::new_str,
+        ));
+        let args = if lit_pieces.is_empty() {
+            ctx.arena.alloc_from_iter([ctx.expr_str(fmt.span, kw::Empty)]) // Empty string.
+        } else {
+            lit_pieces // Just one single literal string piece.
+        };
+        return hir::ExprKind::Call(new, args);
+    }
+
     let format_options = use_format_options.then(|| {
         // Generate:
         //     &[format_spec_0, format_spec_1, format_spec_2]
@@ -420,20 +437,6 @@ fn expand_format_args<'hir>(
             .collect();
         ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(elements))
     });
-
-    let arguments = fmt.arguments.all_args();
-
-    if allow_const && arguments.is_empty() && argmap.is_empty() {
-        // Generate:
-        //     <core::fmt::Arguments>::new_const(lit_pieces)
-        let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
-            macsp,
-            hir::LangItem::FormatArguments,
-            sym::new_const,
-        ));
-        let new_args = ctx.arena.alloc_from_iter([lit_pieces]);
-        return hir::ExprKind::Call(new, new_args);
-    }
 
     // If the args array contains exactly all the original arguments once,
     // in order, we can use a simple array instead of a `match` construction.
@@ -554,6 +557,8 @@ fn expand_format_args<'hir>(
             hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, match_expr),
         )
     };
+
+    let lit_pieces = ctx.expr_array_ref(fmt.span, lit_pieces);
 
     if let Some(format_options) = format_options {
         // Generate:
