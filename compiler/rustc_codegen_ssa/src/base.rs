@@ -202,7 +202,7 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             (src, unsized_info(bx, a, b, old_info))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
-            assert_eq!(def_a, def_b);
+            assert_eq!(def_a, def_b); // implies same number of fields
             let src_layout = bx.cx().layout_of(src_ty);
             let dst_layout = bx.cx().layout_of(dst_ty);
             if src_ty == dst_ty {
@@ -211,7 +211,8 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let mut result = None;
             for i in 0..src_layout.fields.count() {
                 let src_f = src_layout.field(bx.cx(), i);
-                if src_f.is_zst() {
+                if src_f.is_1zst() {
+                    // We are looking for the one non-1-ZST field; this is not it.
                     continue;
                 }
 
@@ -272,13 +273,14 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }
 
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
-            assert_eq!(def_a, def_b);
+            assert_eq!(def_a, def_b); // implies same number of fields
 
             for i in def_a.variant(FIRST_VARIANT).fields.indices() {
                 let src_f = src.project_field(bx, i.as_usize());
                 let dst_f = dst.project_field(bx, i.as_usize());
 
                 if dst_f.layout.is_zst() {
+                    // No data here, nothing to copy/coerce.
                     continue;
                 }
 

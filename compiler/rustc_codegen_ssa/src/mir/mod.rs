@@ -145,7 +145,7 @@ impl<'tcx, V: CodegenObject> LocalRef<'tcx, V> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
-            // we need something in the operand.
+            // we need something sufficiently aligned in the operand.
             LocalRef::Operand(OperandRef::zero_sized(layout))
         } else {
             LocalRef::PendingOperand

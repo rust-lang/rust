@@ -1660,15 +1660,25 @@ pub struct PointeeInfo {
 
 impl LayoutS {
     /// Returns `true` if the layout corresponds to an unsized type.
+    #[inline]
     pub fn is_unsized(&self) -> bool {
         self.abi.is_unsized()
     }
 
+    #[inline]
     pub fn is_sized(&self) -> bool {
         self.abi.is_sized()
     }
 
+    /// Returns `true` if the type is sized and a 1-ZST (meaning it has size 0 and alignment 1).
+    pub fn is_1zst(&self) -> bool {
+        self.is_sized() && self.size.bytes() == 0 && self.align.abi.bytes() == 1
+    }
+
     /// Returns `true` if the type is a ZST and not unsized.
+    ///
+    /// Note that this does *not* imply that the type is irrelevant for layout! It can still have
+    /// non-trivial alignment constraints. You probably want to use `is_1zst` instead.
     pub fn is_zst(&self) -> bool {
         match self.abi {
             Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,

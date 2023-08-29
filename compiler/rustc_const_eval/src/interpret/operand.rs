@@ -239,6 +239,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             // if the entire value is uninit, then so is the field (can happen in ConstProp)
             (Immediate::Uninit, _) => Immediate::Uninit,
             // the field contains no information, can be left uninit
+            // (Scalar/ScalarPair can contain even aligned ZST, not just 1-ZST)
             _ if layout.is_zst() => Immediate::Uninit,
             // some fieldless enum variants can have non-zero size but still `Aggregate` ABI... try
             // to detect those here and also give them no data
