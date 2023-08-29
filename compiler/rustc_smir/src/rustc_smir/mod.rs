@@ -9,10 +9,7 @@
 
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
-use crate::stable_mir::ty::{
-    allocation_filter, new_allocation, FloatTy, GenericParamDef, IntTy, Movability, RigidTy,
-    TyKind, UintTy,
-};
+use crate::stable_mir::ty::{FloatTy, GenericParamDef, IntTy, Movability, RigidTy, TyKind, UintTy};
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::alloc_range;
@@ -21,6 +18,8 @@ use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_target::abi::FieldIdx;
 use tracing::debug;
+
+mod alloc;
 
 impl<'tcx> Context for Tables<'tcx> {
     fn local_crate(&self) -> stable_mir::Crate {
@@ -1085,7 +1084,7 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
             literal: match self.kind() {
                 ty::Value(val) => {
                     let const_val = tables.tcx.valtree_to_const_val((self.ty(), val));
-                    stable_mir::ty::ConstantKind::Allocated(new_allocation(
+                    stable_mir::ty::ConstantKind::Allocated(alloc::new_allocation(
                         self.ty(),
                         const_val,
                         tables,
@@ -1130,7 +1129,11 @@ impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
     type T = stable_mir::ty::Allocation;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        allocation_filter(self, alloc_range(rustc_target::abi::Size::ZERO, self.size()), tables)
+        alloc::allocation_filter(
+            self,
+            alloc_range(rustc_target::abi::Size::ZERO, self.size()),
+            tables,
+        )
     }
 }
 
@@ -1188,7 +1191,7 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
                 })
             }
             ConstantKind::Val(val, ty) => {
-                stable_mir::ty::ConstantKind::Allocated(new_allocation(ty, val, tables))
+                stable_mir::ty::ConstantKind::Allocated(alloc::new_allocation(ty, val, tables))
             }
         }
     }
