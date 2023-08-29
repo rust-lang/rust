@@ -73,12 +73,12 @@ impl Foo {
 impl Foo {
     //------------
     //---------------
-    //------------------------------------------------------------
+    //-----------------------------------------------
     //
     //--------------------------
     //------------
     //---------------
-    //------------------------------------------------------------
+    //-----------------------------------------------
     //
     //--------------------------
     #[inline]
@@ -95,12 +95,12 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="cfail2",
-        except="hir_owner_nodes,optimized_mir,promoted_mir,typeck"
+        except="hir_owner_nodes,optimized_mir,typeck"
     )]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_clean(
         cfg="cfail5",
-        except="hir_owner_nodes,optimized_mir,promoted_mir,typeck"
+        except="hir_owner_nodes,optimized_mir,typeck"
     )]
     #[rustc_clean(cfg="cfail6")]
     #[inline]
