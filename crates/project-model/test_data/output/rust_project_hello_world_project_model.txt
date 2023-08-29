@@ -14,7 +14,10 @@
             },
         ),
         cfg_options: CfgOptions(
-            [],
+            [
+                "debug_assertions",
+                "rust_analyzer",
+            ],
         ),
         potential_cfg_options: None,
         env: Env {
@@ -53,7 +56,10 @@
             },
         ),
         cfg_options: CfgOptions(
-            [],
+            [
+                "debug_assertions",
+                "rust_analyzer",
+            ],
         ),
         potential_cfg_options: None,
         env: Env {
@@ -84,7 +90,10 @@
             },
         ),
         cfg_options: CfgOptions(
-            [],
+            [
+                "debug_assertions",
+                "rust_analyzer",
+            ],
         ),
         potential_cfg_options: None,
         env: Env {
@@ -115,7 +124,10 @@
             },
         ),
         cfg_options: CfgOptions(
-            [],
+            [
+                "debug_assertions",
+                "rust_analyzer",
+            ],
         ),
         potential_cfg_options: None,
         env: Env {
@@ -146,7 +158,10 @@
             },
         ),
         cfg_options: CfgOptions(
-            [],
+            [
+                "debug_assertions",
+                "rust_analyzer",
+            ],
         ),
         potential_cfg_options: None,
         env: Env {
@@ -192,7 +207,10 @@
             },
         ),
         cfg_options: CfgOptions(
-            [],
+            [
+                "debug_assertions",
+                "rust_analyzer",
+            ],
         ),
         potential_cfg_options: None,
         env: Env {
@@ -223,7 +241,10 @@
             },
         ),
         cfg_options: CfgOptions(
-            [],
+            [
+                "debug_assertions",
+                "rust_analyzer",
+            ],
         ),
         potential_cfg_options: None,
         env: Env {
@@ -311,7 +332,10 @@
             },
         ),
         cfg_options: CfgOptions(
-            [],
+            [
+                "debug_assertions",
+                "rust_analyzer",
+            ],
         ),
         potential_cfg_options: None,
         env: Env {
@@ -342,7 +366,10 @@
             },
         ),
         cfg_options: CfgOptions(
-            [],
+            [
+                "debug_assertions",
+                "rust_analyzer",
+            ],
         ),
         potential_cfg_options: None,
         env: Env {
@@ -373,7 +400,10 @@
             },
         ),
         cfg_options: CfgOptions(
-            [],
+            [
+                "debug_assertions",
+                "rust_analyzer",
+            ],
         ),
         potential_cfg_options: None,
         env: Env {
@@ -404,7 +434,9 @@
             },
         ),
         cfg_options: CfgOptions(
-            [],
+            [
+                "rust_analyzer",
+            ],
         ),
         potential_cfg_options: None,
         env: Env {

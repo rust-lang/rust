@@ -18,6 +18,7 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
+                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -80,6 +81,7 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
+                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -149,6 +151,7 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
+                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -218,6 +221,7 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
+                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -289,6 +293,7 @@
                 "debug_assertions",
                 "feature=default",
                 "feature=std",
+                "rust_analyzer",
             ],
         ),
         potential_cfg_options: Some(
@@ -302,6 +307,7 @@
                     "feature=rustc-dep-of-std",
                     "feature=std",
                     "feature=use_std",
+                    "rust_analyzer",
                 ],
             ),
         ),
