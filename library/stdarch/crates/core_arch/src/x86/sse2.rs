@@ -752,7 +752,7 @@ pub unsafe fn _mm_srl_epi32(a: __m128i, count: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_srli_epi64<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
-    if IMM8 >= 32 {
+    if IMM8 >= 64 {
         _mm_setzero_si128()
     } else {
         transmute(simd_shr(a.as_u64x2(), u64x2::splat(IMM8 as u64)))
