@@ -324,7 +324,7 @@ target | std | host | notes
 [`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | Thumb-mode Bare ARMv5TE
 `thumbv7a-pc-windows-msvc` | ? |  |
 [`thumbv7a-uwp-windows-msvc`](platform-support/usp-windows-msvc.md) | ✓ |  | Thumb2-mode Universal Windows Platform (UWP) apps using MSVC
-`thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7-A Linux with NEON, MUSL
+[`thumbv7neon-unknown-linux-musleabihf`](platform-support/thumbv7neon_unknown_linux_musleabihf.md) | ? |  | Thumb2-mode ARMv7-A Linux with NEON, MUSL
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`x86_64-apple-ios-macabi`](platform-support/apple_ios_macabi.md) | ✓ |  | Apple Catalyst on x86_64
 [`x86_64-apple-tvos`](platform-support/apple_tvos.md) | ? | | x86 64-bit tvOS
