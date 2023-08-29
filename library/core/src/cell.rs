@@ -237,6 +237,7 @@
 
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
+use crate::intrinsics::is_nonoverlapping;
 use crate::marker::{PhantomData, Unsize};
 use crate::mem;
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn};
@@ -415,6 +416,12 @@ impl<T> Cell<T> {
     /// Swaps the values of two `Cell`s.
     /// Difference with `std::mem::swap` is that this function doesn't require `&mut` reference.
     ///
+    /// # Panics
+    ///
+    /// This function will panic if `self` and `other` are different `Cell`s that partially overlap.
+    /// (Using just standard library methods, it is impossible to create such partially overlapping `Cell`s.
+    /// However, unsafe code is allowed to e.g. create two `&Cell<[i32; 2]>` that partially overlap.)
+    ///
     /// # Examples
     ///
     /// ```
@@ -430,14 +437,20 @@ impl<T> Cell<T> {
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn swap(&self, other: &Self) {
         if ptr::eq(self, other) {
+            // Swapping wouldn't change anything.
             return;
+        }
+        if !is_nonoverlapping(self, other, 1) {
+            // See <https://github.com/rust-lang/rust/issues/80778> for why we need to stop here.
+            panic!("`Cell::swap` on overlapping non-identical `Cell`s");
         }
         // SAFETY: This can be risky if called from separate threads, but `Cell`
         // is `!Sync` so this won't happen. This also won't invalidate any
         // pointers since `Cell` makes sure nothing else will be pointing into
-        // either of these `Cell`s.
+        // either of these `Cell`s. We also excluded shenanigans like partially overlapping `Cell`s,
+        // so `swap` will just properly copy two full values of type `T` back and forth.
         unsafe {
-            ptr::swap(self.value.get(), other.value.get());
+            mem::swap(&mut *self.value.get(), &mut *other.value.get());
         }
     }
 
