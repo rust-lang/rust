@@ -1,5 +1,3 @@
-use core::arch::asm;
-
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
