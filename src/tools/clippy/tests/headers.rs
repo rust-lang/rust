@@ -16,7 +16,7 @@ fn old_test_headers() {
             continue;
         }
 
-        let file = fs::read_to_string(entry.path()).unwrap();
+        let file = fs::read_to_string(entry.path()).unwrap_or_else(|err| panic!("{}: {err}", entry.path().display()));
 
         if let Some(header) = old_headers.find(&file) {
             println!("Found header `{}` in {}", header.as_str(), entry.path().display());

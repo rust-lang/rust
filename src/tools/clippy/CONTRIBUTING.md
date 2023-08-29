@@ -148,7 +148,7 @@ pub mod else_if_without_else;
 
 pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf: &Conf) {
     // ...
-    store.register_early_pass(|| box else_if_without_else::ElseIfWithoutElse);
+    store.register_early_pass(|| Box::new(else_if_without_else::ElseIfWithoutElse));
     // ...
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![

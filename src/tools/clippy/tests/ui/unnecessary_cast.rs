@@ -1,4 +1,3 @@
-//@run-rustfix
 //@aux-build:extern_fake_libc.rs
 #![warn(clippy::unnecessary_cast)]
 #![allow(

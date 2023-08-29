@@ -9,7 +9,7 @@ LL |     let _ = opt.unwrap();
    = note: `-D clippy::unwrap-used` implied by `-D warnings`
 
 error: used `unwrap()` on a `Result` value
-  --> $DIR/unwrap.rs:11:13
+  --> $DIR/unwrap.rs:12:13
    |
 LL |     let _ = res.unwrap();
    |             ^^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL |     let _ = res.unwrap();
    = help: consider using `expect()` to provide a better panic message
 
 error: used `unwrap_err()` on a `Result` value
-  --> $DIR/unwrap.rs:12:13
+  --> $DIR/unwrap.rs:14:13
    |
 LL |     let _ = res.unwrap_err();
    |             ^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:16:5
+  --> $DIR/while_let_on_iterator.rs:15:5
    |
 LL |     while let Option::Some(x) = iter.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in iter`
@@ -7,151 +7,151 @@ LL |     while let Option::Some(x) = iter.next() {
    = note: `-D clippy::while-let-on-iterator` implied by `-D warnings`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:21:5
+  --> $DIR/while_let_on_iterator.rs:20:5
    |
 LL |     while let Some(x) = iter.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in iter`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:26:5
+  --> $DIR/while_let_on_iterator.rs:25:5
    |
 LL |     while let Some(_) = iter.next() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in iter`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:102:9
+  --> $DIR/while_let_on_iterator.rs:101:9
    |
 LL |         while let Some([..]) = it.next() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for [..] in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:109:9
+  --> $DIR/while_let_on_iterator.rs:108:9
    |
 LL |         while let Some([_x]) = it.next() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for [_x] in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:122:9
+  --> $DIR/while_let_on_iterator.rs:121:9
    |
 LL |         while let Some(x @ [_]) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x @ [_] in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:142:9
+  --> $DIR/while_let_on_iterator.rs:141:9
    |
 LL |         while let Some(_) = y.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in y`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:199:9
+  --> $DIR/while_let_on_iterator.rs:198:9
    |
 LL |         while let Some(m) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:210:5
+  --> $DIR/while_let_on_iterator.rs:209:5
    |
 LL |     while let Some(n) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for n in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:212:9
+  --> $DIR/while_let_on_iterator.rs:211:9
    |
 LL |         while let Some(m) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:221:9
+  --> $DIR/while_let_on_iterator.rs:220:9
    |
 LL |         while let Some(m) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:230:9
+  --> $DIR/while_let_on_iterator.rs:229:9
    |
 LL |         while let Some(m) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:247:9
+  --> $DIR/while_let_on_iterator.rs:246:9
    |
 LL |         while let Some(m) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:262:13
+  --> $DIR/while_let_on_iterator.rs:261:13
    |
 LL |             while let Some(i) = self.0.next() {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for i in self.0.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:294:13
+  --> $DIR/while_let_on_iterator.rs:293:13
    |
 LL |             while let Some(i) = self.0.0.0.next() {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for i in self.0.0.0.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:323:5
+  --> $DIR/while_let_on_iterator.rs:322:5
    |
 LL |     while let Some(n) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for n in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:335:9
+  --> $DIR/while_let_on_iterator.rs:334:9
    |
 LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:349:5
+  --> $DIR/while_let_on_iterator.rs:348:5
    |
 LL |     while let Some(x) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:360:5
+  --> $DIR/while_let_on_iterator.rs:359:5
    |
 LL |     while let Some(x) = it.0.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.0.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:395:5
+  --> $DIR/while_let_on_iterator.rs:394:5
    |
 LL |     while let Some(x) = s.x.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in s.x.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:402:5
+  --> $DIR/while_let_on_iterator.rs:401:5
    |
 LL |     while let Some(x) = x[0].next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in x[0].by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:410:9
+  --> $DIR/while_let_on_iterator.rs:409:9
    |
 LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:420:9
+  --> $DIR/while_let_on_iterator.rs:419:9
    |
 LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:430:9
+  --> $DIR/while_let_on_iterator.rs:429:9
    |
 LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:440:9
+  --> $DIR/while_let_on_iterator.rs:439:9
    |
 LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:450:5
+  --> $DIR/while_let_on_iterator.rs:449:5
    |
 LL |     while let Some(..) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in it`

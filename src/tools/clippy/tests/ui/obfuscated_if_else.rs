@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::obfuscated_if_else)]
 
 fn main() {

@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::match_single_binding)]
 #![allow(
     unused,

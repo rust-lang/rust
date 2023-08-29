@@ -1,5 +1,5 @@
 error: variant name ends with the enum's name
-  --> $DIR/enum_variants.rs:15:5
+  --> $DIR/enum_variants.rs:16:5
    |
 LL |     cFoo,
    |     ^^^^
@@ -10,8 +10,10 @@ error: all variants have the same prefix: `c`
   --> $DIR/enum_variants.rs:14:1
    |
 LL | / enum Foo {
+LL | |
 LL | |     cFoo,
-LL | |     cBar,
+LL | |
+...  |
 LL | |     cBaz,
 LL | | }
    | |_^
@@ -19,39 +21,42 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:26:5
+  --> $DIR/enum_variants.rs:30:5
    |
 LL |     FoodGood,
    |     ^^^^^^^^
 
 error: variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:27:5
+  --> $DIR/enum_variants.rs:32:5
    |
 LL |     FoodMiddle,
    |     ^^^^^^^^^^
 
 error: variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:28:5
+  --> $DIR/enum_variants.rs:34:5
    |
 LL |     FoodBad,
    |     ^^^^^^^
 
 error: all variants have the same prefix: `Food`
-  --> $DIR/enum_variants.rs:25:1
+  --> $DIR/enum_variants.rs:28:1
    |
 LL | / enum Food {
+LL | |
 LL | |     FoodGood,
-LL | |     FoodMiddle,
-LL | |     FoodBad,
+LL | |
+...  |
+LL | |
 LL | | }
    | |_^
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `CallType`
-  --> $DIR/enum_variants.rs:35:1
+  --> $DIR/enum_variants.rs:42:1
    |
 LL | / enum BadCallType {
+LL | |
 LL | |     CallTypeCall,
 LL | |     CallTypeCreate,
 LL | |     CallTypeDestroy,
@@ -61,9 +66,10 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `Constant`
-  --> $DIR/enum_variants.rs:47:1
+  --> $DIR/enum_variants.rs:55:1
    |
 LL | / enum Consts {
+LL | |
 LL | |     ConstantInt,
 LL | |     ConstantCake,
 LL | |     ConstantLie,
@@ -73,9 +79,10 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `C`
-  --> $DIR/enum_variants.rs:59:1
+  --> $DIR/enum_variants.rs:68:1
    |
 LL | / enum Something {
+LL | |
 LL | |     CCall,
 LL | |     CCreate,
 LL | |     CCryogenize,
@@ -85,9 +92,10 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `WithOut`
-  --> $DIR/enum_variants.rs:81:1
+  --> $DIR/enum_variants.rs:91:1
    |
 LL | / enum Seallll {
+LL | |
 LL | |     WithOutCake,
 LL | |     WithOutTea,
 LL | |     WithOut,
@@ -97,9 +105,10 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same postfix: `IData`
-  --> $DIR/enum_variants.rs:136:1
+  --> $DIR/enum_variants.rs:147:1
    |
 LL | / enum IDataRequest {
+LL | |
 LL | |     PutIData(String),
 LL | |     GetIData(String),
 LL | |     DeleteUnpubIData(String),
@@ -109,9 +118,10 @@ LL | | }
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same postfix: `HIData`
-  --> $DIR/enum_variants.rs:142:1
+  --> $DIR/enum_variants.rs:154:1
    |
 LL | / enum HIDataRequest {
+LL | |
 LL | |     PutHIData(String),
 LL | |     GetHIData(String),
 LL | |     DeleteUnpubHIData(String),
@@ -121,9 +131,10 @@ LL | | }
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `_Type`
-  --> $DIR/enum_variants.rs:162:5
+  --> $DIR/enum_variants.rs:175:5
    |
 LL | /     enum DoLint {
+LL | |
 LL | |         _TypeCreate,
 LL | |         _TypeRead,
 LL | |         _TypeUpdate,
@@ -134,9 +145,10 @@ LL | |     }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same postfix: `Type`
-  --> $DIR/enum_variants.rs:169:5
+  --> $DIR/enum_variants.rs:183:5
    |
 LL | /     enum DoLintToo {
+LL | |
 LL | |         _CreateType,
 LL | |         _UpdateType,
 LL | |         _DeleteType,

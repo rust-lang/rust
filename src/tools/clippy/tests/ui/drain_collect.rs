@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![deny(clippy::drain_collect)]
 #![allow(dead_code)]
 

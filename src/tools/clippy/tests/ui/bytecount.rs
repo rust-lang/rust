@@ -1,26 +1,39 @@
+//@no-rustfix
+
 #![allow(clippy::needless_borrow, clippy::useless_vec)]
 
 #[deny(clippy::naive_bytecount)]
 fn main() {
     let x = vec![0_u8; 16];
 
-    let _ = x.iter().filter(|&&a| a == 0).count(); // naive byte count
+    // naive byte count
+    let _ = x.iter().filter(|&&a| a == 0).count();
+    //~^ ERROR: you appear to be counting bytes the naive way
 
-    let _ = (&x[..]).iter().filter(|&a| *a == 0).count(); // naive byte count
+    // naive byte count
+    let _ = (&x[..]).iter().filter(|&a| *a == 0).count();
+    //~^ ERROR: you appear to be counting bytes the naive way
 
-    let _ = x.iter().filter(|a| **a > 0).count(); // not an equality count, OK.
+    // not an equality count, OK.
+    let _ = x.iter().filter(|a| **a > 0).count();
 
-    let _ = x.iter().map(|a| a + 1).filter(|&a| a < 15).count(); // not a slice
+    // not a slice
+    let _ = x.iter().map(|a| a + 1).filter(|&a| a < 15).count();
 
     let b = 0;
 
-    let _ = x.iter().filter(|_| b > 0).count(); // woah there
+    // woah there
+    let _ = x.iter().filter(|_| b > 0).count();
 
-    let _ = x.iter().filter(|_a| b == b + 1).count(); // nothing to see here, move along
+    // nothing to see here, move along
+    let _ = x.iter().filter(|_a| b == b + 1).count();
 
-    let _ = x.iter().filter(|a| b + 1 == **a).count(); // naive byte count
+    // naive byte count
+    let _ = x.iter().filter(|a| b + 1 == **a).count();
+    //~^ ERROR: you appear to be counting bytes the naive way
 
     let y = vec![0_u16; 3];
 
-    let _ = y.iter().filter(|&&a| a == 0).count(); // naive count, but not bytes
+    // naive count, but not bytes
+    let _ = y.iter().filter(|&&a| a == 0).count();
 }

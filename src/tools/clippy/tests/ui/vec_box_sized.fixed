@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(dead_code)]
 
 struct SizedStruct(i32);

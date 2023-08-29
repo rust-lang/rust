@@ -14,7 +14,7 @@ LL ~     5
    |
 
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_and_return.rs:15:9
+  --> $DIR/let_and_return.rs:17:9
    |
 LL |         let x = 5;
    |         ---------- unnecessary `let` binding
@@ -28,7 +28,7 @@ LL ~         5
    |
 
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_and_return.rs:77:5
+  --> $DIR/let_and_return.rs:80:5
    |
 LL |     let line = stdin.lock().lines().next().unwrap().unwrap();
    |     --------------------------------------------------------- unnecessary `let` binding
@@ -42,7 +42,7 @@ LL ~     stdin.lock().lines().next().unwrap().unwrap()
    |
 
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_and_return.rs:167:13
+  --> $DIR/let_and_return.rs:171:13
    |
 LL |             let clone = Arc::clone(&self.foo);
    |             ---------------------------------- unnecessary `let` binding

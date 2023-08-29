@@ -8,7 +8,7 @@ LL | impl Into<InMacro> for String {
    = note: `-D clippy::from-over-into` implied by `-D warnings`
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into_unfixable.rs:19:1
+  --> $DIR/from_over_into_unfixable.rs:20:1
    |
 LL | impl Into<WeirdUpperSelf> for &'static [u8] {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL | impl Into<WeirdUpperSelf> for &'static [u8] {
    = help: replace the `Into` implementation with `From<&'static [u8]>`
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into_unfixable.rs:28:1
+  --> $DIR/from_over_into_unfixable.rs:30:1
    |
 LL | impl Into<u8> for ContainsVal {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | impl Into<u8> for ContainsVal {
    = help: replace the `Into` implementation with `From<ContainsVal>`
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into_unfixable.rs:39:1
+  --> $DIR/from_over_into_unfixable.rs:42:1
    |
 LL | impl<T> Into<Rval<Self>> for Lval<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

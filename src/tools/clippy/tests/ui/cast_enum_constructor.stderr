@@ -7,7 +7,7 @@ LL |     let _ = Foo::Y as usize;
    = note: `-D clippy::cast-enum-constructor` implied by `-D warnings`
 
 error: cast of an enum tuple constructor to an integer
-  --> $DIR/cast_enum_constructor.rs:14:13
+  --> $DIR/cast_enum_constructor.rs:16:13
    |
 LL |     let _ = Foo::Y as isize;
    |             ^^^^^^^^^^^^^^^

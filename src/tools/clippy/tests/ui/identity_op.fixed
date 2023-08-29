@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::identity_op)]
 #![allow(unused)]
 #![allow(

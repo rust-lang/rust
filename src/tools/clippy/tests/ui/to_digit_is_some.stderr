@@ -1,5 +1,5 @@
 error: use of `.to_digit(..).is_some()`
-  --> $DIR/to_digit_is_some.rs:9:13
+  --> $DIR/to_digit_is_some.rs:7:13
    |
 LL |     let _ = d.to_digit(8).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `d.is_digit(8)`
@@ -7,7 +7,7 @@ LL |     let _ = d.to_digit(8).is_some();
    = note: `-D clippy::to-digit-is-some` implied by `-D warnings`
 
 error: use of `.to_digit(..).is_some()`
-  --> $DIR/to_digit_is_some.rs:10:13
+  --> $DIR/to_digit_is_some.rs:8:13
    |
 LL |     let _ = char::to_digit(c, 8).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `char::is_digit(c, 8)`
