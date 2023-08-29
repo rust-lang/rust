@@ -32,7 +32,7 @@ use crate::SourceChange;
 pub(crate) use on_enter::on_enter;
 
 // Don't forget to add new trigger characters to `server_capabilities` in `caps.rs`.
-pub(crate) const TRIGGER_CHARS: &str = ".=<>{";
+pub(crate) const TRIGGER_CHARS: &str = ".=<>{(";
 
 struct ExtendedTextEdit {
     edit: TextEdit,
@@ -94,36 +94,49 @@ fn on_char_typed_inner(
         '=' => conv(on_eq_typed(&file.tree(), offset)),
         '<' => on_left_angle_typed(&file.tree(), offset),
         '>' => conv(on_right_angle_typed(&file.tree(), offset)),
-        '{' => conv(on_opening_brace_typed(file, offset)),
+        '{' => conv(on_opening_bracket_typed(file, offset, '{')),
+        '(' => conv(on_opening_bracket_typed(file, offset, '(')),
         _ => None,
     }
 }
 
-/// Inserts a closing `}` when the user types an opening `{`, wrapping an existing expression in a
-/// block, or a part of a `use` item.
-fn on_opening_brace_typed(file: &Parse<SourceFile>, offset: TextSize) -> Option<TextEdit> {
-    if !stdx::always!(file.tree().syntax().text().char_at(offset) == Some('{')) {
+/// Inserts a closing bracket when the user types an opening bracket, wrapping an existing expression in a
+/// block, or a part of a `use` item (for `{`).
+fn on_opening_bracket_typed(
+    file: &Parse<SourceFile>,
+    offset: TextSize,
+    opening_bracket: char,
+) -> Option<TextEdit> {
+    let (closing_bracket, expected_ast_bracket) = match opening_bracket {
+        '{' => ('}', SyntaxKind::L_CURLY),
+        '(' => (')', SyntaxKind::L_PAREN),
+        _ => return None,
+    };
+
+    if !stdx::always!(file.tree().syntax().text().char_at(offset) == Some(opening_bracket)) {
         return None;
     }
 
     let brace_token = file.tree().syntax().token_at_offset(offset).right_biased()?;
-    if brace_token.kind() != SyntaxKind::L_CURLY {
+    if brace_token.kind() != expected_ast_bracket {
         return None;
     }
 
-    // Remove the `{` to get a better parse tree, and reparse.
+    // Remove the opening bracket to get a better parse tree, and reparse.
     let range = brace_token.text_range();
-    if !stdx::always!(range.len() == TextSize::of('{')) {
+    if !stdx::always!(range.len() == TextSize::of(opening_bracket)) {
         return None;
     }
     let file = file.reparse(&Indel::delete(range));
 
-    if let Some(edit) = brace_expr(&file.tree(), offset) {
+    if let Some(edit) = bracket_expr(&file.tree(), offset, opening_bracket, closing_bracket) {
         return Some(edit);
     }
 
-    if let Some(edit) = brace_use_path(&file.tree(), offset) {
-        return Some(edit);
+    if closing_bracket == '}' {
+        if let Some(edit) = brace_use_path(&file.tree(), offset) {
+            return Some(edit);
+        }
     }
 
     return None;
@@ -142,7 +155,12 @@ fn on_opening_brace_typed(file: &Parse<SourceFile>, offset: TextSize) -> Option<
         ))
     }
 
-    fn brace_expr(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
+    fn bracket_expr(
+        file: &SourceFile,
+        offset: TextSize,
+        opening_bracket: char,
+        closing_bracket: char,
+    ) -> Option<TextEdit> {
         let mut expr: ast::Expr = find_node_at_offset(file.syntax(), offset)?;
         if expr.syntax().text_range().start() != offset {
             return None;
@@ -165,10 +183,10 @@ fn on_opening_brace_typed(file: &Parse<SourceFile>, offset: TextSize) -> Option<
             return None;
         }
 
-        // Insert `}` right after the expression.
+        // Insert the closing bracket right after the expression.
         Some(TextEdit::insert(
-            expr.syntax().text_range().end() + TextSize::of("{"),
-            "}".to_string(),
+            expr.syntax().text_range().end() + TextSize::of(opening_bracket),
+            closing_bracket.to_string(),
         ))
     }
 }
@@ -930,6 +948,193 @@ use {Thing as _};
 
         type_char_noop(
             '{',
+            r#"
+use some::pa$0th::to::Item;
+            "#,
+        );
+    }
+
+    #[test]
+    fn adds_closing_parenthesis_for_expr() {
+        type_char(
+            '(',
+            r#"
+fn f() { match () { _ => $0() } }
+            "#,
+            r#"
+fn f() { match () { _ => (()) } }
+            "#,
+        );
+        type_char(
+            '(',
+            r#"
+fn f() { $0() }
+            "#,
+            r#"
+fn f() { (()) }
+            "#,
+        );
+        type_char(
+            '(',
+            r#"
+fn f() { let x = $0(); }
+            "#,
+            r#"
+fn f() { let x = (()); }
+            "#,
+        );
+        type_char(
+            '(',
+            r#"
+fn f() { let x = $0a.b(); }
+            "#,
+            r#"
+fn f() { let x = (a.b()); }
+            "#,
+        );
+        type_char(
+            '(',
+            r#"
+const S: () = $0();
+fn f() {}
+            "#,
+            r#"
+const S: () = (());
+fn f() {}
+            "#,
+        );
+        type_char(
+            '(',
+            r#"
+const S: () = $0a.b();
+fn f() {}
+            "#,
+            r#"
+const S: () = (a.b());
+fn f() {}
+            "#,
+        );
+        type_char(
+            '(',
+            r#"
+fn f() {
+    match x {
+        0 => $0(),
+        1 => (),
+    }
+}
+            "#,
+            r#"
+fn f() {
+    match x {
+        0 => (()),
+        1 => (),
+    }
+}
+            "#,
+        );
+        type_char(
+            '(',
+            r#"
+        fn f() {
+            let z = Some($03);
+        }
+                    "#,
+            r#"
+        fn f() {
+            let z = Some((3));
+        }
+                    "#,
+        );
+    }
+
+    #[test]
+    fn parenthesis_noop_in_string_literal() {
+        // Regression test for #9351
+        type_char_noop(
+            '(',
+            r##"
+fn check_with(ra_fixture: &str, expect: Expect) {
+    let base = r#"
+enum E { T(), R$0, C }
+use self::E::X;
+const Z: E = E::C;
+mod m {}
+asdasdasdasdasdasda
+sdasdasdasdasdasda
+sdasdasdasdasd
+"#;
+    let actual = completion_list(&format!("{}\n{}", base, ra_fixture));
+    expect.assert_eq(&actual)
+}
+            "##,
+        );
+    }
+
+    #[test]
+    fn parenthesis_noop_in_item_position_with_macro() {
+        type_char_noop('(', r#"$0println!();"#);
+        type_char_noop(
+            '(',
+            r#"
+fn main() $0println!("hello");
+}"#,
+        );
+    }
+
+    #[test]
+    fn parenthesis_noop_in_use_tree() {
+        type_char_noop(
+            '(',
+            r#"
+use some::$0Path;
+            "#,
+        );
+        type_char_noop(
+            '(',
+            r#"
+use some::{Path, $0Other};
+            "#,
+        );
+        type_char_noop(
+            '(',
+            r#"
+use some::{$0Path, Other};
+            "#,
+        );
+        type_char_noop(
+            '(',
+            r#"
+use some::path::$0to::Item;
+            "#,
+        );
+        type_char_noop(
+            '(',
+            r#"
+use some::$0path::to::Item;
+            "#,
+        );
+        type_char_noop(
+            '(',
+            r#"
+use $0some::path::to::Item;
+            "#,
+        );
+        type_char_noop(
+            '(',
+            r#"
+use some::path::$0to::{Item};
+            "#,
+        );
+        type_char_noop(
+            '(',
+            r#"
+use $0Thing as _;
+            "#,
+        );
+
+        type_char_noop(
+            '(',
             r#"
 use some::pa$0th::to::Item;
             "#,
