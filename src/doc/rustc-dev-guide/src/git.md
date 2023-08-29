@@ -351,6 +351,8 @@ upstream.
 
 ## Advanced Rebasing
 
+### Squash your commits
+
 If your branch contains multiple consecutive rewrites of the same code, or if
 the rebase conflicts are extremely severe, you can use
 `git rebase --interactive master` to gain more control over the process. This
