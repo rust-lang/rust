@@ -322,7 +322,7 @@ target | std | host | notes
 [`sparc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/sparc64
 `thumbv4t-none-eabi` | * |  | Thumb-mode Bare ARMv4T
 [`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | Thumb-mode Bare ARMv5TE
-`thumbv7a-pc-windows-msvc` | ? |  |
+[`thumbv7a-pc-windows-msvc`](platform-support/thumbv7a-pc-windows-msvc.md) | ? |  | Thumb2-mode MSVC Windows
 [`thumbv7a-uwp-windows-msvc`](platform-support/usp-windows-msvc.md) | ✓ |  | Thumb2-mode Universal Windows Platform (UWP) apps using MSVC
 [`thumbv7neon-unknown-linux-musleabihf`](platform-support/thumbv7neon_unknown_linux_musleabihf.md) | ? |  | Thumb2-mode ARMv7-A Linux with NEON, MUSL
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
