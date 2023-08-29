@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::needless_borrowed_reference)]
 #![allow(
     unused,

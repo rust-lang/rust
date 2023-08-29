@@ -7,12 +7,14 @@ fn should_lint() {
     let value = &Some(23);
     match value {
         Some(_) => (),
+        //~^ ERROR: type of pattern does not match the expression type
         _ => (),
     }
 
     let value = &mut Some(23);
     match value {
         Some(_) => (),
+        //~^ ERROR: type of pattern does not match the expression type
         _ => (),
     }
 }

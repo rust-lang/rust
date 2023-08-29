@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::let_underscore_untyped)]
 #![allow(clippy::missing_docs_in_private_items)]

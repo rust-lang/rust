@@ -7,43 +7,43 @@ LL | fn do_vec(x: &Vec<i64>) {
    = note: `-D clippy::ptr-arg` implied by `-D warnings`
 
 error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:18:18
+  --> $DIR/ptr_arg.rs:20:18
    |
 LL | fn do_vec_mut(x: &mut Vec<i64>) {
    |                  ^^^^^^^^^^^^^ help: change this to: `&mut [i64]`
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:22:14
+  --> $DIR/ptr_arg.rs:25:14
    |
 LL | fn do_str(x: &String) {
    |              ^^^^^^^ help: change this to: `&str`
 
 error: writing `&mut String` instead of `&mut str` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:26:18
+  --> $DIR/ptr_arg.rs:30:18
    |
 LL | fn do_str_mut(x: &mut String) {
    |                  ^^^^^^^^^^^ help: change this to: `&mut str`
 
 error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:30:15
+  --> $DIR/ptr_arg.rs:35:15
    |
 LL | fn do_path(x: &PathBuf) {
    |               ^^^^^^^^ help: change this to: `&Path`
 
 error: writing `&mut PathBuf` instead of `&mut Path` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:34:19
+  --> $DIR/ptr_arg.rs:40:19
    |
 LL | fn do_path_mut(x: &mut PathBuf) {
    |                   ^^^^^^^^^^^^ help: change this to: `&mut Path`
 
 error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:42:18
+  --> $DIR/ptr_arg.rs:49:18
    |
 LL |     fn do_vec(x: &Vec<i64>);
    |                  ^^^^^^^^^ help: change this to: `&[i64]`
 
 error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:55:14
+  --> $DIR/ptr_arg.rs:63:14
    |
 LL | fn cloned(x: &Vec<u8>) -> Vec<u8> {
    |              ^^^^^^^^
@@ -51,6 +51,7 @@ LL | fn cloned(x: &Vec<u8>) -> Vec<u8> {
 help: change this to
    |
 LL ~ fn cloned(x: &[u8]) -> Vec<u8> {
+LL |
 LL ~     let e = x.to_owned();
 LL |     let f = e.clone(); // OK
 LL |     let g = x;
@@ -60,7 +61,7 @@ LL ~     x.to_owned()
    |
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:64:18
+  --> $DIR/ptr_arg.rs:73:18
    |
 LL | fn str_cloned(x: &String) -> String {
    |                  ^^^^^^^
@@ -68,6 +69,7 @@ LL | fn str_cloned(x: &String) -> String {
 help: change this to
    |
 LL ~ fn str_cloned(x: &str) -> String {
+LL |
 LL ~     let a = x.to_owned();
 LL ~     let b = x.to_owned();
 LL |     let c = b.clone();
@@ -76,7 +78,7 @@ LL ~     x.to_owned()
    |
 
 error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:72:19
+  --> $DIR/ptr_arg.rs:82:19
    |
 LL | fn path_cloned(x: &PathBuf) -> PathBuf {
    |                   ^^^^^^^^
@@ -84,6 +86,7 @@ LL | fn path_cloned(x: &PathBuf) -> PathBuf {
 help: change this to
    |
 LL ~ fn path_cloned(x: &Path) -> PathBuf {
+LL |
 LL ~     let a = x.to_path_buf();
 LL ~     let b = x.to_path_buf();
 LL |     let c = b.clone();
@@ -92,7 +95,7 @@ LL ~     x.to_path_buf()
    |
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:80:44
+  --> $DIR/ptr_arg.rs:91:44
    |
 LL | fn false_positive_capacity(x: &Vec<u8>, y: &String) {
    |                                            ^^^^^^^
@@ -100,25 +103,26 @@ LL | fn false_positive_capacity(x: &Vec<u8>, y: &String) {
 help: change this to
    |
 LL ~ fn false_positive_capacity(x: &Vec<u8>, y: &str) {
+LL |
 LL |     let a = x.capacity();
 LL ~     let b = y.to_owned();
 LL ~     let c = y;
    |
 
 error: using a reference to `Cow` is not recommended
-  --> $DIR/ptr_arg.rs:94:25
+  --> $DIR/ptr_arg.rs:106:25
    |
 LL | fn test_cow_with_ref(c: &Cow<[i32]>) {}
    |                         ^^^^^^^^^^^ help: change this to: `&[i32]`
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:123:66
+  --> $DIR/ptr_arg.rs:136:66
    |
 LL |     fn some_allowed(#[allow(clippy::ptr_arg)] _v: &Vec<u32>, _s: &String) {}
    |                                                                  ^^^^^^^ help: change this to: `&str`
 
 error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:152:21
+  --> $DIR/ptr_arg.rs:166:21
    |
 LL |     fn foo_vec(vec: &Vec<u8>) {
    |                     ^^^^^^^^
@@ -126,12 +130,13 @@ LL |     fn foo_vec(vec: &Vec<u8>) {
 help: change this to
    |
 LL ~     fn foo_vec(vec: &[u8]) {
+LL |
 LL ~         let _ = vec.to_owned().pop();
 LL ~         let _ = vec.to_owned().clone();
    |
 
 error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:157:23
+  --> $DIR/ptr_arg.rs:172:23
    |
 LL |     fn foo_path(path: &PathBuf) {
    |                       ^^^^^^^^
@@ -139,12 +144,13 @@ LL |     fn foo_path(path: &PathBuf) {
 help: change this to
    |
 LL ~     fn foo_path(path: &Path) {
+LL |
 LL ~         let _ = path.to_path_buf().pop();
 LL ~         let _ = path.to_path_buf().clone();
    |
 
 error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:162:21
+  --> $DIR/ptr_arg.rs:178:21
    |
 LL |     fn foo_str(str: &PathBuf) {
    |                     ^^^^^^^^
@@ -152,48 +158,49 @@ LL |     fn foo_str(str: &PathBuf) {
 help: change this to
    |
 LL ~     fn foo_str(str: &Path) {
+LL |
 LL ~         let _ = str.to_path_buf().pop();
 LL ~         let _ = str.to_path_buf().clone();
    |
 
 error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:168:29
+  --> $DIR/ptr_arg.rs:185:29
    |
 LL | fn mut_vec_slice_methods(v: &mut Vec<u32>) {
    |                             ^^^^^^^^^^^^^ help: change this to: `&mut [u32]`
 
 error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:230:17
+  --> $DIR/ptr_arg.rs:248:17
    |
 LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
    |                 ^^^^^^^^^^^^^ help: change this to: `&mut [u32]`
 
 error: writing `&mut String` instead of `&mut str` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:230:35
+  --> $DIR/ptr_arg.rs:248:35
    |
 LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
    |                                   ^^^^^^^^^^^ help: change this to: `&mut str`
 
 error: writing `&mut PathBuf` instead of `&mut Path` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:230:51
+  --> $DIR/ptr_arg.rs:248:51
    |
 LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
    |                                                   ^^^^^^^^^^^^ help: change this to: `&mut Path`
 
 error: using a reference to `Cow` is not recommended
-  --> $DIR/ptr_arg.rs:253:39
+  --> $DIR/ptr_arg.rs:274:39
    |
 LL |     fn cow_elided_lifetime<'a>(input: &'a Cow<str>) -> &'a str {
    |                                       ^^^^^^^^^^^^ help: change this to: `&str`
 
 error: using a reference to `Cow` is not recommended
-  --> $DIR/ptr_arg.rs:258:36
+  --> $DIR/ptr_arg.rs:280:36
    |
 LL |     fn cow_bad_ret_ty_1<'a>(input: &'a Cow<'a, str>) -> &'static str {
    |                                    ^^^^^^^^^^^^^^^^ help: change this to: `&str`
 
 error: using a reference to `Cow` is not recommended
-  --> $DIR/ptr_arg.rs:261:40
+  --> $DIR/ptr_arg.rs:284:40
    |
 LL |     fn cow_bad_ret_ty_2<'a, 'b>(input: &'a Cow<'a, str>) -> &'b str {
    |                                        ^^^^^^^^^^^^^^^^ help: change this to: `&str`

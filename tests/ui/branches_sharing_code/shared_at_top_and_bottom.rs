@@ -1,7 +1,7 @@
 #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
 #![allow(dead_code)]
 #![allow(clippy::uninlined_format_args)]
-
+//@no-rustfix
 // branches_sharing_code at the top and bottom of the if blocks
 
 struct DataPack {
@@ -15,6 +15,7 @@ fn overlapping_eq_regions() {
 
     // Overlap with separator
     if x == 7 {
+        //~^ ERROR: all if blocks contain the same code at both the start and the end
         let t = 7;
         let _overlap_start = t * 2;
         let _overlap_end = 2 * t;
@@ -31,6 +32,7 @@ fn overlapping_eq_regions() {
 
     // Overlap with separator
     if x == 99 {
+        //~^ ERROR: all if blocks contain the same code at both the start and the end
         let r = 7;
         let _overlap_start = r;
         let _overlap_middle = r * r;
@@ -60,6 +62,7 @@ fn complexer_example() {
     let x = 8;
     let y = 9;
     if (x > 7 && y < 13) || (x + y) % 2 == 1 {
+        //~^ ERROR: all if blocks contain the same code at both the start and the end
         let a = 0xcafe;
         let b = 0xffff00ff;
         let e_id = gen_id(a, b);
@@ -93,6 +96,7 @@ fn added_note_for_expression_use() -> u32 {
     let x = 9;
 
     let _ = if x == 7 {
+        //~^ ERROR: all if blocks contain the same code at both the start and the end
         let _ = 19;
 
         let _splitter = 6;
@@ -105,6 +109,7 @@ fn added_note_for_expression_use() -> u32 {
     };
 
     if x == 9 {
+        //~^ ERROR: all if blocks contain the same code at both the start and the end
         let _ = 17;
 
         let _splitter = 6;

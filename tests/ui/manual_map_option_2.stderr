@@ -1,5 +1,5 @@
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:8:13
+  --> $DIR/manual_map_option_2.rs:6:13
    |
 LL |       let _ = match Some(0) {
    |  _____________^
@@ -21,7 +21,7 @@ LL ~         });
    |
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:50:13
+  --> $DIR/manual_map_option_2.rs:48:13
    |
 LL |       let _ = match &s {
    |  _____________^
@@ -40,7 +40,7 @@ LL ~         });
    |
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:62:17
+  --> $DIR/manual_map_option_2.rs:60:17
    |
 LL |           let _ = match Some(0) {
    |  _________________^
@@ -50,7 +50,7 @@ LL | |         };
    | |_________^ help: try: `Some(0).map(|x| f(x))`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:67:13
+  --> $DIR/manual_map_option_2.rs:65:13
    |
 LL |       let _ = match Some(0) {
    |  _____________^
@@ -60,7 +60,7 @@ LL | |     };
    | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:71:13
+  --> $DIR/manual_map_option_2.rs:69:13
    |
 LL |       let _ = match Some(0) {
    |  _____________^

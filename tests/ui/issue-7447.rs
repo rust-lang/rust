@@ -24,5 +24,8 @@ pub struct ByteView<'a> {
 
 fn main() {
     byte_view(panic!());
+    //~^ ERROR: sub-expression diverges
+    //~| NOTE: `-D clippy::diverging-sub-expression` implied by `-D warnings`
     group_entries(panic!());
+    //~^ ERROR: sub-expression diverges
 }

@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::trim_split_whitespace)]
 #![allow(clippy::let_unit_value)]
 

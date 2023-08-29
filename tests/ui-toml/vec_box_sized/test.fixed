@@ -1,0 +1,16 @@
+struct S {
+    x: u64,
+}
+
+struct C {
+    y: u16,
+}
+
+struct Foo(Vec<u8>);
+struct Bar(Vec<u16>);
+struct Quux(Vec<Box<u32>>);
+struct Baz(Vec<Box<(u16, u16)>>);
+struct BarBaz(Vec<Box<S>>);
+struct FooBarBaz(Vec<C>);
+
+fn main() {}

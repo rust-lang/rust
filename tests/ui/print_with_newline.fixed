@@ -1,15 +1,20 @@
 // FIXME: Ideally these suggestions would be fixed via rustfix. Blocked by rust-lang/rust#53934
-//@run-rustfix
 
 #![allow(clippy::print_literal)]
 #![warn(clippy::print_with_newline)]
 
 fn main() {
     println!("Hello");
+    //~^ ERROR: using `print!()` with a format string that ends in a single newline
+    //~| NOTE: `-D clippy::print-with-newline` implied by `-D warnings`
     println!("Hello {}", "world");
+    //~^ ERROR: using `print!()` with a format string that ends in a single newline
     println!("Hello {} {}", "world", "#2");
+    //~^ ERROR: using `print!()` with a format string that ends in a single newline
     println!("{}", 1265);
+    //~^ ERROR: using `print!()` with a format string that ends in a single newline
     println!();
+    //~^ ERROR: using `print!()` with a format string that ends in a single newline
 
     // these are all fine
     print!("");
@@ -23,29 +28,38 @@ fn main() {
     print!("\n\n");
     print!("like eof\n\n");
     print!("Hello {} {}\n\n", "world", "#2");
-    println!("\ndon't\nwarn\nfor\nmultiple\nnewlines\n"); // #3126
-    println!("\nbla\n\n"); // #3126
+    // #3126
+    println!("\ndon't\nwarn\nfor\nmultiple\nnewlines\n");
+    // #3126
+    println!("\nbla\n\n");
 
     // Escaping
-    print!("\\n"); // #3514
-    println!("\\"); // should fail
+    // #3514
+    print!("\\n");
+    println!("\\");
+    //~^ ERROR: using `print!()` with a format string that ends in a single newline
     print!("\\\\n");
 
     // Raw strings
-    print!(r"\n"); // #3778
+    // #3778
+    print!(r"\n");
 
     // Literal newlines should also fail
     println!(
+        //~^ ERROR: using `print!()` with a format string that ends in a single newline
         
     );
     println!(
+        //~^ ERROR: using `print!()` with a format string that ends in a single newline
         
     );
 
     // Don't warn on CRLF (#4208)
     print!("\r\n");
     print!("foo\r\n");
-    println!("\\r"); // should fail
+    // should fail
+    println!("\\r");
+    //~^ ERROR: using `print!()` with a format string that ends in a single newline
     print!("foo\rbar\n");
 
     // Ignore expanded format strings

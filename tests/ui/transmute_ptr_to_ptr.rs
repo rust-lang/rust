@@ -28,14 +28,21 @@ fn transmute_ptr_to_ptr() {
     unsafe {
         // pointer-to-pointer transmutes; bad
         let _: *const f32 = std::mem::transmute(ptr);
+        //~^ ERROR: transmute from a pointer to a pointer
+        //~| NOTE: `-D clippy::transmute-ptr-to-ptr` implied by `-D warnings`
         let _: *mut f32 = std::mem::transmute(mut_ptr);
+        //~^ ERROR: transmute from a pointer to a pointer
         // ref-ref transmutes; bad
         let _: &f32 = std::mem::transmute(&1u32);
+        //~^ ERROR: transmute from a reference to a reference
         let _: &f64 = std::mem::transmute(&1f32);
+        //~^ ERROR: transmute from a reference to a reference
         //:^ this test is here because both f32 and f64 are the same TypeVariant, but they are not
         // the same type
         let _: &mut f32 = std::mem::transmute(&mut 1u32);
+        //~^ ERROR: transmute from a reference to a reference
         let _: &GenericParam<f32> = std::mem::transmute(&GenericParam { t: 1u32 });
+        //~^ ERROR: transmute from a reference to a reference
     }
 
     // these are recommendations for solving the above; if these lint we need to update

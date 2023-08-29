@@ -20,6 +20,7 @@ fn main() {
     struct Foo;
     // Lint
     drop(Foo);
+    //~^ ERROR: call to `std::mem::drop` with a value that does not implement `Drop`. Drop
     // Don't lint
     drop(make_result(Foo));
     // Don't lint
@@ -35,6 +36,7 @@ fn main() {
     struct Baz<T>(T);
     // Lint
     drop(Baz(Foo));
+    //~^ ERROR: call to `std::mem::drop` with a value that does not implement `Drop`. Drop
     // Don't lint
     drop(Baz(Bar));
 }

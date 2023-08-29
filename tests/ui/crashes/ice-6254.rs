@@ -11,6 +11,8 @@ fn main() {
     // This used to cause an ICE (https://github.com/rust-lang/rust/issues/78071)
     match FOO_REF_REF {
         FOO_REF_REF => {},
+        //~^ ERROR: to use a constant of type `Foo` in a pattern, `Foo` must be annotated
+        //~| NOTE: for more information, see issue #62411 <https://github.com/rust-lang/ru
         Foo(_) => {},
     }
 }

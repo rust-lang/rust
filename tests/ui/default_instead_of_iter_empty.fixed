@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::default_instead_of_iter_empty)]
 #![allow(dead_code)]
 use std::collections::HashMap;

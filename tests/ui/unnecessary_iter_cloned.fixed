@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(unused_assignments)]
 #![warn(clippy::unnecessary_to_owned)]
 
