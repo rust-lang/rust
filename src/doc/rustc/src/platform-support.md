@@ -232,7 +232,7 @@ target | std | host | notes
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
 `aarch64-unknown-redox` | ? |  | ARM64 Redox OS
 `aarch64-uwp-windows-msvc` | ? |  |
-`aarch64-wrs-vxworks` | ? |  |
+[`aarch64-wrs-vxworks`](platform-support/vxworks.md) | ? |  | ARM64 VxWorks
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 [`aarch64_be-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD (big-endian)
@@ -252,7 +252,7 @@ target | std | host | notes
 [`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | ARMv7-A Linux with uClibc, hardfloat
 `armv7-unknown-freebsd` | ✓ | ✓ | ARMv7-A FreeBSD
 [`armv7-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | ARMv7-A NetBSD w/hard-float
-`armv7-wrs-vxworks-eabihf` | ? |  | ARMv7-A for VxWorks
+[`armv7-wrs-vxworks-eabihf`](platform-support/vxworks.md) | ? |  | ARMv7-A VxWorks
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
 `armv7a-none-eabihf` | * | | Bare ARMv7-A, hardfloat
@@ -273,7 +273,7 @@ target | std | host | notes
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD
 `i686-uwp-windows-gnu` | ? |  |
 `i686-uwp-windows-msvc` | ? |  |
-`i686-wrs-vxworks` | ? |  |
+[`i686-wrs-vxworks`](platform-support/vxworks.md) | ? |  | i686 VxWorks
 [`loongarch64-unknown-none`](platform-support/loongarch-none.md) | * |  | LoongArch64 Bare-metal (LP64D ABI)
 [`loongarch64-unknown-none-softfloat`](platform-support/loongarch-none.md) | * |  | LoongArch64 Bare-metal (LP64S ABI)
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
@@ -292,13 +292,13 @@ target | std | host | notes
 `powerpc-unknown-linux-musl` | ? |  |
 [`powerpc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD 32-bit powerpc systems
 `powerpc-unknown-openbsd` | ? |  |
-`powerpc-wrs-vxworks-spe` | ? |  |
-`powerpc-wrs-vxworks` | ? |  |
+[`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ? |  | PowerPC SPE VxWorks
+[`powerpc-wrs-vxworks`](platform-support/vxworks.md) | ? |  | PowerPC VxWorks
 `powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
 `powerpc64le-unknown-freebsd` |   |   | PPC64LE FreeBSD
 `powerpc-unknown-freebsd` |   |   | PowerPC FreeBSD
 `powerpc64-unknown-linux-musl` | ? |  |
-`powerpc64-wrs-vxworks` | ? |  |
+[`powerpc64-wrs-vxworks`](platform-support/vxworks.md) | ? |  | PPC64 VxWorks
 `powerpc64le-unknown-linux-musl` | ? |  |
 [`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
 `powerpc64-ibm-aix` | ? |  | 64-bit AIX (7.2 and newer)
@@ -342,7 +342,7 @@ target | std | host | notes
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
 `x86_64-uwp-windows-gnu` | ✓ |  |
 `x86_64-uwp-windows-msvc` | ✓ |  |
-`x86_64-wrs-vxworks` | ? |  |
+[`x86_64-wrs-vxworks`](platform-support/vxworks.md) | ? |  | x86_64 VxWorks
 [`x86_64h-apple-darwin`](platform-support/x86_64h_apple_darwin.md) | ✓ | ✓ | macOS with late-gen Intel (at least Haswell)
 
 [runs on NVIDIA GPUs]: https://github.com/japaric-archived/nvptx#targets
