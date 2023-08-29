@@ -9,8 +9,6 @@ use syntax::{
     AstNode,
 };
 
-use super::remove_unused_param::is_trait_impl;
-
 // Assist: bind_unused_param
 //
 // Binds unused function parameter to an underscore.
@@ -29,12 +27,6 @@ pub(crate) fn bind_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
 
     let Some(ast::Pat::IdentPat(ident_pat)) = param.pat() else { return None };
 
-    let func = param.syntax().ancestors().find_map(ast::Fn::cast)?;
-    if is_trait_impl(&func) {
-        cov_mark::hit!(trait_impl);
-        return None;
-    }
-
     let param_def = {
         let local = ctx.sema.to_def(&ident_pat)?;
         Definition::Local(local)
@@ -44,6 +36,7 @@ pub(crate) fn bind_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         return None;
     }
 
+    let func = param.syntax().ancestors().find_map(ast::Fn::cast)?;
     let stmt_list = func.body()?.stmt_list()?;
     let l_curly_range = stmt_list.l_curly_token()?.text_range();
     let r_curly_range = stmt_list.r_curly_token()?.text_range();
@@ -55,16 +48,16 @@ pub(crate) fn bind_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         |builder| {
             let line_index = ctx.db().line_index(ctx.file_id());
 
-            let mut indent = func.indent_level();
-            indent.0 += 1;
-            let mut text = format!("\n{indent}let _ = {ident_pat};");
+            let indent = func.indent_level();
+            let text_indent = indent + 1;
+            let mut text = format!("\n{text_indent}let _ = {ident_pat};");
 
             let left_line = line_index.line_col(l_curly_range.end()).line;
             let right_line = line_index.line_col(r_curly_range.start()).line;
 
             if left_line == right_line {
                 cov_mark::hit!(single_line);
-                text.push('\n');
+                text.push_str(&format!("\n{indent}"));
             }
 
             builder.insert(l_curly_range.end(), text);
@@ -130,8 +123,7 @@ where T : Default {
 
     #[test]
     fn trait_impl() {
-        cov_mark::check!(trait_impl);
-        check_assist_not_applicable(
+        check_assist(
             bind_unused_param,
             r#"
 trait Trait {
@@ -139,6 +131,16 @@ trait Trait {
 }
 impl Trait for () {
     fn foo($0x: i32) {}
+}
+"#,
+            r#"
+trait Trait {
+    fn foo(x: i32);
+}
+impl Trait for () {
+    fn foo(x: i32) {
+        let _ = x;
+    }
 }
 "#,
         );
