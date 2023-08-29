@@ -852,11 +852,9 @@ fn print_crate_info(
                 use rustc_target::spec::current_apple_deployment_target;
 
                 if sess.target.is_like_osx {
-                    println_info!(
-                        "deployment_target={}",
-                        current_apple_deployment_target(&sess.target)
-                            .expect("unknown Apple target OS")
-                    )
+                    let (major, minor) = current_apple_deployment_target(&sess.target)
+                        .expect("unknown Apple target OS");
+                    println_info!("deployment_target={}", format!("{major}.{minor}"))
                 } else {
                     handler
                         .early_error("only Apple targets currently support deployment version info")
