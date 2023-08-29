@@ -26,7 +26,7 @@ use crate::mir::interpret::{
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::query::erase::{erase, restore, Erase};
-use crate::query::plumbing::{query_ensure, query_get_at, DynamicQuery};
+use crate::query::plumbing::{query_ensure, query_get_at, CyclePlaceholder, DynamicQuery};
 use crate::thir;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -241,6 +241,16 @@ rustc_queries! {
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
         feedable
+    }
+
+    /// Specialized instance of `type_of` that detects cycles that are due to
+    /// revealing opaque because of an auto trait bound. Unless `CyclePlaceholder` needs
+    /// to be handled separately, call `type_of` instead.
+    query type_of_opaque(key: DefId) -> Result<ty::EarlyBinder<Ty<'tcx>>, CyclePlaceholder> {
+        desc { |tcx|
+            "computing type of opaque `{path}`",
+            path = tcx.def_path_str(key),
+        }
     }
 
     query collect_return_position_impl_trait_in_trait_tys(key: DefId)

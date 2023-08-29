@@ -96,7 +96,9 @@ impl ToJson for crate::abi::call::Conv {
         let s = match self {
             Self::C => "C",
             Self::Rust => "Rust",
-            Self::RustCold => "RustCold",
+            Self::Cold => "Cold",
+            Self::PreserveMost => "PreserveMost",
+            Self::PreserveAll => "PreserveAll",
             Self::ArmAapcs => "ArmAapcs",
             Self::CCmseNonSecureCall => "CCmseNonSecureCall",
             Self::Msp430Intr => "Msp430Intr",

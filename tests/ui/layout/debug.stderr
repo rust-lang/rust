@@ -2,7 +2,7 @@ error: layout_of(E) = Layout {
            size: Size(12 bytes),
            align: AbiAndPrefAlign {
                abi: Align(4 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: Aggregate {
                sized: true,
@@ -40,7 +40,7 @@ error: layout_of(E) = Layout {
                        size: Size(4 bytes),
                        align: AbiAndPrefAlign {
                            abi: Align(1 bytes),
-                           pref: $PREF_ALIGN,
+                           pref: $SOME_ALIGN,
                        },
                        abi: Aggregate {
                            sized: true,
@@ -60,7 +60,7 @@ error: layout_of(E) = Layout {
                        size: Size(12 bytes),
                        align: AbiAndPrefAlign {
                            abi: Align(4 bytes),
-                           pref: $PREF_ALIGN,
+                           pref: $SOME_ALIGN,
                        },
                        abi: Uninhabited,
                        fields: Arbitrary {
@@ -96,7 +96,7 @@ error: layout_of(S) = Layout {
            size: Size(8 bytes),
            align: AbiAndPrefAlign {
                abi: Align(4 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: ScalarPair(
                Initialized {
@@ -142,7 +142,7 @@ error: layout_of(U) = Layout {
            size: Size(8 bytes),
            align: AbiAndPrefAlign {
                abi: Align(4 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: Aggregate {
                sized: true,
@@ -166,7 +166,7 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
            size: Size(8 bytes),
            align: AbiAndPrefAlign {
                abi: Align(4 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: ScalarPair(
                Initialized {
@@ -217,7 +217,7 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                        size: Size(8 bytes),
                        align: AbiAndPrefAlign {
                            abi: Align(4 bytes),
-                           pref: $PREF_ALIGN,
+                           pref: $SOME_ALIGN,
                        },
                        abi: ScalarPair(
                            Initialized {
@@ -254,7 +254,7 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                        size: Size(8 bytes),
                        align: AbiAndPrefAlign {
                            abi: Align(4 bytes),
-                           pref: $PREF_ALIGN,
+                           pref: $SOME_ALIGN,
                        },
                        abi: ScalarPair(
                            Initialized {
@@ -301,7 +301,7 @@ error: layout_of(i32) = Layout {
            size: Size(4 bytes),
            align: AbiAndPrefAlign {
                abi: Align(4 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: Scalar(
                Initialized {
@@ -329,7 +329,7 @@ error: layout_of(V) = Layout {
            size: Size(2 bytes),
            align: AbiAndPrefAlign {
                abi: Align(2 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: Aggregate {
                sized: true,
@@ -353,7 +353,7 @@ error: layout_of(W) = Layout {
            size: Size(2 bytes),
            align: AbiAndPrefAlign {
                abi: Align(2 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: Aggregate {
                sized: true,
@@ -377,7 +377,7 @@ error: layout_of(Y) = Layout {
            size: Size(0 bytes),
            align: AbiAndPrefAlign {
                abi: Align(2 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: Aggregate {
                sized: true,
@@ -401,7 +401,7 @@ error: layout_of(P1) = Layout {
            size: Size(4 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: Aggregate {
                sized: true,
@@ -425,7 +425,7 @@ error: layout_of(P2) = Layout {
            size: Size(8 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: Aggregate {
                sized: true,
@@ -449,7 +449,7 @@ error: layout_of(P3) = Layout {
            size: Size(16 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: Aggregate {
                sized: true,
@@ -473,7 +473,7 @@ error: layout_of(P4) = Layout {
            size: Size(12 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: Aggregate {
                sized: true,
@@ -497,7 +497,7 @@ error: layout_of(P5) = Layout {
            size: Size(1 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: Scalar(
                Union {
@@ -526,7 +526,7 @@ error: layout_of(std::mem::MaybeUninit<u8>) = Layout {
            size: Size(1 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
-               pref: $PREF_ALIGN,
+               pref: $SOME_ALIGN,
            },
            abi: Scalar(
                Union {

@@ -83,12 +83,17 @@ pub enum LLVMModFlagBehavior {
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
 /// LLVM CallingConv::ID. Should we wrap this?
+///
+/// See <https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/CallingConv.h>
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
 pub enum CallConv {
     CCallConv = 0,
     FastCallConv = 8,
     ColdCallConv = 9,
+    PreserveMost = 14,
+    PreserveAll = 15,
+    Tail = 18,
     X86StdcallCallConv = 64,
     X86FastcallCallConv = 65,
     ArmAapcsCallConv = 67,

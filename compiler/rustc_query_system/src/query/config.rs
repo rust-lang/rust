@@ -8,6 +8,7 @@ use crate::query::DepNodeIndex;
 use crate::query::{QueryContext, QueryInfo, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_span::ErrorGuaranteed;
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -57,6 +58,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
         self,
         tcx: Qcx::DepContext,
         cycle: &[QueryInfo<Qcx::DepKind>],
+        guar: ErrorGuaranteed,
     ) -> Self::Value;
 
     fn anon(self) -> bool;

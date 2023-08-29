@@ -20,6 +20,8 @@ use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_target::abi::{Size, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
 
+use crate::util::is_within_packed;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {
     Unwind,
@@ -93,6 +95,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
         cfg_checker.visit_body(body);
         cfg_checker.check_cleanup_control_flow();
 
+        // Also run the TypeChecker.
         for (location, msg) in validate_types(tcx, self.mir_phase, param_env, body) {
             cfg_checker.fail(location, msg);
         }
@@ -427,14 +430,34 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_unwind_edge(location, *unwind);
 
                 // The call destination place and Operand::Move place used as an argument might be
-                // passed by a reference to the callee. Consequently they must be non-overlapping.
-                // Currently this simply checks for duplicate places.
+                // passed by a reference to the callee. Consequently they must be non-overlapping
+                // and cannot be packed. Currently this simply checks for duplicate places.
                 self.place_cache.clear();
                 self.place_cache.insert(destination.as_ref());
+                if is_within_packed(self.tcx, &self.body.local_decls, *destination).is_some() {
+                    // This is bad! The callee will expect the memory to be aligned.
+                    self.fail(
+                        location,
+                        format!(
+                            "encountered packed place in `Call` terminator destination: {:?}",
+                            terminator.kind,
+                        ),
+                    );
+                }
                 let mut has_duplicates = false;
                 for arg in args {
                     if let Operand::Move(place) = arg {
                         has_duplicates |= !self.place_cache.insert(place.as_ref());
+                        if is_within_packed(self.tcx, &self.body.local_decls, *place).is_some() {
+                            // This is bad! The callee will expect the memory to be aligned.
+                            self.fail(
+                                location,
+                                format!(
+                                    "encountered `Move` of a packed place in `Call` terminator: {:?}",
+                                    terminator.kind,
+                                ),
+                            );
+                        }
                     }
                 }
 
@@ -442,7 +465,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(
                         location,
                         format!(
-                            "encountered overlapping memory in `Call` terminator: {:?}",
+                            "encountered overlapping memory in `Move` arguments to `Call` terminator: {:?}",
                             terminator.kind,
                         ),
                     );
@@ -541,6 +564,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
     }
 }
 
+/// A faster version of the validation pass that only checks those things which may break when apply
+/// generic substitutions.
 pub fn validate_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_phase: MirPhase,

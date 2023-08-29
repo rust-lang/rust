@@ -1,4 +1,5 @@
 use crate::mir;
+use crate::query::CyclePlaceholder;
 use crate::traits;
 use crate::ty::{self, Ty};
 use std::mem::{size_of, transmute_copy, MaybeUninit};
@@ -140,6 +141,10 @@ impl EraseType for Result<Option<ty::ValTree<'_>>, mir::interpret::ErrorHandled>
 impl EraseType for Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop> {
     type Result =
         [u8; size_of::<Result<&'static ty::List<Ty<'static>>, ty::util::AlwaysRequiresDrop>>()];
+}
+
+impl EraseType for Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder> {
+    type Result = [u8; size_of::<Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder>>()];
 }
 
 impl<T> EraseType for Option<&'_ T> {

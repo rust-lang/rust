@@ -1,8 +1,10 @@
 error[E0277]: a value of type `f32` cannot be made by summing an iterator over elements of type `{integer}`
-  --> $DIR/invalid-iterator-chain-with-int-infer.rs:2:41
+  --> $DIR/invalid-iterator-chain-with-int-infer.rs:2:47
    |
 LL |     let x = Some(()).iter().map(|()| 1).sum::<f32>();
-   |                                         ^^^ value of type `f32` cannot be made by summing a `std::iter::Iterator<Item={integer}>`
+   |                                         ---   ^^^ value of type `f32` cannot be made by summing a `std::iter::Iterator<Item={integer}>`
+   |                                         |
+   |                                         required by a bound introduced by this call
    |
    = help: the trait `Sum<{integer}>` is not implemented for `f32`
    = help: the following other types implement trait `Sum<A>`:

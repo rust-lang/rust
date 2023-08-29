@@ -321,13 +321,13 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM,
                                         PrintBackendInfo Print,
                                         void* Out) {
   const TargetMachine *Target = unwrap(TM);
-  const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const Triple::ArchType HostArch = Triple(sys::getDefaultTargetTriple()).getArch();
   const Triple::ArchType TargetArch = Target->getTargetTriple().getArch();
 
   std::ostringstream Buf;
 
 #if LLVM_VERSION_GE(17, 0)
+  const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const ArrayRef<SubtargetSubTypeKV> CPUTable = MCInfo->getAllProcessorDescriptions();
 #else
   Buf << "Full target CPU help is not supported by this LLVM version.\n\n";

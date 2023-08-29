@@ -14,7 +14,6 @@ LL |     is_send(foo::<T>());
    |             ^^^^^^^^^^ future returned by `foo` is not `Send`
    |
    = help: within `impl Future<Output = Result<(), ()>>`, the trait `Send` is not implemented for `impl Future<Output = Result<(), ()>>`
-   = note: consider using `std::sync::Arc<impl Future<Output = Result<(), ()>>>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: future is not `Send` as it awaits another future which is not `Send`
   --> $DIR/basic.rs:13:5
    |

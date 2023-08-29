@@ -914,6 +914,15 @@ pub struct LayoutOf {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_abi_of)]
+pub struct AbiOf {
+    #[primary_span]
+    pub span: Span,
+    pub fn_name: Symbol,
+    pub fn_abi: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_unrecognized_field)]
 pub struct UnrecognizedField {
     #[primary_span]

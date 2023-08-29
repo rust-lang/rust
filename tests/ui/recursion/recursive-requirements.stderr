@@ -5,7 +5,6 @@ LL |     let _: AssertSync<Foo> = unimplemented!();
    |            ^^^^^^^^^^^^^^^ `*const Bar` cannot be shared between threads safely
    |
    = help: within `Foo`, the trait `Sync` is not implemented for `*const Bar`
-   = note: consider using `std::sync::Arc<*const Bar>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required because it appears within the type `Foo`
   --> $DIR/recursive-requirements.rs:5:12
    |
@@ -24,7 +23,6 @@ LL |     let _: AssertSync<Foo> = unimplemented!();
    |            ^^^^^^^^^^^^^^^ `*const Foo` cannot be shared between threads safely
    |
    = help: within `Foo`, the trait `Sync` is not implemented for `*const Foo`
-   = note: consider using `std::sync::Arc<*const Foo>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required because it appears within the type `Bar`
   --> $DIR/recursive-requirements.rs:10:12
    |

@@ -772,9 +772,10 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                 self.r.record_partial_res(ty.id, PartialRes::new(res));
                 visit::walk_ty(self, ty)
             }
-            TyKind::ImplTrait(..) => {
+            TyKind::ImplTrait(node_id, _) => {
                 let candidates = self.lifetime_elision_candidates.take();
                 visit::walk_ty(self, ty);
+                self.record_lifetime_params_for_impl_trait(*node_id);
                 self.lifetime_elision_candidates = candidates;
             }
             TyKind::TraitObject(bounds, ..) => {
@@ -909,8 +910,8 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                             &sig.decl.output,
                         );
 
-                        if let Some((async_node_id, span)) = sig.header.asyncness.opt_return_id() {
-                            this.record_lifetime_params_for_impl_trait(async_node_id, span);
+                        if let Some((async_node_id, _)) = sig.header.asyncness.opt_return_id() {
+                            this.record_lifetime_params_for_impl_trait(async_node_id);
                         }
                     },
                 );
@@ -951,8 +952,8 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                                     &declaration.output,
                                 );
 
-                                if let Some((async_node_id, span)) = async_node_id {
-                                    this.record_lifetime_params_for_impl_trait(async_node_id, span);
+                                if let Some((async_node_id, _)) = async_node_id {
+                                    this.record_lifetime_params_for_impl_trait(async_node_id);
                                 }
                             },
                         );
@@ -4367,7 +4368,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     /// We include all lifetime parameters, either named or "Fresh".
     /// The order of those parameters does not matter, as long as it is
     /// deterministic.
-    fn record_lifetime_params_for_impl_trait(&mut self, impl_trait_node_id: NodeId, span: Span) {
+    fn record_lifetime_params_for_impl_trait(&mut self, impl_trait_node_id: NodeId) {
         let mut extra_lifetime_params = vec![];
 
         for rib in self.lifetime_ribs.iter().rev() {
@@ -4380,14 +4381,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         extra_lifetime_params.extend(earlier_fresh);
                     }
                 }
-                LifetimeRibKind::Generics { .. } => {}
-                _ => {
-                    // We are in a function definition. We should only find `Generics`
-                    // and `AnonymousCreateParameter` inside the innermost `Item`.
-                    span_bug!(span, "unexpected rib kind: {:?}", rib.kind)
-                }
+                _ => {}
             }
         }
+
         self.r.extra_lifetime_params_map.insert(impl_trait_node_id, extra_lifetime_params);
     }
 

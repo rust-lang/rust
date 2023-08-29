@@ -176,6 +176,14 @@ pub struct Instant(time::Instant);
 /// The size of a `SystemTime` struct may vary depending on the target operating
 /// system.
 ///
+/// A `SystemTime` does not count leap seconds.
+/// `SystemTime::now()`'s behaviour around a leap second
+/// is the same as the operating system's wall clock.
+/// The precise behaviour near a leap second
+/// (e.g. whether the clock appears to run slow or fast, or stop, or jump)
+/// depends on platform and configuration,
+/// so should not be relied on.
+///
 /// Example:
 ///
 /// ```no_run
@@ -461,12 +469,20 @@ impl fmt::Debug for Instant {
 impl SystemTime {
     /// An anchor in time which can be used to create new `SystemTime` instances or
     /// learn about where in time a `SystemTime` lies.
+    //
+    // NOTE! this documentation is duplicated, here and in std::time::UNIX_EPOCH.
+    // The two copies are not quite identical, because of the difference in naming.
     ///
     /// This constant is defined to be "1970-01-01 00:00:00 UTC" on all systems with
     /// respect to the system clock. Using `duration_since` on an existing
     /// `SystemTime` instance can tell how far away from this point in time a
     /// measurement lies, and using `UNIX_EPOCH + duration` can be used to create a
     /// `SystemTime` instance to represent another fixed point in time.
+    ///
+    /// `duration_since(UNIX_EPOCH).unwrap().as_secs()` returns
+    /// the number of non-leap seconds since the start of 1970 UTC.
+    /// This is a POSIX `time_t` (as a `u64`),
+    /// and is the same time representation as used in many Internet protocols.
     ///
     /// # Examples
     ///
@@ -617,12 +633,20 @@ impl fmt::Debug for SystemTime {
 
 /// An anchor in time which can be used to create new `SystemTime` instances or
 /// learn about where in time a `SystemTime` lies.
+//
+// NOTE! this documentation is duplicated, here and in SystemTime::UNIX_EPOCH.
+// The two copies are not quite identical, because of the difference in naming.
 ///
 /// This constant is defined to be "1970-01-01 00:00:00 UTC" on all systems with
 /// respect to the system clock. Using `duration_since` on an existing
 /// [`SystemTime`] instance can tell how far away from this point in time a
 /// measurement lies, and using `UNIX_EPOCH + duration` can be used to create a
 /// [`SystemTime`] instance to represent another fixed point in time.
+///
+/// `duration_since(UNIX_EPOCH).unwrap().as_secs()` returns
+/// the number of non-leap seconds since the start of 1970 UTC.
+/// This is a POSIX `time_t` (as a `u64`),
+/// and is the same time representation as used in many Internet protocols.
 ///
 /// # Examples
 ///

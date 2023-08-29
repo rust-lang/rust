@@ -1631,6 +1631,8 @@ options! {
         "run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)"),
     no_profiler_runtime: bool = (false, parse_no_flag, [TRACKED],
         "prevent automatic injection of the profiler_builtins crate"),
+    no_trait_vptr: bool = (false, parse_no_flag, [TRACKED],
+        "disable generation of trait vptr in vtable for upcasting"),
     no_unique_section_names: bool = (false, parse_bool, [TRACKED],
         "do not use unique names for text and data sections when -Z function-sections is used"),
     normalize_docs: bool = (false, parse_bool, [TRACKED],
