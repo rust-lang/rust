@@ -201,7 +201,7 @@ jobs:
           cd cargo-wasix
           # NOTE: must unset GITHUB_ACTIONS env var, because Rst bootstrap checks for it.
           # (see bootstrap config.rs)
-          GITHUB_ACTIONS=false WASIX_BUILD_DIR=$GITHUB_WORKSPACE TARGET=aarch64-apple-darwin cargo run -- wasix build-toolchain
+          GITHUB_ACTIONS=false WASIX_BUILD_DIR=$GITHUB_WORKSPACE cargo run -- wasix build-toolchain
 
       - name: Archive build output (Mac OS - aarch64)
         uses: actions/upload-artifact@v3
@@ -212,6 +212,11 @@ jobs:
             wasix-rust/build/aarch64-apple-darwin/stage2
             !wasix-rust/build/aarch64-apple-darwin/stage2/lib/rustlib/src
             !wasix-rust/build/aarch64-apple-darwin/stage2/lib/rustlib/rustc-src
+
+      - name: Print Build Folder recursively (MacOS - aarch64)
+        if: contains(matrix.os, 'macos-12') && matrix.arch == 'aarch64'
+        run: |
+          ls -lhR $GITHUB_WORKSPACE/wasix-rust/build
 
       # Windows
 
