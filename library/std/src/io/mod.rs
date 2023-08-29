@@ -272,9 +272,12 @@
 //! same kernel object. However, when you create a new kernel object, you know that you are holding
 //! the only reference to it. Just be careful not to lend it to anyone, since they can obtain a
 //! clone and then you can no longer know what the reference count is! In that sense, [`OwnedFd`] is
-//! like `Arc` and [`BorrowedFd<'a>`] is like `&'a Arc` (and similar for the Windows types). There
-//! is no equivalent to `Box` for file descriptors in the standard library (that would be a type
-//! that guarantees that the reference count is `1`).
+//! like `Arc` and [`BorrowedFd<'a>`] is like `&'a Arc` (and similar for the Windows types). In
+//! particular, given a `BorrowedFd<'a>`, you are not allowed to close the file descriptor -- just
+//! like how, given a `&'a Arc`, you are not allowed to decrement the reference count and
+//! potentially free the underlying object. There is no equivalent to `Box` for file descriptors in
+//! the standard library (that would be a type that guarantees that the reference count is `1`),
+//! however, it would be possible for a crate to define a type with those semantics.
 //!
 //! [`File`]: crate::fs::File
 //! [`TcpStream`]: crate::net::TcpStream
