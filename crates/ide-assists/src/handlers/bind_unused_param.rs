@@ -27,10 +27,7 @@ use super::remove_unused_param::is_trait_impl;
 pub(crate) fn bind_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let param: ast::Param = ctx.find_node_at_offset()?;
 
-    let ident_pat = match param.pat()? {
-        ast::Pat::IdentPat(it) => it,
-        _ => return None,
-    };
+    let Some(ast::Pat::IdentPat(ident_pat)) = param.pat() else { return None };
 
     let func = param.syntax().ancestors().find_map(ast::Fn::cast)?;
     if is_trait_impl(&func) {
@@ -47,28 +44,29 @@ pub(crate) fn bind_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         return None;
     }
 
-    let line_index = ctx.db().line_index(ctx.file_id());
-
-    let mut indent = func.indent_level();
-    indent.0 += 1;
-    let mut text = format!("\n{indent}let _ = {ident_pat};");
-
     let stmt_list = func.body()?.stmt_list()?;
     let l_curly_range = stmt_list.l_curly_token()?.text_range();
     let r_curly_range = stmt_list.r_curly_token()?.text_range();
-    let left_line = line_index.line_col(l_curly_range.end()).line;
-    let right_line = line_index.line_col(r_curly_range.start()).line;
-
-    if left_line == right_line {
-        cov_mark::hit!(single_line);
-        text.push('\n');
-    }
 
     acc.add(
-        AssistId("bind_unused_param", AssistKind::Refactor),
+        AssistId("bind_unused_param", AssistKind::QuickFix),
         &format!("Bind as `let _ = {};`", &ident_pat),
         param.syntax().text_range(),
         |builder| {
+            let line_index = ctx.db().line_index(ctx.file_id());
+
+            let mut indent = func.indent_level();
+            indent.0 += 1;
+            let mut text = format!("\n{indent}let _ = {ident_pat};");
+
+            let left_line = line_index.line_col(l_curly_range.end()).line;
+            let right_line = line_index.line_col(r_curly_range.start()).line;
+
+            if left_line == right_line {
+                cov_mark::hit!(single_line);
+                text.push('\n');
+            }
+
             builder.insert(l_curly_range.end(), text);
         },
     )
