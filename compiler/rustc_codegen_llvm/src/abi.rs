@@ -571,7 +571,9 @@ impl From<Conv> for llvm::CallConv {
             Conv::C | Conv::Rust | Conv::CCmseNonSecureCall | Conv::RiscvInterrupt { .. } => {
                 llvm::CCallConv
             }
-            Conv::RustCold => llvm::ColdCallConv,
+            Conv::Cold => llvm::ColdCallConv,
+            Conv::PreserveMost => llvm::PreserveMost,
+            Conv::PreserveAll => llvm::PreserveAll,
             Conv::AmdGpuKernel => llvm::AmdGpuKernel,
             Conv::AvrInterrupt => llvm::AvrInterrupt,
             Conv::AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,

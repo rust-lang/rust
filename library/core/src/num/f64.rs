@@ -277,6 +277,14 @@ pub mod consts {
     #[stable(feature = "tau_constant", since = "1.47.0")]
     pub const TAU: f64 = 6.28318530717958647692528676655900577_f64;
 
+    /// The golden ratio (φ)
+    #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const PHI: f64 = 1.618033988749894848204586834365638118_f64;
+
+    /// The Euler-Mascheroni constant (γ)
+    #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const EGAMMA: f64 = 0.577215664901532860606512090082402431_f64;
+
     /// π/2
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_PI_2: f64 = 1.57079632679489661923132169163975144_f64;
@@ -301,6 +309,10 @@ pub mod consts {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_1_PI: f64 = 0.318309886183790671537767526745028724_f64;
 
+    /// 1/sqrt(π)
+    #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const FRAC_1_SQRT_PI: f64 = 0.564189583547756286948079451560772586_f64;
+
     /// 2/π
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_2_PI: f64 = 0.636619772367581343075535053490057448_f64;
@@ -316,6 +328,14 @@ pub mod consts {
     /// 1/sqrt(2)
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_1_SQRT_2: f64 = 0.707106781186547524400844362104849039_f64;
+
+    /// sqrt(3)
+    #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const SQRT_3: f64 = 1.732050807568877293527446341505872367_f64;
+
+    /// 1/sqrt(3)
+    #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const FRAC_1_SQRT_3: f64 = 0.577350269189625764509148780501957456_f64;
 
     /// Euler's number (e)
     #[stable(feature = "rust1", since = "1.0.0")]

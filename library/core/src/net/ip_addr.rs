@@ -1856,13 +1856,7 @@ impl fmt::Display for Ipv6Addr {
         if f.precision().is_none() && f.width().is_none() {
             let segments = self.segments();
 
-            // Special case for :: and ::1; otherwise they get written with the
-            // IPv4 formatter
-            if self.is_unspecified() {
-                f.write_str("::")
-            } else if self.is_loopback() {
-                f.write_str("::1")
-            } else if let Some(ipv4) = self.to_ipv4_mapped() {
+            if let Some(ipv4) = self.to_ipv4_mapped() {
                 write!(f, "::ffff:{}", ipv4)
             } else {
                 #[derive(Copy, Clone, Default)]

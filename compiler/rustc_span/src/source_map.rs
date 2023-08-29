@@ -24,6 +24,8 @@ use std::sync::atomic::Ordering;
 
 use std::fs;
 use std::io;
+use std::io::BorrowedBuf;
+use std::io::Read;
 
 #[cfg(test)]
 mod tests;
@@ -101,10 +103,13 @@ pub trait FileLoader {
     fn file_exists(&self, path: &Path) -> bool;
 
     /// Read the contents of a UTF-8 file into memory.
+    /// This function must return a String because we normalize
+    /// source files, which may require resizing.
     fn read_file(&self, path: &Path) -> io::Result<String>;
 
     /// Read the contents of a potentially non-UTF-8 file into memory.
-    fn read_binary_file(&self, path: &Path) -> io::Result<Vec<u8>>;
+    /// We don't normalize binary files, so we can start in an Lrc.
+    fn read_binary_file(&self, path: &Path) -> io::Result<Lrc<[u8]>>;
 }
 
 /// A FileLoader that uses std::fs to load real files.
@@ -119,8 +124,16 @@ impl FileLoader for RealFileLoader {
         fs::read_to_string(path)
     }
 
-    fn read_binary_file(&self, path: &Path) -> io::Result<Vec<u8>> {
-        fs::read(path)
+    fn read_binary_file(&self, path: &Path) -> io::Result<Lrc<[u8]>> {
+        let mut file = fs::File::open(path)?;
+        let len = file.metadata()?.len();
+
+        let mut bytes = Lrc::new_uninit_slice(len as usize);
+        let mut buf = BorrowedBuf::from(Lrc::get_mut(&mut bytes).unwrap());
+        file.read_buf_exact(buf.unfilled())?;
+        // SAFETY: If the read_buf_exact call returns Ok(()), then we have
+        // read len bytes and initialized the buffer.
+        Ok(unsafe { bytes.assume_init() })
     }
 }
 
@@ -228,7 +241,7 @@ impl SourceMap {
     ///
     /// Unlike `load_file`, guarantees that no normalization like BOM-removal
     /// takes place.
-    pub fn load_binary_file(&self, path: &Path) -> io::Result<Vec<u8>> {
+    pub fn load_binary_file(&self, path: &Path) -> io::Result<Lrc<[u8]>> {
         let bytes = self.file_loader.read_binary_file(path)?;
 
         // We need to add file to the `SourceMap`, so that it is present

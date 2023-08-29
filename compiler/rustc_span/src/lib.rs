@@ -21,6 +21,8 @@
 #![feature(rustc_attrs)]
 #![feature(let_chains)]
 #![feature(round_char_boundary)]
+#![feature(read_buf)]
+#![feature(new_uninit)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]

@@ -172,7 +172,10 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
     use rustc_target::spec::abi::Abi::*;
     match tcx.sess.target.adjust_abi(abi) {
         RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
-        RustCold => Conv::RustCold,
+
+        // This is intentionally not using `Conv::Cold`, as that has to preserve
+        // even SIMD registers, which is generally not a good trade-off.
+        RustCold => Conv::PreserveMost,
 
         // It's the ABI's job to select this, not ours.
         System { .. } => bug!("system abi should be selected elsewhere"),

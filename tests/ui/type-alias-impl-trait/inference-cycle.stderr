@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing type of `m::Foo::{opaque#0}`
+error[E0391]: cycle detected when computing type of opaque `m::Foo::{opaque#0}`
   --> $DIR/inference-cycle.rs:5:20
    |
 LL |     pub type Foo = impl std::fmt::Debug;
@@ -10,15 +10,15 @@ note: ...which requires type-checking `m::bar`...
 LL |         is_send(foo()); // Today: error
    |         ^^^^^^^
    = note: ...which requires evaluating trait selection obligation `m::Foo: core::marker::Send`...
-   = note: ...which again requires computing type of `m::Foo::{opaque#0}`, completing the cycle
-note: cycle used when checking item types in module `m`
-  --> $DIR/inference-cycle.rs:4:1
+   = note: ...which again requires computing type of opaque `m::Foo::{opaque#0}`, completing the cycle
+note: cycle used when computing type of `m::Foo::{opaque#0}`
+  --> $DIR/inference-cycle.rs:5:20
    |
-LL | mod m {
-   | ^^^^^
+LL |     pub type Foo = impl std::fmt::Debug;
+   |                    ^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0391]: cycle detected when computing type of `m::Foo::{opaque#0}`
+error[E0391]: cycle detected when computing type of opaque `m::Foo::{opaque#0}`
   --> $DIR/inference-cycle.rs:5:20
    |
 LL |     pub type Foo = impl std::fmt::Debug;
@@ -29,12 +29,12 @@ note: ...which requires type-checking `m::bar`...
    |
 LL |     pub fn bar() {
    |     ^^^^^^^^^^^^
-   = note: ...which again requires computing type of `m::Foo::{opaque#0}`, completing the cycle
-note: cycle used when checking item types in module `m`
-  --> $DIR/inference-cycle.rs:4:1
+   = note: ...which again requires computing type of opaque `m::Foo::{opaque#0}`, completing the cycle
+note: cycle used when computing type of `m::Foo::{opaque#0}`
+  --> $DIR/inference-cycle.rs:5:20
    |
-LL | mod m {
-   | ^^^^^
+LL |     pub type Foo = impl std::fmt::Debug;
+   |                    ^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: cannot check whether the hidden type of `inference_cycle[4ecc]::m::Foo::{opaque#0}` satisfies auto traits

@@ -11,6 +11,7 @@ use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
+use crate::mem::MaybeUninit;
 use crate::num::NonZeroI32;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
@@ -166,6 +167,7 @@ pub struct Command {
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
     force_quotes_enabled: bool,
+    proc_thread_attributes: BTreeMap<usize, ProcThreadAttributeValue>,
 }
 
 pub enum Stdio {
@@ -195,6 +197,7 @@ impl Command {
             stdout: None,
             stderr: None,
             force_quotes_enabled: false,
+            proc_thread_attributes: Default::default(),
         }
     }
 
@@ -243,6 +246,17 @@ impl Command {
 
     pub fn get_current_dir(&self) -> Option<&Path> {
         self.cwd.as_ref().map(|cwd| Path::new(cwd))
+    }
+
+    pub unsafe fn raw_attribute<T: Copy + Send + Sync + 'static>(
+        &mut self,
+        attribute: usize,
+        value: T,
+    ) {
+        self.proc_thread_attributes.insert(
+            attribute,
+            ProcThreadAttributeValue { size: mem::size_of::<T>(), data: Box::new(value) },
+        );
     }
 
     pub fn spawn(
@@ -308,7 +322,6 @@ impl Command {
         let stderr = stderr.to_handle(c::STD_ERROR_HANDLE, &mut pipes.stderr)?;
 
         let mut si = zeroed_startupinfo();
-        si.cb = mem::size_of::<c::STARTUPINFOW>() as c::DWORD;
 
         // If at least one of stdin, stdout or stderr are set (i.e. are non null)
         // then set the `hStd` fields in `STARTUPINFO`.
@@ -322,6 +335,27 @@ impl Command {
             si.hStdError = stderr.as_raw_handle();
         }
 
+        let si_ptr: *mut c::STARTUPINFOW;
+
+        let mut proc_thread_attribute_list;
+        let mut si_ex;
+
+        if !self.proc_thread_attributes.is_empty() {
+            si.cb = mem::size_of::<c::STARTUPINFOEXW>() as u32;
+            flags |= c::EXTENDED_STARTUPINFO_PRESENT;
+
+            proc_thread_attribute_list =
+                make_proc_thread_attribute_list(&self.proc_thread_attributes)?;
+            si_ex = c::STARTUPINFOEXW {
+                StartupInfo: si,
+                lpAttributeList: proc_thread_attribute_list.0.as_mut_ptr() as _,
+            };
+            si_ptr = &mut si_ex as *mut _ as _;
+        } else {
+            si.cb = mem::size_of::<c::STARTUPINFOW> as c::DWORD;
+            si_ptr = &mut si as *mut _ as _;
+        }
+
         unsafe {
             cvt(c::CreateProcessW(
                 program.as_ptr(),
@@ -332,7 +366,7 @@ impl Command {
                 flags,
                 envp,
                 dirp,
-                &si,
+                si_ptr,
                 &mut pi,
             ))
         }?;
@@ -829,6 +863,80 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
         }
         None => Ok((ptr::null(), Vec::new())),
     }
+}
+
+struct ProcThreadAttributeList(Box<[MaybeUninit<u8>]>);
+
+impl Drop for ProcThreadAttributeList {
+    fn drop(&mut self) {
+        let lp_attribute_list = self.0.as_mut_ptr() as _;
+        unsafe { c::DeleteProcThreadAttributeList(lp_attribute_list) }
+    }
+}
+
+/// Wrapper around the value data to be used as a Process Thread Attribute.
+struct ProcThreadAttributeValue {
+    data: Box<dyn Send + Sync>,
+    size: usize,
+}
+
+fn make_proc_thread_attribute_list(
+    attributes: &BTreeMap<usize, ProcThreadAttributeValue>,
+) -> io::Result<ProcThreadAttributeList> {
+    // To initialize our ProcThreadAttributeList, we need to determine
+    // how many bytes to allocate for it. The Windows API simplifies this process
+    // by allowing us to call `InitializeProcThreadAttributeList` with
+    // a null pointer to retrieve the required size.
+    let mut required_size = 0;
+    let Ok(attribute_count) = attributes.len().try_into() else {
+        return Err(io::const_io_error!(
+            ErrorKind::InvalidInput,
+            "maximum number of ProcThreadAttributes exceeded",
+        ));
+    };
+    unsafe {
+        c::InitializeProcThreadAttributeList(
+            ptr::null_mut(),
+            attribute_count,
+            0,
+            &mut required_size,
+        )
+    };
+
+    let mut proc_thread_attribute_list = ProcThreadAttributeList(
+        vec![MaybeUninit::uninit(); required_size as usize].into_boxed_slice(),
+    );
+
+    // Once we've allocated the necessary memory, it's safe to invoke
+    // `InitializeProcThreadAttributeList` to properly initialize the list.
+    cvt(unsafe {
+        c::InitializeProcThreadAttributeList(
+            proc_thread_attribute_list.0.as_mut_ptr() as *mut _,
+            attribute_count,
+            0,
+            &mut required_size,
+        )
+    })?;
+
+    // # Add our attributes to the buffer.
+    // It's theoretically possible for the attribute count to exceed a u32 value.
+    // Therefore, we ensure that we don't add more attributes than the buffer was initialized for.
+    for (&attribute, value) in attributes.iter().take(attribute_count as usize) {
+        let value_ptr = &*value.data as *const (dyn Send + Sync) as _;
+        cvt(unsafe {
+            c::UpdateProcThreadAttribute(
+                proc_thread_attribute_list.0.as_mut_ptr() as _,
+                0,
+                attribute,
+                value_ptr,
+                value.size,
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        })?;
+    }
+
+    Ok(proc_thread_attribute_list)
 }
 
 pub struct CommandArgs<'a> {

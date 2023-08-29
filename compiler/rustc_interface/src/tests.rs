@@ -807,6 +807,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(no_jump_tables, true);
     tracked!(no_link, true);
     tracked!(no_profiler_runtime, true);
+    tracked!(no_trait_vptr, true);
     tracked!(no_unique_section_names, true);
     tracked!(oom, OomStrategy::Panic);
     tracked!(osx_rpath_install_name, true);
@@ -821,7 +822,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(profile_emit, Some(PathBuf::from("abc")));
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(profiler_runtime, "abc".to_string());
-    tracked!(relax_elf_relocations, Some(false));
+    tracked!(relax_elf_relocations, Some(true));
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
     tracked!(report_delayed_bugs, true);

@@ -231,7 +231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let inferred_sig = self.normalize(
                     span,
                     self.deduce_sig_from_projection(
-                    Some(span),
+                        Some(span),
                         bound_predicate.rebind(proj_predicate),
                     ),
                 );

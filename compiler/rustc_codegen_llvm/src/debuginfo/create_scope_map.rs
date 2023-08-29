@@ -20,7 +20,7 @@ pub fn compute_mir_scopes<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
-    debug_context: &mut FunctionDebugContext<'tcx, &'ll DIScope, &'ll DILocation>,
+    debug_context: &mut FunctionDebugContext<&'ll DIScope, &'ll DILocation>,
 ) {
     // Find all scopes with variables defined in them.
     let variables = if cx.sess().opts.debuginfo == DebugInfo::Full {
@@ -51,7 +51,7 @@ fn make_mir_scope<'ll, 'tcx>(
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
     variables: &Option<BitSet<SourceScope>>,
-    debug_context: &mut FunctionDebugContext<'tcx, &'ll DIScope, &'ll DILocation>,
+    debug_context: &mut FunctionDebugContext<&'ll DIScope, &'ll DILocation>,
     instantiated: &mut BitSet<SourceScope>,
     scope: SourceScope,
 ) {
@@ -84,6 +84,7 @@ fn make_mir_scope<'ll, 'tcx>(
     }
 
     let loc = cx.lookup_debug_loc(scope_data.span.lo());
+    let file_metadata = file_metadata(cx, &loc.file);
 
     let dbg_scope = match scope_data.inlined {
         Some((callee, _)) => {
@@ -94,26 +95,18 @@ fn make_mir_scope<'ll, 'tcx>(
                 ty::ParamEnv::reveal_all(),
                 ty::EarlyBinder::bind(callee),
             );
-            debug_context.inlined_function_scopes.entry(callee).or_insert_with(|| {
-                let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());
-                cx.dbg_scope_fn(callee, callee_fn_abi, None)
-            })
+            let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());
+            cx.dbg_scope_fn(callee, callee_fn_abi, None)
         }
-        None => {
-            let file_metadata = file_metadata(cx, &loc.file);
-            debug_context
-                .lexical_blocks
-                .entry((parent_scope.dbg_scope, loc.line, loc.col, file_metadata))
-                .or_insert_with(|| unsafe {
-                    llvm::LLVMRustDIBuilderCreateLexicalBlock(
-                        DIB(cx),
-                        parent_scope.dbg_scope,
-                        file_metadata,
-                        loc.line,
-                        loc.col,
-                    )
-                })
-        }
+        None => unsafe {
+            llvm::LLVMRustDIBuilderCreateLexicalBlock(
+                DIB(cx),
+                parent_scope.dbg_scope,
+                file_metadata,
+                loc.line,
+                loc.col,
+            )
+        },
     };
 
     let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {

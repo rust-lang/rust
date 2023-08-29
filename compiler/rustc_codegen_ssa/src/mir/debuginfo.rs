@@ -1,12 +1,10 @@
 use crate::traits::*;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
-use rustc_middle::ty::Instance;
 use rustc_middle::ty::Ty;
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
@@ -19,19 +17,11 @@ use super::{FunctionCx, LocalRef};
 
 use std::ops::Range;
 
-pub struct FunctionDebugContext<'tcx, S, L> {
-    /// Maps from source code to the corresponding debug info scope.
+pub struct FunctionDebugContext<S, L> {
     pub scopes: IndexVec<mir::SourceScope, DebugScope<S, L>>,
-
-    /// Maps from a given inlined function to its debug info declaration.
-    pub inlined_function_scopes: FxHashMap<Instance<'tcx>, S>,
-
-    /// Maps from a lexical block (parent scope, line, column, file) to its debug info declaration.
-    /// This is particularily useful if the parent scope is an inlined function.
-    pub lexical_blocks: FxHashMap<(S, u32, u32, S), S>,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone)]
 pub enum VariableKind {
     ArgumentVariable(usize /*index*/),
     LocalVariable,
@@ -445,9 +435,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.store(place.llval, alloca.llval, alloca.align);
 
             // Point the debug info to `*alloca` for the current variable
-            bx.dbg_var_addr(dbg_var, dbg_loc, alloca.llval, Size::ZERO, &[Size::ZERO], None);
+            bx.dbg_var_addr(
+                dbg_var,
+                dbg_loc,
+                alloca.llval,
+                Size::ZERO,
+                &[Size::ZERO],
+                var.fragment,
+            );
         } else {
-            bx.dbg_var_addr(dbg_var, dbg_loc, base.llval, direct_offset, &indirect_offsets, None);
+            bx.dbg_var_addr(
+                dbg_var,
+                dbg_loc,
+                base.llval,
+                direct_offset,
+                &indirect_offsets,
+                var.fragment,
+            );
         }
     }
 
@@ -570,17 +574,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
 
                         let place = fragment.contents;
+                        let fragment = if fragment_layout.size == Size::ZERO {
+                            // Fragment is a ZST, so does not represent anything.
+                            continue;
+                        } else if fragment_layout.size == var_layout.size {
+                            // Fragment covers entire variable, so as far as
+                            // DWARF is concerned, it's not really a fragment.
+                            None
+                        } else {
+                            Some(fragment_start..fragment_start + fragment_layout.size)
+                        };
+
                         per_local[place.local].push(PerLocalVarDebugInfo {
                             name: var.name,
                             source_info: var.source_info,
                             dbg_var,
-                            fragment: if fragment_layout.size == var_layout.size {
-                                // Fragment covers entire variable, so as far as
-                                // DWARF is concerned, it's not really a fragment.
-                                None
-                            } else {
-                                Some(fragment_start..fragment_start + fragment_layout.size)
-                            },
+                            fragment,
                             projection: place.projection,
                         });
                     }

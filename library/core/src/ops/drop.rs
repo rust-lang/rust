@@ -217,8 +217,13 @@ pub trait Drop {
     ///
     /// # Panics
     ///
-    /// Given that a [`panic!`] will call `drop` as it unwinds, any [`panic!`]
-    /// in a `drop` implementation will likely abort.
+    /// Implementations should generally avoid [`panic!`]ing, because `drop()` may itself be called
+    /// during unwinding due to a panic, and if the `drop()` panics in that situation (a “double
+    /// panic”), this will likely abort the program. It is possible to check [`panicking()`] first,
+    /// which may be desirable for a `Drop` implementation that is reporting a bug of the kind
+    /// “you didn't finish using this before it was dropped”; but most types should simply clean up
+    /// their owned allocations or other resources and return normally from `drop()`, regardless of
+    /// what state they are in.
     ///
     /// Note that even if this panics, the value is considered to be dropped;
     /// you must not cause `drop` to be called again. This is normally automatically
@@ -227,6 +232,7 @@ pub trait Drop {
     ///
     /// [E0040]: ../../error_codes/E0040.html
     /// [`panic!`]: crate::panic!
+    /// [`panicking()`]: ../../std/thread/fn.panicking.html
     /// [`mem::drop`]: drop
     /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place
     #[stable(feature = "rust1", since = "1.0.0")]
