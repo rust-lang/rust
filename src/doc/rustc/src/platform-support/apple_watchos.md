@@ -1,16 +1,13 @@
-# *-apple-watchos
-- arm64_32-apple-watchos
-- armv7k-apple-watchos
-- aarch64-apple-watchos-sim
-- x86_64-apple-watchos-sim
+# `*-apple-watchos{,-*}`
 
 **Tier: 3**
 
-Apple WatchOS targets:
-- Apple WatchOS on Arm 64_32
-- Apple WatchOS on Arm v7k
-- Apple WatchOS Simulator on arm64
-- Apple WatchOS Simulator on x86_64
+Apple WatchOS targets
+
+- `arm64_32-apple-watchos` (Apple WatchOS on Arm 64_32)
+- `armv7k-apple-watchos` (Apple WatchOS on Arm v7k)
+- `aarch64-apple-watchos-sim` (Apple WatchOS Simulator on arm64)
+- `x86_64-apple-watchos-sim` (Apple WatchOS Simulator on x86_64)
 
 ## Target maintainers
 

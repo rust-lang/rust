@@ -218,7 +218,7 @@ target | std | host | notes
 -------|:---:|:----:|-------
 `aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
 [`aarch64-apple-tvos`](platform-support/apple-tvos.md) | ? |  | ARM64 tvOS
-[`aarch64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | ARM64 Apple WatchOS Simulator
+[`aarch64-apple-watchos-sim`](platform-support/apple_watchos.md) | ✓ |  | ARM64 Apple WatchOS Simulator
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
 [`aarch64-nintendo-switch-freestanding`](platform-support/aarch64-nintendo-switch-freestanding.md) | * |  | ARM64 Nintendo Switch, Horizon
 [`aarch64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
@@ -236,7 +236,7 @@ target | std | host | notes
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 [`aarch64_be-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD (big-endian)
-[`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ | | ARM Apple WatchOS 64-bit with 32-bit pointers
+[`arm64_32-apple-watchos`](platform-support/apple_watchos.md) | ✓ | | ARM Apple WatchOS 64-bit with 32-bit pointers
 [`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | ARM BE8 the default ARM big-endian architecture since [ARMv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
 `armv4t-none-eabi` | * |  | Bare ARMv4T
 `armv4t-unknown-linux-gnueabi` | ? |  | ARMv4T Linux
@@ -256,7 +256,7 @@ target | std | host | notes
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
 `armv7a-none-eabihf` | * | | Bare ARMv7-A, hardfloat
-[`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ | | ARMv7-A Apple WatchOS
+[`armv7k-apple-watchos`](platform-support/apple_watchos.md) | ✓ | | ARMv7-A Apple WatchOS
 `armv7s-apple-ios` | ✓ |  | ARMv7-A Apple-A6 Apple iOS
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
@@ -328,7 +328,7 @@ target | std | host | notes
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ? | | x86 64-bit tvOS
-[`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ | | x86 64-bit Apple WatchOS simulator
+[`x86_64-apple-watchos-sim`](platform-support/apple_watchos.md) | ✓ | | x86 64-bit Apple WatchOS simulator
 [`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS |
 [`x86_64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ | 64-bit Windows using UCRT and LLVM
 [`x86_64-sun-solaris`](platform-support/x86_64_sun_solaris.md) | ? |  | Deprecated target for 64-bit Solaris 10/11, illumos
