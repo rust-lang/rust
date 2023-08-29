@@ -201,6 +201,24 @@ and just want to get a clean copy of the repository back, you can use `git reset
 git reset --hard master
 ```
 
+### failed to push some refs
+
+`git push` will not work properly and say something like this:
+
+```
+ ! [rejected]        issue-xxxxx -> issue-xxxxx (non-fast-forward)
+error: failed to push some refs to 'https://github.com/username/rust.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. Integrate the remote changes (e.g.
+hint: 'git pull ...') before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+```
+
+The advice this gives is incorrect! Because of Rust's
+["no-merge" policy](#no-merge-policy) the merge commit created by `git pull`
+will not be allowed in the final PR, in addition to defeating the point of the
+rebase! Use `git push --force-with-lease` instead.
+
 ### Git is trying to rebase commits I didn't write?
 
 If you see many commits in your rebase list, or merge commits, or commits by other people that you
@@ -305,22 +323,6 @@ Git know that you've resolved the conflicts and it should finish the rebase.
 
 Once the rebase has succeeded, you'll want to update the associated branch on
 your fork with `git push --force-with-lease`.
-
-Note that `git push` will not work properly and say something like this:
-
-```
- ! [rejected]        issue-xxxxx -> issue-xxxxx (non-fast-forward)
-error: failed to push some refs to 'https://github.com/username/rust.git'
-hint: Updates were rejected because the tip of your current branch is behind
-hint: its remote counterpart. Integrate the remote changes (e.g.
-hint: 'git pull ...') before pushing again.
-hint: See the 'Note about fast-forwards' in 'git push --help' for details.
-```
-
-The advice this gives is incorrect! Because of Rust's
-["no-merge" policy](#no-merge-policy) the merge commit created by `git pull`
-will not be allowed in the final PR, in addition to defeating the point of the
-rebase! Use `git push --force-with-lease` instead.
 
 ### Keeping things up to date
 
