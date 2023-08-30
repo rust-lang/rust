@@ -388,14 +388,11 @@ impl<'tcx> Inliner<'tcx> {
             return Err("never inline hint");
         }
 
-        // Only inline local functions if they would be eligible for cross-crate
-        // inlining. This is to ensure that the final crate doesn't have MIR that
-        // reference unexported symbols
-        if callsite.callee.def_id().is_local() {
-            let is_generic = callsite.callee.args.non_erasable_generics().next().is_some();
-            if !is_generic && !callee_attrs.requests_inline() {
-                return Err("not exported");
-            }
+        // Reachability pass defines which functions are eligible for inlining. Generally inlining
+        // other functions is incorrect because they could reference symbols that aren't exported.
+        let is_generic = callsite.callee.args.non_erasable_generics().next().is_some();
+        if !is_generic && !callee_attrs.requests_inline() {
+            return Err("not exported");
         }
 
         if callsite.fn_sig.c_variadic() {
