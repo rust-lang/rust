@@ -222,8 +222,9 @@ jobs:
       # Windows
 
       - name: Install chocolatey deps (Windows)
-        #   if: contains(matrix.os, 'windows') && matrix.arch == 'x86'
+        if: contains(matrix.os, 'windows') && matrix.arch == 'x86'
         shell: bash
+        continue-on-error: true
         run: choco install -y visualstudio2019community cmake
 
       - name: Set up MinGW (Windows)
