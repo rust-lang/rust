@@ -24,10 +24,13 @@ fn test_abi_newtype<T: Copy>(t: T) {
     #[repr(transparent)]
     struct Wrapper2<T>(T, ());
     #[repr(transparent)]
+    struct Wrapper2a<T>((), T);
+    #[repr(transparent)]
     struct Wrapper3<T>(T, [u8; 0]);
 
     test_abi_compat(t, Wrapper1(t));
     test_abi_compat(t, Wrapper2(t, ()));
+    test_abi_compat(t, Wrapper2a((), t));
     test_abi_compat(t, Wrapper3(t, []));
 }
 
@@ -46,4 +49,5 @@ fn main() {
     test_abi_newtype(0f32);
     test_abi_newtype((0u32, 1u32, 2u32));
     test_abi_newtype([0u32, 1u32, 2u32]);
+    test_abi_newtype([0i32; 0]);
 }
