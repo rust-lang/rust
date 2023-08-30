@@ -250,6 +250,7 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
 }
 
 impl<T: ParameterizedOverTcx> LazyValue<T> {
+    #[inline]
     fn decode<'a, 'tcx, M: Metadata<'a, 'tcx>>(self, metadata: M) -> T::Value<'tcx>
     where
         T::Value<'tcx>: Decodable<DecodeContext<'a, 'tcx>>,
@@ -294,6 +295,7 @@ unsafe impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> TrustedLen
 }
 
 impl<T: ParameterizedOverTcx> LazyArray<T> {
+    #[inline]
     fn decode<'a, 'tcx, M: Metadata<'a, 'tcx>>(
         self,
         metadata: M,
@@ -360,8 +362,8 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         self.read_lazy_offset_then(|pos| LazyArray::from_position_and_num_elems(pos, len))
     }
 
-    fn read_lazy_table<I, T>(&mut self, len: usize) -> LazyTable<I, T> {
-        self.read_lazy_offset_then(|pos| LazyTable::from_position_and_encoded_size(pos, len))
+    fn read_lazy_table<I, T>(&mut self, width: usize, len: usize) -> LazyTable<I, T> {
+        self.read_lazy_offset_then(|pos| LazyTable::from_position_and_encoded_size(pos, width, len))
     }
 
     #[inline]
@@ -420,6 +422,7 @@ impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for CrateNum {
+    #[inline]
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> CrateNum {
         let cnum = CrateNum::from_u32(d.read_u32());
         d.map_encoded_cnum_to_current(cnum)
@@ -427,18 +430,21 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for CrateNum {
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefIndex {
+    #[inline]
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> DefIndex {
         DefIndex::from_u32(d.read_u32())
     }
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnIndex {
+    #[inline]
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> ExpnIndex {
         ExpnIndex::from_u32(d.read_u32())
     }
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ast::AttrId {
+    #[inline]
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> ast::AttrId {
         let sess = d.sess.expect("can't decode AttrId without Session");
         sess.parse_sess.attr_id_generator.mk_attr_id()
@@ -672,6 +678,7 @@ impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyValue<T> {
 }
 
 impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyArray<T> {
+    #[inline]
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
         let len = decoder.read_usize();
         if len == 0 { LazyArray::default() } else { decoder.read_lazy_array(len) }
@@ -680,8 +687,9 @@ impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyArray<T> {
 
 impl<'a, 'tcx, I: Idx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyTable<I, T> {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
+        let width = decoder.read_usize();
         let len = decoder.read_usize();
-        decoder.read_lazy_table(len)
+        decoder.read_lazy_table(width, len)
     }
 }
 

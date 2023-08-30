@@ -142,7 +142,11 @@ impl<T> LazyArray<T> {
 /// eagerly and in-order.
 struct LazyTable<I, T> {
     position: NonZeroUsize,
-    encoded_size: usize,
+    /// The encoded size of the elements of a table is selected at runtime to drop
+    /// trailing zeroes. This is the number of bytes used for each table element.
+    width: usize,
+    /// How many elements are in the table.
+    len: usize,
     _marker: PhantomData<fn(I) -> T>,
 }
 
@@ -153,9 +157,10 @@ impl<I: 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for LazyTable<I, 
 impl<I, T> LazyTable<I, T> {
     fn from_position_and_encoded_size(
         position: NonZeroUsize,
-        encoded_size: usize,
+        width: usize,
+        len: usize,
     ) -> LazyTable<I, T> {
-        LazyTable { position, encoded_size, _marker: PhantomData }
+        LazyTable { position, width, len, _marker: PhantomData }
     }
 }
 
