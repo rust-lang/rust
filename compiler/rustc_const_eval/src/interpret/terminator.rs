@@ -269,14 +269,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Heuristic for type comparison.
         let layout_compat = || {
             if caller_abi.layout.ty == callee_abi.layout.ty {
-                // No question
+                // Fast path: definitely compatible.
                 return true;
-            }
-            if caller_abi.layout.is_unsized() || callee_abi.layout.is_unsized() {
-                // No, no, no. We require the types to *exactly* match for unsized arguments. If
-                // these are somehow unsized "in a different way" (say, `dyn Trait` vs `[i32]`),
-                // then who knows what happens.
-                return false;
             }
             // This is tricky. Some ABIs split aggregates up into multiple registers etc, so we have
             // to be super careful here. For the scalar ABIs we conveniently already have all the
@@ -289,13 +283,40 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     primitive_abi_compat(caller.primitive(), callee.primitive())
                 }
                 (
+                    abi::Abi::Vector { element: caller_element, count: caller_count },
+                    abi::Abi::Vector { element: callee_element, count: callee_count },
+                ) => {
+                    primitive_abi_compat(caller_element.primitive(), callee_element.primitive())
+                        && caller_count == callee_count
+                }
+                (
                     abi::Abi::ScalarPair(caller1, caller2),
                     abi::Abi::ScalarPair(callee1, callee2),
                 ) => {
                     primitive_abi_compat(caller1.primitive(), callee1.primitive())
                         && primitive_abi_compat(caller2.primitive(), callee2.primitive())
                 }
-                // Be conservative.
+                (
+                    abi::Abi::Aggregate { sized: caller_sized },
+                    abi::Abi::Aggregate { sized: callee_sized },
+                ) => {
+                    // For these we rely on all the information being encoded in the `PassMode`, so
+                    // here we only habe to check in-memory compatibility.
+                    // FIXME: unwrap transparent newtype wrappers instead.
+                    if !caller_sized || !callee_sized {
+                        // No, no, no. We require the types to *exactly* match for unsized arguments. If
+                        // these are somehow unsized "in a different way" (say, `dyn Trait` vs `[i32]`),
+                        // then who knows what happens.
+                        // FIXME: ideally we'd support newtyped around unized types, but that requires ensuring
+                        // that for all values of the metadata, both types will compute the same dynamic size...
+                        // not an easy thing to check.
+                        return false;
+                    }
+                    caller_abi.layout.size == callee_abi.layout.size
+                        && caller_abi.layout.align.abi == callee_abi.layout.align.abi
+                }
+                // What remains is `Abi::Uninhabited` (which can never be passed anyway) and
+                // mismatching ABIs, that should all be rejected.
                 _ => false,
             }
         };
@@ -333,15 +354,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => false,
         };
 
-        // We have to check both. `layout_compat` is needed to reject e.g. `i32` vs `f32`,
-        // which is not reflected in `PassMode`. `mode_compat` is needed to reject `u8` vs `bool`,
-        // which have the same `abi::Primitive` but different `arg_ext`.
+        // Ideally `PassMode` would capture everything there is about argument passing, but that is
+        // not the case: in `FnAbi::llvm_type`, also parts of the layout and type information are
+        // used. So we need to check that *both* sufficiently agree to ensures the arguments are
+        // compatible.
+        // For instance, `layout_compat` is needed to reject `i32` vs `f32`, which is not reflected
+        // in `PassMode`. `mode_compat` is needed to reject `u8` vs `bool`, which have the same
+        // `abi::Primitive` but different `arg_ext`.
         if layout_compat() && mode_compat() {
-            // Something went very wrong if our checks don't even imply that the layout is the same.
-            assert!(
-                caller_abi.layout.size == callee_abi.layout.size
-                    && caller_abi.layout.align.abi == callee_abi.layout.align.abi
-            );
             return true;
         }
         trace!(
