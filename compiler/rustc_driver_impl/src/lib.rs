@@ -85,6 +85,15 @@ pub mod pretty;
 #[macro_use]
 mod print;
 mod session_diagnostics;
+#[cfg(all(unix, any(target_env = "gnu", target_os = "macos")))]
+mod signal_handler;
+
+#[cfg(not(all(unix, any(target_env = "gnu", target_os = "macos"))))]
+mod signal_handler {
+    /// On platforms which don't support our signal handler's requirements,
+    /// simply use the default signal handler provided by std.
+    pub(super) fn install() {}
+}
 
 use crate::session_diagnostics::{
     RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
@@ -1438,72 +1447,6 @@ pub fn init_env_logger(handler: &EarlyErrorHandler, env: &str) {
     if let Err(error) = rustc_log::init_env_logger(env) {
         handler.early_error(error.to_string());
     }
-}
-
-#[cfg(all(unix, any(target_env = "gnu", target_os = "macos")))]
-mod signal_handler {
-    extern "C" {
-        fn backtrace_symbols_fd(
-            buffer: *const *mut libc::c_void,
-            size: libc::c_int,
-            fd: libc::c_int,
-        );
-    }
-
-    extern "C" fn print_stack_trace(_: libc::c_int) {
-        const MAX_FRAMES: usize = 256;
-        static mut STACK_TRACE: [*mut libc::c_void; MAX_FRAMES] =
-            [std::ptr::null_mut(); MAX_FRAMES];
-        unsafe {
-            let depth = libc::backtrace(STACK_TRACE.as_mut_ptr(), MAX_FRAMES as i32);
-            if depth == 0 {
-                return;
-            }
-            backtrace_symbols_fd(STACK_TRACE.as_ptr(), depth, 2);
-        }
-    }
-
-    /// When an error signal (such as SIGABRT or SIGSEGV) is delivered to the
-    /// process, print a stack trace and then exit.
-    pub(super) fn install() {
-        use std::alloc::{alloc, Layout};
-
-        unsafe {
-            let alt_stack_size: usize = min_sigstack_size() + 64 * 1024;
-            let mut alt_stack: libc::stack_t = std::mem::zeroed();
-            alt_stack.ss_sp = alloc(Layout::from_size_align(alt_stack_size, 1).unwrap()).cast();
-            alt_stack.ss_size = alt_stack_size;
-            libc::sigaltstack(&alt_stack, std::ptr::null_mut());
-
-            let mut sa: libc::sigaction = std::mem::zeroed();
-            sa.sa_sigaction = print_stack_trace as libc::sighandler_t;
-            sa.sa_flags = libc::SA_NODEFER | libc::SA_RESETHAND | libc::SA_ONSTACK;
-            libc::sigemptyset(&mut sa.sa_mask);
-            libc::sigaction(libc::SIGSEGV, &sa, std::ptr::null_mut());
-        }
-    }
-
-    /// Modern kernels on modern hardware can have dynamic signal stack sizes.
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    fn min_sigstack_size() -> usize {
-        const AT_MINSIGSTKSZ: core::ffi::c_ulong = 51;
-        let dynamic_sigstksz = unsafe { libc::getauxval(AT_MINSIGSTKSZ) };
-        // If getauxval couldn't find the entry, it returns 0,
-        // so take the higher of the "constant" and auxval.
-        // This transparently supports older kernels which don't provide AT_MINSIGSTKSZ
-        libc::MINSIGSTKSZ.max(dynamic_sigstksz as _)
-    }
-
-    /// Not all OS support hardware where this is needed.
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
-    fn min_sigstack_size() -> usize {
-        libc::MINSIGSTKSZ
-    }
-}
-
-#[cfg(not(all(unix, any(target_env = "gnu", target_os = "macos"))))]
-mod signal_handler {
-    pub(super) fn install() {}
 }
 
 pub fn main() -> ! {
