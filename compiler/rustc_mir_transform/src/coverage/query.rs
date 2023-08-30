@@ -29,18 +29,12 @@ pub(crate) fn provide(providers: &mut Providers) {
 /// calls may not work; but computing the number of counters or expressions by adding `1` to the
 /// highest ID (for a given instrumented function) is valid.
 ///
-/// This visitor runs twice, first with `add_missing_operands` set to `false`, to find the maximum
-/// counter ID and maximum expression ID based on their enum variant `id` fields; then, as a
-/// safeguard, with `add_missing_operands` set to `true`, to find any other counter or expression
-/// IDs referenced by expression operands, if not already seen.
-///
-/// Ideally, each operand ID in a MIR `CoverageKind::Expression` will have a separate MIR `Coverage`
-/// statement for the `Counter` or `Expression` with the referenced ID. but since current or future
-/// MIR optimizations can theoretically optimize out segments of a MIR, it may not be possible to
-/// guarantee this, so the second pass ensures the `CoverageInfo` counts include all referenced IDs.
+/// It's possible for a coverage expression to remain in MIR while one or both of its operands
+/// have been optimized away. To avoid problems in codegen, we include those operands' IDs when
+/// determining the maximum counter/expression ID, even if the underlying counter/expression is
+/// no longer present.
 struct CoverageVisitor {
     info: CoverageInfo,
-    add_missing_operands: bool,
 }
 
 impl CoverageVisitor {
@@ -73,20 +67,14 @@ impl CoverageVisitor {
     }
 
     fn visit_coverage(&mut self, coverage: &Coverage) {
-        if self.add_missing_operands {
-            match coverage.kind {
-                CoverageKind::Expression { lhs, rhs, .. } => {
-                    self.update_from_expression_operand(lhs);
-                    self.update_from_expression_operand(rhs);
-                }
-                _ => {}
+        match coverage.kind {
+            CoverageKind::Counter { id, .. } => self.update_num_counters(id),
+            CoverageKind::Expression { id, lhs, rhs, .. } => {
+                self.update_num_expressions(id);
+                self.update_from_expression_operand(lhs);
+                self.update_from_expression_operand(rhs);
             }
-        } else {
-            match coverage.kind {
-                CoverageKind::Counter { id, .. } => self.update_num_counters(id),
-                CoverageKind::Expression { id, .. } => self.update_num_expressions(id),
-                _ => {}
-            }
+            CoverageKind::Unreachable => {}
         }
     }
 }
@@ -94,14 +82,9 @@ impl CoverageVisitor {
 fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, instance_def: ty::InstanceDef<'tcx>) -> CoverageInfo {
     let mir_body = tcx.instance_mir(instance_def);
 
-    let mut coverage_visitor = CoverageVisitor {
-        info: CoverageInfo { num_counters: 0, num_expressions: 0 },
-        add_missing_operands: false,
-    };
+    let mut coverage_visitor =
+        CoverageVisitor { info: CoverageInfo { num_counters: 0, num_expressions: 0 } };
 
-    coverage_visitor.visit_body(mir_body);
-
-    coverage_visitor.add_missing_operands = true;
     coverage_visitor.visit_body(mir_body);
 
     coverage_visitor.info
