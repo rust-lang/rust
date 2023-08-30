@@ -136,7 +136,10 @@ impl<T> LazyArray<T> {
 /// eagerly and in-order.
 struct LazyTable<I, T> {
     position: NonZeroUsize,
+    /// The encoded size of the elements of a table is selected at runtime to drop
+    /// trailing zeroes. This is the number of bytes used for each table element.
     width: usize,
+    /// How many elements are in the table.
     len: usize,
     _marker: PhantomData<fn(I) -> T>,
 }

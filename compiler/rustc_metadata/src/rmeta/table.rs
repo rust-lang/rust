@@ -346,6 +346,12 @@ impl<T> LazyArray<T> {
         let position = (self.position.get() as u64).to_le_bytes();
         let len = (self.num_elems as u64).to_le_bytes();
 
+        // Element width is selected at runtime on a per-table basis by omitting trailing
+        // zero bytes in table elements. This works very naturally when table elements are
+        // simple numbers but `LazyArray` is a pair of integers. If naively encoded, the second
+        // element would shield the trailing zeroes in the first. Interleaving the bytes
+        // of the position and length exposes trailing zeroes in both to the optimization.
+        // We encode length second because we generally expect it to be smaller.
         for i in 0..8 {
             b[2 * i] = position[i];
             b[2 * i + 1] = len[i];
@@ -359,18 +365,26 @@ impl<T> LazyArray<T> {
     }
 }
 
+// Decoding helper for the encoding scheme used by `LazyArray`.
+// Interleaving the bytes of the two integers exposes trailing bytes in the first integer
+// to the varint scheme that we use for tables.
+#[inline]
+fn decode_interleaved(encoded: &[u8; 16]) -> ([u8; 8], [u8; 8]) {
+    let mut first = [0u8; 8];
+    let mut second = [0u8; 8];
+    for i in 0..8 {
+        first[i] = encoded[2 * i];
+        second[i] = encoded[2 * i + 1];
+    }
+    (first, second)
+}
+
 impl<T> FixedSizeEncoding for LazyArray<T> {
     type ByteArray = [u8; 16];
 
     #[inline]
     fn from_bytes(b: &[u8; 16]) -> Self {
-        let mut position = [0u8; 8];
-        let mut meta = [0u8; 8];
-
-        for i in 0..8 {
-            position[i] = b[2 * i];
-            meta[i] = b[2 * i + 1];
-        }
+        let (position, meta) = decode_interleaved(b);
 
         if meta == [0; 8] {
             return Default::default();
@@ -390,13 +404,7 @@ impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
 
     #[inline]
     fn from_bytes(b: &[u8; 16]) -> Self {
-        let mut position = [0u8; 8];
-        let mut meta = [0u8; 8];
-
-        for i in 0..8 {
-            position[i] = b[2 * i];
-            meta[i] = b[2 * i + 1];
-        }
+        let (position, meta) = decode_interleaved(b);
 
         LazyArray::from_bytes_impl(&position, &meta)
     }
