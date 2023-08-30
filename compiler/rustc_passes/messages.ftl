@@ -8,7 +8,7 @@ passes_abi =
     abi: {$abi}
 
 passes_abi_of =
-    fn_abi_of_instance({$fn_name}) = {$fn_abi}
+    fn_abi_of({$fn_name}) = {$fn_abi}
 
 passes_align =
     align: {$align}

@@ -12,6 +12,8 @@
 #[rustc_abi(debug)]
 fn test(_x: u8) -> bool { true } //~ ERROR: fn_abi
 
+#[rustc_abi(debug)]
+type TestFnPtr = fn(bool) -> u8; //~ ERROR: fn_abi
 
 #[rustc_abi(debug)]
 fn test_generic<T>(_x: *const T) { } //~ ERROR: fn_abi
