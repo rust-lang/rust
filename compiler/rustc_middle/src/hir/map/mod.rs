@@ -701,6 +701,8 @@ impl<'hir> Map<'hir> {
             // expressions.
             ignore_tail = true;
         }
+
+        let mut prev_hir_id = None;
         while let Some((hir_id, node)) = iter.next() {
             if let (Some((_, next_node)), false) = (iter.peek(), ignore_tail) {
                 match next_node {
@@ -715,7 +717,14 @@ impl<'hir> Map<'hir> {
                 | Node::ForeignItem(_)
                 | Node::TraitItem(_)
                 | Node::Expr(Expr { kind: ExprKind::Closure { .. }, .. })
-                | Node::ImplItem(_) => return Some(hir_id),
+                | Node::ImplItem(_)
+                    // The input node `id` must be enclosed in the method's body as opposed
+                    // to some other place such as its return type (fixes #114918).
+                    // We verify that indirectly by checking that the previous node is the
+                    // current node's body
+                    if node.body_id().map(|b| b.hir_id) == prev_hir_id =>  {
+                        return Some(hir_id)
+                }
                 // Ignore `return`s on the first iteration
                 Node::Expr(Expr { kind: ExprKind::Loop(..) | ExprKind::Ret(..), .. })
                 | Node::Local(_) => {
@@ -723,6 +732,8 @@ impl<'hir> Map<'hir> {
                 }
                 _ => {}
             }
+
+            prev_hir_id = Some(hir_id);
         }
         None
     }
