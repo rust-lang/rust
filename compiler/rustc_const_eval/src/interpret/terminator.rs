@@ -2,19 +2,20 @@ use std::borrow::Cow;
 
 use either::Either;
 use rustc_ast::ast::InlineAsmOptions;
+use rustc_middle::mir::ProjectionElem;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::Instance;
 use rustc_middle::{
     mir,
     ty::{self, Ty},
 };
-use rustc_target::abi;
 use rustc_target::abi::call::{ArgAbi, ArgAttribute, ArgAttributes, FnAbi, PassMode};
+use rustc_target::abi::{self, FieldIdx};
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    AllocId, FnVal, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemoryKind, OpTy,
-    Operand, PlaceTy, Provenance, Scalar, StackPopCleanup,
+    AllocId, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Projectable,
+    Provenance, Scalar, StackPopCleanup,
 };
 use crate::fluent_generated as fluent;
 
@@ -358,23 +359,28 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Item = (&'x FnArg<'tcx, M::Provenance>, &'y ArgAbi<'tcx, Ty<'tcx>>),
         >,
         callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
-        callee_arg: &PlaceTy<'tcx, M::Provenance>,
+        callee_arg: &mir::Place<'tcx>,
+        callee_ty: Ty<'tcx>,
+        already_live: bool,
     ) -> InterpResult<'tcx>
     where
         'tcx: 'x,
         'tcx: 'y,
     {
         if matches!(callee_abi.mode, PassMode::Ignore) {
-            // This one is skipped.
+            // This one is skipped. Still must be made live though!
+            if !already_live {
+                self.storage_live(callee_arg.as_local().unwrap())?;
+            }
             return Ok(());
         }
         // Find next caller arg.
         let Some((caller_arg, caller_abi)) = caller_args.next() else {
             throw_ub_custom!(fluent::const_eval_not_enough_caller_args);
         };
-        // Now, check
+        // Check compatibility
         if !Self::check_argument_compat(caller_abi, callee_abi) {
-            let callee_ty = format!("{}", callee_arg.layout.ty);
+            let callee_ty = format!("{}", callee_ty);
             let caller_ty = format!("{}", caller_arg.layout().ty);
             throw_ub_custom!(
                 fluent::const_eval_incompatible_types,
@@ -386,35 +392,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // will later protect the source it comes from. This means the callee cannot observe if we
         // did in-place of by-copy argument passing, except for pointer equality tests.
         let caller_arg_copy = self.copy_fn_arg(&caller_arg)?;
-        // Special handling for unsized parameters.
-        if caller_arg_copy.layout.is_unsized() {
-            // `check_argument_compat` ensures that both have the same type, so we know they will use the metadata the same way.
-            assert_eq!(caller_arg_copy.layout.ty, callee_arg.layout.ty);
-            // We have to properly pre-allocate the memory for the callee.
-            // So let's tear down some abstractions.
-            // This all has to be in memory, there are no immediate unsized values.
-            let src = caller_arg_copy.assert_mem_place();
-            // The destination cannot be one of these "spread args".
-            let (dest_frame, dest_local, dest_offset) = callee_arg
-                .as_mplace_or_local()
-                .right()
-                .expect("callee fn arguments must be locals");
-            // We are just initializing things, so there can't be anything here yet.
-            assert!(matches!(
-                *self.local_to_op(&self.stack()[dest_frame], dest_local, None)?,
-                Operand::Immediate(Immediate::Uninit)
-            ));
-            assert_eq!(dest_offset, None);
-            // Allocate enough memory to hold `src`.
-            let dest_place = self.allocate_dyn(src.layout, MemoryKind::Stack, src.meta)?;
-            // Update the local to be that new place.
-            *M::access_local_mut(self, dest_frame, dest_local)? = Operand::Indirect(*dest_place);
+        if !already_live {
+            let local = callee_arg.as_local().unwrap();
+            let meta = caller_arg_copy.meta();
+            // `check_argument_compat` ensures that if metadata is needed, both have the same type,
+            // so we know they will use the metadata the same way.
+            assert!(!meta.has_meta() || caller_arg_copy.layout.ty == callee_ty);
+
+            self.storage_live_dyn(local, meta)?;
         }
+        // Now we can finally actually evaluate the callee place.
+        let callee_arg = self.eval_place(*callee_arg)?;
         // We allow some transmutes here.
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
         // specifically.)
-        self.copy_op(&caller_arg_copy, callee_arg, /*allow_transmute*/ true)?;
+        self.copy_op(&caller_arg_copy, &callee_arg, /*allow_transmute*/ true)?;
         // If this was an in-place pass, protect the place it comes from for the duration of the call.
         if let FnArg::InPlace(place) = caller_arg {
             M::protect_in_place_function_argument(self, place)?;
@@ -600,18 +593,47 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // not advance `caller_iter` for ZSTs.
                     let mut callee_args_abis = callee_fn_abi.args.iter();
                     for local in body.args_iter() {
-                        let dest = self.eval_place(mir::Place::from(local))?;
+                        // Construct the destination place for this argument. At this point all
+                        // locals are still dead, so we cannot construct a `PlaceTy`.
+                        let dest = mir::Place::from(local);
+                        // `layout_of_local` does more than just the substitution we need to get the
+                        // type, but the result gets cached so this avoids calling the substitution
+                        // query *again* the next time this local is accessed.
+                        let ty = self.layout_of_local(self.frame(), local, None)?.ty;
                         if Some(local) == body.spread_arg {
+                            // Make the local live once, then fill in the value field by field.
+                            self.storage_live(local)?;
                             // Must be a tuple
-                            for i in 0..dest.layout.fields.count() {
-                                let dest = self.project_field(&dest, i)?;
+                            let ty::Tuple(fields) = ty.kind() else {
+                                span_bug!(
+                                    self.cur_span(),
+                                    "non-tuple type for `spread_arg`: {ty:?}"
+                                )
+                            };
+                            for (i, field_ty) in fields.iter().enumerate() {
+                                let dest = dest.project_deeper(
+                                    &[ProjectionElem::Field(FieldIdx::from_usize(i), field_ty)],
+                                    *self.tcx,
+                                );
                                 let callee_abi = callee_args_abis.next().unwrap();
-                                self.pass_argument(&mut caller_args, callee_abi, &dest)?;
+                                self.pass_argument(
+                                    &mut caller_args,
+                                    callee_abi,
+                                    &dest,
+                                    field_ty,
+                                    /* already_live */ true,
+                                )?;
                             }
                         } else {
-                            // Normal argument
+                            // Normal argument. Cannot mark it as live yet, it might be unsized!
                             let callee_abi = callee_args_abis.next().unwrap();
-                            self.pass_argument(&mut caller_args, callee_abi, &dest)?;
+                            self.pass_argument(
+                                &mut caller_args,
+                                callee_abi,
+                                &dest,
+                                ty,
+                                /* already_live */ false,
+                            )?;
                         }
                     }
                     // If the callee needs a caller location, pretend we consume one more argument from the ABI.
@@ -644,6 +666,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // Nothing to do for locals, they are always properly allocated and aligned.
                     }
                     M::protect_in_place_function_argument(self, destination)?;
+
+                    // Don't forget to mark "initially live" locals as live.
+                    self.storage_live_for_always_live_locals()?;
                 };
                 match res {
                     Err(err) => {

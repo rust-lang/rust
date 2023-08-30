@@ -33,7 +33,7 @@ pub enum Immediate<Prov: Provenance = AllocId> {
     /// A pair of two scalar value (must have `ScalarPair` ABI where both fields are
     /// `Scalar::Initialized`).
     ScalarPair(Scalar<Prov>, Scalar<Prov>),
-    /// A value of fully uninitialized memory. Can have arbitrary size and layout.
+    /// A value of fully uninitialized memory. Can have arbitrary size and layout, but must be sized.
     Uninit,
 }
 
@@ -190,16 +190,19 @@ impl<'tcx, Prov: Provenance> From<ImmTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
 impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn from_scalar(val: Scalar<Prov>, layout: TyAndLayout<'tcx>) -> Self {
+        debug_assert!(layout.abi.is_scalar(), "`ImmTy::from_scalar` on non-scalar layout");
         ImmTy { imm: val.into(), layout }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn from_immediate(imm: Immediate<Prov>, layout: TyAndLayout<'tcx>) -> Self {
+        debug_assert!(layout.is_sized(), "immediates must be sized");
         ImmTy { imm, layout }
     }
 
     #[inline]
     pub fn uninit(layout: TyAndLayout<'tcx>) -> Self {
+        debug_assert!(layout.is_sized(), "immediates must be sized");
         ImmTy { imm: Immediate::Uninit, layout }
     }
 
@@ -291,23 +294,21 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
         self.layout
     }
 
-    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
-        &self,
-        _ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
-        assert!(self.layout.is_sized()); // unsized ImmTy can only exist temporarily and should never reach this here
-        Ok(MemPlaceMeta::None)
+    #[inline(always)]
+    fn meta(&self) -> MemPlaceMeta<Prov> {
+        debug_assert!(self.layout.is_sized()); // unsized ImmTy can only exist temporarily and should never reach this here
+        MemPlaceMeta::None
     }
 
-    fn offset_with_meta(
+    fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
+        ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         assert_matches!(meta, MemPlaceMeta::None); // we can't store this anywhere anyway
-        Ok(self.offset_(offset, layout, cx))
+        Ok(self.offset_(offset, layout, ecx))
     }
 
     fn to_op<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
@@ -318,49 +319,37 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
     }
 }
 
-impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
-    // Provided as inherent method since it doesn't need the `ecx` of `Projectable::meta`.
-    pub fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
-        Ok(if self.layout.is_unsized() {
-            if matches!(self.op, Operand::Immediate(_)) {
-                // Unsized immediate OpTy cannot occur. We create a MemPlace for all unsized locals during argument passing.
-                // However, ConstProp doesn't do that, so we can run into this nonsense situation.
-                throw_inval!(ConstPropNonsense);
-            }
-            // There are no unsized immediates.
-            self.assert_mem_place().meta
-        } else {
-            MemPlaceMeta::None
-        })
-    }
-}
-
 impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
     }
 
-    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
-        &self,
-        _ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
-        self.meta()
+    #[inline]
+    fn meta(&self) -> MemPlaceMeta<Prov> {
+        match self.as_mplace_or_imm() {
+            Left(mplace) => mplace.meta,
+            Right(_) => {
+                debug_assert!(self.layout.is_sized(), "unsized immediates are not a thing");
+                MemPlaceMeta::None
+            }
+        }
     }
 
-    fn offset_with_meta(
+    fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
+        ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         match self.as_mplace_or_imm() {
-            Left(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, cx)?.into()),
+            Left(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, ecx)?.into()),
             Right(imm) => {
-                assert!(!meta.has_meta()); // no place to store metadata here
+                debug_assert!(layout.is_sized(), "unsized immediates are not a thing");
+                assert_matches!(meta, MemPlaceMeta::None); // no place to store metadata here
                 // Every part of an uninit is uninit.
-                Ok(imm.offset(offset, layout, cx)?.into())
+                Ok(imm.offset_(offset, layout, ecx).into())
             }
         }
     }
@@ -588,6 +577,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = *frame.locals[local].access()?;
+        if matches!(op, Operand::Immediate(_)) {
+            if layout.is_unsized() {
+                // ConstProp marks *all* locals as `Immediate::Uninit` since it cannot
+                // efficiently check whether they are sized. We have to catch that case here.
+                throw_inval!(ConstPropNonsense);
+            }
+        }
         Ok(OpTy { op, layout, align: Some(layout.align.abi) })
     }
 
@@ -601,16 +597,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match place.as_mplace_or_local() {
             Left(mplace) => Ok(mplace.into()),
             Right((frame, local, offset)) => {
+                debug_assert!(place.layout.is_sized()); // only sized locals can ever be `Place::Local`.
                 let base = self.local_to_op(&self.stack()[frame], local, None)?;
-                let mut field = if let Some(offset) = offset {
-                    // This got offset. We can be sure that the field is sized.
-                    base.offset(offset, place.layout, self)?
-                } else {
-                    assert_eq!(place.layout, base.layout);
-                    // Unsized cases are possible here since an unsized local will be a
-                    // `Place::Local` until the first projection calls `place_to_op` to extract the
-                    // underlying mplace.
-                    base
+                let mut field = match offset {
+                    Some(offset) => base.offset(offset, place.layout, self)?,
+                    None => {
+                        // In the common case this hasn't been projected.
+                        debug_assert_eq!(place.layout, base.layout);
+                        base
+                    }
                 };
                 field.align = Some(place.align);
                 Ok(field)
