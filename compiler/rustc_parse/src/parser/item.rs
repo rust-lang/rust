@@ -1851,21 +1851,11 @@ impl<'a> Parser<'a> {
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
-        // Parse the macro invocation and recover
         if self.token.kind == token::Not {
             if let Err(mut err) = self.unexpected::<FieldDef>() {
-                err.subdiagnostic(MacroExpandsToAdtField { adt_ty }).emit();
-                self.bump();
-                self.parse_delim_args()?;
-                return Ok(FieldDef {
-                    span: DUMMY_SP,
-                    ident: None,
-                    vis,
-                    id: DUMMY_NODE_ID,
-                    ty: self.mk_ty(DUMMY_SP, TyKind::Err),
-                    attrs,
-                    is_placeholder: false,
-                });
+                // Encounter the macro invocation
+                err.subdiagnostic(MacroExpandsToAdtField { adt_ty });
+                return Err(err);
             }
         }
         self.expect_field_ty_separator()?;
