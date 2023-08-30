@@ -65,4 +65,22 @@ impl SomeTrait for SomeStruct {
     }
 }
 
+mod issue11422 {
+    use core::fmt::Debug;
+    // Some additional tests that would cause ICEs:
+
+    // `PartialOrd` has a default generic parameter and does not need to be explicitly specified.
+    // This needs special handling.
+    fn default_generic_param1() -> impl PartialOrd + Debug {}
+    fn default_generic_param2() -> impl PartialOrd + Debug {}
+
+    // Referring to `Self` in the supertrait clause needs special handling.
+    trait Trait1<X: ?Sized> {}
+    trait Trait2: Trait1<Self> {}
+    impl Trait1<()> for () {}
+    impl Trait2 for () {}
+
+    fn f() -> impl Trait1<()> + Trait2 {}
+}
+
 fn main() {}
