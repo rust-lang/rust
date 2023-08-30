@@ -1,4 +1,4 @@
-// failure-status: 101
+// failure-status: 1
 // known-bug: unknown
 // error-pattern:internal compiler error
 // normalize-stderr-test "internal compiler error.*" -> ""
@@ -22,7 +22,10 @@
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
-const fn inner<'a>() -> usize where &'a (): Sized {
+const fn inner<'a>() -> usize
+where
+    &'a (): Sized,
+{
     3
 }
 

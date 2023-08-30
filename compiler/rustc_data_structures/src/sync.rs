@@ -41,6 +41,8 @@
 //! [^2] `MTLockRef` is a typedef.
 
 pub use crate::marker::*;
+use parking_lot::Mutex;
+use std::any::Any;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
@@ -102,6 +104,37 @@ mod mode {
 }
 
 pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
+
+/// A guard used to hold panics that occur during a parallel section to later by unwound.
+/// This is used for the parallel compiler to prevent fatal errors from non-deterministically
+/// hiding errors by ensuring that everything in the section has completed executing before
+/// continuing with unwinding. It's also used for the non-parallel code to ensure error message
+/// output match the parallel compiler for testing purposes.
+pub struct ParallelGuard {
+    panic: Mutex<Option<Box<dyn Any + std::marker::Send + 'static>>>,
+}
+
+impl ParallelGuard {
+    pub fn run<R>(&self, f: impl FnOnce() -> R) -> Option<R> {
+        catch_unwind(AssertUnwindSafe(f))
+            .map_err(|err| {
+                *self.panic.lock() = Some(err);
+            })
+            .ok()
+    }
+}
+
+/// This gives access to a fresh parallel guard in the closure and will unwind any panics
+/// caught in it after the closure returns.
+#[inline]
+pub fn parallel_guard<R>(f: impl FnOnce(&ParallelGuard) -> R) -> R {
+    let guard = ParallelGuard { panic: Mutex::new(None) };
+    let ret = f(&guard);
+    if let Some(panic) = guard.panic.into_inner() {
+        resume_unwind(panic);
+    }
+    ret
+}
 
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
@@ -198,67 +231,38 @@ cfg_if! {
             where A: FnOnce() -> RA,
                   B: FnOnce() -> RB
         {
-            (oper_a(), oper_b())
+            let (a, b) = parallel_guard(|guard| {
+                let a = guard.run(oper_a);
+                let b = guard.run(oper_b);
+                (a, b)
+            });
+            (a.unwrap(), b.unwrap())
         }
 
         #[macro_export]
         macro_rules! parallel {
-            ($($blocks:block),*) => {
-                // We catch panics here ensuring that all the blocks execute.
-                // This makes behavior consistent with the parallel compiler.
-                let mut panic = None;
-                $(
-                    if let Err(p) = ::std::panic::catch_unwind(
-                        ::std::panic::AssertUnwindSafe(|| $blocks)
-                    ) {
-                        if panic.is_none() {
-                            panic = Some(p);
-                        }
-                    }
-                )*
-                if let Some(panic) = panic {
-                    ::std::panic::resume_unwind(panic);
-                }
-            }
+            ($($blocks:block),*) => {{
+                $crate::sync::parallel_guard(|guard| {
+                    $(guard.run(|| $blocks);)*
+                });
+            }}
         }
 
         pub fn par_for_each_in<T: IntoIterator>(t: T, mut for_each: impl FnMut(T::Item) + Sync + Send) {
-            // We catch panics here ensuring that all the loop iterations execute.
-            // This makes behavior consistent with the parallel compiler.
-            let mut panic = None;
-            t.into_iter().for_each(|i| {
-                if let Err(p) = catch_unwind(AssertUnwindSafe(|| for_each(i))) {
-                    if panic.is_none() {
-                        panic = Some(p);
-                    }
-                }
-            });
-            if let Some(panic) = panic {
-                resume_unwind(panic);
-            }
+            parallel_guard(|guard| {
+                t.into_iter().for_each(|i| {
+                    guard.run(|| for_each(i));
+                });
+            })
         }
 
         pub fn par_map<T: IntoIterator, R, C: FromIterator<R>>(
             t: T,
             mut map: impl FnMut(<<T as IntoIterator>::IntoIter as Iterator>::Item) -> R,
         ) -> C {
-            // We catch panics here ensuring that all the loop iterations execute.
-            let mut panic = None;
-            let r = t.into_iter().filter_map(|i| {
-                match catch_unwind(AssertUnwindSafe(|| map(i))) {
-                    Ok(r) => Some(r),
-                    Err(p) => {
-                        if panic.is_none() {
-                            panic = Some(p);
-                        }
-                        None
-                    }
-                }
-            }).collect();
-            if let Some(panic) = panic {
-                resume_unwind(panic);
-            }
-            r
+            parallel_guard(|guard| {
+                t.into_iter().filter_map(|i| guard.run(|| map(i))).collect()
+            })
         }
 
         pub use std::rc::Rc as Lrc;
@@ -313,8 +317,6 @@ cfg_if! {
             }
         }
     } else {
-        use parking_lot::Mutex;
-
         pub use std::marker::Send as Send;
         pub use std::marker::Sync as Sync;
 
@@ -380,7 +382,12 @@ cfg_if! {
                 let (a, b) = rayon::join(move || FromDyn::from(oper_a.into_inner()()), move || FromDyn::from(oper_b.into_inner()()));
                 (a.into_inner(), b.into_inner())
             } else {
-                (oper_a(), oper_b())
+                let (a, b) = parallel_guard(|guard| {
+                    let a = guard.run(oper_a);
+                    let b = guard.run(oper_b);
+                    (a, b)
+                });
+                (a.unwrap(), b.unwrap())
             }
         }
 
@@ -415,28 +422,10 @@ cfg_if! {
                     // of a single threaded rustc.
                     parallel!(impl $fblock [] [$($blocks),*]);
                 } else {
-                    // We catch panics here ensuring that all the blocks execute.
-                    // This makes behavior consistent with the parallel compiler.
-                    let mut panic = None;
-                    if let Err(p) = ::std::panic::catch_unwind(
-                        ::std::panic::AssertUnwindSafe(|| $fblock)
-                    ) {
-                        if panic.is_none() {
-                            panic = Some(p);
-                        }
-                    }
-                    $(
-                        if let Err(p) = ::std::panic::catch_unwind(
-                            ::std::panic::AssertUnwindSafe(|| $blocks)
-                        ) {
-                            if panic.is_none() {
-                                panic = Some(p);
-                            }
-                        }
-                    )*
-                    if let Some(panic) = panic {
-                        ::std::panic::resume_unwind(panic);
-                    }
+                    $crate::sync::parallel_guard(|guard| {
+                        guard.run(|| $fblock);
+                        $(guard.run(|| $blocks);)*
+                    });
                 }
             };
         }
@@ -447,34 +436,18 @@ cfg_if! {
             t: T,
             for_each: impl Fn(I) + DynSync + DynSend
         ) {
-            if mode::is_dyn_thread_safe() {
-                let for_each = FromDyn::from(for_each);
-                let panic: Mutex<Option<_>> = Mutex::new(None);
-                t.into_par_iter().for_each(|i| if let Err(p) = catch_unwind(AssertUnwindSafe(|| for_each(i))) {
-                    let mut l = panic.lock();
-                    if l.is_none() {
-                        *l = Some(p)
-                    }
-                });
-
-                if let Some(panic) = panic.into_inner() {
-                    resume_unwind(panic);
+            parallel_guard(|guard| {
+                if mode::is_dyn_thread_safe() {
+                    let for_each = FromDyn::from(for_each);
+                    t.into_par_iter().for_each(|i| {
+                        guard.run(|| for_each(i));
+                    });
+                } else {
+                    t.into_iter().for_each(|i| {
+                        guard.run(|| for_each(i));
+                    });
                 }
-            } else {
-                // We catch panics here ensuring that all the loop iterations execute.
-                // This makes behavior consistent with the parallel compiler.
-                let mut panic = None;
-                t.into_iter().for_each(|i| {
-                    if let Err(p) = catch_unwind(AssertUnwindSafe(|| for_each(i))) {
-                        if panic.is_none() {
-                            panic = Some(p);
-                        }
-                    }
-                });
-                if let Some(panic) = panic {
-                    resume_unwind(panic);
-                }
-            }
+            });
         }
 
         pub fn par_map<
@@ -486,46 +459,14 @@ cfg_if! {
             t: T,
             map: impl Fn(I) -> R + DynSync + DynSend
         ) -> C {
-            if mode::is_dyn_thread_safe() {
-                let panic: Mutex<Option<_>> = Mutex::new(None);
-                let map = FromDyn::from(map);
-                // We catch panics here ensuring that all the loop iterations execute.
-                let r = t.into_par_iter().filter_map(|i| {
-                    match catch_unwind(AssertUnwindSafe(|| map(i))) {
-                        Ok(r) => Some(r),
-                        Err(p) => {
-                            let mut l = panic.lock();
-                            if l.is_none() {
-                                *l = Some(p);
-                            }
-                            None
-                        },
-                    }
-                }).collect();
-
-                if let Some(panic) = panic.into_inner() {
-                    resume_unwind(panic);
+            parallel_guard(|guard| {
+                if mode::is_dyn_thread_safe() {
+                    let map = FromDyn::from(map);
+                    t.into_par_iter().filter_map(|i| guard.run(|| map(i))).collect()
+                } else {
+                    t.into_iter().filter_map(|i| guard.run(|| map(i))).collect()
                 }
-                r
-            } else {
-                // We catch panics here ensuring that all the loop iterations execute.
-                let mut panic = None;
-                let r = t.into_iter().filter_map(|i| {
-                    match catch_unwind(AssertUnwindSafe(|| map(i))) {
-                        Ok(r) => Some(r),
-                        Err(p) => {
-                            if panic.is_none() {
-                                panic = Some(p);
-                            }
-                            None
-                        }
-                    }
-                }).collect();
-                if let Some(panic) = panic {
-                    resume_unwind(panic);
-                }
-                r
-            }
+            })
         }
 
         /// This makes locks panic if they are already held.
