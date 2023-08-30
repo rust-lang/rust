@@ -1,5 +1,5 @@
 //@aux-build:proc_macros.rs
-#![allow(clippy::useless_vec, unused)]
+#![allow(clippy::useless_vec, clippy::iter_out_of_bounds, unused)]
 #![warn(clippy::iter_skip_zero)]
 
 #[macro_use]

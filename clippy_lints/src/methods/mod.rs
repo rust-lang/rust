@@ -43,6 +43,7 @@ mod iter_next_slice;
 mod iter_nth;
 mod iter_nth_zero;
 mod iter_on_single_or_empty_collections;
+mod iter_out_of_bounds;
 mod iter_overeager_cloned;
 mod iter_skip_next;
 mod iter_skip_zero;
@@ -3538,6 +3539,30 @@ declare_clippy_lint! {
     "acquiring a write lock when a read lock would work"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Looks for iterator combinator calls such as `.take(x)` or `.skip(x)`
+    /// where `x` is greater than the amount of items that an iterator will produce.
+    ///
+    /// ### Why is this bad?
+    /// Taking or skipping more items than there are in an iterator either creates an iterator
+    /// with all items from the original iterator or an iterator with no items at all.
+    /// This is most likely not what the user intended to do.
+    ///
+    /// ### Example
+    /// ```rust
+    /// for _ in [1, 2, 3].iter().take(4) {}
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// for _ in [1, 2, 3].iter() {}
+    /// ```
+    #[clippy::version = "1.74.0"]
+    pub ITER_OUT_OF_BOUNDS,
+    suspicious,
+    "calls to `.take()` or `.skip()` that are out of bounds"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3676,7 +3701,8 @@ impl_lint_pass!(Methods => [
     STRING_LIT_CHARS_ANY,
     ITER_SKIP_ZERO,
     FILTER_MAP_BOOL_THEN,
-    READONLY_WRITE_LOCK
+    READONLY_WRITE_LOCK,
+    ITER_OUT_OF_BOUNDS,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4146,6 +4172,7 @@ impl Methods {
                 },
                 ("skip", [arg]) => {
                     iter_skip_zero::check(cx, expr, arg);
+                    iter_out_of_bounds::check_skip(cx, expr, recv, arg);
 
                     if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
                         iter_overeager_cloned::check(cx, expr, recv, recv2,
@@ -4173,7 +4200,8 @@ impl Methods {
                     }
                 },
                 ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
-                ("take", [_arg]) => {
+                ("take", [arg]) => {
+                    iter_out_of_bounds::check_take(cx, expr, recv, arg);
                     if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
                         iter_overeager_cloned::check(cx, expr, recv, recv2,
                                 iter_overeager_cloned::Op::LaterCloned, false);

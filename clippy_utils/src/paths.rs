@@ -49,6 +49,7 @@ pub const IDENT: [&str; 3] = ["rustc_span", "symbol", "Ident"];
 pub const IDENT_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Ident", "as_str"];
 pub const INSERT_STR: [&str; 4] = ["alloc", "string", "String", "insert_str"];
 pub const ITER_EMPTY: [&str; 5] = ["core", "iter", "sources", "empty", "Empty"];
+pub const ITER_ONCE: [&str; 5] = ["core", "iter", "sources", "once", "Once"];
 pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
 #[cfg(feature = "internal")]
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
@@ -163,3 +164,4 @@ pub const DEBUG_STRUCT: [&str; 4] = ["core", "fmt", "builders", "DebugStruct"];
 pub const ORD_CMP: [&str; 4] = ["core", "cmp", "Ord", "cmp"];
 #[expect(clippy::invalid_paths)] // not sure why it thinks this, it works so
 pub const BOOL_THEN: [&str; 4] = ["core", "bool", "<impl bool>", "then"];
+pub const ARRAY_INTO_ITER: [&str; 4] = ["core", "array", "iter", "IntoIter"];
