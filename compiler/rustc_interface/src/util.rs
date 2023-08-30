@@ -137,10 +137,8 @@ fn get_stack_size() -> Option<usize> {
     env::var_os("RUST_MIN_STACK").is_none().then_some(STACK_SIZE)
 }
 
-#[cfg(not(parallel_compiler))]
-pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+pub(crate) fn run_in_thread_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
-    _threads: usize,
     f: F,
 ) -> R {
     // The "thread pool" is a single spawned thread in the non-parallel
@@ -171,18 +169,37 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     })
 }
 
+#[cfg(not(parallel_compiler))]
+pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+    edition: Edition,
+    _threads: usize,
+    f: F,
+) -> R {
+    run_in_thread_with_globals(edition, f)
+}
+
 #[cfg(parallel_compiler)]
 pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
     f: F,
 ) -> R {
-    use rustc_data_structures::jobserver;
+    use rustc_data_structures::{jobserver, sync::FromDyn};
     use rustc_middle::ty::tls;
     use rustc_query_impl::QueryCtxt;
     use rustc_query_system::query::{deadlock, QueryContext};
 
     let registry = sync::Registry::new(threads);
+
+    if !sync::is_dyn_thread_safe() {
+        return run_in_thread_with_globals(edition, || {
+            // Register the thread for use with the `WorkerLocal` type.
+            registry.register();
+
+            f()
+        });
+    }
+
     let mut builder = rayon::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
@@ -191,13 +208,13 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
         .deadlock_handler(|| {
             // On deadlock, creates a new thread and forwards information in thread
             // locals to it. The new thread runs the deadlock handler.
-            let query_map = tls::with(|tcx| {
+            let query_map = FromDyn::from(tls::with(|tcx| {
                 QueryCtxt::new(tcx)
                     .try_collect_active_jobs()
                     .expect("active jobs shouldn't be locked in deadlock handler")
-            });
+            }));
             let registry = rayon_core::Registry::current();
-            thread::spawn(move || deadlock(query_map, &registry));
+            thread::spawn(move || deadlock(query_map.into_inner(), &registry));
         });
     if let Some(size) = get_stack_size() {
         builder = builder.stack_size(size);
@@ -209,6 +226,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     // `Send` in the parallel compiler.
     rustc_span::create_session_globals_then(edition, || {
         rustc_span::with_session_globals(|session_globals| {
+            let session_globals = FromDyn::from(session_globals);
             builder
                 .build_scoped(
                     // Initialize each new worker thread when created.
@@ -216,7 +234,9 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
                         // Register the thread for use with the `WorkerLocal` type.
                         registry.register();
 
-                        rustc_span::set_session_globals_then(session_globals, || thread.run())
+                        rustc_span::set_session_globals_then(session_globals.into_inner(), || {
+                            thread.run()
+                        })
                     },
                     // Run `f` on the first thread in the thread pool.
                     move |pool: &rayon::ThreadPool| pool.install(f),

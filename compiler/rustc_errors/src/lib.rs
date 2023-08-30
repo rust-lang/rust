@@ -30,11 +30,11 @@ pub use emitter::ColorConfig;
 use rustc_lint_defs::LintExpectationId;
 use Level::*;
 
-use emitter::{is_case_difference, Emitter, EmitterWriter};
+use emitter::{is_case_difference, DynEmitter, Emitter, EmitterWriter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
-use rustc_data_structures::sync::{self, IntoDynSyncSend, Lock, Lrc};
+use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 pub use rustc_error_messages::{
     fallback_fluent_bundle, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
@@ -428,7 +428,7 @@ struct HandlerInner {
     err_count: usize,
     warn_count: usize,
     deduplicated_err_count: usize,
-    emitter: IntoDynSyncSend<Box<dyn Emitter + sync::Send>>,
+    emitter: Box<DynEmitter>,
     delayed_span_bugs: Vec<DelayedDiagnostic>,
     delayed_good_path_bugs: Vec<DelayedDiagnostic>,
     /// This flag indicates that an expected diagnostic was emitted and suppressed.
@@ -594,7 +594,7 @@ impl Handler {
         self
     }
 
-    pub fn with_emitter(emitter: Box<dyn Emitter + sync::Send>) -> Self {
+    pub fn with_emitter(emitter: Box<DynEmitter>) -> Self {
         Self {
             inner: Lock::new(HandlerInner {
                 flags: HandlerFlags { can_emit_warnings: true, ..Default::default() },
@@ -603,7 +603,7 @@ impl Handler {
                 warn_count: 0,
                 deduplicated_err_count: 0,
                 deduplicated_warn_count: 0,
-                emitter: IntoDynSyncSend(emitter),
+                emitter,
                 delayed_span_bugs: Vec::new(),
                 delayed_good_path_bugs: Vec::new(),
                 suppressed_expected_diag: false,

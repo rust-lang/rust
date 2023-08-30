@@ -22,7 +22,7 @@ use crate::{
 };
 use rustc_lint_defs::Applicability;
 
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_error_messages::FluentArgs;
 use rustc_span::hygiene::ExpnData;
 use rustc_span::Span;
@@ -38,7 +38,7 @@ use serde::Serialize;
 mod tests;
 
 pub struct JsonEmitter {
-    dst: Box<dyn Write + Send>,
+    dst: IntoDynSyncSend<Box<dyn Write + Send>>,
     registry: Option<Registry>,
     sm: Lrc<SourceMap>,
     fluent_bundle: Option<Lrc<FluentBundle>>,
@@ -66,7 +66,7 @@ impl JsonEmitter {
         terminal_url: TerminalUrl,
     ) -> JsonEmitter {
         JsonEmitter {
-            dst: Box::new(io::BufWriter::new(io::stderr())),
+            dst: IntoDynSyncSend(Box::new(io::BufWriter::new(io::stderr()))),
             registry,
             sm: source_map,
             fluent_bundle,
@@ -120,7 +120,7 @@ impl JsonEmitter {
         terminal_url: TerminalUrl,
     ) -> JsonEmitter {
         JsonEmitter {
-            dst,
+            dst: IntoDynSyncSend(dst),
             registry,
             sm: source_map,
             fluent_bundle,

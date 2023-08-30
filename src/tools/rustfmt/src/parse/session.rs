@@ -1,8 +1,8 @@
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use rustc_data_structures::sync::{Lrc, Send};
-use rustc_errors::emitter::{Emitter, EmitterWriter};
+use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
+use rustc_errors::emitter::{DynEmitter, Emitter, EmitterWriter};
 use rustc_errors::translation::Translate;
 use rustc_errors::{ColorConfig, Diagnostic, Handler, Level as DiagnosticLevel};
 use rustc_session::parse::ParseSess as RawParseSess;
@@ -48,15 +48,15 @@ impl Emitter for SilentEmitter {
     fn emit_diagnostic(&mut self, _db: &Diagnostic) {}
 }
 
-fn silent_emitter() -> Box<dyn Emitter + Send> {
+fn silent_emitter() -> Box<DynEmitter> {
     Box::new(SilentEmitter {})
 }
 
 /// Emit errors against every files expect ones specified in the `ignore_path_set`.
 struct SilentOnIgnoredFilesEmitter {
-    ignore_path_set: Lrc<IgnorePathSet>,
+    ignore_path_set: IntoDynSyncSend<Lrc<IgnorePathSet>>,
     source_map: Lrc<SourceMap>,
-    emitter: Box<dyn Emitter + Send>,
+    emitter: Box<DynEmitter>,
     has_non_ignorable_parser_errors: bool,
     can_reset: Lrc<AtomicBool>,
 }
@@ -145,7 +145,7 @@ fn default_handler(
         has_non_ignorable_parser_errors: false,
         source_map,
         emitter,
-        ignore_path_set,
+        ignore_path_set: IntoDynSyncSend(ignore_path_set),
         can_reset,
     }))
 }
@@ -396,7 +396,7 @@ mod tests {
                 has_non_ignorable_parser_errors: false,
                 source_map,
                 emitter: Box::new(emitter_writer),
-                ignore_path_set,
+                ignore_path_set: IntoDynSyncSend(ignore_path_set),
                 can_reset,
             }
         }
