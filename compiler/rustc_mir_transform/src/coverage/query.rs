@@ -1,5 +1,6 @@
 use super::*;
 
+use rustc_data_structures::captures::Captures;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, Body, Coverage, CoverageInfo};
 use rustc_middle::query::Providers;
@@ -66,15 +67,8 @@ impl CoverageVisitor {
     }
 
     fn visit_body(&mut self, body: &Body<'_>) {
-        for bb_data in body.basic_blocks.iter() {
-            for statement in bb_data.statements.iter() {
-                if let StatementKind::Coverage(box ref coverage) = statement.kind {
-                    if is_inlined(body, statement) {
-                        continue;
-                    }
-                    self.visit_coverage(coverage);
-                }
-            }
+        for coverage in all_coverage_in_mir_body(body) {
+            self.visit_coverage(coverage);
         }
     }
 
@@ -115,21 +109,23 @@ fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, instance_def: ty::InstanceDef<'tcx>) ->
 
 fn covered_code_regions(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<&CodeRegion> {
     let body = mir_body(tcx, def_id);
-    body.basic_blocks
-        .iter()
-        .flat_map(|data| {
-            data.statements.iter().filter_map(|statement| match statement.kind {
-                StatementKind::Coverage(box ref coverage) => {
-                    if is_inlined(body, statement) {
-                        None
-                    } else {
-                        coverage.code_region.as_ref() // may be None
-                    }
-                }
-                _ => None,
-            })
-        })
+    all_coverage_in_mir_body(body)
+        // Not all coverage statements have an attached code region.
+        .filter_map(|coverage| coverage.code_region.as_ref())
         .collect()
+}
+
+fn all_coverage_in_mir_body<'a, 'tcx>(
+    body: &'a Body<'tcx>,
+) -> impl Iterator<Item = &'a Coverage> + Captures<'tcx> {
+    body.basic_blocks.iter().flat_map(|bb_data| &bb_data.statements).filter_map(|statement| {
+        match statement.kind {
+            StatementKind::Coverage(box ref coverage) if !is_inlined(body, statement) => {
+                Some(coverage)
+            }
+            _ => None,
+        }
+    })
 }
 
 fn is_inlined(body: &Body<'_>, statement: &Statement<'_>) -> bool {
