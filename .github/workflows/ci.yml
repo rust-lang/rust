@@ -189,43 +189,48 @@ jobs:
 
       # Mac - aarch64
 
-      - name: Build (Mac Os, aarch64)
-        shell: bash
-        if: contains(matrix.os, 'macos-12') && matrix.arch == 'aarch64'
-        env:
-          WASIX_NO_UPDATE_REPOS: "1"
-          GITHUB_ACTIONS: "false"
-          WASIX_COMPONENTS: rust
-          WASIX_RUST_HOST: aarch64-apple-darwin
-        run: |
-          cd cargo-wasix
-          # NOTE: must unset GITHUB_ACTIONS env var, because Rst bootstrap checks for it.
-          # (see bootstrap config.rs)
-          GITHUB_ACTIONS=false WASIX_BUILD_DIR=$GITHUB_WORKSPACE cargo run -- wasix build-toolchain
+      # Not running this on GitHub Actions yet, because the underlying runners use x86_64 and not aarch64.
+      # This results in a cross-compile, which results in an erroneous build.
 
-      - name: Copy wasm* builds from x86_64-apple-darwin to aarch64-apple-darwin
-        shell: bash
-        if: contains(matrix.os, 'macos-12') && matrix.arch == 'aarch64'
-        run: |
-          cp -r wasix-rust/build/x86_64-apple-darwin/stage2/lib/rustlib/wasm* wasix-rust/build/aarch64-apple-darwin/stage2/lib/rustlib
+      # TODO: Come back to this and enable it once GitHub Actions supports aarch64 runners.
 
-      - name: Archive build output (Mac OS - aarch64)
-        uses: actions/upload-artifact@v3
-        if: contains(matrix.os, 'macos-12') && matrix.arch == 'aarch64'
-        with:
-          name: rust-toolchain-aarch64-apple-darwin
-          path: |
-            wasix-rust/build/aarch64-apple-darwin/stage2
-            !wasix-rust/build/aarch64-apple-darwin/stage2/lib/rustlib/src
-            !wasix-rust/build/aarch64-apple-darwin/stage2/lib/rustlib/rustc-src
+      # - name: Build (Mac Os, aarch64)
+      #   shell: bash
+      #   if: contains(matrix.os, 'macos-12') && matrix.arch == 'aarch64'
+      #   env:
+      #     WASIX_NO_UPDATE_REPOS: "1"
+      #     GITHUB_ACTIONS: "false"
+      #     WASIX_COMPONENTS: rust
+      #     WASIX_RUST_HOST: aarch64-apple-darwin
+      #   run: |
+      #     cd cargo-wasix
+      #     # NOTE: must unset GITHUB_ACTIONS env var, because Rst bootstrap checks for it.
+      #     # (see bootstrap config.rs)
+      #     GITHUB_ACTIONS=false WASIX_BUILD_DIR=$GITHUB_WORKSPACE cargo run -- wasix build-toolchain
+
+      # - name: Copy wasm* builds from x86_64-apple-darwin to aarch64-apple-darwin
+      #   shell: bash
+      #   if: contains(matrix.os, 'macos-12') && matrix.arch == 'aarch64'
+      #   run: |
+      #     cp -r wasix-rust/build/x86_64-apple-darwin/stage2/lib/rustlib/wasm* wasix-rust/build/aarch64-apple-darwin/stage2/lib/rustlib
+
+      # - name: Archive build output (Mac OS - aarch64)
+      #   uses: actions/upload-artifact@v3
+      #   if: contains(matrix.os, 'macos-12') && matrix.arch == 'aarch64'
+      #   with:
+      #     name: rust-toolchain-aarch64-apple-darwin
+      #     path: |
+      #       wasix-rust/build/aarch64-apple-darwin/stage2
+      #       !wasix-rust/build/aarch64-apple-darwin/stage2/lib/rustlib/src
+      #       !wasix-rust/build/aarch64-apple-darwin/stage2/lib/rustlib/rustc-src
 
       # Windows
 
-      - name: Install chocolatey deps (Windows)
-        if: contains(matrix.os, 'windows') && matrix.arch == 'x86'
-        shell: bash
-        continue-on-error: true
-        run: choco install -y visualstudio2019community cmake
+      # - name: Install chocolatey deps (Windows)
+      #   if: contains(matrix.os, 'windows') && matrix.arch == 'x86'
+      #   shell: bash
+      #   continue-on-error: true
+      #   run: choco install -y visualstudio2019community cmake
 
       - name: Set up MinGW (Windows)
         if: contains(matrix.os, 'windows') && matrix.arch == 'x86'
