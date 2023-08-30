@@ -225,6 +225,8 @@ impl Config {
             "10", // timeout if speed is < 10 bytes/sec for > 30 seconds
             "--connect-timeout",
             "30", // timeout if cannot connect within 30 seconds
+            "-o",
+            tempfile.to_str().unwrap(),
             "--retry",
             "3",
             "-SRf",
@@ -236,8 +238,6 @@ impl Config {
             curl.arg("--progress-bar");
         }
         curl.arg(url);
-        let f = File::create(tempfile).unwrap();
-        curl.stdout(Stdio::from(f));
         if !self.check_run(&mut curl) {
             if self.build.contains("windows-msvc") {
                 eprintln!("Fallback to PowerShell");
