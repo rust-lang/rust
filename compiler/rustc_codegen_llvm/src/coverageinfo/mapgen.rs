@@ -180,7 +180,7 @@ fn write_coverage_mapping<'a>(
     // `file_id` (indexing files referenced by the current function), and construct the
     // function-specific `virtual_file_mapping` from `file_id` to its index in the module's
     // `filenames` array.
-    counter_regions.sort_unstable_by_key(|(_counter, region)| *region);
+    counter_regions.sort_by_key(|(_counter, region)| *region);
     for (counter, region) in counter_regions {
         let CodeRegion { file_name, start_line, start_col, end_line, end_col } = *region;
         let same_file = current_file_name.is_some_and(|p| p == file_name);
