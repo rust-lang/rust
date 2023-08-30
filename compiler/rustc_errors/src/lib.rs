@@ -55,7 +55,7 @@ use std::num::NonZeroUsize;
 use std::panic;
 use std::path::{Path, PathBuf};
 
-use termcolor::{Color, ColorSpec};
+pub use termcolor::{Color, ColorSpec, WriteColor};
 
 pub mod annotate_snippet_emitter_writer;
 mod diagnostic;
