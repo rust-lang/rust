@@ -33,6 +33,7 @@
 #![feature(box_patterns)]
 #![feature(let_chains)]
 #![feature(never_type)]
+#![feature(type_alias_impl_trait)]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -483,6 +484,8 @@ enum ParenthesizedGenericArgs {
     Err,
 }
 
+type ExpectFullResFromUse = impl Iterator<Item = Res<NodeId>>;
+
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn create_def(
         &mut self,
@@ -748,7 +751,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.resolver.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
 
-    fn expect_full_res_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Res<NodeId>> {
+    fn expect_full_res_from_use(&mut self, id: NodeId) -> ExpectFullResFromUse {
         self.resolver.get_import_res(id).present_items()
     }
 
@@ -1099,7 +1102,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         // Shift `impl Trait` lifetime captures from the associated type bound's
                         // node id to the opaque node id, so that the opaque can actually use
                         // these lifetime bounds.
-                        self.resolver.remap_extra_lifetime_params(constraint.id, impl_trait_node_id);
+                        self.resolver
+                            .remap_extra_lifetime_params(constraint.id, impl_trait_node_id);
 
                         self.with_dyn_type_scope(false, |this| {
                             let node_id = this.next_node_id();
@@ -1554,7 +1558,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 if matches!(
                     fn_kind.expect("expected RPITs to be lowered with a FnKind"),
                     FnDeclKind::Impl | FnDeclKind::Trait
-                ) || !self.tcx.sess.opts.lint_cap.is_some_and(|cap| cap == Level::Allow)
+                ) || !(self.tcx.sess.opts.lint_cap.is_some_and(|cap| cap == Level::Allow)
+                    || self.tcx.crate_name(LOCAL_CRATE).as_str() == "cargo")
                 {
                     // return-position impl trait in trait was decided to capture all
                     // in-scope lifetimes, which we collect for all opaques during resolution.

@@ -7,6 +7,7 @@
 #![feature(never_type)]
 #![feature(strict_provenance)]
 #![feature(try_blocks)]
+#![feature(type_alias_impl_trait)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 

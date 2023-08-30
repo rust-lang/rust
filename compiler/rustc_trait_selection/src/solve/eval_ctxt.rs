@@ -612,6 +612,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     }
 }
 
+pub(super) type WfGoals<'tcx> = impl Iterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>;
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
@@ -834,7 +835,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         arg: ty::GenericArg<'tcx>,
-    ) -> Option<impl Iterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>> {
+    ) -> Option<WfGoals<'tcx>> {
         crate::traits::wf::unnormalized_obligations(self.infcx, param_env, arg)
             .map(|obligations| obligations.into_iter().map(|obligation| obligation.into()))
     }

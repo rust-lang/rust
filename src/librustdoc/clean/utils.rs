@@ -476,10 +476,11 @@ pub(crate) fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
     }
 }
 
+pub(crate) type ItemIter = impl Iterator<Item = Item>;
 pub(crate) fn get_auto_trait_and_blanket_impls(
     cx: &mut DocContext<'_>,
     item_def_id: DefId,
-) -> impl Iterator<Item = Item> {
+) -> ItemIter {
     let auto_impls = cx
         .sess()
         .prof

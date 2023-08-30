@@ -10,6 +10,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
+#![feature(type_alias_impl_trait)]
 #![recursion_limit = "256"]
 #![allow(internal_features)]
 

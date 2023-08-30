@@ -333,7 +333,7 @@ pub struct GenericPredicates<'tcx> {
 
 impl<'tcx> GenericPredicates<'tcx> {
     pub fn instantiate(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> InstantiatedPredicates<'tcx> {
@@ -343,7 +343,7 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 
     pub fn instantiate_own(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> impl Iterator<Item = (Clause<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator {
@@ -352,7 +352,7 @@ impl<'tcx> GenericPredicates<'tcx> {
 
     #[instrument(level = "debug", skip(self, tcx))]
     fn instantiate_into(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         instantiated: &mut InstantiatedPredicates<'tcx>,
         args: GenericArgsRef<'tcx>,
@@ -373,7 +373,7 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 
     fn instantiate_identity_into(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         instantiated: &mut InstantiatedPredicates<'tcx>,
     ) {

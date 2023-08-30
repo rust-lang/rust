@@ -9,7 +9,8 @@
         new_uninit,
         step_trait,
         stmt_expr_attributes,
-        test
+        test,
+        type_alias_impl_trait
     )
 )]
 #![cfg_attr(feature = "nightly", allow(internal_features))]

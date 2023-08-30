@@ -215,6 +215,7 @@ pub enum RegionClassification {
 
 const FIRST_GLOBAL_INDEX: usize = 0;
 
+pub type UR = impl Iterator<Item = RegionVid>;
 impl<'tcx> UniversalRegions<'tcx> {
     /// Creates a new and fully initialized `UniversalRegions` that
     /// contains indices for all the free regions found in the given
@@ -285,7 +286,7 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     /// Returns an iterator over all the RegionVids corresponding to
     /// universally quantified free regions.
-    pub fn universal_regions(&self) -> impl Iterator<Item = RegionVid> {
+    pub fn universal_regions(&self) -> UR {
         (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::from_usize)
     }
 

@@ -23,12 +23,13 @@ impl<'tcx, V> Index<mir::Local> for Locals<'tcx, V> {
 /// To mutate locals, use `FunctionCx::overwrite_local` instead.
 impl<'tcx, V, Idx: ?Sized> !IndexMut<Idx> for Locals<'tcx, V> {}
 
+pub(super) type Indices<'tcx, V> = impl DoubleEndedIterator<Item = mir::Local> + Clone + 'tcx;
 impl<'tcx, V> Locals<'tcx, V> {
     pub(super) fn empty() -> Locals<'tcx, V> {
         Locals { values: IndexVec::default() }
     }
 
-    pub(super) fn indices(&self) -> impl DoubleEndedIterator<Item = mir::Local> + Clone + 'tcx {
+    pub(super) fn indices(&self) -> Indices<'tcx, V> {
         self.values.indices()
     }
 }

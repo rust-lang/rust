@@ -72,6 +72,15 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>>;
 }
 
+pub type PAF<
+    'mir,
+    'tcx: 'mir + 'a,
+    'a,
+    P: 'a + Projectable<'tcx, M::Provenance>,
+    Prov: Provenance + 'static,
+    M: Machine<'mir, 'tcx, Provenance = Prov>,
+> = impl Iterator<Item = InterpResult<'tcx, P>> + 'a;
+
 // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
 impl<'mir, 'tcx: 'mir, Prov, M> InterpCx<'mir, 'tcx, M>
 where
@@ -206,7 +215,7 @@ where
     pub fn project_array_fields<'a, P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &'a P,
-    ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, P>> + 'a>
+    ) -> InterpResult<'tcx, PAF<'mir, 'tcx, 'a, P, Prov, M>>
     where
         'tcx: 'a,
     {

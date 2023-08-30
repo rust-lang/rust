@@ -21,6 +21,7 @@ pub struct IndexSlice<I: Idx, T> {
     pub raw: [T],
 }
 
+pub type Indices<I: Idx> = impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone;
 impl<I: Idx, T> IndexSlice<I, T> {
     #[inline]
     pub const fn empty() -> &'static Self {
@@ -73,10 +74,9 @@ impl<I: Idx, T> IndexSlice<I, T> {
     }
 
     #[inline]
-    pub fn indices(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + 'static {
-        (0..self.len()).map(|n| I::new(n))
+    pub fn indices(&self) -> Indices<I> {
+        let len = self.len();
+        (0..len).map(I::new)
     }
 
     #[inline]

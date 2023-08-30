@@ -63,6 +63,7 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
     }
 }
 
+pub type Walk<'tcx> = impl Iterator<Item = GenericArg<'tcx>>;
 impl<'tcx> GenericArg<'tcx> {
     /// Iterator that walks `self` and any types reachable from
     /// `self`, in depth-first order. Note that just walks the types
@@ -85,10 +86,7 @@ impl<'tcx> GenericArg<'tcx> {
     /// Iterator only walks items once.
     /// It accepts visited set, updates it with all visited types
     /// and skips any types that are already there.
-    pub fn walk_shallow(
-        self,
-        visited: &mut SsoHashSet<GenericArg<'tcx>>,
-    ) -> impl Iterator<Item = GenericArg<'tcx>> {
+    pub fn walk_shallow(self, visited: &mut SsoHashSet<GenericArg<'tcx>>) -> Walk<'tcx> {
         let mut stack = SmallVec::new();
         push_inner(&mut stack, self);
         stack.retain(|a| visited.insert(*a));
