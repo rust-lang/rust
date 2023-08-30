@@ -56,6 +56,10 @@ pub type TraitDecls = Vec<TraitDef>;
 /// A list of impl trait decls.
 pub type ImplTraitDecls = Vec<ImplDef>;
 
+/// An error type used to represent an error that has already been reported by the compiler.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CompilerError;
+
 /// Holds information about a crate.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Crate {
