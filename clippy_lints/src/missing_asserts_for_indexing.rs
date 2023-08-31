@@ -1,14 +1,11 @@
 use std::mem;
 use std::ops::ControlFlow;
 
-use clippy_utils::eq_expr_value;
+use clippy_utils::comparisons::{normalize_comparison, Rel};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
-use clippy_utils::{
-    comparisons::{normalize_comparison, Rel},
-    diagnostics::span_lint_and_then,
-    hash_expr, higher,
-    visitors::for_each_expr,
-};
+use clippy_utils::visitors::for_each_expr;
+use clippy_utils::{eq_expr_value, hash_expr, higher};
 use rustc_ast::{LitKind, RangeLimits};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::{Applicability, Diagnostic};
@@ -220,13 +217,13 @@ fn upper_index_expr(expr: &Expr<'_>) -> Option<usize> {
 
 /// Checks if the expression is an index into a slice and adds it to `indexes`
 fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut UnhashMap<u64, Vec<IndexEntry<'hir>>>) {
-    if let ExprKind::Index(slice, index_lit) = expr.kind
+    if let ExprKind::Index(slice, index_lit, _) = expr.kind
         && cx.typeck_results().expr_ty_adjusted(slice).peel_refs().is_slice()
         && let Some(index) = upper_index_expr(index_lit)
     {
         let hash = hash_expr(cx, slice);
 
-        let indexes = map.entry(hash).or_insert_with(Vec::new);
+        let indexes = map.entry(hash).or_default();
         let entry = indexes.iter_mut().find(|entry| eq_expr_value(cx, entry.slice(), slice));
 
         if let Some(entry) = entry {
@@ -261,7 +258,7 @@ fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Unh
 fn check_assert<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut UnhashMap<u64, Vec<IndexEntry<'hir>>>) {
     if let Some((comparison, asserted_len, slice)) = assert_len_expr(cx, expr) {
         let hash = hash_expr(cx, slice);
-        let indexes = map.entry(hash).or_insert_with(Vec::new);
+        let indexes = map.entry(hash).or_default();
 
         let entry = indexes.iter_mut().find(|entry| eq_expr_value(cx, entry.slice(), slice));
 
@@ -301,9 +298,10 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnhashMap<u64, Vec<IndexEntry<'_>>
             let Some(full_span) = entry
                 .index_spans()
                 .and_then(|spans| spans.first().zip(spans.last()))
-                .map(|(low, &high)| low.to(high)) else {
-                    continue;
-                };
+                .map(|(low, &high)| low.to(high))
+            else {
+                continue;
+            };
 
             match entry {
                 IndexEntry::AssertWithIndex {

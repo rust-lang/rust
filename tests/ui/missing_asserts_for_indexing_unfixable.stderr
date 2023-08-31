@@ -1,32 +1,32 @@
 error: indexing into a slice multiple times without an `assert`
-  --> $DIR/missing_asserts_for_indexing_unfixable.rs:6:5
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:5:5
    |
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider asserting the length before indexing: `assert!(v.len() > 4);`
 note: slice indexed here
-  --> $DIR/missing_asserts_for_indexing_unfixable.rs:6:5
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:5:5
    |
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |     ^^^^
 note: slice indexed here
-  --> $DIR/missing_asserts_for_indexing_unfixable.rs:6:12
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:5:12
    |
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |            ^^^^
 note: slice indexed here
-  --> $DIR/missing_asserts_for_indexing_unfixable.rs:6:19
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:5:19
    |
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |                   ^^^^
 note: slice indexed here
-  --> $DIR/missing_asserts_for_indexing_unfixable.rs:6:26
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:5:26
    |
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |                          ^^^^
 note: slice indexed here
-  --> $DIR/missing_asserts_for_indexing_unfixable.rs:6:33
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:5:33
    |
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |                                 ^^^^
@@ -34,16 +34,17 @@ LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    = note: `-D clippy::missing-asserts-for-indexing` implied by `-D warnings`
 
 error: indexing into a slice multiple times without an `assert`
-  --> $DIR/missing_asserts_for_indexing_unfixable.rs:11:13
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:10:13
    |
 LL |       let _ = v[0];
    |  _____________^
+LL | |
 LL | |     let _ = v[1..4];
    | |___________________^
    |
    = help: consider asserting the length before indexing: `assert!(v.len() > 3);`
 note: slice indexed here
-  --> $DIR/missing_asserts_for_indexing_unfixable.rs:11:13
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:10:13
    |
 LL |     let _ = v[0];
    |             ^^^^
@@ -55,17 +56,18 @@ LL |     let _ = v[1..4];
    = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times without an `assert`
-  --> $DIR/missing_asserts_for_indexing_unfixable.rs:17:13
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:16:13
    |
 LL |       let a = v[0];
    |  _____________^
+LL | |
 LL | |     let b = v[1];
 LL | |     let c = v[2];
    | |________________^
    |
    = help: consider asserting the length before indexing: `assert!(v.len() > 2);`
 note: slice indexed here
-  --> $DIR/missing_asserts_for_indexing_unfixable.rs:17:13
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:16:13
    |
 LL |     let a = v[0];
    |             ^^^^
