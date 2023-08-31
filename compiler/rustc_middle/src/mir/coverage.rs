@@ -35,19 +35,21 @@ impl ExpressionId {
     pub const START: Self = Self::from_u32(0);
 }
 
-/// Operand of a coverage-counter expression.
+/// Enum that can hold a constant zero value, the ID of an physical coverage
+/// counter, or the ID of a coverage-counter expression.
 ///
-/// Operands can be a constant zero value, an actual coverage counter, or another
-/// expression. Counter/expression operands are referred to by ID.
+/// This was originally only used for expression operands (and named `Operand`),
+/// but the zero/counter/expression distinction is also useful for representing
+/// the value of code/gap mappings, and the true/false arms of branch mappings.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub enum Operand {
+pub enum CovTerm {
     Zero,
     Counter(CounterId),
     Expression(ExpressionId),
 }
 
-impl Debug for Operand {
+impl Debug for CovTerm {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Zero => write!(f, "Zero"),
@@ -68,9 +70,9 @@ pub enum CoverageKind {
         /// ID of this coverage-counter expression within its enclosing function.
         /// Other expressions in the same function can refer to it as an operand.
         id: ExpressionId,
-        lhs: Operand,
+        lhs: CovTerm,
         op: Op,
-        rhs: Operand,
+        rhs: CovTerm,
     },
     Unreachable,
 }

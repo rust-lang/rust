@@ -1,4 +1,4 @@
-use rustc_middle::mir::coverage::{CounterId, ExpressionId, Operand};
+use rustc_middle::mir::coverage::{CounterId, CovTerm, ExpressionId};
 
 /// Must match the layout of `LLVMRustCounterKind`.
 #[derive(Copy, Clone, Debug)]
@@ -43,11 +43,11 @@ impl Counter {
         Self { kind: CounterKind::Expression, id: expression_id.as_u32() }
     }
 
-    pub(crate) fn from_operand(operand: Operand) -> Self {
-        match operand {
-            Operand::Zero => Self::ZERO,
-            Operand::Counter(id) => Self::counter_value_reference(id),
-            Operand::Expression(id) => Self::expression(id),
+    pub(crate) fn from_term(term: CovTerm) -> Self {
+        match term {
+            CovTerm::Zero => Self::ZERO,
+            CovTerm::Counter(id) => Self::counter_value_reference(id),
+            CovTerm::Expression(id) => Self::expression(id),
         }
     }
 }

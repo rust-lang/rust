@@ -3,15 +3,15 @@ use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{
-    CodeRegion, CounterId, ExpressionId, FunctionCoverageInfo, Op, Operand,
+    CodeRegion, CounterId, CovTerm, ExpressionId, FunctionCoverageInfo, Op,
 };
 use rustc_middle::ty::Instance;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Expression {
-    lhs: Operand,
+    lhs: CovTerm,
     op: Op,
-    rhs: Operand,
+    rhs: CovTerm,
     code_regions: Vec<CodeRegion>,
 }
 
@@ -101,15 +101,15 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// code regions mapped to that expression.
     ///
     /// Both counters and "counter expressions" (or simply, "expressions") can be operands in other
-    /// expressions. These are tracked as separate variants of `Operand`, so there is no ambiguity
+    /// expressions. These are tracked as separate variants of `CovTerm`, so there is no ambiguity
     /// between operands that are counter IDs and operands that are expression IDs.
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn add_counter_expression(
         &mut self,
         expression_id: ExpressionId,
-        lhs: Operand,
+        lhs: CovTerm,
         op: Op,
-        rhs: Operand,
+        rhs: CovTerm,
         code_regions: &[CodeRegion],
     ) {
         debug_assert!(
@@ -151,7 +151,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
         // The set of expressions that either were optimized out entirely, or
         // have zero as both of their operands, and will therefore always have
         // a value of zero. Other expressions that refer to these as operands
-        // can have those operands replaced with `Operand::Zero`.
+        // can have those operands replaced with `CovTerm::Zero`.
         let mut zero_expressions = FxIndexSet::default();
 
         // For each expression, perform simplifications based on lower-numbered
@@ -168,10 +168,10 @@ impl<'tcx> FunctionCoverage<'tcx> {
             };
 
             // If an operand refers to an expression that is always zero, then
-            // that operand can be replaced with `Operand::Zero`.
-            let maybe_set_operand_to_zero = |operand: &mut Operand| match &*operand {
-                Operand::Expression(id) if zero_expressions.contains(id) => {
-                    *operand = Operand::Zero;
+            // that operand can be replaced with `CovTerm::Zero`.
+            let maybe_set_operand_to_zero = |operand: &mut CovTerm| match &*operand {
+                CovTerm::Expression(id) if zero_expressions.contains(id) => {
+                    *operand = CovTerm::Zero;
                 }
                 _ => (),
             };
@@ -181,13 +181,13 @@ impl<'tcx> FunctionCoverage<'tcx> {
             // Coverage counter values cannot be negative, so if an expression
             // involves subtraction from zero, assume that its RHS must also be zero.
             // (Do this after simplifications that could set the LHS to zero.)
-            if let Expression { lhs: Operand::Zero, op: Op::Subtract, .. } = expression {
-                expression.rhs = Operand::Zero;
+            if let Expression { lhs: CovTerm::Zero, op: Op::Subtract, .. } = expression {
+                expression.rhs = CovTerm::Zero;
             }
 
             // After the above simplifications, if both operands are zero, then
             // we know that this expression is always zero too.
-            if let Expression { lhs: Operand::Zero, rhs: Operand::Zero, .. } = expression {
+            if let Expression { lhs: CovTerm::Zero, rhs: CovTerm::Zero, .. } = expression {
                 zero_expressions.insert(id);
             }
         }
@@ -254,12 +254,12 @@ impl<'tcx> FunctionCoverage<'tcx> {
                 &Some(Expression { lhs, op, rhs, .. }) => {
                     // Convert the operands and operator as normal.
                     CounterExpression::new(
-                        Counter::from_operand(lhs),
+                        Counter::from_term(lhs),
                         match op {
                             Op::Add => ExprKind::Add,
                             Op::Subtract => ExprKind::Subtract,
                         },
-                        Counter::from_operand(rhs),
+                        Counter::from_term(rhs),
                     )
                 }
             })
