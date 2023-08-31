@@ -3,6 +3,7 @@ use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeMethods};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::ty::Ty;
+use rustc_session::config;
 use rustc_target::abi::call::{ArgAttributes, CastTarget, FnAbi, PassMode, Reg, RegKind};
 
 use crate::builder::Builder;
@@ -122,7 +123,8 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
         #[cfg(feature = "master")]
         let apply_attrs = |ty: Type<'gcc>, attrs: &ArgAttributes| {
-            if attrs.regular.contains(rustc_target::abi::call::ArgAttribute::NoAlias)
+            if cx.sess().opts.optimize != config::OptLevel::No
+                && attrs.regular.contains(rustc_target::abi::call::ArgAttribute::NoAlias)
             {
                 ty.make_restrict()
             } else {
