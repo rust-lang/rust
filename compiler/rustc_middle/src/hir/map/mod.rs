@@ -1207,7 +1207,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
         debugger_visualizers.hash_stable(&mut hcx, &mut stable_hasher);
         if tcx.sess.opts.incremental_relative_spans() {
-            let definitions = tcx.definitions_untracked();
+            let definitions = tcx.untracked().definitions.freeze();
             let mut owner_spans: Vec<_> = krate
                 .owners
                 .iter_enumerated()
