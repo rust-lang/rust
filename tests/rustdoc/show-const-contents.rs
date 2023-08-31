@@ -47,7 +47,7 @@ pub struct MyTypeWithStr(&'static str);
 // @!hasraw show_const_contents/constant.MY_TYPE_WITH_STR.html '; //'
 pub const MY_TYPE_WITH_STR: MyTypeWithStr = MyTypeWithStr("show this");
 
-// @hasraw show_const_contents/constant.PI.html '= 3.14159265358979323846264338327950288f32;'
+// @hasraw show_const_contents/constant.PI.html '= 3.14159265358979323846264338327950288_f32;'
 // @hasraw show_const_contents/constant.PI.html '; // 3.14159274f32'
 pub use std::f32::consts::PI;
 

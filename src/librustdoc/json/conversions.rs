@@ -8,6 +8,7 @@ use std::fmt;
 
 use rustc_ast::ast;
 use rustc_hir::{def::CtorKind, def::DefKind, def_id::DefId};
+use rustc_metadata::rendered_const;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::{Pos, Symbol};
@@ -15,7 +16,6 @@ use rustc_target::spec::abi::Abi as RustcAbi;
 
 use rustdoc_json_types::*;
 
-use crate::clean::utils::print_const_expr;
 use crate::clean::{self, ItemId};
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
@@ -805,7 +805,7 @@ impl FromWithTcx<clean::Static> for Static {
         Static {
             type_: stat.type_.into_tcx(tcx),
             mutable: stat.mutability == ast::Mutability::Mut,
-            expr: stat.expr.map(|e| print_const_expr(tcx, e)).unwrap_or_default(),
+            expr: stat.expr.map(|e| rendered_const(tcx, e)).unwrap_or_default(),
         }
     }
 }
