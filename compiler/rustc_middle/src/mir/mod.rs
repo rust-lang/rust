@@ -1575,7 +1575,7 @@ impl<V, T> ProjectionElem<V, T> {
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
 pub type ProjectionKind = ProjectionElem<(), ()>;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PlaceRef<'tcx> {
     pub local: Local,
     pub projection: &'tcx [PlaceElem<'tcx>],
@@ -1753,67 +1753,81 @@ impl<'tcx> PlaceRef<'tcx> {
 
 impl Debug for Place<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        for elem in self.projection.iter().rev() {
-            match elem {
-                ProjectionElem::OpaqueCast(_)
-                | ProjectionElem::Downcast(_, _)
-                | ProjectionElem::Field(_, _) => {
-                    write!(fmt, "(").unwrap();
-                }
-                ProjectionElem::Deref => {
-                    write!(fmt, "(*").unwrap();
-                }
-                ProjectionElem::Index(_)
-                | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. } => {}
-            }
-        }
-
-        write!(fmt, "{:?}", self.local)?;
-
-        for elem in self.projection.iter() {
-            match elem {
-                ProjectionElem::OpaqueCast(ty) => {
-                    write!(fmt, " as {ty})")?;
-                }
-                ProjectionElem::Downcast(Some(name), _index) => {
-                    write!(fmt, " as {name})")?;
-                }
-                ProjectionElem::Downcast(None, index) => {
-                    write!(fmt, " as variant#{index:?})")?;
-                }
-                ProjectionElem::Deref => {
-                    write!(fmt, ")")?;
-                }
-                ProjectionElem::Field(field, ty) => {
-                    write!(fmt, ".{:?}: {:?})", field.index(), ty)?;
-                }
-                ProjectionElem::Index(ref index) => {
-                    write!(fmt, "[{index:?}]")?;
-                }
-                ProjectionElem::ConstantIndex { offset, min_length, from_end: false } => {
-                    write!(fmt, "[{offset:?} of {min_length:?}]")?;
-                }
-                ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
-                    write!(fmt, "[-{offset:?} of {min_length:?}]")?;
-                }
-                ProjectionElem::Subslice { from, to, from_end: true } if to == 0 => {
-                    write!(fmt, "[{from:?}:]")?;
-                }
-                ProjectionElem::Subslice { from, to, from_end: true } if from == 0 => {
-                    write!(fmt, "[:-{to:?}]")?;
-                }
-                ProjectionElem::Subslice { from, to, from_end: true } => {
-                    write!(fmt, "[{from:?}:-{to:?}]")?;
-                }
-                ProjectionElem::Subslice { from, to, from_end: false } => {
-                    write!(fmt, "[{from:?}..{to:?}]")?;
-                }
-            }
-        }
-
-        Ok(())
+        self.as_ref().fmt(fmt)
     }
+}
+
+impl Debug for PlaceRef<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        pre_fmt_projection(self.projection, fmt)?;
+        write!(fmt, "{:?}", self.local)?;
+        post_fmt_projection(self.projection, fmt)
+    }
+}
+
+fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> fmt::Result {
+    for &elem in projection.iter().rev() {
+        match elem {
+            ProjectionElem::OpaqueCast(_)
+            | ProjectionElem::Downcast(_, _)
+            | ProjectionElem::Field(_, _) => {
+                write!(fmt, "(").unwrap();
+            }
+            ProjectionElem::Deref => {
+                write!(fmt, "(*").unwrap();
+            }
+            ProjectionElem::Index(_)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. } => {}
+        }
+    }
+
+    Ok(())
+}
+
+fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> fmt::Result {
+    for &elem in projection.iter() {
+        match elem {
+            ProjectionElem::OpaqueCast(ty) => {
+                write!(fmt, " as {ty})")?;
+            }
+            ProjectionElem::Downcast(Some(name), _index) => {
+                write!(fmt, " as {name})")?;
+            }
+            ProjectionElem::Downcast(None, index) => {
+                write!(fmt, " as variant#{index:?})")?;
+            }
+            ProjectionElem::Deref => {
+                write!(fmt, ")")?;
+            }
+            ProjectionElem::Field(field, ty) => {
+                write!(fmt, ".{:?}: {:?})", field.index(), ty)?;
+            }
+            ProjectionElem::Index(ref index) => {
+                write!(fmt, "[{index:?}]")?;
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end: false } => {
+                write!(fmt, "[{offset:?} of {min_length:?}]")?;
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
+                write!(fmt, "[-{offset:?} of {min_length:?}]")?;
+            }
+            ProjectionElem::Subslice { from, to, from_end: true } if to == 0 => {
+                write!(fmt, "[{from:?}:]")?;
+            }
+            ProjectionElem::Subslice { from, to, from_end: true } if from == 0 => {
+                write!(fmt, "[:-{to:?}]")?;
+            }
+            ProjectionElem::Subslice { from, to, from_end: true } => {
+                write!(fmt, "[{from:?}:-{to:?}]")?;
+            }
+            ProjectionElem::Subslice { from, to, from_end: false } => {
+                write!(fmt, "[{from:?}..{to:?}]")?;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 ///////////////////////////////////////////////////////////////////////////
