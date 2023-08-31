@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::OnceCell;
+use rustc_data_structures::sync::OnceLock;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
@@ -23,11 +23,11 @@ pub type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u1
 
 #[derive(Clone, Default, Debug)]
 struct Cache {
-    predecessors: OnceCell<Predecessors>,
-    switch_sources: OnceCell<SwitchSources>,
-    is_cyclic: OnceCell<bool>,
-    reverse_postorder: OnceCell<Vec<BasicBlock>>,
-    dominators: OnceCell<Dominators<BasicBlock>>,
+    predecessors: OnceLock<Predecessors>,
+    switch_sources: OnceLock<SwitchSources>,
+    is_cyclic: OnceLock<bool>,
+    reverse_postorder: OnceLock<Vec<BasicBlock>>,
+    dominators: OnceLock<Dominators<BasicBlock>>,
 }
 
 impl<'tcx> BasicBlocks<'tcx> {

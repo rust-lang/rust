@@ -273,7 +273,7 @@ cfg_if! {
         pub use std::cell::RefMut as MappedWriteGuard;
         pub use std::cell::RefMut as MappedLockGuard;
 
-        pub use std::cell::OnceCell;
+        pub use std::cell::OnceCell as OnceLock;
 
         use std::cell::RefCell as InnerRwLock;
 
@@ -327,7 +327,7 @@ cfg_if! {
 
         pub use parking_lot::MappedMutexGuard as MappedLockGuard;
 
-        pub use std::sync::OnceLock as OnceCell;
+        pub use std::sync::OnceLock;
 
         pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
 
