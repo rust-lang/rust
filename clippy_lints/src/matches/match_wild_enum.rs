@@ -180,9 +180,8 @@ enum CommonPrefixSearcher<'a> {
 }
 impl<'a> CommonPrefixSearcher<'a> {
     fn with_path(&mut self, path: &'a [PathSegment<'a>]) {
-        match path {
-            [path @ .., _] => self.with_prefix(path),
-            [] => (),
+        if let [path @ .., _] = path {
+            self.with_prefix(path);
         }
     }
 
