@@ -80,7 +80,6 @@ LL |     let e: &fn(u32) -> u32 = &foo;
    = note: expected reference `&fn(u32) -> u32`
               found reference `&fn(u32) -> u32 {foo}`
    = note: fn items are distinct from fn pointers
-   = note: when the arguments and return types match, functions can be coerced to function pointers
 help: consider casting to a fn pointer
    |
 LL |     let e: &fn(u32) -> u32 = &(foo as fn(u32) -> u32);
