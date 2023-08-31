@@ -7,7 +7,7 @@ struct S;
 impl T for S {}
 
 fn main() {
-<<<<<<< HEAD //~ ERROR encountered diff marker
+<<<<<<< HEAD //~ ERROR encountered git conflict marker
     S::foo();
 =======
     S::bar();

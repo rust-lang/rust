@@ -1,4 +1,4 @@
-<<<<<<< HEAD //~ ERROR encountered diff marker
+<<<<<<< HEAD //~ ERROR encountered git conflict marker
 fn foo() {}
 =======
 fn bar() {}

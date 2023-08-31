@@ -3,7 +3,7 @@ struct S {
 }
 fn main() {
     let _ = S {
-<<<<<<< HEAD //~ ERROR encountered diff marker
+<<<<<<< HEAD //~ ERROR encountered git conflict marker
         x: 42,
 =======
         x: 0,

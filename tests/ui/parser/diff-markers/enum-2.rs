@@ -1,6 +1,6 @@
 enum E {
     Foo {
-<<<<<<< HEAD //~ ERROR encountered diff marker
+<<<<<<< HEAD //~ ERROR encountered git conflict marker
         x: u8,
 |||||||
         z: (),

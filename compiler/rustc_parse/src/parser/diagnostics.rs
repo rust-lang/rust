@@ -2722,7 +2722,8 @@ impl<'a> Parser<'a> {
     }
 
     pub fn recover_conflict_marker(&mut self) {
-        let Some(start) = self.conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) else {
+        let Some(start) = self.conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt)
+        else {
             return;
         };
         let mut spans = Vec::with_capacity(3);
@@ -2734,40 +2735,52 @@ impl<'a> Parser<'a> {
             if self.token.kind == TokenKind::Eof {
                 break;
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::OrOr, &TokenKind::BinOp(token::Or)) {
+            if let Some(span) = self.conflict_marker(&TokenKind::OrOr, &TokenKind::BinOp(token::Or))
+            {
                 middlediff3 = Some(span);
             }
             if let Some(span) = self.conflict_marker(&TokenKind::EqEq, &TokenKind::Eq) {
                 middle = Some(span);
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::BinOp(token::Shr), &TokenKind::Gt) {
+            if let Some(span) = self.conflict_marker(&TokenKind::BinOp(token::Shr), &TokenKind::Gt)
+            {
                 spans.push(span);
                 end = Some(span);
                 break;
             }
             self.bump();
         }
-        let mut err = self.struct_span_err(spans, "encountered diff marker");
-        err.span_label(start, "after this is the code before the merge");
+        let mut err = self.struct_span_err(spans, "encountered git conflict marker");
+
+        // with diff3
         if let Some(middle) = middlediff3 {
-            err.span_label(middle, "");
+            err.span_label(
+                start,
+                "between this marker and `|||||||` is the code that we're merging into",
+            );
+            err.span_label(middle, "between this marker and `=======` is the base code (what the two refs diverged from)");
+        } else {
+            err.span_label(
+                start,
+                "between this marker and `=======` is the code that we're merging into",
+            );
         }
+
         if let Some(middle) = middle {
-            err.span_label(middle, "");
+            err.span_label(middle, "between this marker and `>>>>>>>` is the incoming code");
         }
+
         if let Some(end) = end {
-            err.span_label(end, "above this are the incoming code changes");
+            err.span_label(end, "");
         }
         err.help(
-            "if you're having merge conflicts after pulling new code, the top section is the code \
-             you already had and the bottom section is the remote code",
+            "conflict markers indicate that a merge was started but could not be completed due to merge conflicts",
         );
         err.help(
-            "if you're in the middle of a rebase, the top section is the code being rebased onto \
-             and the bottom section is the code coming from the current commit being rebased",
+            "to resolve a conflict, keep only the code you want and then delete the lines containing conflict markers",
         );
         err.note(
-            "for an explanation on these markers from the `git` documentation, visit \
+            "for more information, visit the `git` documentation \
              <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>",
         );
         err.emit();
