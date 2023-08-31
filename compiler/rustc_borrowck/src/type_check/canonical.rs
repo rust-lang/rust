@@ -69,15 +69,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let old_universe = self.infcx.universe();
-
         let (instantiated, _) =
             self.infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
-
-        for u in (old_universe + 1)..=self.infcx.universe() {
-            self.borrowck_context.constraints.universe_causes.insert(u, UniverseInfo::other());
-        }
-
         instantiated
     }
 
