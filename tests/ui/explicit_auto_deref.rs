@@ -293,4 +293,10 @@ fn main() {
     fn return_dyn_assoc<'a>(x: &'a &'a u32) -> &'a <&'a u32 as WithAssoc>::Assoc {
         *x
     }
+
+    // Issue #11366
+    let _: &mut u32 = match &mut Some(&mut 0u32) {
+        Some(x) => &mut *x,
+        None => panic!(),
+    };
 }
