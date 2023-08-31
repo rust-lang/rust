@@ -8,7 +8,7 @@ LL |         pub fn from_be_self(self) -> Self {
    = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
 
 error: methods called `from_*` usually take no `self`
-  --> $DIR/wrong_self_convention2.rs:63:25
+  --> $DIR/wrong_self_convention2.rs:64:25
    |
 LL |         fn from_be_self(self) -> Self;
    |                         ^^^^

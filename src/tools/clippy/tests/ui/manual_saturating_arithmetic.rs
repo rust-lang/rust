@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(unused_imports)]
 
 use std::{i128, i32, u128, u32};

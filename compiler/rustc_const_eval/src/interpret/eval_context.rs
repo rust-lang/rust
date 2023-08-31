@@ -25,8 +25,8 @@ use super::{
     Scalar, StackPopJump,
 };
 use crate::errors::{self, ErroneousConstUsed};
-use crate::fluent_generated as fluent;
 use crate::util;
+use crate::{fluent_generated as fluent, ReportErrorExt};
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
@@ -158,7 +158,8 @@ pub enum StackPopCleanup {
 #[derive(Clone, Debug)]
 pub struct LocalState<'tcx, Prov: Provenance = AllocId> {
     pub value: LocalValue<Prov>,
-    /// Don't modify if `Some`, this is only used to prevent computing the layout twice
+    /// Don't modify if `Some`, this is only used to prevent computing the layout twice.
+    /// Avoids computing the layout of locals that are never actually initialized.
     pub layout: Cell<Option<TyAndLayout<'tcx>>>,
 }
 
@@ -177,7 +178,7 @@ pub enum LocalValue<Prov: Provenance = AllocId> {
 
 impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
     /// Read the local's value or error if the local is not yet live or not live anymore.
-    #[inline]
+    #[inline(always)]
     pub fn access(&self) -> InterpResult<'tcx, &Operand<Prov>> {
         match &self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
@@ -190,7 +191,7 @@ impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
     ///
     /// Note: This may only be invoked from the `Machine::access_local_mut` hook and not from
     /// anywhere else. You may be invalidating machine invariants if you do!
-    #[inline]
+    #[inline(always)]
     pub fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
         match &mut self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
@@ -432,6 +433,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .map_or(CRATE_HIR_ID, |def_id| self.tcx.hir().local_def_id_to_hir_id(def_id))
     }
 
+    /// Turn the given error into a human-readable string. Expects the string to be printed, so if
+    /// `RUSTC_CTFE_BACKTRACE` is set this will show a backtrace of the rustc internals that
+    /// triggered the error.
+    ///
+    /// This is NOT the preferred way to render an error; use `report` from `const_eval` instead.
+    /// However, this is useful when error messages appear in ICEs.
+    pub fn format_error(&self, e: InterpErrorInfo<'tcx>) -> String {
+        let (e, backtrace) = e.into_parts();
+        backtrace.print_backtrace();
+        // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
+        // label and arguments from the InterpError.
+        let handler = &self.tcx.sess.parse_sess.span_diagnostic;
+        #[allow(rustc::untranslatable_diagnostic)]
+        let mut diag = self.tcx.sess.struct_allow("");
+        let msg = e.diagnostic_message();
+        e.add_args(handler, &mut diag);
+        let s = handler.eagerly_translate_to_string(msg, diag.args());
+        diag.cancel();
+        s
+    }
+
     #[inline(always)]
     pub(crate) fn stack(&self) -> &[Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>] {
         M::stack(self)
@@ -462,7 +484,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub(super) fn body(&self) -> &'mir mir::Body<'tcx> {
+    pub fn body(&self) -> &'mir mir::Body<'tcx> {
         self.frame().body
     }
 
@@ -684,15 +706,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
+        let dead_local = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
+        let locals = IndexVec::from_elem(dead_local, &body.local_decls);
         // First push a stack frame so we have access to the local args
         let pre_frame = Frame {
             body,
             loc: Right(body.span), // Span used for errors caused during preamble.
             return_to_block,
             return_place: return_place.clone(),
-            // empty local array, we fill it in below, after we are inside the stack frame and
-            // all methods actually know about the frame
-            locals: IndexVec::new(),
+            locals,
             instance,
             tracing_span: SpanGuard::new(),
             extra: (),
@@ -707,19 +729,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.eval_mir_constant(&ct, Some(span), None)?;
         }
 
-        // Most locals are initially dead.
-        let dummy = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
-        let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
-
-        // Now mark those locals as live that have no `Storage*` annotations.
-        let always_live = always_storage_live_locals(self.body());
-        for local in locals.indices() {
-            if always_live.contains(local) {
-                locals[local].value = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
-            }
-        }
         // done
-        self.frame_mut().locals = locals;
         M::after_stack_push(self)?;
         self.frame_mut().loc = Left(mir::Location::START);
 
@@ -886,18 +896,108 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Mark a storage as live, killing the previous content.
-    pub fn storage_live(&mut self, local: mir::Local) -> InterpResult<'tcx> {
-        assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
+    /// In the current stack frame, mark all locals as live that are not arguments and don't have
+    /// `Storage*` annotations (this includes the return place).
+    pub fn storage_live_for_always_live_locals(&mut self) -> InterpResult<'tcx> {
+        self.storage_live(mir::RETURN_PLACE)?;
+
+        let body = self.body();
+        let always_live = always_storage_live_locals(body);
+        for local in body.vars_and_temps_iter() {
+            if always_live.contains(local) {
+                self.storage_live(local)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn storage_live_dyn(
+        &mut self,
+        local: mir::Local,
+        meta: MemPlaceMeta<M::Provenance>,
+    ) -> InterpResult<'tcx> {
         trace!("{:?} is now live", local);
 
-        let local_val = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
+        // We avoid `ty.is_trivially_sized` since that (a) cannot assume WF, so it recurses through
+        // all fields of a tuple, and (b) does something expensive for ADTs.
+        fn is_very_trivially_sized(ty: Ty<'_>) -> bool {
+            match ty.kind() {
+                ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+                | ty::Uint(_)
+                | ty::Int(_)
+                | ty::Bool
+                | ty::Float(_)
+                | ty::FnDef(..)
+                | ty::FnPtr(_)
+                | ty::RawPtr(..)
+                | ty::Char
+                | ty::Ref(..)
+                | ty::Generator(..)
+                | ty::GeneratorWitness(..)
+                | ty::GeneratorWitnessMIR(..)
+                | ty::Array(..)
+                | ty::Closure(..)
+                | ty::Never
+                | ty::Error(_) => true,
+
+                ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
+
+                ty::Tuple(tys) => tys.last().iter().all(|ty| is_very_trivially_sized(**ty)),
+
+                // We don't want to do any queries, so there is not much we can do with ADTs.
+                ty::Adt(..) => false,
+
+                ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => false,
+
+                ty::Infer(ty::TyVar(_)) => false,
+
+                ty::Bound(..)
+                | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                    bug!("`is_very_trivially_sized` applied to unexpected type: {:?}", ty)
+                }
+            }
+        }
+
+        // This is a hot function, we avoid computing the layout when possible.
+        // `unsized_` will be `None` for sized types and `Some(layout)` for unsized types.
+        let unsized_ = if is_very_trivially_sized(self.body().local_decls[local].ty) {
+            None
+        } else {
+            // We need the layout.
+            let layout = self.layout_of_local(self.frame(), local, None)?;
+            if layout.is_sized() { None } else { Some(layout) }
+        };
+
+        let local_val = LocalValue::Live(if let Some(layout) = unsized_ {
+            if !meta.has_meta() {
+                throw_unsup!(UnsizedLocal);
+            }
+            // Need to allocate some memory, since `Immediate::Uninit` cannot be unsized.
+            let dest_place = self.allocate_dyn(layout, MemoryKind::Stack, meta)?;
+            Operand::Indirect(*dest_place)
+        } else {
+            assert!(!meta.has_meta()); // we're dropping the metadata
+            // Just make this an efficient immediate.
+            // Note that not calling `layout_of` here does have one real consequence:
+            // if the type is too big, we'll only notice this when the local is actually initialized,
+            // which is a bit too late -- we should ideally notice this alreayd here, when the memory
+            // is conceptually allocated. But given how rare that error is and that this is a hot function,
+            // we accept this downside for now.
+            Operand::Immediate(Immediate::Uninit)
+        });
+
         // StorageLive expects the local to be dead, and marks it live.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
         if !matches!(old, LocalValue::Dead) {
             throw_ub_custom!(fluent::const_eval_double_storage_live);
         }
         Ok(())
+    }
+
+    /// Mark a storage as live, killing the previous content.
+    #[inline(always)]
+    pub fn storage_live(&mut self, local: mir::Local) -> InterpResult<'tcx> {
+        self.storage_live_dyn(local, MemPlaceMeta::None)
     }
 
     pub fn storage_dead(&mut self, local: mir::Local) -> InterpResult<'tcx> {

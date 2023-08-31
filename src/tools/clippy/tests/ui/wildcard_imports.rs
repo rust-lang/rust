@@ -1,5 +1,5 @@
 //@edition:2015
-//@run-rustfix
+
 //@aux-build:wildcard_imports_helper.rs
 
 // the 2015 edition here is needed because edition 2018 changed the module system

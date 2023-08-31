@@ -1,4 +1,3 @@
-//@run-rustfix
 #![allow(clippy::clone_on_copy, unused)]
 #![no_main]
 

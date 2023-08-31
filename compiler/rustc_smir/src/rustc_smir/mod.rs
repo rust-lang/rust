@@ -10,8 +10,8 @@
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
 use crate::stable_mir::ty::{
-    allocation_filter, new_allocation, Const, FloatTy, GenericDef, GenericParamDef, IntTy,
-    Movability, RigidTy, TyKind, UintTy,
+    allocation_filter, new_allocation, Const, FloatTy, GenericParamDef, IntTy, Movability, RigidTy,
+    TyKind, UintTy,
 };
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
@@ -54,7 +54,7 @@ impl<'tcx> Context for Tables<'tcx> {
     }
 
     fn trait_decl(&mut self, trait_def: &stable_mir::ty::TraitDef) -> stable_mir::ty::TraitDecl {
-        let def_id = self.trait_def_id(trait_def);
+        let def_id = self[trait_def.0];
         let trait_def = self.tcx.trait_def(def_id);
         trait_def.stable(self)
     }
@@ -68,13 +68,13 @@ impl<'tcx> Context for Tables<'tcx> {
     }
 
     fn trait_impl(&mut self, impl_def: &stable_mir::ty::ImplDef) -> stable_mir::ty::ImplTrait {
-        let def_id = self.impl_trait_def_id(impl_def);
+        let def_id = self[impl_def.0];
         let impl_trait = self.tcx.impl_trait_ref(def_id).unwrap();
         impl_trait.stable(self)
     }
 
     fn mir_body(&mut self, item: &stable_mir::CrateItem) -> stable_mir::mir::Body {
-        let def_id = self.item_def_id(item);
+        let def_id = self[item.0];
         let mir = self.tcx.optimized_mir(def_id);
         stable_mir::mir::Body {
             blocks: mir
@@ -102,19 +102,16 @@ impl<'tcx> Context for Tables<'tcx> {
         ty.stable(self)
     }
 
-    fn generics_of(&mut self, generic_def: &GenericDef) -> stable_mir::ty::Generics {
-        let def_id = self.generic_def_id(generic_def);
-        let generic_def = self.tcx.generics_of(def_id);
-        generic_def.stable(self)
+    fn generics_of(&mut self, def_id: stable_mir::DefId) -> stable_mir::ty::Generics {
+        let def_id = self[def_id];
+        let generics = self.tcx.generics_of(def_id);
+        generics.stable(self)
     }
 
-    fn predicates_of(
-        &mut self,
-        trait_def: &stable_mir::ty::TraitDef,
-    ) -> stable_mir::GenericPredicates {
-        let trait_def_id = self.trait_def_id(trait_def);
-        let ty::GenericPredicates { parent, predicates } = self.tcx.predicates_of(trait_def_id);
-        stable_mir::GenericPredicates {
+    fn predicates_of(&mut self, def_id: stable_mir::DefId) -> stable_mir::ty::GenericPredicates {
+        let def_id = self[def_id];
+        let ty::GenericPredicates { parent, predicates } = self.tcx.predicates_of(def_id);
+        stable_mir::ty::GenericPredicates {
             parent: parent.map(|did| self.trait_def(did)),
             predicates: predicates
                 .iter()

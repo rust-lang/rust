@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![feature(lang_items, start, libc)]
 #![no_std]
 #![deny(clippy::zero_ptr)]

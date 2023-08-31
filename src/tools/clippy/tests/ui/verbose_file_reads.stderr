@@ -8,7 +8,7 @@ LL |     f.read_to_end(&mut buffer)?;
    = note: `-D clippy::verbose-file-reads` implied by `-D warnings`
 
 error: use of `File::read_to_string`
-  --> $DIR/verbose_file_reads.rs:26:5
+  --> $DIR/verbose_file_reads.rs:27:5
    |
 LL |     f.read_to_string(&mut string_buffer)?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

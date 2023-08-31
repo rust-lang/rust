@@ -50,7 +50,8 @@ pub enum OperandValue<V> {
     /// from [`ConstMethods::const_poison`].
     ///
     /// An `OperandValue` *must* be this variant for any type for which
-    /// `is_zst` on its `Layout` returns `true`.
+    /// `is_zst` on its `Layout` returns `true`. Note however that
+    /// these values can still require alignment.
     ZeroSized,
 }
 

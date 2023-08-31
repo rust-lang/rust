@@ -157,8 +157,10 @@ pub trait LayoutCalculator {
         // for non-ZST uninhabited data (mostly partial initialization).
         let absent = |fields: &IndexSlice<FieldIdx, Layout<'_>>| {
             let uninhabited = fields.iter().any(|f| f.abi().is_uninhabited());
-            let is_zst = fields.iter().all(|f| f.0.is_zst());
-            uninhabited && is_zst
+            // We cannot ignore alignment; that might lead us to entirely discard a variant and
+            // produce an enum that is less aligned than it should be!
+            let is_1zst = fields.iter().all(|f| f.0.is_1zst());
+            uninhabited && is_1zst
         };
         let (present_first, present_second) = {
             let mut present_variants = variants
@@ -357,10 +359,8 @@ pub trait LayoutCalculator {
                 // It'll fit, but we need to make some adjustments.
                 match layout.fields {
                     FieldsShape::Arbitrary { ref mut offsets, .. } => {
-                        for (j, offset) in offsets.iter_enumerated_mut() {
-                            if !variants[i][j].0.is_zst() {
-                                *offset += this_offset;
-                            }
+                        for offset in offsets.iter_mut() {
+                            *offset += this_offset;
                         }
                     }
                     _ => {
@@ -504,7 +504,7 @@ pub trait LayoutCalculator {
                 // to make room for a larger discriminant.
                 for field_idx in st.fields.index_by_increasing_offset() {
                     let field = &field_layouts[FieldIdx::from_usize(field_idx)];
-                    if !field.0.is_zst() || field.align().abi.bytes() != 1 {
+                    if !field.0.is_1zst() {
                         start_align = start_align.min(field.align().abi);
                         break;
                     }
@@ -603,12 +603,15 @@ pub trait LayoutCalculator {
             abi = Abi::Scalar(tag);
         } else {
             // Try to use a ScalarPair for all tagged enums.
+            // That's possible only if we can find a common primitive type for all variants.
             let mut common_prim = None;
             let mut common_prim_initialized_in_all_variants = true;
             for (field_layouts, layout_variant) in iter::zip(variants, &layout_variants) {
                 let FieldsShape::Arbitrary { ref offsets, .. } = layout_variant.fields else {
                     panic!();
                 };
+                // We skip *all* ZST here and later check if we are good in terms of alignment.
+                // This lets us handle some cases involving aligned ZST.
                 let mut fields = iter::zip(field_layouts, offsets).filter(|p| !p.0.0.is_zst());
                 let (field, offset) = match (fields.next(), fields.next()) {
                     (None, None) => {
@@ -954,9 +957,6 @@ fn univariant(
                         };
 
                         (
-                            // Place ZSTs first to avoid "interesting offsets", especially with only one
-                            // or two non-ZST fields. This helps Scalar/ScalarPair layouts.
-                            !f.0.is_zst(),
                             // Then place largest alignments first.
                             cmp::Reverse(alignment_group_key(f)),
                             // Then prioritize niche placement within alignment group according to
@@ -1073,9 +1073,10 @@ fn univariant(
     let size = min_size.align_to(align.abi);
     let mut layout_of_single_non_zst_field = None;
     let mut abi = Abi::Aggregate { sized };
-    // Unpack newtype ABIs and find scalar pairs.
+    // Try to make this a Scalar/ScalarPair.
     if sized && size.bytes() > 0 {
-        // All other fields must be ZSTs.
+        // We skip *all* ZST here and later check if we are good in terms of alignment.
+        // This lets us handle some cases involving aligned ZST.
         let mut non_zst_fields = fields.iter_enumerated().filter(|&(_, f)| !f.0.is_zst());
 
         match (non_zst_fields.next(), non_zst_fields.next(), non_zst_fields.next()) {

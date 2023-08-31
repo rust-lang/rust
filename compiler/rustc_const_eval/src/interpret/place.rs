@@ -13,7 +13,7 @@ use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_target::abi::{self, Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
+use rustc_target::abi::{Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
 
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
@@ -41,31 +41,11 @@ impl<Prov: Provenance> MemPlaceMeta<Prov> {
         }
     }
 
+    #[inline(always)]
     pub fn has_meta(self) -> bool {
         match self {
             Self::Meta(_) => true,
             Self::None => false,
-        }
-    }
-
-    pub(crate) fn len<'tcx>(
-        &self,
-        layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, u64> {
-        if layout.is_unsized() {
-            // We need to consult `meta` metadata
-            match layout.ty.kind() {
-                ty::Slice(..) | ty::Str => self.unwrap_meta().to_target_usize(cx),
-                _ => bug!("len not supported on unsized type {:?}", layout.ty),
-            }
-        } else {
-            // Go through the layout. There are lots of types that support a length,
-            // e.g., SIMD types. (But not all repr(simd) types even have FieldsShape::Array!)
-            match layout.fields {
-                abi::FieldsShape::Array { count, .. } => Ok(count),
-                _ => bug!("len not supported on sized type {:?}", layout.ty),
-            }
         }
     }
 }
@@ -111,6 +91,8 @@ pub enum Place<Prov: Provenance = AllocId> {
     /// (Without that optimization, we'd just always be a `MemPlace`.)
     /// Note that this only stores the frame index, not the thread this frame belongs to -- that is
     /// implicit. This means a `Place` must never be moved across interpreter thread boundaries!
+    ///
+    /// This variant shall not be used for unsized types -- those must always live in memory.
     Local { frame: usize, local: mir::Local, offset: Option<Size> },
 }
 
@@ -157,7 +139,7 @@ impl<Prov: Provenance> MemPlace<Prov> {
     }
 
     /// Turn a mplace into a (thin or wide) pointer, as a reference, pointing to the same space.
-    #[inline(always)]
+    #[inline]
     pub fn to_ref(self, cx: &impl HasDataLayout) -> Immediate<Prov> {
         match self.meta {
             MemPlaceMeta::None => Immediate::from(Scalar::from_maybe_pointer(self.ptr, cx)),
@@ -220,22 +202,20 @@ impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for MPlaceTy<'tcx
         self.layout
     }
 
-    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
-        &self,
-        _ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
-        Ok(self.meta)
+    #[inline(always)]
+    fn meta(&self) -> MemPlaceMeta<Prov> {
+        self.meta
     }
 
-    fn offset_with_meta(
+    fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
+        ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         Ok(MPlaceTy {
-            mplace: self.mplace.offset_with_meta_(offset, meta, cx)?,
+            mplace: self.mplace.offset_with_meta_(offset, meta, ecx)?,
             align: self.align.restrict_for_offset(offset),
             layout,
         })
@@ -255,25 +235,30 @@ impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for PlaceTy<'tcx,
         self.layout
     }
 
-    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
-        &self,
-        ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
-        ecx.place_meta(self)
+    #[inline]
+    fn meta(&self) -> MemPlaceMeta<Prov> {
+        match self.as_mplace_or_local() {
+            Left(mplace) => mplace.meta,
+            Right(_) => {
+                debug_assert!(self.layout.is_sized(), "unsized locals should live in memory");
+                MemPlaceMeta::None
+            }
+        }
     }
 
-    fn offset_with_meta(
+    fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
+        ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         Ok(match self.as_mplace_or_local() {
-            Left(mplace) => mplace.offset_with_meta(offset, meta, layout, cx)?.into(),
+            Left(mplace) => mplace.offset_with_meta(offset, meta, layout, ecx)?.into(),
             Right((frame, local, old_offset)) => {
+                debug_assert!(layout.is_sized(), "unsized locals should live in memory");
                 assert_matches!(meta, MemPlaceMeta::None); // we couldn't store it anyway...
-                let new_offset = cx
+                let new_offset = ecx
                     .data_layout()
                     .offset(old_offset.unwrap_or(Size::ZERO).bytes(), offset.bytes())?;
                 PlaceTy {
@@ -323,7 +308,7 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
 
 impl<'tcx, Prov: Provenance + 'static> PlaceTy<'tcx, Prov> {
     /// A place is either an mplace or some local.
-    #[inline]
+    #[inline(always)]
     pub fn as_mplace_or_local(
         &self,
     ) -> Either<MPlaceTy<'tcx, Prov>, (usize, mir::Local, Option<Size>)> {
@@ -399,20 +384,6 @@ where
     Prov: Provenance + 'static,
     M: Machine<'mir, 'tcx, Provenance = Prov>,
 {
-    /// Get the metadata of the given place.
-    pub(super) fn place_meta(
-        &self,
-        place: &PlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
-        if place.layout.is_unsized() {
-            // For `Place::Local`, the metadata is stored with the local, not the place. So we have
-            // to look that up first.
-            self.place_to_op(place)?.meta()
-        } else {
-            Ok(MemPlaceMeta::None)
-        }
-    }
-
     /// Take a value, which represents a (thin or wide) reference, and make it a place.
     /// Alignment is just based on the type. This is the inverse of `mplace_to_ref()`.
     ///
@@ -537,8 +508,24 @@ where
         frame: usize,
         local: mir::Local,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let layout = self.layout_of_local(&self.stack()[frame], local, None)?;
-        let place = Place::Local { frame, local, offset: None };
+        // Other parts of the system rely on `Place::Local` never being unsized.
+        // So we eagerly check here if this local has an MPlace, and if yes we use it.
+        let frame_ref = &self.stack()[frame];
+        let layout = self.layout_of_local(frame_ref, local, None)?;
+        let place = if layout.is_sized() {
+            // We can just always use the `Local` for sized values.
+            Place::Local { frame, local, offset: None }
+        } else {
+            // Unsized `Local` isn't okay (we cannot store the metadata).
+            match frame_ref.locals[local].access()? {
+                Operand::Immediate(_) => {
+                    // ConstProp marks *all* locals as `Immediate::Uninit` since it cannot
+                    // efficiently check whether they are sized. We have to catch that case here.
+                    throw_inval!(ConstPropNonsense);
+                }
+                Operand::Indirect(mplace) => Place::Ptr(*mplace),
+            }
+        };
         Ok(PlaceTy { place, layout, align: layout.align.abi })
     }
 
@@ -896,9 +883,7 @@ where
                         // that has different alignment than the outer field.
                         let local_layout =
                             self.layout_of_local(&self.stack()[frame], local, None)?;
-                        if local_layout.is_unsized() {
-                            throw_unsup_format!("unsized locals are not supported");
-                        }
+                        assert!(local_layout.is_sized(), "unsized locals cannot be immediate");
                         let mplace = self.allocate(local_layout, MemoryKind::Stack)?;
                         // Preserve old value. (As an optimization, we can skip this if it was uninit.)
                         if !matches!(local_val, Immediate::Uninit) {

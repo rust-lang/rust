@@ -6,6 +6,7 @@ fn main() {
             dbg!("matched a");
         },
         "bar" | _ => {
+            //~^ ERROR: wildcard pattern covers any other pattern as it will match anyway
             dbg!("matched (bar or) wild");
         },
     };
@@ -14,6 +15,7 @@ fn main() {
             dbg!("matched a");
         },
         "bar" | "bar2" | _ => {
+            //~^ ERROR: wildcard pattern covers any other pattern as it will match anyway
             dbg!("matched (bar or bar2 or) wild");
         },
     };
@@ -22,6 +24,7 @@ fn main() {
             dbg!("matched a");
         },
         _ | "bar" | _ => {
+            //~^ ERROR: wildcard pattern covers any other pattern as it will match anyway
             dbg!("matched (bar or) wild");
         },
     };
@@ -30,6 +33,7 @@ fn main() {
             dbg!("matched a");
         },
         _ | "bar" => {
+            //~^ ERROR: wildcard pattern covers any other pattern as it will match anyway
             dbg!("matched (bar or) wild");
         },
     };

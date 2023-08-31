@@ -192,7 +192,7 @@ fn layout_of_uncached<'tcx>(
 
                 let metadata_layout = cx.layout_of(metadata_ty)?;
                 // If the metadata is a 1-zst, then the pointer is thin.
-                if metadata_layout.is_zst() && metadata_layout.align.abi.bytes() == 1 {
+                if metadata_layout.is_1zst() {
                     return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
                 }
 

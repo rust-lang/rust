@@ -5,6 +5,7 @@ fn main() {
 
     // applicable here
     v.resize(0, 5);
+    //~^ ERROR: emptying a vector with `resize`
 
     // not applicable
     v.resize(2, 5);

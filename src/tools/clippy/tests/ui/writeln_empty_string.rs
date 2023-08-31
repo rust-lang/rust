@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(unused_must_use)]
 #![warn(clippy::writeln_empty_string)]
 use std::io::Write;

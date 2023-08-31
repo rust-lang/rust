@@ -1,10 +1,11 @@
 #![warn(clippy::manual_flatten)]
 #![allow(clippy::useless_vec, clippy::uninlined_format_args)]
-
+//@no-rustfix
 fn main() {
     // Test for loop over implicitly adjusted `Iterator` with `if let` expression
     let x = vec![Some(1), Some(2), Some(3)];
     for n in x {
+        //~^ ERROR: unnecessary `if let` since only the `Some` variant of the iterator element
         if let Some(y) = n {
             println!("{}", y);
         }
@@ -13,6 +14,7 @@ fn main() {
     // Test for loop over implicitly adjusted `Iterator` with `if let` statement
     let y: Vec<Result<i32, i32>> = vec![];
     for n in y.clone() {
+        //~^ ERROR: unnecessary `if let` since only the `Ok` variant of the iterator element i
         if let Ok(n) = n {
             println!("{}", n);
         };
@@ -20,6 +22,7 @@ fn main() {
 
     // Test for loop over by reference
     for n in &y {
+        //~^ ERROR: unnecessary `if let` since only the `Ok` variant of the iterator element i
         if let Ok(n) = n {
             println!("{}", n);
         }
@@ -28,6 +31,7 @@ fn main() {
     // Test for loop over an implicit reference
     let z = &y;
     for n in z {
+        //~^ ERROR: unnecessary `if let` since only the `Ok` variant of the iterator element i
         if let Ok(n) = n {
             println!("{}", n);
         }
@@ -37,6 +41,7 @@ fn main() {
     let z = vec![Some(1), Some(2), Some(3)];
     let z = z.iter();
     for n in z {
+        //~^ ERROR: unnecessary `if let` since only the `Some` variant of the iterator element
         if let Some(m) = n {
             println!("{}", m);
         }
@@ -70,6 +75,7 @@ fn main() {
 
     let vec_of_ref = vec![&Some(1)];
     for n in &vec_of_ref {
+        //~^ ERROR: unnecessary `if let` since only the `Some` variant of the iterator element
         if let Some(n) = n {
             println!("{:?}", n);
         }
@@ -77,6 +83,7 @@ fn main() {
 
     let vec_of_ref = &vec_of_ref;
     for n in vec_of_ref {
+        //~^ ERROR: unnecessary `if let` since only the `Some` variant of the iterator element
         if let Some(n) = n {
             println!("{:?}", n);
         }
@@ -84,6 +91,7 @@ fn main() {
 
     let slice_of_ref = &[&Some(1)];
     for n in slice_of_ref {
+        //~^ ERROR: unnecessary `if let` since only the `Some` variant of the iterator element
         if let Some(n) = n {
             println!("{:?}", n);
         }
@@ -114,6 +122,7 @@ fn main() {
 fn run_unformatted_tests() {
     // Skip rustfmt here on purpose so the suggestion does not fit in one line
     for n in vec![
+    //~^ ERROR: unnecessary `if let` since only the `Some` variant of the iterator element
         Some(1),
         Some(2),
         Some(3)

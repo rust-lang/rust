@@ -376,6 +376,16 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         )
         .expect("failed to push initial stack frame");
 
+        for local in body.local_decls.indices() {
+            // Mark everything initially live.
+            // This is somewhat dicey since some of them might be unsized and it is incoherent to
+            // mark those as live... We rely on `local_to_place`/`local_to_op` in the interpreter
+            // stopping us before those unsized immediates can cause issues deeper in the
+            // interpreter.
+            ecx.frame_mut().locals[local].value =
+                LocalValue::Live(interpret::Operand::Immediate(Immediate::Uninit));
+        }
+
         ConstPropagator { ecx, tcx, param_env, local_decls: &dummy_body.local_decls }
     }
 

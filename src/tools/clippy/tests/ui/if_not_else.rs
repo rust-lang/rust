@@ -10,11 +10,13 @@ fn bla() -> bool {
 
 fn main() {
     if !bla() {
+        //~^ ERROR: unnecessary boolean `not` operation
         println!("Bugs");
     } else {
         println!("Bunny");
     }
     if 4 != 5 {
+        //~^ ERROR: unnecessary `!=` operation
         println!("Bugs");
     } else {
         println!("Bunny");

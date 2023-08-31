@@ -4,7 +4,7 @@
 
 use std::future::Future;
 
-type G<'a, T> = impl Future<Output = ()> + 'a;
+type G<'a, T> = impl Future<Output = ()>;
 
 trait Trait {
     type F: Future<Output = ()>;

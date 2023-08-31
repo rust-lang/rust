@@ -21,6 +21,7 @@ fn main() {
     if_chain! {
         let slice: Option<&[u32]> = Some(&[1, 2, 3]);
         if let Some(slice) = slice;
+        //~^ ERROR: this binding can be a slice pattern to avoid indexing
         then {
             println!("{}", slice[0]);
         }

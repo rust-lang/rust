@@ -7,13 +7,13 @@ LL |     let b = **&&a;
    = note: `-D clippy::deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof_double_trigger.rs:14:17
+  --> $DIR/deref_addrof_double_trigger.rs:16:17
    |
 LL |         let y = *&mut x;
    |                 ^^^^^^^ help: try: `x`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof_double_trigger.rs:21:18
+  --> $DIR/deref_addrof_double_trigger.rs:24:18
    |
 LL |         let y = **&mut &mut x;
    |                  ^^^^^^^^^^^^ help: try: `&mut x`

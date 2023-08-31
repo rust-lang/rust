@@ -216,24 +216,24 @@ LL +     println!("{val}");
 error: variables can be used directly in the `format!` string
   --> $DIR/uninlined_format_args.rs:72:5
    |
-LL |     println!("val='{/t }'", local_i32);
+LL |     println!("val='{\t }'", local_i32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: change this to
    |
-LL -     println!("val='{/t }'", local_i32);
+LL -     println!("val='{\t }'", local_i32);
 LL +     println!("val='{local_i32}'");
    |
 
 error: variables can be used directly in the `format!` string
   --> $DIR/uninlined_format_args.rs:73:5
    |
-LL |     println!("val='{/n }'", local_i32);
+LL |     println!("val='{\n }'", local_i32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: change this to
    |
-LL -     println!("val='{/n }'", local_i32);
+LL -     println!("val='{\n }'", local_i32);
 LL +     println!("val='{local_i32}'");
    |
 

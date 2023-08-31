@@ -129,6 +129,11 @@ pub unsafe extern "C" fn runtime_entry(
     abi::exit(result);
 }
 
+#[inline]
+pub(crate) fn is_interrupted(errno: i32) -> bool {
+    errno == abi::errno::EINTR
+}
+
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno {
         abi::errno::EACCES => ErrorKind::PermissionDenied,

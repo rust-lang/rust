@@ -2,18 +2,18 @@ error: this loop could be written as a `while let` loop
   --> $DIR/ice-360.rs:5:5
    |
 LL | /     loop {
+LL | |
+LL | |
 LL | |         let _ = match iter.next() {
-LL | |             Some(ele) => ele,
-LL | |             None => break,
-LL | |         };
-LL | |         loop {}
+...  |
+LL | |
 LL | |     }
    | |_____^ help: try: `while let Some(ele) = iter.next() { .. }`
    |
    = note: `-D clippy::while-let-loop` implied by `-D warnings`
 
 error: empty `loop {}` wastes CPU cycles
-  --> $DIR/ice-360.rs:10:9
+  --> $DIR/ice-360.rs:12:9
    |
 LL |         loop {}
    |         ^^^^^^^

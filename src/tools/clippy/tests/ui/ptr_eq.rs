@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::ptr_eq)]
 
 macro_rules! mac {

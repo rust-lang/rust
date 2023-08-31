@@ -795,6 +795,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
         use crate::fluent_generated::*;
         match self {
             UnsupportedOpInfo::Unsupported(s) => s.clone().into(),
+            UnsupportedOpInfo::UnsizedLocal => const_eval_unsized_local,
             UnsupportedOpInfo::OverwritePartialPointer(_) => const_eval_partial_pointer_overwrite,
             UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_copy,
             UnsupportedOpInfo::ReadPointerAsInt(_) => const_eval_read_pointer_as_int,
@@ -814,7 +815,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             // `ReadPointerAsInt(Some(info))` is never printed anyway, it only serves as an error to
             // be further processed by validity checking which then turns it into something nice to
             // print. So it's not worth the effort of having diagnostics that can print the `info`.
-            Unsupported(_) | ReadPointerAsInt(_) => {}
+            UnsizedLocal | Unsupported(_) | ReadPointerAsInt(_) => {}
             OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
                 builder.set_arg("ptr", ptr);
             }

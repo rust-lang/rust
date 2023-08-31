@@ -1,5 +1,5 @@
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:8:5
+  --> $DIR/needless_raw_string_hashes.rs:7:5
    |
 LL |     r##"Hello "world"!"##;
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `r#"Hello "world"!"#`
@@ -7,31 +7,31 @@ LL |     r##"Hello "world"!"##;
    = note: `-D clippy::needless-raw-string-hashes` implied by `-D warnings`
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:9:5
+  --> $DIR/needless_raw_string_hashes.rs:8:5
    |
 LL |     r######" "### "## "# "######;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `r####" "### "## "# "####`
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:10:5
+  --> $DIR/needless_raw_string_hashes.rs:9:5
    |
 LL |     r######" "aa" "# "## "######;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `r###" "aa" "# "## "###`
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:12:5
+  --> $DIR/needless_raw_string_hashes.rs:11:5
    |
 LL |     br##"Hello "world"!"##;
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `br#"Hello "world"!"#`
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:13:5
+  --> $DIR/needless_raw_string_hashes.rs:12:5
    |
 LL |     br######" "### "## "# "######;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `br####" "### "## "# "####`
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:14:5
+  --> $DIR/needless_raw_string_hashes.rs:13:5
    |
 LL |     br######" "aa" "# "## "######;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `br###" "aa" "# "## "###`

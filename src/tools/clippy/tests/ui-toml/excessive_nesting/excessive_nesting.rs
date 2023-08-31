@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![rustfmt::skip]
 #![feature(custom_inner_attributes)]
 #![allow(unused)]

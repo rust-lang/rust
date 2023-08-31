@@ -1,20 +1,24 @@
+//@no-rustfix: overlapping suggestions
 #![deny(clippy::match_bool)]
 
 fn match_bool() {
     let test: bool = true;
 
     match test {
+        //~^ ERROR: you seem to be trying to match on a boolean expression
         true => 0,
         false => 42,
     };
 
     let option = 1;
     match option == 1 {
+        //~^ ERROR: you seem to be trying to match on a boolean expression
         true => 1,
         false => 0,
     };
 
     match test {
+        //~^ ERROR: you seem to be trying to match on a boolean expression
         true => (),
         false => {
             println!("Noooo!");
@@ -22,6 +26,7 @@ fn match_bool() {
     };
 
     match test {
+        //~^ ERROR: you seem to be trying to match on a boolean expression
         false => {
             println!("Noooo!");
         },
@@ -29,6 +34,11 @@ fn match_bool() {
     };
 
     match test && test {
+        //~^ ERROR: this boolean expression can be simplified
+        //~| NOTE: `-D clippy::nonminimal-bool` implied by `-D warnings`
+        //~| ERROR: you seem to be trying to match on a boolean expression
+        //~| ERROR: equal expressions as operands to `&&`
+        //~| NOTE: `#[deny(clippy::eq_op)]` on by default
         false => {
             println!("Noooo!");
         },
@@ -36,6 +46,7 @@ fn match_bool() {
     };
 
     match test {
+        //~^ ERROR: you seem to be trying to match on a boolean expression
         false => {
             println!("Noooo!");
         },

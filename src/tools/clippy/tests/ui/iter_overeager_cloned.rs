@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::iter_overeager_cloned, clippy::redundant_clone, clippy::filter_next)]
 #![allow(dead_code, clippy::let_unit_value, clippy::useless_vec)]
 
@@ -22,19 +21,47 @@ fn main() {
         .cloned()
         .flatten();
 
-    // Not implemented yet
     let _ = vec.iter().cloned().filter(|x| x.starts_with('2'));
 
-    // Not implemented yet
+    let _ = vec.iter().cloned().find(|x| x == "2");
+
+    {
+        let f = |x: &String| x.starts_with('2');
+        let _ = vec.iter().cloned().filter(f);
+        let _ = vec.iter().cloned().find(f);
+    }
+
+    {
+        let vec: Vec<(String, String)> = vec![];
+        let f = move |x: &(String, String)| x.0.starts_with('2');
+        let _ = vec.iter().cloned().filter(f);
+        let _ = vec.iter().cloned().find(f);
+    }
+
+    fn test_move<'a>(
+        iter: impl Iterator<Item = &'a (&'a u32, String)> + 'a,
+        target: String,
+    ) -> impl Iterator<Item = (&'a u32, String)> + 'a {
+        iter.cloned().filter(move |(&a, b)| a == 1 && b == &target)
+    }
+
+    {
+        #[derive(Clone)]
+        struct S<'a> {
+            a: &'a u32,
+            b: String,
+        }
+
+        fn bar<'a>(iter: impl Iterator<Item = &'a S<'a>> + 'a, target: String) -> impl Iterator<Item = S<'a>> + 'a {
+            iter.cloned().filter(move |S { a, b }| **a == 1 && b == &target)
+        }
+    }
+
     let _ = vec.iter().cloned().map(|x| x.len());
 
     // This would fail if changed.
     let _ = vec.iter().cloned().map(|x| x + "2");
 
-    // Not implemented yet
-    let _ = vec.iter().cloned().find(|x| x == "2");
-
-    // Not implemented yet
     let _ = vec.iter().cloned().for_each(|x| assert!(!x.is_empty()));
 
     // Not implemented yet

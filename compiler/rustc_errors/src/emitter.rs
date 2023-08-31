@@ -24,7 +24,7 @@ use rustc_lint_defs::pluralize;
 
 use derive_setters::Setters;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
 use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
@@ -187,6 +187,8 @@ impl Margin {
 }
 
 const ANONYMIZED_LINE_NUM: &str = "LL";
+
+pub type DynEmitter = dyn Emitter + DynSend;
 
 /// Emitter trait for emitting errors.
 pub trait Emitter: Translate {
@@ -625,7 +627,7 @@ impl ColorConfig {
 #[derive(Setters)]
 pub struct EmitterWriter {
     #[setters(skip)]
-    dst: Destination,
+    dst: IntoDynSyncSend<Destination>,
     sm: Option<Lrc<SourceMap>>,
     fluent_bundle: Option<Lrc<FluentBundle>>,
     #[setters(skip)]
@@ -655,7 +657,7 @@ impl EmitterWriter {
 
     fn create(dst: Destination, fallback_bundle: LazyFallbackBundle) -> EmitterWriter {
         EmitterWriter {
-            dst,
+            dst: IntoDynSyncSend(dst),
             sm: None,
             fluent_bundle: None,
             fallback_bundle,
