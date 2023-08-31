@@ -1,7 +1,5 @@
-#![feature(portable_simd)]
 use std::mem;
 use std::num;
-use std::simd;
 
 #[derive(Copy, Clone)]
 struct Zst;
@@ -56,8 +54,7 @@ fn test_abi_newtype<T: Copy>(t: T) {
 
 fn main() {
     // Here we check:
-    // - unsigned vs signed integer is allowed
-    // - u32/i32 vs char is allowed
+    // - u32 vs char is allowed
     // - u32 vs NonZeroU32/Option<NonZeroU32> is allowed
     // - reference vs raw pointer is allowed
     // - references to things of the same size and alignment are allowed
@@ -65,10 +62,7 @@ fn main() {
     // these would be stably guaranteed. Code that relies on this is equivalent to code that relies
     // on the layout of `repr(Rust)` types. They are also fragile: the same mismatches in the fields
     // of a struct (even with `repr(C)`) will not always be accepted by Miri.
-    test_abi_compat(0u32, 0i32);
-    test_abi_compat(simd::u32x8::splat(1), simd::i32x8::splat(1));
     test_abi_compat(0u32, 'x');
-    test_abi_compat(0i32, 'x');
     test_abi_compat(42u32, num::NonZeroU32::new(1).unwrap());
     test_abi_compat(0u32, Some(num::NonZeroU32::new(1).unwrap()));
     test_abi_compat(&0u32, &0u32 as *const u32);
@@ -83,9 +77,6 @@ fn main() {
     test_abi_newtype(0u32);
     test_abi_newtype(0f32);
     test_abi_newtype((0u32, 1u32, 2u32));
-    // FIXME: skipping the array tests on mips64 due to https://github.com/rust-lang/rust/issues/115404
-    if !cfg!(target_arch = "mips64") {
-        test_abi_newtype([0u32, 1u32, 2u32]);
-        test_abi_newtype([0i32; 0]);
-    }
+    test_abi_newtype([0u32, 1u32, 2u32]);
+    test_abi_newtype([0i32; 0]);
 }
