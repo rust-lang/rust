@@ -263,7 +263,6 @@ function initSearch(rawSearchIndex) {
      * @returns {integer}
      */
     function buildTypeMapIndex(name) {
-
         if (name === "" || name === null) {
             return -1;
         }
@@ -1380,7 +1379,7 @@ function initSearch(rawSearchIndex) {
              * @type Map<integer, QueryElement[]>
              */
             const queryElemSet = new Map();
-            const addQueryElemToQueryElemSet = function addQueryElemToQueryElemSet(queryElem) {
+            const addQueryElemToQueryElemSet = queryElem => {
                 let currentQueryElemList;
                 if (queryElemSet.has(queryElem.id)) {
                     currentQueryElemList = queryElemSet.get(queryElem.id);
@@ -1397,7 +1396,7 @@ function initSearch(rawSearchIndex) {
              * @type Map<integer, FunctionType[]>
              */
             const fnTypeSet = new Map();
-            const addFnTypeToFnTypeSet = function addFnTypeToFnTypeSet(fnType) {
+            const addFnTypeToFnTypeSet = fnType => {
                 // Pure generic, or an item that's not matched by any query elems.
                 // Try [unboxing] it.
                 //
@@ -2385,12 +2384,11 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     lowercasePaths
                 );
             }
+            // `0` is used as a sentinel because it's fewer bytes than `null`
+            const item = pathIndex === 0 ? null : lowercasePaths[pathIndex - 1];
             return {
-                // `0` is used as a sentinel because it's fewer bytes than `null`
-                id: pathIndex === 0
-                    ? -1
-                    : buildTypeMapIndex(lowercasePaths[pathIndex - 1].name),
-                ty: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].ty,
+                id: item === null ? -1 : buildTypeMapIndex(item.name),
+                ty: item === null ? null : item.ty,
                 generics: generics,
             };
         });
@@ -2419,14 +2417,13 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         if (functionSearchType === 0) {
             return null;
         }
-        let inputs, output;
+        let inputs, output, item;
         if (typeof functionSearchType[INPUTS_DATA] === "number") {
             const pathIndex = functionSearchType[INPUTS_DATA];
+            item = pathIndex === 0 ? null : lowercasePaths[pathIndex - 1];
             inputs = [{
-                id: pathIndex === 0
-                    ? -1
-                    : buildTypeMapIndex(lowercasePaths[pathIndex - 1].name),
-                ty: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].ty,
+                id: item === null ? -1 : buildTypeMapIndex(item.name),
+                ty: item === null ? null : item.ty,
                 generics: [],
             }];
         } else {
@@ -2438,11 +2435,10 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         if (functionSearchType.length > 1) {
             if (typeof functionSearchType[OUTPUT_DATA] === "number") {
                 const pathIndex = functionSearchType[OUTPUT_DATA];
+                item = pathIndex === 0 ? null : lowercasePaths[pathIndex - 1];
                 output = [{
-                    id: pathIndex === 0
-                        ? -1
-                        : buildTypeMapIndex(lowercasePaths[pathIndex - 1].name),
-                    ty: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].ty,
+                    id: item === null ? -1 : buildTypeMapIndex(item.name),
+                    ty: item === null ? null : item.ty,
                     generics: [],
                 }];
             } else {
