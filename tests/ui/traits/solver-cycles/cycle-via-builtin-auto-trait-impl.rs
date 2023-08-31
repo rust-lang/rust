@@ -1,3 +1,4 @@
+//~ ERROR overflow
 // A regression test for #111729 checking that we correctly
 // track recursion depth for obligations returned by confirmation.
 use std::panic::RefUnwindSafe;
@@ -14,7 +15,6 @@ struct RootDatabase {
 }
 
 impl<T: RefUnwindSafe> Database for T {
-    //~^ ERROR overflow
     type Storage = SalsaStorage;
 }
 impl Database for RootDatabase {
