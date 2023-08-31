@@ -37,10 +37,9 @@ jobs:
     needs: basics
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.channel }}
-        override: true
     - env:
         TARGET: ${{ matrix.target }}
         CHANNEL: ${{ matrix.channel }}
