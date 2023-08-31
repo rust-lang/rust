@@ -4,6 +4,7 @@
     clippy::similar_names,
     clippy::needless_borrow,
     clippy::deref_addrof,
+    clippy::unnecessary_mut_passed,
     dead_code
 )]
 
@@ -20,15 +21,15 @@ fn main() {
     for _ in rvec {}
 
     let rmvec = &mut vec;
-    for _ in &*rmvec {}
-    for _ in &mut *rmvec {}
+    for _ in rmvec.iter() {}
+    for _ in rmvec.iter_mut() {}
 
     for _ in &vec {} // these are fine
     for _ in &mut vec {} // these are fine
 
     for _ in &[1, 2, 3] {}
 
-    for _ in &*(&mut [1, 2, 3]) {}
+    for _ in (&mut [1, 2, 3]).iter() {}
 
     for _ in &[0; 32] {}
     for _ in &[0; 33] {}
