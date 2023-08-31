@@ -2249,7 +2249,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     pub(crate) fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        self.universe_causes[&universe].clone()
+        // Query canonicalization can create local superuniverses (for example in
+        // `InferCtx::query_response_substitution_guess`), but they don't have an associated
+        // `UniverseInfo` explaining why they were created.
+        // This can cause ICEs if these causes are accessed in diagnostics, for example in issue
+        // #114907 where this happens via liveness and dropck outlives results.
+        // Therefore, we return a default value in case that happens, which should at worst emit a
+        // suboptimal error, instead of the ICE.
+        self.universe_causes.get(&universe).cloned().unwrap_or_else(|| UniverseInfo::other())
     }
 
     /// Tries to find the terminator of the loop in which the region 'r' resides.
