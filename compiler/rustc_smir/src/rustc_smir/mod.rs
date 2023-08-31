@@ -1456,6 +1456,6 @@ impl<'tcx> Stable<'tcx> for rustc_span::Span {
 
 impl From<ErrorGuaranteed> for CompilerError {
     fn from(_error: ErrorGuaranteed) -> Self {
-        CompilerError
+        CompilerError::CompilationFailed
     }
 }

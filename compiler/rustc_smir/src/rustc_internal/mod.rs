@@ -18,7 +18,6 @@ use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::EarlyErrorHandler;
 pub use rustc_span::def_id::{CrateNum, DefId};
-use rustc_span::ErrorGuaranteed;
 
 fn with_tables<R>(mut f: impl FnMut(&mut Tables<'_>) -> R) -> R {
     let mut ret = None;
@@ -211,11 +210,14 @@ where
 
     /// Runs the compiler against given target and tests it with `test_function`
     pub fn run(mut self) -> Result<T, CompilerError> {
-        rustc_driver::catch_fatal_errors(|| {
-            RunCompiler::new(&self.args.clone(), &mut self).run().unwrap();
-        })
-        .map_err(|e| <ErrorGuaranteed as Into<CompilerError>>::into(e))?;
-        Ok(self.result.unwrap())
+        let compiler_result = rustc_driver::catch_fatal_errors(|| {
+            RunCompiler::new(&self.args.clone(), &mut self).run()
+        });
+        match compiler_result {
+            Ok(Ok(())) => Ok(self.result.unwrap()),
+            Ok(Err(_)) => Err(CompilerError::CompilationFailed),
+            Err(_) => Err(CompilerError::ICE),
+        }
     }
 }
 

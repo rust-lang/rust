@@ -58,7 +58,12 @@ pub type ImplTraitDecls = Vec<ImplDef>;
 
 /// An error type used to represent an error that has already been reported by the compiler.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct CompilerError;
+pub enum CompilerError {
+    /// Internal compiler error (I.e.: Compiler crashed).
+    ICE,
+    /// Compilation failed.
+    CompilationFailed,
+}
 
 /// Holds information about a crate.
 #[derive(Clone, PartialEq, Eq, Debug)]

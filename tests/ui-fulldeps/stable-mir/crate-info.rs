@@ -136,7 +136,7 @@ fn main() {
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    rustc_internal::StableMir::new(args, test_stable_mir).run();
+    rustc_internal::StableMir::new(args, test_stable_mir).run().unwrap();
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {
