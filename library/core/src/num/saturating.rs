@@ -35,6 +35,7 @@ use crate::ops::{Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign};
 #[unstable(feature = "saturating_int_impl", issue = "87920")]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
 #[repr(transparent)]
+#[rustc_diagnostic_item = "Saturating"]
 pub struct Saturating<T>(#[unstable(feature = "saturating_int_impl", issue = "87920")] pub T);
 
 #[unstable(feature = "saturating_int_impl", issue = "87920")]
