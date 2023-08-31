@@ -1,6 +1,7 @@
 include ../tools.mk
 
 # only-aarch64
+# ignore-cross-compile
 
 all:
 	$(COMPILE_OBJ) $(TMPDIR)/test.o test.c
