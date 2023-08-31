@@ -118,7 +118,7 @@ fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePo
 fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
     let span = original_sp(span, DUMMY_SP);
     let SourceFileAndLine { sf, line } = cx.sess().source_map().lookup_line(span.lo()).unwrap();
-    let line_start = sf.lines(|lines| lines[line]);
+    let line_start = sf.lines()[line];
     let line_start = sf.absolute_position(line_start);
     span.with_lo(line_start)
 }
