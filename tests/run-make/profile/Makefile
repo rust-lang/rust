@@ -1,4 +1,5 @@
 # needs-profiler-support
+# ignore-cross-compile
 
 include ../tools.mk
 
