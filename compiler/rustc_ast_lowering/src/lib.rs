@@ -671,8 +671,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             (None, None)
         };
-        let (nodes, parenting) =
-            index::index_hir(self.tcx.sess, &*self.tcx.definitions_untracked(), node, &bodies);
+        let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies);
         let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies };
         let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash };
 
