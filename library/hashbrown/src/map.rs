@@ -6653,7 +6653,7 @@ mod test_map {
     use super::Entry::{Occupied, Vacant};
     use super::EntryRef;
     use super::{HashMap, RawEntryMut};
-    use alloc::string::ToString;
+    use alloc::string::{String, ToString};
     use alloc::sync::Arc;
     use allocator_api2::alloc::{AllocError, Allocator, Global};
     use core::alloc::Layout;
@@ -8519,6 +8519,14 @@ mod test_map {
         _inner: Arc<MyAllocInner>,
     }
 
+    impl MyAlloc {
+        fn new(drop_count: Arc<AtomicI8>) -> Self {
+            MyAlloc {
+                _inner: Arc::new(MyAllocInner { drop_count }),
+            }
+        }
+    }
+
     impl Drop for MyAllocInner {
         fn drop(&mut self) {
             println!("MyAlloc freed.");
@@ -8543,14 +8551,7 @@ mod test_map {
         let dropped: Arc<AtomicI8> = Arc::new(AtomicI8::new(1));
 
         {
-            let mut map = crate::HashMap::with_capacity_in(
-                10,
-                MyAlloc {
-                    _inner: Arc::new(MyAllocInner {
-                        drop_count: dropped.clone(),
-                    }),
-                },
-            );
+            let mut map = HashMap::with_capacity_in(10, MyAlloc::new(dropped.clone()));
             for i in 0..10 {
                 map.entry(i).or_insert_with(|| "i".to_string());
             }
@@ -8564,92 +8565,340 @@ mod test_map {
         assert_eq!(dropped.load(Ordering::SeqCst), 0);
     }
 
-    #[test]
-    #[should_panic = "panic in clone"]
-    fn test_clone_memory_leaks_and_double_drop() {
-        let dropped: Arc<AtomicI8> = Arc::new(AtomicI8::new(2));
+    #[derive(Debug)]
+    struct CheckedCloneDrop<T> {
+        panic_in_clone: bool,
+        panic_in_drop: bool,
+        dropped: bool,
+        data: T,
+    }
 
+    impl<T> CheckedCloneDrop<T> {
+        fn new(panic_in_clone: bool, panic_in_drop: bool, data: T) -> Self {
+            CheckedCloneDrop {
+                panic_in_clone,
+                panic_in_drop,
+                dropped: false,
+                data,
+            }
+        }
+    }
+
+    impl<T: Clone> Clone for CheckedCloneDrop<T> {
+        fn clone(&self) -> Self {
+            if self.panic_in_clone {
+                panic!("panic in clone")
+            }
+            Self {
+                panic_in_clone: self.panic_in_clone,
+                panic_in_drop: self.panic_in_drop,
+                dropped: self.dropped,
+                data: self.data.clone(),
+            }
+        }
+    }
+
+    impl<T> Drop for CheckedCloneDrop<T> {
+        fn drop(&mut self) {
+            if self.panic_in_drop {
+                self.dropped = true;
+                panic!("panic in drop");
+            }
+            if self.dropped {
+                panic!("double drop");
+            }
+            self.dropped = true;
+        }
+    }
+
+    /// Return hashmap with predefined distribution of elements.
+    /// All elements will be located in the same order as elements
+    /// returned by iterator.
+    ///
+    /// This function does not panic, but returns an error as a `String`
+    /// to distinguish between a test panic and an error in the input data.
+    fn get_test_map<I, T, A>(
+        iter: I,
+        mut fun: impl FnMut(u64) -> T,
+        alloc: A,
+    ) -> Result<HashMap<u64, CheckedCloneDrop<T>, DefaultHashBuilder, A>, String>
+    where
+        I: Iterator<Item = (bool, bool)> + Clone + ExactSizeIterator,
+        A: Allocator + Clone,
+        T: PartialEq + core::fmt::Debug,
+    {
+        use crate::scopeguard::guard;
+
+        let mut map: HashMap<u64, CheckedCloneDrop<T>, _, A> =
+            HashMap::with_capacity_in(iter.size_hint().0, alloc);
         {
-            let mut map = crate::HashMap::with_capacity_in(
-                10,
-                MyAlloc {
-                    _inner: Arc::new(MyAllocInner {
-                        drop_count: dropped.clone(),
-                    }),
-                },
-            );
-
-            const DISARMED: bool = false;
-            const ARMED: bool = true;
-
-            struct CheckedCloneDrop {
-                panic_in_clone: bool,
-                dropped: bool,
-                need_drop: Vec<i32>,
-            }
-
-            impl Clone for CheckedCloneDrop {
-                fn clone(&self) -> Self {
-                    if self.panic_in_clone {
-                        panic!("panic in clone")
-                    }
-                    Self {
-                        panic_in_clone: self.panic_in_clone,
-                        dropped: self.dropped,
-                        need_drop: self.need_drop.clone(),
-                    }
+            let mut guard = guard(&mut map, |map| {
+                for (_, value) in map.iter_mut() {
+                    value.panic_in_drop = false
                 }
-            }
+            });
 
-            impl Drop for CheckedCloneDrop {
-                fn drop(&mut self) {
-                    if self.dropped {
-                        panic!("double drop");
-                    }
-                    self.dropped = true;
+            let mut count = 0;
+            // Hash and Key must be equal to each other for controlling the elements placement.
+            for (panic_in_clone, panic_in_drop) in iter.clone() {
+                if core::mem::needs_drop::<T>() && panic_in_drop {
+                    return Err(String::from(
+                        "panic_in_drop can be set with a type that doesn't need to be dropped",
+                    ));
                 }
-            }
-
-            let armed_flags = [
-                DISARMED, DISARMED, ARMED, DISARMED, DISARMED, DISARMED, DISARMED,
-            ];
-
-            // Hash and Key must be equal to each other for controlling the elements placement
-            // so that we can be sure that we first clone elements that don't panic during cloning.
-            for (idx, &panic_in_clone) in armed_flags.iter().enumerate() {
-                let idx = idx as u64;
-                map.table.insert(
-                    idx,
+                guard.table.insert(
+                    count,
                     (
-                        idx,
-                        CheckedCloneDrop {
-                            panic_in_clone,
-                            dropped: false,
-                            need_drop: vec![0, 1, 2, 3],
-                        },
+                        count,
+                        CheckedCloneDrop::new(panic_in_clone, panic_in_drop, fun(count)),
                     ),
                     |(k, _)| *k,
                 );
-            }
-
-            let mut count = 0;
-            // Let's check that all elements are located as we wanted
-            //
-            // SAFETY: We know for sure that `RawTable` will outlive
-            // the returned `RawIter` iterator.
-            for ((key, value), panic_in_clone) in map.iter().zip(armed_flags) {
-                assert_eq!(*key, count);
-                assert_eq!(value.panic_in_clone, panic_in_clone);
                 count += 1;
             }
-            assert_eq!(map.len(), 7);
-            assert_eq!(count, 7);
+
+            // Let's check that all elements are located as we wanted
+            let mut check_count = 0;
+            for ((key, value), (panic_in_clone, panic_in_drop)) in guard.iter().zip(iter) {
+                if *key != check_count {
+                    return Err(format!(
+                        "key != check_count,\nkey: `{}`,\ncheck_count: `{}`",
+                        key, check_count
+                    ));
+                }
+                if value.dropped
+                    || value.panic_in_clone != panic_in_clone
+                    || value.panic_in_drop != panic_in_drop
+                    || value.data != fun(check_count)
+                {
+                    return Err(format!(
+                        "Value is not equal to expected,\nvalue: `{:?}`,\nexpected: \
+                        `CheckedCloneDrop {{ panic_in_clone: {}, panic_in_drop: {}, dropped: {}, data: {:?} }}`",
+                        value, panic_in_clone, panic_in_drop, false, fun(check_count)
+                    ));
+                }
+                check_count += 1;
+            }
+
+            if guard.len() != check_count as usize {
+                return Err(format!(
+                    "map.len() != check_count,\nmap.len(): `{}`,\ncheck_count: `{}`",
+                    guard.len(),
+                    check_count
+                ));
+            }
+
+            if count != check_count {
+                return Err(format!(
+                    "count != check_count,\ncount: `{}`,\ncheck_count: `{}`",
+                    count, check_count
+                ));
+            }
+            core::mem::forget(guard);
+        }
+        Ok(map)
+    }
+
+    const DISARMED: bool = false;
+    const ARMED: bool = true;
+
+    const ARMED_FLAGS: [bool; 8] = [
+        DISARMED, DISARMED, DISARMED, ARMED, DISARMED, DISARMED, DISARMED, DISARMED,
+    ];
+
+    const DISARMED_FLAGS: [bool; 8] = [
+        DISARMED, DISARMED, DISARMED, DISARMED, DISARMED, DISARMED, DISARMED, DISARMED,
+    ];
+
+    #[test]
+    #[should_panic = "panic in clone"]
+    fn test_clone_memory_leaks_and_double_drop_one() {
+        let dropped: Arc<AtomicI8> = Arc::new(AtomicI8::new(2));
+
+        {
+            assert_eq!(ARMED_FLAGS.len(), DISARMED_FLAGS.len());
+
+            let map: HashMap<u64, CheckedCloneDrop<Vec<u64>>, DefaultHashBuilder, MyAlloc> =
+                match get_test_map(
+                    ARMED_FLAGS.into_iter().zip(DISARMED_FLAGS),
+                    |n| vec![n],
+                    MyAlloc::new(dropped.clone()),
+                ) {
+                    Ok(map) => map,
+                    Err(msg) => panic!("{msg}"),
+                };
 
             // Clone should normally clone a few elements, and then (when the
             // clone function panics), deallocate both its own memory, memory
             // of `dropped: Arc<AtomicI8>` and the memory of already cloned
             // elements (Vec<i32> memory inside CheckedCloneDrop).
-            let _table2 = map.clone();
+            let _map2 = map.clone();
         }
+    }
+
+    #[test]
+    #[should_panic = "panic in drop"]
+    fn test_clone_memory_leaks_and_double_drop_two() {
+        let dropped: Arc<AtomicI8> = Arc::new(AtomicI8::new(2));
+
+        {
+            assert_eq!(ARMED_FLAGS.len(), DISARMED_FLAGS.len());
+
+            let map: HashMap<u64, CheckedCloneDrop<u64>, DefaultHashBuilder, _> = match get_test_map(
+                DISARMED_FLAGS.into_iter().zip(DISARMED_FLAGS),
+                |n| n,
+                MyAlloc::new(dropped.clone()),
+            ) {
+                Ok(map) => map,
+                Err(msg) => panic!("{msg}"),
+            };
+
+            let mut map2 = match get_test_map(
+                DISARMED_FLAGS.into_iter().zip(ARMED_FLAGS),
+                |n| n,
+                MyAlloc::new(dropped.clone()),
+            ) {
+                Ok(map) => map,
+                Err(msg) => panic!("{msg}"),
+            };
+
+            // The `clone_from` should try to drop the elements of `map2` without
+            // double drop and leaking the allocator. Elements that have not been
+            // dropped leak their memory.
+            map2.clone_from(&map);
+        }
+    }
+
+    /// We check that we have a working table if the clone operation from another
+    /// thread ended in a panic (when buckets of maps are equal to each other).
+    #[test]
+    fn test_catch_panic_clone_from_when_len_is_equal() {
+        use std::thread;
+
+        let dropped: Arc<AtomicI8> = Arc::new(AtomicI8::new(2));
+
+        {
+            assert_eq!(ARMED_FLAGS.len(), DISARMED_FLAGS.len());
+
+            let mut map = match get_test_map(
+                DISARMED_FLAGS.into_iter().zip(DISARMED_FLAGS),
+                |n| vec![n],
+                MyAlloc::new(dropped.clone()),
+            ) {
+                Ok(map) => map,
+                Err(msg) => panic!("{msg}"),
+            };
+
+            thread::scope(|s| {
+                let result: thread::ScopedJoinHandle<'_, String> = s.spawn(|| {
+                    let scope_map =
+                        match get_test_map(ARMED_FLAGS.into_iter().zip(DISARMED_FLAGS), |n| vec![n * 2], MyAlloc::new(dropped.clone())) {
+                            Ok(map) => map,
+                            Err(msg) => return msg,
+                        };
+                    if map.table.buckets() != scope_map.table.buckets() {
+                        return format!(
+                            "map.table.buckets() != scope_map.table.buckets(),\nleft: `{}`,\nright: `{}`",
+                            map.table.buckets(), scope_map.table.buckets()
+                        );
+                    }
+                    map.clone_from(&scope_map);
+                    "We must fail the cloning!!!".to_owned()
+                });
+                if let Ok(msg) = result.join() {
+                    panic!("{msg}")
+                }
+            });
+
+            // Let's check that all iterators work fine and do not return elements
+            // (especially `RawIterRange`, which does not depend on the number of
+            // elements in the table, but looks directly at the control bytes)
+            //
+            // SAFETY: We know for sure that `RawTable` will outlive
+            // the returned `RawIter / RawIterRange` iterator.
+            assert_eq!(map.len(), 0);
+            assert_eq!(map.iter().count(), 0);
+            assert_eq!(unsafe { map.table.iter().count() }, 0);
+            assert_eq!(unsafe { map.table.iter().iter.count() }, 0);
+
+            for idx in 0..map.table.buckets() {
+                let idx = idx as u64;
+                assert!(
+                    map.table.find(idx, |(k, _)| *k == idx).is_none(),
+                    "Index: {idx}"
+                );
+            }
+        }
+
+        // All allocator clones should already be dropped.
+        assert_eq!(dropped.load(Ordering::SeqCst), 0);
+    }
+
+    /// We check that we have a working table if the clone operation from another
+    /// thread ended in a panic (when buckets of maps are not equal to each other).
+    #[test]
+    fn test_catch_panic_clone_from_when_len_is_not_equal() {
+        use std::thread;
+
+        let dropped: Arc<AtomicI8> = Arc::new(AtomicI8::new(2));
+
+        {
+            assert_eq!(ARMED_FLAGS.len(), DISARMED_FLAGS.len());
+
+            let mut map = match get_test_map(
+                [DISARMED].into_iter().zip([DISARMED]),
+                |n| vec![n],
+                MyAlloc::new(dropped.clone()),
+            ) {
+                Ok(map) => map,
+                Err(msg) => panic!("{msg}"),
+            };
+
+            thread::scope(|s| {
+                let result: thread::ScopedJoinHandle<'_, String> = s.spawn(|| {
+                    let scope_map = match get_test_map(
+                        ARMED_FLAGS.into_iter().zip(DISARMED_FLAGS),
+                        |n| vec![n * 2],
+                        MyAlloc::new(dropped.clone()),
+                    ) {
+                        Ok(map) => map,
+                        Err(msg) => return msg,
+                    };
+                    if map.table.buckets() == scope_map.table.buckets() {
+                        return format!(
+                            "map.table.buckets() == scope_map.table.buckets(): `{}`",
+                            map.table.buckets()
+                        );
+                    }
+                    map.clone_from(&scope_map);
+                    "We must fail the cloning!!!".to_owned()
+                });
+                if let Ok(msg) = result.join() {
+                    panic!("{msg}")
+                }
+            });
+
+            // Let's check that all iterators work fine and do not return elements
+            // (especially `RawIterRange`, which does not depend on the number of
+            // elements in the table, but looks directly at the control bytes)
+            //
+            // SAFETY: We know for sure that `RawTable` will outlive
+            // the returned `RawIter / RawIterRange` iterator.
+            assert_eq!(map.len(), 0);
+            assert_eq!(map.iter().count(), 0);
+            assert_eq!(unsafe { map.table.iter().count() }, 0);
+            assert_eq!(unsafe { map.table.iter().iter.count() }, 0);
+
+            for idx in 0..map.table.buckets() {
+                let idx = idx as u64;
+                assert!(
+                    map.table.find(idx, |(k, _)| *k == idx).is_none(),
+                    "Index: {idx}"
+                );
+            }
+        }
+
+        // All allocator clones should already be dropped.
+        assert_eq!(dropped.load(Ordering::SeqCst), 0);
     }
 }

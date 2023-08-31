@@ -2770,7 +2770,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
             unsafe {
                 // Make sure that if any panics occurs, we clear the table and
                 // leave it in an empty state.
-                let mut guard = guard(&mut *self, |self_| {
+                let mut self_ = guard(self, |self_| {
                     self_.clear_no_drop();
                 });
 
@@ -2781,31 +2781,34 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
                 // This leak is unavoidable: we can't try dropping more elements
                 // since this could lead to another panic and abort the process.
                 //
-                // SAFETY: We clear our table right after dropping the elements,
-                // so there is no double drop, since `items` will be equal to zero.
-                guard.drop_elements();
-
-                // Okay, we've successfully dropped all elements, so we'll just set
-                // `items` to zero (so that the `Drop` of `RawTable` doesn't try to
-                // drop all elements twice) and just forget about the guard.
-                guard.table.items = 0;
-                mem::forget(guard);
+                // SAFETY: If something gets wrong we clear our table right after
+                // dropping the elements, so there is no double drop, since `items`
+                // will be equal to zero.
+                self_.drop_elements();
 
                 // If necessary, resize our table to match the source.
-                if self.buckets() != source.buckets() {
+                if self_.buckets() != source.buckets() {
                     // Skip our drop by using ptr::write.
-                    if !self.table.is_empty_singleton() {
+                    if !self_.table.is_empty_singleton() {
                         // SAFETY: We have verified that the table is allocated.
-                        self.free_buckets();
+                        self_.free_buckets();
                     }
-                    (self as *mut Self).write(
+                    // Let's read `alloc` for reusing in new table allocator
+                    // SAFETY:
+                    // * `&mut self_.table.alloc` is valid for reading, properly
+                    //    aligned, and points to a properly initialized value as
+                    //    it is derived from a reference.
+                    //
+                    // *  We want to overwrite our own table.
+                    let alloc = ptr::read(&self_.table.alloc);
+                    (&mut **self_ as *mut Self).write(
                         // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
                         //
                         // SAFETY: This is safe as we are taking the size of an already allocated table
                         // and therefore сapacity overflow cannot occur, `self.table.buckets()` is power
                         // of two and all allocator errors will be caught inside `RawTableInner::new_uninitialized`.
                         match Self::new_uninitialized(
-                            self.table.alloc.clone(),
+                            alloc,
                             source.buckets(),
                             Fallibility::Infallible,
                         ) {
@@ -2817,9 +2820,11 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
 
                 // Cloning elements may fail (the clone function may panic), but the `ScopeGuard`
                 // inside the `clone_from_impl` function will take care of that, dropping all
-                // cloned elements if necessary. The `Drop` of `RawTable` takes care of the rest
-                // by freeing up the allocated memory.
-                self.clone_from_spec(source);
+                // cloned elements if necessary. Our `ScopeGuard` will clear the table.
+                self_.clone_from_spec(source);
+
+                // Disarm the scope guard if cloning was successful.
+                mem::forget(self_);
             }
         }
     }
