@@ -5,7 +5,9 @@ edition = "2021"
 
 [dependencies]
 regex = "1.0"
-rustc-demangle = "0.1.17"
+# rustc-demangle = "0.1.17"
+# todo: change this upstream
+rustc-demangle = { git = "https://github.com/tgross35/rustc-demangle.git", branch = "f16-f128" }
 
 [lib]
 name = "rust_demangler"

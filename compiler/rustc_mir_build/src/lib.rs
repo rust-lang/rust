@@ -9,7 +9,6 @@
 #![feature(min_specialization)]
 #![feature(try_blocks)]
 #![cfg_attr(not(bootstrap), feature(f16))]
-#![cfg_attr(not(bootstrap), feature(f128))]
 #![recursion_limit = "256"]
 
 #[macro_use]

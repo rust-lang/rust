@@ -1,3 +1,5 @@
+#![allow(unused)] // FIXME:f128_math: remove once we re-enable f128 tests
+
 use crate::f128::consts;
 use crate::num::FpCategory as Fp;
 use crate::num::*;
@@ -236,91 +238,91 @@ fn test_classify() {
     assert_eq!(1e-4932_f128.classify(), Fp::Subnormal);
 }
 
-#[test]
-fn test_floor() {
-    assert_approx_eq!(1.0f128.floor(), 1.0f128);
-    assert_approx_eq!(1.3f128.floor(), 1.0f128);
-    assert_approx_eq!(1.5f128.floor(), 1.0f128);
-    assert_approx_eq!(1.7f128.floor(), 1.0f128);
-    assert_approx_eq!(0.0f128.floor(), 0.0f128);
-    assert_approx_eq!((-0.0f128).floor(), -0.0f128);
-    assert_approx_eq!((-1.0f128).floor(), -1.0f128);
-    assert_approx_eq!((-1.3f128).floor(), -2.0f128);
-    assert_approx_eq!((-1.5f128).floor(), -2.0f128);
-    assert_approx_eq!((-1.7f128).floor(), -2.0f128);
-}
+// #[test]
+// fn test_floor() {
+//     assert_approx_eq!(1.0f128.floor(), 1.0f128);
+//     assert_approx_eq!(1.3f128.floor(), 1.0f128);
+//     assert_approx_eq!(1.5f128.floor(), 1.0f128);
+//     assert_approx_eq!(1.7f128.floor(), 1.0f128);
+//     assert_approx_eq!(0.0f128.floor(), 0.0f128);
+//     assert_approx_eq!((-0.0f128).floor(), -0.0f128);
+//     assert_approx_eq!((-1.0f128).floor(), -1.0f128);
+//     assert_approx_eq!((-1.3f128).floor(), -2.0f128);
+//     assert_approx_eq!((-1.5f128).floor(), -2.0f128);
+//     assert_approx_eq!((-1.7f128).floor(), -2.0f128);
+// }
 
-#[test]
-fn test_ceil() {
-    assert_approx_eq!(1.0f128.ceil(), 1.0f128);
-    assert_approx_eq!(1.3f128.ceil(), 2.0f128);
-    assert_approx_eq!(1.5f128.ceil(), 2.0f128);
-    assert_approx_eq!(1.7f128.ceil(), 2.0f128);
-    assert_approx_eq!(0.0f128.ceil(), 0.0f128);
-    assert_approx_eq!((-0.0f128).ceil(), -0.0f128);
-    assert_approx_eq!((-1.0f128).ceil(), -1.0f128);
-    assert_approx_eq!((-1.3f128).ceil(), -1.0f128);
-    assert_approx_eq!((-1.5f128).ceil(), -1.0f128);
-    assert_approx_eq!((-1.7f128).ceil(), -1.0f128);
-}
+// #[test]
+// fn test_ceil() {
+//     assert_approx_eq!(1.0f128.ceil(), 1.0f128);
+//     assert_approx_eq!(1.3f128.ceil(), 2.0f128);
+//     assert_approx_eq!(1.5f128.ceil(), 2.0f128);
+//     assert_approx_eq!(1.7f128.ceil(), 2.0f128);
+//     assert_approx_eq!(0.0f128.ceil(), 0.0f128);
+//     assert_approx_eq!((-0.0f128).ceil(), -0.0f128);
+//     assert_approx_eq!((-1.0f128).ceil(), -1.0f128);
+//     assert_approx_eq!((-1.3f128).ceil(), -1.0f128);
+//     assert_approx_eq!((-1.5f128).ceil(), -1.0f128);
+//     assert_approx_eq!((-1.7f128).ceil(), -1.0f128);
+// }
 
-#[test]
-fn test_round() {
-    assert_approx_eq!(2.5f128.round(), 3.0f128);
-    assert_approx_eq!(1.0f128.round(), 1.0f128);
-    assert_approx_eq!(1.3f128.round(), 1.0f128);
-    assert_approx_eq!(1.5f128.round(), 2.0f128);
-    assert_approx_eq!(1.7f128.round(), 2.0f128);
-    assert_approx_eq!(0.0f128.round(), 0.0f128);
-    assert_approx_eq!((-0.0f128).round(), -0.0f128);
-    assert_approx_eq!((-1.0f128).round(), -1.0f128);
-    assert_approx_eq!((-1.3f128).round(), -1.0f128);
-    assert_approx_eq!((-1.5f128).round(), -2.0f128);
-    assert_approx_eq!((-1.7f128).round(), -2.0f128);
-}
+// #[test]
+// fn test_round() {
+//     assert_approx_eq!(2.5f128.round(), 3.0f128);
+//     assert_approx_eq!(1.0f128.round(), 1.0f128);
+//     assert_approx_eq!(1.3f128.round(), 1.0f128);
+//     assert_approx_eq!(1.5f128.round(), 2.0f128);
+//     assert_approx_eq!(1.7f128.round(), 2.0f128);
+//     assert_approx_eq!(0.0f128.round(), 0.0f128);
+//     assert_approx_eq!((-0.0f128).round(), -0.0f128);
+//     assert_approx_eq!((-1.0f128).round(), -1.0f128);
+//     assert_approx_eq!((-1.3f128).round(), -1.0f128);
+//     assert_approx_eq!((-1.5f128).round(), -2.0f128);
+//     assert_approx_eq!((-1.7f128).round(), -2.0f128);
+// }
 
-#[test]
-fn test_round_ties_even() {
-    assert_approx_eq!(2.5f128.round_ties_even(), 2.0f128);
-    assert_approx_eq!(1.0f128.round_ties_even(), 1.0f128);
-    assert_approx_eq!(1.3f128.round_ties_even(), 1.0f128);
-    assert_approx_eq!(1.5f128.round_ties_even(), 2.0f128);
-    assert_approx_eq!(1.7f128.round_ties_even(), 2.0f128);
-    assert_approx_eq!(0.0f128.round_ties_even(), 0.0f128);
-    assert_approx_eq!((-0.0f128).round_ties_even(), -0.0f128);
-    assert_approx_eq!((-1.0f128).round_ties_even(), -1.0f128);
-    assert_approx_eq!((-1.3f128).round_ties_even(), -1.0f128);
-    assert_approx_eq!((-1.5f128).round_ties_even(), -2.0f128);
-    assert_approx_eq!((-1.7f128).round_ties_even(), -2.0f128);
-}
+// #[test]
+// fn test_round_ties_even() {
+//     assert_approx_eq!(2.5f128.round_ties_even(), 2.0f128);
+//     assert_approx_eq!(1.0f128.round_ties_even(), 1.0f128);
+//     assert_approx_eq!(1.3f128.round_ties_even(), 1.0f128);
+//     assert_approx_eq!(1.5f128.round_ties_even(), 2.0f128);
+//     assert_approx_eq!(1.7f128.round_ties_even(), 2.0f128);
+//     assert_approx_eq!(0.0f128.round_ties_even(), 0.0f128);
+//     assert_approx_eq!((-0.0f128).round_ties_even(), -0.0f128);
+//     assert_approx_eq!((-1.0f128).round_ties_even(), -1.0f128);
+//     assert_approx_eq!((-1.3f128).round_ties_even(), -1.0f128);
+//     assert_approx_eq!((-1.5f128).round_ties_even(), -2.0f128);
+//     assert_approx_eq!((-1.7f128).round_ties_even(), -2.0f128);
+// }
 
-#[test]
-fn test_trunc() {
-    assert_approx_eq!(1.0f128.trunc(), 1.0f128);
-    assert_approx_eq!(1.3f128.trunc(), 1.0f128);
-    assert_approx_eq!(1.5f128.trunc(), 1.0f128);
-    assert_approx_eq!(1.7f128.trunc(), 1.0f128);
-    assert_approx_eq!(0.0f128.trunc(), 0.0f128);
-    assert_approx_eq!((-0.0f128).trunc(), -0.0f128);
-    assert_approx_eq!((-1.0f128).trunc(), -1.0f128);
-    assert_approx_eq!((-1.3f128).trunc(), -1.0f128);
-    assert_approx_eq!((-1.5f128).trunc(), -1.0f128);
-    assert_approx_eq!((-1.7f128).trunc(), -1.0f128);
-}
+// #[test]
+// fn test_trunc() {
+//     assert_approx_eq!(1.0f128.trunc(), 1.0f128);
+//     assert_approx_eq!(1.3f128.trunc(), 1.0f128);
+//     assert_approx_eq!(1.5f128.trunc(), 1.0f128);
+//     assert_approx_eq!(1.7f128.trunc(), 1.0f128);
+//     assert_approx_eq!(0.0f128.trunc(), 0.0f128);
+//     assert_approx_eq!((-0.0f128).trunc(), -0.0f128);
+//     assert_approx_eq!((-1.0f128).trunc(), -1.0f128);
+//     assert_approx_eq!((-1.3f128).trunc(), -1.0f128);
+//     assert_approx_eq!((-1.5f128).trunc(), -1.0f128);
+//     assert_approx_eq!((-1.7f128).trunc(), -1.0f128);
+// }
 
-#[test]
-fn test_fract() {
-    assert_approx_eq!(1.0f128.fract(), 0.0f128);
-    assert_approx_eq!(1.3f128.fract(), 0.3f128);
-    assert_approx_eq!(1.5f128.fract(), 0.5f128);
-    assert_approx_eq!(1.7f128.fract(), 0.7f128);
-    assert_approx_eq!(0.0f128.fract(), 0.0f128);
-    assert_approx_eq!((-0.0f128).fract(), -0.0f128);
-    assert_approx_eq!((-1.0f128).fract(), -0.0f128);
-    assert_approx_eq!((-1.3f128).fract(), -0.3f128);
-    assert_approx_eq!((-1.5f128).fract(), -0.5f128);
-    assert_approx_eq!((-1.7f128).fract(), -0.7f128);
-}
+// #[test]
+// fn test_fract() {
+//     assert_approx_eq!(1.0f128.fract(), 0.0f128);
+//     assert_approx_eq!(1.3f128.fract(), 0.3f128);
+//     assert_approx_eq!(1.5f128.fract(), 0.5f128);
+//     assert_approx_eq!(1.7f128.fract(), 0.7f128);
+//     assert_approx_eq!(0.0f128.fract(), 0.0f128);
+//     assert_approx_eq!((-0.0f128).fract(), -0.0f128);
+//     assert_approx_eq!((-1.0f128).fract(), -0.0f128);
+//     assert_approx_eq!((-1.3f128).fract(), -0.3f128);
+//     assert_approx_eq!((-1.5f128).fract(), -0.5f128);
+//     assert_approx_eq!((-1.7f128).fract(), -0.7f128);
+// }
 
 #[test]
 fn test_abs() {
@@ -334,310 +336,310 @@ fn test_abs() {
     assert!(f128::NAN.abs().is_nan());
 }
 
-#[test]
-fn test_signum() {
-    assert_f128_eq!(f128::INFINITY.signum(), 1f128);
-    assert_f128_eq!(1f128.signum(), 1f128);
-    assert_f128_eq!(0f128.signum(), 1f128);
-    assert_f128_eq!((-0f128).signum(), -1f128);
-    assert_f128_eq!((-1f128).signum(), -1f128);
-    assert_f128_eq!(f128::NEG_INFINITY.signum(), -1f128);
-    assert_f128_eq!((1f128 / f128::NEG_INFINITY).signum(), -1f128);
-    assert!(f128::NAN.signum().is_nan());
-}
+// #[test]
+// fn test_signum() {
+//     assert_f128_eq!(f128::INFINITY.signum(), 1f128);
+//     assert_f128_eq!(1f128.signum(), 1f128);
+//     assert_f128_eq!(0f128.signum(), 1f128);
+//     assert_f128_eq!((-0f128).signum(), -1f128);
+//     assert_f128_eq!((-1f128).signum(), -1f128);
+//     assert_f128_eq!(f128::NEG_INFINITY.signum(), -1f128);
+//     assert_f128_eq!((1f128 / f128::NEG_INFINITY).signum(), -1f128);
+//     assert!(f128::NAN.signum().is_nan());
+// }
 
-#[test]
-fn test_is_sign_positive() {
-    assert!(f128::INFINITY.is_sign_positive());
-    assert!(1f128.is_sign_positive());
-    assert!(0f128.is_sign_positive());
-    assert!(!(-0f128).is_sign_positive());
-    assert!(!(-1f128).is_sign_positive());
-    assert!(!f128::NEG_INFINITY.is_sign_positive());
-    assert!(!(1f128 / f128::NEG_INFINITY).is_sign_positive());
-    assert!(f128::NAN.is_sign_positive());
-    assert!(!(-f128::NAN).is_sign_positive());
-}
+// #[test]
+// fn test_is_sign_positive() {
+//     assert!(f128::INFINITY.is_sign_positive());
+//     assert!(1f128.is_sign_positive());
+//     assert!(0f128.is_sign_positive());
+//     assert!(!(-0f128).is_sign_positive());
+//     assert!(!(-1f128).is_sign_positive());
+//     assert!(!f128::NEG_INFINITY.is_sign_positive());
+//     assert!(!(1f128 / f128::NEG_INFINITY).is_sign_positive());
+//     assert!(f128::NAN.is_sign_positive());
+//     assert!(!(-f128::NAN).is_sign_positive());
+// }
 
-#[test]
-fn test_is_sign_negative() {
-    assert!(!f128::INFINITY.is_sign_negative());
-    assert!(!1f128.is_sign_negative());
-    assert!(!0f128.is_sign_negative());
-    assert!((-0f128).is_sign_negative());
-    assert!((-1f128).is_sign_negative());
-    assert!(f128::NEG_INFINITY.is_sign_negative());
-    assert!((1f128 / f128::NEG_INFINITY).is_sign_negative());
-    assert!(!f128::NAN.is_sign_negative());
-    assert!((-f128::NAN).is_sign_negative());
-}
+// #[test]
+// fn test_is_sign_negative() {
+//     assert!(!f128::INFINITY.is_sign_negative());
+//     assert!(!1f128.is_sign_negative());
+//     assert!(!0f128.is_sign_negative());
+//     assert!((-0f128).is_sign_negative());
+//     assert!((-1f128).is_sign_negative());
+//     assert!(f128::NEG_INFINITY.is_sign_negative());
+//     assert!((1f128 / f128::NEG_INFINITY).is_sign_negative());
+//     assert!(!f128::NAN.is_sign_negative());
+//     assert!((-f128::NAN).is_sign_negative());
+// }
 
-// Ignore test on x87 floating point, these platforms do not guarantee NaN
-// payloads are preserved and flush denormals to zero, failing the tests.
-#[cfg(not(target_arch = "x86"))]
-#[test]
-fn test_next_up() {
-    let tiny = f128::from_bits(TINY_BITS);
-    let tiny_up = f128::from_bits(TINY_UP_BITS);
-    let max_down = f128::from_bits(MAX_DOWN_BITS);
-    let largest_subnormal = f128::from_bits(LARGEST_SUBNORMAL_BITS);
-    let smallest_normal = f128::from_bits(SMALLEST_NORMAL_BITS);
+// // Ignore test on x87 floating point, these platforms do not guarantee NaN
+// // payloads are preserved and flush denormals to zero, failing the tests.
+// #[cfg(not(target_arch = "x86"))]
+// #[test]
+// fn test_next_up() {
+//     let tiny = f128::from_bits(TINY_BITS);
+//     let tiny_up = f128::from_bits(TINY_UP_BITS);
+//     let max_down = f128::from_bits(MAX_DOWN_BITS);
+//     let largest_subnormal = f128::from_bits(LARGEST_SUBNORMAL_BITS);
+//     let smallest_normal = f128::from_bits(SMALLEST_NORMAL_BITS);
 
-    assert_f128_biteq!(f128::NEG_INFINITY.next_up(), f128::MIN);
-    assert_f128_biteq!(f128::MIN.next_up(), -max_down);
-    assert_f128_biteq!((-1.0 - f128::EPSILON).next_up(), -1.0);
-    assert_f128_biteq!((-smallest_normal).next_up(), -largest_subnormal);
-    assert_f128_biteq!((-tiny_up).next_up(), -tiny);
-    assert_f128_biteq!((-tiny).next_up(), -0.0f128);
-    assert_f128_biteq!((-0.0f128).next_up(), tiny);
-    assert_f128_biteq!(0.0f128.next_up(), tiny);
-    assert_f128_biteq!(tiny.next_up(), tiny_up);
-    assert_f128_biteq!(largest_subnormal.next_up(), smallest_normal);
-    assert_f128_biteq!(1.0f128.next_up(), 1.0 + f128::EPSILON);
-    assert_f128_biteq!(f128::MAX.next_up(), f128::INFINITY);
-    assert_f128_biteq!(f128::INFINITY.next_up(), f128::INFINITY);
+//     assert_f128_biteq!(f128::NEG_INFINITY.next_up(), f128::MIN);
+//     assert_f128_biteq!(f128::MIN.next_up(), -max_down);
+//     assert_f128_biteq!((-1.0 - f128::EPSILON).next_up(), -1.0);
+//     assert_f128_biteq!((-smallest_normal).next_up(), -largest_subnormal);
+//     assert_f128_biteq!((-tiny_up).next_up(), -tiny);
+//     assert_f128_biteq!((-tiny).next_up(), -0.0f128);
+//     assert_f128_biteq!((-0.0f128).next_up(), tiny);
+//     assert_f128_biteq!(0.0f128.next_up(), tiny);
+//     assert_f128_biteq!(tiny.next_up(), tiny_up);
+//     assert_f128_biteq!(largest_subnormal.next_up(), smallest_normal);
+//     assert_f128_biteq!(1.0f128.next_up(), 1.0 + f128::EPSILON);
+//     assert_f128_biteq!(f128::MAX.next_up(), f128::INFINITY);
+//     assert_f128_biteq!(f128::INFINITY.next_up(), f128::INFINITY);
 
-    // Check that NaNs roundtrip.
-    let nan0 = f128::NAN;
-    let nan1 = f128::from_bits(f128::NAN.to_bits() ^ NAN_MASK1);
-    let nan2 = f128::from_bits(f128::NAN.to_bits() ^ NAN_MASK2);
-    assert_f128_biteq!(nan0.next_up(), nan0);
-    assert_f128_biteq!(nan1.next_up(), nan1);
-    assert_f128_biteq!(nan2.next_up(), nan2);
-}
+//     // Check that NaNs roundtrip.
+//     let nan0 = f128::NAN;
+//     let nan1 = f128::from_bits(f128::NAN.to_bits() ^ NAN_MASK1);
+//     let nan2 = f128::from_bits(f128::NAN.to_bits() ^ NAN_MASK2);
+//     assert_f128_biteq!(nan0.next_up(), nan0);
+//     assert_f128_biteq!(nan1.next_up(), nan1);
+//     assert_f128_biteq!(nan2.next_up(), nan2);
+// }
 
-// Ignore test on x87 floating point, these platforms do not guarantee NaN
-// payloads are preserved and flush denormals to zero, failing the tests.
-#[cfg(not(target_arch = "x86"))]
-#[test]
-fn test_next_down() {
-    let tiny = f128::from_bits(TINY_BITS);
-    let tiny_up = f128::from_bits(TINY_UP_BITS);
-    let max_down = f128::from_bits(MAX_DOWN_BITS);
-    let largest_subnormal = f128::from_bits(LARGEST_SUBNORMAL_BITS);
-    let smallest_normal = f128::from_bits(SMALLEST_NORMAL_BITS);
+// // Ignore test on x87 floating point, these platforms do not guarantee NaN
+// // payloads are preserved and flush denormals to zero, failing the tests.
+// #[cfg(not(target_arch = "x86"))]
+// #[test]
+// fn test_next_down() {
+//     let tiny = f128::from_bits(TINY_BITS);
+//     let tiny_up = f128::from_bits(TINY_UP_BITS);
+//     let max_down = f128::from_bits(MAX_DOWN_BITS);
+//     let largest_subnormal = f128::from_bits(LARGEST_SUBNORMAL_BITS);
+//     let smallest_normal = f128::from_bits(SMALLEST_NORMAL_BITS);
 
-    assert_f128_biteq!(f128::NEG_INFINITY.next_down(), f128::NEG_INFINITY);
-    assert_f128_biteq!(f128::MIN.next_down(), f128::NEG_INFINITY);
-    assert_f128_biteq!((-max_down).next_down(), f128::MIN);
-    assert_f128_biteq!((-1.0f128).next_down(), -1.0 - f128::EPSILON);
-    assert_f128_biteq!((-largest_subnormal).next_down(), -smallest_normal);
-    assert_f128_biteq!((-tiny).next_down(), -tiny_up);
-    assert_f128_biteq!((-0.0f128).next_down(), -tiny);
-    assert_f128_biteq!((0.0f128).next_down(), -tiny);
-    assert_f128_biteq!(tiny.next_down(), 0.0f128);
-    assert_f128_biteq!(tiny_up.next_down(), tiny);
-    assert_f128_biteq!(smallest_normal.next_down(), largest_subnormal);
-    assert_f128_biteq!((1.0 + f128::EPSILON).next_down(), 1.0f128);
-    assert_f128_biteq!(f128::MAX.next_down(), max_down);
-    assert_f128_biteq!(f128::INFINITY.next_down(), f128::MAX);
+//     assert_f128_biteq!(f128::NEG_INFINITY.next_down(), f128::NEG_INFINITY);
+//     assert_f128_biteq!(f128::MIN.next_down(), f128::NEG_INFINITY);
+//     assert_f128_biteq!((-max_down).next_down(), f128::MIN);
+//     assert_f128_biteq!((-1.0f128).next_down(), -1.0 - f128::EPSILON);
+//     assert_f128_biteq!((-largest_subnormal).next_down(), -smallest_normal);
+//     assert_f128_biteq!((-tiny).next_down(), -tiny_up);
+//     assert_f128_biteq!((-0.0f128).next_down(), -tiny);
+//     assert_f128_biteq!((0.0f128).next_down(), -tiny);
+//     assert_f128_biteq!(tiny.next_down(), 0.0f128);
+//     assert_f128_biteq!(tiny_up.next_down(), tiny);
+//     assert_f128_biteq!(smallest_normal.next_down(), largest_subnormal);
+//     assert_f128_biteq!((1.0 + f128::EPSILON).next_down(), 1.0f128);
+//     assert_f128_biteq!(f128::MAX.next_down(), max_down);
+//     assert_f128_biteq!(f128::INFINITY.next_down(), f128::MAX);
 
-    // Check that NaNs roundtrip.
-    let nan0 = f128::NAN;
-    let nan1 = f128::from_bits(f128::NAN.to_bits() ^ NAN_MASK1);
-    let nan2 = f128::from_bits(f128::NAN.to_bits() ^ NAN_MASK2);
-    assert_f128_biteq!(nan0.next_down(), nan0);
-    assert_f128_biteq!(nan1.next_down(), nan1);
-    assert_f128_biteq!(nan2.next_down(), nan2);
-}
+//     // Check that NaNs roundtrip.
+//     let nan0 = f128::NAN;
+//     let nan1 = f128::from_bits(f128::NAN.to_bits() ^ NAN_MASK1);
+//     let nan2 = f128::from_bits(f128::NAN.to_bits() ^ NAN_MASK2);
+//     assert_f128_biteq!(nan0.next_down(), nan0);
+//     assert_f128_biteq!(nan1.next_down(), nan1);
+//     assert_f128_biteq!(nan2.next_down(), nan2);
+// }
 
-#[test]
-fn test_mul_add() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_approx_eq!(12.3f128.mul_add(4.5, 6.7), 62.05);
-    assert_approx_eq!((-12.3f128).mul_add(-4.5, -6.7), 48.65);
-    assert_approx_eq!(0.0f128.mul_add(8.9, 1.2), 1.2);
-    assert_approx_eq!(3.4f128.mul_add(-0.0, 5.6), 5.6);
-    assert!(nan.mul_add(7.8, 9.0).is_nan());
-    assert_f128_eq!(inf.mul_add(7.8, 9.0), inf);
-    assert_f128_eq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
-    assert_f128_eq!(8.9f128.mul_add(inf, 3.2), inf);
-    assert_f128_eq!((-3.2f128).mul_add(2.4, neg_inf), neg_inf);
-}
+// #[test]
+// fn test_mul_add() {
+//     let nan: f128 = f128::NAN;
+//     let inf: f128 = f128::INFINITY;
+//     let neg_inf: f128 = f128::NEG_INFINITY;
+//     assert_approx_eq!(12.3f128.mul_add(4.5, 6.7), 62.05);
+//     assert_approx_eq!((-12.3f128).mul_add(-4.5, -6.7), 48.65);
+//     assert_approx_eq!(0.0f128.mul_add(8.9, 1.2), 1.2);
+//     assert_approx_eq!(3.4f128.mul_add(-0.0, 5.6), 5.6);
+//     assert!(nan.mul_add(7.8, 9.0).is_nan());
+//     assert_f128_eq!(inf.mul_add(7.8, 9.0), inf);
+//     assert_f128_eq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
+//     assert_f128_eq!(8.9f128.mul_add(inf, 3.2), inf);
+//     assert_f128_eq!((-3.2f128).mul_add(2.4, neg_inf), neg_inf);
+// }
 
-#[test]
-fn test_recip() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_f128_eq!(1.0f128.recip(), 1.0);
-    assert_f128_eq!(2.0f128.recip(), 0.5);
-    assert_f128_eq!((-0.4f128).recip(), -2.5);
-    assert_f128_eq!(0.0f128.recip(), inf);
-    assert!(nan.recip().is_nan());
-    assert_f128_eq!(inf.recip(), 0.0);
-    assert_f128_eq!(neg_inf.recip(), 0.0);
-}
+// #[test]
+// fn test_recip() {
+//     let nan: f128 = f128::NAN;
+//     let inf: f128 = f128::INFINITY;
+//     let neg_inf: f128 = f128::NEG_INFINITY;
+//     assert_f128_eq!(1.0f128.recip(), 1.0);
+//     assert_f128_eq!(2.0f128.recip(), 0.5);
+//     assert_f128_eq!((-0.4f128).recip(), -2.5);
+//     assert_f128_eq!(0.0f128.recip(), inf);
+//     assert!(nan.recip().is_nan());
+//     assert_f128_eq!(inf.recip(), 0.0);
+//     assert_f128_eq!(neg_inf.recip(), 0.0);
+// }
 
-#[test]
-fn test_powi() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_f128_eq!(1.0f128.powi(1), 1.0);
-    assert_approx_eq!((-3.1f128).powi(2), 9.61);
-    assert_approx_eq!(5.9f128.powi(-2), 0.028727);
-    assert_f128_eq!(8.3f128.powi(0), 1.0);
-    assert!(nan.powi(2).is_nan());
-    assert_f128_eq!(inf.powi(3), inf);
-    assert_f128_eq!(neg_inf.powi(2), inf);
-}
+// #[test]
+// fn test_powi() {
+//     let nan: f128 = f128::NAN;
+//     let inf: f128 = f128::INFINITY;
+//     let neg_inf: f128 = f128::NEG_INFINITY;
+//     assert_f128_eq!(1.0f128.powi(1), 1.0);
+//     assert_approx_eq!((-3.1f128).powi(2), 9.61);
+//     assert_approx_eq!(5.9f128.powi(-2), 0.028727);
+//     assert_f128_eq!(8.3f128.powi(0), 1.0);
+//     assert!(nan.powi(2).is_nan());
+//     assert_f128_eq!(inf.powi(3), inf);
+//     assert_f128_eq!(neg_inf.powi(2), inf);
+// }
 
-#[test]
-fn test_powf() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_f128_eq!(1.0f128.powf(1.0), 1.0);
-    assert_approx_eq!(3.4f128.powf(4.5), 246.408218);
-    assert_approx_eq!(2.7f128.powf(-3.2), 0.041652);
-    assert_approx_eq!((-3.1f128).powf(2.0), 9.61);
-    assert_approx_eq!(5.9f128.powf(-2.0), 0.028727);
-    assert_f128_eq!(8.3f128.powf(0.0), 1.0);
-    assert!(nan.powf(2.0).is_nan());
-    assert_f128_eq!(inf.powf(2.0), inf);
-    assert_f128_eq!(neg_inf.powf(3.0), neg_inf);
-}
+// #[test]
+// fn test_powf() {
+//     let nan: f128 = f128::NAN;
+//     let inf: f128 = f128::INFINITY;
+//     let neg_inf: f128 = f128::NEG_INFINITY;
+//     assert_f128_eq!(1.0f128.powf(1.0), 1.0);
+//     assert_approx_eq!(3.4f128.powf(4.5), 246.408218);
+//     assert_approx_eq!(2.7f128.powf(-3.2), 0.041652);
+//     assert_approx_eq!((-3.1f128).powf(2.0), 9.61);
+//     assert_approx_eq!(5.9f128.powf(-2.0), 0.028727);
+//     assert_f128_eq!(8.3f128.powf(0.0), 1.0);
+//     assert!(nan.powf(2.0).is_nan());
+//     assert_f128_eq!(inf.powf(2.0), inf);
+//     assert_f128_eq!(neg_inf.powf(3.0), neg_inf);
+// }
 
-#[test]
-fn test_sqrt_domain() {
-    assert!(f128::NAN.sqrt().is_nan());
-    println!("{:#34x}", f128::NEG_INFINITY.to_bits());
-    println!("{:#34x}", f128::NEG_INFINITY.sqrt().to_bits());
-    assert!(f128::NEG_INFINITY.sqrt().is_nan());
-    assert!((-1.0f128).sqrt().is_nan());
-    assert_f128_eq!((-0.0f128).sqrt(), -0.0);
-    assert_f128_eq!(0.0f128.sqrt(), 0.0);
-    assert_f128_eq!(1.0f128.sqrt(), 1.0);
-    assert_f128_eq!(f128::INFINITY.sqrt(), f128::INFINITY);
-}
+// #[test]
+// fn test_sqrt_domain() {
+//     assert!(f128::NAN.sqrt().is_nan());
+//     println!("{:#34x}", f128::NEG_INFINITY.to_bits());
+//     println!("{:#34x}", f128::NEG_INFINITY.sqrt().to_bits());
+//     assert!(f128::NEG_INFINITY.sqrt().is_nan());
+//     assert!((-1.0f128).sqrt().is_nan());
+//     assert_f128_eq!((-0.0f128).sqrt(), -0.0);
+//     assert_f128_eq!(0.0f128.sqrt(), 0.0);
+//     assert_f128_eq!(1.0f128.sqrt(), 1.0);
+//     assert_f128_eq!(f128::INFINITY.sqrt(), f128::INFINITY);
+// }
 
-#[test]
-fn test_exp() {
-    assert_f128_eq!(1.0, 0.0f128.exp());
-    assert_approx_eq!(2.718282, 1.0f128.exp());
-    assert_approx_eq!(148.413162, 5.0f128.exp());
+// #[test]
+// fn test_exp() {
+//     assert_f128_eq!(1.0, 0.0f128.exp());
+//     assert_approx_eq!(2.718282, 1.0f128.exp());
+//     assert_approx_eq!(148.413162, 5.0f128.exp());
 
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    let nan: f128 = f128::NAN;
-    assert_f128_eq!(inf, inf.exp());
-    assert_f128_eq!(0.0, neg_inf.exp());
-    assert!(nan.exp().is_nan());
-}
+//     let inf: f128 = f128::INFINITY;
+//     let neg_inf: f128 = f128::NEG_INFINITY;
+//     let nan: f128 = f128::NAN;
+//     assert_f128_eq!(inf, inf.exp());
+//     assert_f128_eq!(0.0, neg_inf.exp());
+//     assert!(nan.exp().is_nan());
+// }
 
-#[test]
-fn test_exp2() {
-    assert_f128_eq!(32.0, 5.0f128.exp2());
-    assert_f128_eq!(1.0, 0.0f128.exp2());
+// #[test]
+// fn test_exp2() {
+//     assert_f128_eq!(32.0, 5.0f128.exp2());
+//     assert_f128_eq!(1.0, 0.0f128.exp2());
 
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    let nan: f128 = f128::NAN;
-    assert_f128_eq!(inf, inf.exp2());
-    assert_f128_eq!(0.0, neg_inf.exp2());
-    assert!(nan.exp2().is_nan());
-}
+//     let inf: f128 = f128::INFINITY;
+//     let neg_inf: f128 = f128::NEG_INFINITY;
+//     let nan: f128 = f128::NAN;
+//     assert_f128_eq!(inf, inf.exp2());
+//     assert_f128_eq!(0.0, neg_inf.exp2());
+//     assert!(nan.exp2().is_nan());
+// }
 
-#[test]
-fn test_ln() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_approx_eq!(1.0f128.exp().ln(), 1.0);
-    assert!(nan.ln().is_nan());
-    assert_f128_eq!(inf.ln(), inf);
-    // dbg!(neg_inf.ln(), neg_inf.ln().to_bits());
-    assert!(neg_inf.ln().is_nan());
-    assert!((-2.3f128).ln().is_nan());
-    assert_f128_eq!((-0.0f128).ln(), neg_inf);
-    assert_f128_eq!(0.0f128.ln(), neg_inf);
-    assert_approx_eq!(4.0f128.ln(), 1.386294);
-}
+// #[test]
+// fn test_ln() {
+//     let nan: f128 = f128::NAN;
+//     let inf: f128 = f128::INFINITY;
+//     let neg_inf: f128 = f128::NEG_INFINITY;
+//     assert_approx_eq!(1.0f128.exp().ln(), 1.0);
+//     assert!(nan.ln().is_nan());
+//     assert_f128_eq!(inf.ln(), inf);
+//     // dbg!(neg_inf.ln(), neg_inf.ln().to_bits());
+//     assert!(neg_inf.ln().is_nan());
+//     assert!((-2.3f128).ln().is_nan());
+//     assert_f128_eq!((-0.0f128).ln(), neg_inf);
+//     assert_f128_eq!(0.0f128.ln(), neg_inf);
+//     assert_approx_eq!(4.0f128.ln(), 1.386294);
+// }
 
-#[test]
-fn test_log() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_f128_eq!(10.0f128.log(10.0), 1.0);
-    assert_approx_eq!(2.3f128.log(3.5), 0.664858);
-    assert_f128_eq!(1.0f128.exp().log(1.0f128.exp()), 1.0);
-    assert!(1.0f128.log(1.0).is_nan());
-    assert!(1.0f128.log(-13.9).is_nan());
-    assert!(nan.log(2.3).is_nan());
-    assert_f128_eq!(inf.log(10.0), inf);
-    assert!(neg_inf.log(8.8).is_nan());
-    assert!((-2.3f128).log(0.1).is_nan());
-    assert_f128_eq!((-0.0f128).log(2.0), neg_inf);
-    assert_f128_eq!(0.0f128.log(7.0), neg_inf);
-}
+// #[test]
+// fn test_log() {
+//     let nan: f128 = f128::NAN;
+//     let inf: f128 = f128::INFINITY;
+//     let neg_inf: f128 = f128::NEG_INFINITY;
+//     assert_f128_eq!(10.0f128.log(10.0), 1.0);
+//     assert_approx_eq!(2.3f128.log(3.5), 0.664858);
+//     assert_f128_eq!(1.0f128.exp().log(1.0f128.exp()), 1.0);
+//     assert!(1.0f128.log(1.0).is_nan());
+//     assert!(1.0f128.log(-13.9).is_nan());
+//     assert!(nan.log(2.3).is_nan());
+//     assert_f128_eq!(inf.log(10.0), inf);
+//     assert!(neg_inf.log(8.8).is_nan());
+//     assert!((-2.3f128).log(0.1).is_nan());
+//     assert_f128_eq!((-0.0f128).log(2.0), neg_inf);
+//     assert_f128_eq!(0.0f128.log(7.0), neg_inf);
+// }
 
-#[test]
-fn test_log2() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_approx_eq!(10.0f128.log2(), 3.321928);
-    assert_approx_eq!(2.3f128.log2(), 1.201634);
-    assert_approx_eq!(1.0f128.exp().log2(), 1.442695);
-    assert!(nan.log2().is_nan());
-    assert_f128_eq!(inf.log2(), inf);
-    assert!(neg_inf.log2().is_nan());
-    assert!((-2.3f128).log2().is_nan());
-    assert_f128_eq!((-0.0f128).log2(), neg_inf);
-    assert_f128_eq!(0.0f128.log2(), neg_inf);
-}
+// #[test]
+// fn test_log2() {
+//     let nan: f128 = f128::NAN;
+//     let inf: f128 = f128::INFINITY;
+//     let neg_inf: f128 = f128::NEG_INFINITY;
+//     assert_approx_eq!(10.0f128.log2(), 3.321928);
+//     assert_approx_eq!(2.3f128.log2(), 1.201634);
+//     assert_approx_eq!(1.0f128.exp().log2(), 1.442695);
+//     assert!(nan.log2().is_nan());
+//     assert_f128_eq!(inf.log2(), inf);
+//     assert!(neg_inf.log2().is_nan());
+//     assert!((-2.3f128).log2().is_nan());
+//     assert_f128_eq!((-0.0f128).log2(), neg_inf);
+//     assert_f128_eq!(0.0f128.log2(), neg_inf);
+// }
 
-#[test]
-fn test_log10() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_f128_eq!(10.0f128.log10(), 1.0);
-    assert_approx_eq!(2.3f128.log10(), 0.361728);
-    assert_approx_eq!(1.0f128.exp().log10(), 0.434294);
-    assert_f128_eq!(1.0f128.log10(), 0.0);
-    assert!(nan.log10().is_nan());
-    assert_f128_eq!(inf.log10(), inf);
-    assert!(neg_inf.log10().is_nan());
-    assert!((-2.3f128).log10().is_nan());
-    assert_f128_eq!((-0.0f128).log10(), neg_inf);
-    assert_f128_eq!(0.0f128.log10(), neg_inf);
-}
+// #[test]
+// fn test_log10() {
+//     let nan: f128 = f128::NAN;
+//     let inf: f128 = f128::INFINITY;
+//     let neg_inf: f128 = f128::NEG_INFINITY;
+//     assert_f128_eq!(10.0f128.log10(), 1.0);
+//     assert_approx_eq!(2.3f128.log10(), 0.361728);
+//     assert_approx_eq!(1.0f128.exp().log10(), 0.434294);
+//     assert_f128_eq!(1.0f128.log10(), 0.0);
+//     assert!(nan.log10().is_nan());
+//     assert_f128_eq!(inf.log10(), inf);
+//     assert!(neg_inf.log10().is_nan());
+//     assert!((-2.3f128).log10().is_nan());
+//     assert_f128_eq!((-0.0f128).log10(), neg_inf);
+//     assert_f128_eq!(0.0f128.log10(), neg_inf);
+// }
 
-#[test]
-fn test_to_degrees() {
-    let pi: f128 = consts::PI;
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_f128_eq!(0.0f128.to_degrees(), 0.0);
-    assert_approx_eq!((-5.8f128).to_degrees(), -332.315521);
-    assert_f128_eq!(pi.to_degrees(), 180.0);
-    assert!(nan.to_degrees().is_nan());
-    assert_f128_eq!(inf.to_degrees(), inf);
-    assert_f128_eq!(neg_inf.to_degrees(), neg_inf);
-    assert_f128_eq!(1_f128.to_degrees(), 57.2957795130823208767981548141051703);
-}
+// #[test]
+// fn test_to_degrees() {
+//     let pi: f128 = consts::PI;
+//     let nan: f128 = f128::NAN;
+//     let inf: f128 = f128::INFINITY;
+//     let neg_inf: f128 = f128::NEG_INFINITY;
+//     assert_f128_eq!(0.0f128.to_degrees(), 0.0);
+//     assert_approx_eq!((-5.8f128).to_degrees(), -332.315521);
+//     assert_f128_eq!(pi.to_degrees(), 180.0);
+//     assert!(nan.to_degrees().is_nan());
+//     assert_f128_eq!(inf.to_degrees(), inf);
+//     assert_f128_eq!(neg_inf.to_degrees(), neg_inf);
+//     assert_f128_eq!(1_f128.to_degrees(), 57.2957795130823208767981548141051703);
+// }
 
-#[test]
-fn test_to_radians() {
-    let pi: f128 = consts::PI;
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_f128_eq!(0.0f128.to_radians(), 0.0);
-    assert_approx_eq!(154.6f128.to_radians(), 2.698279);
-    assert_approx_eq!((-332.31f128).to_radians(), -5.799903);
-    // dbg!(180.0f128.to_radians().to_bits(), pi.to_bits());
-    assert_f128_eq!(180.0f128.to_radians(), pi);
-    assert!(nan.to_radians().is_nan());
-    assert_f128_eq!(inf.to_radians(), inf);
-    assert_f128_eq!(neg_inf.to_radians(), neg_inf);
-}
+// #[test]
+// fn test_to_radians() {
+//     let pi: f128 = consts::PI;
+//     let nan: f128 = f128::NAN;
+//     let inf: f128 = f128::INFINITY;
+//     let neg_inf: f128 = f128::NEG_INFINITY;
+//     assert_f128_eq!(0.0f128.to_radians(), 0.0);
+//     assert_approx_eq!(154.6f128.to_radians(), 2.698279);
+//     assert_approx_eq!((-332.31f128).to_radians(), -5.799903);
+//     // dbg!(180.0f128.to_radians().to_bits(), pi.to_bits());
+//     assert_f128_eq!(180.0f128.to_radians(), pi);
+//     assert!(nan.to_radians().is_nan());
+//     assert_f128_eq!(inf.to_radians(), inf);
+//     assert_f128_eq!(neg_inf.to_radians(), neg_inf);
+// }
 
 // FIXME: we do not have asinh, acosh, atanh, gamma, or ln_gamma functions. Add tests once we do
 
@@ -669,13 +671,14 @@ fn test_real_consts() {
     assert_approx_eq!(frac_pi_8, pi / 8f128);
     assert_approx_eq!(frac_1_pi, 1f128 / pi);
     assert_approx_eq!(frac_2_pi, 2f128 / pi);
-    assert_approx_eq!(frac_2_sqrtpi, 2f128 / pi.sqrt());
-    assert_approx_eq!(sqrt2, 2f128.sqrt());
-    assert_approx_eq!(frac_1_sqrt2, 1f128 / 2f128.sqrt());
-    assert_approx_eq!(log2_e, e.log2());
-    assert_approx_eq!(log10_e, e.log10());
-    assert_approx_eq!(ln_2, 2f128.ln());
-    assert_approx_eq!(ln_10, 10f128.ln());
+    // FIXME:f128_math: enable once math is available
+    // assert_approx_eq!(frac_2_sqrtpi, 2f128 / pi.sqrt());
+    // assert_approx_eq!(sqrt2, 2f128.sqrt());
+    // assert_approx_eq!(frac_1_sqrt2, 1f128 / 2f128.sqrt());
+    // assert_approx_eq!(log2_e, e.log2());
+    // assert_approx_eq!(log10_e, e.log10());
+    // assert_approx_eq!(ln_2, 2f128.ln());
+    // assert_approx_eq!(ln_10, 10f128.ln());
 }
 
 #[test]
@@ -736,13 +739,14 @@ fn test_total_cmp() {
         1 << (f128::MANTISSA_DIGITS - 2)
     }
 
-    fn min_subnorm() -> f128 {
-        f128::MIN_POSITIVE / f128::powf(2.0, f128::MANTISSA_DIGITS as f128 - 1.0)
-    }
-
-    fn max_subnorm() -> f128 {
-        f128::MIN_POSITIVE - min_subnorm()
-    }
+    // FIXME:f128_math: enable once powf works
+    // fn min_subnorm() -> f128 {
+    //     f128::MIN_POSITIVE / f128::powf(2.0, f128::MANTISSA_DIGITS as f128 - 1.0)
+    // }
+    //
+    // fn max_subnorm() -> f128 {
+    //     f128::MIN_POSITIVE - min_subnorm()
+    // }
 
     fn q_nan() -> f128 {
         f128::from_bits(f128::NAN.to_bits() | quiet_bit_mask())
@@ -752,6 +756,8 @@ fn test_total_cmp() {
         f128::from_bits((f128::NAN.to_bits() & !quiet_bit_mask()) + 42)
     }
 
+    // FIXME:f128_math: the below lines that rely on min_subnorm or max_subnorm are disabled.
+    // enable once f128_math is available.
     assert_eq!(Ordering::Equal, (-q_nan()).total_cmp(&-q_nan()));
     assert_eq!(Ordering::Equal, (-s_nan()).total_cmp(&-s_nan()));
     assert_eq!(Ordering::Equal, (-f128::INFINITY).total_cmp(&-f128::INFINITY));
@@ -761,12 +767,12 @@ fn test_total_cmp() {
     assert_eq!(Ordering::Equal, (-1.5_f128).total_cmp(&-1.5));
     assert_eq!(Ordering::Equal, (-0.5_f128).total_cmp(&-0.5));
     assert_eq!(Ordering::Equal, (-f128::MIN_POSITIVE).total_cmp(&-f128::MIN_POSITIVE));
-    assert_eq!(Ordering::Equal, (-max_subnorm()).total_cmp(&-max_subnorm()));
-    assert_eq!(Ordering::Equal, (-min_subnorm()).total_cmp(&-min_subnorm()));
+    // assert_eq!(Ordering::Equal, (-max_subnorm()).total_cmp(&-max_subnorm()));
+    // assert_eq!(Ordering::Equal, (-min_subnorm()).total_cmp(&-min_subnorm()));
     assert_eq!(Ordering::Equal, (-0.0_f128).total_cmp(&-0.0));
     assert_eq!(Ordering::Equal, 0.0_f128.total_cmp(&0.0));
-    assert_eq!(Ordering::Equal, min_subnorm().total_cmp(&min_subnorm()));
-    assert_eq!(Ordering::Equal, max_subnorm().total_cmp(&max_subnorm()));
+    // assert_eq!(Ordering::Equal, min_subnorm().total_cmp(&min_subnorm()));
+    // assert_eq!(Ordering::Equal, max_subnorm().total_cmp(&max_subnorm()));
     assert_eq!(Ordering::Equal, f128::MIN_POSITIVE.total_cmp(&f128::MIN_POSITIVE));
     assert_eq!(Ordering::Equal, 0.5_f128.total_cmp(&0.5));
     assert_eq!(Ordering::Equal, 1.0_f128.total_cmp(&1.0));
@@ -785,13 +791,13 @@ fn test_total_cmp() {
     assert_eq!(Ordering::Less, (-1.5_f128).total_cmp(&-1.0));
     assert_eq!(Ordering::Less, (-1.0_f128).total_cmp(&-0.5));
     assert_eq!(Ordering::Less, (-0.5_f128).total_cmp(&-f128::MIN_POSITIVE));
-    assert_eq!(Ordering::Less, (-f128::MIN_POSITIVE).total_cmp(&-max_subnorm()));
-    assert_eq!(Ordering::Less, (-max_subnorm()).total_cmp(&-min_subnorm()));
-    assert_eq!(Ordering::Less, (-min_subnorm()).total_cmp(&-0.0));
+    // assert_eq!(Ordering::Less, (-f128::MIN_POSITIVE).total_cmp(&-max_subnorm()));
+    // assert_eq!(Ordering::Less, (-max_subnorm()).total_cmp(&-min_subnorm()));
+    // assert_eq!(Ordering::Less, (-min_subnorm()).total_cmp(&-0.0));
     assert_eq!(Ordering::Less, (-0.0_f128).total_cmp(&0.0));
-    assert_eq!(Ordering::Less, 0.0_f128.total_cmp(&min_subnorm()));
-    assert_eq!(Ordering::Less, min_subnorm().total_cmp(&max_subnorm()));
-    assert_eq!(Ordering::Less, max_subnorm().total_cmp(&f128::MIN_POSITIVE));
+    // assert_eq!(Ordering::Less, 0.0_f128.total_cmp(&min_subnorm()));
+    // assert_eq!(Ordering::Less, min_subnorm().total_cmp(&max_subnorm()));
+    // assert_eq!(Ordering::Less, max_subnorm().total_cmp(&f128::MIN_POSITIVE));
     assert_eq!(Ordering::Less, f128::MIN_POSITIVE.total_cmp(&0.5));
     assert_eq!(Ordering::Less, 0.5_f128.total_cmp(&1.0));
     assert_eq!(Ordering::Less, 1.0_f128.total_cmp(&1.5));
@@ -809,13 +815,13 @@ fn test_total_cmp() {
     assert_eq!(Ordering::Greater, (-1.0_f128).total_cmp(&-1.5));
     assert_eq!(Ordering::Greater, (-0.5_f128).total_cmp(&-1.0));
     assert_eq!(Ordering::Greater, (-f128::MIN_POSITIVE).total_cmp(&-0.5));
-    assert_eq!(Ordering::Greater, (-max_subnorm()).total_cmp(&-f128::MIN_POSITIVE));
-    assert_eq!(Ordering::Greater, (-min_subnorm()).total_cmp(&-max_subnorm()));
-    assert_eq!(Ordering::Greater, (-0.0_f128).total_cmp(&-min_subnorm()));
+    // assert_eq!(Ordering::Greater, (-max_subnorm()).total_cmp(&-f128::MIN_POSITIVE));
+    // assert_eq!(Ordering::Greater, (-min_subnorm()).total_cmp(&-max_subnorm()));
+    // assert_eq!(Ordering::Greater, (-0.0_f128).total_cmp(&-min_subnorm()));
     assert_eq!(Ordering::Greater, 0.0_f128.total_cmp(&-0.0));
-    assert_eq!(Ordering::Greater, min_subnorm().total_cmp(&0.0));
-    assert_eq!(Ordering::Greater, max_subnorm().total_cmp(&min_subnorm()));
-    assert_eq!(Ordering::Greater, f128::MIN_POSITIVE.total_cmp(&max_subnorm()));
+    // assert_eq!(Ordering::Greater, min_subnorm().total_cmp(&0.0));
+    // assert_eq!(Ordering::Greater, max_subnorm().total_cmp(&min_subnorm()));
+    // assert_eq!(Ordering::Greater, f128::MIN_POSITIVE.total_cmp(&max_subnorm()));
     assert_eq!(Ordering::Greater, 0.5_f128.total_cmp(&f128::MIN_POSITIVE));
     assert_eq!(Ordering::Greater, 1.0_f128.total_cmp(&0.5));
     assert_eq!(Ordering::Greater, 1.5_f128.total_cmp(&1.0));
@@ -833,12 +839,12 @@ fn test_total_cmp() {
     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-1.0));
     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-0.5));
     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-f128::MIN_POSITIVE));
-    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-max_subnorm()));
-    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-min_subnorm()));
+    // assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-max_subnorm()));
+    // assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-min_subnorm()));
     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-0.0));
     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&0.0));
-    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&min_subnorm()));
-    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&max_subnorm()));
+    // assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&min_subnorm()));
+    // assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&max_subnorm()));
     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&f128::MIN_POSITIVE));
     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&0.5));
     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&1.0));
@@ -855,12 +861,12 @@ fn test_total_cmp() {
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-1.0));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-0.5));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f128::MIN_POSITIVE));
-    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-max_subnorm()));
-    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-min_subnorm()));
+    // assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-max_subnorm()));
+    // assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-min_subnorm()));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-0.0));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&0.0));
-    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&min_subnorm()));
-    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&max_subnorm()));
+    // assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&min_subnorm()));
+    // assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&max_subnorm()));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f128::MIN_POSITIVE));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&0.5));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&1.0));

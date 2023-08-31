@@ -74,9 +74,20 @@ cfg_if::cfg_if! {
 #[cfg(not(test))]
 cfg_if::cfg_if! {
     if #[cfg(target_os = "android")] {
+        #[cfg(not(bootstrap))]
+        pub use self::android::log2f16;
         pub use self::android::log2f32;
         pub use self::android::log2f64;
+        // FIXME:f128_math: unused until we have usable f128 intrinsics
+        // #[cfg(not(bootstrap))]
+        // pub use self::android::log2f128;
     } else {
+        #[inline]
+        #[cfg(not(bootstrap))]
+        pub fn log2f16(n: f16) -> f16 {
+            unsafe { crate::intrinsics::log2f16(n) }
+        }
+
         #[inline]
         pub fn log2f32(n: f32) -> f32 {
             unsafe { crate::intrinsics::log2f32(n) }
@@ -86,23 +97,23 @@ cfg_if::cfg_if! {
         pub fn log2f64(n: f64) -> f64 {
             unsafe { crate::intrinsics::log2f64(n) }
         }
+
+        // FIXME:f128_math: unused until we have usable f128 intrinsics
+        // #[inline]
+        // #[cfg(not(bootstrap))]
+        // pub fn log2f128(n: f128) -> f128 {
+        //     unsafe { crate::intrinsics::log2f128(n) }
+        // }
     }
 }
 
-// todo: does android have its own version of these functions?
-#[inline]
-#[cfg(not(test))]
-#[cfg(not(bootstrap))]
-pub fn log2f16(n: f16) -> f16 {
-    unsafe { crate::intrinsics::log2f16(n) }
-}
-
-#[inline]
-#[cfg(not(test))]
-#[cfg(not(bootstrap))]
-pub fn log2f128(n: f128) -> f128 {
-    unsafe { crate::intrinsics::log2f128(n) }
-}
+// FIXME: unused until we have usable f128 intrinsics
+// #[inline]
+// #[cfg(not(test))]
+// #[cfg(not(bootstrap))]
+// pub fn log2f128(n: f128) -> f128 {
+//     unsafe { crate::intrinsics::log2f128(n) }
+// }
 
 // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
 // because of their non-standard behavior (e.g., log(-n) returns -Inf instead

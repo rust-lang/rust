@@ -414,8 +414,10 @@ pub fn pretty_ty(ty: TyKind) -> String {
                 UintTy::U128 => "u128".to_string(),
             },
             RigidTy::Float(f) => match f {
+                FloatTy::F16 => "f16".to_string(),
                 FloatTy::F32 => "f32".to_string(),
                 FloatTy::F64 => "f64".to_string(),
+                FloatTy::F128 => "f128".to_string(),
             },
             RigidTy::Adt(def, _) => {
                 format!("{:#?}", with(|cx| cx.def_ty(def.0)))

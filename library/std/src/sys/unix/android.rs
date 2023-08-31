@@ -45,6 +45,11 @@ use super::weak::weak;
 //
 //      log_2(x) = ln(x) * log_2(e)
 
+#[cfg(all(not(test), not(bootstrap)))]
+pub fn log2f16(f: f16) -> f16 {
+    f.ln() * crate::f16::consts::LOG2_E
+}
+
 #[cfg(not(test))]
 pub fn log2f32(f: f32) -> f32 {
     f.ln() * crate::f32::consts::LOG2_E
@@ -54,6 +59,12 @@ pub fn log2f32(f: f32) -> f32 {
 pub fn log2f64(f: f64) -> f64 {
     f.ln() * crate::f64::consts::LOG2_E
 }
+
+// FIXME:f128_math: unused until we have f128 intrinsics
+// #[cfg(all(not(test), not(bootstrap)))]
+// pub fn log2f128(f: f128) -> f128 {
+//     f.ln() * crate::f128::consts::LOG2_E
+// }
 
 // Back in the day [1] the `signal` function was just an inline wrapper
 // around `bsd_signal`, but starting in API level android-20 the `signal`

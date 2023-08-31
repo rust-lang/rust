@@ -7,7 +7,9 @@ edition = "2021"
 # tidy-alphabetical-start
 bitflags = "1.2.1"
 punycode = "0.4.0"
-rustc-demangle = "0.1.21"
+# TODO: change this upstream
+# rustc-demangle = "0.1.21"
+rustc-demangle = { git = "https://github.com/tgross35/rustc-demangle.git", branch = "f16-f128" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_hir = { path = "../rustc_hir" }

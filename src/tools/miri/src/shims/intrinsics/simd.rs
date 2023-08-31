@@ -113,15 +113,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 }
                                 #[cfg(not(bootstrap))]
                                 FloatTy::F128 => {
-                                    let f = f128::from_bits(op.to_scalar().to_u128()?);
-                                    let res = match host_op {
-                                        HostFloatOp::Ceil => f.ceil(),
-                                        HostFloatOp::Floor => f.floor(),
-                                        HostFloatOp::Round => f.round(),
-                                        HostFloatOp::Trunc => f.trunc(),
-                                        HostFloatOp::Sqrt => f.sqrt(),
-                                    };
-                                    Scalar::from_u128(res.to_bits())
+                                    // FIXME:f128_math: re-enable once f128_math is supported
+                                    unimplemented!("miri f128 support is blocked by f128_math");
+                                    // let f = f128::from_bits(op.to_scalar().to_u128()?);
+                                    // let res = match host_op {
+                                    //     HostFloatOp::Ceil => f.ceil(),
+                                    //     HostFloatOp::Floor => f.floor(),
+                                    //     HostFloatOp::Round => f.round(),
+                                    //     HostFloatOp::Trunc => f.trunc(),
+                                    //     HostFloatOp::Sqrt => f.sqrt(),
+                                    // };
+                                    // Scalar::from_u128(res.to_bits())
                                 }
                             }
                         }
@@ -312,11 +314,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         }
                         #[cfg(not(bootstrap))]
                         FloatTy::F128 => {
-                            let a = f128::from_bits(a.to_u128()?);
-                            let b = f128::from_bits(b.to_u128()?);
-                            let c = f128::from_bits(c.to_u128()?);
-                            let res = a.mul_add(b, c);
-                            Scalar::from_u128(res.to_bits())
+                            // FIXME:f128_math: re-enable once f128_math is supported
+                            unimplemented!("miri f128 support is blocked by f128_math");
+                            // let a = f128::from_bits(a.to_u128()?);
+                            // let b = f128::from_bits(b.to_u128()?);
+                            // let c = f128::from_bits(c.to_u128()?);
+                            // let res = a.mul_add(b, c);
+                            // Scalar::from_u128(res.to_bits())
                         }
                     };
                     this.write_scalar(val, &dest)?;

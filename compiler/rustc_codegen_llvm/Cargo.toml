@@ -13,7 +13,9 @@ itertools = "0.11"
 libc = "0.2"
 measureme = "10.0.0"
 object = { version = "0.32.0", default-features = false, features = ["std", "read"] }
-rustc-demangle = "0.1.21"
+# TODO: remove git dependency
+# rustc-demangle = "0.1.21"
+rustc-demangle = { git = "https://github.com/tgross35/rustc-demangle.git", branch = "f16-f128" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }

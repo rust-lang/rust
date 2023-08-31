@@ -310,7 +310,9 @@
 // Library features (core):
 // tidy-alphabetical-start
 #![cfg_attr(not(bootstrap), feature(f128))]
+#![cfg_attr(not(bootstrap), feature(f128_math))]
 #![cfg_attr(not(bootstrap), feature(f16))]
+#![cfg_attr(not(bootstrap), feature(f16_math))]
 #![feature(char_internals)]
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]

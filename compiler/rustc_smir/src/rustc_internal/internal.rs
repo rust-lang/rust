@@ -159,8 +159,10 @@ impl<'tcx> RustcInternal<'tcx> for FloatTy {
 
     fn internal(&self, _tables: &mut Tables<'tcx>) -> Self::T {
         match self {
+            FloatTy::F16 => rustc_ty::FloatTy::F16,
             FloatTy::F32 => rustc_ty::FloatTy::F32,
             FloatTy::F64 => rustc_ty::FloatTy::F64,
+            FloatTy::F128 => rustc_ty::FloatTy::F128,
         }
     }
 }

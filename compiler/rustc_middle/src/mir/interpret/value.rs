@@ -447,7 +447,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     }
 
     #[inline]
-    pub fn to_f16(self) -> InterpResult<'tcx, Single> {
+    pub fn to_f16(self) -> InterpResult<'tcx, Half> {
         self.to_float()
     }
 
@@ -462,7 +462,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     }
 
     #[inline]
-    pub fn to_f128(self) -> InterpResult<'tcx, Single> {
+    pub fn to_f128(self) -> InterpResult<'tcx, Quad> {
         self.to_float()
     }
 }

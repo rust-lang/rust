@@ -989,7 +989,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the minimum and maximum values for the given numeric type (including `char`s) or
     /// returns `None` if the type is not numeric.
     pub fn numeric_min_and_max_as_bits(self, tcx: TyCtxt<'tcx>) -> Option<(u128, u128)> {
-        use rustc_apfloat::ieee::{Double, Single};
+        use rustc_apfloat::ieee::{Double, Half, Quad, Single};
         Some(match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = self.int_size_and_signed(tcx);
