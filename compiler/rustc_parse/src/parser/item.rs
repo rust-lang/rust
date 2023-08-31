@@ -102,9 +102,9 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
-        self.recover_diff_marker();
+        self.recover_conflict_marker();
         let attrs = self.parse_outer_attributes()?;
-        self.recover_diff_marker();
+        self.recover_conflict_marker();
         self.parse_item_common(attrs, true, false, fn_parse_mode, force_collect)
     }
 
@@ -685,7 +685,7 @@ impl<'a> Parser<'a> {
             if self.recover_doc_comment_before_brace() {
                 continue;
             }
-            self.recover_diff_marker();
+            self.recover_conflict_marker();
             match parse_item(self) {
                 Ok(None) => {
                     let mut is_unnecessary_semicolon = !items.is_empty()
@@ -1014,7 +1014,7 @@ impl<'a> Parser<'a> {
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
         self.parse_delim_comma_seq(Delimiter::Brace, |p| {
-            p.recover_diff_marker();
+            p.recover_conflict_marker();
             Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
         })
         .map(|(r, _)| r)
@@ -1435,9 +1435,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_enum_variant(&mut self) -> PResult<'a, Option<Variant>> {
-        self.recover_diff_marker();
+        self.recover_conflict_marker();
         let variant_attrs = self.parse_outer_attributes()?;
-        self.recover_diff_marker();
+        self.recover_conflict_marker();
         self.collect_tokens_trailing_token(
             variant_attrs,
             ForceCollect::No,
@@ -1647,8 +1647,8 @@ impl<'a> Parser<'a> {
             let attrs = p.parse_outer_attributes()?;
             p.collect_tokens_trailing_token(attrs, ForceCollect::No, |p, attrs| {
                 let mut snapshot = None;
-                if p.is_diff_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
-                    // Account for `<<<<<<<` diff markers. We can't proactively error here because
+                if p.is_conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
+                    // Account for `<<<<<<<` conflict markers. We can't proactively error here because
                     // that can be a valid type start, so we snapshot and reparse only we've
                     // encountered another parse error.
                     snapshot = Some(p.create_snapshot_for_diagnostic());
@@ -1658,7 +1658,7 @@ impl<'a> Parser<'a> {
                     Ok(vis) => vis,
                     Err(err) => {
                         if let Some(ref mut snapshot) = snapshot {
-                            snapshot.recover_diff_marker();
+                            snapshot.recover_conflict_marker();
                         }
                         return Err(err);
                     }
@@ -1667,7 +1667,7 @@ impl<'a> Parser<'a> {
                     Ok(ty) => ty,
                     Err(err) => {
                         if let Some(ref mut snapshot) = snapshot {
-                            snapshot.recover_diff_marker();
+                            snapshot.recover_conflict_marker();
                         }
                         return Err(err);
                     }
@@ -1692,9 +1692,9 @@ impl<'a> Parser<'a> {
 
     /// Parses an element of a struct declaration.
     fn parse_field_def(&mut self, adt_ty: &str) -> PResult<'a, FieldDef> {
-        self.recover_diff_marker();
+        self.recover_conflict_marker();
         let attrs = self.parse_outer_attributes()?;
-        self.recover_diff_marker();
+        self.recover_conflict_marker();
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
@@ -2480,7 +2480,7 @@ impl<'a> Parser<'a> {
         let mut first_param = true;
         // Parse the arguments, starting out with `self` being allowed...
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
-            p.recover_diff_marker();
+            p.recover_conflict_marker();
             let param = p.parse_param_general(req_name, first_param).or_else(|mut e| {
                 e.emit();
                 let lo = p.prev_token.span;
