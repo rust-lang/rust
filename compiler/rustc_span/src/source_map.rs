@@ -328,7 +328,7 @@ impl SourceMap {
         name_hash: Hash128,
         source_len: u32,
         cnum: CrateNum,
-        file_local_lines: Lock<SourceFileLines>,
+        file_local_lines: FreezeLock<SourceFileLines>,
         multibyte_chars: Vec<MultiByteChar>,
         non_narrow_chars: Vec<NonNarrowChar>,
         normalized_pos: Vec<NormalizedPos>,

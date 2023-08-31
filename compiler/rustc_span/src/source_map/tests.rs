@@ -1,6 +1,6 @@
 use super::*;
 
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{FreezeLock, Lrc};
 
 fn init_source_map() -> SourceMap {
     let sm = SourceMap::new(FilePathMapping::empty());
@@ -246,7 +246,7 @@ fn t10() {
         name_hash,
         source_len.to_u32(),
         CrateNum::new(0),
-        lines,
+        FreezeLock::new(lines.read().clone()),
         multibyte_chars,
         non_narrow_chars,
         normalized_pos,

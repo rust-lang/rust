@@ -692,7 +692,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
         let len = BytePos::decode(decoder);
 
         let file_lo = decoder.file_index_to_file(file_lo_index);
-        let lo = file_lo.lines(|lines| lines[line_lo - 1] + col_lo);
+        let lo = file_lo.lines()[line_lo - 1] + col_lo;
         let lo = file_lo.absolute_position(lo);
         let hi = lo + len;
 

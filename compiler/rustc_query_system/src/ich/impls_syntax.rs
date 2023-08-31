@@ -79,15 +79,16 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
 
         src_hash.hash_stable(hcx, hasher);
 
-        // We are always in `Lines` form by the time we reach here.
-        assert!(self.lines.borrow().is_lines());
-        self.lines(|lines| {
+        {
+            // We are always in `Lines` form by the time we reach here.
+            assert!(self.lines.read().is_lines());
+            let lines = self.lines();
             // We only hash the relative position within this source_file
             lines.len().hash_stable(hcx, hasher);
             for &line in lines.iter() {
                 line.hash_stable(hcx, hasher);
             }
-        });
+        }
 
         // We only hash the relative position within this source_file
         multibyte_chars.len().hash_stable(hcx, hasher);

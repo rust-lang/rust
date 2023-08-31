@@ -3,6 +3,7 @@ use crate::sync::{AtomicBool, ReadGuard, RwLock, WriteGuard};
 use crate::sync::{DynSend, DynSync};
 use std::{
     cell::UnsafeCell,
+    intrinsics::likely,
     marker::PhantomData,
     ops::{Deref, DerefMut},
     sync::atomic::Ordering,
@@ -47,6 +48,17 @@ impl<T> FreezeLock<T> {
     #[inline]
     pub fn is_frozen(&self) -> bool {
         self.frozen.load(Ordering::Acquire)
+    }
+
+    /// Get the inner value if frozen.
+    #[inline]
+    pub fn get(&self) -> Option<&T> {
+        if likely(self.frozen.load(Ordering::Acquire)) {
+            // SAFETY: This is frozen so the data cannot be modified.
+            unsafe { Some(&*self.data.get()) }
+        } else {
+            None
+        }
     }
 
     #[inline]
