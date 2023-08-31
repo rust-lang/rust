@@ -592,13 +592,13 @@ fn make_thin_self_ptr<'tcx>(
             for i in 0..fat_pointer_layout.fields.count() {
                 let field_layout = fat_pointer_layout.field(cx, i);
 
-                if !field_layout.is_zst() {
+                if !field_layout.is_1zst() {
                     fat_pointer_layout = field_layout;
                     continue 'descend_newtypes;
                 }
             }
 
-            bug!("receiver has no non-zero-sized fields {:?}", fat_pointer_layout);
+            bug!("receiver has no non-1-ZST fields {:?}", fat_pointer_layout);
         }
 
         fat_pointer_layout.ty

@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::ignored_unit_patterns)]
 #![allow(clippy::redundant_pattern_matching, clippy::single_match)]
 

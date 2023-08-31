@@ -2,11 +2,7 @@
 
 fn main() {}
 
-pub trait Captures<'a> {}
-
-impl<'a, T: ?Sized> Captures<'a> for T {}
-
-type Two<'a, 'b> = impl std::fmt::Debug + Captures<'a> + Captures<'b>;
+type Two<'a, 'b> = impl std::fmt::Debug;
 
 fn one<'a>(t: &'a ()) -> Two<'a, 'a> {
     //~^ ERROR non-defining opaque type use

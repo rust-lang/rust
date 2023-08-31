@@ -1,0 +1,62 @@
+#![warn(clippy::upper_case_acronyms)]
+
+struct HTTPResponse; // not linted by default, but with cfg option
+
+struct CString; // not linted
+
+enum Flags {
+    NS, // not linted
+    Cwr,
+    //~^ ERROR: name `CWR` contains a capitalized acronym
+    //~| NOTE: `-D clippy::upper-case-acronyms` implied by `-D warnings`
+    Ece,
+    //~^ ERROR: name `ECE` contains a capitalized acronym
+    Urg,
+    //~^ ERROR: name `URG` contains a capitalized acronym
+    Ack,
+    //~^ ERROR: name `ACK` contains a capitalized acronym
+    Psh,
+    //~^ ERROR: name `PSH` contains a capitalized acronym
+    Rst,
+    //~^ ERROR: name `RST` contains a capitalized acronym
+    Syn,
+    //~^ ERROR: name `SYN` contains a capitalized acronym
+    Fin,
+    //~^ ERROR: name `FIN` contains a capitalized acronym
+}
+
+// linted with cfg option, beware that lint suggests `GccllvmSomething` instead of
+// `GccLlvmSomething`
+struct GCCLLVMSomething;
+
+// public items must not be linted
+pub struct NOWARNINGHERE;
+pub struct ALSONoWarningHERE;
+
+// enum variants should not be linted if the num is pub
+pub enum ParseError<T> {
+    YDB(u8),
+    Utf8(std::string::FromUtf8Error),
+    Parse(T, String),
+}
+
+// private, do lint here
+enum ParseErrorPrivate<T> {
+    Wasd(u8),
+    //~^ ERROR: name `WASD` contains a capitalized acronym
+    Utf8(std::string::FromUtf8Error),
+    Parse(T, String),
+}
+
+// do lint here
+struct Json;
+//~^ ERROR: name `JSON` contains a capitalized acronym
+
+// do lint here
+enum Yaml {
+    //~^ ERROR: name `YAML` contains a capitalized acronym
+    Num(u32),
+    Str(String),
+}
+
+fn main() {}

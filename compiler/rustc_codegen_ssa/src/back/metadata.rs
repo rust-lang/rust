@@ -226,9 +226,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
     if sess.target.is_like_osx {
-        if let Some(build_version) = macho_object_build_version_for_target(&sess.target) {
-            file.set_macho_build_version(build_version)
-        }
+        file.set_macho_build_version(macho_object_build_version_for_target(&sess.target))
     }
     let e_flags = match architecture {
         Architecture::Mips => {
@@ -334,31 +332,28 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     Some(file)
 }
 
-/// Apple's LD, when linking for Mac Catalyst, requires object files to
-/// contain information about what they were built for (LC_BUILD_VERSION):
-/// the platform (macOS/watchOS etc), minimum OS version, and SDK version.
-/// This returns a `MachOBuildVersion` if necessary for the target.
-fn macho_object_build_version_for_target(
-    target: &Target,
-) -> Option<object::write::MachOBuildVersion> {
-    if !target.llvm_target.ends_with("-macabi") {
-        return None;
-    }
+/// Since Xcode 15 Apple's LD requires object files to contain information about what they were
+/// built for (LC_BUILD_VERSION): the platform (macOS/watchOS etc), minimum OS version, and SDK
+/// version. This returns a `MachOBuildVersion` for the target.
+fn macho_object_build_version_for_target(target: &Target) -> object::write::MachOBuildVersion {
     /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
     /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
     fn pack_version((major, minor): (u32, u32)) -> u32 {
         (major << 16) | (minor << 8)
     }
 
-    let platform = object::macho::PLATFORM_MACCATALYST;
-    let min_os = (14, 0);
-    let sdk = (16, 2);
+    let platform =
+        rustc_target::spec::current_apple_platform(target).expect("unknown Apple target OS");
+    let min_os = rustc_target::spec::current_apple_deployment_target(target)
+        .expect("unknown Apple target OS");
+    let sdk =
+        rustc_target::spec::current_apple_sdk_version(platform).expect("unknown Apple target OS");
 
     let mut build_version = object::write::MachOBuildVersion::default();
     build_version.platform = platform;
     build_version.minos = pack_version(min_os);
     build_version.sdk = pack_version(sdk);
-    Some(build_version)
+    build_version
 }
 
 pub enum MetadataPosition {

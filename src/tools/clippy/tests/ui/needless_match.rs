@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::needless_match)]
 #![allow(clippy::manual_map)]
 #![allow(dead_code)]

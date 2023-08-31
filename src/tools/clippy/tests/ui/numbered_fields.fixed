@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::init_numbered_fields)]
 #![allow(unused_tuple_struct_fields)]
 

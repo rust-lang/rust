@@ -1,4 +1,3 @@
-//@run-rustfix
 // rustfix-only-machine-applicable
 #![feature(lint_reasons)]
 #![warn(clippy::redundant_clone)]

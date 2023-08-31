@@ -7,31 +7,31 @@ LL |     let _ = 2 ^ 5;
    = note: `-D clippy::suspicious-xor-used-as-pow` implied by `-D warnings`
 
 error: `^` is not the exponentiation operator
-  --> $DIR/suspicious_xor_used_as_pow.rs:20:13
+  --> $DIR/suspicious_xor_used_as_pow.rs:22:13
    |
 LL |     let _ = 2i32 ^ 9i32;
    |             ^^^^^^^^^^^ help: did you mean to write: `2i32.pow(9i32)`
 
 error: `^` is not the exponentiation operator
-  --> $DIR/suspicious_xor_used_as_pow.rs:21:13
+  --> $DIR/suspicious_xor_used_as_pow.rs:24:13
    |
 LL |     let _ = 2i32 ^ 2i32;
    |             ^^^^^^^^^^^ help: did you mean to write: `2i32.pow(2i32)`
 
 error: `^` is not the exponentiation operator
-  --> $DIR/suspicious_xor_used_as_pow.rs:22:13
+  --> $DIR/suspicious_xor_used_as_pow.rs:26:13
    |
 LL |     let _ = 50i32 ^ 3i32;
    |             ^^^^^^^^^^^^ help: did you mean to write: `50i32.pow(3i32)`
 
 error: `^` is not the exponentiation operator
-  --> $DIR/suspicious_xor_used_as_pow.rs:23:13
+  --> $DIR/suspicious_xor_used_as_pow.rs:28:13
    |
 LL |     let _ = 5i32 ^ 8i32;
    |             ^^^^^^^^^^^ help: did you mean to write: `5i32.pow(8i32)`
 
 error: `^` is not the exponentiation operator
-  --> $DIR/suspicious_xor_used_as_pow.rs:24:13
+  --> $DIR/suspicious_xor_used_as_pow.rs:30:13
    |
 LL |     let _ = 2i32 ^ 32i32;
    |             ^^^^^^^^^^^^ help: did you mean to write: `2i32.pow(32i32)`

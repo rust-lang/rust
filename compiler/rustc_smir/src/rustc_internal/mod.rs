@@ -4,13 +4,18 @@
 //! until stable MIR is complete.
 
 use std::fmt::Debug;
+use std::ops::Index;
 use std::string::ToString;
 
+use crate::rustc_internal;
 use crate::{
     rustc_smir::Tables,
     stable_mir::{self, with},
 };
+use rustc_driver::{Callbacks, Compilation, RunCompiler};
+use rustc_interface::{interface, Queries};
 use rustc_middle::ty::TyCtxt;
+use rustc_session::EarlyErrorHandler;
 pub use rustc_span::def_id::{CrateNum, DefId};
 
 fn with_tables<R>(mut f: impl FnMut(&mut Tables<'_>) -> R) -> R {
@@ -20,7 +25,7 @@ fn with_tables<R>(mut f: impl FnMut(&mut Tables<'_>) -> R) -> R {
 }
 
 pub fn item_def_id(item: &stable_mir::CrateItem) -> DefId {
-    with_tables(|t| t.item_def_id(item))
+    with_tables(|t| t[item.0])
 }
 
 pub fn crate_item(did: DefId) -> stable_mir::CrateItem {
@@ -67,23 +72,16 @@ pub fn impl_def(did: DefId) -> stable_mir::ty::ImplDef {
     with_tables(|t| t.impl_def(did))
 }
 
+impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
+    type Output = DefId;
+
+    #[inline(always)]
+    fn index(&self, index: stable_mir::DefId) -> &Self::Output {
+        &self.def_ids[index.0]
+    }
+}
+
 impl<'tcx> Tables<'tcx> {
-    pub fn item_def_id(&self, item: &stable_mir::CrateItem) -> DefId {
-        self.def_ids[item.0]
-    }
-
-    pub fn trait_def_id(&self, trait_def: &stable_mir::ty::TraitDef) -> DefId {
-        self.def_ids[trait_def.0]
-    }
-
-    pub fn impl_trait_def_id(&self, impl_def: &stable_mir::ty::ImplDef) -> DefId {
-        self.def_ids[impl_def.0]
-    }
-
-    pub fn generic_def_id(&self, generic_def: &stable_mir::ty::GenericDef) -> DefId {
-        self.def_ids[generic_def.0]
-    }
-
     pub fn crate_item(&mut self, did: DefId) -> stable_mir::CrateItem {
         stable_mir::CrateItem(self.create_def_id(did))
     }
@@ -140,12 +138,12 @@ impl<'tcx> Tables<'tcx> {
         // FIXME: this becomes inefficient when we have too many ids
         for (i, &d) in self.def_ids.iter().enumerate() {
             if d == did {
-                return i;
+                return stable_mir::DefId(i);
             }
         }
         let id = self.def_ids.len();
         self.def_ids.push(did);
-        id
+        stable_mir::DefId(id)
     }
 }
 
@@ -162,4 +160,41 @@ pub type Opaque = impl Debug + ToString + Clone;
 
 pub(crate) fn opaque<T: Debug>(value: &T) -> Opaque {
     format!("{value:?}")
+}
+
+pub struct StableMir {
+    args: Vec<String>,
+    callback: fn(TyCtxt<'_>),
+}
+
+impl StableMir {
+    /// Creates a new `StableMir` instance, with given test_function and arguments.
+    pub fn new(args: Vec<String>, callback: fn(TyCtxt<'_>)) -> Self {
+        StableMir { args, callback }
+    }
+
+    /// Runs the compiler against given target and tests it with `test_function`
+    pub fn run(&mut self) {
+        rustc_driver::catch_fatal_errors(|| {
+            RunCompiler::new(&self.args.clone(), self).run().unwrap();
+        })
+        .unwrap();
+    }
+}
+
+impl Callbacks for StableMir {
+    /// Called after analysis. Return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    fn after_analysis<'tcx>(
+        &mut self,
+        _handler: &EarlyErrorHandler,
+        _compiler: &interface::Compiler,
+        queries: &'tcx Queries<'tcx>,
+    ) -> Compilation {
+        queries.global_ctxt().unwrap().enter(|tcx| {
+            rustc_internal::run(tcx, || (self.callback)(tcx));
+        });
+        // No need to keep going.
+        Compilation::Stop
+    }
 }

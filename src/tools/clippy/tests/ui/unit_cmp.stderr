@@ -3,6 +3,8 @@ error: ==-comparison of unit values detected. This will always be true
    |
 LL |       if {
    |  ________^
+LL | |
+LL | |
 LL | |         true;
 LL | |     } == {
 LL | |         false;
@@ -12,10 +14,11 @@ LL | |     } {}
    = note: `-D clippy::unit-cmp` implied by `-D warnings`
 
 error: >-comparison of unit values detected. This will always be false
-  --> $DIR/unit_cmp.rs:23:8
+  --> $DIR/unit_cmp.rs:25:8
    |
 LL |       if {
    |  ________^
+LL | |
 LL | |         true;
 LL | |     } > {
 LL | |         false;
@@ -23,48 +26,48 @@ LL | |     } {}
    | |_____^
 
 error: `assert_eq` of unit values detected. This will always succeed
-  --> $DIR/unit_cmp.rs:29:5
+  --> $DIR/unit_cmp.rs:32:5
    |
 LL | /     assert_eq!(
+LL | |
 LL | |         {
 LL | |             true;
-LL | |         },
 ...  |
 LL | |         }
 LL | |     );
    | |_____^
 
 error: `debug_assert_eq` of unit values detected. This will always succeed
-  --> $DIR/unit_cmp.rs:37:5
+  --> $DIR/unit_cmp.rs:41:5
    |
 LL | /     debug_assert_eq!(
+LL | |
 LL | |         {
 LL | |             true;
-LL | |         },
 ...  |
 LL | |         }
 LL | |     );
    | |_____^
 
 error: `assert_ne` of unit values detected. This will always fail
-  --> $DIR/unit_cmp.rs:46:5
+  --> $DIR/unit_cmp.rs:51:5
    |
 LL | /     assert_ne!(
+LL | |
 LL | |         {
 LL | |             true;
-LL | |         },
 ...  |
 LL | |         }
 LL | |     );
    | |_____^
 
 error: `debug_assert_ne` of unit values detected. This will always fail
-  --> $DIR/unit_cmp.rs:54:5
+  --> $DIR/unit_cmp.rs:60:5
    |
 LL | /     debug_assert_ne!(
+LL | |
 LL | |         {
 LL | |             true;
-LL | |         },
 ...  |
 LL | |         }
 LL | |     );

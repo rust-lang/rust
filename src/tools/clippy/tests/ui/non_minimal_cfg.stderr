@@ -1,5 +1,5 @@
 error: unneeded sub `cfg` when there is only one condition
-  --> $DIR/non_minimal_cfg.rs:5:7
+  --> $DIR/non_minimal_cfg.rs:3:7
    |
 LL | #[cfg(all(windows))]
    |       ^^^^^^^^^^^^ help: try: `windows`
@@ -7,19 +7,19 @@ LL | #[cfg(all(windows))]
    = note: `-D clippy::non-minimal-cfg` implied by `-D warnings`
 
 error: unneeded sub `cfg` when there is only one condition
-  --> $DIR/non_minimal_cfg.rs:8:7
+  --> $DIR/non_minimal_cfg.rs:6:7
    |
 LL | #[cfg(any(windows))]
    |       ^^^^^^^^^^^^ help: try: `windows`
 
 error: unneeded sub `cfg` when there is only one condition
-  --> $DIR/non_minimal_cfg.rs:11:11
+  --> $DIR/non_minimal_cfg.rs:9:11
    |
 LL | #[cfg(all(any(unix), all(not(windows))))]
    |           ^^^^^^^^^ help: try: `unix`
 
 error: unneeded sub `cfg` when there is only one condition
-  --> $DIR/non_minimal_cfg.rs:11:22
+  --> $DIR/non_minimal_cfg.rs:9:22
    |
 LL | #[cfg(all(any(unix), all(not(windows))))]
    |                      ^^^^^^^^^^^^^^^^^ help: try: `not(windows)`

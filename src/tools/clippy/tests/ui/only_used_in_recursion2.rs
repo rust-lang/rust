@@ -1,7 +1,9 @@
 #![warn(clippy::only_used_in_recursion)]
-
+//@no-rustfix
 fn _with_inner(flag: u32, a: u32, b: u32) -> usize {
+    //~^ ERROR: parameter is only used in recursion
     fn inner(flag: u32, a: u32) -> u32 {
+        //~^ ERROR: parameter is only used in recursion
         if flag == 0 { 0 } else { inner(flag, a) }
     }
 
@@ -10,6 +12,7 @@ fn _with_inner(flag: u32, a: u32, b: u32) -> usize {
 }
 
 fn _with_closure(a: Option<u32>, b: u32, f: impl Fn(u32, u32) -> Option<u32>) -> u32 {
+    //~^ ERROR: parameter is only used in recursion
     if let Some(x) = a.and_then(|x| f(x, x)) {
         _with_closure(Some(x), b, f)
     } else {
@@ -60,6 +63,7 @@ impl E<()> for () {
 }
 
 fn overwritten_param(flag: u32, mut a: usize) -> usize {
+    //~^ ERROR: parameter is only used in recursion
     if flag == 0 {
         return 0;
     } else if flag > 5 {
@@ -71,6 +75,7 @@ fn overwritten_param(flag: u32, mut a: usize) -> usize {
 }
 
 fn field_direct(flag: u32, mut a: (usize,)) -> usize {
+    //~^ ERROR: parameter is only used in recursion
     if flag == 0 {
         0
     } else {

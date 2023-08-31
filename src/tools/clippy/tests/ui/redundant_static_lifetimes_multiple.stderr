@@ -1,5 +1,5 @@
 error: constants have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:3:18
+  --> $DIR/redundant_static_lifetimes_multiple.rs:4:18
    |
 LL | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR: Consider removing 'static
    |                 -^^^^^^^------------------ help: consider removing `'static`: `&[&[&'static str]]`
@@ -7,55 +7,55 @@ LL | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; 
    = note: `-D clippy::redundant-static-lifetimes` implied by `-D warnings`
 
 error: constants have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:3:30
+  --> $DIR/redundant_static_lifetimes_multiple.rs:4:30
    |
 LL | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR: Consider removing 'static
    |                             -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: constants have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:5:29
+  --> $DIR/redundant_static_lifetimes_multiple.rs:9:29
    |
 LL | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                            -^^^^^^^--------------- help: consider removing `'static`: `&[&'static str]`
 
 error: constants have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:5:39
+  --> $DIR/redundant_static_lifetimes_multiple.rs:9:39
    |
 LL | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                                      -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:7:40
+  --> $DIR/redundant_static_lifetimes_multiple.rs:13:40
    |
 LL | static STATIC_VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR: Consider removing 'static
    |                                       -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:7:55
+  --> $DIR/redundant_static_lifetimes_multiple.rs:13:55
    |
 LL | static STATIC_VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR: Consider removing 'static
    |                                                      -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:9:26
+  --> $DIR/redundant_static_lifetimes_multiple.rs:17:26
    |
 LL | static STATIC_VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR: Consider removing 'static
    |                         -^^^^^^^------------------ help: consider removing `'static`: `&[&[&'static str]]`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:9:38
+  --> $DIR/redundant_static_lifetimes_multiple.rs:17:38
    |
 LL | static STATIC_VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR: Consider removing 'static
    |                                     -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:11:37
+  --> $DIR/redundant_static_lifetimes_multiple.rs:21:37
    |
 LL | static STATIC_VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                                    -^^^^^^^--------------- help: consider removing `'static`: `&[&'static str]`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes_multiple.rs:11:47
+  --> $DIR/redundant_static_lifetimes_multiple.rs:21:47
    |
 LL | static STATIC_VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                                              -^^^^^^^---- help: consider removing `'static`: `&str`

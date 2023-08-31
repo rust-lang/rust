@@ -410,21 +410,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.unsize_into_ptr(src, dest, *s, *c)
             }
             (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
-                assert_eq!(def_a, def_b);
+                assert_eq!(def_a, def_b); // implies same number of fields
 
-                // unsizing of generic struct with pointer fields
-                // Example: `Arc<T>` -> `Arc<Trait>`
-                // here we need to increase the size of every &T thin ptr field to a fat ptr
+                // Unsizing of generic struct with pointer fields, like `Arc<T>` -> `Arc<Trait>`.
+                // There can be extra fields as long as they don't change their type or are 1-ZST.
+                // There might also be no field that actually needs unsizing.
+                let mut found_cast_field = false;
                 for i in 0..src.layout.fields.count() {
                     let cast_ty_field = cast_ty.field(self, i);
-                    if cast_ty_field.is_zst() {
-                        continue;
-                    }
                     let src_field = self.project_field(src, i)?;
                     let dst_field = self.project_field(dest, i)?;
-                    if src_field.layout.ty == cast_ty_field.ty {
+                    if src_field.layout.is_1zst() && cast_ty_field.is_1zst() {
+                        // Skip 1-ZST fields.
+                    } else if src_field.layout.ty == cast_ty_field.ty {
                         self.copy_op(&src_field, &dst_field, /*allow_transmute*/ false)?;
                     } else {
+                        if found_cast_field {
+                            span_bug!(self.cur_span(), "unsize_into: more than one field to cast");
+                        }
+                        found_cast_field = true;
                         self.unsize_into(&src_field, cast_ty_field, &dst_field)?;
                     }
                 }

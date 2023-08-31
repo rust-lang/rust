@@ -7,31 +7,31 @@ LL |     a = b = c;
    = note: `-D clippy::multi-assignments` implied by `-D warnings`
 
 error: assignments don't nest intuitively
-  --> $DIR/multi_assignments.rs:5:5
+  --> $DIR/multi_assignments.rs:7:5
    |
 LL |     a = b = c = d;
    |     ^^^^^^^^^^^^^
 
 error: assignments don't nest intuitively
-  --> $DIR/multi_assignments.rs:5:9
+  --> $DIR/multi_assignments.rs:7:9
    |
 LL |     a = b = c = d;
    |         ^^^^^^^^^
 
 error: assignments don't nest intuitively
-  --> $DIR/multi_assignments.rs:6:5
+  --> $DIR/multi_assignments.rs:10:5
    |
 LL |     a = b = { c };
    |     ^^^^^^^^^^^^^
 
 error: assignments don't nest intuitively
-  --> $DIR/multi_assignments.rs:7:5
+  --> $DIR/multi_assignments.rs:12:5
    |
 LL |     a = { b = c };
    |     ^^^^^^^^^^^^^
 
 error: assignments don't nest intuitively
-  --> $DIR/multi_assignments.rs:8:5
+  --> $DIR/multi_assignments.rs:14:5
    |
 LL |     a = (b = c);
    |     ^^^^^^^^^^^

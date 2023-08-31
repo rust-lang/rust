@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::redundant_closure, clippy::redundant_closure_for_method_calls)]
 #![allow(unused)]
 #![allow(

@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(unused, clippy::unnecessary_literal_unwrap)]
 
 struct MyTypeNonDebug;

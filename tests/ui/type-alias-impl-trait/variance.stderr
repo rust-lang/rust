@@ -1,0 +1,86 @@
+error: [o]
+  --> $DIR/variance.rs:8:29
+   |
+LL | type NotCapturedEarly<'a> = impl Sized;
+   |                             ^^^^^^^^^^
+
+error: [o]
+  --> $DIR/variance.rs:10:26
+   |
+LL | type CapturedEarly<'a> = impl Sized + Captures<'a>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o]
+  --> $DIR/variance.rs:12:56
+   |
+LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
+   |                                                        ^^^^^^^^^^
+
+error: [o]
+  --> $DIR/variance.rs:14:53
+   |
+LL | type CapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'b>>;
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o]
+  --> $DIR/variance.rs:16:49
+   |
+LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a> + Captures<'b>>;
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o, o, o]
+  --> $DIR/variance.rs:18:27
+   |
+LL | type Bar<'a, 'b: 'b, T> = impl Sized;
+   |                           ^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:31:38
+   |
+LL |     type ImplicitCapturedEarly<'a> = impl Sized;
+   |                                      ^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:33:37
+   |
+LL |     type ExplicitCaptureEarly<'a> = impl Sized + Captures<'i>;
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:35:36
+   |
+LL |     type ImplicitCaptureLate<'a> = impl Sized;
+   |                                    ^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:37:36
+   |
+LL |     type ExplicitCaptureLate<'a> = impl Sized + Captures<'a>;
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:41:38
+   |
+LL |     type ImplicitCapturedEarly<'a> = impl Sized;
+   |                                      ^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:43:37
+   |
+LL |     type ExplicitCaptureEarly<'a> = impl Sized + Captures<'i>;
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:45:36
+   |
+LL |     type ImplicitCaptureLate<'a> = impl Sized;
+   |                                    ^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:47:36
+   |
+LL |     type ExplicitCaptureLate<'a> = impl Sized + Captures<'a>;
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 14 previous errors
+

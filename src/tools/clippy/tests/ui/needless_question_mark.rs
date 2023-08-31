@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::needless_question_mark)]
 #![allow(
     clippy::needless_return,

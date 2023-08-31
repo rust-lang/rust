@@ -1,5 +1,5 @@
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/arc.rs:8:13
+  --> $DIR/arc.rs:9:13
    |
 LL |     let v = vec![Arc::new("x".to_string()); 2];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/arc.rs:16:21
+  --> $DIR/arc.rs:19:21
    |
 LL |             let v = vec![Arc::new("x".to_string()); 2];
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -46,13 +46,13 @@ LL ~             };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/arc.rs:22:13
+  --> $DIR/arc.rs:27:13
    |
 LL |       let v = vec![
    |  _____________^
+LL | |
+LL | |
 LL | |         std::sync::Arc::new(Mutex::new({
-LL | |             let x = 1;
-LL | |             dbg!(x);
 ...  |
 LL | |         2
 LL | |     ];
@@ -76,13 +76,13 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/arc.rs:31:14
+  --> $DIR/arc.rs:38:14
    |
 LL |       let v1 = vec![
    |  ______________^
+LL | |
+LL | |
 LL | |         Arc::new(Mutex::new({
-LL | |             let x = 1;
-LL | |             dbg!(x);
 ...  |
 LL | |         2
 LL | |     ];

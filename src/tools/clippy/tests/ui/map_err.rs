@@ -20,6 +20,7 @@ fn main() -> Result<(), Errors> {
     let x = u32::try_from(-123_i32);
 
     println!("{:?}", x.map_err(|_| Errors::Ignored));
+    //~^ ERROR: `map_err(|_|...` wildcard pattern discards the original error
 
     // Should not warn you because you explicitly ignore the parameter
     // using a named wildcard value

@@ -152,16 +152,14 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
             .predicates_of(impl_def_id)
             .instantiate(tcx, impl_args)
             .iter()
-            .map(|(c, s)| (c.as_predicate(), s))
+            .map(|(c, _)| c.as_predicate())
             .collect(),
     };
 
-    let InferOk { value: mut header, obligations } = selcx
-        .infcx
-        .at(&ObligationCause::dummy_with_span(tcx.def_span(impl_def_id)), param_env)
-        .normalize(header);
+    let InferOk { value: mut header, obligations } =
+        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(header);
 
-    header.predicates.extend(obligations.into_iter().map(|o| (o.predicate, o.cause.span)));
+    header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
     header
 }
 
@@ -261,17 +259,11 @@ fn overlap<'tcx>(
                                 infcx.tcx.def_span(impl2_header.impl_def_id),
                                 "the second impl is here",
                             );
-                            if !failing_obligation.cause.span.is_dummy() {
-                                lint.span_label(
-                                    failing_obligation.cause.span,
-                                    format!(
-                                        "`{}` may be considered to hold in future releases, \
-                                        causing the impls to overlap",
-                                        infcx
-                                            .resolve_vars_if_possible(failing_obligation.predicate)
-                                    ),
-                                );
-                            }
+                            lint.note(format!(
+                                "`{}` may be considered to hold in future releases, \
+                                    causing the impls to overlap",
+                                infcx.resolve_vars_if_possible(failing_obligation.predicate)
+                            ));
                             lint
                         },
                     );
@@ -355,8 +347,8 @@ fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
     [&impl1_header.predicates, &impl2_header.predicates]
         .into_iter()
         .flatten()
-        .map(|&(predicate, span)| {
-            Obligation::new(infcx.tcx, ObligationCause::dummy_with_span(span), param_env, predicate)
+        .map(|&predicate| {
+            Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, predicate)
         })
         .chain(obligations.into_iter().cloned())
         .find(|obligation: &PredicateObligation<'tcx>| {

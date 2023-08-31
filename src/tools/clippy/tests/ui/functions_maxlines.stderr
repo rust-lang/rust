@@ -2,9 +2,9 @@ error: this function has too many lines (102/100)
   --> $DIR/functions_maxlines.rs:58:1
    |
 LL | / fn bad_lines() {
+LL | |
+LL | |
 LL | |     println!("Dont get confused by braces: {{}}");
-LL | |     println!("This is bad.");
-LL | |     println!("This is bad.");
 ...  |
 LL | |     println!("This is bad.");
 LL | | }

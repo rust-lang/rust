@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![feature(lint_reasons)]
 #![deny(clippy::allow_attributes_without_reason)]
 #![allow(unfulfilled_lint_expectations)]

@@ -7,12 +7,13 @@
 //! but we still need to do bounds checking and adjust the layout. To not duplicate that with MPlaceTy, we actually
 //! implement the logic on OpTy, and MPlaceTy calls that.
 
+use std::marker::PhantomData;
+use std::ops::Range;
+
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_middle::ty::TyCtxt;
-use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::Size;
 use rustc_target::abi::{self, VariantIdx};
 
@@ -24,44 +25,59 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
     fn layout(&self) -> TyAndLayout<'tcx>;
 
     /// Get the metadata of a wide value.
-    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
-        &self,
-        ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>>;
+    fn meta(&self) -> MemPlaceMeta<Prov>;
 
+    /// Get the length of a slice/string/array stored here.
     fn len<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, u64> {
-        self.meta(ecx)?.len(self.layout(), ecx)
+        let layout = self.layout();
+        if layout.is_unsized() {
+            // We need to consult `meta` metadata
+            match layout.ty.kind() {
+                ty::Slice(..) | ty::Str => self.meta().unwrap_meta().to_target_usize(ecx),
+                _ => bug!("len not supported on unsized type {:?}", layout.ty),
+            }
+        } else {
+            // Go through the layout. There are lots of types that support a length,
+            // e.g., SIMD types. (But not all repr(simd) types even have FieldsShape::Array!)
+            match layout.fields {
+                abi::FieldsShape::Array { count, .. } => Ok(count),
+                _ => bug!("len not supported on sized type {:?}", layout.ty),
+            }
+        }
     }
 
     /// Offset the value by the given amount, replacing the layout and metadata.
-    fn offset_with_meta(
+    fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
+        ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self>;
 
-    fn offset(
+    #[inline]
+    fn offset<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
+        ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         assert!(layout.is_sized());
-        self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
+        self.offset_with_meta(offset, MemPlaceMeta::None, layout, ecx)
     }
 
-    fn transmute(
+    #[inline]
+    fn transmute<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
+        ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
+        assert!(self.layout().is_sized() && layout.is_sized());
         assert_eq!(self.layout().size, layout.size);
-        self.offset_with_meta(Size::ZERO, MemPlaceMeta::None, layout, cx)
+        self.offset_with_meta(Size::ZERO, MemPlaceMeta::None, layout, ecx)
     }
 
     /// Convert this to an `OpTy`. This might be an irreversible transformation, but is useful for
@@ -70,6 +86,28 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>>;
+}
+
+/// A type representing iteration over the elements of an array.
+pub struct ArrayIterator<'tcx, 'a, Prov: Provenance + 'static, P: Projectable<'tcx, Prov>> {
+    base: &'a P,
+    range: Range<u64>,
+    stride: Size,
+    field_layout: TyAndLayout<'tcx>,
+    _phantom: PhantomData<Prov>, // otherwise it says `Prov` is never used...
+}
+
+impl<'tcx, 'a, Prov: Provenance + 'static, P: Projectable<'tcx, Prov>>
+    ArrayIterator<'tcx, 'a, Prov, P>
+{
+    /// Should be the same `ecx` on each call, and match the one used to create the iterator.
+    pub fn next<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &mut self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, Option<(u64, P)>> {
+        let Some(idx) = self.range.next() else { return Ok(None) };
+        Ok(Some((idx, self.base.offset(self.stride * idx, self.field_layout, ecx)?)))
+    }
 }
 
 // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
@@ -104,7 +142,7 @@ where
                 // But const-prop actually feeds us such nonsense MIR! (see test `const_prop/issue-86351.rs`)
                 throw_inval!(ConstPropNonsense);
             }
-            let base_meta = base.meta(self)?;
+            let base_meta = base.meta();
             // Re-use parent metadata to determine dynamic field layout.
             // With custom DSTS, this *will* execute user-defined code, but the same
             // happens at run-time so that's okay.
@@ -132,7 +170,7 @@ where
         base: &P,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, P> {
-        assert!(!base.meta(self)?.has_meta());
+        assert!(!base.meta().has_meta());
         // Downcasts only change the layout.
         // (In particular, no check about whether this is even the active variant -- that's by design,
         // see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)
@@ -206,20 +244,13 @@ where
     pub fn project_array_fields<'a, P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &'a P,
-    ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, P>> + 'a>
-    where
-        'tcx: 'a,
-    {
+    ) -> InterpResult<'tcx, ArrayIterator<'tcx, 'a, M::Provenance, P>> {
         let abi::FieldsShape::Array { stride, .. } = base.layout().fields else {
             span_bug!(self.cur_span(), "operand_array_fields: expected an array layout");
         };
         let len = base.len(self)?;
         let field_layout = base.layout().field(self, 0);
-        let tcx: TyCtxt<'tcx> = *self.tcx;
-        // `Size` multiplication
-        Ok((0..len).map(move |i| {
-            base.offset_with_meta(stride * i, MemPlaceMeta::None, field_layout, &tcx)
-        }))
+        Ok(ArrayIterator { base, range: 0..len, stride, field_layout, _phantom: PhantomData })
     }
 
     /// Subslicing

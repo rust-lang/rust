@@ -61,6 +61,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         &ret.clone().into(),
         StackPopCleanup::Root { cleanup: false },
     )?;
+    ecx.storage_live_for_always_live_locals()?;
 
     // The main interpreter loop.
     while ecx.step()? {}

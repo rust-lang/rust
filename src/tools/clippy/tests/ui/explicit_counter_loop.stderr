@@ -7,49 +7,49 @@ LL |     for _v in &vec {
    = note: `-D clippy::explicit-counter-loop` implied by `-D warnings`
 
 error: the variable `_index` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:13:5
+  --> $DIR/explicit_counter_loop.rs:15:5
    |
 LL |     for _v in &vec {
    |     ^^^^^^^^^^^^^^ help: consider using: `for (_index, _v) in vec.iter().enumerate()`
 
 error: the variable `_index` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:18:5
+  --> $DIR/explicit_counter_loop.rs:21:5
    |
 LL |     for _v in &mut vec {
    |     ^^^^^^^^^^^^^^^^^^ help: consider using: `for (_index, _v) in vec.iter_mut().enumerate()`
 
 error: the variable `_index` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:23:5
+  --> $DIR/explicit_counter_loop.rs:27:5
    |
 LL |     for _v in vec {
    |     ^^^^^^^^^^^^^ help: consider using: `for (_index, _v) in vec.into_iter().enumerate()`
 
 error: the variable `count` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:110:9
+  --> $DIR/explicit_counter_loop.rs:115:9
    |
 LL |         for ch in text.chars() {
    |         ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `for (count, ch) in text.chars().enumerate()`
 
 error: the variable `count` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:121:9
+  --> $DIR/explicit_counter_loop.rs:127:9
    |
 LL |         for ch in text.chars() {
    |         ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `for (count, ch) in text.chars().enumerate()`
 
 error: the variable `count` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:179:9
+  --> $DIR/explicit_counter_loop.rs:186:9
    |
 LL |         for _i in 3..10 {
    |         ^^^^^^^^^^^^^^^ help: consider using: `for (count, _i) in (3..10).enumerate()`
 
 error: the variable `idx_usize` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:219:9
+  --> $DIR/explicit_counter_loop.rs:227:9
    |
 LL |         for _item in slice {
    |         ^^^^^^^^^^^^^^^^^^ help: consider using: `for (idx_usize, _item) in slice.iter().enumerate()`
 
 error: the variable `idx_u32` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:231:9
+  --> $DIR/explicit_counter_loop.rs:240:9
    |
 LL |         for _item in slice {
    |         ^^^^^^^^^^^^^^^^^^ help: consider using: `for (idx_u32, _item) in (0_u32..).zip(slice.iter())`

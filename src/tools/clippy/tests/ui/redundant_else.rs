@@ -8,6 +8,7 @@ fn main() {
             println!("Love your neighbor;");
             break;
         } else {
+            //~^ ERROR: redundant else block
             println!("yet don't pull down your hedge.");
         }
         // continue
@@ -15,6 +16,7 @@ fn main() {
             println!("He that lies down with Dogs,");
             continue;
         } else {
+            //~^ ERROR: redundant else block
             println!("shall rise up with fleas.");
         }
         // match block
@@ -24,6 +26,7 @@ fn main() {
                 _ => return,
             }
         } else {
+            //~^ ERROR: redundant else block
             println!("You may delay, but time will not.");
         }
     }
@@ -33,6 +36,7 @@ fn main() {
     } else if foo() {
         return;
     } else {
+        //~^ ERROR: redundant else block
         println!("A fat kitchen makes a lean will.");
     }
     // let binding outside of block
@@ -40,6 +44,7 @@ fn main() {
         if foo() {
             return;
         } else {
+            //~^ ERROR: redundant else block
             1
         }
     };
@@ -50,6 +55,7 @@ fn main() {
         } else if foo() {
             return;
         } else {
+            //~^ ERROR: redundant else block
             2
         }
     };
@@ -59,6 +65,7 @@ fn main() {
         if foo() {
             return;
         } else {
+            //~^ ERROR: redundant else block
             1
         }
     } else {

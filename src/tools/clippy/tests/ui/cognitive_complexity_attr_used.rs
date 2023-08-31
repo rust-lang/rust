@@ -7,6 +7,7 @@ fn main() {
 
 #[clippy::cognitive_complexity = "0"]
 fn kaboom() {
+    //~^ ERROR: the function has a cognitive complexity of (3/0)
     if 42 == 43 {
         panic!();
     } else if "cake" == "lie" {

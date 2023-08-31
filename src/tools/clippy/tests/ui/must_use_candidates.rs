@@ -1,4 +1,3 @@
-//@run-rustfix
 #![feature(never_type)]
 #![allow(
     unused_mut,

@@ -53,7 +53,7 @@ impl<'tcx> SearchGraph<'tcx> {
     pub(super) fn new(tcx: TyCtxt<'tcx>, mode: SolverMode) -> SearchGraph<'tcx> {
         Self {
             mode,
-            local_overflow_limit: tcx.recursion_limit().0.ilog2() as usize,
+            local_overflow_limit: tcx.recursion_limit().0.checked_ilog2().unwrap_or(0) as usize,
             stack: Default::default(),
             provisional_cache: ProvisionalCache::empty(),
         }

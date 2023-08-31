@@ -3,11 +3,13 @@
 
 fn hex_encode(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02X}")).collect()
+    //~^ ERROR: use of `format!` to build up a string from an iterator
 }
 
 #[rustfmt::skip]
 fn hex_encode_deep(bytes: &[u8]) -> String {
     bytes.iter().map(|b| {{{{{ format!("{b:02X}") }}}}}).collect()
+    //~^ ERROR: use of `format!` to build up a string from an iterator
 }
 
 macro_rules! fmt {
@@ -22,6 +24,7 @@ fn from_macro(bytes: &[u8]) -> String {
 
 fn with_block() -> String {
     (1..10)
+        //~^ ERROR: use of `format!` to build up a string from an iterator
         .map(|s| {
             let y = 1;
             format!("{s} {y}")

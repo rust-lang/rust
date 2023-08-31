@@ -384,7 +384,7 @@ const_eval_unreachable_unwind =
 
 const_eval_unsigned_offset_from_overflow =
     `ptr_offset_from_unsigned` called when first pointer has smaller offset than second: {$a_offset} < {$b_offset}
-
+const_eval_unsized_local = unsized locals are not supported
 const_eval_unstable_const_fn = `{$def_path}` is not yet stable as a const fn
 
 const_eval_unstable_in_stable =

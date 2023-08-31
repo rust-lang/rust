@@ -120,26 +120,8 @@ pub struct GenericDef(pub(crate) DefId);
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ConstDef(pub(crate) DefId);
 
-impl TraitDef {
-    pub fn trait_decl(&self) -> TraitDecl {
-        with(|cx| cx.trait_decl(self))
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ImplDef(pub(crate) DefId);
-
-impl ImplDef {
-    pub fn trait_impl(&self) -> ImplTrait {
-        with(|cx| cx.trait_impl(self))
-    }
-}
-
-impl GenericDef {
-    pub fn generics_of(&self) -> Generics {
-        with(|tcx| tcx.generics_of(self))
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);
@@ -463,6 +445,16 @@ pub struct TraitDecl {
     pub deny_explicit_impl: bool,
 }
 
+impl TraitDecl {
+    pub fn generics_of(&self) -> Generics {
+        with(|cx| cx.generics_of(self.def_id.0))
+    }
+
+    pub fn predicates_of(&self) -> GenericPredicates {
+        with(|cx| cx.predicates_of(self.def_id.0))
+    }
+}
+
 pub type ImplTrait = EarlyBinder<TraitRef>;
 
 #[derive(Clone, Debug)]
@@ -499,8 +491,8 @@ pub struct GenericParamDef {
 }
 
 pub struct GenericPredicates {
-    pub parent: Option<DefId>,
-    pub predicates: Vec<PredicateKind>,
+    pub parent: Option<TraitDef>,
+    pub predicates: Vec<(PredicateKind, Span)>,
 }
 
 #[derive(Clone, Debug)]

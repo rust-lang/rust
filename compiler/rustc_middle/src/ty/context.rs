@@ -1296,25 +1296,26 @@ macro_rules! sty_debug_print {
                 };
                 $(let mut $variant = total;)*
 
-                let shards = tcx.interners.type_.lock_shards();
-                let types = shards.iter().flat_map(|shard| shard.keys());
-                for &InternedInSet(t) in types {
-                    let variant = match t.internee {
-                        ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
-                            ty::Float(..) | ty::Str | ty::Never => continue,
-                        ty::Error(_) => /* unimportant */ continue,
-                        $(ty::$variant(..) => &mut $variant,)*
-                    };
-                    let lt = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);
-                    let ty = t.flags.intersects(ty::TypeFlags::HAS_TY_INFER);
-                    let ct = t.flags.intersects(ty::TypeFlags::HAS_CT_INFER);
+                for shard in tcx.interners.type_.lock_shards() {
+                    let types = shard.keys();
+                    for &InternedInSet(t) in types {
+                        let variant = match t.internee {
+                            ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
+                                ty::Float(..) | ty::Str | ty::Never => continue,
+                            ty::Error(_) => /* unimportant */ continue,
+                            $(ty::$variant(..) => &mut $variant,)*
+                        };
+                        let lt = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);
+                        let ty = t.flags.intersects(ty::TypeFlags::HAS_TY_INFER);
+                        let ct = t.flags.intersects(ty::TypeFlags::HAS_CT_INFER);
 
-                    variant.total += 1;
-                    total.total += 1;
-                    if lt { total.lt_infer += 1; variant.lt_infer += 1 }
-                    if ty { total.ty_infer += 1; variant.ty_infer += 1 }
-                    if ct { total.ct_infer += 1; variant.ct_infer += 1 }
-                    if lt && ty && ct { total.all_infer += 1; variant.all_infer += 1 }
+                        variant.total += 1;
+                        total.total += 1;
+                        if lt { total.lt_infer += 1; variant.lt_infer += 1 }
+                        if ty { total.ty_infer += 1; variant.ty_infer += 1 }
+                        if ct { total.ct_infer += 1; variant.ct_infer += 1 }
+                        if lt && ty && ct { total.all_infer += 1; variant.all_infer += 1 }
+                    }
                 }
                 writeln!(fmt, "Ty interner             total           ty lt ct all")?;
                 $(writeln!(fmt, "    {:18}: {uses:6} {usespc:4.1}%, \
