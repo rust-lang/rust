@@ -272,26 +272,24 @@ pub fn report_error<'tcx, 'mir>(
     } else {
         let title = match e.kind() {
             UndefinedBehavior(UndefinedBehaviorInfo::ValidationError(validation_err))
-                if matches!(validation_err.kind, ValidationErrorKind::PointerAsInt { .. } | ValidationErrorKind::PartialPointer) =>
+                if matches!(
+                    validation_err.kind,
+                    ValidationErrorKind::PointerAsInt { .. } | ValidationErrorKind::PartialPointer
+                ) =>
             {
                 ecx.handle_ice(); // print interpreter backtrace
                 bug!("This validation error should be impossible in Miri: {}", ecx.format_error(e));
             }
-            UndefinedBehavior(_) =>
-                "Undefined Behavior",
-            ResourceExhaustion(_) =>
-                "resource exhaustion",
+            UndefinedBehavior(_) => "Undefined Behavior",
+            ResourceExhaustion(_) => "resource exhaustion",
             Unsupported(
                 // We list only the ones that can actually happen.
-                UnsupportedOpInfo::Unsupported(_) | UnsupportedOpInfo::UnsizedLocal
-            ) =>
-                "unsupported operation",
+                UnsupportedOpInfo::Unsupported(_) | UnsupportedOpInfo::UnsizedLocal,
+            ) => "unsupported operation",
             InvalidProgram(
                 // We list only the ones that can actually happen.
-                InvalidProgramInfo::AlreadyReported(_) |
-                InvalidProgramInfo::Layout(..)
-            ) =>
-                "post-monomorphization error",
+                InvalidProgramInfo::AlreadyReported(_) | InvalidProgramInfo::Layout(..),
+            ) => "post-monomorphization error",
             _ => {
                 ecx.handle_ice(); // print interpreter backtrace
                 bug!("This error should be impossible in Miri: {}", ecx.format_error(e));
@@ -346,7 +344,8 @@ pub fn report_error<'tcx, 'mir>(
                 extra,
                 "Uninitialized memory occurred at {alloc_id:?}{range:?}, in this allocation:",
                 range = access.bad,
-            ).unwrap();
+            )
+            .unwrap();
             writeln!(extra, "{:?}", ecx.dump_alloc(*alloc_id)).unwrap();
         }
         _ => {}

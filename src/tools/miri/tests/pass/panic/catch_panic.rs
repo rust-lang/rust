@@ -1,5 +1,5 @@
 // We test the `align_offset` panic below, make sure we test the interpreter impl and not the "real" one.
-//@compile-flags: -Zmiri-symbolic-alignment-check -Zmiri-permissive-provenance
+//@compile-flags: -Zmiri-symbolic-alignment-check
 #![feature(never_type)]
 #![allow(unconditional_panic, non_fmt_panics)]
 
@@ -48,14 +48,16 @@ fn main() {
     }));
 
     // Std panics
-    test(None, |_old_val| std::panic!("Hello from panic: std"));
-    test(None, |old_val| std::panic::panic_any(format!("Hello from panic: {:?}", old_val)));
-    test(None, |old_val| std::panic!("Hello from panic: {:?}", old_val));
+    test(None, |_old_val| std::panic!("Hello from std::panic"));
+    test(None, |old_val| std::panic!("Hello from std::panic: {:?}", old_val));
+    test(None, |old_val| {
+        std::panic::panic_any(format!("Hello from std::panic_any: {:?}", old_val))
+    });
     test(None, |_old_val| std::panic::panic_any(1337));
 
     // Core panics
-    test(None, |_old_val| core::panic!("Hello from panic: core"));
-    test(None, |old_val| core::panic!("Hello from panic: {:?}", old_val));
+    test(None, |_old_val| core::panic!("Hello from core::panic"));
+    test(None, |old_val| core::panic!("Hello from core::panic: {:?}", old_val));
 
     // Built-in panics; also make sure the message is right.
     test(Some("index out of bounds: the len is 3 but the index is 4"), |_old_val| {
@@ -68,7 +70,7 @@ fn main() {
     });
 
     test(Some("align_offset: align is not a power-of-two"), |_old_val| {
-        let _ = (0usize as *const u8).align_offset(3);
+        let _ = std::ptr::null::<u8>().align_offset(3);
         loop {}
     });
 
