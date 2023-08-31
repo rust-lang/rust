@@ -83,9 +83,6 @@ fn main() {
     test_abi_newtype(0u32);
     test_abi_newtype(0f32);
     test_abi_newtype((0u32, 1u32, 2u32));
-    // FIXME: skipping the array tests on mips64 due to https://github.com/rust-lang/rust/issues/115404
-    if !cfg!(target_arch = "mips64") {
-        test_abi_newtype([0u32, 1u32, 2u32]);
-        test_abi_newtype([0i32; 0]);
-    }
+    test_abi_newtype([0u32, 1u32, 2u32]);
+    test_abi_newtype([0i32; 0]);
 }
