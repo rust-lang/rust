@@ -25,7 +25,7 @@ attr_incorrect_meta_item =
     incorrect meta item
 
 attr_incorrect_repr_format_align_one_arg =
-    incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
+    incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses, namely the number of desired alignment bytes
 
 attr_incorrect_repr_format_generic =
     incorrect `repr({$repr_arg})` attribute format
