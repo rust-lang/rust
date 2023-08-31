@@ -114,20 +114,8 @@ fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
 }
 
 fn base_config(test_dir: &str) -> (Config, Args) {
-    let bless = var_os("RUSTC_BLESS").is_some_and(|v| v != "0") || env::args().any(|arg| arg == "--bless");
-
-    let args = Args {
-        filters: env::var("TESTNAME")
-            .map(|filters| filters.split(',').map(str::to_string).collect())
-            .unwrap_or_default(),
-        quiet: false,
-        check: !bless,
-        threads: match std::env::var_os("RUST_TEST_THREADS") {
-            Some(n) => n.to_str().unwrap().parse().unwrap(),
-            None => std::thread::available_parallelism().unwrap(),
-        },
-        skip: Vec::new(),
-    };
+    let mut args = Args::test().unwrap();
+    args.bless |= var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
 
     let mut config = Config {
         mode: Mode::Yolo {
@@ -135,15 +123,17 @@ fn base_config(test_dir: &str) -> (Config, Args) {
         },
         stderr_filters: vec![(Match::PathBackslash, b"/")],
         stdout_filters: vec![],
-        output_conflict_handling: if bless {
-            OutputConflictHandling::Bless
-        } else {
-            OutputConflictHandling::Error("cargo uibless".into())
-        },
+        filter_files: env::var("TESTNAME")
+            .map(|filters| filters.split(',').map(str::to_string).collect())
+            .unwrap_or_default(),
         target: None,
         out_dir: canonicalize(var_os("CARGO_TARGET_DIR").unwrap_or_else(|| "target".into())).join("ui_test"),
         ..Config::rustc(Path::new("tests").join(test_dir))
     };
+    config.with_args(&args, /* bless by default */ false);
+    if let OutputConflictHandling::Error(err) = &mut config.output_conflict_handling {
+        *err = "cargo uibless".into();
+    }
     let current_exe_path = env::current_exe().unwrap();
     let deps_path = current_exe_path.parent().unwrap();
     let profile_path = deps_path.parent().unwrap();
@@ -186,7 +176,6 @@ fn run_ui() {
 
     ui_test::run_tests_generic(
         vec![config],
-        args,
         ui_test::default_file_filter,
         ui_test::default_per_file_config,
         if quiet {
@@ -211,7 +200,6 @@ fn run_internal_tests() {
 
     ui_test::run_tests_generic(
         vec![config],
-        args,
         ui_test::default_file_filter,
         ui_test::default_per_file_config,
         if quiet {
@@ -245,7 +233,6 @@ fn run_ui_toml() {
 
     ui_test::run_tests_generic(
         vec![config],
-        args,
         ui_test::default_file_filter,
         |config, path, _file_contents| {
             config
@@ -304,8 +291,7 @@ fn run_ui_cargo() {
 
     ui_test::run_tests_generic(
         vec![config],
-        args,
-        |path, args, _config| path.ends_with("Cargo.toml") && ui_test::default_filter_by_arg(path, args),
+        |path, config| path.ends_with("Cargo.toml") && ui_test::default_any_file_filter(path, config),
         |config, path, _file_contents| {
             config.out_dir = canonicalize(
                 std::env::current_dir()
