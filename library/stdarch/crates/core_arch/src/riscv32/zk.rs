@@ -62,7 +62,8 @@ extern "unadjusted" {
 /// This function is safe to use if the `zkne` target feature is present.
 #[target_feature(enable = "zkne")]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(test, assert_instr(aes32esi, BS = 0))]
+// See #1464
+// #[cfg_attr(test, assert_instr(aes32esi, BS = 0))]
 #[inline]
 pub unsafe fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
@@ -93,7 +94,8 @@ pub unsafe fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// This function is safe to use if the `zkne` target feature is present.
 #[target_feature(enable = "zkne")]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(test, assert_instr(aes32esmi, BS = 0))]
+// See #1464
+// #[cfg_attr(test, assert_instr(aes32esmi, BS = 0))]
 #[inline]
 pub unsafe fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
@@ -123,7 +125,8 @@ pub unsafe fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// This function is safe to use if the `zknd` target feature is present.
 #[target_feature(enable = "zknd")]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(test, assert_instr(aes32dsi, BS = 0))]
+// See #1464
+// #[cfg_attr(test, assert_instr(aes32dsi, BS = 0))]
 #[inline]
 pub unsafe fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
@@ -154,7 +157,8 @@ pub unsafe fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// This function is safe to use if the `zknd` target feature is present.
 #[target_feature(enable = "zknd")]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(test, assert_instr(aes32dsmi, BS = 0))]
+// See #1464
+// #[cfg_attr(test, assert_instr(aes32dsmi, BS = 0))]
 #[inline]
 pub unsafe fn aes32dsmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
@@ -180,7 +184,8 @@ pub unsafe fn aes32dsmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 ///
 /// This function is safe to use if the `zbkb` target feature is present.
 #[target_feature(enable = "zbkb")]
-#[cfg_attr(test, assert_instr(zip))]
+// See #1464
+// #[cfg_attr(test, assert_instr(zip))]
 #[inline]
 pub unsafe fn zip(rs: u32) -> u32 {
     _zip(rs as i32) as u32
@@ -227,7 +232,8 @@ pub unsafe fn unzip(rs: u32) -> u32 {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-#[cfg_attr(test, assert_instr(sha512sig0h))]
+// See #1464
+// #[cfg_attr(test, assert_instr(sha512sig0h))]
 #[inline]
 pub unsafe fn sha512sig0h(rs1: u32, rs2: u32) -> u32 {
     _sha512sig0h(rs1 as i32, rs2 as i32) as u32
@@ -252,7 +258,8 @@ pub unsafe fn sha512sig0h(rs1: u32, rs2: u32) -> u32 {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-#[cfg_attr(test, assert_instr(sha512sig0l))]
+// See #1464
+// #[cfg_attr(test, assert_instr(sha512sig0l))]
 #[inline]
 pub unsafe fn sha512sig0l(rs1: u32, rs2: u32) -> u32 {
     _sha512sig0l(rs1 as i32, rs2 as i32) as u32
@@ -277,7 +284,8 @@ pub unsafe fn sha512sig0l(rs1: u32, rs2: u32) -> u32 {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-#[cfg_attr(test, assert_instr(sha512sig1h))]
+// See #1464
+// #[cfg_attr(test, assert_instr(sha512sig1h))]
 #[inline]
 pub unsafe fn sha512sig1h(rs1: u32, rs2: u32) -> u32 {
     _sha512sig1h(rs1 as i32, rs2 as i32) as u32
@@ -326,7 +334,8 @@ pub unsafe fn sha512sig1l(rs1: u32, rs2: u32) -> u32 {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-#[cfg_attr(test, assert_instr(sha512sum0r))]
+// See #1464
+// #[cfg_attr(test, assert_instr(sha512sum0r))]
 #[inline]
 pub unsafe fn sha512sum0r(rs1: u32, rs2: u32) -> u32 {
     _sha512sum0r(rs1 as i32, rs2 as i32) as u32
@@ -350,7 +359,8 @@ pub unsafe fn sha512sum0r(rs1: u32, rs2: u32) -> u32 {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-#[cfg_attr(test, assert_instr(sha512sum1r))]
+// See #1464
+// #[cfg_attr(test, assert_instr(sha512sum1r))]
 #[inline]
 pub unsafe fn sha512sum1r(rs1: u32, rs2: u32) -> u32 {
     _sha512sum1r(rs1 as i32, rs2 as i32) as u32

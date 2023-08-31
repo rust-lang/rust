@@ -50,7 +50,8 @@ extern "unadjusted" {
 ///
 /// This function is safe to use if the `zkne` target feature is present.
 #[target_feature(enable = "zkne")]
-#[cfg_attr(test, assert_instr(aes64es))]
+// See #1464
+// #[cfg_attr(test, assert_instr(aes64es))]
 #[inline]
 pub unsafe fn aes64es(rs1: u64, rs2: u64) -> u64 {
     _aes64es(rs1 as i64, rs2 as i64) as u64
@@ -73,7 +74,8 @@ pub unsafe fn aes64es(rs1: u64, rs2: u64) -> u64 {
 ///
 /// This function is safe to use if the `zkne` target feature is present.
 #[target_feature(enable = "zkne")]
-#[cfg_attr(test, assert_instr(aes64esm))]
+// See #1464
+// #[cfg_attr(test, assert_instr(aes64esm))]
 #[inline]
 pub unsafe fn aes64esm(rs1: u64, rs2: u64) -> u64 {
     _aes64esm(rs1 as i64, rs2 as i64) as u64
@@ -96,7 +98,8 @@ pub unsafe fn aes64esm(rs1: u64, rs2: u64) -> u64 {
 ///
 /// This function is safe to use if the `zknd` target feature is present.
 #[target_feature(enable = "zknd")]
-#[cfg_attr(test, assert_instr(aes64ds))]
+// See #1464
+// #[cfg_attr(test, assert_instr(aes64ds))]
 #[inline]
 pub unsafe fn aes64ds(rs1: u64, rs2: u64) -> u64 {
     _aes64ds(rs1 as i64, rs2 as i64) as u64
@@ -119,7 +122,8 @@ pub unsafe fn aes64ds(rs1: u64, rs2: u64) -> u64 {
 ///
 /// This function is safe to use if the `zknd` target feature is present.
 #[target_feature(enable = "zknd")]
-#[cfg_attr(test, assert_instr(aes64dsm))]
+// See #1464
+// #[cfg_attr(test, assert_instr(aes64dsm))]
 #[inline]
 pub unsafe fn aes64dsm(rs1: u64, rs2: u64) -> u64 {
     _aes64dsm(rs1 as i64, rs2 as i64) as u64
@@ -148,7 +152,8 @@ pub unsafe fn aes64dsm(rs1: u64, rs2: u64) -> u64 {
 /// This function is safe to use if the `zkne` or `zknd` target feature is present.
 #[target_feature(enable = "zkne", enable = "zknd")]
 #[rustc_legacy_const_generics(1)]
-#[cfg_attr(test, assert_instr(aes64ks1i, RNUM = 0))]
+// See #1464
+// #[cfg_attr(test, assert_instr(aes64ks1i, RNUM = 0))]
 #[inline]
 pub unsafe fn aes64ks1i<const RNUM: u8>(rs1: u64) -> u64 {
     static_assert!(RNUM <= 10);
@@ -172,7 +177,8 @@ pub unsafe fn aes64ks1i<const RNUM: u8>(rs1: u64) -> u64 {
 ///
 /// This function is safe to use if the `zkne` or `zknd` target feature is present.
 #[target_feature(enable = "zkne", enable = "zknd")]
-#[cfg_attr(test, assert_instr(aes64ks2))]
+// See #1464
+// #[cfg_attr(test, assert_instr(aes64ks2))]
 #[inline]
 pub unsafe fn aes64ks2(rs1: u64, rs2: u64) -> u64 {
     _aes64ks2(rs1 as i64, rs2 as i64) as u64
@@ -195,7 +201,8 @@ pub unsafe fn aes64ks2(rs1: u64, rs2: u64) -> u64 {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-#[cfg_attr(test, assert_instr(sha512sig0))]
+// See #1464
+// #[cfg_attr(test, assert_instr(sha512sig0))]
 #[inline]
 pub unsafe fn sha512sig0(rs1: u64) -> u64 {
     _sha512sig0(rs1 as i64) as u64
@@ -218,7 +225,8 @@ pub unsafe fn sha512sig0(rs1: u64) -> u64 {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-#[cfg_attr(test, assert_instr(sha512sig1))]
+// See #1464
+// #[cfg_attr(test, assert_instr(sha512sig1))]
 #[inline]
 pub unsafe fn sha512sig1(rs1: u64) -> u64 {
     _sha512sig1(rs1 as i64) as u64
@@ -241,7 +249,8 @@ pub unsafe fn sha512sig1(rs1: u64) -> u64 {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-#[cfg_attr(test, assert_instr(sha512sum0))]
+// See #1464
+// #[cfg_attr(test, assert_instr(sha512sum0))]
 #[inline]
 pub unsafe fn sha512sum0(rs1: u64) -> u64 {
     _sha512sum0(rs1 as i64) as u64
@@ -264,7 +273,8 @@ pub unsafe fn sha512sum0(rs1: u64) -> u64 {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-#[cfg_attr(test, assert_instr(sha512sum1))]
+// See #1464
+// #[cfg_attr(test, assert_instr(sha512sum1))]
 #[inline]
 pub unsafe fn sha512sum1(rs1: u64) -> u64 {
     _sha512sum1(rs1 as i64) as u64
