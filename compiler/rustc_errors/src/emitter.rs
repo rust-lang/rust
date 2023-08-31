@@ -1193,7 +1193,7 @@ impl EmitterWriter {
         let will_be_emitted = |span: Span| {
             !span.is_dummy() && {
                 let file = sm.lookup_source_file(span.hi());
-                sm.ensure_source_file_source_present(file)
+                sm.ensure_source_file_source_present(&file)
             }
         };
 
@@ -1388,7 +1388,7 @@ impl EmitterWriter {
         // Print out the annotate source lines that correspond with the error
         for annotated_file in annotated_files {
             // we can't annotate anything if the source is unavailable.
-            if !sm.ensure_source_file_source_present(annotated_file.file.clone()) {
+            if !sm.ensure_source_file_source_present(&annotated_file.file) {
                 if !self.short_message {
                     // We'll just print an unannotated message.
                     for (annotation_id, line) in annotated_file.lines.iter().enumerate() {

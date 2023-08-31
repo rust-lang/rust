@@ -64,7 +64,7 @@ pub mod fatal_error;
 pub mod profiling;
 
 use rustc_data_structures::stable_hasher::{Hash128, Hash64, HashStable, StableHasher};
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
 
 use std::borrow::Cow;
 use std::cmp::{self, Ordering};
@@ -1206,7 +1206,6 @@ pub enum ExternalSourceKind {
     AbsentOk,
     /// A failed attempt has been made to load the external source.
     AbsentErr,
-    Unneeded,
 }
 
 impl ExternalSource {
@@ -1343,7 +1342,7 @@ pub struct SourceFile {
     pub src_hash: SourceFileHash,
     /// The external source code (used for external crates, which will have a `None`
     /// value as `self.src`.
-    pub external_src: Lock<ExternalSource>,
+    pub external_src: FreezeLock<ExternalSource>,
     /// The start position of this source in the `SourceMap`.
     pub start_pos: BytePos,
     /// The byte length of this source.
@@ -1368,7 +1367,10 @@ impl Clone for SourceFile {
             name: self.name.clone(),
             src: self.src.clone(),
             src_hash: self.src_hash,
-            external_src: Lock::new(self.external_src.borrow().clone()),
+            external_src: {
+                let lock = self.external_src.read();
+                FreezeLock::with(lock.clone(), self.external_src.is_frozen())
+            },
             start_pos: self.start_pos,
             source_len: self.source_len,
             lines: Lock::new(self.lines.borrow().clone()),
@@ -1488,7 +1490,7 @@ impl<D: Decoder> Decodable<D> for SourceFile {
             src_hash,
             // Unused - the metadata decoder will construct
             // a new SourceFile, filling in `external_src` properly
-            external_src: Lock::new(ExternalSource::Unneeded),
+            external_src: FreezeLock::frozen(ExternalSource::Unneeded),
             lines: Lock::new(lines),
             multibyte_chars,
             non_narrow_chars,
@@ -1530,7 +1532,7 @@ impl SourceFile {
             name,
             src: Some(Lrc::new(src)),
             src_hash,
-            external_src: Lock::new(ExternalSource::Unneeded),
+            external_src: FreezeLock::frozen(ExternalSource::Unneeded),
             start_pos: BytePos::from_u32(0),
             source_len: RelativeBytePos::from_u32(source_len),
             lines: Lock::new(SourceFileLines::Lines(lines)),
@@ -1612,35 +1614,37 @@ impl SourceFile {
     where
         F: FnOnce() -> Option<String>,
     {
-        if matches!(
-            *self.external_src.borrow(),
-            ExternalSource::Foreign { kind: ExternalSourceKind::AbsentOk, .. }
-        ) {
+        if !self.external_src.is_frozen() {
             let src = get_src();
-            let mut external_src = self.external_src.borrow_mut();
-            // Check that no-one else have provided the source while we were getting it
-            if let ExternalSource::Foreign {
-                kind: src_kind @ ExternalSourceKind::AbsentOk, ..
-            } = &mut *external_src
-            {
-                if let Some(mut src) = src {
-                    // The src_hash needs to be computed on the pre-normalized src.
-                    if self.src_hash.matches(&src) {
-                        normalize_src(&mut src);
-                        *src_kind = ExternalSourceKind::Present(Lrc::new(src));
-                        return true;
-                    }
+            let src = src.and_then(|mut src| {
+                // The src_hash needs to be computed on the pre-normalized src.
+                self.src_hash.matches(&src).then(|| {
+                    normalize_src(&mut src);
+                    src
+                })
+            });
+
+            self.external_src.try_write().map(|mut external_src| {
+                if let ExternalSource::Foreign {
+                    kind: src_kind @ ExternalSourceKind::AbsentOk,
+                    ..
+                } = &mut *external_src
+                {
+                    *src_kind = if let Some(src) = src {
+                        ExternalSourceKind::Present(Lrc::new(src))
+                    } else {
+                        ExternalSourceKind::AbsentErr
+                    };
                 } else {
-                    *src_kind = ExternalSourceKind::AbsentErr;
+                    panic!("unexpected state {:?}", *external_src)
                 }
 
-                false
-            } else {
-                self.src.is_some() || external_src.get_source().is_some()
-            }
-        } else {
-            self.src.is_some() || self.external_src.borrow().get_source().is_some()
+                // Freeze this so we don't try to load the source again.
+                FreezeWriteGuard::freeze(external_src)
+            });
         }
+
+        self.src.is_some() || self.external_src.read().get_source().is_some()
     }
 
     /// Gets a line from the list of pre-computed line-beginnings.
