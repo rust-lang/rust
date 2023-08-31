@@ -1,6 +1,6 @@
 #![feature(portable_simd)]
-use std::num;
 use std::mem;
+use std::num;
 use std::simd;
 
 fn test_abi_compat<T, U>(t: T, u: U) {
