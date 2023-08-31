@@ -40,3 +40,34 @@ pub(crate) struct TiedTargetFeatures {
     pub span: Span,
     pub features: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_gcc_copy_bitcode)]
+pub(crate) struct CopyBitcode {
+    pub err: std::io::Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_gcc_dynamic_linking_with_lto)]
+#[note]
+pub(crate) struct DynamicLinkingWithLTO;
+
+#[derive(Diagnostic)]
+#[diag(codegen_gcc_load_bitcode)]
+pub(crate) struct LoadBitcode {
+    name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_gcc_lto_disallowed)]
+pub(crate) struct LtoDisallowed;
+
+#[derive(Diagnostic)]
+#[diag(codegen_gcc_lto_dylib)]
+pub(crate) struct LtoDylib;
+
+#[derive(Diagnostic)]
+#[diag(codegen_gcc_lto_bitcode_from_rlib)]
+pub(crate) struct LtoBitcodeFromRlib {
+    pub gcc_err: String,
+}

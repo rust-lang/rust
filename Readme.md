@@ -91,6 +91,9 @@ $ CHANNEL="release" $CG_GCCJIT_DIR/cargo.sh run
 
 If you compiled cg_gccjit in debug mode (aka you didn't pass `--release` to `./test.sh`) you should use `CHANNEL="debug"` instead or omit `CHANNEL="release"` completely.
 
+To use LTO, you need to set the variable `FAT_LTO=1` and `EMBED_LTO_BITCODE=1` in addition to setting `lto = "fat"` in the `Cargo.toml`.
+Don't set `FAT_LTO` when compiling the sysroot, though: only set `EMBED_LTO_BITCODE=1`.
+
 ### Rustc
 
 > You should prefer using the Cargo method.
@@ -191,6 +194,48 @@ set substitute-path /usr/src/debug/gcc /path/to/gcc-repo/gcc
 
 TODO(antoyo): but that's not what I remember I was doing.
 
+### `failed to build archive` error
+
+When you get this error:
+
+```
+error: failed to build archive: failed to open object file: No such file or directory (os error 2)
+```
+
+That can be caused by the fact that you try to compile with `lto = "fat"`, but you didn't compile the sysroot with LTO.
+(Not sure if that's the reason since I cannot reproduce anymore. Maybe it happened when forgetting setting `FAT_LTO`.)
+
+### How to debug GCC LTO
+
+Run do the command with `-v -save-temps` and then extract the `lto1` line from the output and run that under the debugger.
+
+### How to send arguments to the GCC linker
+
+```
+CG_RUSTFLAGS="-Clink-args=-save-temps -v" ../cargo.sh build
+```
+
+### How to see the personality functions in the asm dump
+
+```
+CG_RUSTFLAGS="-Clink-arg=-save-temps -v -Clink-arg=-dA" ../cargo.sh build
+```
+
+### How to see the LLVM IR for a sysroot crate
+
+```
+cargo build -v --target x86_64-unknown-linux-gnu -Zbuild-std
+# Take the command from the output and add --emit=llvm-ir
+```
+
+### To prevent the linker from unmangling symbols
+
+Run with:
+
+```
+COLLECT_NO_DEMANGLE=1
+```
+
 ### How to use a custom-build rustc
 
  * Build the stage2 compiler (`rustup toolchain link debug-current build/x86_64-unknown-linux-gnu/stage2`).
@@ -253,4 +298,4 @@ generate it in [gimple.md](./doc/gimple.md).
  * Set `linker='-Clinker=m68k-linux-gcc'`.
  * Set the path to the cross-compiling libgccjit in `gcc_path`.
  * Comment the line: `context.add_command_line_option("-masm=intel");` in src/base.rs.
- * (might not be necessary) Disable the compilation of libstd.so (and possibly libcore.so?).
+ * (might not be necessary) Disable the compilation of libstd.so (and possibly libcore.so?): Remove dylib from build_sysroot/sysroot_src/library/std/Cargo.toml.
