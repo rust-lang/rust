@@ -2770,7 +2770,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
             unsafe {
                 // Make sure that if any panics occurs, we clear the table and
                 // leave it in an empty state.
-                let mut guard = guard(&mut *self, |self_| {
+                let mut self_ = guard(self, |self_| {
                     self_.clear_no_drop();
                 });
 
@@ -2781,31 +2781,34 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
                 // This leak is unavoidable: we can't try dropping more elements
                 // since this could lead to another panic and abort the process.
                 //
-                // SAFETY: We clear our table right after dropping the elements,
-                // so there is no double drop, since `items` will be equal to zero.
-                guard.drop_elements();
-
-                // Okay, we've successfully dropped all elements, so we'll just set
-                // `items` to zero (so that the `Drop` of `RawTable` doesn't try to
-                // drop all elements twice) and just forget about the guard.
-                guard.table.items = 0;
-                mem::forget(guard);
+                // SAFETY: If something gets wrong we clear our table right after
+                // dropping the elements, so there is no double drop, since `items`
+                // will be equal to zero.
+                self_.drop_elements();
 
                 // If necessary, resize our table to match the source.
-                if self.buckets() != source.buckets() {
+                if self_.buckets() != source.buckets() {
                     // Skip our drop by using ptr::write.
-                    if !self.table.is_empty_singleton() {
+                    if !self_.table.is_empty_singleton() {
                         // SAFETY: We have verified that the table is allocated.
-                        self.free_buckets();
+                        self_.free_buckets();
                     }
-                    (self as *mut Self).write(
+                    // Let's read `alloc` for reusing in new table allocator
+                    // SAFETY:
+                    // * `&mut self_.table.alloc` is valid for reading, properly
+                    //    aligned, and points to a properly initialized value as
+                    //    it is derived from a reference.
+                    //
+                    // *  We want to overwrite our own table.
+                    let alloc = ptr::read(&self_.table.alloc);
+                    (&mut **self_ as *mut Self).write(
                         // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
                         //
                         // SAFETY: This is safe as we are taking the size of an already allocated table
                         // and therefore сapacity overflow cannot occur, `self.table.buckets()` is power
                         // of two and all allocator errors will be caught inside `RawTableInner::new_uninitialized`.
                         match Self::new_uninitialized(
-                            self.table.alloc.clone(),
+                            alloc,
                             source.buckets(),
                             Fallibility::Infallible,
                         ) {
@@ -2817,9 +2820,11 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
 
                 // Cloning elements may fail (the clone function may panic), but the `ScopeGuard`
                 // inside the `clone_from_impl` function will take care of that, dropping all
-                // cloned elements if necessary. The `Drop` of `RawTable` takes care of the rest
-                // by freeing up the allocated memory.
-                self.clone_from_spec(source);
+                // cloned elements if necessary. Our `ScopeGuard` will clear the table.
+                self_.clone_from_spec(source);
+
+                // Disarm the scope guard if cloning was successful.
+                mem::forget(self_);
             }
         }
     }
@@ -3814,5 +3819,152 @@ mod test_map {
             }
             drop(table);
         }
+    }
+
+    /// CHECKING THAT WE DON'T TRY TO DROP DATA IF THE `ITEMS`
+    /// ARE ZERO, EVEN IF WE HAVE `FULL` CONTROL BYTES.
+    #[test]
+    fn test_catch_panic_clone_from() {
+        use ::alloc::sync::Arc;
+        use ::alloc::vec::Vec;
+        use allocator_api2::alloc::{AllocError, Allocator, Global};
+        use core::sync::atomic::{AtomicI8, Ordering};
+        use std::thread;
+
+        struct MyAllocInner {
+            drop_count: Arc<AtomicI8>,
+        }
+
+        #[derive(Clone)]
+        struct MyAlloc {
+            _inner: Arc<MyAllocInner>,
+        }
+
+        impl Drop for MyAllocInner {
+            fn drop(&mut self) {
+                println!("MyAlloc freed.");
+                self.drop_count.fetch_sub(1, Ordering::SeqCst);
+            }
+        }
+
+        unsafe impl Allocator for MyAlloc {
+            fn allocate(&self, layout: Layout) -> std::result::Result<NonNull<[u8]>, AllocError> {
+                let g = Global;
+                g.allocate(layout)
+            }
+
+            unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+                let g = Global;
+                g.deallocate(ptr, layout)
+            }
+        }
+
+        const DISARMED: bool = false;
+        const ARMED: bool = true;
+
+        struct CheckedCloneDrop {
+            panic_in_clone: bool,
+            dropped: bool,
+            need_drop: Vec<u64>,
+        }
+
+        impl Clone for CheckedCloneDrop {
+            fn clone(&self) -> Self {
+                if self.panic_in_clone {
+                    panic!("panic in clone")
+                }
+                Self {
+                    panic_in_clone: self.panic_in_clone,
+                    dropped: self.dropped,
+                    need_drop: self.need_drop.clone(),
+                }
+            }
+        }
+
+        impl Drop for CheckedCloneDrop {
+            fn drop(&mut self) {
+                if self.dropped {
+                    panic!("double drop");
+                }
+                self.dropped = true;
+            }
+        }
+
+        let dropped: Arc<AtomicI8> = Arc::new(AtomicI8::new(2));
+
+        let mut table = RawTable::new_in(MyAlloc {
+            _inner: Arc::new(MyAllocInner {
+                drop_count: dropped.clone(),
+            }),
+        });
+
+        for (idx, panic_in_clone) in core::iter::repeat(DISARMED).take(7).enumerate() {
+            let idx = idx as u64;
+            table.insert(
+                idx,
+                (
+                    idx,
+                    CheckedCloneDrop {
+                        panic_in_clone,
+                        dropped: false,
+                        need_drop: vec![idx],
+                    },
+                ),
+                |(k, _)| *k,
+            );
+        }
+
+        assert_eq!(table.len(), 7);
+
+        thread::scope(|s| {
+            let result = s.spawn(|| {
+                let armed_flags = [
+                    DISARMED, DISARMED, ARMED, DISARMED, DISARMED, DISARMED, DISARMED,
+                ];
+                let mut scope_table = RawTable::new_in(MyAlloc {
+                    _inner: Arc::new(MyAllocInner {
+                        drop_count: dropped.clone(),
+                    }),
+                });
+                for (idx, &panic_in_clone) in armed_flags.iter().enumerate() {
+                    let idx = idx as u64;
+                    scope_table.insert(
+                        idx,
+                        (
+                            idx,
+                            CheckedCloneDrop {
+                                panic_in_clone,
+                                dropped: false,
+                                need_drop: vec![idx + 100],
+                            },
+                        ),
+                        |(k, _)| *k,
+                    );
+                }
+                table.clone_from(&scope_table);
+            });
+            assert!(result.join().is_err());
+        });
+
+        // Let's check that all iterators work fine and do not return elements
+        // (especially `RawIterRange`, which does not depend on the number of
+        // elements in the table, but looks directly at the control bytes)
+        //
+        // SAFETY: We know for sure that `RawTable` will outlive
+        // the returned `RawIter / RawIterRange` iterator.
+        assert_eq!(table.len(), 0);
+        assert_eq!(unsafe { table.iter().count() }, 0);
+        assert_eq!(unsafe { table.iter().iter.count() }, 0);
+
+        for idx in 0..table.buckets() {
+            let idx = idx as u64;
+            assert!(
+                table.find(idx, |(k, _)| *k == idx).is_none(),
+                "Index: {idx}"
+            );
+        }
+
+        // All allocator clones should already be dropped.
+        assert_eq!(dropped.load(Ordering::SeqCst), 1);
     }
 }
