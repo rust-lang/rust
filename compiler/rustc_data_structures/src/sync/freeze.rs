@@ -1,4 +1,4 @@
-use crate::sync::{AtomicBool, Lock, LockGuard};
+use crate::sync::{AtomicBool, ReadGuard, RwLock, WriteGuard};
 #[cfg(parallel_compiler)]
 use crate::sync::{DynSend, DynSync};
 use std::{
@@ -13,7 +13,9 @@ use std::{
 pub struct Freeze<T> {
     data: UnsafeCell<T>,
     frozen: AtomicBool,
-    lock: Lock<()>,
+
+    /// This lock protects writes to the `data` and `frozen` fields.
+    lock: RwLock<()>,
 }
 
 #[cfg(parallel_compiler)]
@@ -22,7 +24,7 @@ unsafe impl<T: DynSync + DynSend> DynSync for Freeze<T> {}
 impl<T> Freeze<T> {
     #[inline]
     pub fn new(value: T) -> Self {
-        Self { data: UnsafeCell::new(value), frozen: AtomicBool::new(false), lock: Lock::new(()) }
+        Self { data: UnsafeCell::new(value), frozen: AtomicBool::new(false), lock: RwLock::new(()) }
     }
 
     #[inline]
@@ -31,7 +33,7 @@ impl<T> Freeze<T> {
             _lock_guard: if self.frozen.load(Ordering::Acquire) {
                 None
             } else {
-                Some(self.lock.lock())
+                Some(self.lock.read())
             },
             // SAFETY: If this is not frozen, `_lock_guard` holds the lock to the `UnsafeCell` so
             // this has shared access until the `FreezeReadGuard` is dropped. If this is frozen,
@@ -43,7 +45,7 @@ impl<T> Freeze<T> {
     #[inline]
     #[track_caller]
     pub fn write(&self) -> FreezeWriteGuard<'_, T> {
-        let _lock_guard = self.lock.lock();
+        let _lock_guard = self.lock.write();
         assert!(!self.frozen.load(Ordering::Relaxed), "still mutable");
         FreezeWriteGuard {
             _lock_guard,
@@ -57,7 +59,7 @@ impl<T> Freeze<T> {
     pub fn freeze(&self) -> &T {
         if !self.frozen.load(Ordering::Acquire) {
             // Get the lock to ensure no concurrent writes.
-            let _lock = self.lock.lock();
+            let _lock = self.lock.write();
             self.frozen.store(true, Ordering::Release);
         }
 
@@ -69,7 +71,7 @@ impl<T> Freeze<T> {
 /// A guard holding shared access to a `Freeze` which is in a locked state or frozen.
 #[must_use = "if unused the Freeze may immediately unlock"]
 pub struct FreezeReadGuard<'a, T> {
-    _lock_guard: Option<LockGuard<'a, ()>>,
+    _lock_guard: Option<ReadGuard<'a, ()>>,
     data: &'a T,
 }
 
@@ -84,7 +86,7 @@ impl<'a, T: 'a> Deref for FreezeReadGuard<'a, T> {
 /// A guard holding mutable access to a `Freeze` which is in a locked state or frozen.
 #[must_use = "if unused the Freeze may immediately unlock"]
 pub struct FreezeWriteGuard<'a, T> {
-    _lock_guard: LockGuard<'a, ()>,
+    _lock_guard: WriteGuard<'a, ()>,
     data: &'a mut T,
 }
 
