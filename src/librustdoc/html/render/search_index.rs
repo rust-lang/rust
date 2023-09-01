@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
-use serde::ser::{Serialize, SerializeStruct, Serializer};
+use serde::ser::{Serialize, SerializeSeq, SerializeStruct, Serializer};
 
 use crate::clean;
 use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
@@ -78,9 +78,9 @@ pub(crate) fn build_index<'tcx>(
             map: &mut FxHashMap<F, usize>,
             itemid: F,
             lastpathid: &mut usize,
-            crate_paths: &mut Vec<(ItemType, Symbol)>,
+            crate_paths: &mut Vec<(ItemType, Vec<Symbol>)>,
             item_type: ItemType,
-            path: Symbol,
+            path: &[Symbol],
         ) {
             match map.entry(itemid) {
                 Entry::Occupied(entry) => ty.id = Some(RenderTypeId::Index(*entry.get())),
@@ -88,7 +88,7 @@ pub(crate) fn build_index<'tcx>(
                     let pathid = *lastpathid;
                     entry.insert(pathid);
                     *lastpathid += 1;
-                    crate_paths.push((item_type, path));
+                    crate_paths.push((item_type, path.to_vec()));
                     ty.id = Some(RenderTypeId::Index(pathid));
                 }
             }
@@ -100,7 +100,7 @@ pub(crate) fn build_index<'tcx>(
             itemid_to_pathid: &mut FxHashMap<ItemId, usize>,
             primitives: &mut FxHashMap<Symbol, usize>,
             lastpathid: &mut usize,
-            crate_paths: &mut Vec<(ItemType, Symbol)>,
+            crate_paths: &mut Vec<(ItemType, Vec<Symbol>)>,
         ) {
             if let Some(generics) = &mut ty.generics {
                 for item in generics {
@@ -131,7 +131,7 @@ pub(crate) fn build_index<'tcx>(
                             lastpathid,
                             crate_paths,
                             item_type,
-                            *fqp.last().unwrap(),
+                            fqp,
                         );
                     } else {
                         ty.id = None;
@@ -146,7 +146,7 @@ pub(crate) fn build_index<'tcx>(
                         lastpathid,
                         crate_paths,
                         ItemType::Primitive,
-                        sym,
+                        &[sym],
                     );
                 }
                 RenderTypeId::Index(_) => {}
@@ -191,7 +191,7 @@ pub(crate) fn build_index<'tcx>(
                         lastpathid += 1;
 
                         if let Some(&(ref fqp, short)) = paths.get(&defid) {
-                            crate_paths.push((short, *fqp.last().unwrap()));
+                            crate_paths.push((short, fqp.clone()));
                             Some(pathid)
                         } else {
                             None
@@ -213,11 +213,32 @@ pub(crate) fn build_index<'tcx>(
     struct CrateData<'a> {
         doc: String,
         items: Vec<&'a IndexItem>,
-        paths: Vec<(ItemType, Symbol)>,
+        paths: Vec<(ItemType, Vec<Symbol>)>,
         // The String is alias name and the vec is the list of the elements with this alias.
         //
         // To be noted: the `usize` elements are indexes to `items`.
         aliases: &'a BTreeMap<String, Vec<usize>>,
+    }
+
+    struct Paths {
+        ty: ItemType,
+        name: Symbol,
+        path: Option<usize>,
+    }
+
+    impl Serialize for Paths {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            let mut seq = serializer.serialize_seq(None)?;
+            seq.serialize_element(&self.ty)?;
+            seq.serialize_element(self.name.as_str())?;
+            if let Some(ref path) = self.path {
+                seq.serialize_element(path)?;
+            }
+            seq.end()
+        }
     }
 
     impl<'a> Serialize for CrateData<'a> {
@@ -225,6 +246,25 @@ pub(crate) fn build_index<'tcx>(
         where
             S: Serializer,
         {
+            let mut mod_paths = FxHashMap::default();
+            for (index, item) in self.items.iter().enumerate() {
+                if item.path.is_empty() {
+                    continue;
+                }
+                mod_paths.insert(&item.path, index);
+            }
+            let paths = self
+                .paths
+                .iter()
+                .map(|(ty, path)| {
+                    if path.len() < 2 {
+                        return Paths { ty: *ty, name: path[0], path: None };
+                    }
+                    let index = mod_paths.get(&join_with_double_colon(&path[..path.len() - 1]));
+                    Paths { ty: *ty, name: *path.last().unwrap(), path: index.copied() }
+                })
+                .collect::<Vec<_>>();
+
             let has_aliases = !self.aliases.is_empty();
             let mut crate_data =
                 serializer.serialize_struct("CrateData", if has_aliases { 9 } else { 8 })?;
@@ -321,10 +361,7 @@ pub(crate) fn build_index<'tcx>(
                     .filter_map(|(index, item)| item.deprecation.map(|_| index))
                     .collect::<Vec<_>>(),
             )?;
-            crate_data.serialize_field(
-                "p",
-                &self.paths.iter().map(|(it, s)| (it, s.as_str())).collect::<Vec<_>>(),
-            )?;
+            crate_data.serialize_field("p", &paths)?;
             if has_aliases {
                 crate_data.serialize_field("a", &self.aliases)?;
             }

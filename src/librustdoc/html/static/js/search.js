@@ -1462,6 +1462,32 @@ function initSearch(rawSearchIndex) {
                     if (!typePassesFilter(queryElem.typeFilter, fnType.ty)) {
                         continue;
                     }
+                    const queryElemPathLength = queryElem.pathWithoutLast.length;
+                    // If the query element is a path (it contains `::`), we need to check if this
+                    // path is compatible with the target type.
+                    if (queryElemPathLength > 0) {
+                        const fnTypePath = fnType.path !== undefined && fnType.path !== null ?
+                            fnType.path.split("::") : [];
+                        // If the path provided in the query element is longer than this type,
+                        // no need to check it since it won't match in any case.
+                        if (queryElemPathLength > fnTypePath.length) {
+                            continue;
+                        }
+                        let i = 0;
+                        for (const path of fnTypePath) {
+                            if (path === queryElem.pathWithoutLast[i]) {
+                                i += 1;
+                                if (i >= queryElemPathLength) {
+                                    break;
+                                }
+                            }
+                        }
+                        if (i < queryElemPathLength) {
+                            // If we didn't find all parts of the path of the query element inside
+                            // the fn type, then it's not the right one.
+                            continue;
+                        }
+                    }
                     if (queryElem.generics.length === 0 || checkGenerics(fnType, queryElem)) {
                         currentFnTypeList.splice(i, 1);
                         const result = doHandleQueryElemList(currentFnTypeList, queryElemList);
@@ -1862,14 +1888,14 @@ function initSearch(rawSearchIndex) {
              * @param {QueryElement} elem
              */
             function convertNameToId(elem) {
-                if (typeNameIdMap.has(elem.name)) {
-                    elem.id = typeNameIdMap.get(elem.name);
+                if (typeNameIdMap.has(elem.pathLast)) {
+                    elem.id = typeNameIdMap.get(elem.pathLast);
                 } else if (!parsedQuery.literalSearch) {
                     let match = -1;
                     let matchDist = maxEditDistance + 1;
                     let matchName = "";
                     for (const [name, id] of typeNameIdMap) {
-                        const dist = editDistance(name, elem.name, maxEditDistance);
+                        const dist = editDistance(name, elem.pathLast, maxEditDistance);
                         if (dist <= matchDist && dist <= maxEditDistance) {
                             if (dist === matchDist && matchName > name) {
                                 continue;
@@ -2385,10 +2411,19 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 );
             }
             // `0` is used as a sentinel because it's fewer bytes than `null`
-            const item = pathIndex === 0 ? null : lowercasePaths[pathIndex - 1];
+            if (pathIndex === 0) {
+                return {
+                    id: -1,
+                    ty: null,
+                    path: null,
+                    generics: generics,
+                };
+            }
+            const item = lowercasePaths[pathIndex - 1];
             return {
-                id: item === null ? -1 : buildTypeMapIndex(item.name),
-                ty: item === null ? null : item.ty,
+                id: buildTypeMapIndex(item.name),
+                ty: item.ty,
+                path: item.path,
                 generics: generics,
             };
         });
@@ -2417,15 +2452,25 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         if (functionSearchType === 0) {
             return null;
         }
-        let inputs, output, item;
+        let inputs, output;
         if (typeof functionSearchType[INPUTS_DATA] === "number") {
             const pathIndex = functionSearchType[INPUTS_DATA];
-            item = pathIndex === 0 ? null : lowercasePaths[pathIndex - 1];
-            inputs = [{
-                id: item === null ? -1 : buildTypeMapIndex(item.name),
-                ty: item === null ? null : item.ty,
-                generics: [],
-            }];
+            if (pathIndex === 0) {
+                inputs = [{
+                    id: -1,
+                    ty: null,
+                    path: null,
+                    generics: [],
+                }];
+            } else {
+                const item = lowercasePaths[pathIndex - 1];
+                inputs = [{
+                    id: buildTypeMapIndex(item.name),
+                    ty: item.ty,
+                    path: item.path,
+                    generics: [],
+                }];
+            }
         } else {
             inputs = buildItemSearchTypeAll(
                 functionSearchType[INPUTS_DATA],
@@ -2435,12 +2480,22 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         if (functionSearchType.length > 1) {
             if (typeof functionSearchType[OUTPUT_DATA] === "number") {
                 const pathIndex = functionSearchType[OUTPUT_DATA];
-                item = pathIndex === 0 ? null : lowercasePaths[pathIndex - 1];
-                output = [{
-                    id: item === null ? -1 : buildTypeMapIndex(item.name),
-                    ty: item === null ? null : item.ty,
-                    generics: [],
-                }];
+                if (pathIndex === 0) {
+                    output = [{
+                        id: -1,
+                        ty: null,
+                        path: null,
+                        generics: [],
+                    }];
+                } else {
+                    const item = lowercasePaths[pathIndex - 1];
+                    output = [{
+                        id: buildTypeMapIndex(item.name),
+                        ty: item.ty,
+                        path: item.path,
+                        generics: [],
+                    }];
+                }
             } else {
                 output = buildItemSearchTypeAll(
                     functionSearchType[OUTPUT_DATA],
@@ -2573,9 +2628,19 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // convert `rawPaths` entries into object form
             // generate normalizedPaths for function search mode
             let len = paths.length;
+            let lastPath = itemPaths.get(0);
             for (let i = 0; i < len; ++i) {
-                lowercasePaths.push({ty: paths[i][0], name: paths[i][1].toLowerCase()});
-                paths[i] = {ty: paths[i][0], name: paths[i][1]};
+                const elem = paths[i];
+                const ty = elem[0];
+                const name = elem[1];
+                let path = null;
+                if (elem.length > 2) {
+                    path = itemPaths.has(elem[2]) ? itemPaths.get(elem[2]) : lastPath;
+                    lastPath = path;
+                }
+
+                lowercasePaths.push({ty: ty, name: name.toLowerCase(), path: path});
+                paths[i] = {ty: ty, name: name, path: path};
             }
 
             // convert `item*` into an object form, and construct word indices.
@@ -2585,8 +2650,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // operation that is cached for the life of the page state so that
             // all other search operations have access to this cached data for
             // faster analysis operations
+            lastPath = "";
             len = itemTypes.length;
-            let lastPath = "";
             for (let i = 0; i < len; ++i) {
                 let word = "";
                 // This object should have exactly the same set of fields as the "crateRow"
@@ -2595,11 +2660,12 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     word = itemNames[i].toLowerCase();
                 }
                 searchWords.push(word);
+                const path = itemPaths.has(i) ? itemPaths.get(i) : lastPath;
                 const row = {
                     crate: crate,
                     ty: itemTypes.charCodeAt(i) - charA,
                     name: itemNames[i],
-                    path: itemPaths.has(i) ? itemPaths.get(i) : lastPath,
+                    path: path,
                     desc: itemDescs[i],
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                     type: buildFunctionSearchType(
