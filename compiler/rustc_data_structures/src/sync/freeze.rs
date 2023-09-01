@@ -9,6 +9,8 @@ use std::{
 
 /// A type which allows mutation using a lock until
 /// the value is frozen and can be accessed lock-free.
+///
+/// Unlike `RwLock`, it can be used to prevent mutation past a point.
 #[derive(Default)]
 pub struct Freeze<T> {
     data: UnsafeCell<T>,
@@ -46,6 +48,7 @@ impl<T> Freeze<T> {
     #[track_caller]
     pub fn write(&self) -> FreezeWriteGuard<'_, T> {
         let _lock_guard = self.lock.write();
+        // Use relaxed ordering since we're in the write lock.
         assert!(!self.frozen.load(Ordering::Relaxed), "still mutable");
         FreezeWriteGuard {
             _lock_guard,
@@ -58,7 +61,7 @@ impl<T> Freeze<T> {
     #[inline]
     pub fn freeze(&self) -> &T {
         if !self.frozen.load(Ordering::Acquire) {
-            // Get the lock to ensure no concurrent writes.
+            // Get the lock to ensure no concurrent writes and that we release the latest write.
             let _lock = self.lock.write();
             self.frozen.store(true, Ordering::Release);
         }
