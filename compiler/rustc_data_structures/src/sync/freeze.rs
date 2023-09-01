@@ -12,7 +12,7 @@ use std::{
 ///
 /// Unlike `RwLock`, it can be used to prevent mutation past a point.
 #[derive(Default)]
-pub struct Freeze<T> {
+pub struct FreezeLock<T> {
     data: UnsafeCell<T>,
     frozen: AtomicBool,
 
@@ -21,9 +21,9 @@ pub struct Freeze<T> {
 }
 
 #[cfg(parallel_compiler)]
-unsafe impl<T: DynSync + DynSend> DynSync for Freeze<T> {}
+unsafe impl<T: DynSync + DynSend> DynSync for FreezeLock<T> {}
 
-impl<T> Freeze<T> {
+impl<T> FreezeLock<T> {
     #[inline]
     pub fn new(value: T) -> Self {
         Self { data: UnsafeCell::new(value), frozen: AtomicBool::new(false), lock: RwLock::new(()) }
@@ -71,8 +71,8 @@ impl<T> Freeze<T> {
     }
 }
 
-/// A guard holding shared access to a `Freeze` which is in a locked state or frozen.
-#[must_use = "if unused the Freeze may immediately unlock"]
+/// A guard holding shared access to a `FreezeLock` which is in a locked state or frozen.
+#[must_use = "if unused the FreezeLock may immediately unlock"]
 pub struct FreezeReadGuard<'a, T> {
     _lock_guard: Option<ReadGuard<'a, ()>>,
     data: &'a T,
@@ -86,8 +86,8 @@ impl<'a, T: 'a> Deref for FreezeReadGuard<'a, T> {
     }
 }
 
-/// A guard holding mutable access to a `Freeze` which is in a locked state or frozen.
-#[must_use = "if unused the Freeze may immediately unlock"]
+/// A guard holding mutable access to a `FreezeLock` which is in a locked state or frozen.
+#[must_use = "if unused the FreezeLock may immediately unlock"]
 pub struct FreezeWriteGuard<'a, T> {
     _lock_guard: WriteGuard<'a, ()>,
     data: &'a mut T,

@@ -62,7 +62,7 @@ pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
 mod vec;
 
 mod freeze;
-pub use freeze::{Freeze, FreezeReadGuard, FreezeWriteGuard};
+pub use freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 
 mod mode {
     use super::Ordering;
