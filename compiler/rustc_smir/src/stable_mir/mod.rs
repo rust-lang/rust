@@ -20,6 +20,7 @@ use crate::rustc_smir::Tables;
 
 pub mod mir;
 pub mod ty;
+pub mod visitor;
 
 /// Use String for now but we should replace it.
 pub type Symbol = String;
