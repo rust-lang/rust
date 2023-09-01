@@ -64,6 +64,43 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 rhs_then_block.unit()
             }
+            ExprKind::LogicalOp { op: LogicalOp::Or, lhs, rhs } => {
+                let local_scope = this.local_scope();
+                let (lhs_success_block, failure_block) =
+                    this.in_if_then_scope(local_scope, expr_span, |this| {
+                        this.then_else_break(
+                            block,
+                            &this.thir[lhs],
+                            temp_scope_override,
+                            local_scope,
+                            variable_source_info,
+                        )
+                    });
+                let rhs_success_block = unpack!(this.then_else_break(
+                    failure_block,
+                    &this.thir[rhs],
+                    temp_scope_override,
+                    break_scope,
+                    variable_source_info,
+                ));
+                this.cfg.goto(lhs_success_block, variable_source_info, rhs_success_block);
+                rhs_success_block.unit()
+            }
+            ExprKind::Unary { op: UnOp::Not, arg } => {
+                let local_scope = this.local_scope();
+                let (success_block, failure_block) =
+                    this.in_if_then_scope(local_scope, expr_span, |this| {
+                        this.then_else_break(
+                            block,
+                            &this.thir[arg],
+                            temp_scope_override,
+                            local_scope,
+                            variable_source_info,
+                        )
+                    });
+                this.break_for_else(success_block, break_scope, variable_source_info);
+                failure_block.unit()
+            }
             ExprKind::Scope { region_scope, lint_level, value } => {
                 let region_scope = (region_scope, this.source_info(expr_span));
                 this.in_scope(region_scope, lint_level, |this| {
@@ -76,6 +113,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     )
                 })
             }
+            ExprKind::Use { source } => this.then_else_break(
+                block,
+                &this.thir[source],
+                temp_scope_override,
+                break_scope,
+                variable_source_info,
+            ),
             ExprKind::Let { expr, ref pat } => this.lower_let_expr(
                 block,
                 &this.thir[expr],

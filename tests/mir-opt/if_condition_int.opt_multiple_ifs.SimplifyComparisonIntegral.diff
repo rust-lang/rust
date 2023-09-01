@@ -14,40 +14,36 @@
           StorageLive(_3);
           _3 = _1;
 -         _2 = Eq(move _3, const 42_u32);
--         StorageDead(_3);
 -         switchInt(move _2) -> [0: bb2, otherwise: bb1];
-+         nop;
 +         nop;
 +         switchInt(move _3) -> [42: bb1, otherwise: bb2];
       }
   
       bb1: {
-+         StorageDead(_3);
+          StorageDead(_3);
           _0 = const 0_u32;
           goto -> bb6;
       }
   
       bb2: {
-+         StorageDead(_3);
+          StorageDead(_3);
           StorageLive(_4);
           StorageLive(_5);
           _5 = _1;
 -         _4 = Ne(move _5, const 21_u32);
--         StorageDead(_5);
 -         switchInt(move _4) -> [0: bb4, otherwise: bb3];
-+         nop;
 +         nop;
 +         switchInt(move _5) -> [21: bb4, otherwise: bb3];
       }
   
       bb3: {
-+         StorageDead(_5);
+          StorageDead(_5);
           _0 = const 1_u32;
           goto -> bb5;
       }
   
       bb4: {
-+         StorageDead(_5);
+          StorageDead(_5);
           _0 = const 2_u32;
           goto -> bb5;
       }
