@@ -232,11 +232,11 @@ impl<K: Eq + Hash, V: fmt::Debug> fmt::Debug for ParValuesMut<'_, K, V> {
 /// [`into_par_iter`]: /hashbrown/struct.HashMap.html#method.into_par_iter
 /// [`HashMap`]: /hashbrown/struct.HashMap.html
 /// [`IntoParallelIterator`]: https://docs.rs/rayon/1.0/rayon/iter/trait.IntoParallelIterator.html
-pub struct IntoParIter<K, V, A: Allocator + Clone = Global> {
+pub struct IntoParIter<K, V, A: Allocator = Global> {
     inner: RawIntoParIter<(K, V), A>,
 }
 
-impl<K: Send, V: Send, A: Allocator + Clone + Send> ParallelIterator for IntoParIter<K, V, A> {
+impl<K: Send, V: Send, A: Allocator + Send> ParallelIterator for IntoParIter<K, V, A> {
     type Item = (K, V);
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -248,9 +248,7 @@ impl<K: Send, V: Send, A: Allocator + Clone + Send> ParallelIterator for IntoPar
     }
 }
 
-impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, A: Allocator + Clone> fmt::Debug
-    for IntoParIter<K, V, A>
-{
+impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, A: Allocator> fmt::Debug for IntoParIter<K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ParIter {
             inner: unsafe { self.inner.par_iter() },
@@ -267,11 +265,11 @@ impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, A: Allocator + Clone> fmt::Debug
 ///
 /// [`par_drain`]: /hashbrown/struct.HashMap.html#method.par_drain
 /// [`HashMap`]: /hashbrown/struct.HashMap.html
-pub struct ParDrain<'a, K, V, A: Allocator + Clone = Global> {
+pub struct ParDrain<'a, K, V, A: Allocator = Global> {
     inner: RawParDrain<'a, (K, V), A>,
 }
 
-impl<K: Send, V: Send, A: Allocator + Clone + Sync> ParallelIterator for ParDrain<'_, K, V, A> {
+impl<K: Send, V: Send, A: Allocator + Sync> ParallelIterator for ParDrain<'_, K, V, A> {
     type Item = (K, V);
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -283,9 +281,7 @@ impl<K: Send, V: Send, A: Allocator + Clone + Sync> ParallelIterator for ParDrai
     }
 }
 
-impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, A: Allocator + Clone> fmt::Debug
-    for ParDrain<'_, K, V, A>
-{
+impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, A: Allocator> fmt::Debug for ParDrain<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ParIter {
             inner: unsafe { self.inner.par_iter() },
@@ -295,7 +291,7 @@ impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, A: Allocator + Clone> fmt::Debug
     }
 }
 
-impl<K: Sync, V: Sync, S, A: Allocator + Clone> HashMap<K, V, S, A> {
+impl<K: Sync, V: Sync, S, A: Allocator> HashMap<K, V, S, A> {
     /// Visits (potentially in parallel) immutably borrowed keys in an arbitrary order.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_keys(&self) -> ParKeys<'_, K, V> {
@@ -315,7 +311,7 @@ impl<K: Sync, V: Sync, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     }
 }
 
-impl<K: Send, V: Send, S, A: Allocator + Clone> HashMap<K, V, S, A> {
+impl<K: Send, V: Send, S, A: Allocator> HashMap<K, V, S, A> {
     /// Visits (potentially in parallel) mutably borrowed values in an arbitrary order.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_values_mut(&mut self) -> ParValuesMut<'_, K, V> {
@@ -340,7 +336,7 @@ where
     K: Eq + Hash + Sync,
     V: PartialEq + Sync,
     S: BuildHasher + Sync,
-    A: Allocator + Clone + Sync,
+    A: Allocator + Sync,
 {
     /// Returns `true` if the map is equal to another,
     /// i.e. both maps contain the same keys mapped to the same values.
@@ -354,9 +350,7 @@ where
     }
 }
 
-impl<K: Send, V: Send, S, A: Allocator + Clone + Send> IntoParallelIterator
-    for HashMap<K, V, S, A>
-{
+impl<K: Send, V: Send, S, A: Allocator + Send> IntoParallelIterator for HashMap<K, V, S, A> {
     type Item = (K, V);
     type Iter = IntoParIter<K, V, A>;
 
@@ -368,9 +362,7 @@ impl<K: Send, V: Send, S, A: Allocator + Clone + Send> IntoParallelIterator
     }
 }
 
-impl<'a, K: Sync, V: Sync, S, A: Allocator + Clone> IntoParallelIterator
-    for &'a HashMap<K, V, S, A>
-{
+impl<'a, K: Sync, V: Sync, S, A: Allocator> IntoParallelIterator for &'a HashMap<K, V, S, A> {
     type Item = (&'a K, &'a V);
     type Iter = ParIter<'a, K, V>;
 
@@ -383,9 +375,7 @@ impl<'a, K: Sync, V: Sync, S, A: Allocator + Clone> IntoParallelIterator
     }
 }
 
-impl<'a, K: Sync, V: Send, S, A: Allocator + Clone> IntoParallelIterator
-    for &'a mut HashMap<K, V, S, A>
-{
+impl<'a, K: Sync, V: Send, S, A: Allocator> IntoParallelIterator for &'a mut HashMap<K, V, S, A> {
     type Item = (&'a K, &'a mut V);
     type Iter = ParIterMut<'a, K, V>;
 
@@ -424,7 +414,7 @@ where
     K: Eq + Hash + Send,
     V: Send,
     S: BuildHasher,
-    A: Allocator + Clone,
+    A: Allocator,
 {
     fn par_extend<I>(&mut self, par_iter: I)
     where
@@ -440,7 +430,7 @@ where
     K: Copy + Eq + Hash + Sync,
     V: Copy + Sync,
     S: BuildHasher,
-    A: Allocator + Clone,
+    A: Allocator,
 {
     fn par_extend<I>(&mut self, par_iter: I)
     where
@@ -456,7 +446,7 @@ where
     K: Eq + Hash,
     S: BuildHasher,
     I: IntoParallelIterator,
-    A: Allocator + Clone,
+    A: Allocator,
     HashMap<K, V, S, A>: Extend<I::Item>,
 {
     let (list, len) = super::helpers::collect(par_iter);
