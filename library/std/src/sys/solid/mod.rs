@@ -74,7 +74,7 @@ pub fn unsupported_err() -> crate::io::Error {
 
 #[inline]
 pub fn is_interrupted(code: i32) -> bool {
-    error::is_interrupted(code)
+    net::is_interrupted(code)
 }
 
 pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
