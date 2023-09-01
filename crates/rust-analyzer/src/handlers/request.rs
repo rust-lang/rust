@@ -1569,18 +1569,21 @@ pub(crate) fn handle_semantic_tokens_full_delta(
         snap.config.highlighting_non_standard_tokens(),
     );
 
-    let mut cache = snap.semantic_tokens_cache.lock();
-    let cached_tokens = cache.entry(params.text_document.uri).or_default();
+    let cached_tokens = snap.semantic_tokens_cache.lock().remove(&params.text_document.uri);
 
-    if let Some(prev_id) = &cached_tokens.result_id {
+    if let Some(cached_tokens @ lsp_types::SemanticTokens { result_id: Some(prev_id), .. }) =
+        &cached_tokens
+    {
         if *prev_id == params.previous_result_id {
             let delta = to_proto::semantic_token_delta(cached_tokens, &semantic_tokens);
-            *cached_tokens = semantic_tokens;
+            snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens);
             return Ok(Some(delta.into()));
         }
     }
 
-    *cached_tokens = semantic_tokens.clone();
+    // Clone first to keep the lock short
+    let semantic_tokens_clone = semantic_tokens.clone();
+    snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens_clone);
 
     Ok(Some(semantic_tokens.into()))
 }
@@ -1879,12 +1882,15 @@ fn run_rustfmt(
 
     // Determine the edition of the crate the file belongs to (if there's multiple, we pick the
     // highest edition).
-    let editions = snap
+    let Ok(editions) = snap
         .analysis
         .relevant_crates_for(file_id)?
         .into_iter()
         .map(|crate_id| snap.analysis.crate_edition(crate_id))
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<_>, _>>()
+    else {
+        return Ok(None);
+    };
     let edition = editions.iter().copied().max();
 
     let line_index = snap.file_line_index(file_id)?;
