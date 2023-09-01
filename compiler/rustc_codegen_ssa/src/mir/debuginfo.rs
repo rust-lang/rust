@@ -1,10 +1,12 @@
 use crate::traits::*;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::Instance;
 use rustc_middle::ty::Ty;
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
@@ -17,10 +19,13 @@ use super::{FunctionCx, LocalRef};
 
 use std::ops::Range;
 
-pub struct FunctionDebugContext<S, L> {
+pub struct FunctionDebugContext<'tcx, S, L> {
+    /// Maps from source code to the corresponding debug info scope.
     pub scopes: IndexVec<mir::SourceScope, DebugScope<S, L>>,
-}
 
+    /// Maps from an inlined function to its debug info declaration.
+    pub inlined_function_scopes: FxHashMap<Instance<'tcx>, S>,
+}
 #[derive(Copy, Clone)]
 pub enum VariableKind {
     ArgumentVariable(usize /*index*/),
