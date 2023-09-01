@@ -164,8 +164,6 @@ impl OsString {
     /// # Example
     ///
     /// ```
-    /// #![feature(os_str_bytes)]
-    ///
     /// use std::ffi::OsStr;
     ///
     /// let os_str = OsStr::new("Mary had a little lamb");
@@ -181,7 +179,7 @@ impl OsString {
     ///
     /// [conversions]: super#conversions
     #[inline]
-    #[unstable(feature = "os_str_bytes", issue = "111544")]
+    #[stable(feature = "os_str_bytes", since = "CURRENT_RUSTC_VERSION")]
     pub unsafe fn from_os_str_bytes_unchecked(bytes: Vec<u8>) -> Self {
         OsString { inner: Buf::from_os_str_bytes_unchecked(bytes) }
     }
@@ -219,7 +217,7 @@ impl OsString {
     ///
     /// [`std::ffi`]: crate::ffi
     #[inline]
-    #[unstable(feature = "os_str_bytes", issue = "111544")]
+    #[stable(feature = "os_str_bytes", since = "CURRENT_RUSTC_VERSION")]
     pub fn into_os_str_bytes(self) -> Vec<u8> {
         self.inner.into_os_str_bytes()
     }
@@ -755,8 +753,6 @@ impl OsStr {
     /// # Example
     ///
     /// ```
-    /// #![feature(os_str_bytes)]
-    ///
     /// use std::ffi::OsStr;
     ///
     /// let os_str = OsStr::new("Mary had a little lamb");
@@ -772,7 +768,7 @@ impl OsStr {
     ///
     /// [conversions]: super#conversions
     #[inline]
-    #[unstable(feature = "os_str_bytes", issue = "111544")]
+    #[stable(feature = "os_str_bytes", since = "CURRENT_RUSTC_VERSION")]
     pub unsafe fn from_os_str_bytes_unchecked(bytes: &[u8]) -> &Self {
         Self::from_inner(Slice::from_os_str_bytes_unchecked(bytes))
     }
@@ -962,7 +958,7 @@ impl OsStr {
     ///
     /// [`std::ffi`]: crate::ffi
     #[inline]
-    #[unstable(feature = "os_str_bytes", issue = "111544")]
+    #[stable(feature = "os_str_bytes", since = "CURRENT_RUSTC_VERSION")]
     pub fn as_os_str_bytes(&self) -> &[u8] {
         self.inner.as_os_str_bytes()
     }
