@@ -233,8 +233,8 @@ pub struct DirBuilder {
 /// This function will return an error if `path` does not already exist.
 /// Other errors may also be returned according to [`OpenOptions::open`].
 ///
-/// It will also return an error if it encounters while reading an error
-/// of a kind other than [`io::ErrorKind::Interrupted`].
+/// While reading from the file, this function handles [`io::ErrorKind::Interrupted`]
+/// with automatic retries. See [io::Read] documentation for details.
 ///
 /// # Examples
 ///
@@ -271,9 +271,11 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// This function will return an error if `path` does not already exist.
 /// Other errors may also be returned according to [`OpenOptions::open`].
 ///
-/// It will also return an error if it encounters while reading an error
-/// of a kind other than [`io::ErrorKind::Interrupted`],
-/// or if the contents of the file are not valid UTF-8.
+/// If the contents of the file are not valid UTF-8, then an error will also be
+/// returned.
+///
+/// While reading from the file, this function handles [`io::ErrorKind::Interrupted`]
+/// with automatic retries. See [io::Read] documentation for details.
 ///
 /// # Examples
 ///
