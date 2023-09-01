@@ -1430,20 +1430,15 @@ impl LinkCollector<'_, '_> {
         // Otherwise, check if 2 links are same, if so, skip the resolve process.
         //
         // Notice that this algorithm is passive, might possibly miss actual redudant cases.
-        let explicit_link = &explicit_link.to_string();
+        let explicit_link = explicit_link.to_string();
         let display_text = ori_link.display_text.as_ref().unwrap();
-        let display_len = display_text.len();
-        let explicit_len = explicit_link.len();
 
-        if display_len == explicit_len {
+        if display_text.len() == explicit_link.len() {
             // Whether they are same or not, skip the resolve process.
             return;
         }
 
-        if (explicit_len >= display_len
-            && &explicit_link[(explicit_len - display_len)..] == display_text)
-            || (display_len >= explicit_len
-                && &display_text[(display_len - explicit_len)..] == explicit_link)
+        if explicit_link.ends_with(&display_text[..]) || display_text.ends_with(&explicit_link[..])
         {
             self.resolve_with_disambiguator_cached(
                 display_res_info,

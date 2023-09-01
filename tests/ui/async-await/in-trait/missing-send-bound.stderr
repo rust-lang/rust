@@ -5,7 +5,6 @@ LL |     assert_is_send(test::<T>());
    |                    ^^^^^^^^^^^ future returned by `test` is not `Send`
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `impl Future<Output = ()>`
-   = note: consider using `std::sync::Arc<impl Future<Output = ()>>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: future is not `Send` as it awaits another future which is not `Send`
   --> $DIR/missing-send-bound.rs:10:5
    |

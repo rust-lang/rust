@@ -5,7 +5,6 @@ LL |     assert_sync::<A>();
    |                   ^ `A` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `A`
-   = note: consider using `std::sync::Arc<A>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required by a bound in `assert_sync`
   --> $DIR/extern-types-not-sync-send.rs:9:28
    |
@@ -19,7 +18,6 @@ LL |     assert_send::<A>();
    |                   ^ `A` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `A`
-   = note: consider using `std::sync::Arc<A>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required by a bound in `assert_send`
   --> $DIR/extern-types-not-sync-send.rs:10:28
    |

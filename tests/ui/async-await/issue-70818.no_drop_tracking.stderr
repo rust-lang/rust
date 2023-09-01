@@ -4,7 +4,6 @@ error: future cannot be sent between threads safely
 LL | fn foo<T: Send, U>(ty: T, ty1: U) -> impl Future<Output = (T, U)> + Send {
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
    |
-   = note: consider using `std::sync::Arc<U>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: captured value is not `Send`
   --> $DIR/issue-70818.rs:9:18
    |

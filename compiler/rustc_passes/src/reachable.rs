@@ -98,15 +98,11 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
                 self.worklist.push(def_id);
             } else {
                 match res {
-                    // If this path leads to a constant, then we need to
-                    // recurse into the constant to continue finding
-                    // items that are reachable.
-                    Res::Def(DefKind::Const | DefKind::AssocConst, _) => {
+                    // Reachable constants and reachable statics can have their contents inlined
+                    // into other crates. Mark them as reachable and recurse into their body.
+                    Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::Static(_), _) => {
                         self.worklist.push(def_id);
                     }
-
-                    // If this wasn't a static, then the destination is
-                    // surely reachable.
                     _ => {
                         self.reachable_symbols.insert(def_id);
                     }

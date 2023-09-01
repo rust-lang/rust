@@ -5,7 +5,6 @@ LL |     assert_sync(|| {
    |     ^^^^^^^^^^^ generator is not `Sync`
    |
    = help: within `[main::{closure#0} upvar_tys=() [main::{closure#0}]]`, the trait `Sync` is not implemented for `NotSync`
-   = note: consider using `std::sync::Arc<NotSync>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Sync` as this value is used across a yield
   --> $DIR/generator-print-verbose-2.rs:23:9
    |
@@ -26,7 +25,6 @@ LL |     assert_send(|| {
    |     ^^^^^^^^^^^ generator is not `Send`
    |
    = help: within `[main::{closure#1} upvar_tys=() [main::{closure#1}]]`, the trait `Send` is not implemented for `NotSend`
-   = note: consider using `std::sync::Arc<NotSend>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/generator-print-verbose-2.rs:30:9
    |

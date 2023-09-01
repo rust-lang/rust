@@ -405,7 +405,11 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
         // Vectors, even for non-power-of-two sizes, have the same layout as
         // arrays but don't count as aggregate types
+        // While LLVM theoretically supports non-power-of-two sizes, and they
+        // often work fine, sometimes x86-isel deals with them horribly
+        // (see #115212) so for now only use power-of-two ones.
         if let FieldsShape::Array { count, .. } = self.layout.fields()
+            && count.is_power_of_two()
             && let element = self.field(cx, 0)
             && element.ty.is_integral()
         {
