@@ -1,10 +1,12 @@
 //! Shared RISC-V intrinsics
 
 mod p;
+mod zb;
 mod zk;
 
 #[unstable(feature = "stdsimd", issue = "27731")]
 pub use p::*;
+pub use zb::*;
 pub use zk::*;
 
 use crate::arch::asm;
