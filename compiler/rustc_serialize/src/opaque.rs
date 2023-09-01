@@ -354,7 +354,8 @@ impl<'a> MemDecoder<'a> {
 
     #[inline]
     pub fn read_array<const N: usize>(&mut self) -> [u8; N] {
-        self.read_raw_bytes(N).try_into().unwrap()
+        // SAFETY: read_raw_bytes(N) returns a slice with length N.
+        unsafe { self.read_raw_bytes(N).try_into().unwrap_unchecked() }
     }
 
     /// While we could manually expose manipulation of the decoder position,
