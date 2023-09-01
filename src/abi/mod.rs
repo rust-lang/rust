@@ -39,7 +39,7 @@ fn clif_sig_from_fn_abi<'tcx>(
 pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: CallConv) -> CallConv {
     match c {
         Conv::Rust | Conv::C => default_call_conv,
-        Conv::RustCold => CallConv::Cold,
+        Conv::Cold | Conv::PreserveMost | Conv::PreserveAll => CallConv::Cold,
         Conv::X86_64SysV => CallConv::SystemV,
         Conv::X86_64Win64 => CallConv::WindowsFastcall,
 
@@ -48,7 +48,9 @@ pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: Call
             default_call_conv
         }
 
-        Conv::X86Intr => sess.fatal("x86-interrupt call conv not yet implemented"),
+        Conv::X86Intr | Conv::RiscvInterrupt { .. } => {
+            sess.fatal(format!("interrupt call conv {c:?} not yet implemented"))
+        }
 
         Conv::ArmAapcs => sess.fatal("aapcs call conv not yet implemented"),
         Conv::CCmseNonSecureCall => {
