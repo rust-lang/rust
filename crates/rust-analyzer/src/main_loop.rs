@@ -670,6 +670,7 @@ impl GlobalState {
         }
 
         use crate::handlers::request as handlers;
+        use lsp_types::request as lsp_request;
 
         dispatcher
             // Request handlers that must run on the main thread
@@ -682,30 +683,30 @@ impl GlobalState {
             // are run on the main thread to reduce latency:
             .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)
             .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)
-            .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)
+            .on_sync::<lsp_request::SelectionRangeRequest>(handlers::handle_selection_range)
             .on_sync::<lsp_ext::MatchingBrace>(handlers::handle_matching_brace)
             .on_sync::<lsp_ext::OnTypeFormatting>(handlers::handle_on_type_formatting)
             // Formatting should be done immediately as the editor might wait on it, but we can't
             // put it on the main thread as we do not want the main thread to block on rustfmt.
             // So we have an extra thread just for formatting requests to make sure it gets handled
             // as fast as possible.
-            .on_fmt_thread::<lsp_types::request::Formatting>(handlers::handle_formatting)
-            .on_fmt_thread::<lsp_types::request::RangeFormatting>(handlers::handle_range_formatting)
+            .on_fmt_thread::<lsp_request::Formatting>(handlers::handle_formatting)
+            .on_fmt_thread::<lsp_request::RangeFormatting>(handlers::handle_range_formatting)
             // We can’t run latency-sensitive request handlers which do semantic
             // analysis on the main thread because that would block other
             // requests. Instead, we run these request handlers on higher priority
             // threads in the threadpool.
-            .on_latency_sensitive::<lsp_types::request::Completion>(handlers::handle_completion)
-            .on_latency_sensitive::<lsp_types::request::ResolveCompletionItem>(
+            .on_latency_sensitive::<lsp_request::Completion>(handlers::handle_completion)
+            .on_latency_sensitive::<lsp_request::ResolveCompletionItem>(
                 handlers::handle_completion_resolve,
             )
-            .on_latency_sensitive::<lsp_types::request::SemanticTokensFullRequest>(
+            .on_latency_sensitive::<lsp_request::SemanticTokensFullRequest>(
                 handlers::handle_semantic_tokens_full,
             )
-            .on_latency_sensitive::<lsp_types::request::SemanticTokensFullDeltaRequest>(
+            .on_latency_sensitive::<lsp_request::SemanticTokensFullDeltaRequest>(
                 handlers::handle_semantic_tokens_full_delta,
             )
-            .on_latency_sensitive::<lsp_types::request::SemanticTokensRangeRequest>(
+            .on_latency_sensitive::<lsp_request::SemanticTokensRangeRequest>(
                 handlers::handle_semantic_tokens_range,
             )
             // All other request handlers
@@ -729,29 +730,25 @@ impl GlobalState {
             .on::<lsp_ext::OpenCargoToml>(handlers::handle_open_cargo_toml)
             .on::<lsp_ext::MoveItem>(handlers::handle_move_item)
             .on::<lsp_ext::WorkspaceSymbol>(handlers::handle_workspace_symbol)
-            .on::<lsp_types::request::DocumentSymbolRequest>(handlers::handle_document_symbol)
-            .on::<lsp_types::request::GotoDefinition>(handlers::handle_goto_definition)
-            .on::<lsp_types::request::GotoDeclaration>(handlers::handle_goto_declaration)
-            .on::<lsp_types::request::GotoImplementation>(handlers::handle_goto_implementation)
-            .on::<lsp_types::request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
-            .on_no_retry::<lsp_types::request::InlayHintRequest>(handlers::handle_inlay_hints)
-            .on::<lsp_types::request::InlayHintResolveRequest>(handlers::handle_inlay_hints_resolve)
-            .on::<lsp_types::request::CodeLensRequest>(handlers::handle_code_lens)
-            .on::<lsp_types::request::CodeLensResolve>(handlers::handle_code_lens_resolve)
-            .on::<lsp_types::request::FoldingRangeRequest>(handlers::handle_folding_range)
-            .on::<lsp_types::request::SignatureHelpRequest>(handlers::handle_signature_help)
-            .on::<lsp_types::request::PrepareRenameRequest>(handlers::handle_prepare_rename)
-            .on::<lsp_types::request::Rename>(handlers::handle_rename)
-            .on::<lsp_types::request::References>(handlers::handle_references)
-            .on::<lsp_types::request::DocumentHighlightRequest>(handlers::handle_document_highlight)
-            .on::<lsp_types::request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)
-            .on::<lsp_types::request::CallHierarchyIncomingCalls>(
-                handlers::handle_call_hierarchy_incoming,
-            )
-            .on::<lsp_types::request::CallHierarchyOutgoingCalls>(
-                handlers::handle_call_hierarchy_outgoing,
-            )
-            .on::<lsp_types::request::WillRenameFiles>(handlers::handle_will_rename_files)
+            .on::<lsp_request::DocumentSymbolRequest>(handlers::handle_document_symbol)
+            .on::<lsp_request::GotoDefinition>(handlers::handle_goto_definition)
+            .on::<lsp_request::GotoDeclaration>(handlers::handle_goto_declaration)
+            .on::<lsp_request::GotoImplementation>(handlers::handle_goto_implementation)
+            .on::<lsp_request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
+            .on_no_retry::<lsp_request::InlayHintRequest>(handlers::handle_inlay_hints)
+            .on::<lsp_request::InlayHintResolveRequest>(handlers::handle_inlay_hints_resolve)
+            .on::<lsp_request::CodeLensRequest>(handlers::handle_code_lens)
+            .on::<lsp_request::CodeLensResolve>(handlers::handle_code_lens_resolve)
+            .on::<lsp_request::FoldingRangeRequest>(handlers::handle_folding_range)
+            .on::<lsp_request::SignatureHelpRequest>(handlers::handle_signature_help)
+            .on::<lsp_request::PrepareRenameRequest>(handlers::handle_prepare_rename)
+            .on::<lsp_request::Rename>(handlers::handle_rename)
+            .on::<lsp_request::References>(handlers::handle_references)
+            .on::<lsp_request::DocumentHighlightRequest>(handlers::handle_document_highlight)
+            .on::<lsp_request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)
+            .on::<lsp_request::CallHierarchyIncomingCalls>(handlers::handle_call_hierarchy_incoming)
+            .on::<lsp_request::CallHierarchyOutgoingCalls>(handlers::handle_call_hierarchy_outgoing)
+            .on::<lsp_request::WillRenameFiles>(handlers::handle_will_rename_files)
             .on::<lsp_ext::Ssr>(handlers::handle_ssr)
             .on::<lsp_ext::ViewRecursiveMemoryLayout>(handlers::handle_view_recursive_memory_layout)
             .finish();

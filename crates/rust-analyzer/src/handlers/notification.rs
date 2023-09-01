@@ -84,15 +84,16 @@ pub(crate) fn handle_did_change_text_document(
             }
         };
 
-        let vfs = &mut state.vfs.write().0;
-        let file_id = vfs.file_id(&path).unwrap();
         let text = apply_document_changes(
             state.config.position_encoding(),
-            || std::str::from_utf8(vfs.file_contents(file_id)).unwrap().into(),
+            || {
+                let vfs = &state.vfs.read().0;
+                let file_id = vfs.file_id(&path).unwrap();
+                std::str::from_utf8(vfs.file_contents(file_id)).unwrap().into()
+            },
             params.content_changes,
         );
-
-        vfs.set_file_contents(path, Some(text.into_bytes()));
+        state.vfs.write().0.set_file_contents(path, Some(text.into_bytes()));
     }
     Ok(())
 }

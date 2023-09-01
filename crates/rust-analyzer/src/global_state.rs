@@ -12,12 +12,12 @@ use ide_db::base_db::{CrateId, FileLoader, ProcMacroPaths, SourceDatabase};
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
 use nohash_hasher::IntMap;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{Mutex, RwLock, RwLockUpgradableReadGuard, RwLockWriteGuard};
 use proc_macro_api::ProcMacroServer;
 use project_model::{CargoWorkspace, ProjectWorkspace, Target, WorkspaceBuildScripts};
 use rustc_hash::{FxHashMap, FxHashSet};
 use triomphe::Arc;
-use vfs::AnchoredPathBuf;
+use vfs::{AnchoredPathBuf, Vfs};
 
 use crate::{
     config::{Config, ConfigError},
@@ -216,12 +216,15 @@ impl GlobalState {
         let mut file_changes = FxHashMap::default();
         let (change, changed_files, workspace_structure_change) = {
             let mut change = Change::new();
-            let (vfs, line_endings_map) = &mut *self.vfs.write();
-            let changed_files = vfs.take_changes();
+            let mut guard = self.vfs.write();
+            let changed_files = guard.0.take_changes();
             if changed_files.is_empty() {
                 return false;
             }
 
+            // downgrade to read lock to allow more readers while we are normalizing text
+            let guard = RwLockWriteGuard::downgrade_to_upgradable(guard);
+            let vfs: &Vfs = &guard.0;
             // We need to fix up the changed events a bit. If we have a create or modify for a file
             // id that is followed by a delete we actually skip observing the file text from the
             // earlier event, to avoid problems later on.
@@ -272,6 +275,7 @@ impl GlobalState {
             let mut workspace_structure_change = None;
             // A file was added or deleted
             let mut has_structure_changes = false;
+            let mut bytes = vec![];
             for file in &changed_files {
                 let vfs_path = &vfs.file_path(file.file_id);
                 if let Some(path) = vfs_path.as_path() {
@@ -293,16 +297,28 @@ impl GlobalState {
 
                 let text = if file.exists() {
                     let bytes = vfs.file_contents(file.file_id).to_vec();
+
                     String::from_utf8(bytes).ok().and_then(|text| {
+                        // FIXME: Consider doing normalization in the `vfs` instead? That allows
+                        // getting rid of some locking
                         let (text, line_endings) = LineEndings::normalize(text);
-                        line_endings_map.insert(file.file_id, line_endings);
-                        Some(Arc::from(text))
+                        Some((Arc::from(text), line_endings))
                     })
                 } else {
                     None
                 };
-                change.change_file(file.file_id, text);
+                // delay `line_endings_map` changes until we are done normalizing the text
+                // this allows delaying the re-acquisition of the write lock
+                bytes.push((file.file_id, text));
             }
+            let (vfs, line_endings_map) = &mut *RwLockUpgradableReadGuard::upgrade(guard);
+            bytes.into_iter().for_each(|(file_id, text)| match text {
+                None => change.change_file(file_id, None),
+                Some((text, line_endings)) => {
+                    line_endings_map.insert(file_id, line_endings);
+                    change.change_file(file_id, Some(text));
+                }
+            });
             if has_structure_changes {
                 let roots = self.source_root_config.partition(vfs);
                 change.set_roots(roots);
