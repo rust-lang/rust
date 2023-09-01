@@ -1,15 +1,15 @@
 #![allow(missing_docs)]
 
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
-use crate::ffi::{OsStr, OsString};
-use crate::sys::os::error_string;
-use crate::sys::pipe::AnonPipe;
-use crate::num::NonZeroI32;
 use crate::custom_os_impl;
-use crate::sys::fs::File;
-use crate::path::Path;
+use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
+use crate::num::NonZeroI32;
+use crate::path::Path;
+use crate::sys::fs::File;
+use crate::sys::os::error_string;
+use crate::sys::pipe::AnonPipe;
+use crate::sys_common::process::{CommandEnv, CommandEnvs};
 
 pub type EnvKey = OsString;
 
@@ -108,7 +108,7 @@ impl Command {
         default: Stdio,
         needs_stdin: bool,
     ) -> io::Result<(Process, StdioPipes)> {
-        self.stdin .get_or_insert(default);
+        self.stdin.get_or_insert(default);
         self.stdout.get_or_insert(default);
         self.stderr.get_or_insert(default);
         self.needs_stdin = needs_stdin;
@@ -170,9 +170,7 @@ impl Into<ExitStatus> for ExitStatusError {
 
 impl ExitStatusError {
     pub fn code(self) -> Option<NonZeroI32> {
-        self.0.code().map(|c| {
-            NonZeroI32::try_from(c).expect("invalid ExitStatus")
-        })
+        self.0.code().map(|c| NonZeroI32::try_from(c).expect("invalid ExitStatus"))
     }
 }
 

@@ -1,10 +1,10 @@
 #![allow(missing_docs)]
 
-use crate::num::NonZeroUsize;
 use crate::custom_os_impl;
-use crate::time::Duration;
 use crate::ffi::CStr;
 use crate::io;
+use crate::num::NonZeroUsize;
+use crate::time::Duration;
 
 /// Inner content of [`crate::thread::Thread`]
 #[derive(Debug)]

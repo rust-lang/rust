@@ -1,8 +1,8 @@
+use super::{futex_wait, futex_wake, futex_wake_all};
 use crate::sync::atomic::{
     AtomicU32,
     Ordering::{Acquire, Relaxed, Release},
 };
-use super::{futex_wait, futex_wake, futex_wake_all};
 
 pub struct RwLock {
     // The state consists of a 30-bit reader counter, a 'readers waiting' flag, and a 'writers waiting' flag.

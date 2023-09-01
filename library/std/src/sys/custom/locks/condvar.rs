@@ -1,6 +1,6 @@
 use super::Mutex;
-use crate::sync::atomic::{AtomicU32, Ordering::Relaxed};
 use super::{futex_wait, futex_wake, futex_wake_all};
+use crate::sync::atomic::{AtomicU32, Ordering::Relaxed};
 use crate::time::Duration;
 
 pub struct Condvar {

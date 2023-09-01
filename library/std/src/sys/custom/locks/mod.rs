@@ -6,7 +6,6 @@
 /// - futex_wake_all
 /// - kernel_hold_interrupts
 /// - kernel_release_interrupts
-
 use core::sync::atomic::AtomicU32;
 use core::time::Duration;
 

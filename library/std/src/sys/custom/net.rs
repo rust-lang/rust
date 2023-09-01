@@ -1,10 +1,10 @@
 #![allow(missing_docs)]
 
+use crate::custom_os_impl;
+use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
-use crate::custom_os_impl;
 use crate::time::Duration;
-use crate::fmt;
 
 /// Inner content of [`crate::net::TcpStream`]
 pub struct TcpStream(pub Box<dyn TcpStreamApi>);
@@ -145,11 +145,7 @@ pub struct LookupHost {
 
 impl LookupHost {
     pub fn new(addresses: Vec<SocketAddr>, port: u16) -> Self {
-        Self {
-            addresses,
-            port,
-            i: 0,
-        }
+        Self { addresses, port, i: 0 }
     }
 
     pub(crate) fn port(&self) -> u16 {

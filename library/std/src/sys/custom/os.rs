@@ -1,13 +1,13 @@
 #![allow(missing_docs)]
 
-use crate::str::Split;
-use crate::ffi::{OsStr, OsString};
-use crate::path::{self, PathBuf};
 use crate::custom_os_impl;
 use crate::error::Error;
+use crate::ffi::{OsStr, OsString};
 use crate::fmt;
-use crate::vec;
 use crate::io;
+use crate::path::{self, PathBuf};
+use crate::str::Split;
+use crate::vec;
 
 /// Inner content of [`crate::env::SplitPaths`]
 pub struct SplitPaths<'a>(Split<'a, &'static str>);
@@ -109,7 +109,9 @@ impl fmt::Debug for EnvStrDebug<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self { slice } = self;
         f.debug_list()
-            .entries(slice.iter().map(|var| (var.name.to_str().unwrap(), var.value.to_str().unwrap())))
+            .entries(
+                slice.iter().map(|var| (var.name.to_str().unwrap(), var.value.to_str().unwrap())),
+            )
             .finish()
     }
 }

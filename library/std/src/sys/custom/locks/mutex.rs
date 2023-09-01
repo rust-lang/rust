@@ -1,8 +1,8 @@
+use super::{futex_wait, futex_wake};
 use crate::sync::atomic::{
     AtomicU32,
     Ordering::{Acquire, Relaxed, Release},
 };
-use super::{futex_wait, futex_wake};
 
 pub struct Mutex {
     /// 0: unlocked

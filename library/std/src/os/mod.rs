@@ -25,7 +25,7 @@ pub mod raw;
 ))]
 #[unstable(issue = "none", feature = "std_internals")]
 #[path = "fake_unix_windows.rs"]
-pub mod unix;
+pub mod linux;
 #[cfg(all(
     doc,
     any(
@@ -36,7 +36,7 @@ pub mod unix;
 ))]
 #[unstable(issue = "none", feature = "std_internals")]
 #[path = "fake_unix_windows.rs"]
-pub mod linux;
+pub mod unix;
 #[cfg(all(
     doc,
     any(
@@ -111,6 +111,8 @@ pub mod windows;
 // Others.
 #[cfg(target_os = "android")]
 pub mod android;
+#[cfg(target_os = "custom")]
+pub mod custom;
 #[cfg(target_os = "dragonfly")]
 pub mod dragonfly;
 #[cfg(target_os = "emscripten")]

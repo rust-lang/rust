@@ -1,10 +1,10 @@
 #![allow(missing_docs)]
 
-use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
-use crate::path::{Path, PathBuf};
 use crate::custom_os_impl;
 use crate::ffi::OsString;
 use crate::fmt;
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
+use crate::path::{Path, PathBuf};
 
 use crate::os::custom::time::SystemTime;
 

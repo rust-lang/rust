@@ -7,7 +7,7 @@
 //!
 //! This is primarily geared toward experimental platforms such
 //! as new kernels and bare-bones environments, where you might
-//! want to use the standard library without recompiling 
+//! want to use the standard library without recompiling
 //! everything or adding support upstream.
 //!
 //! # Initial state
@@ -77,7 +77,7 @@ macro_rules! static_rwlock_box_impl {
             let new_impl = transition(maybe_impl);
             *writer = Some(new_impl);
         }
-    }
+    };
 }
 
 /// Platform-specific allocator
@@ -93,14 +93,14 @@ pub mod alloc {
 
 /// Platform-specific interface to a filesystem
 pub mod fs {
-    use crate::sync::RwLock;
-    use crate::path::{Path, PathBuf};
     use crate::io;
+    use crate::path::{Path, PathBuf};
+    use crate::sync::RwLock;
 
     #[doc(inline)]
     pub use crate::sys::fs::{
-        File, FileAttr, ReadDir, ReadDirApi, FileApi, DirEntry,
-        FilePermissions, OpenOptions, FileTimes, FileType,
+        DirEntry, File, FileApi, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
+        ReadDir, ReadDirApi,
     };
 
     static_rwlock_box_impl!(FilesystemInterface);
@@ -158,25 +158,28 @@ pub mod futex {
 
 /// Platform-specific interface to a network
 pub mod net {
-    use crate::sync::RwLock;
-    use crate::net::SocketAddr;
-    use crate::time::Duration;
     use crate::io;
+    use crate::net::SocketAddr;
+    use crate::sync::RwLock;
+    use crate::time::Duration;
 
     #[doc(inline)]
     pub use crate::sys::net::{
-        TcpStreamApi, TcpListenerApi, UdpSocketApi,
-        TcpStream, TcpListener, UdpSocket, LookupHost,
+        LookupHost, TcpListener, TcpListenerApi, TcpStream, TcpStreamApi, UdpSocket, UdpSocketApi,
     };
 
     static_rwlock_box_impl!(NetworkInterface);
 
     /// Platform-specific interface to a network
     pub trait NetworkInterface: Send + Sync {
-        fn tcp_connect(&self, addr: &SocketAddr, timeout: Option<Duration>) -> io::Result<TcpStream>;
-        fn tcp_bind   (&self, addr: &SocketAddr) -> io::Result<TcpListener>;
-        fn udp_bind   (&self, addr: &SocketAddr) -> io::Result<UdpSocket>;
-        fn lookup_str  (&self, v: &str) -> io::Result<LookupHost>;
+        fn tcp_connect(
+            &self,
+            addr: &SocketAddr,
+            timeout: Option<Duration>,
+        ) -> io::Result<TcpStream>;
+        fn tcp_bind(&self, addr: &SocketAddr) -> io::Result<TcpListener>;
+        fn udp_bind(&self, addr: &SocketAddr) -> io::Result<UdpSocket>;
+        fn lookup_str(&self, v: &str) -> io::Result<LookupHost>;
         fn lookup_tuple(&self, v: (&str, u16)) -> io::Result<LookupHost>;
     }
 }
@@ -184,12 +187,12 @@ pub mod net {
 /// Platform-specific interface to the running operating system
 pub mod os {
     use crate::ffi::{OsStr, OsString};
+    use crate::io;
     use crate::path::{Path, PathBuf};
     use crate::sync::RwLock;
-    use crate::io;
 
     #[doc(inline)]
-    pub use crate::sys::os::{Variable, Env, SplitPaths, JoinPathsError};
+    pub use crate::sys::os::{Env, JoinPathsError, SplitPaths, Variable};
 
     static_rwlock_box_impl!(Os);
 
@@ -220,17 +223,14 @@ pub mod os {
 
 /// Platform-specific management of processes
 pub mod process {
-    use crate::sync::RwLock;
     use crate::io;
+    use crate::sync::RwLock;
 
     #[doc(inline)]
     pub use crate::sys_common::process::{CommandEnv, CommandEnvs};
 
     #[doc(inline)]
-    pub use crate::sys::process::{
-        Command, Process, ProcessApi,
-        ExitStatus, Stdio, StdioPipes,
-    };
+    pub use crate::sys::process::{Command, ExitStatus, Process, ProcessApi, Stdio, StdioPipes};
 
     static_rwlock_box_impl!(ProcessManager);
 
@@ -242,8 +242,8 @@ pub mod process {
 
 /// Platform-specific standard IO interface
 pub mod stdio {
-    use crate::sync::RwLock;
     use crate::io;
+    use crate::sync::RwLock;
 
     static_rwlock_box_impl!(StdioInterface);
 
@@ -261,11 +261,11 @@ pub mod stdio {
 
 /// Platform-specific management of threads
 pub mod thread {
-    use crate::sync::RwLock;
     use crate::ffi::CStr;
-    use crate::num::NonZeroUsize;
-    use crate::time::Duration;
     use crate::io;
+    use crate::num::NonZeroUsize;
+    use crate::sync::RwLock;
+    use crate::time::Duration;
 
     #[doc(inline)]
     pub use crate::sys::thread::{Thread, ThreadApi};

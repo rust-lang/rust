@@ -1,7 +1,7 @@
 //! System bindings for custom platforms
 
-use crate::io as std_io;
 use crate::custom_os_impl;
+use crate::io as std_io;
 
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
@@ -30,12 +30,12 @@ pub mod thread_local_key;
 #[deny(unsafe_op_in_unsafe_fn)]
 #[allow(unused)]
 mod common;
-pub use common::{memchr, init, cleanup};
+pub use common::{cleanup, init, memchr};
 
 pub mod alloc;
-pub mod locks;
 pub mod env;
 pub mod fs;
+pub mod locks;
 pub mod net;
 pub mod os;
 pub mod pipe;
@@ -50,7 +50,9 @@ pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
 }
 
 pub fn abort_internal() -> ! {
-    fn infinite_loop() -> ! { loop {} }
+    fn infinite_loop() -> ! {
+        loop {}
+    }
 
     let rwlock = &crate::os::custom::os::IMPL;
     let reader = match rwlock.read().ok() {

@@ -1,7 +1,7 @@
 #![allow(missing_docs)]
 
-use crate::time::Duration;
 use crate::custom_os_impl;
+use crate::time::Duration;
 
 /// Inner content of [`crate::time::Instant`]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
