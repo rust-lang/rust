@@ -47,7 +47,7 @@ case ${TARGET} in
     # Some of our test dependencies use the deprecated `gcc` crates which
     # doesn't detect RISC-V compilers automatically, so do it manually here.
     riscv64*)
-        export RUSTFLAGS="${RUSTFLAGS} -Ctarget-feature=+zk"
+        export RUSTFLAGS="${RUSTFLAGS} -Ctarget-feature=+zk,+zbb,+zbc"
         export TARGET_CC="riscv64-linux-gnu-gcc"
         ;;
 esac
