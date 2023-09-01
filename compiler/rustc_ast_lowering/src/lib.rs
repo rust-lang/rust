@@ -422,20 +422,41 @@ fn compute_hir_hash(
     })
 }
 
+/// Transforms Rust source code from an abstract syntax tree (AST) representation 
+/// into a higher-level intermediate representation (HIR).
+/// 
+/// ### Arguments:
+/// - TyCtxt (Type Context)
+/// - Empty tuple ()
+/// 
+/// ### Returns:
+/// - `hir::Crate` - represents the Higher-level Intermediate Representation 
+/// (HIR) of the entire crate being compiled.
 pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
+    // extracting the compiler session
     let sess = tcx.sess;
     // Queries that borrow `resolver_for_lowering`.
+    // Precompute and store various pieces of information needed during the HIR lowering process
+    // - Determines the output filenames for the compilation
+    // - Performs early lint checks on the code.
+    // - Generates debugger visualizer information for the local crate.
     tcx.ensure_with_value().output_filenames(());
     tcx.ensure_with_value().early_lint_checks(());
     tcx.ensure_with_value().debugger_visualizers(LOCAL_CRATE);
+    // `resolver` variable helps resolve names and types during the compilation process
+    // `krate` variable holds the root of the AST for the crate being compiled. It 
+    // represents the entire structure of the Rust source code in a hierarchical tree format.
     let (mut resolver, krate) = tcx.resolver_for_lowering(()).steal();
 
+    // Maps node IDs to definition IDs for navigating the AST efficiently
     let ast_index = index_crate(&resolver.node_id_to_def_id, &krate);
+    // `owners` array keep track of the ownership information for each item in the AST
     let mut owners = IndexVec::from_fn_n(
         |_| hir::MaybeOwner::Phantom,
         tcx.definitions_untracked().def_index_count(),
     );
 
+    // Iterates through each definition ID in the `ast_index` and performs the HIR lowering 
     for def_id in ast_index.indices() {
         item::ItemLowerer {
             tcx,
