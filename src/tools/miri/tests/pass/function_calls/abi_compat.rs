@@ -1,9 +1,7 @@
-#![feature(portable_simd)]
 use std::mem;
 use std::num;
-use std::simd;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 struct Zst;
 
 fn test_abi_compat<T: Copy, U: Copy>(t: T, u: U) {
@@ -33,7 +31,7 @@ fn test_abi_compat<T: Copy, U: Copy>(t: T, u: U) {
 }
 
 /// Ensure that `T` is compatible with various repr(transparent) wrappers around `T`.
-fn test_abi_newtype<T: Copy>(t: T) {
+fn test_abi_newtype<T: Copy + Default>() {
     #[repr(transparent)]
     #[derive(Copy, Clone)]
     struct Wrapper1<T>(T);
@@ -47,6 +45,7 @@ fn test_abi_newtype<T: Copy>(t: T) {
     #[derive(Copy, Clone)]
     struct Wrapper3<T>(Zst, T, [u8; 0]);
 
+    let t = T::default();
     test_abi_compat(t, Wrapper1(t));
     test_abi_compat(t, Wrapper2(t, ()));
     test_abi_compat(t, Wrapper2a((), t));
@@ -56,8 +55,7 @@ fn test_abi_newtype<T: Copy>(t: T) {
 
 fn main() {
     // Here we check:
-    // - unsigned vs signed integer is allowed
-    // - u32/i32 vs char is allowed
+    // - u32 vs char is allowed
     // - u32 vs NonZeroU32/Option<NonZeroU32> is allowed
     // - reference vs raw pointer is allowed
     // - references to things of the same size and alignment are allowed
@@ -65,27 +63,24 @@ fn main() {
     // these would be stably guaranteed. Code that relies on this is equivalent to code that relies
     // on the layout of `repr(Rust)` types. They are also fragile: the same mismatches in the fields
     // of a struct (even with `repr(C)`) will not always be accepted by Miri.
-    test_abi_compat(0u32, 0i32);
-    test_abi_compat(simd::u32x8::splat(1), simd::i32x8::splat(1));
+    // Note that `bool` and `u8` are *not* compatible, at least on x86-64!
+    // One of them has `arg_ext: Zext`, the other does not.
+    // Similarly, `i32` and `u32` are not compatible on s390x due to different `arg_ext`.
     test_abi_compat(0u32, 'x');
-    test_abi_compat(0i32, 'x');
     test_abi_compat(42u32, num::NonZeroU32::new(1).unwrap());
     test_abi_compat(0u32, Some(num::NonZeroU32::new(1).unwrap()));
     test_abi_compat(&0u32, &0u32 as *const u32);
     test_abi_compat(&0u32, &([true; 4], [0u32; 0]));
-    // Note that `bool` and `u8` are *not* compatible, at least on x86-64!
-    // One of them has `arg_ext: Zext`, the other does not.
 
     // These must work for *any* type, since we guarantee that `repr(transparent)` is ABI-compatible
     // with the wrapped field.
-    test_abi_newtype(());
-    // FIXME: this still fails! test_abi_newtype(Zst);
-    test_abi_newtype(0u32);
-    test_abi_newtype(0f32);
-    test_abi_newtype((0u32, 1u32, 2u32));
-    // FIXME: skipping the array tests on mips64 due to https://github.com/rust-lang/rust/issues/115404
-    if !cfg!(target_arch = "mips64") {
-        test_abi_newtype([0u32, 1u32, 2u32]);
-        test_abi_newtype([0i32; 0]);
-    }
+    test_abi_newtype::<()>();
+    test_abi_newtype::<Zst>();
+    test_abi_newtype::<u32>();
+    test_abi_newtype::<f32>();
+    test_abi_newtype::<(u8, u16, f32)>();
+    test_abi_newtype::<[u8; 0]>();
+    test_abi_newtype::<[u32; 0]>();
+    test_abi_newtype::<[u32; 2]>();
+    test_abi_newtype::<[u32; 32]>();
 }

@@ -254,6 +254,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Find the wrapped inner type of a transparent wrapper.
+    /// Must not be called on 1-ZST (as they don't have a uniquely defined "wrapped field").
     fn unfold_transparent(&self, layout: TyAndLayout<'tcx>) -> TyAndLayout<'tcx> {
         match layout.ty.kind() {
             ty::Adt(adt_def, _) if adt_def.repr().transparent() => {
@@ -263,11 +264,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let field = layout.field(self, idx);
                     if field.is_1zst() { None } else { Some(field) }
                 });
-                let Some(first) = non_1zst_fields.next() else {
-                    // All fields are 1-ZST, so this is basically the same as `()`.
-                    // (We still also compare the `PassMode`, so if this target does something strange with 1-ZST there, we'll know.)
-                    return self.layout_of(self.tcx.types.unit).unwrap();
-                };
+                let first = non_1zst_fields.next().expect("`unfold_transparent` called on 1-ZST");
                 assert!(
                     non_1zst_fields.next().is_none(),
                     "more than one non-1-ZST field in a transparent type"
@@ -289,17 +286,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         caller_layout: TyAndLayout<'tcx>,
         callee_layout: TyAndLayout<'tcx>,
     ) -> bool {
-        fn primitive_abi_compat(a1: abi::Primitive, a2: abi::Primitive) -> bool {
-            match (a1, a2) {
-                // For integers, ignore the sign.
-                (abi::Primitive::Int(int_ty1, _sign1), abi::Primitive::Int(int_ty2, _sign2)) => {
-                    int_ty1 == int_ty2
-                }
-                // For everything else we require full equality.
-                _ => a1 == a2,
-            }
-        }
-
         if caller_layout.ty == callee_layout.ty {
             // Fast path: equal types are definitely compatible.
             return true;
@@ -308,27 +294,40 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match (caller_layout.abi, callee_layout.abi) {
             // If both sides have Scalar/Vector/ScalarPair ABI, we can easily directly compare them.
             // Different valid ranges are okay (the validity check will complain if this leads to
-            // invalid transmutes).
+            // invalid transmutes). Different signs are *not* okay on some targets (e.g. `extern
+            // "C"` on `s390x` where small integers are passed zero/sign-extended in large
+            // registers), so we generally reject them to increase portability.
+            // NOTE: this is *not* a stable guarantee! It just reflects a property of our current
+            // ABIs. It's also fragile; the same pair of types might be considered ABI-compatible
+            // when used directly by-value but not considered compatible as a struct field or array
+            // element.
             (abi::Abi::Scalar(caller), abi::Abi::Scalar(callee)) => {
-                primitive_abi_compat(caller.primitive(), callee.primitive())
+                caller.primitive() == callee.primitive()
             }
             (
                 abi::Abi::Vector { element: caller_element, count: caller_count },
                 abi::Abi::Vector { element: callee_element, count: callee_count },
             ) => {
-                primitive_abi_compat(caller_element.primitive(), callee_element.primitive())
+                caller_element.primitive() == callee_element.primitive()
                     && caller_count == callee_count
             }
             (abi::Abi::ScalarPair(caller1, caller2), abi::Abi::ScalarPair(callee1, callee2)) => {
-                primitive_abi_compat(caller1.primitive(), callee1.primitive())
-                    && primitive_abi_compat(caller2.primitive(), callee2.primitive())
+                caller1.primitive() == callee1.primitive()
+                    && caller2.primitive() == callee2.primitive()
             }
             (abi::Abi::Aggregate { .. }, abi::Abi::Aggregate { .. }) => {
-                // Aggregates are compatible only if they newtype-wrap the same type.
+                // Aggregates are compatible only if they newtype-wrap the same type, or if they are both 1-ZST.
+                // (The latter part is needed to ensure e.g. that `struct Zst` is compatible with `struct Wrap((), Zst)`.)
                 // This is conservative, but also means that our check isn't quite so heavily dependent on the `PassMode`,
                 // which means having ABI-compatibility on one target is much more likely to imply compatibility for other targets.
-                self.unfold_transparent(caller_layout).ty
-                    == self.unfold_transparent(callee_layout).ty
+                if caller_layout.is_1zst() || callee_layout.is_1zst() {
+                    // If either is a 1-ZST, both must be.
+                    caller_layout.is_1zst() && callee_layout.is_1zst()
+                } else {
+                    // Neither is a 1-ZST, so we can check what they are wrapping.
+                    self.unfold_transparent(caller_layout).ty
+                        == self.unfold_transparent(callee_layout).ty
+                }
             }
             // What remains is `Abi::Uninhabited` (which can never be passed anyway) and
             // mismatching ABIs, that should all be rejected.

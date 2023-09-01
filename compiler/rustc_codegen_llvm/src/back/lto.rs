@@ -441,7 +441,7 @@ fn thin_lto(
 
         for (i, (name, buffer)) in modules.into_iter().enumerate() {
             info!("local module: {} - {}", i, name);
-            let cname = CString::new(name.clone()).unwrap();
+            let cname = CString::new(name.as_bytes()).unwrap();
             thin_modules.push(llvm::ThinLTOModule {
                 identifier: cname.as_ptr(),
                 data: buffer.data().as_ptr(),
