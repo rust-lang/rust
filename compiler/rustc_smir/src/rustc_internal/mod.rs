@@ -196,6 +196,7 @@ where
 {
     args: Vec<String>,
     callback: fn(TyCtxt<'_>) -> T,
+    after_analysis: Compilation,
     result: Option<T>,
 }
 
@@ -205,16 +206,27 @@ where
 {
     /// Creates a new `StableMir` instance, with given test_function and arguments.
     pub fn new(args: Vec<String>, callback: fn(TyCtxt<'_>) -> T) -> Self {
-        StableMir { args, callback, result: None }
+        StableMir { args, callback, result: None, after_analysis: Compilation::Stop }
+    }
+
+    /// Configure object to stop compilation after callback is called.
+    pub fn stop_compilation(&mut self) -> &mut Self {
+        self.after_analysis = Compilation::Stop;
+        self
+    }
+
+    /// Configure object to continue compilation after callback is called.
+    pub fn continue_compilation(&mut self) -> &mut Self {
+        self.after_analysis = Compilation::Continue;
+        self
     }
 
     /// Runs the compiler against given target and tests it with `test_function`
-    pub fn run(mut self) -> Result<T, CompilerError> {
-        let compiler_result = rustc_driver::catch_fatal_errors(|| {
-            RunCompiler::new(&self.args.clone(), &mut self).run()
-        });
+    pub fn run(&mut self) -> Result<T, CompilerError> {
+        let compiler_result =
+            rustc_driver::catch_fatal_errors(|| RunCompiler::new(&self.args.clone(), self).run());
         match compiler_result {
-            Ok(Ok(())) => Ok(self.result.unwrap()),
+            Ok(Ok(())) => Ok(self.result.take().unwrap()),
             Ok(Err(_)) => Err(CompilerError::CompilationFailed),
             Err(_) => Err(CompilerError::ICE),
         }
@@ -238,7 +250,7 @@ where
                 self.result = Some((self.callback)(tcx));
             });
         });
-        // No need to keep going.
-        Compilation::Stop
+        // Let users define if they want to stop compilation.
+        self.after_analysis
     }
 }
