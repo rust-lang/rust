@@ -1,5 +1,5 @@
 use crate::alloc::alloc::{handle_alloc_error, Layout};
-use crate::scopeguard::guard;
+use crate::scopeguard::{guard, ScopeGuard};
 use crate::TryReserveError;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
@@ -2824,7 +2824,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
                 self_.clone_from_spec(source);
 
                 // Disarm the scope guard if cloning was successful.
-                mem::forget(self_);
+                ScopeGuard::into_inner(self_);
             }
         }
     }
