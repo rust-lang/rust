@@ -9,8 +9,13 @@ fn main() {
     b"aaa";
     br#""aaa""#;
     br#"\s"#;
-    // currently disabled: https://github.com/rust-lang/rust/issues/113333
-    // cr#"aaa"#;
-    // cr#""aaa""#;
-    // cr#"\s"#;
+    c"aaa";
+    cr#""aaa""#;
+    cr#"\s"#;
+
+    "
+        a
+        multiline
+        string
+    ";
 }
