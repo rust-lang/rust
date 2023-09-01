@@ -65,3 +65,22 @@ pub trait HigherRankedBoundTrait1<'e> where for<'l> Self: 'e + 'l {}
 pub trait AmbiguousBoundTrait<'a, 'b>: 'a + 'b {}
 
 pub struct AmbiguousBoundWrapper<'a, 'b, T: ?Sized + 'a + 'b>(&'a T, &'b T);
+
+// Trait objects inside of another trait object, a trait bound or an associated type.
+
+pub trait Inner {}
+pub trait Outer<T: ?Sized> {}
+pub trait Base {
+    type Type<T: ?Sized>;
+}
+impl Base for () {
+    type Type<T: ?Sized> = ();
+}
+
+pub type NestedTraitObjects = dyn Outer<dyn Inner>;
+
+pub fn apit_rpit(o: impl Outer<dyn Inner>) -> impl Outer<dyn Inner> {
+    o
+}
+
+pub type AssocTy = <() as Base>::Type<dyn Inner>;
