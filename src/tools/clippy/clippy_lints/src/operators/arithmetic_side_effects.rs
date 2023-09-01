@@ -1,24 +1,20 @@
 use super::ARITHMETIC_SIDE_EFFECTS;
 use clippy_utils::consts::{constant, constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::ty::type_diagnostic_name;
 use clippy_utils::{expr_or_init, is_from_proc_macro, is_lint_allowed, peel_hir_expr_refs, peel_hir_expr_unary};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::{Span, Spanned};
+use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 use {rustc_ast as ast, rustc_hir as hir};
 
-const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[
-    ["f32", "f32"],
-    ["f64", "f64"],
-    ["std::num::Saturating", "*"],
-    ["std::num::Wrapping", "*"],
-    ["std::string::String", "str"],
-];
+const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[["f32", "f32"], ["f64", "f64"], ["std::string::String", "str"]];
 const HARD_CODED_ALLOWED_UNARY: &[&str] = &["f32", "f64", "std::num::Saturating", "std::num::Wrapping"];
-const INTEGER_METHODS: &[&str] = &["saturating_div", "wrapping_div", "wrapping_rem", "wrapping_rem_euclid"];
+const INTEGER_METHODS: &[Symbol] = &[sym::saturating_div, sym::wrapping_div, sym::wrapping_rem, sym::wrapping_rem_euclid];
 
 #[derive(Debug)]
 pub struct ArithmeticSideEffects {
@@ -53,7 +49,7 @@ impl ArithmeticSideEffects {
             allowed_unary,
             const_span: None,
             expr_span: None,
-            integer_methods: INTEGER_METHODS.iter().map(|el| Symbol::intern(el)).collect(),
+            integer_methods: INTEGER_METHODS.iter().copied().collect(),
         }
     }
 
@@ -84,6 +80,38 @@ impl ArithmeticSideEffects {
         let ty_string = ty.to_string();
         let ty_string_elem = ty_string.split('<').next().unwrap_or_default();
         self.allowed_unary.contains(ty_string_elem)
+    }
+
+    /// Verifies built-in types that have specific allowed operations
+    fn has_specific_allowed_type_and_operation(
+        cx: &LateContext<'_>,
+        lhs_ty: Ty<'_>,
+        op: &Spanned<hir::BinOpKind>,
+        rhs_ty: Ty<'_>,
+    ) -> bool {
+        let is_div_or_rem = matches!(op.node, hir::BinOpKind::Div | hir::BinOpKind::Rem);
+        let is_non_zero_u = |symbol: Option<Symbol>| {
+            matches!(
+                symbol,
+                Some(sym::NonZeroU128 | sym::NonZeroU16 | sym::NonZeroU32 | sym::NonZeroU64 | sym::NonZeroU8 | sym::NonZeroUsize)
+            )
+        };
+        let is_sat_or_wrap = |ty: Ty<'_>| {
+            let is_sat = type_diagnostic_name(cx, ty) == Some(sym::Saturating);
+            let is_wrap = type_diagnostic_name(cx, ty) == Some(sym::Wrapping);
+            is_sat || is_wrap
+        };
+
+        // If the RHS is NonZeroU*, then division or module by zero will never occur
+        if is_non_zero_u(type_diagnostic_name(cx, rhs_ty)) && is_div_or_rem {
+            return true;
+        }
+        // `Saturation` and `Wrapping` can overflow if the RHS is zero in a division or module
+        if is_sat_or_wrap(lhs_ty) {
+            return !is_div_or_rem;
+        }
+
+        false
     }
 
     // For example, 8i32 or &i64::MAX.
@@ -145,6 +173,9 @@ impl ArithmeticSideEffects {
         let lhs_ty = cx.typeck_results().expr_ty(actual_lhs).peel_refs();
         let rhs_ty = cx.typeck_results().expr_ty(actual_rhs).peel_refs();
         if self.has_allowed_binary(lhs_ty, rhs_ty) {
+            return;
+        }
+        if Self::has_specific_allowed_type_and_operation(cx, lhs_ty, op, rhs_ty) {
             return;
         }
         let has_valid_op = if Self::is_integral(lhs_ty) && Self::is_integral(rhs_ty) {
