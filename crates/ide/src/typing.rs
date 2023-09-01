@@ -86,17 +86,16 @@ fn on_char_typed_inner(
     if !stdx::always!(TRIGGER_CHARS.contains(char_typed)) {
         return None;
     }
-    return match char_typed {
+    let conv = |text_edit: Option<TextEdit>| {
+        Some(ExtendedTextEdit { edit: text_edit?, is_snippet: false })
+    };
+    match char_typed {
         '.' => conv(on_dot_typed(&file.tree(), offset)),
         '=' => conv(on_eq_typed(&file.tree(), offset)),
         '<' => on_left_angle_typed(&file.tree(), offset),
         '>' => conv(on_right_angle_typed(&file.tree(), offset)),
         '{' => conv(on_opening_brace_typed(file, offset)),
-        _ => return None,
-    };
-
-    fn conv(text_edit: Option<TextEdit>) -> Option<ExtendedTextEdit> {
-        Some(ExtendedTextEdit { edit: text_edit?, is_snippet: false })
+        _ => None,
     }
 }
 
