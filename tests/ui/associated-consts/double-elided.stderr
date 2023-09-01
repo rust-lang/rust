@@ -1,0 +1,47 @@
+warning: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/double-elided.rs:4:14
+   |
+LL |     const C: &&str = &"";
+   |              ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
+   = note: `#[warn(elided_lifetimes_in_associated_constant)]` on by default
+help: use the `'static` lifetime
+   |
+LL |     const C: &'static &str = &"";
+   |               +++++++
+
+warning: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/double-elided.rs:4:15
+   |
+LL |     const C: &&str = &"";
+   |               ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
+help: use the `'static` lifetime
+   |
+LL |     const C: &&'static str = &"";
+   |                +++++++
+
+error[E0491]: in type `&&str`, reference has a longer lifetime than the data it references
+  --> $DIR/double-elided.rs:4:5
+   |
+LL |     const C: &&str = &"";
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the pointer is valid for the anonymous lifetime as defined here
+  --> $DIR/double-elided.rs:4:14
+   |
+LL |     const C: &&str = &"";
+   |              ^
+note: but the referenced data is only valid for the anonymous lifetime as defined here
+  --> $DIR/double-elided.rs:4:14
+   |
+LL |     const C: &&str = &"";
+   |              ^
+
+error: aborting due to previous error; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0491`.
