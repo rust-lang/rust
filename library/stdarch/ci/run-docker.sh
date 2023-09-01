@@ -5,6 +5,11 @@
 
 set -ex
 
+if [ $# -lt 1 ]; then
+    >&2 echo "Usage: $0 <TARGET>"
+    exit 1
+fi
+
 run() {
     target=$(echo "${1}" | sed 's/-emulated//')
     echo "Building docker container for TARGET=${1}"
