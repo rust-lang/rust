@@ -854,7 +854,6 @@ version = "0.0.0"
 dependencies = [
  "dashmap",
  "hashbrown 0.12.3",
- "once_cell",
  "rustc-hash",
  "triomphe",
 ]
