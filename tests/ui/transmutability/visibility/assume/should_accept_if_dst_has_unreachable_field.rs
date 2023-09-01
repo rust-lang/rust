@@ -1,3 +1,5 @@
+// check-pass
+
 //! If visibility is assumed, a transmutation should be accepted even if the
 //! destination type contains an unreachable field (e.g., a public field with a
 //! private type). (This rule is distinct from type privacy, which still may
@@ -29,7 +31,7 @@ mod dst {
     #[repr(C)] pub(self) struct Zst; // <- unreachable type
 
     #[repr(C)] pub(in super) struct Dst {
-        pub(in super) field: Zst, //~ ERROR private type
+        pub(in super) field: Zst, //~ WARNING type `dst::Zst` is more private than the item `Dst::field`
     }
 }
 
