@@ -1119,7 +1119,7 @@ impl EarlyLintPass for UnusedParens {
             let ast::TyKind::Paren(_) = &ty.kind
         {
             let id = self.parens_in_cast_in_lt.pop().expect("check_expr and check_expr_post must balance");
-            assert_eq!(id, ty.id, "check_expr and check_expr_post is a depth-first tree traversal");
+            assert_eq!(id, ty.id, "check_expr, check_ty, and check_expr_post are called, in that order, by the visitor");
         }
     }
 
