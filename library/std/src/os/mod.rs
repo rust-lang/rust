@@ -18,44 +18,53 @@ pub mod raw;
 #[cfg(all(
     doc,
     any(
+        target_os = "custom",
         all(target_arch = "wasm32", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 ))]
 #[unstable(issue = "none", feature = "std_internals")]
-pub mod unix {}
+#[path = "fake_unix_windows.rs"]
+pub mod unix;
 #[cfg(all(
     doc,
     any(
+        target_os = "custom",
         all(target_arch = "wasm32", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 ))]
 #[unstable(issue = "none", feature = "std_internals")]
-pub mod linux {}
+#[path = "fake_unix_windows.rs"]
+pub mod linux;
 #[cfg(all(
     doc,
     any(
+        target_os = "custom",
         all(target_arch = "wasm32", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 ))]
 #[unstable(issue = "none", feature = "std_internals")]
-pub mod wasi {}
+#[path = "fake_unix_windows.rs"]
+pub mod wasi;
 #[cfg(all(
     doc,
     any(
+        target_os = "custom",
         all(target_arch = "wasm32", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 ))]
 #[unstable(issue = "none", feature = "std_internals")]
-pub mod windows {}
+#[path = "fake_unix_windows.rs"]
+pub mod windows;
 
 // unix
 #[cfg(not(all(
     doc,
     any(
+        target_os = "custom",
         all(target_arch = "wasm32", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
@@ -67,6 +76,7 @@ pub mod unix;
 #[cfg(not(all(
     doc,
     any(
+        target_os = "custom",
         all(target_arch = "wasm32", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
@@ -78,6 +88,7 @@ pub mod linux;
 #[cfg(not(all(
     doc,
     any(
+        target_os = "custom",
         all(target_arch = "wasm32", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
@@ -89,6 +100,7 @@ pub mod wasi;
 #[cfg(not(all(
     doc,
     any(
+        target_os = "custom",
         all(target_arch = "wasm32", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
@@ -152,9 +164,11 @@ pub mod vxworks;
 pub(crate) mod watchos;
 #[cfg(target_os = "xous")]
 pub mod xous;
+#[cfg(target_os = "custom")]
+pub mod custom;
 
-#[cfg(any(unix, target_os = "wasi", doc))]
+#[cfg(all(any(unix, target_os = "wasi", doc), not(target_os = "custom")))]
 pub mod fd;
 
-#[cfg(any(target_os = "linux", target_os = "android", doc))]
+#[cfg(all(any(target_os = "linux", target_os = "android", doc), not(target_os = "custom")))]
 mod net;
