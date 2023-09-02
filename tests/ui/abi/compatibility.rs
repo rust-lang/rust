@@ -1,6 +1,7 @@
 // check-pass
-#![feature(rustc_attrs)]
+#![feature(rustc_attrs, transparent_unions)]
 #![allow(unused, improper_ctypes_definitions)]
+use std::marker::PhantomData;
 use std::num::NonZeroI32;
 use std::ptr::NonNull;
 
@@ -27,7 +28,7 @@ struct ReprC2Int<T>(i32, T);
 #[repr(C)]
 struct ReprC2Float<T>(f32, T);
 #[repr(C)]
-struct ReprC4<T>(T, T, T, T);
+struct ReprC4<T>(T, Vec<i32>, Zst, T);
 #[repr(C)]
 struct ReprC4Mixed<T>(T, f32, i32, T);
 #[repr(C)]
@@ -72,6 +73,45 @@ test_abi_compatible!(fn_fn, fn(), fn(i32) -> i32);
 test_abi_compatible!(zst_unit, Zst, ());
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
 test_abi_compatible!(nonzero_int, NonZeroI32, i32);
+
+// `repr(transparent)` compatibility.
+#[repr(transparent)]
+struct Wrapper1<T>(T);
+#[repr(transparent)]
+struct Wrapper2<T>((), Zst, T);
+#[repr(transparent)]
+struct Wrapper3<T>(T, [u8; 0], PhantomData<u64>);
+#[repr(transparent)]
+union WrapperUnion<T: Copy> {
+    nothing: (),
+    something: T,
+}
+
+macro_rules! test_transparent {
+    ($name:ident, $t:ty) => {
+        mod $name {
+            use super::*;
+            test_abi_compatible!(wrap1, $t, Wrapper1<$t>);
+            test_abi_compatible!(wrap2, $t, Wrapper2<$t>);
+            test_abi_compatible!(wrap3, $t, Wrapper3<$t>);
+            test_abi_compatible!(wrap4, $t, WrapperUnion<$t>);
+        }
+    };
+}
+
+test_transparent!(simple, i32);
+test_transparent!(reference, &'static i32);
+test_transparent!(zst, Zst);
+test_transparent!(unit, ());
+test_transparent!(pair, (i32, f32)); // mixing in some floats since they often get special treatment
+test_transparent!(triple, (i8, i16, f32)); // chosen to fit into 64bit
+test_transparent!(tuple, (i32, f32, i64, f64));
+test_transparent!(empty_array, [u32; 0]);
+test_transparent!(empty_1zst_array, [u8; 0]);
+test_transparent!(small_array, [i32; 2]); // chosen to fit into 64bit
+test_transparent!(large_array, [i32; 16]);
+test_transparent!(enum_, Option<i32>);
+test_transparent!(enum_niched, Option<&'static i32>);
 
 // RFC 3391 <https://rust-lang.github.io/rfcs/3391-result_ffi_guarantees.html>.
 macro_rules! test_nonnull {
