@@ -1,7 +1,7 @@
 use either::Either;
 use hir::{
     db::{DefDatabase, HirDatabase},
-    AttrId, AttrSourceMap, AttrsWithOwner, HasAttrs, InFile,
+    resolve_doc_path_on, AttrId, AttrSourceMap, AttrsWithOwner, HasAttrs, InFile,
 };
 use itertools::Itertools;
 use syntax::{
@@ -32,77 +32,13 @@ impl From<Documentation> for String {
 
 pub trait HasDocs: HasAttrs {
     fn docs(self, db: &dyn HirDatabase) -> Option<Documentation>;
+    fn resolve_doc_path(
+        self,
+        db: &dyn HirDatabase,
+        link: &str,
+        ns: Option<hir::Namespace>,
+    ) -> Option<hir::DocLinkDef>;
 }
-
-macro_rules! impl_has_docs {
-    ($($def:ident,)*) => {$(
-        impl HasDocs for hir::$def {
-            fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-                docs_from_attrs(&self.attrs(db)).map(Documentation)
-            }
-        }
-    )*};
-}
-
-impl_has_docs![
-    Field,
-    Variant,
-    Static,
-    Const,
-    Trait,
-    TraitAlias,
-    TypeAlias,
-    Macro,
-    Function,
-    Adt,
-    Module,
-    GenericParam,
-    Impl,
-];
-
-macro_rules! impl_has_docs_enum {
-    ($($variant:ident),* for $enum:ident) => {$(
-        impl HasDocs for hir::$variant {
-            fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-                hir::$enum::$variant(self).docs(db)
-            }
-        }
-    )*};
-}
-
-impl_has_docs_enum![Struct, Union, Enum for Adt];
-impl_has_docs_enum![TypeParam, ConstParam, LifetimeParam for GenericParam];
-
-impl HasDocs for hir::AssocItem {
-    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-        match self {
-            hir::AssocItem::Function(it) => it.docs(db),
-            hir::AssocItem::Const(it) => it.docs(db),
-            hir::AssocItem::TypeAlias(it) => it.docs(db),
-        }
-    }
-}
-
-impl HasDocs for hir::ExternCrateDecl {
-    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-        let crate_docs =
-            docs_from_attrs(&self.resolved_crate(db)?.root_module().attrs(db)).map(String::from);
-        let decl_docs = docs_from_attrs(&self.attrs(db)).map(String::from);
-        match (decl_docs, crate_docs) {
-            (None, None) => None,
-            (Some(decl_docs), None) => Some(decl_docs),
-            (None, Some(crate_docs)) => Some(crate_docs),
-            (Some(mut decl_docs), Some(crate_docs)) => {
-                decl_docs.push('\n');
-                decl_docs.push('\n');
-                decl_docs += &crate_docs;
-                Some(decl_docs)
-            }
-        }
-        .map(Documentation::new)
-    }
-}
-
 /// A struct to map text ranges from [`Documentation`] back to TextRanges in the syntax tree.
 #[derive(Debug)]
 pub struct DocsRangeMap {
@@ -147,22 +83,6 @@ impl DocsRangeMap {
                 Some(InFile { file_id, value: range })
             }
         }
-    }
-}
-
-fn get_doc_string_in_attr(it: &ast::Attr) -> Option<ast::String> {
-    match it.expr() {
-        // #[doc = lit]
-        Some(ast::Expr::Literal(lit)) => match lit.kind() {
-            ast::LiteralKind::String(it) => Some(it),
-            _ => None,
-        },
-        // #[cfg_attr(..., doc = "", ...)]
-        None => {
-            // FIXME: See highlight injection for what to do here
-            None
-        }
-        _ => None,
     }
 }
 
@@ -234,6 +154,116 @@ pub fn docs_from_attrs(attrs: &hir::Attrs) -> Option<String> {
         None
     } else {
         Some(buf)
+    }
+}
+
+macro_rules! impl_has_docs {
+    ($($def:ident,)*) => {$(
+        impl HasDocs for hir::$def {
+            fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+                docs_from_attrs(&self.attrs(db)).map(Documentation)
+            }
+            fn resolve_doc_path(
+                self,
+                db: &dyn HirDatabase,
+                link: &str,
+                ns: Option<hir::Namespace>
+            ) -> Option<hir::DocLinkDef> {
+                resolve_doc_path_on(db, self, link, ns)
+            }
+        }
+    )*};
+}
+
+impl_has_docs![
+    Variant, Field, Static, Const, Trait, TraitAlias, TypeAlias, Macro, Function, Adt, Module,
+    Impl,
+];
+
+macro_rules! impl_has_docs_enum {
+    ($($variant:ident),* for $enum:ident) => {$(
+        impl HasDocs for hir::$variant {
+            fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+                hir::$enum::$variant(self).docs(db)
+            }
+            fn resolve_doc_path(
+                self,
+                db: &dyn HirDatabase,
+                link: &str,
+                ns: Option<hir::Namespace>
+            ) -> Option<hir::DocLinkDef> {
+                hir::$enum::$variant(self).resolve_doc_path(db, link, ns)
+            }
+        }
+    )*};
+}
+
+impl_has_docs_enum![Struct, Union, Enum for Adt];
+
+impl HasDocs for hir::AssocItem {
+    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+        match self {
+            hir::AssocItem::Function(it) => it.docs(db),
+            hir::AssocItem::Const(it) => it.docs(db),
+            hir::AssocItem::TypeAlias(it) => it.docs(db),
+        }
+    }
+
+    fn resolve_doc_path(
+        self,
+        db: &dyn HirDatabase,
+        link: &str,
+        ns: Option<hir::Namespace>,
+    ) -> Option<hir::DocLinkDef> {
+        match self {
+            hir::AssocItem::Function(it) => it.resolve_doc_path(db, link, ns),
+            hir::AssocItem::Const(it) => it.resolve_doc_path(db, link, ns),
+            hir::AssocItem::TypeAlias(it) => it.resolve_doc_path(db, link, ns),
+        }
+    }
+}
+
+impl HasDocs for hir::ExternCrateDecl {
+    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+        let crate_docs =
+            docs_from_attrs(&self.resolved_crate(db)?.root_module().attrs(db)).map(String::from);
+        let decl_docs = docs_from_attrs(&self.attrs(db)).map(String::from);
+        match (decl_docs, crate_docs) {
+            (None, None) => None,
+            (Some(decl_docs), None) => Some(decl_docs),
+            (None, Some(crate_docs)) => Some(crate_docs),
+            (Some(mut decl_docs), Some(crate_docs)) => {
+                decl_docs.push('\n');
+                decl_docs.push('\n');
+                decl_docs += &crate_docs;
+                Some(decl_docs)
+            }
+        }
+        .map(Documentation::new)
+    }
+    fn resolve_doc_path(
+        self,
+        db: &dyn HirDatabase,
+        link: &str,
+        ns: Option<hir::Namespace>,
+    ) -> Option<hir::DocLinkDef> {
+        resolve_doc_path_on(db, self, link, ns)
+    }
+}
+
+fn get_doc_string_in_attr(it: &ast::Attr) -> Option<ast::String> {
+    match it.expr() {
+        // #[doc = lit]
+        Some(ast::Expr::Literal(lit)) => match lit.kind() {
+            ast::LiteralKind::String(it) => Some(it),
+            _ => None,
+        },
+        // #[cfg_attr(..., doc = "", ...)]
+        None => {
+            // FIXME: See highlight injection for what to do here
+            None
+        }
+        _ => None,
     }
 }
 

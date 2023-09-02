@@ -471,7 +471,7 @@ pub(super) fn definition(
         Definition::SelfType(impl_def) => {
             impl_def.self_ty(db).as_adt().map(|adt| label_and_docs(db, adt))?
         }
-        Definition::GenericParam(it) => label_and_docs(db, it),
+        Definition::GenericParam(it) => (it.display(db).to_string(), None),
         Definition::Label(it) => return Some(Markup::fenced_block(&it.name(db).display(db))),
         Definition::ExternCrateDecl(it) => label_and_docs(db, it),
         // FIXME: We should be able to show more info about these

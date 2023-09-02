@@ -16,7 +16,7 @@ use hir::{db::HirDatabase, Adt, AsAssocItem, AssocItem, AssocItemContainer, HasA
 use ide_db::{
     base_db::{CrateOrigin, LangCrateOrigin, ReleaseChannel, SourceDatabase},
     defs::{Definition, NameClass, NameRefClass},
-    documentation::{docs_with_rangemap, Documentation},
+    documentation::{docs_with_rangemap, Documentation, HasDocs},
     helpers::pick_best_token,
     RootDatabase,
 };

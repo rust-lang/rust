@@ -88,7 +88,7 @@ use triomphe::Arc;
 use crate::db::{DefDatabase, HirDatabase};
 
 pub use crate::{
-    attrs::{DocLinkDef, HasAttrs},
+    attrs::{resolve_doc_path_on, HasAttrs},
     diagnostics::{
         AnyDiagnostic, BreakOutsideOfLoop, CaseType, ExpectedFunction, InactiveCode,
         IncoherentImpl, IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError,
@@ -4838,4 +4838,11 @@ pub enum ItemContainer {
     Module(Module),
     ExternBlock(),
     Crate(CrateId),
+}
+
+/// Subset of `ide_db::Definition` that doc links can resolve to.
+pub enum DocLinkDef {
+    ModuleDef(ModuleDef),
+    Field(Field),
+    SelfType(Trait),
 }
