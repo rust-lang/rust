@@ -24,5 +24,11 @@ error: matching over `()` is more explicit
 LL |     let _ = foo().map_err(|_| todo!());
    |                            ^ help: use `()` instead of `_`: `()`
 
-error: aborting due to 4 previous errors
+error: matching over `()` is more explicit
+  --> $DIR/ignored_unit_patterns.rs:21:9
+   |
+LL |     let _ = foo().unwrap();
+   |         ^ help: use `()` instead of `_`: `()`
+
+error: aborting due to 5 previous errors
 

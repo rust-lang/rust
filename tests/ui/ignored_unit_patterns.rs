@@ -1,5 +1,5 @@
 #![warn(clippy::ignored_unit_patterns)]
-#![allow(clippy::redundant_pattern_matching, clippy::single_match)]
+#![allow(clippy::let_unit_value, clippy::redundant_pattern_matching, clippy::single_match)]
 
 fn foo() -> Result<(), ()> {
     unimplemented!()
@@ -14,4 +14,12 @@ fn main() {
     //~^ ERROR: matching over `()` is more explicit
     let _ = foo().map_err(|_| todo!());
     //~^ ERROR: matching over `()` is more explicit
+}
+
+#[allow(unused)]
+pub fn moo(_: ()) {
+    let _ = foo().unwrap();
+    //~^ ERROR: matching over `()` is more explicit
+    let _: () = foo().unwrap();
+    let _: () = ();
 }
