@@ -8,7 +8,7 @@ use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
+use rustc_data_structures::sync::{Lrc, OnceLock, WorkerLocal};
 use rustc_errors::PResult;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
@@ -689,7 +689,7 @@ pub fn create_global_ctxt<'tcx>(
     lint_store: Lrc<LintStore>,
     dep_graph: DepGraph,
     untracked: Untracked,
-    gcx_cell: &'tcx OnceCell<GlobalCtxt<'tcx>>,
+    gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
     hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
 ) -> &'tcx GlobalCtxt<'tcx> {
