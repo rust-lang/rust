@@ -49,6 +49,7 @@ mod iter_skip_next;
 mod iter_skip_zero;
 mod iter_with_drain;
 mod iterator_step_by_zero;
+mod join_absolute_paths;
 mod manual_next_back;
 mod manual_ok_or;
 mod manual_saturating_arithmetic;
@@ -3684,6 +3685,46 @@ declare_clippy_lint! {
     "calling the `try_from` and `try_into` trait methods when `From`/`Into` is implemented"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `Path::join` that start with a path separator (`\\` or `/`).
+    ///
+    /// ### Why is this bad?
+    /// If the argument to `Path::join` starts with a separator, it will overwrite
+    /// the original path. If this is intentional, prefer using `Path::new` instead.
+    ///
+    /// Note the behavior is platform dependent. A leading `\\` will be accepted
+    /// on unix systems as part of the file name
+    ///
+    /// See [`Path::join`](https://doc.rust-lang.org/std/path/struct.Path.html#method.join)
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use std::path::{Path, PathBuf};
+    /// let path = Path::new("/bin");
+    /// let joined_path = path.join("/sh");
+    /// assert_eq!(joined_path, PathBuf::from("/sh"));
+    /// ```
+    ///
+    /// Use instead;
+    /// ```rust
+    /// # use std::path::{Path, PathBuf};
+    /// let path = Path::new("/bin");
+    ///
+    /// // If this was unintentional, remove the leading separator
+    /// let joined_path = path.join("sh");
+    /// assert_eq!(joined_path, PathBuf::from("/bin/sh"));
+    ///
+    /// // If this was intentional, create a new path instead
+    /// let new = Path::new("/sh");
+    /// assert_eq!(new, PathBuf::from("/sh"));
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub JOIN_ABSOLUTE_PATHS,
+    suspicious,
+    "calls to `Path::join` which will overwrite the original path"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3833,6 +3874,7 @@ impl_lint_pass!(Methods => [
     REDUNDANT_AS_STR,
     WAKER_CLONE_WAKE,
     UNNECESSARY_FALLIBLE_CONVERSIONS,
+    JOIN_ABSOLUTE_PATHS,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4235,6 +4277,8 @@ impl Methods {
                 ("join", [join_arg]) => {
                     if let Some(("collect", _, _, span, _)) = method_call(recv) {
                         unnecessary_join::check(cx, expr, recv, join_arg, span);
+                    } else {
+                        join_absolute_paths::check(cx, recv, join_arg, expr.span);
                     }
                 },
                 ("last", []) => {
