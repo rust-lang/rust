@@ -1,5 +1,10 @@
 #![warn(clippy::useless_vec)]
-#![allow(clippy::nonstandard_macro_braces, clippy::uninlined_format_args, unused)]
+#![allow(
+    clippy::nonstandard_macro_braces,
+    clippy::never_loop,
+    clippy::uninlined_format_args,
+    unused
+)]
 
 use std::rc::Rc;
 
