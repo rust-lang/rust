@@ -9,7 +9,7 @@ use nohash_hasher::{IntMap, IntSet};
 use rustc_hash::FxHashSet;
 use triomphe::Arc;
 
-use crate::lsp_ext;
+use crate::{global_state::GlobalStateSnapshot, lsp, lsp_ext};
 
 pub(crate) type CheckFixes = Arc<IntMap<usize, IntMap<FileId, Vec<Fix>>>>;
 
@@ -121,4 +121,42 @@ fn are_diagnostics_equal(left: &lsp_types::Diagnostic, right: &lsp_types::Diagno
         && left.severity == right.severity
         && left.range == right.range
         && left.message == right.message
+}
+
+pub(crate) fn fetch_native_diagnostics(
+    snapshot: GlobalStateSnapshot,
+    subscriptions: Vec<FileId>,
+) -> Vec<(FileId, Vec<lsp_types::Diagnostic>)> {
+    let _p = profile::span("fetch_native_diagnostics");
+    let _ctx = stdx::panic_context::enter("fetch_native_diagnostics".to_owned());
+    subscriptions
+        .into_iter()
+        .filter_map(|file_id| {
+            let line_index = snapshot.file_line_index(file_id).ok()?;
+            let diagnostics = snapshot
+                .analysis
+                .diagnostics(
+                    &snapshot.config.diagnostics(),
+                    ide::AssistResolveStrategy::None,
+                    file_id,
+                )
+                .ok()?
+                .into_iter()
+                .map(move |d| lsp_types::Diagnostic {
+                    range: lsp::to_proto::range(&line_index, d.range),
+                    severity: Some(lsp::to_proto::diagnostic_severity(d.severity)),
+                    code: Some(lsp_types::NumberOrString::String(d.code.as_str().to_string())),
+                    code_description: Some(lsp_types::CodeDescription {
+                        href: lsp_types::Url::parse(&d.code.url()).unwrap(),
+                    }),
+                    source: Some("rust-analyzer".to_string()),
+                    message: d.message,
+                    related_information: None,
+                    tags: d.unused.then(|| vec![lsp_types::DiagnosticTag::UNNECESSARY]),
+                    data: None,
+                })
+                .collect::<Vec<_>>();
+            Some((file_id, diagnostics))
+        })
+        .collect()
 }

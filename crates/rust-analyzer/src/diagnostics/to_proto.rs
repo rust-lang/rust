@@ -8,8 +8,8 @@ use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
 
 use crate::{
-    global_state::GlobalStateSnapshot, line_index::PositionEncoding, lsp_ext,
-    to_proto::url_from_abs_path,
+    global_state::GlobalStateSnapshot, line_index::PositionEncoding,
+    lsp::to_proto::url_from_abs_path, lsp_ext,
 };
 
 use super::{DiagnosticsMapConfig, Fix};

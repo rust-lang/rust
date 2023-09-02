@@ -22,15 +22,14 @@ use vfs::{AnchoredPathBuf, Vfs};
 use crate::{
     config::{Config, ConfigError},
     diagnostics::{CheckFixes, DiagnosticCollection},
-    from_proto,
     line_index::{LineEndings, LineIndex},
+    lsp::{from_proto, to_proto::url_from_abs_path},
     lsp_ext,
     main_loop::Task,
     mem_docs::MemDocs,
     op_queue::OpQueue,
     reload,
     task_pool::TaskPool,
-    to_proto::url_from_abs_path,
 };
 
 // Enforces drop order
@@ -40,7 +39,7 @@ pub(crate) struct Handle<H, C> {
 }
 
 pub(crate) type ReqHandler = fn(&mut GlobalState, lsp_server::Response);
-pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
+type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 
 /// `GlobalState` is the primary mutable state of the language server
 ///
@@ -49,6 +48,7 @@ pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 /// incremental salsa database.
 ///
 /// Note that this struct has more than one impl in various modules!
+#[doc(alias = "GlobalMess")]
 pub(crate) struct GlobalState {
     sender: Sender<lsp_server::Message>,
     req_queue: ReqQueue,

@@ -36,15 +36,17 @@ use crate::{
     cargo_target_spec::CargoTargetSpec,
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
     diff::diff,
-    from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
     line_index::LineEndings,
+    lsp::{
+        from_proto, to_proto,
+        utils::{all_edits_are_disjoint, invalid_params_error},
+        LspError,
+    },
     lsp_ext::{
         self, CrateInfoResult, ExternalDocsPair, ExternalDocsResponse, FetchDependencyListParams,
         FetchDependencyListResult, PositionOrRange, ViewCrateGraphParams, WorkspaceSymbolParams,
     },
-    lsp_utils::{all_edits_are_disjoint, invalid_params_error},
-    to_proto, LspError,
 };
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {

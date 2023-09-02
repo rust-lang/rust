@@ -12,8 +12,8 @@ use crate::{
     from_json,
     global_state::GlobalStateSnapshot,
     line_index::{LineIndex, PositionEncoding},
+    lsp::utils::invalid_params_error,
     lsp_ext,
-    lsp_utils::invalid_params_error,
 };
 
 pub(crate) fn abs_path(url: &lsp_types::Url) -> anyhow::Result<AbsPathBuf> {

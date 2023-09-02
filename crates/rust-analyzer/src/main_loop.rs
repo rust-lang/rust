@@ -17,11 +17,14 @@ use vfs::FileId;
 
 use crate::{
     config::Config,
+    diagnostics::fetch_native_diagnostics,
     dispatch::{NotificationDispatcher, RequestDispatcher},
-    from_proto,
     global_state::{file_id_to_url, url_to_file_id, GlobalState},
+    lsp::{
+        from_proto,
+        utils::{notification_is, Progress},
+    },
     lsp_ext,
-    lsp_utils::{notification_is, Progress},
     reload::{BuildDataProgress, ProcMacroProgress, ProjectWorkspaceProgress},
 };
 
@@ -420,6 +423,32 @@ impl GlobalState {
         });
     }
 
+    fn update_diagnostics(&mut self) {
+        let db = self.analysis_host.raw_database();
+        let subscriptions = self
+            .mem_docs
+            .iter()
+            .map(|path| self.vfs.read().0.file_id(path).unwrap())
+            .filter(|&file_id| {
+                let source_root = db.file_source_root(file_id);
+                // Only publish diagnostics for files in the workspace, not from crates.io deps
+                // or the sysroot.
+                // While theoretically these should never have errors, we have quite a few false
+                // positives particularly in the stdlib, and those diagnostics would stay around
+                // forever if we emitted them here.
+                !db.source_root(source_root).is_library
+            })
+            .collect::<Vec<_>>();
+        tracing::trace!("updating notifications for {:?}", subscriptions);
+
+        // Diagnostics are triggered by the user typing
+        // so we run them on a latency sensitive thread.
+        self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, {
+            let snapshot = self.snapshot();
+            move || Task::Diagnostics(fetch_native_diagnostics(snapshot, subscriptions))
+        });
+    }
+
     fn update_status_or_notify(&mut self) {
         let status = self.current_status();
         if self.last_reported_status.as_ref() != Some(&status) {
@@ -784,78 +813,5 @@ impl GlobalState {
             .on_sync_mut::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)?
             .finish();
         Ok(())
-    }
-
-    fn update_diagnostics(&mut self) {
-        let db = self.analysis_host.raw_database();
-        let subscriptions = self
-            .mem_docs
-            .iter()
-            .map(|path| self.vfs.read().0.file_id(path).unwrap())
-            .filter(|&file_id| {
-                let source_root = db.file_source_root(file_id);
-                // Only publish diagnostics for files in the workspace, not from crates.io deps
-                // or the sysroot.
-                // While theoretically these should never have errors, we have quite a few false
-                // positives particularly in the stdlib, and those diagnostics would stay around
-                // forever if we emitted them here.
-                !db.source_root(source_root).is_library
-            })
-            .collect::<Vec<_>>();
-
-        tracing::trace!("updating notifications for {:?}", subscriptions);
-
-        let snapshot = self.snapshot();
-
-        // Diagnostics are triggered by the user typing
-        // so we run them on a latency sensitive thread.
-        self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, move || {
-            let _p = profile::span("publish_diagnostics");
-            let _ctx = stdx::panic_context::enter("publish_diagnostics".to_owned());
-            let diagnostics = subscriptions
-                .into_iter()
-                .filter_map(|file_id| {
-                    let line_index = snapshot.file_line_index(file_id).ok()?;
-                    Some((
-                        file_id,
-                        line_index,
-                        snapshot
-                            .analysis
-                            .diagnostics(
-                                &snapshot.config.diagnostics(),
-                                ide::AssistResolveStrategy::None,
-                                file_id,
-                            )
-                            .ok()?,
-                    ))
-                })
-                .map(|(file_id, line_index, it)| {
-                    (
-                        file_id,
-                        it.into_iter()
-                            .map(move |d| lsp_types::Diagnostic {
-                                range: crate::to_proto::range(&line_index, d.range),
-                                severity: Some(crate::to_proto::diagnostic_severity(d.severity)),
-                                code: Some(lsp_types::NumberOrString::String(
-                                    d.code.as_str().to_string(),
-                                )),
-                                code_description: Some(lsp_types::CodeDescription {
-                                    href: lsp_types::Url::parse(&d.code.url()).unwrap(),
-                                }),
-                                source: Some("rust-analyzer".to_string()),
-                                message: d.message,
-                                related_information: None,
-                                tags: if d.unused {
-                                    Some(vec![lsp_types::DiagnosticTag::UNNECESSARY])
-                                } else {
-                                    None
-                                },
-                                data: None,
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                });
-            Task::Diagnostics(diagnostics.collect())
-        });
     }
 }

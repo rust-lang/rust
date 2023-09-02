@@ -3,6 +3,7 @@ use ide_db::rust_doc::is_rust_fence;
 
 const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
 
+// FIXME: why is this in this crate?
 pub(crate) fn format_docs(src: &str) -> String {
     let mut processed_lines = Vec::new();
     let mut in_code_block = false;
