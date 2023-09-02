@@ -2,6 +2,8 @@
 #![feature(array_chunks)]
 #![feature(array_methods)]
 #![feature(array_windows)]
+#![feature(ascii_char)]
+#![feature(ascii_char_variants)]
 #![feature(bigint_helper_methods)]
 #![feature(cell_update)]
 #![feature(const_align_offset)]
