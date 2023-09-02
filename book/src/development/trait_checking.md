@@ -76,7 +76,7 @@ If neither diagnostic item nor a language item is available, we can use
 [`clippy_utils::paths`][paths] with the `match_trait_method` to determine trait
 implementation.
 
-> **Note**: This approach should be avoided if possible, the best thing to do would be to make a PR to [`rust-lang/rust`][rust].
+> **Note**: This approach should be avoided if possible, the best thing to do would be to make a PR to [`rust-lang/rust`][rust] adding a diagnostic item.
 
 Below, we check if the given `expr` implements the `Iterator`'s trait method `cloned` :
 
