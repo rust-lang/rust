@@ -22,4 +22,22 @@ const EXPECTED = [
             { 'path': 'full_path_function::b::Sac', 'name': 'bar2' },
         ],
     },
+    {
+        'query': 'string::string -> u32',
+        'others': [
+            { 'path': 'full_path_function::b::Sac', 'name': 'string' },
+        ],
+    },
+    {
+        'query': 'alloc::string::string -> u32',
+        'others': [
+            { 'path': 'full_path_function::b::Sac', 'name': 'string' },
+        ],
+    },
+    {
+        'query': 'alloc::string -> u32',
+        'others': [
+            { 'path': 'full_path_function::b::Sac', 'name': 'string' },
+        ],
+    },
 ];

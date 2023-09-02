@@ -1,7 +1,7 @@
 use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeSeq, SerializeStruct, Serializer};
@@ -246,6 +246,11 @@ pub(crate) fn build_index<'tcx>(
         where
             S: Serializer,
         {
+            let mut extra_paths = FxHashMap::default();
+            // We need to keep the order of insertion, hence why we use an `IndexMap`. Then we will
+            // insert these "extra paths" (which are paths of items from external crates) into the
+            // `full_paths` list at the end.
+            let mut revert_extra_paths = FxIndexMap::default();
             let mut mod_paths = FxHashMap::default();
             for (index, item) in self.items.iter().enumerate() {
                 if item.path.is_empty() {
@@ -253,17 +258,43 @@ pub(crate) fn build_index<'tcx>(
                 }
                 mod_paths.insert(&item.path, index);
             }
-            let paths = self
-                .paths
-                .iter()
-                .map(|(ty, path)| {
-                    if path.len() < 2 {
-                        return Paths { ty: *ty, name: path[0], path: None };
+            let mut paths = Vec::with_capacity(self.paths.len());
+            for (ty, path) in &self.paths {
+                if path.len() < 2 {
+                    paths.push(Paths { ty: *ty, name: path[0], path: None });
+                    continue;
+                }
+                let full_path = join_with_double_colon(&path[..path.len() - 1]);
+                if let Some(index) = mod_paths.get(&full_path) {
+                    paths.push(Paths { ty: *ty, name: *path.last().unwrap(), path: Some(*index) });
+                    continue;
+                }
+                // It means it comes from an external crate so the item and its path will be
+                // stored into another array.
+                //
+                // `index` is put after the last `mod_paths`
+                let index = extra_paths.len() + self.items.len();
+                if !revert_extra_paths.contains_key(&index) {
+                    revert_extra_paths.insert(index, full_path.clone());
+                }
+                match extra_paths.entry(full_path) {
+                    Entry::Occupied(entry) => {
+                        paths.push(Paths {
+                            ty: *ty,
+                            name: *path.last().unwrap(),
+                            path: Some(*entry.get()),
+                        });
                     }
-                    let index = mod_paths.get(&join_with_double_colon(&path[..path.len() - 1]));
-                    Paths { ty: *ty, name: *path.last().unwrap(), path: index.copied() }
-                })
-                .collect::<Vec<_>>();
+                    Entry::Vacant(entry) => {
+                        entry.insert(index);
+                        paths.push(Paths {
+                            ty: *ty,
+                            name: *path.last().unwrap(),
+                            path: Some(index),
+                        });
+                    }
+                }
+            }
 
             let mut names = Vec::with_capacity(self.items.len());
             let mut types = String::with_capacity(self.items.len());
@@ -320,6 +351,10 @@ pub(crate) fn build_index<'tcx>(
                 if item.deprecation.is_some() {
                     deprecated.push(index);
                 }
+            }
+
+            for (index, path) in &revert_extra_paths {
+                full_paths.push((*index, path));
             }
 
             let has_aliases = !self.aliases.is_empty();
