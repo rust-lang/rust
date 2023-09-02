@@ -119,7 +119,7 @@
 //! # Representation
 //!
 //! Rust guarantees to optimize the following types `T` such that
-//! [`Option<T>`] has the same size and alignment as `T`. In some
+//! [`Option<T>`] has the same size, alignment, and [function call ABI] as `T`. In some
 //! of these cases, Rust further guarantees that
 //! `transmute::<_, Option<T>>([0u8; size_of::<T>()])` is sound and
 //! produces `Option::<T>::None`. These cases are identified by the
@@ -127,7 +127,7 @@
 //!
 //! | `T`                                                                 | `transmute::<_, Option<T>>([0u8; size_of::<T>()])` sound? |
 //! |---------------------------------------------------------------------|----------------------------------------------------------------------|
-//! | [`Box<U>`]                                                          | when `U: Sized`                                                      |
+//! | [`Box<U>`] (specifically, only `Box<U, Global>`)                    | when `U: Sized`                                                      |
 //! | `&U`                                                                | when `U: Sized`                                                      |
 //! | `&mut U`                                                            | when `U: Sized`                                                      |
 //! | `fn`, `extern "C" fn`[^extern_fn]                                   | always                                                               |
@@ -135,11 +135,12 @@
 //! | [`ptr::NonNull<U>`]                                                 | when `U: Sized`                                                      |
 //! | `#[repr(transparent)]` struct around one of the types in this list. | when it holds for the inner type                                     |
 //!
-//! [^extern_fn]: this remains true for any other ABI: `extern "abi" fn` (_e.g._, `extern "system" fn`)
+//! [^extern_fn]: this remains true for any argument/return types and any other ABI: `extern "abi" fn` (_e.g._, `extern "system" fn`)
 //!
 //! [`Box<U>`]: ../../std/boxed/struct.Box.html
 //! [`num::NonZero*`]: crate::num
 //! [`ptr::NonNull<U>`]: crate::ptr::NonNull
+//! [function call ABI]: ../primitive.fn.html#abi-compatibility
 //!
 //! This is called the "null pointer optimization" or NPO.
 //!
