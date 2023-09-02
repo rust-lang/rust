@@ -1,6 +1,8 @@
 use std::env;
 
 fn main() {
+    let is_custom_os = || env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("custom");
+
     println!("cargo:rerun-if-changed=build.rs");
     let target = env::var("TARGET").expect("TARGET was not set");
     if target.contains("freebsd") {
@@ -40,6 +42,7 @@ fn main() {
         || target.contains("xous")
         || target.contains("hurd")
         || target.contains("uefi")
+        || is_custom_os()
         // See src/bootstrap/synthetic_targets.rs
         || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()
     {

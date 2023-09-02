@@ -926,6 +926,7 @@ pub mod consts {
     /// - dragonfly
     /// - netbsd
     /// - openbsd
+    /// - custom
     /// - solaris
     /// - android
     /// - windows
