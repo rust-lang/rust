@@ -120,6 +120,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
         Operand::Constant(_) | Operand::Static(_) => (),
     };
     for (_, block) in body.basic_blocks.iter() {
+        db.unwind_if_cancelled();
         for statement in &block.statements {
             match &statement.kind {
                 StatementKind::Assign(_, r) => match r {
@@ -318,6 +319,7 @@ fn ever_initialized_map(
         dfs(db, body, body.start_block, l, &mut result);
     }
     for l in body.locals.iter().map(|it| it.0) {
+        db.unwind_if_cancelled();
         if !result[body.start_block].contains_idx(l) {
             result[body.start_block].insert(l, false);
             dfs(db, body, body.start_block, l, &mut result);
