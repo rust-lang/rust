@@ -3,283 +3,257 @@
 //!
 //! When `cfg(parallel_compiler)` is not set, the lock is instead a wrapper around `RefCell`.
 
-#[cfg(not(parallel_compiler))]
-use std::cell::RefCell;
-#[cfg(parallel_compiler)]
-use {
-    crate::cold_path,
-    crate::sync::DynSend,
-    crate::sync::DynSync,
-    parking_lot::lock_api::RawMutex,
-    std::cell::Cell,
-    std::cell::UnsafeCell,
-    std::fmt,
-    std::intrinsics::{likely, unlikely},
-    std::marker::PhantomData,
-    std::mem::ManuallyDrop,
-    std::ops::{Deref, DerefMut},
-};
+#![allow(dead_code)]
+
+use std::fmt;
 
 #[cfg(not(parallel_compiler))]
-pub use std::cell::RefMut as LockGuard;
+pub use disabled::*;
+#[cfg(parallel_compiler)]
+pub use enabled::*;
 
-#[cfg(not(parallel_compiler))]
-#[derive(Debug)]
-pub struct Lock<T>(RefCell<T>);
-
-#[cfg(not(parallel_compiler))]
-impl<T> Lock<T> {
-    #[inline(always)]
-    pub fn new(inner: T) -> Self {
-        Lock(RefCell::new(inner))
-    }
-
-    #[inline(always)]
-    pub fn into_inner(self) -> T {
-        self.0.into_inner()
-    }
-
-    #[inline(always)]
-    pub fn get_mut(&mut self) -> &mut T {
-        self.0.get_mut()
-    }
-
-    #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
-        self.0.try_borrow_mut().ok()
-    }
-
-    #[inline(always)]
-    #[track_caller]
-    // This is unsafe to match the API for the `parallel_compiler` case.
-    pub unsafe fn lock_assume_no_sync(&self) -> LockGuard<'_, T> {
-        self.0.borrow_mut()
-    }
-
-    #[inline(always)]
-    #[track_caller]
-    // This is unsafe to match the API for the `parallel_compiler` case.
-    pub unsafe fn lock_assume_sync(&self) -> LockGuard<'_, T> {
-        self.0.borrow_mut()
-    }
-
-    #[inline(always)]
-    #[track_caller]
-    pub fn lock(&self) -> LockGuard<'_, T> {
-        self.0.borrow_mut()
-    }
+#[derive(Clone, Copy, PartialEq)]
+pub enum Assume {
+    NoSync,
+    Sync,
 }
 
-/// A guard holding mutable access to a `Lock` which is in a locked state.
-#[cfg(parallel_compiler)]
-#[must_use = "if unused the Lock will immediately unlock"]
-pub struct LockGuard<'a, T> {
-    lock: &'a Lock<T>,
-    marker: PhantomData<&'a mut T>,
-}
+mod enabled {
+    use super::Assume;
+    use crate::sync::mode;
+    #[cfg(parallel_compiler)]
+    use crate::sync::{DynSend, DynSync};
+    use parking_lot::lock_api::RawMutex as _;
+    use parking_lot::RawMutex;
+    use std::cell::Cell;
+    use std::cell::UnsafeCell;
+    use std::hint::unreachable_unchecked;
+    use std::intrinsics::unlikely;
+    use std::marker::PhantomData;
+    use std::ops::{Deref, DerefMut};
 
-#[cfg(parallel_compiler)]
-impl<'a, T: 'a> Deref for LockGuard<'a, T> {
-    type Target = T;
-    #[inline]
-    fn deref(&self) -> &T {
-        // SAFETY: We have shared access to the mutable access owned by this type,
-        // so we can give out a shared reference.
-        unsafe { &*self.lock.data.get() }
+    /// A guard holding mutable access to a `Lock` which is in a locked state.
+    #[must_use = "if unused the Lock will immediately unlock"]
+    pub struct LockGuard<'a, T> {
+        lock: &'a Lock<T>,
+        marker: PhantomData<&'a mut T>,
+
+        /// The syncronization mode of the lock. This is explicitly passed to let LLVM relate it
+        /// to the original lock operation.
+        assume: Assume,
     }
-}
 
-#[cfg(parallel_compiler)]
-impl<'a, T: 'a> DerefMut for LockGuard<'a, T> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut T {
-        // SAFETY: We have mutable access to the data so we can give out a mutable reference.
-        unsafe { &mut *self.lock.data.get() }
-    }
-}
-
-#[cfg(parallel_compiler)]
-impl<'a, T: 'a> Drop for LockGuard<'a, T> {
-    #[inline]
-    fn drop(&mut self) {
-        // SAFETY: We know that the lock is in a locked
-        // state because it is a invariant of this type.
-        unsafe { self.lock.raw.unlock() };
-    }
-}
-
-#[cfg(parallel_compiler)]
-union LockRawUnion {
-    /// Indicates if the cell is locked. Only used if `LockRaw.sync` is false.
-    cell: ManuallyDrop<Cell<bool>>,
-
-    /// A lock implementation that's only used if `LockRaw.sync` is true.
-    lock: ManuallyDrop<parking_lot::RawMutex>,
-}
-
-/// A raw lock which only uses synchronization if `might_be_dyn_thread_safe` is true.
-/// It contains no associated data and is used in the implementation of `Lock` which does have such data.
-///
-/// A manual implementation of a tagged union is used with the `sync` field and the `LockRawUnion` instead
-/// of using enums as it results in better code generation.
-#[cfg(parallel_compiler)]
-struct LockRaw {
-    /// Indicates if synchronization is used via `opt.lock` if true,
-    /// or if a non-thread safe cell is used via `opt.cell`. This is set on initialization and never changed.
-    sync: bool,
-    opt: LockRawUnion,
-}
-
-#[cfg(parallel_compiler)]
-impl LockRaw {
-    fn new() -> Self {
-        if unlikely(super::mode::might_be_dyn_thread_safe()) {
-            // Create the lock with synchronization enabled using the `RawMutex` type.
-            LockRaw {
-                sync: true,
-                opt: LockRawUnion { lock: ManuallyDrop::new(parking_lot::RawMutex::INIT) },
-            }
-        } else {
-            // Create the lock with synchronization disabled.
-            LockRaw { sync: false, opt: LockRawUnion { cell: ManuallyDrop::new(Cell::new(false)) } }
+    impl<'a, T: 'a> Deref for LockGuard<'a, T> {
+        type Target = T;
+        #[inline]
+        fn deref(&self) -> &T {
+            // SAFETY: We have shared access to the mutable access owned by this type,
+            // so we can give out a shared reference.
+            unsafe { &*self.lock.data.get() }
         }
     }
 
-    #[inline(always)]
-    fn try_lock(&self) -> bool {
-        // SAFETY: This is safe since the union fields are used in accordance with `self.sync`.
-        unsafe {
-            if likely(!self.sync) {
-                if self.opt.cell.get() {
-                    false
+    impl<'a, T: 'a> DerefMut for LockGuard<'a, T> {
+        #[inline]
+        fn deref_mut(&mut self) -> &mut T {
+            // SAFETY: We have mutable access to the data so we can give out a mutable reference.
+            unsafe { &mut *self.lock.data.get() }
+        }
+    }
+
+    impl<'a, T: 'a> Drop for LockGuard<'a, T> {
+        #[inline]
+        fn drop(&mut self) {
+            // SAFETY (dispatch): We get `self.assume` from the lock operation so it is consistent
+            // with the lock state.
+            // SAFETY (unlock): We know that the lock is locked as this type is a proof of that.
+            unsafe {
+                self.lock.dispatch(
+                    self.assume,
+                    |cell| {
+                        debug_assert_eq!(cell.get(), true);
+                        cell.set(false);
+                        Some(())
+                    },
+                    |lock| lock.unlock(),
+                );
+            };
+        }
+    }
+
+    enum LockMode {
+        NoSync(Cell<bool>),
+        Sync(RawMutex),
+    }
+
+    impl LockMode {
+        #[inline(always)]
+        fn to_assume(&self) -> Assume {
+            match self {
+                LockMode::NoSync(..) => Assume::NoSync,
+                LockMode::Sync(..) => Assume::Sync,
+            }
+        }
+    }
+
+    /// The value representing a locked state for the `Cell`.
+    const LOCKED: bool = true;
+
+    /// A lock which only uses synchronization if `might_be_dyn_thread_safe` is true.
+    /// It implements `DynSend` and `DynSync` instead of the typical `Send` and `Sync`.
+    pub struct Lock<T> {
+        mode: LockMode,
+        data: UnsafeCell<T>,
+    }
+
+    impl<T> Lock<T> {
+        #[inline(always)]
+        pub fn new(inner: T) -> Self {
+            Lock {
+                mode: if unlikely(mode::might_be_dyn_thread_safe()) {
+                    // Create the lock with synchronization enabled using the `RawMutex` type.
+                    LockMode::Sync(RawMutex::INIT)
                 } else {
-                    self.opt.cell.set(true);
-                    true
+                    // Create the lock with synchronization disabled.
+                    LockMode::NoSync(Cell::new(!LOCKED))
+                },
+                data: UnsafeCell::new(inner),
+            }
+        }
+
+        #[inline(always)]
+        pub fn into_inner(self) -> T {
+            self.data.into_inner()
+        }
+
+        #[inline(always)]
+        pub fn get_mut(&mut self) -> &mut T {
+            self.data.get_mut()
+        }
+
+        /// This dispatches on the `LockMode` and gives access to its variants depending on
+        /// `assume`. If `no_sync` returns `None` this will panic.
+        ///
+        /// Safety
+        /// This method must only be called if `might_be_dyn_thread_safe` on lock creation matches
+        /// matches the `assume` argument.
+        #[inline(always)]
+        #[track_caller]
+        unsafe fn dispatch<R>(
+            &self,
+            assume: Assume,
+            no_sync: impl FnOnce(&Cell<bool>) -> Option<R>,
+            sync: impl FnOnce(&RawMutex) -> R,
+        ) -> R {
+            #[inline(never)]
+            #[track_caller]
+            #[cold]
+            fn lock_held() -> ! {
+                panic!("lock was already held")
+            }
+
+            match assume {
+                Assume::NoSync => {
+                    let LockMode::NoSync(cell) = &self.mode else {
+                        unsafe { unreachable_unchecked() }
+                    };
+                    if let Some(v) = no_sync(cell) {
+                        v
+                    } else {
+                        // Call this here instead of in `no_sync` so `track_caller` gets properly
+                        // passed along.
+                        lock_held()
+                    }
                 }
-            } else {
-                self.opt.lock.try_lock()
+                Assume::Sync => {
+                    let LockMode::Sync(lock) = &self.mode else {
+                        unsafe { unreachable_unchecked() }
+                    };
+                    sync(lock)
+                }
             }
+        }
+
+        #[inline(always)]
+        pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
+            let assume = self.mode.to_assume();
+            unsafe {
+                self.dispatch(
+                    assume,
+                    |cell| Some((cell.get() != LOCKED).then(|| cell.set(LOCKED)).is_some()),
+                    RawMutex::try_lock,
+                )
+                .then(|| LockGuard { lock: self, marker: PhantomData, assume })
+            }
+        }
+
+        #[inline(always)]
+        #[track_caller]
+        pub unsafe fn lock_assume(&self, assume: Assume) -> LockGuard<'_, T> {
+            unsafe {
+                self.dispatch(
+                    assume,
+                    |cell| (cell.replace(LOCKED) != LOCKED).then(|| ()),
+                    RawMutex::lock,
+                );
+                LockGuard { lock: self, marker: PhantomData, assume }
+            }
+        }
+
+        #[inline(always)]
+        #[track_caller]
+        pub fn lock(&self) -> LockGuard<'_, T> {
+            unsafe { self.lock_assume(self.mode.to_assume()) }
         }
     }
 
-    #[inline(always)]
-    fn lock(&self) {
-        // SAFETY: This is safe since `self.sync` is used in accordance with the preconditions of
-        // `lock_assume_no_sync` and `lock_assume_sync`.
-        unsafe {
-            if likely(!self.sync) {
-                self.lock_assume_no_sync()
-            } else {
-                self.lock_assume_sync();
-            }
-        }
-    }
-
-    /// This acquires the lock assuming no syncronization is required.
-    ///
-    /// Safety
-    /// This method must only be called if `might_be_dyn_thread_safe` was false on lock creation.
-    #[inline(always)]
-    unsafe fn lock_assume_no_sync(&self) {
-        // SAFETY: This is safe since `self.opt.cell` is the union field used due to the
-        // precondition on this function.
-        unsafe {
-            if unlikely(self.opt.cell.replace(true)) {
-                cold_path(|| panic!("lock was already held"))
-            }
-        }
-    }
-
-    /// This acquires the lock assuming syncronization is required.
-    ///
-    /// Safety
-    /// This method must only be called if `might_be_dyn_thread_safe` was true on lock creation.
-    #[inline(always)]
-    unsafe fn lock_assume_sync(&self) {
-        // SAFETY: This is safe since `self.opt.lock` is the union field used due to the
-        // precondition on this function.
-        unsafe {
-            self.opt.lock.lock();
-        }
-    }
-
-    /// This unlocks the lock.
-    ///
-    /// Safety
-    /// This method may only be called if the lock is currently held.
-    #[inline(always)]
-    unsafe fn unlock(&self) {
-        // SAFETY: The union use is safe since the union fields are used in accordance with
-        // `self.sync` and the `unlock` method precondition is upheld by the caller.
-        unsafe {
-            if likely(!self.sync) {
-                debug_assert_eq!(self.opt.cell.get(), true);
-                self.opt.cell.set(false);
-            } else {
-                self.opt.lock.unlock();
-            }
-        }
-    }
+    #[cfg(parallel_compiler)]
+    unsafe impl<T: DynSend> DynSend for Lock<T> {}
+    #[cfg(parallel_compiler)]
+    unsafe impl<T: DynSend> DynSync for Lock<T> {}
 }
 
-/// A lock which only uses synchronization if `might_be_dyn_thread_safe` is true.
-/// It implements `DynSend` and `DynSync` instead of the typical `Send` and `Sync`.
-#[cfg(parallel_compiler)]
-pub struct Lock<T> {
-    raw: LockRaw,
-    data: UnsafeCell<T>,
-}
+mod disabled {
+    use super::Assume;
+    use std::cell::RefCell;
 
-#[cfg(parallel_compiler)]
-impl<T> Lock<T> {
-    #[inline(always)]
-    pub fn new(inner: T) -> Self {
-        Lock { raw: LockRaw::new(), data: UnsafeCell::new(inner) }
-    }
+    pub use std::cell::RefMut as LockGuard;
 
-    #[inline(always)]
-    pub fn into_inner(self) -> T {
-        self.data.into_inner()
-    }
+    pub struct Lock<T>(RefCell<T>);
 
-    #[inline(always)]
-    pub fn get_mut(&mut self) -> &mut T {
-        self.data.get_mut()
-    }
-
-    #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
-        if self.raw.try_lock() { Some(LockGuard { lock: self, marker: PhantomData }) } else { None }
-    }
-
-    /// This acquires the lock assuming no syncronization is required.
-    ///
-    /// Safety
-    /// This method must only be called if `might_be_dyn_thread_safe` was false on lock creation.
-    #[inline(always)]
-    pub(crate) unsafe fn lock_assume_no_sync(&self) -> LockGuard<'_, T> {
-        unsafe {
-            self.raw.lock_assume_no_sync();
+    impl<T> Lock<T> {
+        #[inline(always)]
+        pub fn new(inner: T) -> Self {
+            Lock(RefCell::new(inner))
         }
-        LockGuard { lock: self, marker: PhantomData }
-    }
 
-    /// This acquires the lock assuming syncronization is required.
-    ///
-    /// Safety
-    /// This method must only be called if `might_be_dyn_thread_safe` was true on lock creation.
-    #[inline(always)]
-    pub(crate) unsafe fn lock_assume_sync(&self) -> LockGuard<'_, T> {
-        unsafe {
-            self.raw.lock_assume_sync();
+        #[inline(always)]
+        pub fn into_inner(self) -> T {
+            self.0.into_inner()
         }
-        LockGuard { lock: self, marker: PhantomData }
-    }
 
-    #[inline(always)]
-    pub fn lock(&self) -> LockGuard<'_, T> {
-        self.raw.lock();
-        LockGuard { lock: self, marker: PhantomData }
+        #[inline(always)]
+        pub fn get_mut(&mut self) -> &mut T {
+            self.0.get_mut()
+        }
+
+        #[inline(always)]
+        pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
+            self.0.try_borrow_mut().ok()
+        }
+
+        #[inline(always)]
+        #[track_caller]
+        // This is unsafe to match the API for the `parallel_compiler` case.
+        pub unsafe fn lock_assume(&self, _assume: Assume) -> LockGuard<'_, T> {
+            self.0.borrow_mut()
+        }
+
+        #[inline(always)]
+        #[track_caller]
+        pub fn lock(&self) -> LockGuard<'_, T> {
+            self.0.borrow_mut()
+        }
     }
 }
 
@@ -303,12 +277,13 @@ impl<T> Lock<T> {
     }
 }
 
-#[cfg(parallel_compiler)]
-unsafe impl<T: DynSend> DynSend for Lock<T> {}
-#[cfg(parallel_compiler)]
-unsafe impl<T: DynSend> DynSync for Lock<T> {}
+impl<T: Default> Default for Lock<T> {
+    #[inline]
+    fn default() -> Self {
+        Lock::new(T::default())
+    }
+}
 
-#[cfg(parallel_compiler)]
 impl<T: fmt::Debug> fmt::Debug for Lock<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.try_lock() {
@@ -324,12 +299,5 @@ impl<T: fmt::Debug> fmt::Debug for Lock<T> {
                 f.debug_struct("Lock").field("data", &LockedPlaceholder).finish()
             }
         }
-    }
-}
-
-impl<T: Default> Default for Lock<T> {
-    #[inline]
-    fn default() -> Self {
-        Lock::new(T::default())
     }
 }

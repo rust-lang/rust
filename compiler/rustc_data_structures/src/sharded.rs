@@ -1,7 +1,7 @@
 use crate::fx::{FxHashMap, FxHasher};
 #[cfg(parallel_compiler)]
 use crate::sync::{is_dyn_thread_safe, CacheAligned};
-use crate::sync::{Lock, LockGuard};
+use crate::sync::{Assume, Lock, LockGuard};
 #[cfg(parallel_compiler)]
 use itertools::Either;
 use std::borrow::Borrow;
@@ -75,6 +75,7 @@ impl<T> Sharded<T> {
 
     /// The shard is selected by hashing `val` with `FxHasher`.
     #[inline]
+    #[track_caller]
     pub fn lock_shard_by_value<K: Hash + ?Sized>(&self, _val: &K) -> LockGuard<'_, T> {
         match self {
             Self::Single(single) => {
@@ -83,7 +84,7 @@ impl<T> Sharded<T> {
 
                 // SAFETY: We know `is_dyn_thread_safe` was false when creating the lock thus
                 // `might_be_dyn_thread_safe` was also false.
-                unsafe { single.lock_assume_no_sync() }
+                unsafe { single.lock_assume(Assume::NoSync) }
             }
             #[cfg(parallel_compiler)]
             Self::Shards(..) => self.lock_shard_by_hash(make_hash(_val)),
@@ -91,11 +92,13 @@ impl<T> Sharded<T> {
     }
 
     #[inline]
+    #[track_caller]
     pub fn lock_shard_by_hash(&self, hash: u64) -> LockGuard<'_, T> {
         self.lock_shard_by_index(get_shard_hash(hash))
     }
 
     #[inline]
+    #[track_caller]
     pub fn lock_shard_by_index(&self, _i: usize) -> LockGuard<'_, T> {
         match self {
             Self::Single(single) => {
@@ -104,7 +107,7 @@ impl<T> Sharded<T> {
 
                 // SAFETY: We know `is_dyn_thread_safe` was false when creating the lock thus
                 // `might_be_dyn_thread_safe` was also false.
-                unsafe { single.lock_assume_no_sync() }
+                unsafe { single.lock_assume(Assume::NoSync) }
             }
             #[cfg(parallel_compiler)]
             Self::Shards(shards) => {
@@ -115,7 +118,7 @@ impl<T> Sharded<T> {
                 // always inbounds.
                 // SAFETY (lock_assume_sync): We know `is_dyn_thread_safe` was true when creating
                 // the lock thus `might_be_dyn_thread_safe` was also true.
-                unsafe { shards.get_unchecked(_i & (SHARDS - 1)).0.lock_assume_sync() }
+                unsafe { shards.get_unchecked(_i & (SHARDS - 1)).0.lock_assume(Assume::Sync) }
             }
         }
     }
