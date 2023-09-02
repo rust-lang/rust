@@ -78,13 +78,22 @@ pub fn rev_exists(rev: &str, git_dir: Option<&Path>) -> Result<bool, String> {
 /// We will then fall back to origin/master in the hope that at least this exists.
 pub fn updated_master_branch(git_dir: Option<&Path>) -> Result<String, String> {
     let upstream_remote = get_rust_lang_rust_remote(git_dir)?;
-    let upstream_master = format!("{upstream_remote}/master");
-    if rev_exists(&upstream_master, git_dir)? {
-        return Ok(upstream_master);
+    for upstream_master in [format!("{upstream_remote}/master"), format!("origin/master")] {
+        if rev_exists(&upstream_master, git_dir)? {
+            return Ok(upstream_master);
+        }
     }
 
-    // We could implement smarter logic here in the future.
-    Ok("origin/master".into())
+    Err(format!("Cannot find any suitable upstream master branch"))
+}
+
+pub fn get_git_merge_base(git_dir: Option<&Path>) -> Result<String, String> {
+    let updated_master = updated_master_branch(git_dir)?;
+    let mut git = Command::new("git");
+    if let Some(git_dir) = git_dir {
+        git.current_dir(git_dir);
+    }
+    Ok(output_result(git.arg("merge-base").arg(&updated_master).arg("HEAD"))?.trim().to_owned())
 }
 
 /// Returns the files that have been modified in the current branch compared to the master branch.
@@ -94,20 +103,13 @@ pub fn get_git_modified_files(
     git_dir: Option<&Path>,
     extensions: &Vec<&str>,
 ) -> Result<Option<Vec<String>>, String> {
-    let Ok(updated_master) = updated_master_branch(git_dir) else {
-        return Ok(None);
-    };
+    let merge_base = get_git_merge_base(git_dir)?;
 
-    let git = || {
-        let mut git = Command::new("git");
-        if let Some(git_dir) = git_dir {
-            git.current_dir(git_dir);
-        }
-        git
-    };
-
-    let merge_base = output_result(git().arg("merge-base").arg(&updated_master).arg("HEAD"))?;
-    let files = output_result(git().arg("diff-index").arg("--name-only").arg(merge_base.trim()))?
+    let mut git = Command::new("git");
+    if let Some(git_dir) = git_dir {
+        git.current_dir(git_dir);
+    }
+    let files = output_result(git.args(["diff-index", "--name-only", merge_base.trim()]))?
         .lines()
         .map(|s| s.trim().to_owned())
         .filter(|f| {
