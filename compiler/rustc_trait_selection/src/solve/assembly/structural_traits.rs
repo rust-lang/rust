@@ -354,6 +354,12 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
         // FIXME(associated_const_equality): Also add associated consts to
         // the requirements here.
         if item.kind == ty::AssocKind::Type {
+            // RPITITs are not checked here, since they are not (currently) object-safe
+            // and cannot be named from a non-`Self: Sized` method.
+            if item.is_impl_trait_in_trait() {
+                continue;
+            }
+
             requirements
                 .extend(tcx.item_bounds(item.def_id).iter_instantiated(tcx, trait_ref.args));
         }
