@@ -14,7 +14,8 @@ use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size};
 
 use super::{
     alloc_range, from_known_layout, mir_assign_valid_types, AllocId, Frame, InterpCx, InterpResult,
-    MPlaceTy, Machine, MemPlace, MemPlaceMeta, PlaceTy, Pointer, Projectable, Provenance, Scalar,
+    MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode, PlaceTy, Pointer, Projectable,
+    Provenance, Scalar,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -297,6 +298,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
     fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
+        _mode: OffsetMode,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
         ecx: &InterpCx<'mir, 'tcx, M>,
@@ -391,12 +393,13 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
     fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
+        mode: OffsetMode,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         match self.as_mplace_or_imm() {
-            Left(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, ecx)?.into()),
+            Left(mplace) => Ok(mplace.offset_with_meta(offset, mode, meta, layout, ecx)?.into()),
             Right(imm) => {
                 assert_matches!(meta, MemPlaceMeta::None); // no place to store metadata here
                 // Every part of an uninit is uninit.

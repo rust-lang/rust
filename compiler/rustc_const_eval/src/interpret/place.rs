@@ -16,8 +16,8 @@ use rustc_target::abi::{Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT
 
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, ImmTy, Immediate,
-    InterpCx, InterpResult, Machine, MemoryKind, OpTy, Operand, Pointer, PointerArithmetic,
-    Projectable, Provenance, Readable, Scalar,
+    InterpCx, InterpResult, Machine, MemoryKind, OffsetMode, OpTy, Operand, Pointer,
+    PointerArithmetic, Projectable, Provenance, Readable, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -91,6 +91,7 @@ impl<Prov: Provenance> MemPlace<Prov> {
     fn offset_with_meta_<'mir, 'tcx, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         self,
         offset: Size,
+        mode: OffsetMode,
         meta: MemPlaceMeta<Prov>,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
@@ -101,8 +102,12 @@ impl<Prov: Provenance> MemPlace<Prov> {
         if offset > ecx.data_layout().max_size_of_val() {
             throw_ub!(PointerArithOverflow);
         }
-        let offset: i64 = offset.bytes().try_into().unwrap();
-        let ptr = ecx.ptr_offset_inbounds(self.ptr, offset)?;
+        let ptr = match mode {
+            OffsetMode::Inbounds => {
+                ecx.ptr_offset_inbounds(self.ptr, offset.bytes().try_into().unwrap())?
+            }
+            OffsetMode::Wrapping => self.ptr.wrapping_offset(offset, ecx),
+        };
         Ok(MemPlace { ptr, meta })
     }
 }
@@ -194,12 +199,13 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
     fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
+        mode: OffsetMode,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         Ok(MPlaceTy {
-            mplace: self.mplace.offset_with_meta_(offset, meta, ecx)?,
+            mplace: self.mplace.offset_with_meta_(offset, mode, meta, ecx)?,
             align: self.align.restrict_for_offset(offset),
             layout,
         })
@@ -306,12 +312,13 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
     fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
+        mode: OffsetMode,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         Ok(match self.as_mplace_or_local() {
-            Left(mplace) => mplace.offset_with_meta(offset, meta, layout, ecx)?.into(),
+            Left(mplace) => mplace.offset_with_meta(offset, mode, meta, layout, ecx)?.into(),
             Right((frame, local, old_offset)) => {
                 debug_assert!(layout.is_sized(), "unsized locals should live in memory");
                 assert_matches!(meta, MemPlaceMeta::None); // we couldn't store it anyway...
@@ -952,7 +959,13 @@ where
                     &mut Operand::Indirect(mplace) => mplace, // this already was an indirect local
                 };
                 if let Some(offset) = offset {
-                    whole_local.offset_with_meta_(offset, MemPlaceMeta::None, self)?
+                    // This offset is always inbounds, no need to check it again.
+                    whole_local.offset_with_meta_(
+                        offset,
+                        OffsetMode::Wrapping,
+                        MemPlaceMeta::None,
+                        self,
+                    )?
                 } else {
                     // Preserve wide place metadata, do not call `offset`.
                     whole_local

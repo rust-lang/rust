@@ -88,4 +88,7 @@ const PARTIAL_POINTER: () = unsafe {
 const VALID_ENUM1: E = { let e = E::A; e };
 const VALID_ENUM2: Result<&'static [u8], ()> = { let e = Err(()); e };
 
+// Htting the (non-integer) array code in validation with an immediate local.
+const VALID_ARRAY: [Option<i32>; 0] = { let e = [None; 0]; e };
+
 fn main() {}
