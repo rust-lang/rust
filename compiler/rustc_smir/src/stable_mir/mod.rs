@@ -31,6 +31,10 @@ pub type CrateNum = usize;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct DefId(pub(crate) usize);
 
+/// A unique identification number for each provenance
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct AllocId(pub(crate) usize);
+
 /// A list of crate items.
 pub type CrateItems = Vec<CrateItem>;
 

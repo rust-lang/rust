@@ -1,5 +1,5 @@
 //! Module that implements what will become the rustc side of Stable MIR.
-//!
+
 //! This module is responsible for building Stable MIR components from internal components.
 //!
 //! This module is not intended to be invoked directly by users. It will eventually
@@ -12,7 +12,7 @@ use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx}
 use crate::stable_mir::ty::{FloatTy, GenericParamDef, IntTy, Movability, RigidTy, TyKind, UintTy};
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
-use rustc_middle::mir::interpret::alloc_range;
+use rustc_middle::mir::interpret::{alloc_range, AllocId};
 use rustc_middle::mir::{self, ConstantKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -125,6 +125,7 @@ impl<'tcx> Context for Tables<'tcx> {
 pub struct Tables<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub def_ids: Vec<DefId>,
+    pub alloc_ids: Vec<AllocId>,
     pub types: Vec<Ty<'tcx>>,
 }
 

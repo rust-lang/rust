@@ -1,4 +1,4 @@
-use super::{mir::Mutability, mir::Safety, with, DefId};
+use super::{mir::Mutability, mir::Safety, with, AllocId, DefId};
 use crate::rustc_internal::Opaque;
 
 #[derive(Copy, Clone, Debug)]
@@ -260,7 +260,9 @@ pub struct BoundTy {
 
 pub type Bytes = Vec<Option<u8>>;
 pub type Size = usize;
-pub type Prov = Opaque;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Prov(pub(crate) AllocId);
 pub type Align = u64;
 pub type Promoted = u32;
 pub type InitMaskMaterialized = Vec<u64>;
