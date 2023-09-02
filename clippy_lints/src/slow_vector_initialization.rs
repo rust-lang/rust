@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::macros::root_macro_call;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
     get_enclosing_block, is_expr_path_def_path, is_integer_literal, is_path_diagnostic_item, path_to_local,
@@ -148,6 +149,15 @@ impl SlowVectorInit {
     /// - `Some(InitializedSize::Uninitialized)` for `Vec::new()`
     /// - `None` for other, unrelated kinds of expressions
     fn as_vec_initializer<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<InitializedSize<'tcx>> {
+        // Generally don't warn if the vec initializer comes from an expansion, except for the vec! macro.
+        // This lets us still warn on `vec![]`, while ignoring other kinds of macros that may output an
+        // empty vec
+        if expr.span.from_expansion()
+            && root_macro_call(expr.span).map(|m| m.def_id) != cx.tcx.get_diagnostic_item(sym::vec_macro)
+        {
+            return None;
+        }
+
         if let ExprKind::Call(func, [len_expr]) = expr.kind
             && is_expr_path_def_path(cx, func, &paths::VEC_WITH_CAPACITY)
         {
