@@ -71,7 +71,7 @@ macro_rules! static_rwlock_box_impl {
         ///
         /// Removing an implementation (i.e. setting the internal singleton to `None`)
         /// is intentionally not allowed.
-        pub fn set_impl<F: FnMut(Option<Box<dyn $api>>) -> Box<dyn $api>>(mut transition: F) {
+        pub fn set_impl<F: FnOnce(Option<Box<dyn $api>>) -> Box<dyn $api>>(transition: F) {
             let mut writer = IMPL.write().expect("poisoned lock");
             let maybe_impl = core::mem::replace(&mut *writer, None);
             let new_impl = transition(maybe_impl);
