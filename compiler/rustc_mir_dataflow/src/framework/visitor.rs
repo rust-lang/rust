@@ -35,7 +35,7 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
 
     fn visit_block_start(
         &mut self,
-        _results: &R,
+        _results: &mut R,
         _state: &Self::FlowState,
         _block_data: &'mir mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
@@ -46,7 +46,7 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
     /// its `statement_effect`.
     fn visit_statement_before_primary_effect(
         &mut self,
-        _results: &R,
+        _results: &mut R,
         _state: &Self::FlowState,
         _statement: &'mir mir::Statement<'tcx>,
         _location: Location,
@@ -57,7 +57,7 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
     /// statement applied to `state`.
     fn visit_statement_after_primary_effect(
         &mut self,
-        _results: &R,
+        _results: &mut R,
         _state: &Self::FlowState,
         _statement: &'mir mir::Statement<'tcx>,
         _location: Location,
@@ -68,7 +68,7 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
     /// its `terminator_effect`.
     fn visit_terminator_before_primary_effect(
         &mut self,
-        _results: &R,
+        _results: &mut R,
         _state: &Self::FlowState,
         _terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
@@ -81,7 +81,7 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
     /// The `call_return_effect` (if one exists) will *not* be applied to `state`.
     fn visit_terminator_after_primary_effect(
         &mut self,
-        _results: &R,
+        _results: &mut R,
         _state: &Self::FlowState,
         _terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
@@ -90,7 +90,7 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
 
     fn visit_block_end(
         &mut self,
-        _results: &R,
+        _results: &mut R,
         _state: &Self::FlowState,
         _block_data: &'mir mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
