@@ -74,14 +74,6 @@ impl InlayFieldsToResolve {
             resolve_label_command: false,
         }
     }
-
-    pub fn can_resolve(&self) -> bool {
-        self.resolve_text_edits
-            || self.resolve_hint_tooltip
-            || self.resolve_label_tooltip
-            || self.resolve_label_location
-            || self.resolve_label_command
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

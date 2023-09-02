@@ -443,17 +443,18 @@ pub(crate) fn inlay_hint(
     inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
     let needs_resolve = inlay_hint.needs_resolve;
-    let (label, tooltip) =
+    let (label, tooltip, mut something_to_resolve) =
         inlay_hint_label(snap, fields_to_resolve, needs_resolve, inlay_hint.label)?;
-    let data = if needs_resolve && fields_to_resolve.can_resolve() {
-        Some(to_value(lsp_ext::InlayHintResolveData { file_id: file_id.0 }).unwrap())
-    } else {
-        None
-    };
     let text_edits = if needs_resolve && fields_to_resolve.resolve_text_edits {
+        something_to_resolve |= inlay_hint.text_edit.is_some();
         None
     } else {
         inlay_hint.text_edit.map(|it| text_edit_vec(line_index, it))
+    };
+    let data = if needs_resolve && something_to_resolve {
+        Some(to_value(lsp_ext::InlayHintResolveData { file_id: file_id.0 }).unwrap())
+    } else {
+        None
     };
 
     Ok(lsp_types::InlayHint {
@@ -480,11 +481,13 @@ fn inlay_hint_label(
     fields_to_resolve: &InlayFieldsToResolve,
     needs_resolve: bool,
     mut label: InlayHintLabel,
-) -> Cancellable<(lsp_types::InlayHintLabel, Option<lsp_types::InlayHintTooltip>)> {
-    let res = match &*label.parts {
+) -> Cancellable<(lsp_types::InlayHintLabel, Option<lsp_types::InlayHintTooltip>, bool)> {
+    let mut something_to_resolve = false;
+    let (label, tooltip) = match &*label.parts {
         [InlayHintLabelPart { linked_location: None, .. }] => {
             let InlayHintLabelPart { text, tooltip, .. } = label.parts.pop().unwrap();
             let hint_tooltip = if needs_resolve && fields_to_resolve.resolve_hint_tooltip {
+                something_to_resolve |= tooltip.is_some();
                 None
             } else {
                 match tooltip {
@@ -508,6 +511,7 @@ fn inlay_hint_label(
                 .into_iter()
                 .map(|part| {
                     let tooltip = if needs_resolve && fields_to_resolve.resolve_label_tooltip {
+                        something_to_resolve |= part.tooltip.is_some();
                         None
                     } else {
                         match part.tooltip {
@@ -526,6 +530,7 @@ fn inlay_hint_label(
                         }
                     };
                     let location = if needs_resolve && fields_to_resolve.resolve_label_location {
+                        something_to_resolve |= part.linked_location.is_some();
                         None
                     } else {
                         part.linked_location.map(|range| location(snap, range)).transpose()?
@@ -541,7 +546,7 @@ fn inlay_hint_label(
             (lsp_types::InlayHintLabel::LabelParts(parts), None)
         }
     };
-    Ok(res)
+    Ok((label, tooltip, something_to_resolve))
 }
 
 static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
