@@ -8,14 +8,6 @@ trait Foo {
     fn bar(self) -> impl Deref<Target = impl Display + ?Sized>;
 }
 
-struct A;
-
-impl Foo for A {
-    fn bar(self) -> &'static str {
-        "Hello, world"
-    }
-}
-
 fn foo<T: Foo>(t: T) {
     let () = t.bar();
     //~^ ERROR mismatched types

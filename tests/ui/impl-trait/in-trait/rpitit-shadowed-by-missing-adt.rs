@@ -10,6 +10,7 @@ pub trait Tr {
 }
 
 impl Tr for () {
+    #[allow(refining_impl_trait)]
     fn w() -> &'static () {
         &()
     }

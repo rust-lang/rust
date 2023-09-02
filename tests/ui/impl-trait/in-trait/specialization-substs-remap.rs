@@ -12,6 +12,7 @@ impl<U> Foo for U
 where
     U: Copy,
 {
+    #[allow(refining_impl_trait)]
     fn bar(&self) -> U {
         *self
     }

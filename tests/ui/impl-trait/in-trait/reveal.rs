@@ -8,6 +8,7 @@ trait Foo {
 }
 
 impl Foo for () {
+    #[allow(refining_impl_trait)]
     fn f() -> Box<String> {
         Box::new(String::new())
     }

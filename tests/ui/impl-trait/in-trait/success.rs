@@ -10,12 +10,14 @@ trait Foo {
 }
 
 impl Foo for i32 {
+    #[allow(refining_impl_trait)]
     fn bar(&self) -> i32 {
         *self
     }
 }
 
 impl Foo for &'static str {
+    #[allow(refining_impl_trait)]
     fn bar(&self) -> &'static str {
         *self
     }
@@ -24,6 +26,7 @@ impl Foo for &'static str {
 struct Yay;
 
 impl Foo for Yay {
+    #[allow(refining_impl_trait)]
     fn bar(&self) -> String {
         String::from(":^)")
     }

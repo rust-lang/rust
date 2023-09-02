@@ -27,8 +27,7 @@ impl Future for MyFuture {
 }
 
 impl MyTrait for i32 {
-    // FIXME: this should eventually require `#[refine]` to compile, because it also provides
-    // `Clone`.
+    #[allow(refining_impl_trait)]
     fn foo(&self) -> impl Future<Output = i32> + Clone {
         MyFuture(*self)
     }

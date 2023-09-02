@@ -8,6 +8,7 @@ pub trait Foo {
 
 pub struct Foreign;
 impl Foo for Foreign {
+    #[allow(refining_impl_trait)]
     fn bar(self) -> &'static () {
         &()
     }

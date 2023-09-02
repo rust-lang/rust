@@ -3,7 +3,6 @@
 //[success] check-pass
 
 #![feature(return_position_impl_trait_in_trait)]
-#![allow(incomplete_features)]
 
 use std::future::Future;
 
@@ -45,6 +44,7 @@ impl AsyncTrait for Struct {
     // Does not capture more lifetimes that trait def'n, since trait def'n
     // implicitly captures all in-scope lifetimes.
     #[cfg(success)]
+    #[allow(refining_impl_trait)]
     fn async_fn<'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
         async move { buff.to_vec() }
     }
@@ -52,6 +52,7 @@ impl AsyncTrait for Struct {
     // Does not capture more lifetimes that trait def'n, since trait def'n
     // implicitly captures all in-scope lifetimes.
     #[cfg(success)]
+    #[allow(refining_impl_trait)]
     fn async_fn_early<'a: 'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
         async move { buff.to_vec() }
     }
@@ -59,6 +60,7 @@ impl AsyncTrait for Struct {
     // Does not capture more lifetimes that trait def'n, since trait def'n
     // implicitly captures all in-scope lifetimes.
     #[cfg(success)]
+    #[allow(refining_impl_trait)]
     fn async_fn_multiple<'a, 'b>(
         &'a self,
         buff: &'b [u8],

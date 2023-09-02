@@ -10,6 +10,7 @@ trait Foo {
 }
 
 impl Foo for () {
+    #[allow(refining_impl_trait)]
     fn bar() -> Wrapper<i32> {
         Wrapper(0)
     }

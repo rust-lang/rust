@@ -9,6 +9,7 @@ use std::sync::Arc;
 // Implement an RPITIT from another crate.
 struct Local;
 impl Foo for Local {
+    #[allow(refining_impl_trait)]
     fn bar(self) -> Arc<String> {
         Arc::new(String::new())
     }

@@ -13,6 +13,7 @@ trait Foo {
 struct A;
 
 impl Foo for A {
+    #[allow(refining_impl_trait)]
     fn bar(self) -> &'static str {
         "Hello, world"
     }
@@ -21,6 +22,7 @@ impl Foo for A {
 struct B;
 
 impl Foo for B {
+    #[allow(refining_impl_trait)]
     fn bar(self) -> Box<i32> {
         Box::new(42)
     }
