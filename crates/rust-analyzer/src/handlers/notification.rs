@@ -13,8 +13,12 @@ use triomphe::Arc;
 use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
 use crate::{
-    config::Config, from_proto, global_state::GlobalState, lsp_ext::RunFlycheckParams,
-    lsp_utils::apply_document_changes, mem_docs::DocumentData, reload,
+    config::Config,
+    global_state::GlobalState,
+    lsp::{from_proto, utils::apply_document_changes},
+    lsp_ext::RunFlycheckParams,
+    mem_docs::DocumentData,
+    reload,
 };
 
 pub(crate) fn handle_cancel(state: &mut GlobalState, params: CancelParams) -> anyhow::Result<()> {

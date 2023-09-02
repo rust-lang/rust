@@ -22,9 +22,12 @@ use crate::{
     config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, PositionEncoding},
+    lsp::{
+        semantic_tokens::{self, standard_fallback_type},
+        utils::invalid_params_error,
+        LspError,
+    },
     lsp_ext::{self, SnippetTextEdit},
-    lsp_utils::invalid_params_error,
-    semantic_tokens::{self, standard_fallback_type},
 };
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
@@ -1425,8 +1428,8 @@ pub(crate) mod command {
 
     use crate::{
         global_state::GlobalStateSnapshot,
+        lsp::to_proto::{location, location_link},
         lsp_ext,
-        to_proto::{location, location_link},
     };
 
     pub(crate) fn show_references(
@@ -1532,7 +1535,7 @@ pub(crate) fn markup_content(
     lsp_types::MarkupContent { kind, value }
 }
 
-pub(crate) fn rename_error(err: RenameError) -> crate::LspError {
+pub(crate) fn rename_error(err: RenameError) -> LspError {
     // This is wrong, but we don't have a better alternative I suppose?
     // https://github.com/microsoft/language-server-protocol/issues/1341
     invalid_params_error(err.to_string())

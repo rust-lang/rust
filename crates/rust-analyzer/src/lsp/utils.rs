@@ -6,10 +6,10 @@ use lsp_types::request::Request;
 use triomphe::Arc;
 
 use crate::{
-    from_proto,
     global_state::GlobalState,
     line_index::{LineEndings, LineIndex, PositionEncoding},
-    lsp_ext, LspError,
+    lsp::{from_proto, LspError},
+    lsp_ext,
 };
 
 pub(crate) fn invalid_params_error(message: String) -> LspError {
