@@ -5,7 +5,6 @@
 
 use std::fmt::Debug;
 use std::ops::Index;
-use std::string::ToString;
 
 use crate::rustc_internal;
 use crate::{
@@ -156,10 +155,23 @@ pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
 }
 
 /// A type that provides internal information but that can still be used for debug purpose.
-pub type Opaque = impl Debug + ToString + Clone;
+#[derive(Clone)]
+pub struct Opaque(String);
+
+impl std::fmt::Display for Opaque {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::fmt::Debug for Opaque {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
 
 pub(crate) fn opaque<T: Debug>(value: &T) -> Opaque {
-    format!("{value:?}")
+    Opaque(format!("{value:?}"))
 }
 
 pub struct StableMir {
