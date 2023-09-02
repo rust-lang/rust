@@ -41,6 +41,20 @@ macro_rules! nonzero_integers {
             /// with the exception that `0` is not a valid instance.
             #[doc = concat!("`Option<", stringify!($Ty), ">` is guaranteed to be compatible with `", stringify!($Int), "`,")]
             /// including in FFI.
+            ///
+            /// Thanks to the [null pointer optimization],
+            #[doc = concat!("`", stringify!($Ty), "` and `Option<", stringify!($Ty), ">`")]
+            /// are guaranteed to have the same size and alignment:
+            ///
+            /// ```
+            /// # use std::mem::{size_of, align_of};
+            #[doc = concat!("use std::num::", stringify!($Ty), ";")]
+            ///
+            #[doc = concat!("assert_eq!(size_of::<", stringify!($Ty), ">(), size_of::<Option<", stringify!($Ty), ">>());")]
+            #[doc = concat!("assert_eq!(align_of::<", stringify!($Ty), ">(), align_of::<Option<", stringify!($Ty), ">>());")]
+            /// ```
+            ///
+            /// [null pointer optimization]: crate::option#representation
             #[$stability]
             #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
             #[repr(transparent)]
