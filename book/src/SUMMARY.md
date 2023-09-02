@@ -18,6 +18,7 @@
     - [Lint Passes](development/lint_passes.md)
     - [Emitting lints](development/emitting_lints.md)
     - [Type Checking](development/type_checking.md)
+    - [Trait Checking](development/trait_checking.md)
     - [Method Checking](development/method_checking.md)
     - [Macro Expansions](development/macro_expansions.md)
     - [Common Tools](development/common_tools_writing_lints.md)
