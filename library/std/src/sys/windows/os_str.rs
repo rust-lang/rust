@@ -64,12 +64,12 @@ impl fmt::Display for Slice {
 
 impl Buf {
     #[inline]
-    pub fn into_os_str_bytes(self) -> Vec<u8> {
+    pub fn into_encoded_bytes(self) -> Vec<u8> {
         self.inner.into_bytes()
     }
 
     #[inline]
-    pub unsafe fn from_os_str_bytes_unchecked(s: Vec<u8>) -> Self {
+    pub unsafe fn from_encoded_bytes_unchecked(s: Vec<u8>) -> Self {
         Self { inner: Wtf8Buf::from_bytes_unchecked(s) }
     }
 
@@ -162,12 +162,12 @@ impl Buf {
 
 impl Slice {
     #[inline]
-    pub fn as_os_str_bytes(&self) -> &[u8] {
+    pub fn as_encoded_bytes(&self) -> &[u8] {
         self.inner.as_bytes()
     }
 
     #[inline]
-    pub unsafe fn from_os_str_bytes_unchecked(s: &[u8]) -> &Slice {
+    pub unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
         mem::transmute(Wtf8::from_bytes_unchecked(s))
     }
 
