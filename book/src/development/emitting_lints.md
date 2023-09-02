@@ -1,7 +1,7 @@
 # Emitting a lint
 
-Once we have [defined a lint](define_lints.md), written [UI
-tests](write_tests.md) and chosen [the lint pass](lint_passes.md) for the lint,
+Once we have [defined a lint](defining_lints.md), written [UI
+tests](writing_tests.md) and chosen [the lint pass](lint_passes.md) for the lint,
 we can begin the implementation of the lint logic so that we can emit it and
 gradually work towards a lint that behaves as expected.
 
@@ -119,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for LintName {
 }
 ```
 
-Suggestions generally use the [`format!`](format_macro) macro to interpolate the
+Suggestions generally use the [`format!`][format_macro] macro to interpolate the
 old values with the new ones. To get code snippets, use one of the `snippet*`
 functions from `clippy_utils::source`.
 
@@ -193,7 +193,7 @@ span), you could use `snippet(cx, span, "..")`.
 
 ## Final: Run UI Tests to Emit the Lint
 
-Now, if we run our [UI test](write_tests.md), we should see that Clippy now
+Now, if we run our [UI test](writing_tests.md), we should see that Clippy now
 produces output that contains the lint message we designed.
 
 The next step is to implement the logic properly, which is a detail that we will
@@ -214,3 +214,4 @@ cover in the next chapters.
 [inclusive_range]: https://doc.rust-lang.org/std/ops/struct.RangeInclusive.html
 [applicability]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_errors/enum.Applicability.html
 [snippet_fn]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/source/fn.snippet.html
+[format_macro]: https://doc.rust-lang.org/std/macro.format.html
