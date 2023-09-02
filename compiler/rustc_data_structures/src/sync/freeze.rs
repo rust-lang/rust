@@ -3,6 +3,7 @@ use crate::sync::{AtomicBool, ReadGuard, RwLock, WriteGuard};
 use crate::sync::{DynSend, DynSync};
 use std::{
     cell::UnsafeCell,
+    marker::PhantomData,
     ops::{Deref, DerefMut},
     sync::atomic::Ordering,
 };
@@ -37,10 +38,7 @@ impl<T> FreezeLock<T> {
             } else {
                 Some(self.lock.read())
             },
-            // SAFETY: If this is not frozen, `_lock_guard` holds the lock to the `UnsafeCell` so
-            // this has shared access until the `FreezeReadGuard` is dropped. If this is frozen,
-            // the data cannot be modified and shared access is sound.
-            data: unsafe { &*self.data.get() },
+            lock: self,
         }
     }
 
@@ -50,12 +48,7 @@ impl<T> FreezeLock<T> {
         let _lock_guard = self.lock.write();
         // Use relaxed ordering since we're in the write lock.
         assert!(!self.frozen.load(Ordering::Relaxed), "still mutable");
-        FreezeWriteGuard {
-            _lock_guard,
-            // SAFETY: `_lock_guard` holds the lock to the `UnsafeCell` so this has mutable access
-            // until the `FreezeWriteGuard` is dropped.
-            data: unsafe { &mut *self.data.get() },
-        }
+        FreezeWriteGuard { _lock_guard, lock: self, marker: PhantomData }
     }
 
     #[inline]
@@ -75,14 +68,17 @@ impl<T> FreezeLock<T> {
 #[must_use = "if unused the FreezeLock may immediately unlock"]
 pub struct FreezeReadGuard<'a, T> {
     _lock_guard: Option<ReadGuard<'a, ()>>,
-    data: &'a T,
+    lock: &'a FreezeLock<T>,
 }
 
 impl<'a, T: 'a> Deref for FreezeReadGuard<'a, T> {
     type Target = T;
     #[inline]
     fn deref(&self) -> &T {
-        self.data
+        // SAFETY: If `lock` is not frozen, `_lock_guard` holds the lock to the `UnsafeCell` so
+        // this has shared access until the `FreezeReadGuard` is dropped. If `lock` is frozen,
+        // the data cannot be modified and shared access is sound.
+        unsafe { &*self.lock.data.get() }
     }
 }
 
@@ -90,20 +86,23 @@ impl<'a, T: 'a> Deref for FreezeReadGuard<'a, T> {
 #[must_use = "if unused the FreezeLock may immediately unlock"]
 pub struct FreezeWriteGuard<'a, T> {
     _lock_guard: WriteGuard<'a, ()>,
-    data: &'a mut T,
+    lock: &'a FreezeLock<T>,
+    marker: PhantomData<&'a mut T>,
 }
 
 impl<'a, T: 'a> Deref for FreezeWriteGuard<'a, T> {
     type Target = T;
     #[inline]
     fn deref(&self) -> &T {
-        self.data
+        // SAFETY: `self._lock_guard` holds the lock to the `UnsafeCell` so this has shared access.
+        unsafe { &*self.lock.data.get() }
     }
 }
 
 impl<'a, T: 'a> DerefMut for FreezeWriteGuard<'a, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
-        self.data
+        // SAFETY: `self._lock_guard` holds the lock to the `UnsafeCell` so this has mutable access.
+        unsafe { &mut *self.lock.data.get() }
     }
 }
