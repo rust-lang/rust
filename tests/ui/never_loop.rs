@@ -337,15 +337,58 @@ pub fn test26() {
 
 pub fn test27() {
     loop {
-        //~^ ERROR: this loop never actually loops
         'label: {
             let x = true;
-            // Lints because we cannot prove it's always `true`
             if x {
                 break 'label;
             }
             return;
         }
+    }
+}
+
+// issue 11004
+pub fn test29() {
+    loop {
+        'label: {
+            if true {
+                break 'label;
+            }
+            return;
+        }
+    }
+}
+
+pub fn test30() {
+    'a: loop {
+        'b: {
+            for j in 0..2 {
+                if j == 1 {
+                    break 'b;
+                }
+            }
+            break 'a;
+        }
+    }
+}
+
+pub fn test31(b: bool) {
+    'a: loop {
+        'b: {
+            'c: loop {
+                //~^ ERROR: this loop never actually loops
+                if b { break 'c } else { break 'b }
+            }
+            continue 'a;
+        }
+        break 'a;
+    }
+}
+
+pub fn test32(b: bool) {
+    loop {
+        //~^ ERROR: this loop never actually loops
+        panic!("oh no");
     }
 }
 

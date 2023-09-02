@@ -153,16 +153,22 @@ LL |             if let Some(_) = (0..20).next() {
    |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:339:5
+  --> $DIR/never_loop.rs:378:13
+   |
+LL | /             'c: loop {
+LL | |
+LL | |                 if b { break 'c } else { break 'b }
+LL | |             }
+   | |_____________^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:389:5
    |
 LL | /     loop {
 LL | |
-LL | |         'label: {
-LL | |             let x = true;
-...  |
-LL | |         }
+LL | |         panic!("oh no");
 LL | |     }
    | |_____^
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 

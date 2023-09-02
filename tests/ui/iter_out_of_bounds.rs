@@ -8,6 +8,7 @@ fn opaque_empty_iter() -> impl Iterator<Item = ()> {
 }
 
 fn main() {
+    #[allow(clippy::never_loop)]
     for _ in [1, 2, 3].iter().skip(4) {
         //~^ ERROR: this `.skip()` call skips more items than the iterator will produce
         unreachable!();
