@@ -1344,7 +1344,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let mut name = dir_entry.file_name(); // not a Path as there are no separators!
                 name.push("\0"); // Add a NUL terminator
-                let name_bytes = name.as_os_str_bytes();
+                let name_bytes = name.as_encoded_bytes();
                 let name_len = u64::try_from(name_bytes.len()).unwrap();
 
                 let dirent64_layout = this.libc_ty_layout("dirent64");
@@ -1698,7 +1698,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     Cow::Borrowed(resolved.as_ref()),
                     crate::shims::os_str::PathConversion::HostToTarget,
                 );
-                let mut path_bytes = resolved.as_os_str_bytes();
+                let mut path_bytes = resolved.as_encoded_bytes();
                 let bufsize: usize = bufsize.try_into().unwrap();
                 if path_bytes.len() > bufsize {
                     path_bytes = &path_bytes[..bufsize]

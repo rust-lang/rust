@@ -119,7 +119,7 @@
 //! # Representation
 //!
 //! Rust guarantees to optimize the following types `T` such that
-//! [`Option<T>`] has the same size as `T`:
+//! [`Option<T>`] has the same size and alignment as `T`:
 //!
 //! * [`Box<U>`]
 //! * `&U`
