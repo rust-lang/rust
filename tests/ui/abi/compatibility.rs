@@ -73,4 +73,29 @@ test_abi_compatible!(zst_unit, Zst, ());
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
 test_abi_compatible!(nonzero_int, NonZeroI32, i32);
 
+// RFC 3391 <https://rust-lang.github.io/rfcs/3391-result_ffi_guarantees.html>.
+macro_rules! test_nonnull {
+    ($name:ident, $t:ty) => {
+        mod $name {
+            use super::*;
+            test_abi_compatible!(option, Option<$t>, $t);
+            test_abi_compatible!(result_err_unit, Result<$t, ()>, $t);
+            test_abi_compatible!(result_ok_unit, Result<(), $t>, $t);
+            test_abi_compatible!(result_err_zst, Result<$t, Zst>, $t);
+            test_abi_compatible!(result_ok_zst, Result<Zst, $t>, $t);
+            test_abi_compatible!(result_err_arr, Result<$t, [i8; 0]>, $t);
+            test_abi_compatible!(result_ok_arr, Result<[i8; 0], $t>, $t);
+        }
+    }
+}
+
+test_nonnull!(ref_, &i32);
+test_nonnull!(mut_, &mut i32);
+test_nonnull!(ref_unsized, &[i32]);
+test_nonnull!(mut_unsized, &mut [i32]);
+test_nonnull!(fn_, fn());
+test_nonnull!(nonnull, NonNull<i32>);
+test_nonnull!(nonnull_unsized, NonNull<dyn std::fmt::Debug>);
+test_nonnull!(non_zero, NonZeroI32);
+
 fn main() {}
