@@ -26,7 +26,6 @@ mod dispatch;
 mod global_state;
 mod line_index;
 mod main_loop;
-mod markdown;
 mod mem_docs;
 mod op_queue;
 mod reload;

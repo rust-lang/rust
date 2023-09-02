@@ -1,3 +1,4 @@
+//! Documentation attribute related utilties.
 use either::Either;
 use hir::{
     db::{DefDatabase, HirDatabase},

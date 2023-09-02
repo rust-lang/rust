@@ -5,7 +5,7 @@ pub mod builtin;
 #[cfg(test)]
 mod tests;
 
-use std::{hash::Hash, ops};
+use std::{hash::Hash, ops, slice::Iter as SliceIter};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
@@ -251,7 +251,6 @@ impl Attrs {
     }
 }
 
-use std::slice::Iter as SliceIter;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum DocAtom {
     /// eg. `#[doc(hidden)]`
@@ -265,7 +264,6 @@ pub enum DocAtom {
 
 // Adapted from `CfgExpr` parsing code
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-// #[cfg_attr(test, derive(derive_arbitrary::Arbitrary))]
 pub enum DocExpr {
     Invalid,
     /// eg. `#[doc(hidden)]`, `#[doc(alias = "x")]`
