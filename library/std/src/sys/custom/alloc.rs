@@ -177,8 +177,13 @@ unsafe impl GlobalAlloc for DefaultAlloc {
 
         drop(first_slot);
 
-        free(i, filler);
-        free(i + filler + req_size, leftover);
+        if filler > 0 {
+            free(i, filler);
+        }
+
+        if leftover > 0 {
+            free(i + filler + req_size, leftover);
+        }
 
         let start = HEAP.as_ptr() as usize;
         core::ptr::from_exposed_addr_mut(start + i)
