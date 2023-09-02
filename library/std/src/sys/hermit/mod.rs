@@ -196,7 +196,7 @@ where
 {
     loop {
         match cvt(f()) {
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+            Err(ref e) if e.is_interrupted() => {}
             other => return other,
         }
     }
