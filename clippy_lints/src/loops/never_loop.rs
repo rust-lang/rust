@@ -148,7 +148,7 @@ fn never_loop_expr<'tcx>(
     local_labels: &mut Vec<(HirId, bool)>,
     main_loop_id: HirId,
 ) -> NeverLoopResult {
-    match expr.kind {
+    let result = match expr.kind {
         ExprKind::Unary(_, e)
         | ExprKind::Cast(e, _)
         | ExprKind::Type(e, _)
@@ -262,7 +262,14 @@ fn never_loop_expr<'tcx>(
         | ExprKind::ConstBlock(_)
         | ExprKind::Lit(_)
         | ExprKind::Err(_) => NeverLoopResult::Normal,
-    }
+    };
+    combine_seq(result, || {
+        if cx.typeck_results().expr_ty(expr).is_never() {
+            NeverLoopResult::Diverging
+        } else {
+            NeverLoopResult::Normal
+        }
+    })
 }
 
 fn never_loop_expr_all<'tcx, T: Iterator<Item = &'tcx Expr<'tcx>>>(

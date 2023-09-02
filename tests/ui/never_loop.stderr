@@ -161,5 +161,14 @@ LL | |                 if b { break 'c } else { break 'b }
 LL | |             }
    | |_____________^
 
-error: aborting due to 14 previous errors
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:389:5
+   |
+LL | /     loop {
+LL | |
+LL | |         panic!("oh no");
+LL | |     }
+   | |_____^
+
+error: aborting due to 15 previous errors
 

@@ -385,6 +385,13 @@ pub fn test31(b: bool) {
     }
 }
 
+pub fn test32(b: bool) {
+    loop {
+        //~^ ERROR: this loop never actually loops
+        panic!("oh no");
+    }
+}
+
 fn main() {
     test1();
     test2();
