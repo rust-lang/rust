@@ -184,7 +184,11 @@ fn test_zip_nested_sideffectful() {
         let it = xs.iter_mut().map(|x| *x = 1).enumerate().zip(&ys);
         it.count();
     }
-    assert_eq!(&xs, &[1, 1, 1, 1, 1, 0]);
+    let length_aware =  &xs == &[1, 1, 1, 1, 0, 0];
+    let probe_first = &xs == &[1, 1, 1, 1, 1, 0];
+
+    // either implementation is valid according to zip documentation
+    assert!(length_aware || probe_first);
 }
 
 #[test]
