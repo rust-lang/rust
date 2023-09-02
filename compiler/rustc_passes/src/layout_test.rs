@@ -8,7 +8,10 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, TargetDataLayout};
 
-use crate::errors::{Abi, Align, HomogeneousAggregate, LayoutOf, Size, UnrecognizedField};
+use crate::errors::{
+    LayoutAbi, LayoutAlign, LayoutHomogeneousAggregate, LayoutInvalidAttribute, LayoutOf,
+    LayoutSize, UnrecognizedField,
+};
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if !tcx.features().rustc_attrs {
@@ -16,12 +19,22 @@ pub fn test_layout(tcx: TyCtxt<'_>) {
         return;
     }
     for id in tcx.hir().items() {
-        if matches!(
-            tcx.def_kind(id.owner_id),
-            DefKind::TyAlias { .. } | DefKind::Enum | DefKind::Struct | DefKind::Union
-        ) {
-            for attr in tcx.get_attrs(id.owner_id, sym::rustc_layout) {
-                dump_layout_of(tcx, id.owner_id.def_id, attr);
+        for attr in tcx.get_attrs(id.owner_id, sym::rustc_layout) {
+            match tcx.def_kind(id.owner_id) {
+                DefKind::TyAlias { .. } | DefKind::Enum | DefKind::Struct | DefKind::Union => {
+                    dump_layout_of(tcx, id.owner_id.def_id, attr);
+                }
+                _ => {
+                    tcx.sess.emit_err(LayoutInvalidAttribute { span: tcx.def_span(id.owner_id) });
+                }
+            }
+        }
+        if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. }) {
+            // To find associated functions we need to go into the child items here.
+            for &id in tcx.associated_item_def_ids(id.owner_id) {
+                for _attr in tcx.get_attrs(id, sym::rustc_layout) {
+                    tcx.sess.emit_err(LayoutInvalidAttribute { span: tcx.def_span(id) });
+                }
             }
         }
     }
@@ -38,28 +51,28 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
             for meta_item in meta_items {
                 match meta_item.name_or_empty() {
                     sym::abi => {
-                        tcx.sess.emit_err(Abi {
+                        tcx.sess.emit_err(LayoutAbi {
                             span: tcx.def_span(item_def_id.to_def_id()),
                             abi: format!("{:?}", ty_layout.abi),
                         });
                     }
 
                     sym::align => {
-                        tcx.sess.emit_err(Align {
+                        tcx.sess.emit_err(LayoutAlign {
                             span: tcx.def_span(item_def_id.to_def_id()),
                             align: format!("{:?}", ty_layout.align),
                         });
                     }
 
                     sym::size => {
-                        tcx.sess.emit_err(Size {
+                        tcx.sess.emit_err(LayoutSize {
                             span: tcx.def_span(item_def_id.to_def_id()),
                             size: format!("{:?}", ty_layout.size),
                         });
                     }
 
                     sym::homogeneous_aggregate => {
-                        tcx.sess.emit_err(HomogeneousAggregate {
+                        tcx.sess.emit_err(LayoutHomogeneousAggregate {
                             span: tcx.def_span(item_def_id.to_def_id()),
                             homogeneous_aggregate: format!(
                                 "{:?}",

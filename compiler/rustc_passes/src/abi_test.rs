@@ -7,7 +7,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_target::abi::call::FnAbi;
 
-use crate::errors::{AbiOf, UnrecognizedField};
+use crate::errors::{AbiInvalidAttribute, AbiOf, UnrecognizedField};
 
 pub fn test_abi(tcx: TyCtxt<'_>) {
     if !tcx.features().rustc_attrs {
@@ -15,28 +15,33 @@ pub fn test_abi(tcx: TyCtxt<'_>) {
         return;
     }
     for id in tcx.hir().items() {
-        match tcx.def_kind(id.owner_id) {
-            DefKind::Fn => {
-                for attr in tcx.get_attrs(id.owner_id, sym::rustc_abi) {
+        for attr in tcx.get_attrs(id.owner_id, sym::rustc_abi) {
+            match tcx.def_kind(id.owner_id) {
+                DefKind::Fn => {
                     dump_abi_of_fn_item(tcx, id.owner_id.def_id.into(), attr);
                 }
-            }
-            DefKind::TyAlias { .. } => {
-                for attr in tcx.get_attrs(id.owner_id, sym::rustc_abi) {
+                DefKind::TyAlias { .. } => {
                     dump_abi_of_fn_type(tcx, id.owner_id.def_id.into(), attr);
                 }
+                _ => {
+                    tcx.sess.emit_err(AbiInvalidAttribute { span: tcx.def_span(id.owner_id) });
+                }
             }
-            DefKind::Impl { .. } => {
-                // To find associated functions we need to go into the child items here.
-                for &id in tcx.associated_item_def_ids(id.owner_id) {
-                    if matches!(tcx.def_kind(id), DefKind::AssocFn) {
-                        for attr in tcx.get_attrs(id, sym::rustc_abi) {
+        }
+        if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. }) {
+            // To find associated functions we need to go into the child items here.
+            for &id in tcx.associated_item_def_ids(id.owner_id) {
+                for attr in tcx.get_attrs(id, sym::rustc_abi) {
+                    match tcx.def_kind(id) {
+                        DefKind::AssocFn => {
                             dump_abi_of_fn_item(tcx, id, attr);
+                        }
+                        _ => {
+                            tcx.sess.emit_err(AbiInvalidAttribute { span: tcx.def_span(id) });
                         }
                     }
                 }
             }
-            _ => {}
         }
     }
 }

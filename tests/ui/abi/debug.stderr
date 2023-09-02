@@ -87,7 +87,7 @@ error: fn_abi_of(test) = FnAbi {
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:13:1
+  --> $DIR/debug.rs:15:1
    |
 LL | fn test(_x: u8) -> bool { true }
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -181,7 +181,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:16:1
+  --> $DIR/debug.rs:18:1
    |
 LL | type TestFnPtr = fn(bool) -> u8;
    | ^^^^^^^^^^^^^^
@@ -257,10 +257,22 @@ error: fn_abi_of(test_generic) = FnAbi {
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:19:1
+  --> $DIR/debug.rs:21:1
    |
 LL | fn test_generic<T>(_x: *const T) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
+  --> $DIR/debug.rs:24:1
+   |
+LL | const C: () = ();
+   | ^^^^^^^^^^^
+
+error: `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
+  --> $DIR/debug.rs:28:5
+   |
+LL |     const C: () = ();
+   |     ^^^^^^^^^^^
 
 error: fn_abi_of(assoc_test) = FnAbi {
            args: [
@@ -345,10 +357,10 @@ error: fn_abi_of(assoc_test) = FnAbi {
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:24:5
+  --> $DIR/debug.rs:33:5
    |
 LL |     fn assoc_test(&self) { }
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 6 previous errors
 

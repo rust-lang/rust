@@ -9,6 +9,8 @@
 #![feature(rustc_attrs)]
 #![crate_type = "lib"]
 
+struct S(u16);
+
 #[rustc_abi(debug)]
 fn test(_x: u8) -> bool { true } //~ ERROR: fn_abi
 
@@ -18,7 +20,14 @@ type TestFnPtr = fn(bool) -> u8; //~ ERROR: fn_abi
 #[rustc_abi(debug)]
 fn test_generic<T>(_x: *const T) { } //~ ERROR: fn_abi
 
-struct S(u16);
+#[rustc_abi(debug)]
+const C: () = (); //~ ERROR: can only be applied to
+
+impl S {
+    #[rustc_abi(debug)]
+    const C: () = (); //~ ERROR: can only be applied to
+}
+
 impl S {
     #[rustc_abi(debug)]
     fn assoc_test(&self) { } //~ ERROR: fn_abi
