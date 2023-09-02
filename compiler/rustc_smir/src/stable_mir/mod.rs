@@ -58,11 +58,16 @@ pub type ImplTraitDecls = Vec<ImplDef>;
 
 /// An error type used to represent an error that has already been reported by the compiler.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CompilerError {
+pub enum CompilerError<T> {
     /// Internal compiler error (I.e.: Compiler crashed).
     ICE,
     /// Compilation failed.
     CompilationFailed,
+    /// Compilation was interrupted.
+    Interrupted(T),
+    /// Compilation skipped. This happens when users invoke rustc to retrieve information such as
+    /// --version.
+    Skipped,
 }
 
 /// Holds information about a crate.
