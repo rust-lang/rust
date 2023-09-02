@@ -153,11 +153,13 @@ pub struct InlayHint {
     pub label: InlayHintLabel,
     /// Text edit to apply when "accepting" this inlay hint.
     pub text_edit: Option<TextEdit>,
+    pub needs_resolve: bool,
 }
 
 impl InlayHint {
     fn closing_paren_after(kind: InlayKind, range: TextRange) -> InlayHint {
         InlayHint {
+            needs_resolve: false,
             range,
             kind,
             label: InlayHintLabel::from(")"),
@@ -169,6 +171,7 @@ impl InlayHint {
     }
     fn opening_paren_before(kind: InlayKind, range: TextRange) -> InlayHint {
         InlayHint {
+            needs_resolve: false,
             range,
             kind,
             label: InlayHintLabel::from("("),
@@ -225,6 +228,10 @@ impl InlayHintLabel {
                 tooltip: None,
             }),
         }
+    }
+
+    pub fn needs_resolve(&self) -> bool {
+        self.parts.iter().any(|part| part.linked_location.is_some() || part.tooltip.is_some())
     }
 }
 

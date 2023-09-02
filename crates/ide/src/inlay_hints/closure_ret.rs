@@ -64,6 +64,7 @@ pub(super) fn hints(
     };
 
     acc.push(InlayHint {
+        needs_resolve: label.needs_resolve() || text_edit.is_some(),
         range: param_list.syntax().text_range(),
         kind: InlayKind::Type,
         label,
