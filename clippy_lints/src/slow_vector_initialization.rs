@@ -205,7 +205,7 @@ impl SlowVectorInit {
 
         span_lint_and_then(cx, SLOW_VECTOR_INITIALIZATION, slow_fill.span, msg, |diag| {
             diag.span_suggestion(
-                vec_alloc.allocation_expr.span,
+                vec_alloc.allocation_expr.span.source_callsite(),
                 "consider replacing this with",
                 format!("vec![0; {len_expr}]"),
                 Applicability::Unspecified,
