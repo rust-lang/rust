@@ -43,9 +43,27 @@ use crate::slice::{self, SliceIndex};
 /// it is your responsibility to ensure that `as_mut` is never called, and `as_ptr`
 /// is never used for mutation.
 ///
+/// # Representation
+///
+/// Thanks to the [null pointer optimization],
+/// `NonNull<T>` and `Option<NonNull<T>>`
+/// are guaranteed to have the same size and alignment:
+///
+/// ```
+/// # use std::mem::{size_of, align_of};
+/// use std::ptr::NonNull;
+///
+/// assert_eq!(size_of::<NonNull<i16>>(), size_of::<Option<NonNull<i16>>>());
+/// assert_eq!(align_of::<NonNull<i16>>(), align_of::<Option<NonNull<i16>>>());
+///
+/// assert_eq!(size_of::<NonNull<str>>(), size_of::<Option<NonNull<str>>>());
+/// assert_eq!(align_of::<NonNull<str>>(), align_of::<Option<NonNull<str>>>());
+/// ```
+///
 /// [covariant]: https://doc.rust-lang.org/reference/subtyping.html
 /// [`PhantomData`]: crate::marker::PhantomData
 /// [`UnsafeCell<T>`]: crate::cell::UnsafeCell
+/// [null pointer optimization]: crate::option#representation
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(1)]
