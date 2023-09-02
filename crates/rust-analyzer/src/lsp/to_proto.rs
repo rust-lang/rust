@@ -13,6 +13,7 @@ use ide::{
     RenameError, Runnable, Severity, SignatureHelp, SnippetEdit, SourceChange, StructureNodeKind,
     SymbolKind, TextEdit, TextRange, TextSize,
 };
+use ide_db::rust_doc::format_docs;
 use itertools::Itertools;
 use serde_json::to_value;
 use vfs::AbsPath;
@@ -105,7 +106,7 @@ pub(crate) fn diagnostic_severity(severity: Severity) -> lsp_types::DiagnosticSe
 }
 
 pub(crate) fn documentation(documentation: Documentation) -> lsp_types::Documentation {
-    let value = crate::markdown::format_docs(documentation.as_str());
+    let value = format_docs(&documentation);
     let markup_content = lsp_types::MarkupContent { kind: lsp_types::MarkupKind::Markdown, value };
     lsp_types::Documentation::MarkupContent(markup_content)
 }
@@ -416,7 +417,7 @@ pub(crate) fn signature_help(
     let documentation = call_info.doc.filter(|_| config.docs).map(|doc| {
         lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
             kind: lsp_types::MarkupKind::Markdown,
-            value: crate::markdown::format_docs(&doc),
+            value: format_docs(&doc),
         })
     });
 
@@ -1531,7 +1532,7 @@ pub(crate) fn markup_content(
         ide::HoverDocFormat::Markdown => lsp_types::MarkupKind::Markdown,
         ide::HoverDocFormat::PlainText => lsp_types::MarkupKind::PlainText,
     };
-    let value = crate::markdown::format_docs(markup.as_str());
+    let value = format_docs(&Documentation::new(markup.into()));
     lsp_types::MarkupContent { kind, value }
 }
 

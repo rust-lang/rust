@@ -1,10 +1,11 @@
 use std::ffi::OsStr;
 
 use expect_test::{expect, Expect};
-use hir::{HasAttrs, Semantics};
+use hir::Semantics;
 use ide_db::{
     base_db::{FilePosition, FileRange},
     defs::Definition,
+    documentation::{Documentation, HasDocs},
     RootDatabase,
 };
 use itertools::Itertools;
@@ -78,7 +79,7 @@ fn check_doc_links(ra_fixture: &str) {
 fn def_under_cursor(
     sema: &Semantics<'_, RootDatabase>,
     position: &FilePosition,
-) -> (Definition, hir::Documentation) {
+) -> (Definition, Documentation) {
     let (docs, def) = sema
         .parse(position.file_id)
         .syntax()
@@ -96,7 +97,7 @@ fn def_under_cursor(
 fn node_to_def(
     sema: &Semantics<'_, RootDatabase>,
     node: &SyntaxNode,
-) -> Option<Option<(Option<hir::Documentation>, Definition)>> {
+) -> Option<Option<(Option<Documentation>, Definition)>> {
     Some(match_ast! {
         match node {
             ast::SourceFile(it)  => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::Module(def))),

@@ -88,7 +88,7 @@ use triomphe::Arc;
 use crate::db::{DefDatabase, HirDatabase};
 
 pub use crate::{
-    attrs::{DocLinkDef, HasAttrs},
+    attrs::{resolve_doc_path_on, HasAttrs},
     diagnostics::{
         AnyDiagnostic, BreakOutsideOfLoop, CaseType, ExpectedFunction, InactiveCode,
         IncoherentImpl, IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError,
@@ -115,7 +115,7 @@ pub use crate::{
 pub use {
     cfg::{CfgAtom, CfgExpr, CfgOptions},
     hir_def::{
-        attr::{builtin::AttributeTemplate, Attrs, AttrsWithOwner, Documentation},
+        attr::{builtin::AttributeTemplate, AttrSourceMap, Attrs, AttrsWithOwner},
         data::adt::StructKind,
         find_path::PrefixKind,
         import_map,
@@ -130,7 +130,7 @@ pub use {
         {AdtId, ModuleDefId},
     },
     hir_expand::{
-        attrs::Attr,
+        attrs::{Attr, AttrId},
         name::{known, Name},
         ExpandResult, HirFileId, InFile, MacroFile, Origin,
     },
@@ -4838,4 +4838,11 @@ pub enum ItemContainer {
     Module(Module),
     ExternBlock(),
     Crate(CrateId),
+}
+
+/// Subset of `ide_db::Definition` that doc links can resolve to.
+pub enum DocLinkDef {
+    ModuleDef(ModuleDef),
+    Field(Field),
+    SelfType(Trait),
 }

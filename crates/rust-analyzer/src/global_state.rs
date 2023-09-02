@@ -12,7 +12,10 @@ use ide_db::base_db::{CrateId, FileLoader, ProcMacroPaths, SourceDatabase};
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
 use nohash_hasher::IntMap;
-use parking_lot::{Mutex, RwLock, RwLockUpgradableReadGuard, RwLockWriteGuard};
+use parking_lot::{
+    MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard, RwLockUpgradableReadGuard,
+    RwLockWriteGuard,
+};
 use proc_macro_api::ProcMacroServer;
 use project_model::{CargoWorkspace, ProjectWorkspace, Target, WorkspaceBuildScripts};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -438,12 +441,16 @@ impl Drop for GlobalState {
 }
 
 impl GlobalStateSnapshot {
+    fn vfs_read(&self) -> MappedRwLockReadGuard<'_, vfs::Vfs> {
+        RwLockReadGuard::map(self.vfs.read(), |(it, _)| it)
+    }
+
     pub(crate) fn url_to_file_id(&self, url: &Url) -> anyhow::Result<FileId> {
-        url_to_file_id(&self.vfs.read().0, url)
+        url_to_file_id(&self.vfs_read(), url)
     }
 
     pub(crate) fn file_id_to_url(&self, id: FileId) -> Url {
-        file_id_to_url(&self.vfs.read().0, id)
+        file_id_to_url(&self.vfs_read(), id)
     }
 
     pub(crate) fn file_line_index(&self, file_id: FileId) -> Cancellable<LineIndex> {
@@ -459,7 +466,7 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Url {
-        let mut base = self.vfs.read().0.file_path(path.anchor);
+        let mut base = self.vfs_read().file_path(path.anchor);
         base.pop();
         let path = base.join(&path.path).unwrap();
         let path = path.as_path().unwrap();
@@ -467,7 +474,7 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn file_id_to_file_path(&self, file_id: FileId) -> vfs::VfsPath {
-        self.vfs.read().0.file_path(file_id)
+        self.vfs_read().file_path(file_id)
     }
 
     pub(crate) fn cargo_target_for_crate_root(
@@ -475,7 +482,7 @@ impl GlobalStateSnapshot {
         crate_id: CrateId,
     ) -> Option<(&CargoWorkspace, Target)> {
         let file_id = self.analysis.crate_root(crate_id).ok()?;
-        let path = self.vfs.read().0.file_path(file_id);
+        let path = self.vfs_read().file_path(file_id);
         let path = path.as_path()?;
         self.workspaces.iter().find_map(|ws| match ws {
             ProjectWorkspace::Cargo { cargo, .. } => {
@@ -487,7 +494,7 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn vfs_memory_usage(&self) -> usize {
-        self.vfs.read().0.memory_usage()
+        self.vfs_read().memory_usage()
     }
 }
 
