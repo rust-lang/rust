@@ -194,13 +194,11 @@ fn never_loop_expr<'tcx>(
         },
         ExprKind::Match(e, arms, _) => {
             let e = never_loop_expr(cx, e, local_labels, main_loop_id);
-            if arms.is_empty() {
-                e
-            } else {
-                combine_seq(e, || {
-                    never_loop_expr_branch(cx, &mut arms.iter().map(|a| a.body), local_labels, main_loop_id)
+            combine_seq(e, || {
+                arms.iter().fold(NeverLoopResult::Diverging, |a, b| {
+                    combine_branches(a, never_loop_expr(cx, b.body, local_labels, main_loop_id))
                 })
-            }
+            })
         },
         ExprKind::Block(b, l) => {
             if l.is_some() {
@@ -274,17 +272,6 @@ fn never_loop_expr_all<'tcx, T: Iterator<Item = &'tcx Expr<'tcx>>>(
     main_loop_id: HirId,
 ) -> NeverLoopResult {
     combine_seq_many(es.map(|e| never_loop_expr(cx, e, local_labels, main_loop_id)))
-}
-
-fn never_loop_expr_branch<'tcx, T: Iterator<Item = &'tcx Expr<'tcx>>>(
-    cx: &LateContext<'tcx>,
-    e: &mut T,
-    local_labels: &mut Vec<(HirId, bool)>,
-    main_loop_id: HirId,
-) -> NeverLoopResult {
-    e.fold(NeverLoopResult::Diverging, |a, b| {
-        combine_branches(a, never_loop_expr(cx, b, local_labels, main_loop_id))
-    })
 }
 
 fn for_to_if_let_sugg(cx: &LateContext<'_>, iterator: &Expr<'_>, pat: &Pat<'_>) -> String {
