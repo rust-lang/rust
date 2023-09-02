@@ -354,9 +354,9 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
         // FIXME(associated_const_equality): Also add associated consts to
         // the requirements here.
         if item.kind == ty::AssocKind::Type {
-            // RPITITs are not checked here, since they are not (currently) object-safe
-            // and cannot be named from a non-`Self: Sized` method.
-            if item.is_impl_trait_in_trait() {
+            // associated types that require `Self: Sized` do not show up in the built-in
+            // implementation of `Trait for dyn Trait`, and can be dropped here.
+            if tcx.generics_require_sized_self(item.def_id) {
                 continue;
             }
 
