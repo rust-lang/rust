@@ -21,12 +21,16 @@ hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit wh
     .label = deref recursion limit reached
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
 
-hir_analysis_cannot_capture_late_bound_const_in_anon_const =
-    cannot capture late-bound const parameter in a constant
+hir_analysis_cannot_capture_late_bound_const =
+    cannot capture late-bound const parameter in {$what}
     .label = parameter defined here
 
-hir_analysis_cannot_capture_late_bound_ty_in_anon_const =
-    cannot capture late-bound type parameter in a constant
+hir_analysis_cannot_capture_late_bound_lifetime =
+    cannot capture late-bound lifetime in {$what}
+    .label = lifetime defined here
+
+hir_analysis_cannot_capture_late_bound_ty =
+    cannot capture late-bound type parameter in {$what}
     .label = parameter defined here
 
 hir_analysis_cast_thin_pointer_to_fat_pointer = cannot cast thin pointer `{$expr_ty}` to fat pointer `{$cast_ty}`

@@ -1,0 +1,20 @@
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/escaping-bound-var.rs:1:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: cannot capture late-bound lifetime in constant
+  --> $DIR/escaping-bound-var.rs:7:13
+   |
+LL | fn test<'a>(
+   |         -- lifetime defined here
+...
+LL |     let x: &'a ();
+   |             ^^
+
+error: aborting due to previous error; 1 warning emitted
+

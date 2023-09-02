@@ -268,9 +268,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // (*) -- not late-bound, won't change
             }
 
-            Some(rbv::ResolvedArg::Error(_)) => {
-                bug!("only ty/ct should resolve as ResolvedArg::Error")
-            }
+            Some(rbv::ResolvedArg::Error(guar)) => ty::Region::new_error(tcx, guar),
 
             None => {
                 self.re_infer(def, lifetime.ident.span).unwrap_or_else(|| {
