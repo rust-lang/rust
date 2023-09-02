@@ -1,3 +1,5 @@
+#![unstable(issue = "none", feature = "std_internals")]
+
 use crate::pin::Pin;
 use crate::time::Duration;
 

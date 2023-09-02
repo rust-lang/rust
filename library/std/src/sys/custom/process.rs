@@ -1,3 +1,4 @@
+#![unstable(issue = "none", feature = "std_internals")]
 #![allow(missing_docs)]
 
 use crate::custom_os_impl;

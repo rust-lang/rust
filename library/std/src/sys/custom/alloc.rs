@@ -1,3 +1,5 @@
+#![unstable(issue = "none", feature = "std_internals")]
+
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::os::custom::alloc::IMPL;
 use crate::sync::Mutex;

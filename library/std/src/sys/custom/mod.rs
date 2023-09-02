@@ -1,5 +1,7 @@
 //! System bindings for custom platforms
 
+#![unstable(issue = "none", feature = "std_internals")]
+
 use crate::custom_os_impl;
 use crate::io as std_io;
 

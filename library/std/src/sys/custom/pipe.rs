@@ -1,3 +1,5 @@
+#![unstable(issue = "none", feature = "std_internals")]
+
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 
 pub type AnonPipe = Box<dyn AnonPipeApi>;

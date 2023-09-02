@@ -1,3 +1,5 @@
+#![unstable(issue = "none", feature = "std_internals")]
+
 pub mod os {
     pub const FAMILY: &str = "";
     pub const OS: &str = "custom";

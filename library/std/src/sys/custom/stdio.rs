@@ -1,3 +1,4 @@
+#![unstable(issue = "none", feature = "std_internals")]
 use crate::custom_os_impl;
 use crate::io;
 
