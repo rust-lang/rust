@@ -1,7 +1,7 @@
 //! Attributes & documentation for hir types.
 
 use hir_def::{
-    attr::{AttrsWithOwner, Documentation},
+    attr::AttrsWithOwner,
     item_scope::ItemInNs,
     path::{ModPath, Path},
     per_ns::Namespace,
@@ -20,7 +20,6 @@ use crate::{
 
 pub trait HasAttrs {
     fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner;
-    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation>;
     fn resolve_doc_path(
         self,
         db: &dyn HirDatabase,
@@ -42,10 +41,6 @@ macro_rules! impl_has_attrs {
             fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
                 let def = AttrDefId::$def_id(self.into());
                 db.attrs_with_owner(def)
-            }
-            fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-                let def = AttrDefId::$def_id(self.into());
-                db.attrs(def).docs()
             }
             fn resolve_doc_path(
                 self,
@@ -82,9 +77,6 @@ macro_rules! impl_has_attrs_enum {
             fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
                 $enum::$variant(self).attrs(db)
             }
-            fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-                $enum::$variant(self).docs(db)
-            }
             fn resolve_doc_path(
                 self,
                 db: &dyn HirDatabase,
@@ -109,14 +101,6 @@ impl HasAttrs for AssocItem {
         }
     }
 
-    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-        match self {
-            AssocItem::Function(it) => it.docs(db),
-            AssocItem::Const(it) => it.docs(db),
-            AssocItem::TypeAlias(it) => it.docs(db),
-        }
-    }
-
     fn resolve_doc_path(
         self,
         db: &dyn HirDatabase,
@@ -135,23 +119,6 @@ impl HasAttrs for ExternCrateDecl {
     fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
         let def = AttrDefId::ExternCrateId(self.into());
         db.attrs_with_owner(def)
-    }
-    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-        let crate_docs = self.resolved_crate(db)?.root_module().attrs(db).docs().map(String::from);
-        let def = AttrDefId::ExternCrateId(self.into());
-        let decl_docs = db.attrs(def).docs().map(String::from);
-        match (decl_docs, crate_docs) {
-            (None, None) => None,
-            (Some(decl_docs), None) => Some(decl_docs),
-            (None, Some(crate_docs)) => Some(crate_docs),
-            (Some(mut decl_docs), Some(crate_docs)) => {
-                decl_docs.push('\n');
-                decl_docs.push('\n');
-                decl_docs += &crate_docs;
-                Some(decl_docs)
-            }
-        }
-        .map(Documentation::new)
     }
     fn resolve_doc_path(
         self,

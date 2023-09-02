@@ -1,4 +1,5 @@
-//! Transforms markdown
+//! Transforms rust like doc content to markdown, replacing rustdoc fences and removing rustdoc code
+//! block comments.
 use ide_db::rust_doc::is_rust_fence;
 
 const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];

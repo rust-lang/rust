@@ -4,12 +4,11 @@
 use std::collections::BTreeSet;
 
 use either::Either;
-use hir::{
-    AssocItem, GenericParam, HasAttrs, HirDisplay, ModuleDef, PathResolution, Semantics, Trait,
-};
+use hir::{AssocItem, GenericParam, HirDisplay, ModuleDef, PathResolution, Semantics, Trait};
 use ide_db::{
     active_parameter::{callable_for_node, generic_def_for_node},
     base_db::FilePosition,
+    documentation::HasDocs,
     FxIndexMap,
 };
 use stdx::format_to;

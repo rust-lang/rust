@@ -115,7 +115,7 @@ pub use crate::{
 pub use {
     cfg::{CfgAtom, CfgExpr, CfgOptions},
     hir_def::{
-        attr::{builtin::AttributeTemplate, Attrs, AttrsWithOwner, Documentation},
+        attr::{builtin::AttributeTemplate, AttrSourceMap, Attrs, AttrsWithOwner},
         data::adt::StructKind,
         find_path::PrefixKind,
         import_map,
@@ -130,7 +130,7 @@ pub use {
         {AdtId, ModuleDefId},
     },
     hir_expand::{
-        attrs::Attr,
+        attrs::{Attr, AttrId},
         name::{known, Name},
         ExpandResult, HirFileId, InFile, MacroFile, Origin,
     },
