@@ -7,7 +7,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{AppendOnlyIndexVec, Lrc, OnceCell, RwLock, WorkerLocal};
+use rustc_data_structures::sync::{AppendOnlyIndexVec, Lrc, OnceLock, RwLock, WorkerLocal};
 use rustc_hir::def_id::{StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::DepGraphFuture;
@@ -78,7 +78,7 @@ impl<T> Default for Query<T> {
 
 pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
-    gcx_cell: OnceCell<GlobalCtxt<'tcx>>,
+    gcx_cell: OnceLock<GlobalCtxt<'tcx>>,
 
     arena: WorkerLocal<Arena<'tcx>>,
     hir_arena: WorkerLocal<rustc_hir::Arena<'tcx>>,
@@ -93,7 +93,7 @@ impl<'tcx> Queries<'tcx> {
     pub fn new(compiler: &'tcx Compiler) -> Queries<'tcx> {
         Queries {
             compiler,
-            gcx_cell: OnceCell::new(),
+            gcx_cell: OnceLock::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
             parse: Default::default(),

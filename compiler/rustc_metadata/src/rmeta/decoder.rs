@@ -9,7 +9,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc, OnceCell};
+use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc, OnceLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
@@ -93,7 +93,7 @@ pub(crate) struct CrateMetadata {
     /// For every definition in this crate, maps its `DefPathHash` to its `DefIndex`.
     def_path_hash_map: DefPathHashMapRef<'static>,
     /// Likewise for ExpnHash.
-    expn_hash_map: OnceCell<UnhashMap<ExpnHash, ExpnIndex>>,
+    expn_hash_map: OnceLock<UnhashMap<ExpnHash, ExpnIndex>>,
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_state: AllocDecodingState,
     /// Caches decoded `DefKey`s.
