@@ -38,3 +38,10 @@ type TestAbiEq = (fn(bool), fn(bool));
 
 #[rustc_abi(assert_eq)]
 type TestAbiNe = (fn(u8), fn(u32)); //~ ERROR: ABIs are not compatible
+
+#[rustc_abi(assert_eq)]
+type TestAbiNeFloat = (fn(f32), fn(u32)); //~ ERROR: ABIs are not compatible
+
+// Sign matters on some targets (such as s390x), so let's make sure we never accept this.
+#[rustc_abi(assert_eq)]
+type TestAbiNeSign = (fn(i32), fn(u32)); //~ ERROR: ABIs are not compatible

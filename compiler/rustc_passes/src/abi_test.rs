@@ -121,9 +121,7 @@ fn test_arg_abi_eq<'tcx>(
     // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
     // at the type. Comparing the `mode` and `layout.abi` should catch basically everything though
     // (except for tricky cases around unized types).
-    // This *is* overly strict (e.g. we compare the sign of integer `Primitive`s, or parts of `ArgAttributes` that do not affect ABI),
-    // but for the purpose of ensuring repr(transparent) ABI compatibility that is fine.
-    abi1.mode == abi2.mode && abi1.layout.abi == abi2.layout.abi
+    abi1.mode.eq_abi(&abi2.mode) && abi1.layout.abi.eq_up_to_validity(&abi2.layout.abi)
 }
 
 fn test_abi_eq<'tcx>(abi1: &'tcx FnAbi<'tcx, Ty<'tcx>>, abi2: &'tcx FnAbi<'tcx, Ty<'tcx>>) -> bool {

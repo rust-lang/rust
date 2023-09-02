@@ -1348,6 +1348,23 @@ impl Abi {
             Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
         }
     }
+
+    pub fn eq_up_to_validity(&self, other: &Self) -> bool {
+        match (self, other) {
+            // Scalar, Vector, ScalarPair have `Scalar` in them where we ignore validity ranges.
+            // We do *not* ignore the sign since it matters for some ABIs (e.g. s390x).
+            (Abi::Scalar(l), Abi::Scalar(r)) => l.primitive() == r.primitive(),
+            (
+                Abi::Vector { element: element_l, count: count_l },
+                Abi::Vector { element: element_r, count: count_r },
+            ) => element_l.primitive() == element_r.primitive() && count_l == count_r,
+            (Abi::ScalarPair(l1, l2), Abi::ScalarPair(r1, r2)) => {
+                l1.primitive() == r1.primitive() && l2.primitive() == r2.primitive()
+            }
+            // Everything else must be strictly identical.
+            _ => self == other,
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
