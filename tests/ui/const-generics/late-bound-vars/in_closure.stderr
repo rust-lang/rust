@@ -1,5 +1,5 @@
 error: cannot capture late-bound lifetime in constant
-  --> $DIR/in_closure.rs:24:29
+  --> $DIR/in_closure.rs:16:29
    |
 LL | fn test<'a>() {
    |         -- lifetime defined here
@@ -8,7 +8,7 @@ LL |         let _: [u8; inner::<'a>()];
    |                             ^^
 
 error: cannot capture late-bound lifetime in constant
-  --> $DIR/in_closure.rs:25:29
+  --> $DIR/in_closure.rs:17:29
    |
 LL | fn test<'a>() {
    |         -- lifetime defined here
