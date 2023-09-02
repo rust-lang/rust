@@ -16,6 +16,7 @@
     - [Defining Lints](development/defining_lints.md)
     - [Writing tests](development/writing_tests.md)
     - [Lint Passes](development/lint_passes.md)
+    - [Emitting lints](development/emitting_lints.md)
     - [Type Checking](development/type_checking.md)
     - [Method Checking](development/method_checking.md)
     - [Macro Expansions](development/macro_expansions.md)
