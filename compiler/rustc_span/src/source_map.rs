@@ -14,13 +14,10 @@ pub use crate::*;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{Hash128, Hash64, StableHasher};
-use rustc_data_structures::sync::{
-    AtomicU32, IntoDynSyncSend, Lrc, MappedReadGuard, ReadGuard, RwLock,
-};
+use rustc_data_structures::sync::{IntoDynSyncSend, Lrc, MappedReadGuard, ReadGuard, RwLock};
 use std::cmp;
 use std::hash::Hash;
 use std::path::{self, Path, PathBuf};
-use std::sync::atomic::Ordering;
 
 use std::fs;
 use std::io;
@@ -187,9 +184,6 @@ pub(super) struct SourceMapFiles {
 }
 
 pub struct SourceMap {
-    /// The address space below this value is currently used by the files in the source map.
-    used_address_space: AtomicU32,
-
     files: RwLock<SourceMapFiles>,
     file_loader: IntoDynSyncSend<Box<dyn FileLoader + Sync + Send>>,
     // This is used to apply the file path remapping as specified via
@@ -215,7 +209,6 @@ impl SourceMap {
         hash_kind: SourceFileHashAlgorithm,
     ) -> SourceMap {
         SourceMap {
-            used_address_space: AtomicU32::new(0),
             files: Default::default(),
             file_loader: IntoDynSyncSend(file_loader),
             path_mapping,
@@ -271,30 +264,17 @@ impl SourceMap {
         &self,
         mut file: SourceFile,
     ) -> Result<Lrc<SourceFile>, OffsetOverflowError> {
-        let size = file.source_len.to_u32();
-
-        let start_pos = loop {
-            let current = self.used_address_space.load(Ordering::Relaxed);
-            let next = current
-                .checked_add(size)
-                // Add one so there is some space between files. This lets us distinguish
-                // positions in the `SourceMap`, even in the presence of zero-length files.
-                .and_then(|next| next.checked_add(1))
-                .ok_or(OffsetOverflowError)?;
-
-            if self
-                .used_address_space
-                .compare_exchange(current, next, Ordering::Relaxed, Ordering::Relaxed)
-                .is_ok()
-            {
-                break usize::try_from(current).unwrap();
-            }
-        };
-
-        file.start_pos = BytePos::from_usize(start_pos);
         let file_id = StableSourceFileId::new(&file);
 
         let mut files = self.files.borrow_mut();
+
+        file.start_pos = BytePos(if let Some(last_file) = files.source_files.last() {
+            // Add one so there is some space between files. This lets us distinguish
+            // positions in the `SourceMap`, even in the presence of zero-length files.
+            last_file.end_position().0.checked_add(1).ok_or(OffsetOverflowError)?
+        } else {
+            0
+        });
 
         let file = Lrc::new(file);
         files.source_files.push(file.clone());
