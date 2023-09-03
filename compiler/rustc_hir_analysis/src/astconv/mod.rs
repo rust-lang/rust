@@ -2205,27 +2205,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         err.span_note(span, format!("type parameter `{name}` defined here"));
                     }
                 });
-
-                match tcx.named_bound_var(hir_id) {
-                    Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => {
-                        let name =
-                            tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id.expect_local()));
-                        let br = ty::BoundTy {
-                            var: ty::BoundVar::from_u32(index),
-                            kind: ty::BoundTyKind::Param(def_id, name),
-                        };
-                        Ty::new_bound(tcx, debruijn, br)
-                    }
-                    Some(rbv::ResolvedArg::EarlyBound(_)) => {
-                        let def_id = def_id.expect_local();
-                        let item_def_id = tcx.hir().ty_param_owner(def_id);
-                        let generics = tcx.generics_of(item_def_id);
-                        let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-                        Ty::new_param(tcx, index, tcx.hir().ty_param_name(def_id))
-                    }
-                    Some(rbv::ResolvedArg::Error(guar)) => Ty::new_error(tcx, guar),
-                    arg => bug!("unexpected bound var resolution for {hir_id:?}: {arg:?}"),
-                }
+                self.hir_id_to_bound_ty(hir_id)
             }
             Res::SelfTyParam { .. } => {
                 // `Self` in trait or type alias.
@@ -2391,6 +2371,57 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 Ty::new_error(self.tcx(), e)
             }
             _ => span_bug!(span, "unexpected resolution: {:?}", path.res),
+        }
+    }
+
+    // Converts a hir id corresponding to a type parameter to
+    // a early-bound `ty::Param` or late-bound `ty::Bound`.
+    pub(crate) fn hir_id_to_bound_ty(&self, hir_id: hir::HirId) -> Ty<'tcx> {
+        let tcx = self.tcx();
+        match tcx.named_bound_var(hir_id) {
+            Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
+                let name = tcx.item_name(def_id);
+                let br = ty::BoundTy {
+                    var: ty::BoundVar::from_u32(index),
+                    kind: ty::BoundTyKind::Param(def_id, name),
+                };
+                Ty::new_bound(tcx, debruijn, br)
+            }
+            Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
+                let def_id = def_id.expect_local();
+                let item_def_id = tcx.hir().ty_param_owner(def_id);
+                let generics = tcx.generics_of(item_def_id);
+                let index = generics.param_def_id_to_index[&def_id.to_def_id()];
+                Ty::new_param(tcx, index, tcx.hir().ty_param_name(def_id))
+            }
+            Some(rbv::ResolvedArg::Error(guar)) => Ty::new_error(tcx, guar),
+            arg => bug!("unexpected bound var resolution for {hir_id:?}: {arg:?}"),
+        }
+    }
+
+    // Converts a hir id corresponding to a const parameter to
+    // a early-bound `ConstKind::Param` or late-bound `ConstKind::Bound`.
+    pub(crate) fn hir_id_to_bound_const(
+        &self,
+        hir_id: hir::HirId,
+        param_ty: Ty<'tcx>,
+    ) -> Const<'tcx> {
+        let tcx = self.tcx();
+        match tcx.named_bound_var(hir_id) {
+            Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
+                // Find the name and index of the const parameter by indexing the generics of
+                // the parent item and construct a `ParamConst`.
+                let item_def_id = tcx.parent(def_id);
+                let generics = tcx.generics_of(item_def_id);
+                let index = generics.param_def_id_to_index[&def_id];
+                let name = tcx.item_name(def_id);
+                ty::Const::new_param(tcx, ty::ParamConst::new(index, name), param_ty)
+            }
+            Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => {
+                ty::Const::new_bound(tcx, debruijn, ty::BoundVar::from_u32(index), param_ty)
+            }
+            Some(rbv::ResolvedArg::Error(guar)) => ty::Const::new_error(tcx, guar, param_ty),
+            arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", hir_id),
         }
     }
 
