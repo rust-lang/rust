@@ -171,7 +171,7 @@ fn write_coverage_mapping<'a>(
     }
 
     let mut virtual_file_mapping = Vec::new();
-    let mut mapping_regions = Vec::new();
+    let mut mapping_regions = Vec::with_capacity(counter_regions.len());
     let mut current_file_name = None;
     let mut current_file_id = 0;
 
