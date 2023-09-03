@@ -385,10 +385,18 @@ pub fn test31(b: bool) {
     }
 }
 
-pub fn test32(b: bool) {
+pub fn test32() {
     loop {
         //~^ ERROR: this loop never actually loops
         panic!("oh no");
+    }
+    loop {
+        // no error
+        unimplemented!("not yet");
+    }
+    loop {
+        // no error
+        todo!("maybe later");
     }
 }
 

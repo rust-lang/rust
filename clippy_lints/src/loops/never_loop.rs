@@ -2,6 +2,7 @@ use super::utils::make_iterator_snippet;
 use super::NEVER_LOOP;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
+use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Destination, Expr, ExprKind, HirId, InlineAsmOperand, Pat, Stmt, StmtKind};
@@ -263,13 +264,25 @@ fn never_loop_expr<'tcx>(
         | ExprKind::Lit(_)
         | ExprKind::Err(_) => NeverLoopResult::Normal,
     };
-    combine_seq(result, || {
+    let result = combine_seq(result, || {
         if cx.typeck_results().expr_ty(expr).is_never() {
             NeverLoopResult::Diverging
         } else {
             NeverLoopResult::Normal
         }
-    })
+    });
+    if  let NeverLoopResult::Diverging = result &&
+        let Some(macro_call) = root_macro_call_first_node(cx, expr) &&
+        let "todo" | "unimplemented" = cx.tcx.item_name(macro_call.def_id).as_str()
+    {
+        // We return MayContinueMainLoop here because we treat `todo!()` and
+        // `unimplemented!()` macros as potentially containing any code,
+        // including a continue of the main loop. This effectively silences the lint
+        // whenever a loop contains one of these macros anywhere.
+        NeverLoopResult::MayContinueMainLoop
+    } else {
+        result
+    }
 }
 
 fn never_loop_expr_all<'tcx, T: Iterator<Item = &'tcx Expr<'tcx>>>(
