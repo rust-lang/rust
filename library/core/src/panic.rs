@@ -47,6 +47,7 @@ pub macro panic_2015 {
 #[allow_internal_unstable(core_panic, const_format_args)]
 #[rustc_diagnostic_item = "core_panic_2021_macro"]
 #[rustc_macro_transparency = "semitransparent"]
+#[cfg(any(bootstrap, feature = "panic_immediate_abort"))]
 pub macro panic_2021 {
     () => (
         $crate::panicking::panic("explicit panic")
@@ -59,6 +60,68 @@ pub macro panic_2021 {
         // Semicolon to prevent temporaries inside the formatting machinery from
         // being considered alive in the caller after the panic_fmt call.
         $crate::panicking::panic_fmt($crate::const_format_args!($($t)+));
+    }),
+}
+
+#[doc(hidden)]
+#[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
+#[allow_internal_unstable(
+    core_panic,
+    core_intrinsics,
+    const_dispatch,
+    const_eval_select,
+    const_format_args,
+    panic_args,
+    rustc_attrs
+)]
+#[rustc_diagnostic_item = "core_panic_2021_macro"]
+#[rustc_macro_transparency = "semitransparent"]
+#[cfg(not(any(bootstrap, feature = "panic_immediate_abort")))]
+pub macro panic_2021 {
+    () => ({
+        // Create a function so that the argument for `track_caller`
+        // can be moved inside if possible.
+        #[cold]
+        #[track_caller]
+        #[inline(never)]
+        const fn panic_cold_explicit() -> ! {
+            $crate::panicking::panic_explicit()
+        }
+        panic_cold_explicit();
+    }),
+    // Special-case the single-argument case for const_panic.
+    ("{}", $arg:expr $(,)?) => ({
+        #[cold]
+        #[track_caller]
+        #[inline(never)]
+        #[rustc_do_not_const_check] // Allow the call to `panic_display`.
+        const fn panic_cold_display<T: $crate::fmt::Display>(arg: &T) -> ! {
+            $crate::panicking::panic_display(arg)
+        }
+
+        let arg = &$arg;
+
+        // Ensure the caller could call `panic_display` itself directly.
+        // Const checking will ensure only &str is allowed.
+        if false {
+            $crate::panicking::panic_display(arg);
+        }
+
+        // Call `panic_display` directly for const eval since `panic_cold_display` can not be
+        // evaluated as it is marked with `rustc_do_not_const_check`.
+
+        // SAFETY: These branches are observably equivalent as `panic_cold_display` is just an
+        // indirect way of calling `panic_display`.
+        unsafe {
+            $crate::intrinsics::const_eval_select(
+                (arg,),
+                $crate::panicking::panic_display,
+                panic_cold_display
+            );
+        }
+    }),
+    ($($t:tt)+) => ({
+        $crate::panic_args!($($t)+);
     }),
 }
 

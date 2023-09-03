@@ -3,6 +3,7 @@
 use crate::visitors::{for_each_expr, Descend};
 
 use arrayvec::ArrayVec;
+use hir::{Block, Local, Stmt, StmtKind};
 use rustc_ast::{FormatArgs, FormatArgument, FormatPlaceholder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
@@ -25,6 +26,7 @@ const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
     sym::eprintln_macro,
     sym::format_args_macro,
     sym::format_macro,
+    sym::panic_args_macro,
     sym::print_macro,
     sym::println_macro,
     sym::std_panic_macro,
@@ -222,15 +224,52 @@ pub enum PanicExpn<'a> {
     /// A single argument that implements `Display` - `panic!("{}", object)`
     Display(&'a Expr<'a>),
     /// Anything else - `panic!("error {}: {}", a, b)`
-    Format(&'a Expr<'a>),
+    Format(Option<&'a Expr<'a>>),
 }
 
 impl<'a> PanicExpn<'a> {
     pub fn parse(expr: &'a Expr<'a>) -> Option<Self> {
-        let ExprKind::Call(callee, [arg, rest @ ..]) = &expr.kind else {
+        // Pattern match on the special single-argument case for const_panic in `panic_2021`.
+        if let ExprKind::Block(
+            &Block {
+                stmts:
+                    [
+                        Stmt { kind: StmtKind::Item(..), .. },
+                        Stmt {
+                            kind:
+                                StmtKind::Local(&Local {
+                                    init: Some(&Expr { kind: ExprKind::AddrOf(_, _, arg), .. }),
+                                    ..
+                                }),
+                            ..
+                        },
+                        Stmt { kind: StmtKind::Expr(&Expr { kind: ExprKind::If(..), .. }), .. },
+                        ..,
+                    ],
+                ..
+            },
+            ..,
+        ) = &expr.kind
+        {
+            return Some(Self::Display(arg));
+        }
+
+        let ExprKind::Call(callee, args) = &expr.kind else {
             return None;
         };
         let ExprKind::Path(QPath::Resolved(_, path)) = &callee.kind else {
+            return None;
+        };
+        let name = path.segments.last().unwrap().ident.as_str();
+
+        // These may have no arguments
+        match name {
+            "panic_cold_explicit" => return Some(Self::Empty),
+            "panic_cold" => return Some(Self::Format(None)),
+            _ => (),
+        };
+
+        let [arg, rest @ ..] = args else {
             return None;
         };
         let result = match path.segments.last().unwrap().ident.as_str() {
@@ -241,8 +280,8 @@ impl<'a> PanicExpn<'a> {
                     return None;
                 };
                 Self::Display(e)
-            },
-            "panic_fmt" => Self::Format(arg),
+            }
+            "panic_fmt" => Self::Format(Some(arg)),
             // Since Rust 1.52, `assert_{eq,ne}` macros expand to use:
             // `core::panicking::assert_failed(.., left_val, right_val, None | Some(format_args!(..)));`
             "assert_failed" => {
@@ -254,10 +293,10 @@ impl<'a> PanicExpn<'a> {
                 // `msg_arg` is either `None` (no custom message) or `Some(format_args!(..))` (custom message)
                 let msg_arg = &rest[2];
                 match msg_arg.kind {
-                    ExprKind::Call(_, [fmt_arg]) => Self::Format(fmt_arg),
+                    ExprKind::Call(_, [fmt_arg]) => Self::Format(Some(fmt_arg)),
                     _ => Self::Empty,
                 }
-            },
+            }
             _ => return None,
         };
         Some(result)
@@ -399,10 +438,17 @@ pub fn find_format_args(cx: &LateContext<'_>, start: &Expr<'_>, expn_id: ExpnId,
     let format_args_expr = for_each_expr(start, |expr| {
         let ctxt = expr.span.ctxt();
         if ctxt.outer_expn().is_descendant_of(expn_id) {
-            if macro_backtrace(expr.span)
-                .map(|macro_call| cx.tcx.item_name(macro_call.def_id))
-                .any(|name| matches!(name, sym::const_format_args | sym::format_args | sym::format_args_nl))
-            {
+            if macro_backtrace(expr.span).map(|macro_call| cx.tcx.item_name(macro_call.def_id)).any(
+                |name| {
+                    matches!(
+                        name,
+                        sym::const_format_args
+                            | sym::format_args
+                            | sym::format_args_nl
+                            | sym::panic_args
+                    )
+                },
+            ) {
                 ControlFlow::Break(expr)
             } else {
                 ControlFlow::Continue(Descend::Yes)

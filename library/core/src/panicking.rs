@@ -152,6 +152,14 @@ pub const fn panic_str(expr: &str) -> ! {
     panic_display(&expr);
 }
 
+#[track_caller]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+pub const fn panic_explicit() -> ! {
+    panic_display(&"explicit panic");
+}
+
 #[inline]
 #[track_caller]
 #[rustc_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint

@@ -549,7 +549,10 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::FormatArgs(fmt) => {
                 // FIXME: This should have its own syntax, distinct from a macro invocation.
-                self.word("format_args!");
+                self.word(match fmt.panic {
+                    ast::FormatPanicKind::Format => "format_args!",
+                    ast::FormatPanicKind::Panic { .. } => "panic_args!",
+                });
                 self.popen();
                 self.rbox(0, Inconsistent);
                 self.word(reconstruct_format_args_template_string(&fmt.template));

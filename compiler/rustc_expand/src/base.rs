@@ -1001,6 +1001,8 @@ pub struct ExpansionData {
     /// Some parent node that is close to this macro call
     pub lint_node_id: NodeId,
     pub is_trailing_mac: bool,
+    /// Currently in a constant context or constant function.
+    pub in_const: bool,
 }
 
 /// One of these is made during expansion and incrementally updated as we go;
@@ -1050,6 +1052,7 @@ impl<'a> ExtCtxt<'a> {
                 dir_ownership: DirOwnership::Owned { relative: None },
                 lint_node_id: ast::CRATE_NODE_ID,
                 is_trailing_mac: false,
+                in_const: false,
             },
             force_mode: false,
             expansions: FxIndexMap::default(),

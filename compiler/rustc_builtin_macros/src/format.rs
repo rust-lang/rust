@@ -1,10 +1,10 @@
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{token, StmtKind};
+use rustc_ast::{token, FormatPanicKind, StmtKind};
 use rustc_ast::{
-    Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
+    Const, Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
     FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
-    FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
+    FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait, DUMMY_NODE_ID,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, MultiSpan, PResult, SingleLabelManySpans};
@@ -157,6 +157,7 @@ fn make_format_args(
     ecx: &mut ExtCtxt<'_>,
     input: MacroInput,
     append_newline: bool,
+    panic: bool,
 ) -> Result<FormatArgs, ()> {
     let msg = "format argument must be a string literal";
     let unexpanded_fmt_span = input.fmtstr.span;
@@ -530,7 +531,23 @@ fn make_format_args(
         }
     }
 
-    Ok(FormatArgs { span: fmt_span, template, arguments: args })
+    Ok(FormatArgs {
+        span: fmt_span,
+        template,
+        arguments: args,
+        panic: if panic {
+            FormatPanicKind::Panic {
+                id: DUMMY_NODE_ID,
+                constness: if ecx.current_expansion.in_const {
+                    Const::Yes(fmt_span)
+                } else {
+                    Const::No
+                },
+            }
+        } else {
+            FormatPanicKind::Format
+        },
+    })
 }
 
 fn invalid_placeholder_type_error(
@@ -849,11 +866,12 @@ fn expand_format_args_impl<'cx>(
     mut sp: Span,
     tts: TokenStream,
     nl: bool,
+    panic: bool,
 ) -> Box<dyn base::MacResult + 'cx> {
     sp = ecx.with_def_site_ctxt(sp);
     match parse_args(ecx, sp, tts) {
         Ok(input) => {
-            if let Ok(format_args) = make_format_args(ecx, input, nl) {
+            if let Ok(format_args) = make_format_args(ecx, input, nl, panic) {
                 MacEager::expr(ecx.expr(sp, ExprKind::FormatArgs(P(format_args))))
             } else {
                 MacEager::expr(DummyResult::raw_expr(sp, true))
@@ -871,7 +889,7 @@ pub fn expand_format_args<'cx>(
     sp: Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
-    expand_format_args_impl(ecx, sp, tts, false)
+    expand_format_args_impl(ecx, sp, tts, false, false)
 }
 
 pub fn expand_format_args_nl<'cx>(
@@ -879,5 +897,13 @@ pub fn expand_format_args_nl<'cx>(
     sp: Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
-    expand_format_args_impl(ecx, sp, tts, true)
+    expand_format_args_impl(ecx, sp, tts, true, false)
+}
+
+pub fn expand_panic_args<'cx>(
+    ecx: &'cx mut ExtCtxt<'_>,
+    sp: Span,
+    tts: TokenStream,
+) -> Box<dyn base::MacResult + 'cx> {
+    expand_format_args_impl(ecx, sp, tts, false, true)
 }

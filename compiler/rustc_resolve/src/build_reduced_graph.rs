@@ -1460,6 +1460,13 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
     }
 
+    fn visit_format_args(&mut self, fmt: &'b ast::FormatArgs) {
+        if let ast::FormatPanicKind::Panic { id, .. } = fmt.panic {
+            self.r.visibilities.insert(self.r.local_def_id(id), ty::Visibility::Public);
+        }
+        visit::walk_format_args(self, fmt);
+    }
+
     // Constructs the reduced graph for one variant. Variants exist in the
     // type and value namespaces.
     fn visit_variant(&mut self, variant: &'b ast::Variant) {

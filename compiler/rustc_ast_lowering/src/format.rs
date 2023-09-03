@@ -1,28 +1,339 @@
 use super::LoweringContext;
+use hir::def::{DefKind, Res};
+use hir::definitions::DefPathData;
 use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
+use rustc_session::Session;
 use rustc_span::{
+    def_id::LocalDefId,
     sym,
     symbol::{kw, Ident},
     Span, Symbol,
 };
+use rustc_target::spec::abi::Abi;
 use std::borrow::Cow;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
-        // Never call the const constructor of `fmt::Arguments` if the
-        // format_args!() had any arguments _before_ flattening/inlining.
-        let allow_const = fmt.arguments.all_args().is_empty();
-        let mut fmt = Cow::Borrowed(fmt);
-        if self.tcx.sess.opts.unstable_opts.flatten_format_args {
-            fmt = flatten_format_args(fmt);
-            fmt = inline_literals(fmt);
+        // Optimize the format arguments
+        let (allow_const, fmt) = process_args(self.tcx.sess, fmt);
+
+        // Generate access of the `index` argument.
+        let arg_access = |this: &mut LoweringContext<'_, 'hir>, index: usize, span| {
+            let arg = this.lower_expr(&fmt.arguments.all_args()[index].expr);
+            this.expr(span, hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg))
+        };
+
+        match fmt.panic {
+            ast::FormatPanicKind::Format => {
+                expand_format_args(self, sp, &fmt, allow_const, arg_access)
+            }
+            ast::FormatPanicKind::Panic { id, constness: _ } => {
+                self.lower_panic_args(id, sp, &fmt, arg_access)
+            }
         }
-        expand_format_args(self, sp, &fmt, allow_const)
     }
+
+    fn lower_panic_args(
+        &mut self,
+        cold_path: NodeId,
+        span: Span,
+        fmt: &FormatArgs,
+        mut arg_access: impl FnMut(&mut LoweringContext<'_, 'hir>, usize, Span) -> hir::Expr<'hir>,
+    ) -> hir::ExprKind<'hir> {
+        // Call the cold path function passing on the arguments required for formatting.
+        let span = self.lower_span(span);
+        let arena = self.arena;
+
+        let args = &*arena.alloc_from_iter(
+            fmt.arguments
+                .all_args()
+                .iter()
+                .enumerate()
+                .map(|(i, arg)| arg_access(self, i, arg.expr.span.with_ctxt(span.ctxt()))),
+        );
+
+        let item = self.local_def_id(cold_path);
+        let res = Res::Def(DefKind::Fn, item.to_def_id());
+        let path_hir_id = self.next_id();
+        let path = hir::ExprKind::Path(hir::QPath::Resolved(
+            None,
+            arena.alloc(hir::Path {
+                span,
+                res,
+                segments: arena_vec![self; hir::PathSegment::new(
+                    Ident::new(sym::panic_cold, span), path_hir_id, res
+                )],
+            }),
+        ));
+        let path = self.expr(span, path);
+        let call = arena.alloc(self.expr(span, hir::ExprKind::Call(arena.alloc(path), args)));
+        let item = self.stmt(
+            span,
+            hir::StmtKind::Item(hir::ItemId { owner_id: hir::OwnerId { def_id: item } }),
+        );
+        let stmts = arena_vec![self; item];
+        hir::ExprKind::Block(self.block_all(span, stmts, Some(call)), None)
+    }
+
+    fn generic_ty(&mut self, span: Span, param: &hir::GenericParam<'_>) -> &'hir hir::Ty<'hir> {
+        let arena = self.arena;
+        let path_hir_id = self.next_id();
+        let res = Res::Def(DefKind::TyParam, param.def_id.to_def_id());
+        let path = hir::QPath::Resolved(
+            None,
+            arena.alloc(hir::Path {
+                span,
+                res,
+                segments: arena_vec![self; hir::PathSegment::new(param.name.ident(), path_hir_id, res)],
+            }),
+        );
+        arena.alloc(self.ty(span, hir::TyKind::Path(path)))
+    }
+
+    fn create_generic_param(
+        &mut self,
+        span: Span,
+        name: Symbol,
+        data: DefPathData,
+        kind: hir::GenericParamKind<'hir>,
+    ) -> hir::GenericParam<'hir> {
+        let node_id = self.next_node_id();
+        let def_id = self.create_def(self.current_hir_id_owner.def_id, node_id, data, span);
+        let hir_id = self.lower_node_id(node_id);
+        hir::GenericParam {
+            def_id,
+            hir_id,
+            name: hir::ParamName::Plain(Ident { name, span }),
+            span,
+            kind,
+            colon_span: None,
+            pure_wrt_drop: false,
+            source: hir::GenericParamSource::Generics,
+        }
+    }
+
+    fn generic_bounds(
+        &mut self,
+        span: Span,
+        traits: &[FormatTrait],
+    ) -> &'hir [hir::GenericBound<'hir>] {
+        // Maps from the format trait to the lang item
+        let map_trait = |t| match t {
+            FormatTrait::Display => hir::LangItem::FormatDisplay,
+            FormatTrait::Debug => hir::LangItem::FormatDebug,
+            FormatTrait::LowerExp => hir::LangItem::FormatLowerExp,
+            FormatTrait::UpperExp => hir::LangItem::FormatUpperExp,
+            FormatTrait::Octal => hir::LangItem::FormatOctal,
+            FormatTrait::Pointer => hir::LangItem::FormatPointer,
+            FormatTrait::Binary => hir::LangItem::FormatBinary,
+            FormatTrait::LowerHex => hir::LangItem::FormatLowerHex,
+            FormatTrait::UpperHex => hir::LangItem::FormatUpperHex,
+        };
+
+        self.arena.alloc_from_iter(traits.iter().map(|t| {
+            hir::GenericBound::LangItemTrait(
+                map_trait(*t),
+                span,
+                self.next_id(),
+                self.arena.alloc(hir::GenericArgs::none()),
+            )
+        }))
+    }
+
+    /// Lowers the cold path function for panic_args!
+    pub(crate) fn lower_panic_args_cold(
+        &mut self,
+        fmt: &FormatArgs,
+        span: Span,
+    ) -> &'hir hir::Item<'hir> {
+        let FormatPanicKind::Panic { id, constness } = fmt.panic else { panic!() };
+
+        let (allow_const, fmt) = process_args(self.tcx.sess, fmt);
+
+        let arena = self.arena;
+
+        let span = self.lower_span(span);
+        let hir_id = self.lower_node_id(id);
+
+        let arg_count = fmt.arguments.all_args().len();
+
+        // Create the generic parameters `A0`, `A1`, .., `Ai`.
+        let mut generics: Vec<_> = (0..arg_count)
+            .map(|i| {
+                let name = Symbol::intern(&format!("A{i}"));
+                self.create_generic_param(
+                    span,
+                    name,
+                    DefPathData::TypeNs(name),
+                    hir::GenericParamKind::Type { default: None, synthetic: false },
+                )
+            })
+            .collect();
+
+        // Create the lifetime 'a used in the parameter types.
+        let lifetime_name = Symbol::intern("'a");
+        let lifetime: LocalDefId = {
+            let param = self.create_generic_param(
+                span,
+                lifetime_name,
+                DefPathData::LifetimeNs(lifetime_name),
+                hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit },
+            );
+            let def_id = param.def_id;
+            generics.insert(0, param);
+            def_id
+        };
+
+        let body_id = self.lower_body(|this| {
+            // Create parameter bindings `a0`, `a1`, .., `ai`.
+            let bindings: Vec<(hir::HirId, Ident)> = (0..arg_count)
+                .map(|i| (this.next_id(), Ident::new(Symbol::intern(&format!("a{i}")), span)))
+                .collect();
+            let params = arena.alloc_from_iter((0..arg_count).map(|i| {
+                let pat = arena.alloc(hir::Pat {
+                    hir_id: bindings[i].0,
+                    kind: hir::PatKind::Binding(
+                        BindingAnnotation::NONE,
+                        bindings[i].0,
+                        bindings[i].1,
+                        None,
+                    ),
+                    span,
+                    default_binding_modes: true,
+                });
+                let hir_id = this.next_id();
+                hir::Param { hir_id, pat, ty_span: span, span }
+            }));
+
+            // Generate access of the `i` format argument via parameter binding `ai`.
+            let arg_access = |this: &mut LoweringContext<'_, 'hir>, i: usize, span| {
+                this.expr_ident_mut(span, bindings[i].1, bindings[i].0)
+            };
+
+            // Generate formatting code.
+            let args = expand_format_args(this, span, &fmt, allow_const, arg_access);
+            let args = this.expr(span, args);
+
+            // Call `panic_fmt` with the generated `Arguments`.
+            let panic = arena.alloc(this.expr_call_lang_item_fn_mut(
+                span,
+                hir::LangItem::PanicFmt,
+                arena_vec![this; args],
+                None,
+            ));
+
+            let block = arena.alloc(hir::Block {
+                stmts: &[],
+                expr: Some(panic),
+                hir_id: this.next_id(),
+                rules: hir::BlockCheckMode::DefaultBlock,
+                span,
+                targeted_by_break: false,
+            });
+            (params, this.expr_block(block))
+        });
+
+        // Compute trait bounds we need to apply to each format argument.
+        let mut arg_traits: Vec<Vec<_>> = (0..arg_count).map(|_| Vec::new()).collect();
+        for piece in &fmt.template {
+            let FormatArgsPiece::Placeholder(placeholder) = piece else { continue };
+            if let Ok(index) = placeholder.argument.index {
+                if !arg_traits[index].iter().any(|t| *t == placeholder.format_trait) {
+                    arg_traits[index].push(placeholder.format_trait);
+                }
+            }
+        }
+
+        // Create where bound required for format arguments, like, A0: Display + Debug.
+        let predicates =
+            arena.alloc_from_iter(arg_traits.into_iter().enumerate().filter_map(|(i, traits)| {
+                (!traits.is_empty()).then(|| {
+                    hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                        hir_id: self.next_id(),
+                        span,
+                        origin: hir::PredicateOrigin::GenericParam,
+                        bound_generic_params: &[],
+                        bounded_ty: self.generic_ty(span, &generics[1 + i]),
+                        bounds: self.generic_bounds(span, &traits),
+                    })
+                })
+            }));
+
+        // Create input parameter types &'a A0, &'a A1, .., &'a Ai
+        let inputs = arena.alloc_from_iter((0..arg_count).map(|i| {
+            let ty = self.generic_ty(span, &generics[1 + i]);
+            let hir_id = self.next_id();
+            let lifetime = arena.alloc(hir::Lifetime {
+                hir_id,
+                ident: Ident::new(lifetime_name, span),
+                res: hir::LifetimeName::Param(lifetime),
+            });
+            self.ty(span, hir::TyKind::Ref(lifetime, hir::MutTy { ty, mutbl: Mutability::Not }))
+        }));
+
+        let decl = arena.alloc(hir::FnDecl {
+            inputs,
+            // Return type !
+            output: hir::FnRetTy::Return(self.arena.alloc(hir::Ty {
+                kind: hir::TyKind::Never,
+                span,
+                hir_id: self.next_id(),
+            })),
+            c_variadic: false,
+            lifetime_elision_allowed: false,
+            implicit_self: hir::ImplicitSelfKind::None,
+        });
+        let sig = hir::FnSig {
+            decl,
+            header: hir::FnHeader {
+                unsafety: hir::Unsafety::Normal,
+                asyncness: hir::IsAsync::NotAsync,
+                constness: self.lower_constness(constness),
+                abi: Abi::Rust,
+            },
+            span,
+        };
+        let generics = arena.alloc(hir::Generics {
+            params: arena.alloc_from_iter(generics),
+            predicates,
+            has_where_clause_predicates: false,
+            where_clause_span: span,
+            span,
+        });
+        let kind = hir::ItemKind::Fn(sig, generics, body_id);
+        let g = &self.tcx.sess.parse_sess.attr_id_generator;
+        self.lower_attrs(
+            hir_id,
+            &[
+                attr::mk_attr_nested_word(g, ast::AttrStyle::Outer, sym::inline, sym::never, span),
+                attr::mk_attr_word(g, ast::AttrStyle::Outer, sym::track_caller, span),
+                attr::mk_attr_word(g, ast::AttrStyle::Outer, sym::cold, span),
+            ],
+        );
+        arena.alloc(hir::Item {
+            owner_id: hir_id.expect_owner(),
+            ident: Ident::new(sym::panic_cold, span),
+            kind,
+            vis_span: span,
+            span,
+        })
+    }
+}
+
+fn process_args<'a>(sess: &Session, fmt: &'a FormatArgs) -> (bool, Cow<'a, FormatArgs>) {
+    // Never call the const constructor of `fmt::Arguments` if the
+    // format_args!() had any arguments _before_ flattening/inlining.
+    let allow_const = fmt.arguments.all_args().is_empty();
+    let mut fmt = Cow::Borrowed(fmt);
+    if sess.opts.unstable_opts.flatten_format_args {
+        fmt = flatten_format_args(fmt);
+        fmt = inline_literals(fmt);
+    }
+    (allow_const, fmt)
 }
 
 /// Flattens nested `format_args!()` into one.
@@ -351,6 +662,7 @@ fn expand_format_args<'hir>(
     macsp: Span,
     fmt: &FormatArgs,
     allow_const: bool,
+    mut arg_access: impl FnMut(&mut LoweringContext<'_, 'hir>, usize, Span) -> hir::Expr<'hir>,
 ) -> hir::ExprKind<'hir> {
     let mut incomplete_lit = String::new();
     let lit_pieces =
@@ -410,15 +722,11 @@ fn expand_format_args<'hir>(
     let format_options = use_format_options.then(|| {
         // Generate:
         //     &[format_spec_0, format_spec_1, format_spec_2]
-        let elements: Vec<_> = fmt
-            .template
-            .iter()
-            .filter_map(|piece| {
-                let FormatArgsPiece::Placeholder(placeholder) = piece else { return None };
-                Some(make_format_spec(ctx, macsp, placeholder, &mut argmap))
-            })
-            .collect();
-        ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(elements))
+        let elements = ctx.arena.alloc_from_iter(fmt.template.iter().filter_map(|piece| {
+            let FormatArgsPiece::Placeholder(placeholder) = piece else { return None };
+            Some(make_format_spec(ctx, macsp, placeholder, &mut argmap))
+        }));
+        ctx.expr_array_ref(macsp, elements)
     });
 
     let arguments = fmt.arguments.all_args();
@@ -477,25 +785,19 @@ fn expand_format_args<'hir>(
         //         <core::fmt::Argument>::new_debug(&arg2),
         //         …
         //     ]
-        let elements: Vec<_> = arguments
-            .iter()
-            .zip(argmap)
-            .map(|(arg, ((_, ty), placeholder_span))| {
+        let elements = ctx.arena.alloc_from_iter(arguments.iter().enumerate().zip(argmap).map(
+            |((i, arg), ((_, ty), placeholder_span))| {
                 let placeholder_span =
                     placeholder_span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
                 let arg_span = match arg.kind {
                     FormatArgumentKind::Captured(_) => placeholder_span,
                     _ => arg.expr.span.with_ctxt(macsp.ctxt()),
                 };
-                let arg = ctx.lower_expr(&arg.expr);
-                let ref_arg = ctx.arena.alloc(ctx.expr(
-                    arg_span,
-                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg),
-                ));
+                let ref_arg = ctx.arena.alloc(arg_access(ctx, i, arg_span));
                 make_argument(ctx, placeholder_span, ref_arg, ty)
-            })
-            .collect();
-        ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(elements))
+            },
+        ));
+        ctx.expr_array_ref(macsp, elements)
     } else {
         // Generate:
         //     &match (&arg0, &arg1, &…) {
@@ -528,19 +830,13 @@ fn expand_format_args<'hir>(
                 make_argument(ctx, placeholder_span, arg, ty)
             },
         ));
-        let elements: Vec<_> = arguments
-            .iter()
-            .map(|arg| {
-                let arg_expr = ctx.lower_expr(&arg.expr);
-                ctx.expr(
-                    arg.expr.span.with_ctxt(macsp.ctxt()),
-                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg_expr),
-                )
-            })
-            .collect();
-        let args_tuple = ctx
-            .arena
-            .alloc(ctx.expr(macsp, hir::ExprKind::Tup(ctx.arena.alloc_from_iter(elements))));
+        let elements = ctx.arena.alloc_from_iter(
+            arguments
+                .iter()
+                .enumerate()
+                .map(|(i, arg)| arg_access(ctx, i, arg.expr.span.with_ctxt(macsp.ctxt()))),
+        );
+        let args_tuple = ctx.arena.alloc(ctx.expr(macsp, hir::ExprKind::Tup(elements)));
         let array = ctx.arena.alloc(ctx.expr(macsp, hir::ExprKind::Array(args)));
         let match_arms = ctx.arena.alloc_from_iter([ctx.arm(args_pat, array)]);
         let match_expr = ctx.arena.alloc(ctx.expr_match(

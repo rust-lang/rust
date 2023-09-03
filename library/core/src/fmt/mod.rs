@@ -545,6 +545,7 @@ impl Display for Arguments<'_> {
 #[doc(alias = "{:?}")]
 #[rustc_diagnostic_item = "Debug"]
 #[rustc_trivial_field_reads]
+#[cfg_attr(not(bootstrap), lang = "debug_trait")]
 pub trait Debug {
     /// Formats the value using the given formatter.
     ///
@@ -644,6 +645,7 @@ pub use macros::Debug;
 )]
 #[doc(alias = "{}")]
 #[rustc_diagnostic_item = "Display"]
+#[cfg_attr(not(bootstrap), lang = "display_trait")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Display {
     /// Formats the value using the given formatter.
@@ -718,6 +720,7 @@ pub trait Display {
 ///
 /// assert_eq!(format!("l as octal is: {l:#06o}"), "l as octal is: 0o0011");
 /// ```
+#[cfg_attr(not(bootstrap), lang = "octal_trait")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Octal {
     /// Formats the value using the given formatter.
@@ -775,6 +778,7 @@ pub trait Octal {
 ///     "l as binary is: 0b000000000000000000000001101011"
 /// );
 /// ```
+#[cfg_attr(not(bootstrap), lang = "binary_trait")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Binary {
     /// Formats the value using the given formatter.
@@ -830,6 +834,7 @@ pub trait Binary {
 ///
 /// assert_eq!(format!("l as hex is: {l:#010x}"), "l as hex is: 0x00000009");
 /// ```
+#[cfg_attr(not(bootstrap), lang = "lower_hex_trait")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait LowerHex {
     /// Formats the value using the given formatter.
@@ -885,6 +890,7 @@ pub trait LowerHex {
 ///
 /// assert_eq!(format!("l as hex is: {l:#010X}"), "l as hex is: 0x7FFFFFFF");
 /// ```
+#[cfg_attr(not(bootstrap), lang = "upper_hex_trait")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait UpperHex {
     /// Formats the value using the given formatter.
@@ -935,6 +941,7 @@ pub trait UpperHex {
 /// assert_eq!(l_ptr.len(), 18);
 /// assert_eq!(&l_ptr[..2], "0x");
 /// ```
+#[cfg_attr(not(bootstrap), lang = "pointer_trait")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Pointer"]
 pub trait Pointer {
@@ -987,6 +994,7 @@ pub trait Pointer {
 ///     "l in scientific notation is: 001e2"
 /// );
 /// ```
+#[cfg_attr(not(bootstrap), lang = "lower_exp_trait")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait LowerExp {
     /// Formats the value using the given formatter.
@@ -1038,6 +1046,7 @@ pub trait LowerExp {
 ///     "l in scientific notation is: 001E2"
 /// );
 /// ```
+#[cfg_attr(not(bootstrap), lang = "upper_exp_trait")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait UpperExp {
     /// Formats the value using the given formatter.

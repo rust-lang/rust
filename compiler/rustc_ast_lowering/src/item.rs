@@ -114,6 +114,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
                 AstOwner::Item(item) => self.lower_item(item),
                 AstOwner::AssocItem(item, ctxt) => self.lower_assoc_item(item, ctxt),
                 AstOwner::ForeignItem(item) => self.lower_foreign_item(item),
+                AstOwner::PanicArgsCold(fmt, span) => self.lower_panic_args_cold(fmt, span),
             }
         }
 
@@ -174,6 +175,11 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
 
     fn lower_foreign_item(&mut self, item: &ForeignItem) {
         self.with_lctx(item.id, |lctx| hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item)))
+    }
+
+    fn lower_panic_args_cold(&mut self, fmt: &FormatArgs, span: Span) {
+        let FormatPanicKind::Panic { id, constness: _ } = fmt.panic else { panic!() };
+        self.with_lctx(id, |lctx| hir::OwnerNode::Item(lctx.lower_panic_args_cold(fmt, span)))
     }
 }
 

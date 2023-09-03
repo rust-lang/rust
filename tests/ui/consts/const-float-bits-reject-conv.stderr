@@ -12,7 +12,7 @@ note: inside `f32::MASKED_NAN1`
    |
 LL |     const MASKED_NAN1: u32 = f32::NAN.to_bits() ^ 0x002A_AAAA;
    |                              ^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/num/f32.rs:LL:COL
@@ -28,7 +28,7 @@ note: inside `f32::MASKED_NAN2`
    |
 LL |     const MASKED_NAN2: u32 = f32::NAN.to_bits() ^ 0x0055_5555;
    |                              ^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant used
   --> $DIR/const-float-bits-reject-conv.rs:35:34
@@ -68,7 +68,7 @@ note: inside `f64::MASKED_NAN1`
    |
 LL |     const MASKED_NAN1: u64 = f64::NAN.to_bits() ^ 0x000A_AAAA_AAAA_AAAA;
    |                              ^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/num/f64.rs:LL:COL
@@ -84,7 +84,7 @@ note: inside `f64::MASKED_NAN2`
    |
 LL |     const MASKED_NAN2: u64 = f64::NAN.to_bits() ^ 0x0005_5555_5555_5555;
    |                              ^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant used
   --> $DIR/const-float-bits-reject-conv.rs:57:34

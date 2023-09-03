@@ -6,16 +6,6 @@ LL |     format!("{:X}", "3");
    |              |
    |              required by a bound introduced by this call
    |
-   = help: the following other types implement trait `UpperHex`:
-             isize
-             i8
-             i16
-             i32
-             i64
-             i128
-             usize
-             u8
-           and 20 others
    = note: required for `&str` to implement `UpperHex`
 note: required by a bound in `core::fmt::rt::Argument::<'a>::new_upper_hex`
   --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL

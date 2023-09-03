@@ -1,11 +1,13 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
 use if_chain::if_chain;
+use rustc_ast::LitKind;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::source_map::Spanned;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -134,15 +136,56 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     }
 }
 
+fn expr_might_diverge(e: &Expr<'_>) -> bool {
+    match e.kind {
+        ExprKind::Path(..) => false,
+        ExprKind::AddrOf(.., e) => expr_might_diverge(e),
+        ExprKind::If(
+            &Expr {
+                kind:
+                    ExprKind::Lit(Spanned {
+                        node: LitKind::Bool(false),
+                        ..
+                    }),
+                ..
+            },
+            _,
+            None,
+        ) => false,
+        _ => true,
+    }
+}
+
+fn stmt_might_diverge(stmt: &Stmt<'_>) -> bool {
+    match stmt.kind {
+        StmtKind::Item(..) => false,
+        StmtKind::Local(Local {
+            init: Some(e),
+            els: None,
+            ..
+        }) => expr_might_diverge(e),
+        StmtKind::Expr(e) | StmtKind::Semi(e) => expr_might_diverge(e),
+        _ => true,
+    }
+}
+
 impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
             // fix #10776
             ExprKind::Block(block, ..) => match (block.stmts, block.expr) {
-                ([], Some(e)) => self.visit_expr(e),
-                ([stmt], None) => match stmt.kind {
-                    StmtKind::Expr(e) | StmtKind::Semi(e) => self.visit_expr(e),
-                    _ => {},
+                (stmts, Some(e)) => {
+                    if stmts.iter().all(|stmt| !stmt_might_diverge(stmt)) {
+                        self.visit_expr(e)
+                    }
+                },
+                ([first @ .., stmt], None) => {
+                    if first.iter().all(|stmt| !stmt_might_diverge(stmt)) {
+                        match stmt.kind {
+                            StmtKind::Expr(e) | StmtKind::Semi(e) => self.visit_expr(e),
+                            _ => {},
+                        }
+                    }
                 },
                 _ => {},
             },

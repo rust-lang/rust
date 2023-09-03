@@ -892,6 +892,20 @@ pub(crate) mod builtin {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
+    /// Panics with a formatted string. Takes the same arguments as [`format_args`].
+    ///
+    /// This macro is used by the panic macros.
+    #[unstable(feature = "panic_args", issue = "none")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "panic_args_macro")]
+    #[allow_internal_unstable(core_panic, fmt_internals, const_fmt_arguments_new)]
+    #[rustc_builtin_macro]
+    #[macro_export]
+    #[cfg(not(bootstrap))]
+    macro_rules! panic_args {
+        ($fmt:expr) => {{ /* compiler built-in */ }};
+        ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
+    }
+
     /// Same as [`format_args`], but adds a newline in the end.
     #[unstable(
         feature = "format_args_nl",

@@ -84,6 +84,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         format_args_nl: format::expand_format_args_nl,
         format_args: format::expand_format_args,
         const_format_args: format::expand_format_args,
+        panic_args: format::expand_panic_args,
         global_asm: asm::expand_global_asm,
         include_bytes: source_util::expand_include_bytes,
         include_str: source_util::expand_include_str,

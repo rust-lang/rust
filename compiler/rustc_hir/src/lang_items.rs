@@ -250,6 +250,17 @@ language_item_table! {
     FormatPlaceholder,       sym::format_placeholder,  format_placeholder,         Target::Struct,         GenericRequirement::None;
     FormatUnsafeArg,         sym::format_unsafe_arg,   format_unsafe_arg,          Target::Struct,         GenericRequirement::None;
 
+    // Lang items needed for `panic_args!()`.
+    FormatDisplay,           sym::display_trait,       format_display_trait,       Target::Trait,          GenericRequirement::None;
+    FormatDebug,             sym::debug_trait,         format_debug_trait,         Target::Trait,          GenericRequirement::None;
+    FormatLowerExp,          sym::lower_exp_trait,     format_lower_exp_trait,     Target::Trait,          GenericRequirement::None;
+    FormatUpperExp,          sym::upper_exp_trait,     format_upper_exp_trait,     Target::Trait,          GenericRequirement::None;
+    FormatOctal,             sym::octal_trait,         format_octal_trait,         Target::Trait,          GenericRequirement::None;
+    FormatPointer,           sym::pointer_trait,       format_pointer_trait,       Target::Trait,          GenericRequirement::None;
+    FormatBinary,            sym::binary_trait,        format_binary_trait,        Target::Trait,          GenericRequirement::None;
+    FormatLowerHex,          sym::lower_hex_trait,     format_lower_hex_trait,     Target::Trait,          GenericRequirement::None;
+    FormatUpperHex,          sym::upper_hex_trait,     format_upper_hex_trait,     Target::Trait,          GenericRequirement::None;
+
     ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn,             GenericRequirement::None;
     DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           Target::Fn,             GenericRequirement::Minimum(1);
     AllocLayout,             sym::alloc_layout,        alloc_layout,               Target::Struct,         GenericRequirement::None;

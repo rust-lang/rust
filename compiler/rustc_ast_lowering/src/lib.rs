@@ -360,6 +360,9 @@ enum AstOwner<'a> {
     Item(&'a ast::Item),
     AssocItem(&'a ast::AssocItem, visit::AssocCtxt),
     ForeignItem(&'a ast::ForeignItem),
+
+    /// An owner for the generated function for `panic_args!`
+    PanicArgsCold(&'a ast::FormatArgs, Span),
 }
 
 fn index_crate<'a>(
@@ -377,6 +380,13 @@ fn index_crate<'a>(
         index: IndexVec<LocalDefId, AstOwner<'a>>,
     }
 
+    impl<'s, 'a> Indexer<'s, 'a> {
+        fn set_owner(&mut self, id: NodeId, owner: AstOwner<'a>) {
+            let def_id = self.node_id_to_def_id[&id];
+            *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) = owner;
+        }
+    }
+
     impl<'a> visit::Visitor<'a> for Indexer<'_, 'a> {
         fn visit_attribute(&mut self, _: &'a Attribute) {
             // We do not want to lower expressions that appear in attributes,
@@ -384,23 +394,27 @@ fn index_crate<'a>(
         }
 
         fn visit_item(&mut self, item: &'a ast::Item) {
-            let def_id = self.node_id_to_def_id[&item.id];
-            *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) = AstOwner::Item(item);
-            visit::walk_item(self, item)
+            self.set_owner(item.id, AstOwner::Item(item));
+            visit::walk_item(self, item);
         }
 
         fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: visit::AssocCtxt) {
-            let def_id = self.node_id_to_def_id[&item.id];
-            *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
-                AstOwner::AssocItem(item, ctxt);
+            self.set_owner(item.id, AstOwner::AssocItem(item, ctxt));
             visit::walk_assoc_item(self, item, ctxt);
         }
 
         fn visit_foreign_item(&mut self, item: &'a ast::ForeignItem) {
-            let def_id = self.node_id_to_def_id[&item.id];
-            *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
-                AstOwner::ForeignItem(item);
+            self.set_owner(item.id, AstOwner::ForeignItem(item));
             visit::walk_foreign_item(self, item);
+        }
+
+        fn visit_expr(&mut self, ex: &'a ast::Expr) {
+            if let ast::ExprKind::FormatArgs(ref fmt) = ex.kind {
+                if let ast::FormatPanicKind::Panic { id, .. } = fmt.panic {
+                    self.set_owner(id, AstOwner::PanicArgsCold(&*fmt, ex.span));
+                }
+            }
+            visit::walk_expr(self, ex)
         }
     }
 }

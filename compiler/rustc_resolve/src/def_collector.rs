@@ -311,6 +311,12 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
         }
     }
 
+    fn visit_format_args(&mut self, fmt: &'a ast::FormatArgs) {
+        if let ast::FormatPanicKind::Panic { id, .. } = fmt.panic {
+            self.create_def(id, DefPathData::ValueNs(sym::panic_args), fmt.span);
+        }
+        visit::walk_format_args(self, fmt);
+    }
     // This method is called only when we are visiting an individual field
     // after expanding an attribute on it.
     fn visit_field_def(&mut self, field: &'a FieldDef) {

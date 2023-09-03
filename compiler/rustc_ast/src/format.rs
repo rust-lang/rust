@@ -1,5 +1,7 @@
 use crate::ptr::P;
+use crate::Const;
 use crate::Expr;
+use crate::NodeId;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
@@ -44,6 +46,20 @@ pub struct FormatArgs {
     pub span: Span,
     pub template: Vec<FormatArgsPiece>,
     pub arguments: FormatArguments,
+    pub panic: FormatPanicKind,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum FormatPanicKind {
+    /// Regular `format_args!`.
+    Format,
+
+    /// Format and panic. Used by `panic_args!`.
+    Panic {
+        /// The id of the generated cold path function.
+        id: NodeId,
+        constness: Const,
+    },
 }
 
 /// A piece of a format template string.

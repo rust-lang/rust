@@ -109,6 +109,10 @@ pub trait MutVisitor: Sized {
         noop_visit_item_kind(i, self);
     }
 
+    fn visit_assoc_item_kind(&mut self, i: &mut AssocItemKind) {
+        noop_visit_assoc_item_kind(i, self);
+    }
+
     fn flat_map_trait_item(&mut self, i: P<AssocItem>) -> SmallVec<[P<AssocItem>; 1]> {
         noop_flat_map_assoc_item(i, self)
     }
@@ -1120,6 +1124,13 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
+    visitor.visit_assoc_item_kind(kind);
+    visitor.visit_span(span);
+    visit_lazy_tts(tokens, visitor);
+    smallvec![item]
+}
+
+pub fn noop_visit_assoc_item_kind<T: MutVisitor>(kind: &mut AssocItemKind, visitor: &mut T) {
     match kind {
         AssocItemKind::Const(item) => {
             visit_const_item(item, visitor);
@@ -1147,9 +1158,6 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
         }
         AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
     }
-    visitor.visit_span(span);
-    visit_lazy_tts(tokens, visitor);
-    smallvec![item]
 }
 
 fn visit_const_item<T: MutVisitor>(
@@ -1313,6 +1321,13 @@ pub fn noop_visit_inline_asm_sym<T: MutVisitor>(
 }
 
 pub fn noop_visit_format_args<T: MutVisitor>(fmt: &mut FormatArgs, vis: &mut T) {
+    match &mut fmt.panic {
+        FormatPanicKind::Format => (),
+        FormatPanicKind::Panic { id, constness } => {
+            vis.visit_id(id);
+            visit_constness(constness, vis);
+        }
+    }
     for arg in fmt.arguments.all_args_mut() {
         if let FormatArgumentKind::Named(name) = &mut arg.kind {
             vis.visit_ident(name);

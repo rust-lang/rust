@@ -9,6 +9,7 @@ use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
 use crate::placeholders::{placeholder, PlaceholderExpander};
 
+use ast::AnonConst;
 use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
@@ -1748,6 +1749,13 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         });
     }
 
+    fn with_const<R>(&mut self, in_const: bool, f: impl FnOnce(&mut Self) -> R) -> R {
+        let old = mem::replace(&mut self.cx.current_expansion.in_const, in_const);
+        let r = f(self);
+        self.cx.current_expansion.in_const = old;
+        r
+    }
+
     fn flat_map_node<Node: InvocationCollectorNode<OutputTy: Default>>(
         &mut self,
         mut node: Node,
@@ -1929,6 +1937,34 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.visit_node(node)
     }
 
+    fn visit_item_kind(&mut self, i: &mut ItemKind) {
+        let in_const = match i {
+            ItemKind::Const(..) | ItemKind::Static(..) => true,
+            ItemKind::Fn(f) if f.sig.header.constness.is_const() => true,
+            _ => false,
+        };
+        self.with_const(in_const, |this| {
+            noop_visit_item_kind(i, this);
+        });
+    }
+
+    fn visit_assoc_item_kind(&mut self, i: &mut AssocItemKind) {
+        let in_const = match i {
+            AssocItemKind::Const(..) => true,
+            AssocItemKind::Fn(f) if f.sig.header.constness.is_const() => true,
+            _ => false,
+        };
+        self.with_const(in_const, |this| {
+            noop_visit_assoc_item_kind(i, this);
+        });
+    }
+
+    fn visit_anon_const(&mut self, c: &mut AnonConst) {
+        self.with_const(true, |this| {
+            noop_visit_anon_const(c, this);
+        });
+    }
+
     fn visit_ty(&mut self, node: &mut P<ast::Ty>) {
         self.visit_node(node)
     }
@@ -1942,7 +1978,26 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         if let Some(attr) = node.attrs.first() {
             self.cfg().maybe_emit_expr_attr_err(attr);
         }
-        self.visit_node(node)
+
+        // Use the same `in_const` logic in both `visit_expr` and `filter_map_expr` as
+        // expressions only gets called for one of them.
+        let in_const = match &node.kind {
+            ast::ExprKind::Closure(c) => c.constness.is_const(),
+            _ => self.cx.current_expansion.in_const,
+        };
+
+        self.with_const(in_const, |this| this.visit_node(node));
+    }
+
+    fn filter_map_expr(&mut self, node: P<ast::Expr>) -> Option<P<ast::Expr>> {
+        // Use the same `in_const` logic in both `visit_expr` and `filter_map_expr` as
+        // expressions only gets called for one of them.
+        let in_const = match &node.kind {
+            ast::ExprKind::Closure(c) => c.constness.is_const(),
+            _ => self.cx.current_expansion.in_const,
+        };
+
+        self.with_const(in_const, |this| this.flat_map_node(AstNodeWrapper::new(node, OptExprTag)))
     }
 
     fn visit_method_receiver_expr(&mut self, node: &mut P<ast::Expr>) {
@@ -1951,10 +2006,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             self.visit_node(&mut wrapper);
             wrapper.wrapped
         })
-    }
-
-    fn filter_map_expr(&mut self, node: P<ast::Expr>) -> Option<P<ast::Expr>> {
-        self.flat_map_node(AstNodeWrapper::new(node, OptExprTag))
     }
 
     fn visit_block(&mut self, node: &mut P<ast::Block>) {
