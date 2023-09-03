@@ -46,7 +46,7 @@
 macro_rules! custom_os_impl {
     ($module:ident, $method:ident $(, $arg:expr)*) => {{
         let errmsg = concat!(
-            "std::os::", stringify!($module), "::IMPL",
+            "std::os::custom::", stringify!($module), "::IMPL",
             " has not been initialized at this point",
         );
 

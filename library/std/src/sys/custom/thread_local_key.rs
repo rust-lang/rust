@@ -1,5 +1,5 @@
-use crate::sync::{RwLock, Mutex};
 use crate::os::custom::thread::{ThreadId, IMPL};
+use crate::sync::{Mutex, RwLock};
 
 pub type Key = usize;
 

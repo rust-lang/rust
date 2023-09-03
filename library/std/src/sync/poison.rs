@@ -70,9 +70,7 @@ impl Guard {
     /// bypass the poison checks.
     pub fn no_check() -> Self {
         // by setting `panicking` to true, `poison::Flag::done` doesn't call `thread::panicking`
-        Self {
-            panicking: true,
-        }
+        Self { panicking: true }
     }
 }
 
