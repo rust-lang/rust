@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_errors::{Applicability, SuggestionStyle};
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Body, FnDecl, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind, ItemKind, TraitBoundModifier, TraitItem,
@@ -9,7 +9,7 @@ use rustc_hir::{
 };
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, ClauseKind, TyCtxt};
+use rustc_middle::ty::{self, ClauseKind, Generics, Ty, TyCtxt};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
@@ -45,52 +45,80 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.73.0"]
     pub IMPLIED_BOUNDS_IN_IMPLS,
-    complexity,
+    nursery,
     "specifying bounds that are implied by other bounds in `impl Trait` type"
 }
 declare_lint_pass!(ImpliedBoundsInImpls => [IMPLIED_BOUNDS_IN_IMPLS]);
 
-/// This function tries to, for all type parameters in a supertype predicate `GenericTrait<U>`,
-/// check if the substituted type in the implied-by bound matches with what's subtituted in the
-/// implied type.
+/// Tries to "resolve" a type.
+/// The index passed to this function must start with `Self=0`, i.e. it must be a valid
+/// type parameter index.
+/// If the index is out of bounds, it means that the generic parameter has a default type.
+fn try_resolve_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    args: &'tcx [GenericArg<'tcx>],
+    generics: &'tcx Generics,
+    index: usize,
+) -> Option<Ty<'tcx>> {
+    match args.get(index - 1) {
+        Some(GenericArg::Type(ty)) => Some(hir_ty_to_ty(tcx, ty)),
+        Some(_) => None,
+        None => Some(tcx.type_of(generics.params[index].def_id).skip_binder()),
+    }
+}
+
+/// This function tries to, for all generic type parameters in a supertrait predicate `trait ...<U>:
+/// GenericTrait<U>`, check if the substituted type in the implied-by bound matches with what's
+/// subtituted in the implied bound.
 ///
 /// Consider this example.
 /// ```rust,ignore
 /// trait GenericTrait<T> {}
 /// trait GenericSubTrait<T, U, V>: GenericTrait<U> {}
-///                                              ^ trait_predicate_args: [Self#0, U#2]
+///                                 ^^^^^^^^^^^^^^^ trait_predicate_args: [Self#0, U#2]
+///                                                 (the Self#0 is implicit: `<Self as GenericTrait<U>>`)
 /// impl GenericTrait<i32> for () {}
 /// impl GenericSubTrait<(), i32, ()> for () {}
-/// impl GenericSubTrait<(), [u8; 8], ()> for () {}
+/// impl GenericSubTrait<(), i64, ()> for () {}
 ///
-/// fn f() -> impl GenericTrait<i32> + GenericSubTrait<(), [u8; 8], ()> {
-///                             ^^^ implied_args       ^^^^^^^^^^^^^^^ implied_by_args
-///                                                                    (we are interested in `[u8; 8]` specifically, as that
-///                                                                     is what `U` in `GenericTrait<U>` is substituted with)
-///     ()
+/// fn f() -> impl GenericTrait<i32> + GenericSubTrait<(), i64, ()> {
+///                             ^^^ implied_args       ^^^^^^^^^^^ implied_by_args
+///                                                                (we are interested in `i64` specifically, as that
+///                                                                 is what `U` in `GenericTrait<U>` is substituted with)
 /// }
 /// ```
-/// Here i32 != [u8; 8], so this will return false.
-fn is_same_generics(
-    tcx: TyCtxt<'_>,
-    trait_predicate_args: &[ty::GenericArg<'_>],
-    implied_by_args: &[GenericArg<'_>],
-    implied_args: &[GenericArg<'_>],
+/// Here i32 != i64, so this will return false.
+fn is_same_generics<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_predicate_args: &'tcx [ty::GenericArg<'tcx>],
+    implied_by_args: &'tcx [GenericArg<'tcx>],
+    implied_args: &'tcx [GenericArg<'tcx>],
+    implied_by_def_id: DefId,
+    implied_def_id: DefId,
 ) -> bool {
+    // Get the generics of the two traits to be able to get default generic parameter.
+    let implied_by_generics = tcx.generics_of(implied_by_def_id);
+    let implied_generics = tcx.generics_of(implied_def_id);
+
     trait_predicate_args
         .iter()
         .enumerate()
         .skip(1) // skip `Self` implicit arg
         .all(|(arg_index, arg)| {
-            if let Some(ty) = arg.as_type()
-                && let &ty::Param(ty::ParamTy{ index, .. }) = ty.kind()
-                // Since `trait_predicate_args` and type params in traits start with `Self=0`
-                // and generic argument lists `GenericTrait<i32>` don't have `Self`,
-                // we need to subtract 1 from the index.
-                && let GenericArg::Type(ty_a) = implied_by_args[index as usize - 1]
-                && let GenericArg::Type(ty_b) = implied_args[arg_index - 1]
-            {
-                hir_ty_to_ty(tcx, ty_a) == hir_ty_to_ty(tcx, ty_b)
+            if let Some(ty) = arg.as_type() {
+                if let &ty::Param(ty::ParamTy { index, .. }) = ty.kind()
+                    // `index == 0` means that it's referring to `Self`,
+                    // in which case we don't try to substitute it
+                    && index != 0
+                    && let Some(ty_a) = try_resolve_type(tcx, implied_by_args, implied_by_generics, index as usize)
+                    && let Some(ty_b) = try_resolve_type(tcx, implied_args, implied_generics, arg_index)
+                {
+                    ty_a == ty_b
+                } else if let Some(ty_b) = try_resolve_type(tcx, implied_args, implied_generics, arg_index) {
+                    ty == ty_b
+                } else {
+                    false
+                }
             } else {
                 false
             }
@@ -121,7 +149,7 @@ fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
                 && let predicates = cx.tcx.super_predicates_of(trait_def_id).predicates
                 && !predicates.is_empty() // If the trait has no supertrait, there is nothing to add.
             {
-                Some((bound.span(), path.args.map_or([].as_slice(), |a| a.args), predicates))
+                Some((bound.span(), path.args.map_or([].as_slice(), |a| a.args), predicates, trait_def_id))
             } else {
                 None
             }
@@ -135,18 +163,27 @@ fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
                 && let [.., path] = poly_trait.trait_ref.path.segments
                 && let implied_args = path.args.map_or([].as_slice(), |a| a.args)
                 && let Some(def_id) = poly_trait.trait_ref.path.res.opt_def_id()
-                && let Some(implied_by_span) = implied_bounds.iter().find_map(|&(span, implied_by_args, preds)| {
-                    preds.iter().find_map(|(clause, _)| {
-                        if let ClauseKind::Trait(tr) = clause.kind().skip_binder()
-                            && tr.def_id() == def_id
-                            && is_same_generics(cx.tcx, tr.trait_ref.args, implied_by_args, implied_args)
-                        {
-                            Some(span)
-                        } else {
-                            None
-                        }
+                && let Some(implied_by_span) = implied_bounds
+                    .iter()
+                    .find_map(|&(span, implied_by_args, preds, implied_by_def_id)| {
+                        preds.iter().find_map(|(clause, _)| {
+                            if let ClauseKind::Trait(tr) = clause.kind().skip_binder()
+                                && tr.def_id() == def_id
+                                && is_same_generics(
+                                    cx.tcx,
+                                    tr.trait_ref.args,
+                                    implied_by_args,
+                                    implied_args,
+                                    implied_by_def_id,
+                                    def_id,
+                                )
+                            {
+                                Some(span)
+                            } else {
+                                None
+                            }
+                        })
                     })
-                })
             {
                 let implied_by = snippet(cx, implied_by_span, "..");
                 span_lint_and_then(
