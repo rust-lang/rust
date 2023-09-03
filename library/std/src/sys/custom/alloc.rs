@@ -3,6 +3,7 @@
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::os::custom::alloc::IMPL;
 use crate::sync::Mutex;
+use core::ops::{Deref, DerefMut};
 
 // Simple implementation of a sequential fit allocator
 //
@@ -39,11 +40,29 @@ use crate::sync::Mutex;
 //    note: copy the value of the global "first free slot" variable into the next pointer pair
 // c. update the global "first free slot" variable
 
-static mut HEAP: [u8; SIZE_BYTES] = init_heap();
-
 // maximum: 0xffff
 // more than 0xffff => will cause infinite loops
 const SIZE_BYTES: usize = 4096 * 4;
+type HeapArray = [u8; SIZE_BYTES];
+
+// align the heap to a page
+#[repr(align(4096))]
+struct Heap(HeapArray);
+
+impl Deref for Heap {
+    type Target = HeapArray;
+    fn deref(&self) -> &HeapArray {
+        &self.0
+    }
+}
+
+impl DerefMut for Heap {
+    fn deref_mut(&mut self) -> &mut HeapArray {
+        &mut self.0
+    }
+}
+
+static mut HEAP: Heap = Heap(init_heap());
 static FIRST_SLOT: Mutex<usize> = Mutex::new(0);
 
 const fn init_heap() -> [u8; SIZE_BYTES] {
