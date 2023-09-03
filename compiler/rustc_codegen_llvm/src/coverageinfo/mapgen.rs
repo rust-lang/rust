@@ -7,7 +7,6 @@ use rustc_codegen_ssa::traits::ConstMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
@@ -67,14 +66,8 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         let (expressions, counter_regions) =
             function_coverage.get_expressions_and_counter_regions();
 
-        let coverage_mapping_buffer = llvm::build_byte_buffer(|coverage_mapping_buffer| {
-            write_coverage_mapping(
-                &mut global_file_table,
-                expressions,
-                counter_regions,
-                coverage_mapping_buffer,
-            );
-        });
+        let coverage_mapping_buffer =
+            encode_mappings_for_function(&mut global_file_table, expressions, counter_regions);
 
         if coverage_mapping_buffer.is_empty() {
             if function_coverage.is_used() {
@@ -155,19 +148,19 @@ impl GlobalFileTable {
     }
 }
 
-/// Using the `expressions` and `counter_regions` collected for the current function, generate
-/// the `mapping_regions` and `virtual_file_mapping`, and capture any new filenames. Then use
-/// LLVM APIs to encode the `virtual_file_mapping`, `expressions`, and `mapping_regions` into
-/// the given `coverage_mapping` byte buffer, compliant with the LLVM Coverage Mapping format.
-fn write_coverage_mapping<'a>(
+/// Using the expressions and counter regions collected for a single function,
+/// generate the variable-sized payload of its corresponding `__llvm_covfun`
+/// entry. The payload is returned as a vector of bytes.
+///
+/// Newly-encountered filenames will be added to the global file table.
+fn encode_mappings_for_function<'a>(
     global_file_table: &mut GlobalFileTable,
     expressions: Vec<CounterExpression>,
     counter_regions: impl Iterator<Item = (Counter, &'a CodeRegion)>,
-    coverage_mapping_buffer: &RustString,
-) {
+) -> Vec<u8> {
     let mut counter_regions = counter_regions.collect::<Vec<_>>();
     if counter_regions.is_empty() {
-        return;
+        return Vec::new();
     }
 
     let mut virtual_file_mapping = Vec::new();
@@ -206,15 +199,15 @@ fn write_coverage_mapping<'a>(
         }
     }
 
-    {
-        // Encode and append the current function's coverage mapping data
+    // Encode the function's coverage mappings into a buffer.
+    llvm::build_byte_buffer(|buffer| {
         coverageinfo::write_mapping_to_buffer(
             virtual_file_mapping,
             expressions,
             mapping_regions,
-            coverage_mapping_buffer,
+            buffer,
         );
-    }
+    })
 }
 
 /// Construct coverage map header and the array of function records, and combine them into the
