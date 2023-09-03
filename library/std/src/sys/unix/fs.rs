@@ -792,7 +792,7 @@ impl Drop for Dir {
     fn drop(&mut self) {
         let r = unsafe { libc::closedir(self.0) };
         assert!(
-            r == 0 || crate::io::Error::last_os_error().kind() == crate::io::ErrorKind::Interrupted,
+            r == 0 || crate::io::Error::last_os_error().is_interrupted(),
             "unexpected error during closedir: {:?}",
             crate::io::Error::last_os_error()
         );
