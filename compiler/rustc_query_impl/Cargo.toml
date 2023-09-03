@@ -9,7 +9,6 @@ edition = "2021"
 [dependencies]
 field-offset = "0.3.5"
 measureme = "10.0.0"
-rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_hir = { path = "../rustc_hir" }
