@@ -71,6 +71,7 @@ the standard library and functions that are included in the results list:
 | [`option -> default`][] | `Option::unwrap_or_default` |
 | [`stdout, [u8]`][stdoutu8] | `Stdout::write` |
 | [`any -> !`][] | `panic::panic_any` |
+| [`vec::intoiter<T> -> [T]`][iterasslice] | `IntoIter::as_slice` |
 
 [`usize -> vec`]: ../../std/vec/struct.Vec.html?search=usize%20-%3E%20vec&filter-crate=std
 [`vec, vec -> bool`]: ../../std/vec/struct.Vec.html?search=vec,%20vec%20-%3E%20bool&filter-crate=std
@@ -79,10 +80,11 @@ the standard library and functions that are included in the results list:
 [`option -> default`]: ../../std/vec/struct.Vec.html?search=option%20-%3E%20default&filter-crate=std
 [`any -> !`]: ../../std/vec/struct.Vec.html?search=any%20-%3E%20!&filter-crate=std
 [stdoutu8]: ../../std/vec/struct.Vec.html?search=stdout%2C%20[u8]&filter-crate=std
+[iterasslice]: ../../std/vec/struct.Vec.html?search=vec%3A%3Aintoiter<T>%20->%20[T]&filter-crate=std
 
 ### How type-based search works
 
-In a complex type-based search, Rustdoc always treats every item as literal.
+In a complex type-based search, Rustdoc always treats every item's name as literal.
 If a name is used and nothing in the docs matches the individual item, such as
 a typo-ed [`uize -> vec`][] search, the item `uize` is treated as a generic
 type parameter (resulting in `vec::from` and other generic vec constructors).
@@ -154,8 +156,6 @@ Most of these limitations should be addressed in future version of Rustdoc.
     be found with `File`, but you'll get a parse error when typing an `&`
     into the search field. Similarly, `Option<(T, U)>` can be matched with
     `Option<T, U>`, but `(` will give a parse error.
-
-  * Path searches, like `hash_map::Entry`, don't work in type-based search.
 
   * Searching for lifetimes is not supported.
 
