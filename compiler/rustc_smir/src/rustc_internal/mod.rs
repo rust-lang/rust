@@ -13,6 +13,7 @@ use crate::{
 };
 use rustc_driver::{Callbacks, Compilation, RunCompiler};
 use rustc_interface::{interface, Queries};
+use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::EarlyErrorHandler;
 pub use rustc_span::def_id::{CrateNum, DefId};
@@ -133,6 +134,10 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::ImplDef(self.create_def_id(did))
     }
 
+    pub fn prov(&mut self, aid: AllocId) -> stable_mir::ty::Prov {
+        stable_mir::ty::Prov(self.create_alloc_id(aid))
+    }
+
     fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
         // FIXME: this becomes inefficient when we have too many ids
         for (i, &d) in self.def_ids.iter().enumerate() {
@@ -144,6 +149,16 @@ impl<'tcx> Tables<'tcx> {
         self.def_ids.push(did);
         stable_mir::DefId(id)
     }
+
+    fn create_alloc_id(&mut self, aid: AllocId) -> stable_mir::AllocId {
+        // FIXME: this becomes inefficient when we have too many ids
+        if let Some(i) = self.alloc_ids.iter().position(|a| *a == aid) {
+            return stable_mir::AllocId(i);
+        };
+        let id = self.def_ids.len();
+        self.alloc_ids.push(aid);
+        stable_mir::AllocId(id)
+    }
 }
 
 pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
@@ -151,7 +166,7 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 }
 
 pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
-    crate::stable_mir::run(Tables { tcx, def_ids: vec![], types: vec![] }, f);
+    crate::stable_mir::run(Tables { tcx, def_ids: vec![], alloc_ids: vec![], types: vec![] }, f);
 }
 
 /// A type that provides internal information but that can still be used for debug purpose.
