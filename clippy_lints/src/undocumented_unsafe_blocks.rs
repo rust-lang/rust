@@ -12,7 +12,7 @@ use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{BytePos, Pos, Span, SyntaxContext};
+use rustc_span::{BytePos, RelativeBytePos,Pos, Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -688,7 +688,7 @@ fn span_in_body_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
 }
 
 /// Checks if the given text has a safety comment for the immediately proceeding line.
-fn text_has_safety_comment(src: &str, line_starts: &[BytePos], offset: usize) -> Option<BytePos> {
+fn text_has_safety_comment(src: &str, line_starts: &[RelativeBytePos], offset: usize) -> Option<BytePos> {
     let mut lines = line_starts
         .array_windows::<2>()
         .rev()
