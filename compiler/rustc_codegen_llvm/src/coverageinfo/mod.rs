@@ -1,6 +1,5 @@
 use crate::llvm;
 
-use crate::abi::Abi;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::coverageinfo::ffi::{CounterExpression, CounterMappingRegion};
@@ -12,25 +11,19 @@ use rustc_codegen_ssa::traits::{
     StaticMethods,
 };
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
-use rustc_middle::mir::coverage::{CounterId, CoverageKind};
+use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::Coverage;
-use rustc_middle::ty;
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
-use rustc_middle::ty::GenericArgs;
+use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Instance;
-use rustc_middle::ty::Ty;
 
 use std::cell::RefCell;
 
 pub(crate) mod ffi;
 pub(crate) mod map_data;
 pub mod mapgen;
-
-const UNUSED_FUNCTION_COUNTER_ID: CounterId = CounterId::START;
+mod unused;
 
 const VAR_ALIGN_BYTES: usize = 8;
 
@@ -75,28 +68,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         } else {
             bug!("Could not get the `coverage_context`");
         }
-    }
-
-    /// Functions with MIR-based coverage are normally codegenned _only_ if
-    /// called. LLVM coverage tools typically expect every function to be
-    /// defined (even if unused), with at least one call to LLVM intrinsic
-    /// `instrprof.increment`.
-    ///
-    /// Codegen a small function that will never be called, with one counter
-    /// that will never be incremented.
-    ///
-    /// For used/called functions, the coverageinfo was already added to the
-    /// `function_coverage_map` (keyed by function `Instance`) during codegen.
-    /// But in this case, since the unused function was _not_ previously
-    /// codegenned, collect the coverage `CodeRegion`s from the MIR and add
-    /// them. The first `CodeRegion` is used to add a single counter, with the
-    /// same counter ID used in the injected `instrprof.increment` intrinsic
-    /// call. Since the function is never called, all other `CodeRegion`s can be
-    /// added as `unreachable_region`s.
-    fn define_unused_fn(&self, def_id: DefId) {
-        let instance = declare_unused_fn(self, def_id);
-        codegen_unused_fn_and_counter(self, instance);
-        add_unused_function_coverage(self, instance, def_id);
     }
 }
 
@@ -162,85 +133,6 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 func_coverage.add_unreachable_region(code_region);
             }
         }
-    }
-}
-
-fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<'tcx> {
-    let tcx = cx.tcx;
-
-    let instance = Instance::new(
-        def_id,
-        GenericArgs::for_item(tcx, def_id, |param, _| {
-            if let ty::GenericParamDefKind::Lifetime = param.kind {
-                tcx.lifetimes.re_erased.into()
-            } else {
-                tcx.mk_param_from_def(param)
-            }
-        }),
-    );
-
-    let llfn = cx.declare_fn(
-        tcx.symbol_name(instance).name,
-        cx.fn_abi_of_fn_ptr(
-            ty::Binder::dummy(tcx.mk_fn_sig(
-                [Ty::new_unit(tcx)],
-                Ty::new_unit(tcx),
-                false,
-                hir::Unsafety::Unsafe,
-                Abi::Rust,
-            )),
-            ty::List::empty(),
-        ),
-        None,
-    );
-
-    llvm::set_linkage(llfn, llvm::Linkage::PrivateLinkage);
-    llvm::set_visibility(llfn, llvm::Visibility::Default);
-
-    assert!(cx.instances.borrow_mut().insert(instance, llfn).is_none());
-
-    instance
-}
-
-fn codegen_unused_fn_and_counter<'tcx>(cx: &CodegenCx<'_, 'tcx>, instance: Instance<'tcx>) {
-    let llfn = cx.get_fn(instance);
-    let llbb = Builder::append_block(cx, llfn, "unused_function");
-    let mut bx = Builder::build(cx, llbb);
-    let fn_name = bx.get_pgo_func_name_var(instance);
-    let hash = bx.const_u64(0);
-    let num_counters = bx.const_u32(1);
-    let index = bx.const_u32(u32::from(UNUSED_FUNCTION_COUNTER_ID));
-    debug!(
-        "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?},
-            index={:?}) for unused function: {:?}",
-        fn_name, hash, num_counters, index, instance
-    );
-    bx.instrprof_increment(fn_name, hash, num_counters, index);
-    bx.ret_void();
-}
-
-fn add_unused_function_coverage<'tcx>(
-    cx: &CodegenCx<'_, 'tcx>,
-    instance: Instance<'tcx>,
-    def_id: DefId,
-) {
-    let tcx = cx.tcx;
-
-    let mut function_coverage = FunctionCoverage::unused(tcx, instance);
-    for (index, &code_region) in tcx.covered_code_regions(def_id).iter().enumerate() {
-        if index == 0 {
-            // Insert at least one real counter so the LLVM CoverageMappingReader will find expected
-            // definitions.
-            function_coverage.add_counter(UNUSED_FUNCTION_COUNTER_ID, code_region.clone());
-        } else {
-            function_coverage.add_unreachable_region(code_region.clone());
-        }
-    }
-
-    if let Some(coverage_context) = cx.coverage_context() {
-        coverage_context.function_coverage_map.borrow_mut().insert(instance, function_coverage);
-    } else {
-        bug!("Could not get the `coverage_context`");
     }
 }
 

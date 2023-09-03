@@ -2,15 +2,13 @@ use crate::common::CodegenCx;
 use crate::coverageinfo;
 use crate::coverageinfo::ffi::CounterMappingRegion;
 use crate::coverageinfo::map_data::FunctionCoverage;
+use crate::coverageinfo::unused;
 use crate::llvm;
 
 use rustc_codegen_ssa::traits::ConstMethods;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Symbol;
@@ -43,7 +41,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     // MIR `Coverage` code regions to the `function_coverage_map`, before calling
     // `ctx.take_function_coverage_map()`.
     if cx.codegen_unit.is_code_coverage_dead_code_cgu() {
-        add_unused_functions(cx);
+        unused::add_unused_functions(cx);
     }
 
     let function_coverage_map = match cx.coverage_context() {
@@ -275,69 +273,4 @@ fn save_function_record(
         func_record_val,
         is_used,
     );
-}
-
-/// When finalizing the coverage map, `FunctionCoverage` only has the `CodeRegion`s and counters for
-/// the functions that went through codegen; such as public functions and "used" functions
-/// (functions referenced by other "used" or public items). Any other functions considered unused,
-/// or "Unreachable", were still parsed and processed through the MIR stage, but were not
-/// codegenned. (Note that `-Clink-dead-code` can force some unused code to be codegenned, but
-/// that flag is known to cause other errors, when combined with `-C instrument-coverage`; and
-/// `-Clink-dead-code` will not generate code for unused generic functions.)
-///
-/// We can find the unused functions (including generic functions) by the set difference of all MIR
-/// `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s (`tcx` query
-/// `codegened_and_inlined_items`).
-///
-/// These unused functions are then codegen'd in one of the CGUs which is marked as the
-/// "code coverage dead code cgu" during the partitioning process. This prevents us from generating
-/// code regions for the same function more than once which can lead to linker errors regarding
-/// duplicate symbols.
-fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
-    assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
-
-    let tcx = cx.tcx;
-
-    let ignore_unused_generics = tcx.sess.instrument_coverage_except_unused_generics();
-
-    let eligible_def_ids: Vec<DefId> = tcx
-        .mir_keys(())
-        .iter()
-        .filter_map(|local_def_id| {
-            let def_id = local_def_id.to_def_id();
-            let kind = tcx.def_kind(def_id);
-            // `mir_keys` will give us `DefId`s for all kinds of things, not
-            // just "functions", like consts, statics, etc. Filter those out.
-            // If `ignore_unused_generics` was specified, filter out any
-            // generic functions from consideration as well.
-            if !matches!(
-                kind,
-                DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator
-            ) {
-                return None;
-            }
-            if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {
-                return None;
-            }
-            Some(local_def_id.to_def_id())
-        })
-        .collect();
-
-    let codegenned_def_ids = tcx.codegened_and_inlined_items(());
-
-    for non_codegenned_def_id in
-        eligible_def_ids.into_iter().filter(|id| !codegenned_def_ids.contains(id))
-    {
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(non_codegenned_def_id);
-
-        // If a function is marked `#[no_coverage]`, then skip generating a
-        // dead code stub for it.
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
-            debug!("skipping unused fn marked #[no_coverage]: {:?}", non_codegenned_def_id);
-            continue;
-        }
-
-        debug!("generating unused fn: {:?}", non_codegenned_def_id);
-        cx.define_unused_fn(non_codegenned_def_id);
-    }
 }
