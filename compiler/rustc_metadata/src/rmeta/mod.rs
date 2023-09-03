@@ -42,7 +42,7 @@ pub use decoder::provide_extern;
 use decoder::DecodeContext;
 pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
 use encoder::EncodeContext;
-pub use encoder::{encode_metadata, EncodedMetadata};
+pub use encoder::{encode_metadata, rendered_const, EncodedMetadata};
 use rustc_span::hygiene::SyntaxContextData;
 
 mod decoder;

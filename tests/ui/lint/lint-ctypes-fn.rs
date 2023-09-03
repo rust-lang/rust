@@ -1,6 +1,6 @@
 #![feature(rustc_private)]
 
-#![allow(private_in_public)]
+#![allow(private_interfaces)]
 #![deny(improper_ctypes_definitions)]
 
 extern crate libc;

@@ -500,6 +500,11 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, see issue #82523 \
          <https://github.com/rust-lang/rust/issues/82523> for more information",
     );
+    store.register_removed(
+        "private_in_public",
+        "replaced with another group of lints, see RFC \
+         <https://rust-lang.github.io/rfcs/2145-type-privacy.html> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

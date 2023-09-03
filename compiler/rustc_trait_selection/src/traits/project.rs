@@ -659,6 +659,18 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 normalized_ty
             }
             ty::Weak => {
+                let recursion_limit = self.interner().recursion_limit();
+                if !recursion_limit.value_within_limit(self.depth) {
+                    self.selcx.infcx.err_ctxt().report_overflow_error(
+                        &ty,
+                        self.cause.span,
+                        false,
+                        |diag| {
+                            diag.note(crate::fluent_generated::trait_selection_ty_alias_overflow);
+                        },
+                    );
+                }
+
                 let infcx = self.selcx.infcx;
                 self.obligations.extend(
                     infcx.tcx.predicates_of(data.def_id).instantiate_own(infcx.tcx, data.args).map(
@@ -678,7 +690,14 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         },
                     ),
                 );
-                infcx.tcx.type_of(data.def_id).instantiate(infcx.tcx, data.args).fold_with(self)
+                self.depth += 1;
+                let res = infcx
+                    .tcx
+                    .type_of(data.def_id)
+                    .instantiate(infcx.tcx, data.args)
+                    .fold_with(self);
+                self.depth -= 1;
+                res
             }
 
             ty::Inherent if !data.has_escaping_bound_vars() => {

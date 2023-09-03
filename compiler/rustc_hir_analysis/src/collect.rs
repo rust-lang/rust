@@ -38,6 +38,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 use rustc_trait_selection::traits::ObligationCtxt;
 use std::iter;
+use std::ops::Bound;
 
 mod generics_of;
 mod item_bounds;
@@ -1144,15 +1145,15 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
         }
 
         Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor().is_some() => {
-            let ty = tcx.type_of(tcx.hir().get_parent_item(hir_id)).instantiate_identity();
+            let adt_def_id = tcx.hir().get_parent_item(hir_id).def_id.to_def_id();
+            let ty = tcx.type_of(adt_def_id).instantiate_identity();
             let inputs = data.fields().iter().map(|f| tcx.type_of(f.def_id).instantiate_identity());
-            ty::Binder::dummy(tcx.mk_fn_sig(
-                inputs,
-                ty,
-                false,
-                hir::Unsafety::Normal,
-                abi::Abi::Rust,
-            ))
+            // constructors for structs with `layout_scalar_valid_range` are unsafe to call
+            let safety = match tcx.layout_scalar_valid_range(adt_def_id) {
+                (Bound::Unbounded, Bound::Unbounded) => hir::Unsafety::Normal,
+                _ => hir::Unsafety::Unsafe,
+            };
+            ty::Binder::dummy(tcx.mk_fn_sig(inputs, ty, false, safety, abi::Abi::Rust))
         }
 
         Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {

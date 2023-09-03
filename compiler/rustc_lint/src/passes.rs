@@ -153,6 +153,7 @@ macro_rules! early_lint_methods {
             fn check_pat(a: &ast::Pat);
             fn check_pat_post(a: &ast::Pat);
             fn check_expr(a: &ast::Expr);
+            fn check_expr_post(a: &ast::Expr);
             fn check_ty(a: &ast::Ty);
             fn check_generic_arg(a: &ast::GenericArg);
             fn check_generic_param(a: &ast::GenericParam);

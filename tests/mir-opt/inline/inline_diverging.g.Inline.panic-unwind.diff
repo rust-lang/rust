@@ -18,11 +18,11 @@
           StorageLive(_3);
           _3 = _1;
           _2 = Gt(move _3, const 0_i32);
-          StorageDead(_3);
           switchInt(move _2) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
+          StorageDead(_3);
           StorageLive(_4);
           _4 = _1;
           _0 = move _4 as u32 (IntToInt);
@@ -32,6 +32,7 @@
       }
   
       bb2: {
+          StorageDead(_3);
           StorageLive(_6);
 -         _6 = panic() -> unwind continue;
 +         StorageLive(_7);

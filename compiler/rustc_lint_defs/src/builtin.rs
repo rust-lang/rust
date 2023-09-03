@@ -983,44 +983,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `private_in_public` lint detects private items in public
-    /// interfaces not caught by the old implementation.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// # #![allow(unused)]
-    /// struct SemiPriv;
-    ///
-    /// mod m1 {
-    ///     struct Priv;
-    ///     impl super::SemiPriv {
-    ///         pub fn f(_: Priv) {}
-    ///     }
-    /// }
-    /// # fn main() {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The visibility rules are intended to prevent exposing private items in
-    /// public interfaces. This is a [future-incompatible] lint to transition
-    /// this to a hard error in the future. See [issue #34537] for more
-    /// details.
-    ///
-    /// [issue #34537]: https://github.com/rust-lang/rust/issues/34537
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub PRIVATE_IN_PUBLIC,
-    Warn,
-    "detect private items in public interfaces not caught by the old implementation",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
-    };
-}
-
-declare_lint! {
     /// The `invalid_alignment` lint detects dereferences of misaligned pointers during
     /// constant evaluation.
     ///
@@ -3415,7 +3377,6 @@ declare_lint_pass! {
         PATTERNS_IN_FNS_WITHOUT_BODY,
         POINTER_STRUCTURAL_MATCH,
         PRIVATE_BOUNDS,
-        PRIVATE_IN_PUBLIC,
         PRIVATE_INTERFACES,
         PROC_MACRO_BACK_COMPAT,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
@@ -4334,9 +4295,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// # #![feature(type_privacy_lints)]
     /// # #![allow(unused)]
-    /// # #![allow(private_in_public)]
     /// #![deny(private_interfaces)]
     /// struct SemiPriv;
     ///
@@ -4357,9 +4316,8 @@ declare_lint! {
     /// Having something private in primary interface guarantees that
     /// the item will be unusable from outer modules due to type privacy.
     pub PRIVATE_INTERFACES,
-    Allow,
+    Warn,
     "private type in primary interface of an item",
-    @feature_gate = sym::type_privacy_lints;
 }
 
 declare_lint! {
@@ -4370,8 +4328,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// # #![feature(type_privacy_lints)]
-    /// # #![allow(private_in_public)]
     /// # #![allow(unused)]
     /// #![deny(private_bounds)]
     ///
@@ -4389,9 +4345,8 @@ declare_lint! {
     /// Having private types or traits in item bounds makes it less clear what interface
     /// the item actually provides.
     pub PRIVATE_BOUNDS,
-    Allow,
+    Warn,
     "private type in secondary interface of an item",
-    @feature_gate = sym::type_privacy_lints;
 }
 
 declare_lint! {

@@ -367,7 +367,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
                 match addition {
                     Addition::File { path, name_in_archive } => {
                         let path = CString::new(path.to_str().unwrap())?;
-                        let name = CString::new(name_in_archive.clone())?;
+                        let name = CString::new(name_in_archive.as_bytes())?;
                         members.push(llvm::LLVMRustArchiveMemberNew(
                             path.as_ptr(),
                             name.as_ptr(),

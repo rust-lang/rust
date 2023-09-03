@@ -1226,7 +1226,6 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         tcx.stable_crate_id(LOCAL_CRATE).hash_stable(&mut hcx, &mut stable_hasher);
         // Hash visibility information since it does not appear in HIR.
         resolutions.visibilities.hash_stable(&mut hcx, &mut stable_hasher);
-        resolutions.has_pub_restricted.hash_stable(&mut hcx, &mut stable_hasher);
         stable_hasher.finish()
     });
 

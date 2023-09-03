@@ -163,10 +163,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
 
     debug!(?normalized_inputs_and_output);
 
-    for u in ty::UniverseIndex::ROOT..=infcx.universe() {
-        constraints.universe_causes.insert(u, UniverseInfo::other());
-    }
-
     let mut borrowck_context = BorrowCheckContext {
         universal_regions,
         location_table,

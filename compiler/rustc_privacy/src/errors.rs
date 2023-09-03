@@ -47,21 +47,6 @@ pub struct UnnamedItemIsPrivate {
     pub kind: &'static str,
 }
 
-// Duplicate of `InPublicInterface` but with a different error code, shares the same slug.
-#[derive(Diagnostic)]
-#[diag(privacy_in_public_interface, code = "E0445")]
-pub struct InPublicInterfaceTraits<'a> {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub vis_descr: &'static str,
-    pub kind: &'a str,
-    pub descr: DiagnosticArgFromDisplay<'a>,
-    #[label(privacy_visibility_label)]
-    pub vis_span: Span,
-}
-
-// Duplicate of `InPublicInterfaceTraits` but with a different error code, shares the same slug.
 #[derive(Diagnostic)]
 #[diag(privacy_in_public_interface, code = "E0446")]
 pub struct InPublicInterface<'a> {
@@ -89,14 +74,6 @@ pub struct FromPrivateDependencyInPublicInterface<'a> {
     pub kind: &'a str,
     pub descr: DiagnosticArgFromDisplay<'a>,
     pub krate: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(privacy_private_in_public_lint)]
-pub struct PrivateInPublicLint<'a> {
-    pub vis_descr: &'static str,
-    pub kind: &'a str,
-    pub descr: DiagnosticArgFromDisplay<'a>,
 }
 
 #[derive(LintDiagnostic)]

@@ -43,31 +43,33 @@
       }
   
       bb3: {
--         StorageDead(_6);
 -         switchInt(move _5) -> [0: bb5, otherwise: bb4];
 -     }
 - 
 -     bb4: {
+-         StorageDead(_6);
 -         _4 = const true;
 -         goto -> bb6;
 -     }
 - 
 -     bb5: {
+-         StorageDead(_6);
 -         _4 = const false;
 -         goto -> bb6;
 -     }
 - 
 -     bb6: {
--         StorageDead(_5);
 -         switchInt(move _4) -> [0: bb8, otherwise: bb7];
 -     }
 - 
 -     bb7: {
+-         StorageDead(_5);
 -         _3 = const true;
 -         goto -> bb9;
 -     }
 - 
 -     bb8: {
+-         StorageDead(_5);
 -         _3 = const false;
 -         goto -> bb9;
 -     }

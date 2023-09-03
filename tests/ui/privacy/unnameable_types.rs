@@ -1,5 +1,4 @@
 #![feature(type_privacy_lints)]
-#![allow(private_in_public)]
 #![deny(unnameable_types)]
 
 mod m {

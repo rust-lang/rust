@@ -75,17 +75,19 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _8 = Lt(move _6, move _7);
         StorageDead(_7);
         StorageDead(_6);
-        StorageDead(_22);
-        StorageDead(_21);
         switchInt(move _8) -> [0: bb2, otherwise: bb3];
     }
 
     bb2: {
+        StorageDead(_22);
+        StorageDead(_21);
         _9 = Option::<usize>::None;
         goto -> bb5;
     }
 
     bb3: {
+        StorageDead(_22);
+        StorageDead(_21);
         _10 = (_5.0: usize);
         StorageLive(_11);
         _11 = <usize as Step>::forward_unchecked(_10, const 1_usize) -> [return: bb4, unwind: bb12];
