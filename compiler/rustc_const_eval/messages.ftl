@@ -134,6 +134,8 @@ const_eval_interior_mutable_data_refer =
         This would make multiple uses of a constant to be able to see different values and allow circumventing
         the `Send` and `Sync` requirements for shared mutable data, which is unsound.
 
+const_eval_interrupted = compilation was interrupted
+
 const_eval_invalid_align =
     align has to be a power of 2
 

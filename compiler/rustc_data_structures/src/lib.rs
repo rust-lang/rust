@@ -47,6 +47,8 @@ extern crate cfg_if;
 #[macro_use]
 extern crate rustc_macros;
 
+use std::sync::atomic::AtomicBool;
+
 pub use rustc_index::static_assert_size;
 
 #[inline(never)]
@@ -129,3 +131,8 @@ impl<F: FnOnce()> Drop for OnDrop<F> {
 // See comments in src/librustc_middle/lib.rs
 #[doc(hidden)]
 pub fn __noop_fix_for_27438() {}
+
+/// `rustc_driver::main` installs a handler that will set this to `true` if
+/// the compiler has been sent a request to shut down, such as by a Ctrl-C.
+/// This static is placed here so that it is available to all parts of the compiler.
+pub static CTRL_C_RECEIVED: AtomicBool = AtomicBool::new(false);
