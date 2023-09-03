@@ -655,6 +655,16 @@ pub(crate) struct CannotDetermineImportResolution {
 }
 
 #[derive(Diagnostic)]
+#[diag(resolve_cannot_determine_macro_resolution)]
+#[note]
+pub(crate) struct CannotDetermineMacroResolution {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) kind: &'static str,
+    pub(crate) path: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(resolve_cannot_be_reexported_private, code = "E0364")]
 pub(crate) struct CannotBeReexportedPrivate {
     #[primary_span]

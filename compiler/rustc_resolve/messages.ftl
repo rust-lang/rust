@@ -58,6 +58,10 @@ resolve_cannot_determine_import_resolution =
     cannot determine resolution for the import
     .note = import resolution is stuck, try simplifying other imports
 
+resolve_cannot_determine_macro_resolution =
+    cannot determine resolution for the {$kind} `{$path}`
+    .note = import resolution is stuck, try simplifying macro imports
+
 resolve_cannot_find_ident_in_this_scope =
     cannot find {$expected} `{$ident}` in this scope
 
