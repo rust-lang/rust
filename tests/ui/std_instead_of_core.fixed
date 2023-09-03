@@ -6,28 +6,28 @@ extern crate alloc;
 #[warn(clippy::std_instead_of_core)]
 fn std_instead_of_core() {
     // Regular import
-    use std::hash::Hasher;
+    use core::hash::Hasher;
     //~^ ERROR: used import from `std` instead of `core`
     // Absolute path
-    use ::std::hash::Hash;
+    use ::core::hash::Hash;
     //~^ ERROR: used import from `std` instead of `core`
     // Don't lint on `env` macro
     use std::env;
 
     // Multiple imports
-    use std::fmt::{Debug, Result};
+    use core::fmt::{Debug, Result};
     //~^ ERROR: used import from `std` instead of `core`
 
     // Function calls
-    let ptr = std::ptr::null::<u32>();
+    let ptr = core::ptr::null::<u32>();
     //~^ ERROR: used import from `std` instead of `core`
-    let ptr_mut = ::std::ptr::null_mut::<usize>();
+    let ptr_mut = ::core::ptr::null_mut::<usize>();
     //~^ ERROR: used import from `std` instead of `core`
 
     // Types
-    let cell = std::cell::Cell::new(8u32);
+    let cell = core::cell::Cell::new(8u32);
     //~^ ERROR: used import from `std` instead of `core`
-    let cell_absolute = ::std::cell::Cell::new(8u32);
+    let cell_absolute = ::core::cell::Cell::new(8u32);
     //~^ ERROR: used import from `std` instead of `core`
 
     let _ = std::env!("PATH");
@@ -36,22 +36,22 @@ fn std_instead_of_core() {
     use std::error::Error;
 
     // lint items re-exported from private modules, `core::iter::traits::iterator::Iterator`
-    use std::iter::Iterator;
+    use core::iter::Iterator;
     //~^ ERROR: used import from `std` instead of `core`
 }
 
 #[warn(clippy::std_instead_of_alloc)]
 fn std_instead_of_alloc() {
     // Only lint once.
-    use std::vec;
+    use alloc::vec;
     //~^ ERROR: used import from `std` instead of `alloc`
-    use std::vec::Vec;
+    use alloc::vec::Vec;
     //~^ ERROR: used import from `std` instead of `alloc`
 }
 
 #[warn(clippy::alloc_instead_of_core)]
 fn alloc_instead_of_core() {
-    use alloc::slice::from_ref;
+    use core::slice::from_ref;
     //~^ ERROR: used import from `alloc` instead of `core`
 }
 
