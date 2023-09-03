@@ -510,7 +510,7 @@ impl Command {
 
         let mut cmd = cmd!(
             e.sh,
-            "rustfmt +{toolchain} --edition=2021 --config-path {config_path} {flags...}"
+            "rustfmt +{toolchain} --edition=2021 --config-path {config_path} --unstable-features --skip-children {flags...}"
         );
         eprintln!("$ {cmd} ...");
 
