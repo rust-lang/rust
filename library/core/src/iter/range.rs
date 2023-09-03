@@ -1,3 +1,4 @@
+use crate::ascii::Char as AsciiChar;
 use crate::convert::TryFrom;
 use crate::mem;
 use crate::num::NonZeroUsize;
@@ -14,7 +15,7 @@ macro_rules! unsafe_impl_trusted_step {
         unsafe impl TrustedStep for $type {}
     )*};
 }
-unsafe_impl_trusted_step![char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize];
+unsafe_impl_trusted_step![AsciiChar char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize];
 
 /// Objects that have a notion of *successor* and *predecessor* operations.
 ///
@@ -481,6 +482,48 @@ impl Step for char {
         // SAFETY: because of the previous contract, this is guaranteed
         // by the caller to be a valid char.
         unsafe { char::from_u32_unchecked(res) }
+    }
+}
+
+#[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+impl Step for AsciiChar {
+    #[inline]
+    fn steps_between(&start: &AsciiChar, &end: &AsciiChar) -> Option<usize> {
+        Step::steps_between(&start.to_u8(), &end.to_u8())
+    }
+
+    #[inline]
+    fn forward_checked(start: AsciiChar, count: usize) -> Option<AsciiChar> {
+        let end = Step::forward_checked(start.to_u8(), count)?;
+        AsciiChar::from_u8(end)
+    }
+
+    #[inline]
+    fn backward_checked(start: AsciiChar, count: usize) -> Option<AsciiChar> {
+        let end = Step::backward_checked(start.to_u8(), count)?;
+
+        // SAFETY: Values below that of a valid ASCII character are also valid ASCII
+        Some(unsafe { AsciiChar::from_u8_unchecked(end) })
+    }
+
+    #[inline]
+    unsafe fn forward_unchecked(start: AsciiChar, count: usize) -> AsciiChar {
+        // SAFETY: Caller asserts that result is a valid ASCII character,
+        // and therefore it is a valid u8.
+        let end = unsafe { Step::forward_unchecked(start.to_u8(), count) };
+
+        // SAFETY: Caller asserts that result is a valid ASCII character.
+        unsafe { AsciiChar::from_u8_unchecked(end) }
+    }
+
+    #[inline]
+    unsafe fn backward_unchecked(start: AsciiChar, count: usize) -> AsciiChar {
+        // SAFETY: Caller asserts that result is a valid ASCII character,
+        // and therefore it is a valid u8.
+        let end = unsafe { Step::backward_unchecked(start.to_u8(), count) };
+
+        // SAFETY: Caller asserts that result is a valid ASCII character.
+        unsafe { AsciiChar::from_u8_unchecked(end) }
     }
 }
 

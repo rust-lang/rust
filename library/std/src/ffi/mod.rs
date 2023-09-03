@@ -132,8 +132,8 @@
 //! On all platforms, [`OsStr`] consists of a sequence of bytes that is encoded as a superset of
 //! UTF-8; see [`OsString`] for more details on its encoding on different platforms.
 //!
-//! For limited, inexpensive conversions from and to bytes, see [`OsStr::as_os_str_bytes`] and
-//! [`OsStr::from_os_str_bytes_unchecked`].
+//! For limited, inexpensive conversions from and to bytes, see [`OsStr::as_encoded_bytes`] and
+//! [`OsStr::from_encoded_bytes_unchecked`].
 //!
 //! [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
 //! [Unicode code point]: https://www.unicode.org/glossary/#code_point

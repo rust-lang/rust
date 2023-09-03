@@ -608,6 +608,7 @@ E0794: include_str!("./error_codes/E0794.md"),
 //  E0420, // merged into 532
 //  E0421, // merged into 531
 //  E0427, // merged into 530
+//  E0445, // merged into 446 and type privacy lints
 //  E0456, // plugin `..` is not available for triple `..`
 //  E0465, // removed: merged with E0464
 //  E0467, // removed

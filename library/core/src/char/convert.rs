@@ -87,17 +87,51 @@ impl From<char> for u128 {
     }
 }
 
-/// Map `char` with code point in U+0000..=U+00FF to byte in 0x00..=0xFF with same value, failing
-/// if the code point is greater than U+00FF.
+/// Maps a `char` with code point in U+0000..=U+00FF to a byte in 0x00..=0xFF with same value,
+/// failing if the code point is greater than U+00FF.
 ///
 /// See [`impl From<u8> for char`](char#impl-From<u8>-for-char) for details on the encoding.
 #[stable(feature = "u8_from_char", since = "1.59.0")]
 impl TryFrom<char> for u8 {
     type Error = TryFromCharError;
 
+    /// Tries to convert a [`char`] into a [`u8`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = 'ÿ'; // U+00FF
+    /// let b = 'Ā'; // U+0100
+    /// assert_eq!(u8::try_from(a), Ok(0xFF_u8));
+    /// assert!(u8::try_from(b).is_err());
+    /// ```
     #[inline]
     fn try_from(c: char) -> Result<u8, Self::Error> {
         u8::try_from(u32::from(c)).map_err(|_| TryFromCharError(()))
+    }
+}
+
+/// Maps a `char` with code point in U+0000..=U+FFFF to a `u16` in 0x0000..=0xFFFF with same value,
+/// failing if the code point is greater than U+FFFF.
+///
+/// This corresponds to the UCS-2 encoding, as specified in ISO/IEC 10646:2003.
+#[stable(feature = "u16_from_char", since = "CURRENT_RUSTC_VERSION")]
+impl TryFrom<char> for u16 {
+    type Error = TryFromCharError;
+
+    /// Tries to convert a [`char`] into a [`u16`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let trans_rights = '⚧'; // U+26A7
+    /// let ninjas = '🥷'; // U+1F977
+    /// assert_eq!(u16::try_from(trans_rights), Ok(0x26A7_u16));
+    /// assert!(u16::try_from(ninjas).is_err());
+    /// ```
+    #[inline]
+    fn try_from(c: char) -> Result<u16, Self::Error> {
+        u16::try_from(u32::from(c)).map_err(|_| TryFromCharError(()))
     }
 }
 

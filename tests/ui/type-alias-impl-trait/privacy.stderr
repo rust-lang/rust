@@ -1,11 +1,15 @@
-error[E0446]: private type alias `Foo` in public interface
-  --> $DIR/privacy.rs:4:1
+warning: type alias `Foo` is more private than the item `foo`
+  --> $DIR/privacy.rs:6:1
+   |
+LL | pub fn foo() -> Foo {
+   | ^^^^^^^^^^^^^^^^^^^ function `foo` is reachable at visibility `pub`
+   |
+note: but type alias `Foo` is only usable at visibility `pub(crate)`
+  --> $DIR/privacy.rs:5:1
    |
 LL | type Foo = (impl Sized, u8);
-   | -------- `Foo` declared as private
-LL | pub fn foo() -> Foo {
-   | ^^^^^^^^^^^^^^^^^^^ can't leak private type alias
+   | ^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
 
-error: aborting due to previous error
+warning: 1 warning emitted
 
-For more information about this error, try `rustc --explain E0446`.

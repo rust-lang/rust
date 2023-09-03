@@ -97,12 +97,12 @@ impl AsInner<[u8]> for Buf {
 
 impl Buf {
     #[inline]
-    pub fn into_os_str_bytes(self) -> Vec<u8> {
+    pub fn into_encoded_bytes(self) -> Vec<u8> {
         self.inner
     }
 
     #[inline]
-    pub unsafe fn from_os_str_bytes_unchecked(s: Vec<u8>) -> Self {
+    pub unsafe fn from_encoded_bytes_unchecked(s: Vec<u8>) -> Self {
         Self { inner: s }
     }
 
@@ -203,18 +203,18 @@ impl Buf {
 
 impl Slice {
     #[inline]
-    pub fn as_os_str_bytes(&self) -> &[u8] {
+    pub fn as_encoded_bytes(&self) -> &[u8] {
         &self.inner
     }
 
     #[inline]
-    pub unsafe fn from_os_str_bytes_unchecked(s: &[u8]) -> &Slice {
+    pub unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
         unsafe { mem::transmute(s) }
     }
 
     #[inline]
     pub fn from_str(s: &str) -> &Slice {
-        unsafe { Slice::from_os_str_bytes_unchecked(s.as_bytes()) }
+        unsafe { Slice::from_encoded_bytes_unchecked(s.as_bytes()) }
     }
 
     pub fn to_str(&self) -> Result<&str, crate::str::Utf8Error> {

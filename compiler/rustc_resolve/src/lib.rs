@@ -989,7 +989,6 @@ pub struct Resolver<'a, 'tcx> {
     glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
     /// Visibilities in "lowered" form, for all entities that have them.
     visibilities: FxHashMap<LocalDefId, ty::Visibility>,
-    has_pub_restricted: bool,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
 
@@ -1342,7 +1341,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             glob_map: Default::default(),
             visibilities,
-            has_pub_restricted: false,
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
 
@@ -1486,7 +1484,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let expn_that_defined = self.expn_that_defined;
         let visibilities = self.visibilities;
-        let has_pub_restricted = self.has_pub_restricted;
         let extern_crate_map = self.extern_crate_map;
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
         let glob_map = self.glob_map;
@@ -1504,7 +1501,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
             visibilities,
-            has_pub_restricted,
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,

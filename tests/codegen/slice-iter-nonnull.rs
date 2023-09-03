@@ -100,11 +100,11 @@ pub fn slice_iter_is_empty(it: &std::slice::Iter<'_, u32>) -> bool {
 // CHECK-LABEL: @slice_iter_len
 #[no_mangle]
 pub fn slice_iter_len(it: &std::slice::Iter<'_, u32>) -> usize {
-    // CHECK: %[[START:.+]] = load ptr, ptr %it,
-    // CHECK-SAME: !nonnull
-    // CHECK-SAME: !noundef
     // CHECK: %[[ENDP:.+]] = getelementptr{{.+}}ptr %it,{{.+}} 1
     // CHECK: %[[END:.+]] = load ptr, ptr %[[ENDP]]
+    // CHECK-SAME: !nonnull
+    // CHECK-SAME: !noundef
+    // CHECK: %[[START:.+]] = load ptr, ptr %it,
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef
 

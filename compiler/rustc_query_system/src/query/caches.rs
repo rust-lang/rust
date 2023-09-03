@@ -2,7 +2,7 @@ use crate::dep_graph::DepNodeIndex;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::{self, Sharded};
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sync::OnceLock;
 use rustc_index::{Idx, IndexVec};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -87,12 +87,12 @@ impl<'tcx, V: 'tcx> CacheSelector<'tcx, V> for SingleCacheSelector {
 }
 
 pub struct SingleCache<V> {
-    cache: Lock<Option<(V, DepNodeIndex)>>,
+    cache: OnceLock<(V, DepNodeIndex)>,
 }
 
 impl<V> Default for SingleCache<V> {
     fn default() -> Self {
-        SingleCache { cache: Lock::new(None) }
+        SingleCache { cache: OnceLock::new() }
     }
 }
 
@@ -105,16 +105,16 @@ where
 
     #[inline(always)]
     fn lookup(&self, _key: &()) -> Option<(V, DepNodeIndex)> {
-        *self.cache.lock()
+        self.cache.get().copied()
     }
 
     #[inline]
     fn complete(&self, _key: (), value: V, index: DepNodeIndex) {
-        *self.cache.lock() = Some((value, index));
+        self.cache.set((value, index)).ok();
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        if let Some(value) = self.cache.lock().as_ref() {
+        if let Some(value) = self.cache.get() {
             f(&(), &value.0, value.1)
         }
     }
