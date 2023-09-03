@@ -30,7 +30,7 @@ use rustc_middle::ty::{self, GenericArgs, Instance, Ty};
 /// "code coverage dead code cgu" during the partitioning process. This prevents us from generating
 /// code regions for the same function more than once which can lead to linker errors regarding
 /// duplicate symbols.
-pub(crate) fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
+pub(crate) fn synthesize_unused_functions(cx: &CodegenCx<'_, '_>) {
     assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
     let tcx = cx.tcx;

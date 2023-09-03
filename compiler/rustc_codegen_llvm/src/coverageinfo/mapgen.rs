@@ -41,7 +41,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     // MIR `Coverage` code regions to the `function_coverage_map`, before calling
     // `ctx.take_function_coverage_map()`.
     if cx.codegen_unit.is_code_coverage_dead_code_cgu() {
-        unused::add_unused_functions(cx);
+        unused::synthesize_unused_functions(cx);
     }
 
     let function_coverage_map = match cx.coverage_context() {
