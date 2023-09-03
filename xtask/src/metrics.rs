@@ -39,13 +39,10 @@ impl flags::Metrics {
                     MeasurementType::AnalyzeSelf => {
                         metrics.measure_analysis_stats_self(sh)?;
                     }
-                    MeasurementType::AnalyzeRipgrep => {
-                        metrics.measure_analysis_stats(sh, name)?;
-                    }
-                    MeasurementType::AnalyzeWebRender => {
-                        metrics.measure_analysis_stats(sh, name)?;
-                    }
-                    MeasurementType::AnalyzeDiesel => {
+                    MeasurementType::AnalyzeRipgrep
+                    | MeasurementType::AnalyzeWebRender
+                    | MeasurementType::AnalyzeDiesel
+                    | MeasurementType::AnalyzeHyper => {
                         metrics.measure_analysis_stats(sh, name)?;
                     }
                 };
@@ -57,6 +54,7 @@ impl flags::Metrics {
                 metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeRipgrep.as_ref())?;
                 metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeWebRender.as_ref())?;
                 metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeDiesel.as_ref())?;
+                metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeHyper.as_ref())?;
                 "all"
             }
         };
