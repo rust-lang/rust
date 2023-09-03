@@ -156,7 +156,6 @@
 #![feature(const_slice_split_at_mut)]
 #![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_swap)]
-#![feature(const_transmute_copy)]
 #![feature(const_try)]
 #![feature(const_type_id)]
 #![feature(const_type_name)]
