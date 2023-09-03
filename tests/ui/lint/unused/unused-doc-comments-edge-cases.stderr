@@ -42,7 +42,29 @@ LL |     num == 3
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/unused-doc-comments-edge-cases.rs:29:27
+  --> $DIR/unused-doc-comments-edge-cases.rs:33:9
+   |
+LL |         /// useless doc comment
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         foo: 3
+   |         ------ rustdoc does not generate documentation for expression fields
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:45:9
+   |
+LL |         /// useless doc comment
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         foo
+   |         --- rustdoc does not generate documentation for pattern fields
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:55:27
    |
 LL | fn doc_comment_on_generic<#[doc = "x"] T>(val: T) {}
    |                           ^^^^^^^^^^^^ - rustdoc does not generate documentation for generic parameters
@@ -50,7 +72,7 @@ LL | fn doc_comment_on_generic<#[doc = "x"] T>(val: T) {}
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/unused-doc-comments-edge-cases.rs:33:5
+  --> $DIR/unused-doc-comments-edge-cases.rs:59:5
    |
 LL |       /// unused doc comment
    |       ^^^^^^^^^^^^^^^^^^^^^^
@@ -63,7 +85,7 @@ LL | |     }
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/unused-doc-comments-edge-cases.rs:40:1
+  --> $DIR/unused-doc-comments-edge-cases.rs:66:1
    |
 LL |   /// unused doc comment
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -89,7 +111,7 @@ help: you might have meant to return this value
 LL |         return true;
    |         ++++++     +
 
-error: aborting due to 8 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0308, E0658.
 For more information about an error, try `rustc --explain E0308`.

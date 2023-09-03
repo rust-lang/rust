@@ -555,8 +555,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                             subpattern: pattern,
                             ascription: Ascription {
                                 annotation,
-                                /// Note that use `Contravariant` here. See the
-                                /// `variance` field documentation for details.
+                                // Note that use `Contravariant` here. See the
+                                // `variance` field documentation for details.
                                 variance: ty::Variance::Contravariant,
                             },
                         },
