@@ -59,6 +59,23 @@ pub struct Guard {
     panicking: bool,
 }
 
+#[cfg(target_os = "custom")]
+impl Guard {
+    /// On the "custom" platform, allocator and thread local storage
+    /// implementations use Mutex & RwLock, sometimes while a panic is
+    /// being handled.
+    ///
+    /// The poison checks that these primitives do are deadlock sources
+    /// in these cases; to prevent these deadlocks, it is preferable to
+    /// bypass the poison checks.
+    pub fn no_check() -> Self {
+        // by setting `panicking` to true, `poison::Flag::done` doesn't call `thread::panicking`
+        Self {
+            panicking: true,
+        }
+    }
+}
+
 /// A type of error which can be returned whenever a lock is acquired.
 ///
 /// Both [`Mutex`]es and [`RwLock`]s are poisoned whenever a thread fails while the lock

@@ -11,7 +11,7 @@ use crate::{fmt, marker, panic, ptr};
 pub macro thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
     (@key $t:ty, const $init:expr) => {{
-        #[inline]
+        #[cfg_attr(not(target_os = "custom"), inline)]
         #[deny(unsafe_op_in_unsafe_fn)]
         unsafe fn __getit(
             _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
@@ -20,7 +20,7 @@ pub macro thread_local_inner {
 
             // On platforms without `#[thread_local]` we fall back to the
             // same implementation as below for os thread locals.
-            #[inline]
+            #[cfg_attr(not(target_os = "custom"), inline)]
             const fn __init() -> $t { INIT_EXPR }
             static __KEY: $crate::thread::local_impl::Key<$t> =
                 $crate::thread::local_impl::Key::new();
@@ -46,12 +46,12 @@ pub macro thread_local_inner {
     // used to generate the `LocalKey` value for `thread_local!`
     (@key $t:ty, $init:expr) => {
         {
-            #[inline]
+            #[cfg_attr(not(target_os = "custom"), inline)]
             fn __init() -> $t { $init }
 
             // `#[inline] does not work on windows-gnu due to linking errors around dllimports.
             // See https://github.com/rust-lang/rust/issues/109797.
-            #[cfg_attr(not(windows), inline)]
+            #[cfg_attr(all(not(windows), not(target_os = "custom")), inline)]
             unsafe fn __getit(
                 init: $crate::option::Option<&mut $crate::option::Option<$t>>,
             ) -> $crate::option::Option<&'static $t> {

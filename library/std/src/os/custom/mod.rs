@@ -26,6 +26,8 @@
 //! - Initially, locking primitives are functional and behave as spinlocks.
 //! - Before `os::set_impl` has been called, any call to `abort_internal`
 //!   will result in an infinite loop.
+//! - Before `thread::set_impl` has been called, `None` is used where
+//!   `current_thread_id` would be called.
 //!
 //! These should be set/changed as soon as possible, as they are used internally.
 //!
@@ -272,6 +274,8 @@ pub mod thread {
 
     static_rwlock_box_impl!(ThreadManager);
 
+    pub type ThreadId = usize;
+
     /// Platform-specific management of threads
     pub trait ThreadManager: Send + Sync {
         /// unsafe: see thread::Builder::spawn_unchecked for safety requirements
@@ -281,6 +285,9 @@ pub mod thread {
         fn sleep(&self, dur: Duration);
         fn join(&self, thread: &Thread);
         fn available_parallelism(&self) -> io::Result<NonZeroUsize>;
+
+        /// Must return None for the initial thread
+        fn current_thread_id(&self) -> Option<ThreadId>;
 
         // todo: thread parking
     }

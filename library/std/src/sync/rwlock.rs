@@ -212,6 +212,26 @@ impl<T: ?Sized> RwLock<T> {
         }
     }
 
+    /// On the "custom" platform, allocator and thread local storage
+    /// implementations use Mutex & RwLock, sometimes while a panic is
+    /// being handled.
+    ///
+    /// The poison checks that these primitives do are deadlock sources
+    /// in these cases; to prevent these deadlocks, it is preferable to
+    /// bypass the poison checks.
+    #[inline]
+    #[cfg(target_os = "custom")]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub(crate) fn read_no_poison_check(&self) -> RwLockReadGuard<'_, T> {
+        unsafe {
+            self.inner.read();
+            RwLockReadGuard {
+                data: NonNull::new_unchecked(self.data.get()),
+                inner_lock: &self.inner,
+            }
+        }
+    }
+
     /// Attempts to acquire this `RwLock` with shared read access.
     ///
     /// If the access could not be granted at this time, then `Err` is returned.
@@ -298,6 +318,22 @@ impl<T: ?Sized> RwLock<T> {
             self.inner.write();
             RwLockWriteGuard::new(self)
         }
+    }
+
+    /// On the "custom" platform, allocator and thread local storage
+    /// implementations use Mutex & RwLock, sometimes while a panic is
+    /// being handled.
+    ///
+    /// The poison checks that these primitives do are deadlock sources
+    /// in these cases; to prevent these deadlocks, it is preferable to
+    /// bypass the poison checks.
+    #[inline]
+    #[cfg(target_os = "custom")]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub(crate) fn write_no_poison_check(&self) -> RwLockWriteGuard<'_, T> {
+        self.inner.write();
+        let poison = poison::Guard::no_check();
+        RwLockWriteGuard { lock: self, poison }
     }
 
     /// Attempts to lock this `RwLock` with exclusive write access.

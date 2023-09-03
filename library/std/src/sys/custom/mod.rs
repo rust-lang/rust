@@ -24,10 +24,6 @@ pub mod args;
 #[path = "../unsupported/once.rs"]
 pub mod once;
 
-// "custom" doesn't support thread local storage
-#[path = "../unsupported/thread_local_key.rs"]
-pub mod thread_local_key;
-
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]
 #[allow(unused)]
@@ -46,6 +42,9 @@ pub mod stdio;
 pub mod thread;
 pub mod thread_parking;
 pub mod time;
+
+// really bad implementation
+pub mod thread_local_key;
 
 pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
     custom_os_impl!(os, decode_error_kind, errno)

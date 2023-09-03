@@ -125,7 +125,7 @@ fn encode_slot(i: usize, len: usize, next: usize) {
 fn free(i: usize, len: usize) {
     assert!(len >= 2);
 
-    let mut first_slot = FIRST_SLOT.lock().unwrap();
+    let mut first_slot = FIRST_SLOT.lock_no_poison_check();
     encode_slot(i, len, *first_slot);
     *first_slot = i;
 }
@@ -164,7 +164,7 @@ unsafe impl GlobalAlloc for DefaultAlloc {
         let (req_align, req_size) = prepare_layout(layout);
 
         let (mut filler, leftover);
-        let mut first_slot = FIRST_SLOT.lock().unwrap();
+        let mut first_slot = FIRST_SLOT.lock_no_poison_check();
         let mut i = *first_slot;
         let mut prev = None;
 
