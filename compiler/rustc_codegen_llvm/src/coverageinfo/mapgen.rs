@@ -8,6 +8,7 @@ use rustc_codegen_ssa::traits::ConstMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
@@ -163,34 +164,33 @@ fn encode_mappings_for_function(
         return Vec::new();
     }
 
-    let mut virtual_file_mapping = Vec::new();
+    let mut virtual_file_mapping = IndexVec::<u32, u32>::new();
     let mut mapping_regions = Vec::with_capacity(counter_regions.len());
-    let mut current_file_name = None;
-    let mut current_file_id = 0;
 
-    // Convert the list of (Counter, CodeRegion) pairs to an array of `CounterMappingRegion`, sorted
-    // by filename and position. Capture any new files to compute the `CounterMappingRegion`s
-    // `file_id` (indexing files referenced by the current function), and construct the
-    // function-specific `virtual_file_mapping` from `file_id` to its index in the module's
-    // `filenames` array.
+    // Sort the list of (counter, region) mapping pairs by region, so that they
+    // can be grouped by filename. Prepare file IDs for each filename, and
+    // prepare the mapping data so that we can pass it through FFI to LLVM.
     counter_regions.sort_by_key(|(_counter, region)| *region);
-    for (counter, region) in counter_regions {
-        let CodeRegion { file_name, start_line, start_col, end_line, end_col } = *region;
-        let same_file = current_file_name.is_some_and(|p| p == file_name);
-        if !same_file {
-            if current_file_name.is_some() {
-                current_file_id += 1;
-            }
-            current_file_name = Some(file_name);
-            debug!("  file_id: {} = '{:?}'", current_file_id, file_name);
-            let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
-            virtual_file_mapping.push(global_file_id);
-        }
-        {
-            debug!("Adding counter {:?} to map for {:?}", counter, region);
+    for counter_regions_for_file in
+        counter_regions.group_by(|(_, a), (_, b)| a.file_name == b.file_name)
+    {
+        // Look up (or allocate) the global file ID for this filename.
+        let file_name = counter_regions_for_file[0].1.file_name;
+        let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
+
+        // Associate that global file ID with a local file ID for this function.
+        let local_file_id: u32 = virtual_file_mapping.push(global_file_id);
+        debug!("  file id: local {local_file_id} => global {global_file_id} = '{file_name:?}'");
+
+        // For each counter/region pair in this function+file, convert it to a
+        // form suitable for FFI.
+        for &(counter, region) in counter_regions_for_file {
+            let CodeRegion { file_name: _, start_line, start_col, end_line, end_col } = *region;
+
+            debug!("Adding counter {counter:?} to map for {region:?}");
             mapping_regions.push(CounterMappingRegion::code_region(
                 counter,
-                current_file_id,
+                local_file_id,
                 start_line,
                 start_col,
                 end_line,
@@ -202,7 +202,7 @@ fn encode_mappings_for_function(
     // Encode the function's coverage mappings into a buffer.
     llvm::build_byte_buffer(|buffer| {
         coverageinfo::write_mapping_to_buffer(
-            virtual_file_mapping,
+            virtual_file_mapping.raw,
             expressions,
             mapping_regions,
             buffer,
