@@ -122,10 +122,21 @@ impl FromStr for MeasurementType {
         match s {
             "build" => Ok(Self::Build),
             "self" => Ok(Self::AnalyzeSelf),
-            "ripgrep" => Ok(Self::AnalyzeRipgrep),
-            "webrender" => Ok(Self::AnalyzeWebRender),
-            "diesel" => Ok(Self::AnalyzeDiesel),
+            "ripgrep-13.0.0" => Ok(Self::AnalyzeRipgrep),
+            "webrender-2022" => Ok(Self::AnalyzeWebRender),
+            "diesel-1.4.8" => Ok(Self::AnalyzeDiesel),
             _ => Err("Invalid option".to_string()),
+        }
+    }
+}
+impl AsRef<str> for MeasurementType {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::Build => "build",
+            Self::AnalyzeSelf => "self",
+            Self::AnalyzeRipgrep => "ripgrep-13.0.0",
+            Self::AnalyzeWebRender => "webrender-2022",
+            Self::AnalyzeDiesel => "diesel-1.4.8",
         }
     }
 }
