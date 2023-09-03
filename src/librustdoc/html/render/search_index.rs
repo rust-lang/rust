@@ -1,10 +1,10 @@
 use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
-use serde::ser::{Serialize, SerializeStruct, Serializer};
+use serde::ser::{Serialize, SerializeSeq, SerializeStruct, Serializer};
 
 use crate::clean;
 use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
@@ -78,9 +78,9 @@ pub(crate) fn build_index<'tcx>(
             map: &mut FxHashMap<F, usize>,
             itemid: F,
             lastpathid: &mut usize,
-            crate_paths: &mut Vec<(ItemType, Symbol)>,
+            crate_paths: &mut Vec<(ItemType, Vec<Symbol>)>,
             item_type: ItemType,
-            path: Symbol,
+            path: &[Symbol],
         ) {
             match map.entry(itemid) {
                 Entry::Occupied(entry) => ty.id = Some(RenderTypeId::Index(*entry.get())),
@@ -88,7 +88,7 @@ pub(crate) fn build_index<'tcx>(
                     let pathid = *lastpathid;
                     entry.insert(pathid);
                     *lastpathid += 1;
-                    crate_paths.push((item_type, path));
+                    crate_paths.push((item_type, path.to_vec()));
                     ty.id = Some(RenderTypeId::Index(pathid));
                 }
             }
@@ -100,7 +100,7 @@ pub(crate) fn build_index<'tcx>(
             itemid_to_pathid: &mut FxHashMap<ItemId, usize>,
             primitives: &mut FxHashMap<Symbol, usize>,
             lastpathid: &mut usize,
-            crate_paths: &mut Vec<(ItemType, Symbol)>,
+            crate_paths: &mut Vec<(ItemType, Vec<Symbol>)>,
         ) {
             if let Some(generics) = &mut ty.generics {
                 for item in generics {
@@ -131,7 +131,7 @@ pub(crate) fn build_index<'tcx>(
                             lastpathid,
                             crate_paths,
                             item_type,
-                            *fqp.last().unwrap(),
+                            fqp,
                         );
                     } else {
                         ty.id = None;
@@ -146,7 +146,7 @@ pub(crate) fn build_index<'tcx>(
                         lastpathid,
                         crate_paths,
                         ItemType::Primitive,
-                        sym,
+                        &[sym],
                     );
                 }
                 RenderTypeId::Index(_) => {}
@@ -191,7 +191,7 @@ pub(crate) fn build_index<'tcx>(
                         lastpathid += 1;
 
                         if let Some(&(ref fqp, short)) = paths.get(&defid) {
-                            crate_paths.push((short, *fqp.last().unwrap()));
+                            crate_paths.push((short, fqp.clone()));
                             Some(pathid)
                         } else {
                             None
@@ -213,11 +213,32 @@ pub(crate) fn build_index<'tcx>(
     struct CrateData<'a> {
         doc: String,
         items: Vec<&'a IndexItem>,
-        paths: Vec<(ItemType, Symbol)>,
+        paths: Vec<(ItemType, Vec<Symbol>)>,
         // The String is alias name and the vec is the list of the elements with this alias.
         //
         // To be noted: the `usize` elements are indexes to `items`.
         aliases: &'a BTreeMap<String, Vec<usize>>,
+    }
+
+    struct Paths {
+        ty: ItemType,
+        name: Symbol,
+        path: Option<usize>,
+    }
+
+    impl Serialize for Paths {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            let mut seq = serializer.serialize_seq(None)?;
+            seq.serialize_element(&self.ty)?;
+            seq.serialize_element(self.name.as_str())?;
+            if let Some(ref path) = self.path {
+                seq.serialize_element(path)?;
+            }
+            seq.end()
+        }
     }
 
     impl<'a> Serialize for CrateData<'a> {
@@ -225,106 +246,130 @@ pub(crate) fn build_index<'tcx>(
         where
             S: Serializer,
         {
+            let mut extra_paths = FxHashMap::default();
+            // We need to keep the order of insertion, hence why we use an `IndexMap`. Then we will
+            // insert these "extra paths" (which are paths of items from external crates) into the
+            // `full_paths` list at the end.
+            let mut revert_extra_paths = FxIndexMap::default();
+            let mut mod_paths = FxHashMap::default();
+            for (index, item) in self.items.iter().enumerate() {
+                if item.path.is_empty() {
+                    continue;
+                }
+                mod_paths.insert(&item.path, index);
+            }
+            let mut paths = Vec::with_capacity(self.paths.len());
+            for (ty, path) in &self.paths {
+                if path.len() < 2 {
+                    paths.push(Paths { ty: *ty, name: path[0], path: None });
+                    continue;
+                }
+                let full_path = join_with_double_colon(&path[..path.len() - 1]);
+                if let Some(index) = mod_paths.get(&full_path) {
+                    paths.push(Paths { ty: *ty, name: *path.last().unwrap(), path: Some(*index) });
+                    continue;
+                }
+                // It means it comes from an external crate so the item and its path will be
+                // stored into another array.
+                //
+                // `index` is put after the last `mod_paths`
+                let index = extra_paths.len() + self.items.len();
+                if !revert_extra_paths.contains_key(&index) {
+                    revert_extra_paths.insert(index, full_path.clone());
+                }
+                match extra_paths.entry(full_path) {
+                    Entry::Occupied(entry) => {
+                        paths.push(Paths {
+                            ty: *ty,
+                            name: *path.last().unwrap(),
+                            path: Some(*entry.get()),
+                        });
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(index);
+                        paths.push(Paths {
+                            ty: *ty,
+                            name: *path.last().unwrap(),
+                            path: Some(index),
+                        });
+                    }
+                }
+            }
+
+            let mut names = Vec::with_capacity(self.items.len());
+            let mut types = String::with_capacity(self.items.len());
+            let mut full_paths = Vec::with_capacity(self.items.len());
+            let mut descriptions = Vec::with_capacity(self.items.len());
+            let mut parents = Vec::with_capacity(self.items.len());
+            let mut functions = Vec::with_capacity(self.items.len());
+            let mut deprecated = Vec::with_capacity(self.items.len());
+
+            for (index, item) in self.items.iter().enumerate() {
+                let n = item.ty as u8;
+                let c = char::try_from(n + b'A').expect("item types must fit in ASCII");
+                assert!(c <= 'z', "item types must fit within ASCII printables");
+                types.push(c);
+
+                assert_eq!(
+                    item.parent.is_some(),
+                    item.parent_idx.is_some(),
+                    "`{}` is missing idx",
+                    item.name
+                );
+                // 0 is a sentinel, everything else is one-indexed
+                parents.push(item.parent_idx.map(|x| x + 1).unwrap_or(0));
+
+                names.push(item.name.as_str());
+                descriptions.push(&item.desc);
+
+                if !item.path.is_empty() {
+                    full_paths.push((index, &item.path));
+                }
+
+                // Fake option to get `0` out as a sentinel instead of `null`.
+                // We want to use `0` because it's three less bytes.
+                enum FunctionOption<'a> {
+                    Function(&'a IndexItemFunctionType),
+                    None,
+                }
+                impl<'a> Serialize for FunctionOption<'a> {
+                    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                    where
+                        S: Serializer,
+                    {
+                        match self {
+                            FunctionOption::None => 0.serialize(serializer),
+                            FunctionOption::Function(ty) => ty.serialize(serializer),
+                        }
+                    }
+                }
+                functions.push(match &item.search_type {
+                    Some(ty) => FunctionOption::Function(ty),
+                    None => FunctionOption::None,
+                });
+
+                if item.deprecation.is_some() {
+                    deprecated.push(index);
+                }
+            }
+
+            for (index, path) in &revert_extra_paths {
+                full_paths.push((*index, path));
+            }
+
             let has_aliases = !self.aliases.is_empty();
             let mut crate_data =
                 serializer.serialize_struct("CrateData", if has_aliases { 9 } else { 8 })?;
             crate_data.serialize_field("doc", &self.doc)?;
-            crate_data.serialize_field(
-                "t",
-                &self
-                    .items
-                    .iter()
-                    .map(|item| {
-                        let n = item.ty as u8;
-                        let c = char::try_from(n + b'A').expect("item types must fit in ASCII");
-                        assert!(c <= 'z', "item types must fit within ASCII printables");
-                        c
-                    })
-                    .collect::<String>(),
-            )?;
-            crate_data.serialize_field(
-                "n",
-                &self.items.iter().map(|item| item.name.as_str()).collect::<Vec<_>>(),
-            )?;
-            crate_data.serialize_field(
-                "q",
-                &self
-                    .items
-                    .iter()
-                    .enumerate()
-                    // Serialize as an array of item indices and full paths
-                    .filter_map(
-                        |(index, item)| {
-                            if item.path.is_empty() { None } else { Some((index, &item.path)) }
-                        },
-                    )
-                    .collect::<Vec<_>>(),
-            )?;
-            crate_data.serialize_field(
-                "d",
-                &self.items.iter().map(|item| &item.desc).collect::<Vec<_>>(),
-            )?;
-            crate_data.serialize_field(
-                "i",
-                &self
-                    .items
-                    .iter()
-                    .map(|item| {
-                        assert_eq!(
-                            item.parent.is_some(),
-                            item.parent_idx.is_some(),
-                            "`{}` is missing idx",
-                            item.name
-                        );
-                        // 0 is a sentinel, everything else is one-indexed
-                        item.parent_idx.map(|x| x + 1).unwrap_or(0)
-                    })
-                    .collect::<Vec<_>>(),
-            )?;
-            crate_data.serialize_field(
-                "f",
-                &self
-                    .items
-                    .iter()
-                    .map(|item| {
-                        // Fake option to get `0` out as a sentinel instead of `null`.
-                        // We want to use `0` because it's three less bytes.
-                        enum FunctionOption<'a> {
-                            Function(&'a IndexItemFunctionType),
-                            None,
-                        }
-                        impl<'a> Serialize for FunctionOption<'a> {
-                            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-                            where
-                                S: Serializer,
-                            {
-                                match self {
-                                    FunctionOption::None => 0.serialize(serializer),
-                                    FunctionOption::Function(ty) => ty.serialize(serializer),
-                                }
-                            }
-                        }
-                        match &item.search_type {
-                            Some(ty) => FunctionOption::Function(ty),
-                            None => FunctionOption::None,
-                        }
-                    })
-                    .collect::<Vec<_>>(),
-            )?;
-            crate_data.serialize_field(
-                "c",
-                &self
-                    .items
-                    .iter()
-                    .enumerate()
-                    // Serialize as an array of deprecated item indices
-                    .filter_map(|(index, item)| item.deprecation.map(|_| index))
-                    .collect::<Vec<_>>(),
-            )?;
-            crate_data.serialize_field(
-                "p",
-                &self.paths.iter().map(|(it, s)| (it, s.as_str())).collect::<Vec<_>>(),
-            )?;
+            crate_data.serialize_field("t", &types)?;
+            crate_data.serialize_field("n", &names)?;
+            // Serialize as an array of item indices and full paths
+            crate_data.serialize_field("q", &full_paths)?;
+            crate_data.serialize_field("d", &descriptions)?;
+            crate_data.serialize_field("i", &parents)?;
+            crate_data.serialize_field("f", &functions)?;
+            crate_data.serialize_field("c", &deprecated)?;
+            crate_data.serialize_field("p", &paths)?;
             if has_aliases {
                 crate_data.serialize_field("a", &self.aliases)?;
             }
