@@ -164,7 +164,15 @@ where
                             queue_type(self, required);
                         }
                     }
-                    ty::Alias(..) | ty::Array(..) | ty::Placeholder(_) | ty::Param(_) => {
+                    ty::Array(ty, _) => {
+                        // `needs_drop_components` above will look at the array and check if the array
+                        // length is known to be zero. If it can't evalaute the constant it will throw
+                        // the array back at us. Since we aren't smart enough to be able to foretell
+                        // whether the array length will end up being zero, we have to make more progress
+                        // by decomposing it to its inner type.
+                        queue_type(self, ty);
+                    }
+                    ty::Alias(..) | ty::Placeholder(_) | ty::Param(_) => {
                         if ty == component {
                             // Return the type to the caller: they may be able
                             // to normalize further than we can.
