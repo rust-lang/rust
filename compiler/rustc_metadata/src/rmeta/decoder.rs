@@ -1552,7 +1552,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     name,
                     src_hash,
                     name_hash,
-                    source_len.to_usize(),
+                    source_len.to_u32(),
                     self.cnum,
                     lines,
                     multibyte_chars,

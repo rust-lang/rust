@@ -244,7 +244,7 @@ fn t10() {
         name,
         src_hash,
         name_hash,
-        source_len.to_usize(),
+        source_len.to_u32(),
         CrateNum::new(0),
         lines,
         multibyte_chars,

@@ -1519,7 +1519,11 @@ impl fmt::Debug for SourceFile {
 }
 
 impl SourceFile {
-    pub fn new(name: FileName, mut src: String, hash_kind: SourceFileHashAlgorithm) -> Self {
+    pub fn new(
+        name: FileName,
+        mut src: String,
+        hash_kind: SourceFileHashAlgorithm,
+    ) -> Result<Self, OffsetOverflowError> {
         // Compute the file hash before any normalization.
         let src_hash = SourceFileHash::new(hash_kind, &src);
         let normalized_pos = normalize_src(&mut src);
@@ -1530,25 +1534,25 @@ impl SourceFile {
             hasher.finish()
         };
         let source_len = src.len();
-        assert!(source_len <= u32::MAX as usize);
+        let source_len = u32::try_from(source_len).map_err(|_| OffsetOverflowError)?;
 
         let (lines, multibyte_chars, non_narrow_chars) =
             analyze_source_file::analyze_source_file(&src);
 
-        SourceFile {
+        Ok(SourceFile {
             name,
             src: Some(Lrc::new(src)),
             src_hash,
             external_src: Lock::new(ExternalSource::Unneeded),
             start_pos: BytePos::from_u32(0),
-            source_len: RelativeBytePos::from_usize(source_len),
+            source_len: RelativeBytePos::from_u32(source_len),
             lines: Lock::new(SourceFileLines::Lines(lines)),
             multibyte_chars,
             non_narrow_chars,
             normalized_pos,
             name_hash,
             cnum: LOCAL_CRATE,
-        }
+        })
     }
 
     pub fn lines<F, R>(&self, f: F) -> R

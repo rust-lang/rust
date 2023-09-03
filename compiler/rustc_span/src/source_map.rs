@@ -267,10 +267,13 @@ impl SourceMap {
         self.files.borrow().stable_id_to_source_file.get(&stable_id).cloned()
     }
 
-    fn allocate_address_space(&self, size: usize) -> Result<usize, OffsetOverflowError> {
-        let size = u32::try_from(size).map_err(|_| OffsetOverflowError)?;
+    fn register_source_file(
+        &self,
+        mut file: SourceFile,
+    ) -> Result<Lrc<SourceFile>, OffsetOverflowError> {
+        let size = file.source_len.to_u32();
 
-        loop {
+        let start_pos = loop {
             let current = self.used_address_space.load(Ordering::Relaxed);
             let next = current
                 .checked_add(size)
@@ -284,9 +287,20 @@ impl SourceMap {
                 .compare_exchange(current, next, Ordering::Relaxed, Ordering::Relaxed)
                 .is_ok()
             {
-                return Ok(usize::try_from(current).unwrap());
+                break usize::try_from(current).unwrap();
             }
-        }
+        };
+
+        file.start_pos = BytePos::from_usize(start_pos);
+        let file_id = StableSourceFileId::new(&file);
+
+        let mut files = self.files.borrow_mut();
+
+        let file = Lrc::new(file);
+        files.source_files.push(file.clone());
+        files.stable_id_to_source_file.insert(file_id, file.clone());
+
+        Ok(file)
     }
 
     /// Creates a new `SourceFile`.
@@ -310,29 +324,18 @@ impl SourceMap {
         let (filename, _) = self.path_mapping.map_filename_prefix(&filename);
 
         let file_id = StableSourceFileId::new_from_name(&filename, LOCAL_CRATE);
-
-        let lrc_sf = match self.source_file_by_stable_id(file_id) {
-            Some(lrc_sf) => lrc_sf,
+        match self.source_file_by_stable_id(file_id) {
+            Some(lrc_sf) => Ok(lrc_sf),
             None => {
-                let mut source_file = SourceFile::new(filename, src, self.hash_kind);
+                let source_file = SourceFile::new(filename, src, self.hash_kind)?;
 
                 // Let's make sure the file_id we generated above actually matches
                 // the ID we generate for the SourceFile we just created.
                 debug_assert_eq!(StableSourceFileId::new(&source_file), file_id);
 
-                let start_pos = self.allocate_address_space(source_file.source_len.to_usize())?;
-                source_file.start_pos = BytePos::from_usize(start_pos);
-
-                let mut files = self.files.borrow_mut();
-
-                let source_file = Lrc::new(source_file);
-                files.source_files.push(source_file.clone());
-                files.stable_id_to_source_file.insert(file_id, source_file.clone());
-
-                source_file
+                self.register_source_file(source_file)
             }
-        };
-        Ok(lrc_sf)
+        }
     }
 
     /// Allocates a new `SourceFile` representing a source file from an external
@@ -344,7 +347,7 @@ impl SourceMap {
         filename: FileName,
         src_hash: SourceFileHash,
         name_hash: Hash128,
-        source_len: usize,
+        source_len: u32,
         cnum: CrateNum,
         file_local_lines: Lock<SourceFileLines>,
         multibyte_chars: Vec<MultiByteChar>,
@@ -352,13 +355,9 @@ impl SourceMap {
         normalized_pos: Vec<NormalizedPos>,
         metadata_index: u32,
     ) -> Lrc<SourceFile> {
-        let start_pos = self
-            .allocate_address_space(source_len)
-            .expect("not enough address space for imported source file");
+        let source_len = RelativeBytePos::from_u32(source_len);
 
-        let source_len = RelativeBytePos::from_usize(source_len);
-
-        let source_file = Lrc::new(SourceFile {
+        let source_file = SourceFile {
             name: filename,
             src: None,
             src_hash,
@@ -366,7 +365,7 @@ impl SourceMap {
                 kind: ExternalSourceKind::AbsentOk,
                 metadata_index,
             }),
-            start_pos: BytePos::from_usize(start_pos),
+            start_pos: BytePos(0),
             source_len,
             lines: file_local_lines,
             multibyte_chars,
@@ -374,16 +373,10 @@ impl SourceMap {
             normalized_pos,
             name_hash,
             cnum,
-        });
+        };
 
-        let mut files = self.files.borrow_mut();
-
-        files.source_files.push(source_file.clone());
-        files
-            .stable_id_to_source_file
-            .insert(StableSourceFileId::new(&source_file), source_file.clone());
-
-        source_file
+        self.register_source_file(source_file)
+            .expect("not enough address space for imported source file")
     }
 
     /// If there is a doctest offset, applies it to the line.

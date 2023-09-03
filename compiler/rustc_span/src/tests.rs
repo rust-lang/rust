@@ -4,7 +4,8 @@ use super::*;
 fn test_lookup_line() {
     let source = "abcdefghijklm\nabcdefghij\n...".to_owned();
     let mut sf =
-        SourceFile::new(FileName::Anon(Hash64::ZERO), source, SourceFileHashAlgorithm::Sha256);
+        SourceFile::new(FileName::Anon(Hash64::ZERO), source, SourceFileHashAlgorithm::Sha256)
+            .unwrap();
     sf.start_pos = BytePos(3);
     sf.lines(|lines| {
         assert_eq!(lines, &[RelativeBytePos(0), RelativeBytePos(14), RelativeBytePos(25)])
