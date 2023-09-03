@@ -7,7 +7,7 @@ use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Destination, Expr, ExprKind, HirId, InlineAsmOperand, Pat, Stmt, StmtKind};
 use rustc_lint::LateContext;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use std::iter::{once, Iterator};
 
 pub(super) fn check<'tcx>(
@@ -273,7 +273,7 @@ fn never_loop_expr<'tcx>(
     });
     if  let NeverLoopResult::Diverging = result &&
         let Some(macro_call) = root_macro_call_first_node(cx, expr) &&
-        let "todo" | "unimplemented" = cx.tcx.item_name(macro_call.def_id).as_str()
+        let Some(sym::todo_macro) = cx.tcx.get_diagnostic_name(macro_call.def_id)
     {
         // We return MayContinueMainLoop here because we treat `todo!()` and
         // `unimplemented!()` macros as potentially containing any code,

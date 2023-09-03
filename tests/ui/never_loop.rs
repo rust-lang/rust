@@ -391,7 +391,7 @@ pub fn test32() {
         panic!("oh no");
     }
     loop {
-        // no error
+        //~^ ERROR: this loop never actually loops
         unimplemented!("not yet");
     }
     loop {

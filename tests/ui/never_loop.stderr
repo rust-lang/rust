@@ -170,5 +170,14 @@ LL | |         panic!("oh no");
 LL | |     }
    | |_____^
 
-error: aborting due to 15 previous errors
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:393:5
+   |
+LL | /     loop {
+LL | |
+LL | |         unimplemented!("not yet");
+LL | |     }
+   | |_____^
+
+error: aborting due to 16 previous errors
 
