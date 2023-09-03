@@ -40,29 +40,24 @@ impl flags::Metrics {
                     "self.json"
                 }
                 MeasurementType::AnalyzeRipgrep => {
-                    metrics.measure_analysis_stats(sh, "ripgrep")?;
-                    "ripgrep.json"
+                    metrics.measure_analysis_stats(sh, "ripgrep-13.0.0")?;
+                    "ripgrep-13.0.0.json"
                 }
                 MeasurementType::AnalyzeWebRender => {
-                    {
-                        // https://github.com/rust-lang/rust-analyzer/issues/9997
-                        let _d = sh.push_dir("target/rustc-perf/collector/benchmarks/webrender");
-                        cmd!(sh, "cargo update -p url --precise 1.6.1").run()?;
-                    }
-                    metrics.measure_analysis_stats(sh, "webrender")?;
-                    "webrender.json"
+                    metrics.measure_analysis_stats(sh, "webrender-2022")?;
+                    "webrender-2022.json"
                 }
                 MeasurementType::AnalyzeDiesel => {
-                    metrics.measure_analysis_stats(sh, "diesel/diesel")?;
-                    "diesel.json"
+                    metrics.measure_analysis_stats(sh, "diesel-1.4.8")?;
+                    "diesel-1.4.8.json"
                 }
             },
             None => {
                 metrics.measure_build(sh)?;
                 metrics.measure_analysis_stats_self(sh)?;
-                metrics.measure_analysis_stats(sh, "ripgrep")?;
-                metrics.measure_analysis_stats(sh, "webrender")?;
-                metrics.measure_analysis_stats(sh, "diesel/diesel")?;
+                metrics.measure_analysis_stats(sh, "ripgrep-13.0.0")?;
+                metrics.measure_analysis_stats(sh, "webrender-2022")?;
+                metrics.measure_analysis_stats(sh, "diesel-1.4.8")?;
                 "all.json"
             }
         };
@@ -93,7 +88,7 @@ impl Metrics {
         self.measure_analysis_stats_path(
             sh,
             bench,
-            &format!("./target/rustc-perf/collector/benchmarks/{bench}"),
+            &format!("./target/rustc-perf/collector/compile-benchmarks/{bench}"),
         )
     }
     fn measure_analysis_stats_path(
@@ -145,7 +140,7 @@ impl Metrics {
         let host = Host::new(sh)?;
         let timestamp = SystemTime::now();
         let revision = cmd!(sh, "git rev-parse HEAD").read()?;
-        let perf_revision = "c52ee623e231e7690a93be88d943016968c1036b".into();
+        let perf_revision = "a584462e145a0c04760fd9391daefb4f6bd13a99".into();
         Ok(Metrics { host, timestamp, revision, perf_revision, metrics: BTreeMap::new() })
     }
 
