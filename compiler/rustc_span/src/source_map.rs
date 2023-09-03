@@ -314,21 +314,18 @@ impl SourceMap {
         let lrc_sf = match self.source_file_by_stable_id(file_id) {
             Some(lrc_sf) => lrc_sf,
             None => {
-                let start_pos = self.allocate_address_space(src.len())?;
-
-                let source_file = Lrc::new(SourceFile::new(
-                    filename,
-                    src,
-                    Pos::from_usize(start_pos),
-                    self.hash_kind,
-                ));
+                let mut source_file = SourceFile::new(filename, src, self.hash_kind);
 
                 // Let's make sure the file_id we generated above actually matches
                 // the ID we generate for the SourceFile we just created.
                 debug_assert_eq!(StableSourceFileId::new(&source_file), file_id);
 
+                let start_pos = self.allocate_address_space(source_file.source_len.to_usize())?;
+                source_file.start_pos = BytePos::from_usize(start_pos);
+
                 let mut files = self.files.borrow_mut();
 
+                let source_file = Lrc::new(source_file);
                 files.source_files.push(source_file.clone());
                 files.stable_id_to_source_file.insert(file_id, source_file.clone());
 
@@ -350,48 +347,16 @@ impl SourceMap {
         source_len: usize,
         cnum: CrateNum,
         file_local_lines: Lock<SourceFileLines>,
-        mut file_local_multibyte_chars: Vec<MultiByteChar>,
-        mut file_local_non_narrow_chars: Vec<NonNarrowChar>,
-        mut file_local_normalized_pos: Vec<NormalizedPos>,
-        original_start_pos: BytePos,
+        multibyte_chars: Vec<MultiByteChar>,
+        non_narrow_chars: Vec<NonNarrowChar>,
+        normalized_pos: Vec<NormalizedPos>,
         metadata_index: u32,
     ) -> Lrc<SourceFile> {
         let start_pos = self
             .allocate_address_space(source_len)
             .expect("not enough address space for imported source file");
 
-        let end_pos = Pos::from_usize(start_pos + source_len);
-        let start_pos = Pos::from_usize(start_pos);
-
-        // Translate these positions into the new global frame of reference,
-        // now that the offset of the SourceFile is known.
-        //
-        // These are all unsigned values. `original_start_pos` may be larger or
-        // smaller than `start_pos`, but `pos` is always larger than both.
-        // Therefore, `(pos - original_start_pos) + start_pos` won't overflow
-        // but `start_pos - original_start_pos` might. So we use the former
-        // form rather than pre-computing the offset into a local variable. The
-        // compiler backend can optimize away the repeated computations in a
-        // way that won't trigger overflow checks.
-        match &mut *file_local_lines.borrow_mut() {
-            SourceFileLines::Lines(lines) => {
-                for pos in lines {
-                    *pos = (*pos - original_start_pos) + start_pos;
-                }
-            }
-            SourceFileLines::Diffs(SourceFileDiffs { line_start, .. }) => {
-                *line_start = (*line_start - original_start_pos) + start_pos;
-            }
-        }
-        for mbc in &mut file_local_multibyte_chars {
-            mbc.pos = (mbc.pos - original_start_pos) + start_pos;
-        }
-        for swc in &mut file_local_non_narrow_chars {
-            *swc = (*swc - original_start_pos) + start_pos;
-        }
-        for nc in &mut file_local_normalized_pos {
-            nc.pos = (nc.pos - original_start_pos) + start_pos;
-        }
+        let source_len = RelativeBytePos::from_usize(source_len);
 
         let source_file = Lrc::new(SourceFile {
             name: filename,
@@ -401,12 +366,12 @@ impl SourceMap {
                 kind: ExternalSourceKind::AbsentOk,
                 metadata_index,
             }),
-            start_pos,
-            end_pos,
+            start_pos: BytePos::from_usize(start_pos),
+            source_len,
             lines: file_local_lines,
-            multibyte_chars: file_local_multibyte_chars,
-            non_narrow_chars: file_local_non_narrow_chars,
-            normalized_pos: file_local_normalized_pos,
+            multibyte_chars,
+            non_narrow_chars,
+            normalized_pos,
             name_hash,
             cnum,
         });
@@ -452,6 +417,7 @@ impl SourceMap {
     pub fn lookup_line(&self, pos: BytePos) -> Result<SourceFileAndLine, Lrc<SourceFile>> {
         let f = self.lookup_source_file(pos);
 
+        let pos = f.relative_position(pos);
         match f.lookup_line(pos) {
             Some(line) => Ok(SourceFileAndLine { sf: f, line }),
             None => Err(f),
@@ -547,7 +513,9 @@ impl SourceMap {
             return true;
         }
         let f = (*self.files.borrow().source_files)[lo].clone();
-        f.lookup_line(sp.lo()) != f.lookup_line(sp.hi())
+        let lo = f.relative_position(sp.lo());
+        let hi = f.relative_position(sp.hi());
+        f.lookup_line(lo) != f.lookup_line(hi)
     }
 
     #[instrument(skip(self), level = "trace")]
@@ -627,7 +595,7 @@ impl SourceMap {
 
             let start_index = local_begin.pos.to_usize();
             let end_index = local_end.pos.to_usize();
-            let source_len = (local_begin.sf.end_pos - local_begin.sf.start_pos).to_usize();
+            let source_len = local_begin.sf.source_len.to_usize();
 
             if start_index > end_index || end_index > source_len {
                 return Err(SpanSnippetError::MalformedForSourcemap(MalformedSourceMapPositions {
@@ -1034,7 +1002,7 @@ impl SourceMap {
             return 1;
         }
 
-        let source_len = (local_begin.sf.end_pos - local_begin.sf.start_pos).to_usize();
+        let source_len = local_begin.sf.source_len.to_usize();
         debug!("source_len=`{:?}`", source_len);
         // Ensure indexes are also not malformed.
         if start_index > end_index || end_index > source_len - 1 {

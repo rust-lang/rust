@@ -268,7 +268,7 @@ impl ParseSess {
         let source_file = self.parse_sess.source_map().lookup_char_pos(span.lo()).file;
         SnippetProvider::new(
             source_file.start_pos,
-            source_file.end_pos,
+            source_file.end_position(),
             Lrc::clone(source_file.src.as_ref().unwrap()),
         )
     }

@@ -1,5 +1,5 @@
 use crate::source_map::SourceMap;
-use crate::{BytePos, SourceFile, SpanData};
+use crate::{BytePos, Pos, RelativeBytePos, SourceFile, SpanData};
 use rustc_data_structures::sync::Lrc;
 use std::ops::Range;
 
@@ -37,6 +37,7 @@ impl CacheEntry {
             self.file_index = file_idx;
         }
 
+        let pos = self.file.relative_position(pos);
         let line_index = self.file.lookup_line(pos).unwrap();
         let line_bounds = self.file.line_bounds(line_index);
         self.line_number = line_index + 1;
@@ -79,7 +80,7 @@ impl<'sm> CachingSourceMapView<'sm> {
     pub fn byte_pos_to_line_and_col(
         &mut self,
         pos: BytePos,
-    ) -> Option<(Lrc<SourceFile>, usize, BytePos)> {
+    ) -> Option<(Lrc<SourceFile>, usize, RelativeBytePos)> {
         self.time_stamp += 1;
 
         // Check if the position is in one of the cached lines
@@ -88,11 +89,8 @@ impl<'sm> CachingSourceMapView<'sm> {
             let cache_entry = &mut self.line_cache[cache_idx as usize];
             cache_entry.touch(self.time_stamp);
 
-            return Some((
-                cache_entry.file.clone(),
-                cache_entry.line_number,
-                pos - cache_entry.line.start,
-            ));
+            let col = RelativeBytePos(pos.to_u32() - cache_entry.line.start.to_u32());
+            return Some((cache_entry.file.clone(), cache_entry.line_number, col));
         }
 
         // No cache hit ...
@@ -108,7 +106,8 @@ impl<'sm> CachingSourceMapView<'sm> {
         let cache_entry = &mut self.line_cache[oldest];
         cache_entry.update(new_file_and_idx, pos, self.time_stamp);
 
-        Some((cache_entry.file.clone(), cache_entry.line_number, pos - cache_entry.line.start))
+        let col = RelativeBytePos(pos.to_u32() - cache_entry.line.start.to_u32());
+        Some((cache_entry.file.clone(), cache_entry.line_number, col))
     }
 
     pub fn span_data_to_lines_and_cols(
