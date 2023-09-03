@@ -1,6 +1,3 @@
-// `library/{std,core}/src/primitive_docs.rs` should have the same contents.
-// These are different files so that relative links work properly without
-// having to have `CARGO_PKG_NAME` set, but conceptually they should always be the same.
 #[rustc_doc_primitive = "bool"]
 #[doc(alias = "true")]
 #[doc(alias = "false")]
@@ -106,7 +103,7 @@ mod prim_bool {}
 /// behaviour of the `!` type - expressions with type `!` will coerce into any other type.
 ///
 /// [`u32`]: prim@u32
-#[doc = concat!("[`exit`]: ", include_str!("../primitive_docs/process_exit.md"))]
+/// [`exit`]: ../std/process/fn.exit.html
 ///
 /// # `!` and generics
 ///
@@ -191,7 +188,7 @@ mod prim_bool {}
 /// because `!` coerces to `Result<!, ConnectionError>` automatically.
 ///
 /// [`String::from_str`]: str::FromStr::from_str
-#[doc = concat!("[`String`]: ", include_str!("../primitive_docs/string_string.md"))]
+/// [`String`]: ../std/string/struct.String.html
 /// [`FromStr`]: str::FromStr
 ///
 /// # `!` and traits
@@ -267,7 +264,7 @@ mod prim_bool {}
 /// `impl` for this which simply panics, but the same is true for any type (we could `impl
 /// Default` for (eg.) [`File`] by just making [`default()`] panic.)
 ///
-#[doc = concat!("[`File`]: ", include_str!("../primitive_docs/fs_file.md"))]
+/// [`File`]: ../std/fs/struct.File.html
 /// [`Debug`]: fmt::Debug
 /// [`default()`]: Default::default
 ///
@@ -355,7 +352,7 @@ mod prim_never {}
 /// assert_eq!(5, s.len() * std::mem::size_of::<u8>());
 /// ```
 ///
-#[doc = concat!("[`String`]: ", include_str!("../primitive_docs/string_string.md"))]
+/// [`String`]: ../std/string/struct.String.html
 ///
 /// As always, remember that a human intuition for 'character' might not map to
 /// Unicode's definitions. For example, despite looking similar, the 'é'
@@ -572,7 +569,7 @@ impl Copy for () {
 /// [`null_mut`]: ptr::null_mut
 /// [`is_null`]: pointer::is_null
 /// [`offset`]: pointer::offset
-#[doc = concat!("[`into_raw`]: ", include_str!("../primitive_docs/box_into_raw.md"))]
+/// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
 /// [`write`]: ptr::write
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
@@ -1361,7 +1358,7 @@ mod prim_usize {}
 ///
 /// [`std::fmt`]: fmt
 /// [`Hash`]: hash::Hash
-#[doc = concat!("[`ToSocketAddrs`]: ", include_str!("../primitive_docs/net_tosocketaddrs.md"))]
+/// [`ToSocketAddrs`]: ../std/net/trait.ToSocketAddrs.html
 ///
 /// `&mut T` references get all of the above except `ToSocketAddrs`, plus the following, if `T`
 /// implements that trait:
@@ -1381,10 +1378,10 @@ mod prim_usize {}
 ///
 /// [`FusedIterator`]: iter::FusedIterator
 /// [`TrustedLen`]: iter::TrustedLen
-#[doc = concat!("[`Seek`]: ", include_str!("../primitive_docs/io_seek.md"))]
-#[doc = concat!("[`BufRead`]: ", include_str!("../primitive_docs/io_bufread.md"))]
-#[doc = concat!("[`Read`]: ", include_str!("../primitive_docs/io_read.md"))]
-#[doc = concat!("[`io::Write`]: ", include_str!("../primitive_docs/io_write.md"))]
+/// [`Seek`]: ../std/io/trait.Seek.html
+/// [`BufRead`]: ../std/io/trait.BufRead.html
+/// [`Read`]: ../std/io/trait.Read.html
+/// [`io::Write`]: ../std/io/trait.Write.html
 ///
 /// Note that due to method call deref coercion, simply calling a trait method will act like they
 /// work on references as well as they do on owned values! The implementations described here are
