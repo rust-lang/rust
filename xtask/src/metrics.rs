@@ -29,41 +29,40 @@ impl flags::Metrics {
 
         let _env = sh.push_env("RA_METRICS", "1");
 
-        let filename = match self.measurement_type {
-            Some(ms) => match ms {
-                MeasurementType::Build => {
-                    metrics.measure_build(sh)?;
-                    "build.json"
-                }
-                MeasurementType::AnalyzeSelf => {
-                    metrics.measure_analysis_stats_self(sh)?;
-                    "self.json"
-                }
-                MeasurementType::AnalyzeRipgrep => {
-                    metrics.measure_analysis_stats(sh, "ripgrep-13.0.0")?;
-                    "ripgrep-13.0.0.json"
-                }
-                MeasurementType::AnalyzeWebRender => {
-                    metrics.measure_analysis_stats(sh, "webrender-2022")?;
-                    "webrender-2022.json"
-                }
-                MeasurementType::AnalyzeDiesel => {
-                    metrics.measure_analysis_stats(sh, "diesel-1.4.8")?;
-                    "diesel-1.4.8.json"
-                }
-            },
+        let name = match &self.measurement_type {
+            Some(ms) => {
+                let name = ms.as_ref();
+                match ms {
+                    MeasurementType::Build => {
+                        metrics.measure_build(sh)?;
+                    }
+                    MeasurementType::AnalyzeSelf => {
+                        metrics.measure_analysis_stats_self(sh)?;
+                    }
+                    MeasurementType::AnalyzeRipgrep => {
+                        metrics.measure_analysis_stats(sh, name)?;
+                    }
+                    MeasurementType::AnalyzeWebRender => {
+                        metrics.measure_analysis_stats(sh, name)?;
+                    }
+                    MeasurementType::AnalyzeDiesel => {
+                        metrics.measure_analysis_stats(sh, name)?;
+                    }
+                };
+                name
+            }
             None => {
                 metrics.measure_build(sh)?;
                 metrics.measure_analysis_stats_self(sh)?;
-                metrics.measure_analysis_stats(sh, "ripgrep-13.0.0")?;
-                metrics.measure_analysis_stats(sh, "webrender-2022")?;
-                metrics.measure_analysis_stats(sh, "diesel-1.4.8")?;
-                "all.json"
+                metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeRipgrep.as_ref())?;
+                metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeWebRender.as_ref())?;
+                metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeDiesel.as_ref())?;
+                "all"
             }
         };
 
         let mut file =
-            fs::File::options().write(true).create(true).open(format!("target/{}", filename))?;
+            fs::File::options().write(true).create(true).open(format!("target/{}.json", name))?;
         writeln!(file, "{}", metrics.json())?;
         eprintln!("{metrics:#?}");
         Ok(())
