@@ -149,7 +149,7 @@ fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
                 && let predicates = cx.tcx.super_predicates_of(trait_def_id).predicates
                 && !predicates.is_empty() // If the trait has no supertrait, there is nothing to add.
             {
-                Some((bound.span(), path.args.map_or([].as_slice(), |a| a.args), predicates, trait_def_id))
+                Some((bound.span(), path, predicates, trait_def_id))
             } else {
                 None
             }
@@ -162,10 +162,14 @@ fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
             if let GenericBound::Trait(poly_trait, TraitBoundModifier::None) = bound
                 && let [.., path] = poly_trait.trait_ref.path.segments
                 && let implied_args = path.args.map_or([].as_slice(), |a| a.args)
+                && let implied_bindings = path.args.map_or([].as_slice(), |a| a.bindings)
                 && let Some(def_id) = poly_trait.trait_ref.path.res.opt_def_id()
-                && let Some(implied_by_span) = implied_bounds
+                && let Some((implied_by_span, implied_by_args, implied_by_bindings)) = implied_bounds
                     .iter()
-                    .find_map(|&(span, implied_by_args, preds, implied_by_def_id)| {
+                    .find_map(|&(span, implied_by_path, preds, implied_by_def_id)| {
+                        let implied_by_args = implied_by_path.args.map_or([].as_slice(), |a| a.args);
+                        let implied_by_bindings = implied_by_path.args.map_or([].as_slice(), |a| a.bindings);
+
                         preds.iter().find_map(|(clause, _)| {
                             if let ClauseKind::Trait(tr) = clause.kind().skip_binder()
                                 && tr.def_id() == def_id
@@ -178,7 +182,7 @@ fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
                                     def_id,
                                 )
                             {
-                                Some(span)
+                                Some((span, implied_by_args, implied_by_bindings))
                             } else {
                                 None
                             }
@@ -192,21 +196,72 @@ fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
                     &format!("this bound is already specified as the supertrait of `{implied_by}`"),
                     |diag| {
                         // If we suggest removing a bound, we may also need extend the span
-                        // to include the `+` token, so we don't end up with something like `impl + B`
+                        // to include the `+` token that is ahead or behind,
+                        // so we don't end up with something like `impl + B` or `impl A + `
 
                         let implied_span_extended = if let Some(next_bound) = opaque_ty.bounds.get(index + 1) {
                             poly_trait.span.to(next_bound.span().shrink_to_lo())
+                        } else if index > 0
+                            && let Some(prev_bound) = opaque_ty.bounds.get(index - 1)
+                        {
+                            prev_bound.span().shrink_to_hi().to(poly_trait.span.shrink_to_hi())
                         } else {
                             poly_trait.span
                         };
 
-                        diag.span_suggestion_with_style(
-                            implied_span_extended,
-                            "try removing this bound",
-                            "",
-                            Applicability::MachineApplicable,
-                            SuggestionStyle::ShowAlways
-                        );
+                        let mut sugg = vec![
+                            (implied_span_extended, String::new()),
+                        ];
+
+                        // We also might need to include associated type binding that were specified in the implied bound,
+                        // but omitted in the implied-by bound:
+                        // `fn f() -> impl Deref<Target = u8> + DerefMut`
+                        // If we're going to suggest removing `Deref<..>`, we'll need to put `<Target = u8>` on `DerefMut`
+                        let omitted_assoc_tys: Vec<_> = implied_bindings
+                            .iter()
+                            .filter(|binding| {
+                                implied_by_bindings
+                                    .iter()
+                                    // TODO: is checking idents enough for stuff like `<Target: Sized> == <Target = u8>`
+                                    .find(|b| b.ident == binding.ident)
+                                    .is_none()
+                            })
+                            .collect();
+                        
+                        if !omitted_assoc_tys.is_empty() {
+                            // `<>` needs to be added if there aren't yet any generic arguments or bindings
+                            let needs_angle_brackets = implied_by_args.is_empty() && implied_by_bindings.is_empty();
+                            let insert_span = match (implied_by_args, implied_by_bindings) {
+                                ([.., arg], [.., binding]) => arg.span().max(binding.span).shrink_to_hi(),
+                                ([.., arg], []) => arg.span().shrink_to_hi(),
+                                ([], [.., binding]) => binding.span.shrink_to_hi(),
+                                ([], []) => implied_by_span.shrink_to_hi(),
+                            };
+
+                            let mut associated_tys_sugg = if needs_angle_brackets {
+                                "<".to_owned()
+                            } else {
+                                // If angle brackets aren't needed (i.e., there are already generic arguments or bindings),
+                                // we need to add a comma:
+                                // `impl A<B, C >`
+                                //             ^ if we insert `Assoc=i32` without a comma here, that'd be invalid syntax:
+                                // `impl A<B, C Assoc=i32>`
+                                ", ".to_owned()
+                            };
+
+                            for (index, binding) in omitted_assoc_tys.into_iter().enumerate() {
+                                if index > 0 {
+                                    associated_tys_sugg += ", ";
+                                }
+                                associated_tys_sugg += &snippet(cx, binding.span, "..");
+                            }
+                            if needs_angle_brackets {
+                                associated_tys_sugg += ">";
+                            }
+                            sugg.push((insert_span, associated_tys_sugg));
+                        }
+
+                        diag.multipart_suggestion_with_style("try removing this bound", sugg, Applicability::MachineApplicable, SuggestionStyle::ShowAlways);
                     }
                 );
             }
