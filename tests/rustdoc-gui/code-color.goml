@@ -21,16 +21,16 @@ define-function: (
 
 call-function: ("check-colors", {
     "theme": "ayu",
-    "doc_code_color": "rgb(230, 225, 207)",
-    "doc_inline_code_color": "rgb(255, 180, 84)",
+    "doc_code_color": "#e6e1cf",
+    "doc_inline_code_color": "#ffb454",
 })
 call-function: ("check-colors", {
     "theme": "dark",
-    "doc_code_color": "rgb(221, 221, 221)",
-    "doc_inline_code_color": "rgb(221, 221, 221)",
+    "doc_code_color": "#ddd",
+    "doc_inline_code_color": "#ddd",
 })
 call-function: ("check-colors", {
     "theme": "light",
-    "doc_code_color": "rgb(0, 0, 0)",
-    "doc_inline_code_color": "rgb(0, 0, 0)",
+    "doc_code_color": "black",
+    "doc_inline_code_color": "black",
 })
