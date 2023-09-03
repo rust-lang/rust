@@ -537,7 +537,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
     /// Iterate over all added goals: returning `Ok(Some(_))` in case we can stop rerunning.
     ///
-    /// Goals for the next step get directly added the the nested goals of the `EvalCtxt`.
+    /// Goals for the next step get directly added to the nested goals of the `EvalCtxt`.
     fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
         let tcx = self.tcx();
         let mut goals = core::mem::replace(&mut self.nested_goals, NestedGoals::new());
