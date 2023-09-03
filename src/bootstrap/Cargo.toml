@@ -78,7 +78,7 @@ features = [
 ]
 
 [dev-dependencies]
-pretty_assertions = "1.2"
+pretty_assertions = "1.4"
 
 [features]
 build-metrics = ["sysinfo"]
