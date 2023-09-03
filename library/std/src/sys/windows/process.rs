@@ -352,7 +352,7 @@ impl Command {
             };
             si_ptr = &mut si_ex as *mut _ as _;
         } else {
-            si.cb = mem::size_of::<c::STARTUPINFOW> as c::DWORD;
+            si.cb = mem::size_of::<c::STARTUPINFOW>() as c::DWORD;
             si_ptr = &mut si as *mut _ as _;
         }
 
