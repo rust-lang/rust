@@ -14,6 +14,7 @@
     - [Building Documentation](./building/compiler-documenting.md)
     - [Rustdoc overview](./rustdoc.md)
     - [Adding a new target](./building/new-target.md)
+    - [Optimized build](./building/optimized-build.md)
 - [Testing the compiler](./tests/intro.md)
     - [Running tests](./tests/running.md)
         - [Testing with Docker](./tests/docker.md)
