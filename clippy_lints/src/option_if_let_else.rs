@@ -165,6 +165,13 @@ fn try_get_option_occurrence<'tcx>(
             }
 
             let mut app = Applicability::Unspecified;
+
+            let (none_body, is_argless_call) = if let Some(call_expr) = try_get_argless_call_expr(none_body) {
+                (call_expr, true)
+            } else {
+                (none_body, false)
+            };
+
             return Some(OptionOccurrence {
                 option: format_option_in_sugg(
                     Sugg::hir_with_context(cx, cond_expr, ctxt, "..", &mut app),
@@ -178,13 +185,23 @@ fn try_get_option_occurrence<'tcx>(
                 ),
                 none_expr: format!(
                     "{}{}",
-                    if method_sugg == "map_or" { "" } else if is_result { "|_| " } else { "|| "},
+                    if method_sugg == "map_or" || is_argless_call { "" } else if is_result { "|_| " } else { "|| "},
                     Sugg::hir_with_context(cx, none_body, ctxt, "..", &mut app),
                 ),
             });
         }
     }
 
+    None
+}
+
+/// Gets the call expr iff it does not have any args and was not from macro expansion.
+fn try_get_argless_call_expr<'tcx>(expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+    if !expr.span.from_expansion() &&
+        let ExprKind::Call(call_expr, []) = expr.kind
+    {
+        return Some(call_expr);
+    }
     None
 }
 

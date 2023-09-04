@@ -1,7 +1,6 @@
 #![warn(clippy::option_if_let_else)]
 #![allow(
     unused_tuple_struct_fields,
-    clippy::redundant_closure,
     clippy::ref_option_ref,
     clippy::equatable_if_let,
     clippy::let_unit_value,
@@ -270,4 +269,22 @@ mod issue10729 {
 
     fn do_something(_value: &str) {}
     fn do_something2(_value: &mut str) {}
+}
+
+fn issue11429() {
+    use std::collections::HashMap;
+
+    macro_rules! new_map {
+        () => {{ HashMap::new() }};
+    }
+
+    let opt: Option<HashMap<u8, u8>> = None;
+
+    let mut _hashmap = if let Some(hm) = &opt {
+        hm.clone()
+    } else {
+        HashMap::new()
+    };
+
+    let mut _hm = if let Some(hm) = &opt { hm.clone() } else { new_map!() };
 }
