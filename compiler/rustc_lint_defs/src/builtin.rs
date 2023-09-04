@@ -987,45 +987,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `invalid_alignment` lint detects dereferences of misaligned pointers during
-    /// constant evaluation.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![feature(const_mut_refs)]
-    /// const FOO: () = unsafe {
-    ///     let x = &[0_u8; 4];
-    ///     let y = x.as_ptr().cast::<u32>();
-    ///     let mut z = 123;
-    ///     y.copy_to_nonoverlapping(&mut z, 1); // the address of a `u8` array is unknown
-    ///     // and thus we don't know if it is aligned enough for copying a `u32`.
-    /// };
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The compiler allowed dereferencing raw pointers irrespective of alignment
-    /// during const eval due to the const evaluator at the time not making it easy
-    /// or cheap to check. Now that it is both, this is not accepted anymore.
-    ///
-    /// Since it was undefined behaviour to begin with, this breakage does not violate
-    /// Rust's stability guarantees. Using undefined behaviour can cause arbitrary
-    /// behaviour, including failure to build.
-    ///
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub INVALID_ALIGNMENT,
-    Deny,
-    "raw pointers must be aligned before dereferencing",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #68585 <https://github.com/rust-lang/rust/issues/104616>",
-    };
-}
-
-declare_lint! {
     /// The `exported_private_dependencies` lint detects private dependencies
     /// that are exposed in a public interface.
     ///
@@ -3378,7 +3339,6 @@ declare_lint_pass! {
         INDIRECT_STRUCTURAL_MATCH,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
         INLINE_NO_SANITIZE,
-        INVALID_ALIGNMENT,
         INVALID_DOC_ATTRIBUTES,
         INVALID_MACRO_EXPORT_ARGUMENTS,
         INVALID_TYPE_PARAM_DEFAULT,

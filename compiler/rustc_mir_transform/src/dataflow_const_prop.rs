@@ -2,7 +2,6 @@
 //!
 //! Currently, this pass only propagates scalar values.
 
-use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
@@ -17,7 +16,7 @@ use rustc_mir_dataflow::value_analysis::{
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, Results, ResultsVisitor};
 use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{Align, FieldIdx, VariantIdx};
+use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use crate::MirPass;
 
@@ -709,21 +708,11 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
     const PANIC_ON_ALLOC_FAIL: bool = true;
 
     #[inline(always)]
-    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
-        // We do not check for alignment to avoid having to carry an `Align`
-        // in `ConstValue::ByRef`.
-        CheckAlignment::No
+    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        false // no reason to enforce alignment
     }
 
     fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>, _layout: TyAndLayout<'tcx>) -> bool {
-        unimplemented!()
-    }
-    fn alignment_check_failed(
-        _ecx: &InterpCx<'mir, 'tcx, Self>,
-        _has: Align,
-        _required: Align,
-        _check: CheckAlignment,
-    ) -> interpret::InterpResult<'tcx, ()> {
         unimplemented!()
     }
 
