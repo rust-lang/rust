@@ -1,6 +1,7 @@
 use crate::common::CodegenCx;
 use crate::coverageinfo;
-use crate::coverageinfo::ffi::{Counter, CounterExpression, CounterMappingRegion};
+use crate::coverageinfo::ffi::CounterMappingRegion;
+use crate::coverageinfo::map_data::FunctionCoverage;
 use crate::llvm;
 
 use rustc_codegen_ssa::traits::ConstMethods;
@@ -63,11 +64,9 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         let mangled_function_name = tcx.symbol_name(instance).name;
         let source_hash = function_coverage.source_hash();
         let is_used = function_coverage.is_used();
-        let (expressions, counter_regions) =
-            function_coverage.get_expressions_and_counter_regions();
 
         let coverage_mapping_buffer =
-            encode_mappings_for_function(&mut global_file_table, expressions, counter_regions);
+            encode_mappings_for_function(&mut global_file_table, &function_coverage);
 
         if coverage_mapping_buffer.is_empty() {
             if function_coverage.is_used() {
@@ -153,11 +152,12 @@ impl GlobalFileTable {
 /// entry. The payload is returned as a vector of bytes.
 ///
 /// Newly-encountered filenames will be added to the global file table.
-fn encode_mappings_for_function<'a>(
+fn encode_mappings_for_function(
     global_file_table: &mut GlobalFileTable,
-    expressions: Vec<CounterExpression>,
-    counter_regions: impl Iterator<Item = (Counter, &'a CodeRegion)>,
+    function_coverage: &FunctionCoverage<'_>,
 ) -> Vec<u8> {
+    let (expressions, counter_regions) = function_coverage.get_expressions_and_counter_regions();
+
     let mut counter_regions = counter_regions.collect::<Vec<_>>();
     if counter_regions.is_empty() {
         return Vec::new();
