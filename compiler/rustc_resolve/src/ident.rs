@@ -972,9 +972,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // progress, we have to ignore those potential unresolved invocations from other modules
         // and prohibit access to macro-expanded `macro_export` macros instead (unless restricted
         // shadowing is enabled, see `macro_expanded_macro_export_errors`).
-        let unexpanded_macros = !module.unexpanded_invocations.borrow().is_empty();
         if let Some(binding) = binding {
-            if !unexpanded_macros || ns == MacroNS || restricted_shadowing {
+            if binding.determined() || ns == MacroNS || restricted_shadowing {
                 return check_usable(self, binding);
             } else {
                 return Err((Undetermined, Weak::No));
@@ -991,7 +990,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Check if one of unexpanded macros can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
-        if unexpanded_macros {
+        if !module.unexpanded_invocations.borrow().is_empty() {
             return Err((Undetermined, Weak::Yes));
         }
 
