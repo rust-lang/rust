@@ -564,4 +564,18 @@ fn issue_8679<T: Copy>() {
     unsafe {}
 }
 
+mod issue_11246 {
+    // Safety: foo
+    const _: () = unsafe {};
+
+    // Safety: A safety comment
+    const FOO: () = unsafe {};
+
+    // Safety: bar
+    static BAR: u8 = unsafe { 0 };
+}
+
+// Safety: Another safety comment
+const FOO: () = unsafe {};
+
 fn main() {}
