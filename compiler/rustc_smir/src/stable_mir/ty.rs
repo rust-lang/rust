@@ -294,7 +294,13 @@ pub struct Allocation {
 pub enum ConstantKind {
     Allocated(Allocation),
     Unevaluated(UnevaluatedConst),
-    ParamCt(Opaque),
+    Param(ParamConst),
+}
+
+#[derive(Clone, Debug)]
+pub struct ParamConst {
+    pub index: u32,
+    pub name: String,
 }
 
 #[derive(Clone, Debug)]

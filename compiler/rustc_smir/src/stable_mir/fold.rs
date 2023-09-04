@@ -49,7 +49,7 @@ impl Foldable for Const {
         match &mut this.literal {
             super::ty::ConstantKind::Allocated(alloc) => *alloc = alloc.fold(folder)?,
             super::ty::ConstantKind::Unevaluated(uv) => *uv = uv.fold(folder)?,
-            super::ty::ConstantKind::ParamCt(param) => *param = param.fold(folder)?,
+            super::ty::ConstantKind::Param(_) => {}
         }
         this.ty = this.ty.fold(folder)?;
         ControlFlow::Continue(this)
