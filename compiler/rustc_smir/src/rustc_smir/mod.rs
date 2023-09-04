@@ -1123,7 +1123,7 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                         tables,
                     ))
                 }
-                ty::ParamCt(param) => stable_mir::ty::ConstantKind::ParamCt(opaque(&param)),
+                ty::ParamCt(param) => stable_mir::ty::ConstantKind::Param(param.stable(tables)),
                 ty::ErrorCt(_) => unreachable!(),
                 ty::InferCt(_) => unreachable!(),
                 ty::BoundCt(_, _) => unimplemented!(),
@@ -1139,6 +1139,14 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
             },
             ty: tables.intern_ty(self.ty()),
         }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ParamConst {
+    type T = stable_mir::ty::ParamConst;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::ParamConst;
+        ParamConst { index: self.index, name: self.name.to_string() }
     }
 }
 
