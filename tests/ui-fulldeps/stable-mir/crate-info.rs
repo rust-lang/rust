@@ -110,6 +110,23 @@ fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
         other => panic!("{other:?}"),
     }
 
+    let monomorphic = get_item(tcx, &items, (DefKind::Fn, "monomorphic")).unwrap();
+    for block in monomorphic.body().blocks {
+        match &block.terminator {
+            stable_mir::mir::Terminator::Call { func, .. } => match func {
+                stable_mir::mir::Operand::Constant(c) => match &c.literal {
+                    stable_mir::ty::ConstantKind::Allocated(alloc) => {
+                        assert!(alloc.bytes.is_empty())
+                    }
+                    other => panic!("{other:?}"),
+                },
+                other => panic!("{other:?}"),
+            },
+            stable_mir::mir::Terminator::Return => {}
+            other => panic!("{other:?}"),
+        }
+    }
+
     ControlFlow::Continue(())
 }
 
@@ -147,6 +164,16 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     write!(
         file,
         r#"
+    fn generic<T, const U: usize>(t: T) -> [(); U] {{
+        _ = t;
+        [(); U]
+    }}
+
+    pub fn monomorphic() {{
+        generic::<(), 5>(());
+        generic::<u32, 0>(45);
+    }}
+
     mod foo {{
         pub fn bar(i: i32) -> i64 {{
             i as i64
