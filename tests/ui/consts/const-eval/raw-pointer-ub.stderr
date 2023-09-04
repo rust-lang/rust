@@ -1,0 +1,36 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/raw-pointer-ub.rs:9:16
+   |
+LL |     let _val = *ptr;
+   |                ^^^^ accessing memory with alignment 1, but alignment 4 is required
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/raw-pointer-ub.rs:16:5
+   |
+LL |     *ptr = 0;
+   |     ^^^^^^^^ accessing memory with alignment 1, but alignment 4 is required
+
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |
+   = note: accessing memory with alignment 1, but alignment 4 is required
+   |
+note: inside `copy_nonoverlapping::<u32>`
+  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
+note: inside `ptr::const_ptr::<impl *const u32>::copy_to_nonoverlapping`
+  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+note: inside `MISALIGNED_COPY`
+  --> $DIR/raw-pointer-ub.rs:24:5
+   |
+LL |     y.copy_to_nonoverlapping(&mut z, 1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/raw-pointer-ub.rs:32:16
+   |
+LL |     let _val = *ptr;
+   |                ^^^^ dereferencing pointer failed: allocN has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
