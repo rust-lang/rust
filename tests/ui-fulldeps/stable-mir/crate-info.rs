@@ -113,7 +113,7 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
     for block in monomorphic.body().blocks {
         match &block.terminator {
             stable_mir::mir::Terminator::Call { func, .. } => match func {
-                stable_mir::mir::Operand::Constant(c) => match &c.literal {
+                stable_mir::mir::Operand::Constant(c) => match &c.literal.literal {
                     stable_mir::ty::ConstantKind::Allocated(alloc) => {
                         assert!(alloc.bytes.is_empty())
                     }
