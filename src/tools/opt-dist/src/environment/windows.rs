@@ -42,7 +42,7 @@ impl Environment for WindowsEnvironment {
         // rustc-perf version from 2023-05-30
         const PERF_COMMIT: &str = "8b2ac3042e1ff2c0074455a0a3618adef97156b1";
 
-        let url = format!("https://github.com/rust-lang/rustc-perf/archive/{PERF_COMMIT}.zip");
+        let url = format!("https://ci-mirrors.rust-lang.org/rustc/rustc-perf-{PERF_COMMIT}.zip");
         let response = reqwest::blocking::get(url)?.error_for_status()?.bytes()?.to_vec();
 
         let mut archive = ZipArchive::new(Cursor::new(response))?;
