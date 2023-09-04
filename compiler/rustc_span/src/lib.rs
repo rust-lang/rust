@@ -1314,11 +1314,6 @@ impl SourceFileLines {
 /// small crates where very little of `std`'s metadata is used.
 #[derive(Clone)]
 pub struct SourceFileDiffs {
-    /// Position of the first line. Note that this is always encoded as a
-    /// `BytePos` because it is often much larger than any of the
-    /// differences.
-    line_start: RelativeBytePos,
-
     /// Always 1, 2, or 4. Always as small as possible, while being big
     /// enough to hold the length of the longest line in the source file.
     /// The 1 case is by far the most common.
@@ -1422,7 +1417,7 @@ impl<S: Encoder> Encodable<S> for SourceFile {
                 s.emit_u8(bytes_per_diff as u8);
 
                 // Encode the first element.
-                lines[0].encode(s);
+                assert_eq!(lines[0], RelativeBytePos(0));
 
                 // Encode the difference list.
                 let diff_iter = lines.array_windows().map(|&[fst, snd]| snd - fst);
@@ -1472,18 +1467,10 @@ impl<D: Decoder> Decodable<D> for SourceFile {
                 // Read the number of bytes used per diff.
                 let bytes_per_diff = d.read_u8() as usize;
 
-                // Read the first element.
-                let line_start: RelativeBytePos = Decodable::decode(d);
-
                 // Read the difference list.
                 let num_diffs = num_lines as usize - 1;
                 let raw_diffs = d.read_raw_bytes(bytes_per_diff * num_diffs).to_vec();
-                SourceFileLines::Diffs(SourceFileDiffs {
-                    line_start,
-                    bytes_per_diff,
-                    num_diffs,
-                    raw_diffs,
-                })
+                SourceFileLines::Diffs(SourceFileDiffs { bytes_per_diff, num_diffs, raw_diffs })
             } else {
                 SourceFileLines::Lines(vec![])
             }
@@ -1562,15 +1549,11 @@ impl SourceFile {
         let mut guard = self.lines.borrow_mut();
         match &*guard {
             SourceFileLines::Lines(lines) => f(lines),
-            SourceFileLines::Diffs(SourceFileDiffs {
-                mut line_start,
-                bytes_per_diff,
-                num_diffs,
-                raw_diffs,
-            }) => {
+            SourceFileLines::Diffs(SourceFileDiffs { bytes_per_diff, num_diffs, raw_diffs }) => {
                 // Convert from "diffs" form to "lines" form.
                 let num_lines = num_diffs + 1;
                 let mut lines = Vec::with_capacity(num_lines);
+                let mut line_start = RelativeBytePos(0);
                 lines.push(line_start);
 
                 assert_eq!(*num_diffs, raw_diffs.len() / bytes_per_diff);
