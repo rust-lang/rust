@@ -1,0 +1,14 @@
+error: lifetime may not live long enough
+  --> $DIR/wf-fn-def-check-sig-1.rs:10:13
+   |
+LL | fn extend_lifetime<'a, 'b, T: ?Sized>(x: &'a T) -> &'b T {
+   |                    --  -- lifetime `'b` defined here
+   |                    |
+   |                    lifetime `'a` defined here
+LL |     let f = foo::<'b, 'a>;
+   |             ^^^^^^^^^^^^^ requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to previous error
+
