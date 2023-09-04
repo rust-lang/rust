@@ -51,6 +51,7 @@ impl Foldable for Const {
             super::ty::ConstantKind::Unevaluated(uv) => *uv = uv.fold(folder)?,
             super::ty::ConstantKind::ParamCt(param) => *param = param.fold(folder)?,
         }
+        this.ty = this.ty.fold(folder)?;
         ControlFlow::Continue(this)
     }
 }
@@ -69,9 +70,8 @@ impl Foldable for Allocation {
 
 impl Foldable for UnevaluatedConst {
     fn super_fold<V: Folder>(&self, folder: &mut V) -> ControlFlow<V::Break, Self> {
-        let UnevaluatedConst { ty, def, args, promoted } = self;
+        let UnevaluatedConst { def, args, promoted } = self;
         ControlFlow::Continue(UnevaluatedConst {
-            ty: ty.fold(folder)?,
             def: def.fold(folder)?,
             args: args.fold(folder)?,
             promoted: promoted.fold(folder)?,

@@ -19,6 +19,7 @@ impl From<TyKind> for Ty {
 #[derive(Debug, Clone)]
 pub struct Const {
     pub literal: ConstantKind,
+    pub ty: Ty,
 }
 
 type Ident = Opaque;
@@ -298,7 +299,6 @@ pub enum ConstantKind {
 
 #[derive(Clone, Debug)]
 pub struct UnevaluatedConst {
-    pub ty: Ty,
     pub def: ConstDef,
     pub args: GenericArgs,
     pub promoted: Option<Promoted>,

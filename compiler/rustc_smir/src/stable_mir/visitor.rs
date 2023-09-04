@@ -47,7 +47,8 @@ impl Visitable for Const {
             super::ty::ConstantKind::Allocated(alloc) => alloc.visit(visitor),
             super::ty::ConstantKind::Unevaluated(uv) => uv.visit(visitor),
             super::ty::ConstantKind::ParamCt(param) => param.visit(visitor),
-        }
+        }?;
+        self.ty.visit(visitor)
     }
 }
 
@@ -65,8 +66,7 @@ impl Visitable for Allocation {
 
 impl Visitable for UnevaluatedConst {
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
-        let UnevaluatedConst { ty, def, args, promoted } = self;
-        ty.visit(visitor)?;
+        let UnevaluatedConst { def, args, promoted } = self;
         def.visit(visitor)?;
         args.visit(visitor)?;
         promoted.visit(visitor)
