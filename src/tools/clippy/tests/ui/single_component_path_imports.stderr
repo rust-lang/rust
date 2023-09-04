@@ -5,6 +5,7 @@ LL | use regex;
    | ^^^^^^^^^^ help: remove it entirely
    |
    = note: `-D clippy::single-component-path-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_component_path_imports)]`
 
 error: this import is redundant
   --> $DIR/single_component_path_imports.rs:32:5

@@ -5,6 +5,7 @@ LL |     if let V4(_) = &ipaddr {}
    |     -------^^^^^---------- help: try: `if ipaddr.is_ipv4()`
    |
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 
 error: redundant pattern matching, consider using `is_ipv4()`
   --> $DIR/redundant_pattern_matching_ipaddr.rs:17:12

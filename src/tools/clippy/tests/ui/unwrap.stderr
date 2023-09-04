@@ -7,6 +7,7 @@ LL |     let _ = opt.unwrap();
    = note: if this value is `None`, it will panic
    = help: consider using `expect()` to provide a better panic message
    = note: `-D clippy::unwrap-used` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unwrap_used)]`
 
 error: used `unwrap()` on a `Result` value
   --> $DIR/unwrap.rs:12:13

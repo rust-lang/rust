@@ -5,6 +5,7 @@ LL |     println!("one");
    |     ^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::disallowed-macros` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_macros)]`
 
 error: use of a disallowed macro `std::println`
   --> $DIR/disallowed_macros.rs:11:5

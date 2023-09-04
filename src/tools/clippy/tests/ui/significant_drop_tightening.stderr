@@ -16,6 +16,7 @@ LL | | }
    |
    = note: this might lead to unnecessary resource contention
    = note: `-D clippy::significant-drop-tightening` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::significant_drop_tightening)]`
 help: drop the temporary after the end of its last usage
    |
 LL ~     let _ = *lock;

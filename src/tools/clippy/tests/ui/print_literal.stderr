@@ -5,6 +5,7 @@ LL |     print!("Hello {}", "world");
    |                        ^^^^^^^
    |
    = note: `-D clippy::print-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_literal)]`
 help: try
    |
 LL -     print!("Hello {}", "world");

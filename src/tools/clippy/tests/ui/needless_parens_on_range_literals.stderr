@@ -5,6 +5,7 @@ LL |     let _ = ('a')..=('z');
    |             ^^^^^ help: try: `'a'`
    |
    = note: `-D clippy::needless-parens-on-range-literals` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_parens_on_range_literals)]`
 
 error: needless parenthesis on range literals can be removed
   --> $DIR/needless_parens_on_range_literals.rs:7:21

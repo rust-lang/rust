@@ -12,6 +12,7 @@ note: call to `.read_line()` here, which leaves a trailing newline character in 
 LL |     std::io::stdin().read_line(&mut input).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::read-line-without-trim` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::read_line_without_trim)]`
 
 error: calling `.parse()` without trimming the trailing newline character
   --> $DIR/read_line_without_trim.rs:16:20

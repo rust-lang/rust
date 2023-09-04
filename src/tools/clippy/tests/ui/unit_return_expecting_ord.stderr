@@ -10,6 +10,7 @@ help: probably caused by this trailing semicolon
 LL |         double(s.field);
    |                        ^
    = note: `-D clippy::unit-return-expecting-ord` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unit_return_expecting_ord)]`
 
 error: this closure returns the unit type which also implements PartialOrd
   --> $DIR/unit_return_expecting_ord.rs:24:30

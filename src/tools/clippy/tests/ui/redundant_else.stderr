@@ -10,6 +10,7 @@ LL | |         }
    |
    = help: remove the `else` block and move the contents out
    = note: `-D clippy::redundant-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_else)]`
 
 error: redundant else block
   --> $DIR/redundant_else.rs:18:16

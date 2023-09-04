@@ -5,6 +5,7 @@ LL |         let x = 22;
    |                 ^^ help: consider adding suffix: `22_i32`
    |
    = note: `-D clippy::default-numeric-fallback` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::default_numeric_fallback)]`
 
 error: default numeric fallback might occur
   --> $DIR/default_numeric_fallback_i32.rs:22:18

@@ -5,6 +5,7 @@ LL |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `vec![5_i8; 6].iter().copied()`
    |
    = note: `-D clippy::map-clone` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_clone)]`
 
 error: you are using an explicit closure for cloning elements
   --> $DIR/map_clone.rs:12:26

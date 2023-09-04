@@ -5,6 +5,7 @@ LL |     string.push_str("R");
    |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('R')`
    |
    = note: `-D clippy::single-char-add-str` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_char_add_str)]`
 
 error: calling `push_str()` using a single-character string literal
   --> $DIR/single_char_add_str.rs:15:5

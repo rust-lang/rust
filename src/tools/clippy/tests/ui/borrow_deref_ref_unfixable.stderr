@@ -5,6 +5,7 @@ LL |         let x: &str = &*s;
    |                       ^^^
    |
    = note: `-D clippy::borrow-deref-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::borrow_deref_ref)]`
 help: if you would like to reborrow, try removing `&*`
    |
 LL |         let x: &str = s;

@@ -5,6 +5,7 @@ LL |     takes_an_immutable_reference(&mut 42);
    |                                  ^^^^^^^
    |
    = note: `-D clippy::unnecessary-mut-passed` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_mut_passed)]`
 
 error: the function `as_ptr` doesn't need a mutable reference
   --> $DIR/mut_reference.rs:36:12
@@ -25,6 +26,7 @@ LL |     fn takes_a_mutable_reference(&self, a: &mut i32) {}
    |                                            ^^^^^^^^ help: consider changing to: `&i32`
    |
    = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
 
 error: aborting due to 4 previous errors
 

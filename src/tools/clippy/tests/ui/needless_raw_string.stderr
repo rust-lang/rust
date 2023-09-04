@@ -5,6 +5,7 @@ LL |     r#"aaa"#;
    |     ^^^^^^^^ help: try: `"aaa"`
    |
    = note: `-D clippy::needless-raw-strings` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_strings)]`
 
 error: unnecessary raw string literal
   --> $DIR/needless_raw_string.rs:9:5

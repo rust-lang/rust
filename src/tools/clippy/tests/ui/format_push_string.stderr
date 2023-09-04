@@ -6,6 +6,7 @@ LL |     string += &format!("{:?}", 1234);
    |
    = help: consider using `write!` to avoid the extra allocation
    = note: `-D clippy::format-push-string` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::format_push_string)]`
 
 error: `format!(..)` appended to existing `String`
   --> $DIR/format_push_string.rs:7:5

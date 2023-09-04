@@ -6,6 +6,7 @@ LL | const CONST_NOT_OK: Option<BTreeMap<String, ()>> = None;
    |
    = help: consider using a set instead
    = note: `-D clippy::zero-sized-map-values` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::zero_sized_map_values)]`
 
 error: map with zero-sized value type
   --> $DIR/zero_sized_btreemap_values.rs:9:30

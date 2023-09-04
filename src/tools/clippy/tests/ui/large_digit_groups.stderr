@@ -5,6 +5,7 @@ LL |         0xd_e_adbee_f_usize,
    |         ^^^^^^^^^^^^^^^^^^^ help: consider: `0xdead_beef_usize`
    |
    = note: `-D clippy::unusual-byte-groupings` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unusual_byte_groupings)]`
 
 error: digit groups should be smaller
   --> $DIR/large_digit_groups.rs:23:9
@@ -13,6 +14,7 @@ LL |         1_23456_f32,
    |         ^^^^^^^^^^^ help: consider: `123_456_f32`
    |
    = note: `-D clippy::large-digit-groups` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_digit_groups)]`
 
 error: digit groups should be smaller
   --> $DIR/large_digit_groups.rs:24:9

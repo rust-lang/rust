@@ -5,6 +5,7 @@ LL |         let v: u32 = self.return_an_int();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::redundant-type-annotations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_type_annotations)]`
 
 error: redundant type annotation
   --> $DIR/redundant_type_annotations.rs:84:9

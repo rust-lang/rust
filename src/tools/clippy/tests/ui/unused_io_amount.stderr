@@ -6,6 +6,7 @@ LL |     s.write(b"test")?;
    |
    = help: use `Write::write_all` instead, or handle partial writes
    = note: `-D clippy::unused-io-amount` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_io_amount)]`
 
 error: read amount is not handled
   --> $DIR/unused_io_amount.rs:12:5

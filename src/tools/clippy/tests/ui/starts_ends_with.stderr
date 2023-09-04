@@ -5,6 +5,7 @@ LL |     "".chars().next() == Some(' ');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with(' ')`
    |
    = note: `-D clippy::chars-next-cmp` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::chars_next_cmp)]`
 
 error: you should use the `starts_with` method
   --> $DIR/starts_ends_with.rs:8:5
@@ -37,6 +38,7 @@ LL |     if s.chars().next_back().unwrap() == 'o' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
    |
    = note: `-D clippy::chars-last-cmp` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::chars_last_cmp)]`
 
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:25:8

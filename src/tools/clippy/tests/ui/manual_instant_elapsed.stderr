@@ -5,6 +5,7 @@ LL |     let duration = Instant::now() - prev_instant;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `prev_instant.elapsed()`
    |
    = note: `-D clippy::manual-instant-elapsed` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_instant_elapsed)]`
 
 error: manual implementation of `Instant::elapsed`
   --> $DIR/manual_instant_elapsed.rs:26:5

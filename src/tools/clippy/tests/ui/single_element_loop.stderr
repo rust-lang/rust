@@ -7,6 +7,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::single-element-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_element_loop)]`
 help: try
    |
 LL ~     {

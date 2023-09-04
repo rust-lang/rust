@@ -5,6 +5,7 @@ LL |     assert_eq!("a".is_empty(), false);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::bool-assert-comparison` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bool_assert_comparison)]`
 help: replace it with `assert!(..)`
    |
 LL -     assert_eq!("a".is_empty(), false);

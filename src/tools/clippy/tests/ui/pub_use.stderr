@@ -6,6 +6,7 @@ LL |     pub use inner::Test;
    |
    = help: move the exported item to a public module instead
    = note: `-D clippy::pub-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::pub_use)]`
 
 error: aborting due to previous error
 

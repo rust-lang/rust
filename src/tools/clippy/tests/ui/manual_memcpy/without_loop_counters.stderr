@@ -9,6 +9,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[..src.len()].copy_from_slice(&src[..]);`
    |
    = note: `-D clippy::manual-memcpy` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_memcpy)]`
 
 error: it looks like you're manually copying between slices
   --> $DIR/without_loop_counters.rs:15:5

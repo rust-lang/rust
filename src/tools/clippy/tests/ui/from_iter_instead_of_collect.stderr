@@ -5,6 +5,7 @@ LL |         <Self as FromIterator<bool>>::from_iter(iter.into_iter().copied())
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.into_iter().copied().collect::<Self>()`
    |
    = note: `-D clippy::from-iter-instead-of-collect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::from_iter_instead_of_collect)]`
 
 error: usage of `FromIterator::from_iter`
   --> $DIR/from_iter_instead_of_collect.rs:23:13

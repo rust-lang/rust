@@ -5,6 +5,7 @@ LL |     let _ = "".to_string();
    |             ^^^^^^^^^^^^^^ help: consider using: `String::new()`
    |
    = note: `-D clippy::manual-string-new` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_string_new)]`
 
 error: empty String is being created manually
   --> $DIR/manual_string_new.rs:16:13

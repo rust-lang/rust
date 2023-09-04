@@ -5,6 +5,7 @@ LL | fn foo<T: Default>(v: Vec<T>, w: Vec<T>, mut x: Vec<T>, y: Vec<T>) -> Vec<T
    |                       ^^^^^^ help: consider changing the type to: `&[T]`
    |
    = note: `-D clippy::needless-pass-by-value` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_value)]`
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:34:11

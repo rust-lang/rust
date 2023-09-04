@@ -6,6 +6,7 @@ LL |         Err(_) => panic!("err"),
    |
    = note: match each error separately or use the error output, or use `.expect(msg)` if the error case is unreachable
    = note: `-D clippy::match-wild-err-arm` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_wild_err_arm)]`
 
 error: `Err(_)` matches all errors
   --> $DIR/match_wild_err_arm.rs:32:9

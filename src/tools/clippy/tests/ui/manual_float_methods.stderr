@@ -5,6 +5,7 @@ LL |     if x == f32::INFINITY || x == f32::NEG_INFINITY {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the dedicated method instead: `x.is_infinite()`
    |
    = note: `-D clippy::manual-is-infinite` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_is_infinite)]`
 
 error: manually checking if a float is finite
   --> $DIR/manual_float_methods.rs:24:8
@@ -13,6 +14,7 @@ LL |     if x != f32::INFINITY && x != f32::NEG_INFINITY {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::manual-is-finite` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_is_finite)]`
 help: use the dedicated method instead
    |
 LL |     if x.is_finite() {}

@@ -16,6 +16,7 @@ note: return Err() instead of panicking
 LL |         assert!(x == 5, "wrong argument");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::panic-in-result-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::panic_in_result_fn)]`
 
 error: used `panic!()` or assertion in a function that returns `Result`
   --> $DIR/panic_in_result_fn_assertions.rs:14:5

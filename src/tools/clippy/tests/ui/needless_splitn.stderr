@@ -5,6 +5,7 @@ LL |     let _ = str.splitn(2, '=').next();
    |             ^^^^^^^^^^^^^^^^^^ help: try: `str.split('=')`
    |
    = note: `-D clippy::needless-splitn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_splitn)]`
 
 error: unnecessary use of `splitn`
   --> $DIR/needless_splitn.rs:14:13

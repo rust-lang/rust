@@ -6,6 +6,7 @@ LL |         fn unused_self_move(self) {}
    |
    = help: consider refactoring to an associated function
    = note: `-D clippy::unused-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_self)]`
 
 error: unused `self` argument
   --> $DIR/unused_self.rs:13:28

@@ -5,6 +5,7 @@ LL |     let _ = x.ln() / y.ln();
    |             ^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
    |
    = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
 
 error: log base can be expressed more clearly
   --> $DIR/floating_point_logbase.rs:8:13

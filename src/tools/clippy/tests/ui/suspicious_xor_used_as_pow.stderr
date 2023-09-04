@@ -5,6 +5,7 @@ LL |     let _ = 2 ^ 5;
    |             ^^^^^ help: did you mean to write: `2.pow(5)`
    |
    = note: `-D clippy::suspicious-xor-used-as-pow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_xor_used_as_pow)]`
 
 error: `^` is not the exponentiation operator
   --> $DIR/suspicious_xor_used_as_pow.rs:22:13

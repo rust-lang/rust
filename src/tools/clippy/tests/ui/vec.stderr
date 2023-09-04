@@ -5,6 +5,7 @@ LL |     on_slice(&vec![]);
    |              ^^^^^^^ help: you can use a slice directly: `&[]`
    |
    = note: `-D clippy::useless-vec` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
 
 error: useless use of `vec!`
   --> $DIR/vec.rs:32:18

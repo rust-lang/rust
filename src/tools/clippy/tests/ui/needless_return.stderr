@@ -5,6 +5,7 @@ LL |     return true;
    |     ^^^^^^^^^^^
    |
    = note: `-D clippy::needless-return` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_return)]`
 help: remove `return`
    |
 LL -     return true;

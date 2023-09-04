@@ -20,6 +20,7 @@ LL | |             println!("{}", y);
 LL | |         }
    | |_________^
    = note: `-D clippy::manual-flatten` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_flatten)]`
 
 error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
   --> $DIR/manual_flatten.rs:16:5

@@ -5,6 +5,7 @@ LL |     let _: &str = &*s;
    |                   ^^^ help: try: `&s`
    |
    = note: `-D clippy::explicit-auto-deref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::explicit_auto_deref)]`
 
 error: deref which would be done by auto-deref
   --> $DIR/explicit_auto_deref.rs:69:19

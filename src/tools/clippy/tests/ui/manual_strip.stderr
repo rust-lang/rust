@@ -10,6 +10,7 @@ note: the prefix was tested here
 LL |     if s.starts_with("ab") {
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::manual-strip` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_strip)]`
 help: try using the `strip_prefix` method
    |
 LL ~     if let Some(<stripped>) = s.strip_prefix("ab") {

@@ -9,6 +9,7 @@ LL | |     }
    |
    = help: consider implementing the trait `std::cmp::PartialEq` or choosing a less ambiguous method name
    = note: `-D clippy::should-implement-trait` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::should_implement_trait)]`
 
 error: method `from_iter` can be confused for the standard trait method `std::iter::FromIterator::from_iter`
   --> $DIR/method_list_2.rs:31:5
@@ -174,6 +175,7 @@ LL |     pub fn hash(&self, state: &mut T) {
    |
    = warning: changing this function will impact semver compatibility
    = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
 
 error: aborting due to 16 previous errors
 

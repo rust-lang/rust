@@ -5,6 +5,7 @@ LL |     let _: i32 = ((value % 4) + 4) % 4;
    |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
    |
    = note: `-D clippy::manual-rem-euclid` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_rem_euclid)]`
 
 error: manual `rem_euclid` implementation
   --> $DIR/manual_rem_euclid.rs:14:18

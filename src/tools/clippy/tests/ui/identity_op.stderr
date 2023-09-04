@@ -5,6 +5,7 @@ LL |     x + 0;
    |     ^^^^^ help: consider reducing it to: `x`
    |
    = note: `-D clippy::identity-op` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::identity_op)]`
 
 error: this operation has no effect
   --> $DIR/identity_op.rs:43:5

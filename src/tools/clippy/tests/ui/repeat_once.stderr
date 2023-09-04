@@ -5,6 +5,7 @@ LL |     let a = [1; 5].repeat(1);
    |             ^^^^^^^^^^^^^^^^ help: consider using `.to_vec()` instead: `[1; 5].to_vec()`
    |
    = note: `-D clippy::repeat-once` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::repeat_once)]`
 
 error: calling `repeat(1)` on slice
   --> $DIR/repeat_once.rs:10:13

@@ -5,6 +5,7 @@ LL |     let _ptr_i32_transmute = unsafe { transmute::<usize, *const i32>(usize:
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `usize::MAX as *const i32`
    |
    = note: `-D clippy::useless-transmute` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_transmute)]`
 
 error: transmute from a pointer to a pointer
   --> $DIR/transmutes_expressible_as_ptr_casts.rs:21:38
@@ -13,6 +14,7 @@ LL |     let _ptr_i8_transmute = unsafe { transmute::<*const i32, *const i8>(ptr
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr_i32 as *const i8`
    |
    = note: `-D clippy::transmute-ptr-to-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_ptr_to_ptr)]`
 
 error: transmute from a pointer to a pointer
   --> $DIR/transmutes_expressible_as_ptr_casts.rs:27:46
@@ -27,6 +29,7 @@ LL |     let _usize_from_int_ptr_transmute = unsafe { transmute::<*const i32, us
    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr_i32 as usize`
    |
    = note: `-D clippy::transmutes-expressible-as-ptr-casts` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmutes_expressible_as_ptr_casts)]`
 
 error: transmute from a reference to a pointer
   --> $DIR/transmutes_expressible_as_ptr_casts.rs:39:41

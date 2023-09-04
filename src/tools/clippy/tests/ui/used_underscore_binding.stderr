@@ -5,6 +5,7 @@ LL |     _foo + 1
    |     ^^^^
    |
    = note: `-D clippy::used-underscore-binding` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::used_underscore_binding)]`
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
   --> $DIR/used_underscore_binding.rs:29:20

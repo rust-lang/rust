@@ -5,6 +5,7 @@ LL |     with_none_and_format.expect(&format!("Error {}: fake error", error_code
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
    |
    = note: `-D clippy::expect-fun-call` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::expect_fun_call)]`
 
 error: use of `expect` followed by a function call
   --> $DIR/expect_fun_call.rs:40:26

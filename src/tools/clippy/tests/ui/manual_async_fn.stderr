@@ -5,6 +5,7 @@ LL | fn fut() -> impl Future<Output = i32> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::manual-async-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_async_fn)]`
 help: make the function `async` and return the output of the future directly
    |
 LL | async fn fut() -> i32 {

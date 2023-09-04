@@ -5,6 +5,7 @@ LL |     let _ = std::iter::Empty::<usize>::default();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::iter::empty::<usize>()`
    |
    = note: `-D clippy::default-instead-of-iter-empty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::default_instead_of_iter_empty)]`
 
 error: `std::iter::empty()` is the more idiomatic way
   --> $DIR/default_instead_of_iter_empty.rs:13:13

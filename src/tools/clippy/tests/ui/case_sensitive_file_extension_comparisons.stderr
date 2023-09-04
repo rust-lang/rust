@@ -6,6 +6,7 @@ LL |     filename.ends_with(".rs")
    |
    = help: consider using a case-insensitive comparison instead
    = note: `-D clippy::case-sensitive-file-extension-comparisons` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::case_sensitive_file_extension_comparisons)]`
 help: use std::path::Path
    |
 LL ~     std::path::Path::new(filename)

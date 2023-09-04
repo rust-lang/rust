@@ -5,6 +5,7 @@ LL |     assert!(r.is_ok());
    |     ^^^^^^^^^^^^^^^^^^ help: replace with: `r.unwrap()`
    |
    = note: `-D clippy::assertions-on-result-states` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::assertions_on_result_states)]`
 
 error: called `assert!` with `Result::is_ok`
   --> $DIR/assertions_on_result_states.rs:42:5

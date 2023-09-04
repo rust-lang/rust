@@ -5,6 +5,7 @@ LL |     if num >= 0.0 { num } else { -num }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `num.abs()`
    |
    = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
 
 error: manual implementation of `abs` method
   --> $DIR/floating_point_abs.rs:19:5
