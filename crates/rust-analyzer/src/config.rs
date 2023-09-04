@@ -215,6 +215,8 @@ config_data! {
         completion_postfix_enable: bool         = "true",
         /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
         completion_privateEditable_enable: bool = "false",
+        /// Whether to show full function/method signatures in completion docs.
+        completion_fullFunctionSignatures_enable: bool = "false",
         /// Custom completion snippets.
         // NOTE: Keep this list in sync with the feature docs of user snippets.
         completion_snippets_custom: FxHashMap<String, SnippetDef> = r#"{
@@ -1444,6 +1446,7 @@ impl Config {
                 && completion_item_edit_resolve(&self.caps),
             enable_self_on_the_fly: self.data.completion_autoself_enable,
             enable_private_editable: self.data.completion_privateEditable_enable,
+            full_function_signatures: self.data.completion_fullFunctionSignatures_enable,
             callable: match self.data.completion_callable_snippets {
                 CallableCompletionDef::FillArguments => Some(CallableSnippets::FillArguments),
                 CallableCompletionDef::AddParentheses => Some(CallableSnippets::AddParentheses),

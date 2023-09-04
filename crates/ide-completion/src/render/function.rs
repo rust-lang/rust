@@ -100,7 +100,7 @@ fn render(
 
     item.set_documentation(ctx.docs(func))
         .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
-        .detail(detail(db, func))
+        .detail(detail(db, func, ctx.completion.config.full_function_signatures))
         .lookup_by(name.unescaped().to_smol_str());
 
     match ctx.completion.config.snippet_cap {
@@ -239,7 +239,11 @@ fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type) -> &'sta
     ""
 }
 
-fn detail(db: &dyn HirDatabase, func: hir::Function) -> String {
+fn detail(db: &dyn HirDatabase, func: hir::Function, full_function_signature: bool) -> String {
+    if full_function_signature {
+        return format!("{}", func.display(db)).replace("\n", " ");
+    }
+
     let mut ret_ty = func.ret_type(db);
     let mut detail = String::new();
 
