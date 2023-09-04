@@ -63,6 +63,12 @@ impl<'tcx> ValTree<'tcx> {
         Self::Branch(interned)
     }
 
+    pub fn from_scalars<'a>(tcx: TyCtxt<'tcx>, scalars: &'a [ScalarInt]) -> Self {
+        let interned = tcx.arena.alloc_from_iter(scalars.iter().map(|&s| Self::Leaf(s)));
+
+        Self::Branch(interned)
+    }
+
     pub fn from_scalar_int(i: ScalarInt) -> Self {
         Self::Leaf(i)
     }

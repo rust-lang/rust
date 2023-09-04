@@ -15,10 +15,13 @@
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
+use rustc_data_structures::intern::Interned;
 use rustc_hir::RangeEnd;
+use rustc_middle::mir::ConstantKind;
 use rustc_middle::thir::{self, *};
-use rustc_middle::ty;
 use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::Const;
+use rustc_middle::ty::{self, Ty, ValTree};
 use rustc_target::abi::{Integer, Size};
 
 use std::mem;
@@ -117,6 +120,38 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 debug!(simplified = ?candidate, "simplify_candidate");
                 return false; // if we were not able to simplify any, done.
             }
+        }
+    }
+
+    fn try_build_valtree(&self, elements: &Box<[Box<Pat<'tcx>>]>) -> Option<ValTree<'tcx>> {
+        if elements.iter().all(|p| {
+            matches!(
+                p.kind,
+                PatKind::Constant {
+                    value: ConstantKind::Ty(ty::Const(Interned(
+                        ty::ConstData { kind: ty::ConstKind::Value(ty::ValTree::Leaf(_)), .. },
+                        _
+                    )))
+                }
+            )
+        }) {
+            // This ValTree represents the content of the simple array.
+            // We then create a new pattern that matches against this ValTree.
+            // This reduces a match against `[1, 2, 3, 4]` from 4 basic-blocks in the MIR to just 1
+            Some(ValTree::from_scalars(
+                self.tcx,
+                &elements
+                    .iter()
+                    .map(|p| match p.kind {
+                        PatKind::Constant { value: ConstantKind::Ty(c) } => {
+                            c.to_valtree().unwrap_leaf()
+                        }
+                        _ => unreachable!(),
+                    })
+                    .collect::<Vec<_>>(),
+            ))
+        } else {
+            None
         }
     }
 
@@ -243,22 +278,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Err(match_pair)
             }
 
-            PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
-                    // irrefutable
-                    self.prefix_slice_suffix(
-                        &mut candidate.match_pairs,
-                        &match_pair.place,
-                        prefix,
-                        slice,
-                        suffix,
-                    );
-                    Ok(())
-                } else {
-                    Err(match_pair)
-                }
-            }
-
             PatKind::Variant { adt_def, args, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
@@ -281,6 +300,51 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
+            // Looks for simple array patterns such as `[1, 2, 3]`
+            // They cannot have slices (e.g `[1, .., 3, 4]` is not simple), and
+            // all the elements of the array must be leaf constants (so no strings!)
+            PatKind::Array { ref prefix, slice: None, ref suffix }
+            | PatKind::Slice { ref prefix, slice: None, ref suffix }
+                if let Some(_val) = self.try_build_valtree(prefix)
+                    && !prefix.is_empty()
+                    && suffix.is_empty() =>
+                  {
+                    // This ValTree represents the content of the simple array.
+                    // We then create a new pattern that matches against this ValTree.
+                    // This reduces a match against `[1, 2, 3, 4]` from 4 basic-blocks in the MIR to just 1
+                    let val = self.try_build_valtree(prefix).unwrap(); // FIXME: false positive
+
+                    let el_ty = prefix.iter().next().unwrap().ty;
+                    let (place, cnst_ty, pat_ty) =
+                        if match_pair.pattern.ty.is_slice() {
+                            (
+                                PlaceBuilder::from(match_pair.place.base()),
+                                Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, Ty::new_array(tcx, el_ty, prefix.len() as u64)),
+                                Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, Ty::new_slice(tcx, el_ty))
+                            )
+                        } else {
+                            let arr_ty = Ty::new_array(tcx, el_ty, prefix.len() as u64);
+                            (
+                                match_pair.place,
+                                arr_ty,
+                                arr_ty
+                            )
+                        };
+
+                    let cnst = Const::new(tcx, ty::ConstKind::Value(val), cnst_ty);
+                    let new_pat = Pat {
+                        ty: pat_ty,
+                        span: match_pair.pattern.span,
+                        kind: PatKind::Constant { value: ConstantKind::Ty(cnst) },
+                    };
+
+                    let pat = tcx.arena.alloc(new_pat);
+
+                    candidate.match_pairs.push(MatchPair::new(place, pat, self));
+
+                    Ok(())
+            }
+
             PatKind::Array { ref prefix, ref slice, ref suffix } => {
                 self.prefix_slice_suffix(
                     &mut candidate.match_pairs,
@@ -290,6 +354,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     suffix,
                 );
                 Ok(())
+            }
+
+            PatKind::Slice { ref prefix, ref slice, ref suffix } => {
+                if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
+                    // irrefutable
+                    self.prefix_slice_suffix(
+                        &mut candidate.match_pairs,
+                        &match_pair.place,
+                        prefix,
+                        slice,
+                        suffix,
+                    );
+                    Ok(())
+                } else {
+                    Err(match_pair)
+                }
             }
 
             PatKind::Leaf { ref subpatterns } => {

@@ -94,10 +94,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         match match_pair.pattern.kind {
-            PatKind::Constant { value } => {
+            PatKind::Constant {
+                value
+            } if let Some(result) = value.try_eval_bits(self.tcx, self.param_env, switch_ty) => {
                 options
                     .entry(value)
-                    .or_insert_with(|| value.eval_bits(self.tcx, self.param_env, switch_ty));
+                    .or_insert(result);
                 true
             }
             PatKind::Variant { .. } => {
@@ -108,6 +110,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.values_not_contained_in_range(&*range, options).unwrap_or(false)
             }
             PatKind::Slice { .. }
+            | PatKind::Constant { .. }
             | PatKind::Array { .. }
             | PatKind::Wild
             | PatKind::Or { .. }
