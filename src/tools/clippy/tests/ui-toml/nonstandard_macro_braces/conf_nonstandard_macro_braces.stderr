@@ -5,6 +5,7 @@ LL |     let _ = vec! {1, 2, 3};
    |             ^^^^^^^^^^^^^^ help: consider writing: `vec![1, 2, 3]`
    |
    = note: `-D clippy::nonstandard-macro-braces` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::nonstandard_macro_braces)]`
 
 error: use of irregular braces for `format!` macro
   --> $DIR/conf_nonstandard_macro_braces.rs:44:13

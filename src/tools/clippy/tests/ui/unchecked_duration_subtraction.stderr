@@ -5,6 +5,7 @@ LL |     let _ = _first - second;
    |             ^^^^^^^^^^^^^^^ help: try: `_first.checked_sub(second).unwrap()`
    |
    = note: `-D clippy::unchecked-duration-subtraction` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unchecked_duration_subtraction)]`
 
 error: unchecked subtraction of a 'Duration' from an 'Instant'
   --> $DIR/unchecked_duration_subtraction.rs:11:13

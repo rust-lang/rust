@@ -5,6 +5,7 @@ LL |     if x == true {
    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
    |
    = note: `-D clippy::bool-comparison` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bool_comparison)]`
 
 error: equality checks against false can be replaced by a negation
   --> $DIR/bool_comparison.rs:12:8

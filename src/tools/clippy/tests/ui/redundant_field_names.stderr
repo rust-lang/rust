@@ -5,6 +5,7 @@ LL |         gender: gender,
    |         ^^^^^^^^^^^^^^ help: replace it with: `gender`
    |
    = note: `-D clippy::redundant-field-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_field_names)]`
 
 error: redundant field names in struct initialization
   --> $DIR/redundant_field_names.rs:34:9

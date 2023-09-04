@@ -5,6 +5,7 @@ LL |         Self { ..*self }
    |         ^^^^^^^^^^^^^^^^ help: replace with: `*self`
    |
    = note: `-D clippy::unnecessary-struct-initialization` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_struct_initialization)]`
 
 error: unnecessary struct building
   --> $DIR/unnecessary_struct_initialization.rs:39:17

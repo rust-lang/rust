@@ -5,6 +5,7 @@ LL |     x & 0 == 0;
    |     ^^^^^^^^^^
    |
    = note: `-D clippy::bad-bit-mask` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bad_bit_mask)]`
 
 error: this operation will always return zero. This is likely not the intended outcome
   --> $DIR/bit_masks.rs:14:5
@@ -87,6 +88,7 @@ LL |     x | 1 > 3;
    |     ^^^^^^^^^
    |
    = note: `-D clippy::ineffective-bit-mask` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ineffective_bit_mask)]`
 
 error: ineffective bit mask: `x | 1` compared to `4`, is the same as x compared directly
   --> $DIR/bit_masks.rs:72:5

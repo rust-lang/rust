@@ -5,6 +5,7 @@ LL |     let _x = println!("x");
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `println!("x");`
    |
    = note: `-D clippy::let-unit-value` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::let_unit_value)]`
 
 error: this let-binding has unit value
   --> $DIR/let_unit.rs:16:9

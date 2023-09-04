@@ -10,6 +10,7 @@ LL | | /// very `confusing_and_misleading`.
    |
    = help: a backtick may be missing a pair
    = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
 
 error: backticks are unbalanced
   --> $DIR/unbalanced_ticks.rs:14:1

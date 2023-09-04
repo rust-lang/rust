@@ -5,6 +5,7 @@ LL | const VAR_ONE: &'static str = "Test constant #1"; // ERROR: Consider removi
    |                -^^^^^^^---- help: consider removing `'static`: `&str`
    |
    = note: `-D clippy::redundant-static-lifetimes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_static_lifetimes)]`
 
 error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:10:21

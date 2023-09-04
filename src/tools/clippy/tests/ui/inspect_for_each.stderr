@@ -12,6 +12,7 @@ LL | |     });
    |
    = help: move the code from `inspect(..)` to `for_each(..)` and remove the `inspect(..)`
    = note: `-D clippy::inspect-for-each` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inspect_for_each)]`
 
 error: aborting due to previous error
 

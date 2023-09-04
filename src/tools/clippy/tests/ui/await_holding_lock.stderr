@@ -14,6 +14,7 @@ LL | |         baz().await
 LL | |     }
    | |_____^
    = note: `-D clippy::await-holding-lock` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::await_holding_lock)]`
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:25:13

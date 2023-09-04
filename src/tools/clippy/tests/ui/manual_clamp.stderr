@@ -12,6 +12,7 @@ LL | |     }
    |
    = note: clamp will panic if max < min
    = note: `-D clippy::manual-clamp` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_clamp)]`
 
 error: clamp-like pattern without using clamp function
   --> $DIR/manual_clamp.rs:113:5

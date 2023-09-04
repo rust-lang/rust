@@ -6,6 +6,7 @@ LL |     let pipe_in_wrong_position = Regex::new("|");
    |
    = help: the regex is unlikely to be useful as it is
    = note: `-D clippy::trivial-regex` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::trivial_regex)]`
 
 error: trivial regex
   --> $DIR/regex.rs:20:60
@@ -22,6 +23,7 @@ LL |     let wrong_char_ranice = Regex::new("[z-a]");
    |                                          ^^^
    |
    = note: `-D clippy::invalid-regex` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::invalid_regex)]`
 
 error: regex syntax error: invalid character class range, the start must be <= the end
   --> $DIR/regex.rs:25:37

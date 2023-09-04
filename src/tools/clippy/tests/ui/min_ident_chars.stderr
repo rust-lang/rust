@@ -5,6 +5,7 @@ LL | struct A {
    |        ^
    |
    = note: `-D clippy::min-ident-chars` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::min_ident_chars)]`
 
 error: this ident consists of a single char
   --> $DIR/min_ident_chars.rs:9:5

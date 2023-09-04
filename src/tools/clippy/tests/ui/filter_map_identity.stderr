@@ -5,6 +5,7 @@ LL |     let _ = iterator.filter_map(|x| x);
    |                      ^^^^^^^^^^^^^^^^^ help: try: `flatten()`
    |
    = note: `-D clippy::filter-map-identity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::filter_map_identity)]`
 
 error: use of `filter_map` with an identity function
   --> $DIR/filter_map_identity.rs:9:22

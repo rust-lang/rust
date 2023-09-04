@@ -5,6 +5,7 @@ LL | fn bad(a: LargeAndCopy) {}
    |           ^^^^^^^^^^^^ help: consider passing by reference instead: `&LargeAndCopy`
    |
    = note: `-D clippy::large-types-passed-by-value` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_types_passed_by_value)]`
 
 error: this argument (N byte) is passed by value, but might be more efficient if passed by reference (limit: N byte)
   --> $DIR/large_types_passed_by_value.rs:25:37

@@ -5,6 +5,7 @@ LL |     let _ = "hesuo worpd".replace('s', "l").replace('u', "l");
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(['s', 'u'], "l")`
    |
    = note: `-D clippy::collapsible-str-replace` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_str_replace)]`
 
 error: used consecutive `str::replace` call
   --> $DIR/collapsible_str_replace.rs:20:27

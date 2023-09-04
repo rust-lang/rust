@@ -9,6 +9,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
 
 error: this could be a `const fn`
   --> $DIR/could_be_const.rs:20:5

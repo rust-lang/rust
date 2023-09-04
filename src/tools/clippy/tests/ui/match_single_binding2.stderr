@@ -8,6 +8,7 @@ LL | |             },
    | |_____________^
    |
    = note: `-D clippy::match-single-binding` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_single_binding)]`
 help: consider using a `let` statement
    |
 LL ~             Some((iter, _item)) => {

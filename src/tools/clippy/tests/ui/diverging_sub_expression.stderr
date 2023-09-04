@@ -5,6 +5,7 @@ LL |     b || diverge();
    |          ^^^^^^^^^
    |
    = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::diverging_sub_expression)]`
 
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:23:10

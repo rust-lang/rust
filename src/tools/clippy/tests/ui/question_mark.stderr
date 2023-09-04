@@ -7,6 +7,7 @@ LL | |     }
    | |_____^ help: replace it with: `a?;`
    |
    = note: `-D clippy::question-mark` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::question_mark)]`
 
 error: this block may be rewritten with the `?` operator
   --> $DIR/question_mark.rs:52:9

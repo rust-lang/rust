@@ -10,6 +10,7 @@ note: parameter used here
 LL |     if flag == 0 { 0 } else { _with_inner(flag, a, b + x) }
    |                                                    ^
    = note: `-D clippy::only-used-in-recursion` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::only_used_in_recursion)]`
 
 error: parameter is only used in recursion
   --> $DIR/only_used_in_recursion2.rs:5:25

@@ -5,6 +5,7 @@ LL |     let _: String = std::iter::repeat("test").take(10).collect();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"test".repeat(10)`
    |
    = note: `-D clippy::manual-str-repeat` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_str_repeat)]`
 
 error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:8:21

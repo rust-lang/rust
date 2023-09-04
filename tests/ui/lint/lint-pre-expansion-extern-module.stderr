@@ -7,6 +7,7 @@ LL | pub fn try() {}
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
    = note: `-W keyword-idents` implied by `-W rust-2018-compatibility`
+   = help: to override `-W rust-2018-compatibility` add `#[allow(keyword_idents)]`
 
 warning: 1 warning emitted
 

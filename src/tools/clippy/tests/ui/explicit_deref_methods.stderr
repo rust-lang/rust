@@ -5,6 +5,7 @@ LL |     let b: &str = a.deref();
    |                   ^^^^^^^^^ help: try: `&*a`
    |
    = note: `-D clippy::explicit-deref-methods` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::explicit_deref_methods)]`
 
 error: explicit `deref_mut` method call
   --> $DIR/explicit_deref_methods.rs:56:23

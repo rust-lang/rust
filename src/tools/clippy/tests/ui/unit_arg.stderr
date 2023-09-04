@@ -7,6 +7,7 @@ LL | |     });
    | |______^
    |
    = note: `-D clippy::unit-arg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unit_arg)]`
 help: remove the semicolon from the last statement in the block
    |
 LL |         1

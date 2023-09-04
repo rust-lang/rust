@@ -5,6 +5,7 @@ LL |     let _ = degrees as f64 * std::f64::consts::PI / 180.0;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(degrees as f64).to_radians()`
    |
    = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
 
 error: conversion to degrees can be done more accurately
   --> $DIR/floating_point_rad.rs:12:13

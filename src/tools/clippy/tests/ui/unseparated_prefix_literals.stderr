@@ -5,6 +5,7 @@ LL |     let _fail1 = 1234i32;
    |                  ^^^^^^^ help: add an underscore: `1234_i32`
    |
    = note: `-D clippy::unseparated-literal-suffix` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unseparated_literal_suffix)]`
 
 error: integer type suffix should be separated by an underscore
   --> $DIR/unseparated_prefix_literals.rs:24:18

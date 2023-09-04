@@ -5,6 +5,7 @@ LL |     let y: u32 = x.abs() as u32;
    |                  ^^^^^^^^^^^^^^ help: replace with: `x.unsigned_abs()`
    |
    = note: `-D clippy::cast-abs-to-unsigned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_abs_to_unsigned)]`
 
 error: casting the result of `i32::abs()` to usize
   --> $DIR/cast_abs_to_unsigned.rs:10:20

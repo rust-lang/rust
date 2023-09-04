@@ -9,6 +9,7 @@ LL | |     }
    | |_____^ help: try: `string.map_or((false, "hello"), |x| (true, x))`
    |
    = note: `-D clippy::option-if-let-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_if_let_else)]`
 
 error: use Option::map_or instead of an if let/else
   --> $DIR/option_if_let_else.rs:30:13

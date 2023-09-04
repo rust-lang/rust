@@ -5,6 +5,7 @@ LL |     x0 as f32;
    |     ^^^^^^^^^
    |
    = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_precision_loss)]`
 
 error: casting `i64` to `f32` causes a loss of precision (`i64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> $DIR/cast.rs:20:5
@@ -44,6 +45,7 @@ LL |     1f32 as i32;
    |
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
    = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_possible_truncation)]`
 
 error: casting `f32` to `u32` may truncate the value
   --> $DIR/cast.rs:35:5
@@ -60,6 +62,7 @@ LL |     1f32 as u32;
    |     ^^^^^^^^^^^
    |
    = note: `-D clippy::cast-sign-loss` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_sign_loss)]`
 
 error: casting `f64` to `f32` may truncate the value
   --> $DIR/cast.rs:39:5
@@ -190,6 +193,7 @@ LL |     1u8 as i8;
    |     ^^^^^^^^^
    |
    = note: `-D clippy::cast-possible-wrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_possible_wrap)]`
 
 error: casting `u16` to `i16` may wrap around the value
   --> $DIR/cast.rs:69:5
@@ -360,6 +364,7 @@ LL |             let _ = Self::B as u8;
    |                     ^^^^^^^^^^^^^
    |
    = note: `-D clippy::cast-enum-truncation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_enum_truncation)]`
 
 error: casting `main::E5` to `i8` may truncate the value
   --> $DIR/cast.rs:260:21

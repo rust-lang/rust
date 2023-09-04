@@ -5,6 +5,7 @@ LL |     let _ = " A B C ".trim().split_whitespace(); // should trigger lint
    |                       ^^^^^^^ help: remove `trim()`
    |
    = note: `-D clippy::trim-split-whitespace` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::trim_split_whitespace)]`
 
 error: found call to `str::trim_start` before `str::split_whitespace`
   --> $DIR/trim_split_whitespace.rs:62:23

@@ -5,6 +5,7 @@ LL |     let _: f32 = 16_777_217.0;
    |                  ^^^^^^^^^^^^ help: consider changing the type or replacing it with: `16_777_216.0`
    |
    = note: `-D clippy::lossy-float-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::lossy_float_literal)]`
 
 error: literal cannot be represented as the underlying type without loss of precision
   --> $DIR/lossy_float_literal.rs:7:18

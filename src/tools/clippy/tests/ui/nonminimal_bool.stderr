@@ -5,6 +5,7 @@ LL |     let _ = !true;
    |             ^^^^^ help: try: `false`
    |
    = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
 
 error: this boolean expression can be simplified
   --> $DIR/nonminimal_bool.rs:16:13

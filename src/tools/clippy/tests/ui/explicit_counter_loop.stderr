@@ -5,6 +5,7 @@ LL |     for _v in &vec {
    |     ^^^^^^^^^^^^^^ help: consider using: `for (_index, _v) in vec.iter().enumerate()`
    |
    = note: `-D clippy::explicit-counter-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::explicit_counter_loop)]`
 
 error: the variable `_index` is used as a loop counter
   --> $DIR/explicit_counter_loop.rs:15:5

@@ -5,6 +5,7 @@ LL |     let _ = format!("error: something failed at {}", Location::caller().to_
    |                                                                        ^^^^^^^^^^^^ help: remove this
    |
    = note: `-D clippy::to-string-in-format-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::to_string_in_format_args)]`
 
 error: `to_string` applied to a type that implements `Display` in `write!` args
   --> $DIR/format_args.rs:80:27

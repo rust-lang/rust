@@ -5,6 +5,7 @@ LL |     [0..200];
    |     ^^^^^^^^
    |
    = note: `-D clippy::single-range-in-vec-init` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_range_in_vec_init)]`
 help: if you wanted a `Vec` that contains the entire range, try
    |
 LL |     (0..200).collect::<std::vec::Vec<i32>>();

@@ -8,6 +8,7 @@ LL | |         }
    | |_________^
    |
    = note: `-D clippy::match-ref-pats` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_ref_pats)]`
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
 LL ~         match *v {
@@ -38,6 +39,7 @@ LL |     if let &None = a {
    |     -------^^^^^---- help: try: `if a.is_none()`
    |
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 
 error: redundant pattern matching, consider using `is_none()`
   --> $DIR/match_ref_pats.rs:42:12

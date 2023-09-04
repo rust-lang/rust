@@ -6,6 +6,7 @@ LL |     let _ = p_m.lock();
    |
    = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
    = note: `-D clippy::let-underscore-lock` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::let_underscore_lock)]`
 
 error: non-binding `let` on a synchronization lock
   --> $DIR/let_underscore_lock.rs:14:5

@@ -6,6 +6,7 @@ LL |     let _x = String::from("hello");
    |
    = note: strings are bad (from clippy.toml)
    = note: `-D clippy::await-holding-invalid-type` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::await_holding_invalid_type)]`
 
 error: `std::net::Ipv4Addr` may not be held across an `await` point per `clippy.toml`
   --> $DIR/await_holding_invalid_type.rs:10:9

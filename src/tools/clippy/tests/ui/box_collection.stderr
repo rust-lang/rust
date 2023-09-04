@@ -6,6 +6,7 @@ LL | fn test1(foo: Box<Vec<bool>>) {}
    |
    = help: `Vec<..>` is already on the heap, `Box<Vec<..>>` makes an extra allocation
    = note: `-D clippy::box-collection` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::box_collection)]`
 
 error: you seem to be trying to use `Box<String>`. Consider using just `String`
   --> $DIR/box_collection.rs:29:15

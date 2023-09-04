@@ -19,6 +19,7 @@ help: remove this field
 LL |         _c: (),
    |         ^^^^^^
    = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_non_exhaustive)]`
 
 error: this seems like a manual implementation of the non-exhaustive pattern
   --> $DIR/manual_non_exhaustive_struct.rs:14:5

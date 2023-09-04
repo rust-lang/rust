@@ -7,6 +7,7 @@ LL |     println!("error: {}", format!("something failed at {}", Location::calle
    = help: combine the `format!(..)` arguments with the outer `println!(..)` call
    = help: or consider changing `format!` to `format_args!`
    = note: `-D clippy::format-in-format-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::format_in_format_args)]`
 
 error: `format!` in `println!` args
   --> $DIR/format_args_unfixable.rs:28:5

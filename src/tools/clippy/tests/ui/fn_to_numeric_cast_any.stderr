@@ -5,6 +5,7 @@ LL |     let _ = foo as i8;
    |             ^^^^^^^^^ help: did you mean to invoke the function?: `foo() as i8`
    |
    = note: `-D clippy::fn-to-numeric-cast-any` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::fn_to_numeric_cast_any)]`
 
 error: casting function pointer `foo` to `i16`
   --> $DIR/fn_to_numeric_cast_any.rs:26:13

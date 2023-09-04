@@ -5,6 +5,7 @@ LL |     &vec[..].iter().count();
    |      ^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec[..].len()`
    |
    = note: `-D clippy::iter-count` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_count)]`
 
 error: called `.iter().count()` on a `Vec`
   --> $DIR/iter_count.rs:55:5

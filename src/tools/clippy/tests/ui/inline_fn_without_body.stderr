@@ -7,6 +7,7 @@ LL | |     fn default_inline();
    | |____- help: remove
    |
    = note: `-D clippy::inline-fn-without-body` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inline_fn_without_body)]`
 
 error: use of `#[inline]` on trait method `always_inline` which has no body
   --> $DIR/inline_fn_without_body.rs:8:5

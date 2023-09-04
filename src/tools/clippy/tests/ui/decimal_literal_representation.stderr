@@ -5,6 +5,7 @@ LL |         32_773,        // 0x8005
    |         ^^^^^^ help: consider: `0x8005`
    |
    = note: `-D clippy::decimal-literal-representation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::decimal_literal_representation)]`
 
 error: integer literal has a better hexadecimal representation
   --> $DIR/decimal_literal_representation.rs:17:9

@@ -5,6 +5,7 @@ LL |     vec.sort_by(|a, b| a.cmp(b));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort()`
    |
    = note: `-D clippy::unnecessary-sort-by` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_sort_by)]`
 
 error: use Vec::sort here instead
   --> $DIR/unnecessary_sort_by.rs:13:5

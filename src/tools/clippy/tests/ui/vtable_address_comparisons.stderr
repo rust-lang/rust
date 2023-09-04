@@ -6,6 +6,7 @@ LL |     let _ = a == b;
    |
    = help: consider extracting and comparing data pointers only
    = note: `-D clippy::vtable-address-comparisons` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::vtable_address_comparisons)]`
 
 error: comparing trait object pointers compares a non-unique vtable address
   --> $DIR/vtable_address_comparisons.rs:16:13

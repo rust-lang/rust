@@ -7,6 +7,7 @@ LL | |     }
    | |_____^ help: try: `u_8 = u_8.saturating_sub(1);`
    |
    = note: `-D clippy::implicit-saturating-sub` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::implicit_saturating_sub)]`
 
 error: implicitly performing saturating subtraction
   --> $DIR/implicit_saturating_sub.rs:34:13

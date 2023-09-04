@@ -7,6 +7,7 @@ LL |     pub fn box_test6<T>(foo: Box<Rc<T>>) {}
    = note: `Rc<T>` is already on the heap, `Box<Rc<T>>` makes an extra allocation
    = help: consider using just `Box<T>` or `Rc<T>`
    = note: `-D clippy::redundant-allocation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_allocation)]`
 
 error: usage of `Box<Arc<T>>`
   --> $DIR/redundant_allocation.rs:20:30

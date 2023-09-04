@@ -8,6 +8,7 @@ LL |     indirect_iter.into_iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>(
    |     ------------------------- the iterator could be used here instead
    |
    = note: `-D clippy::needless-collect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_collect)]`
 help: use the original Iterator instead of collecting it and then producing a new one
    |
 LL ~     

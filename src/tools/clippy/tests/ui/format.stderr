@@ -5,6 +5,7 @@ LL |     format!("foo");
    |     ^^^^^^^^^^^^^^ help: consider using `.to_string()`: `"foo".to_string()`
    |
    = note: `-D clippy::useless-format` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_format)]`
 
 error: useless use of `format!`
   --> $DIR/format.rs:21:5

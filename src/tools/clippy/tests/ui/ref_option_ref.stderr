@@ -5,6 +5,7 @@ LL | static REF_THRESHOLD: &Option<&i32> = &Some(&THRESHOLD);
    |                       ^^^^^^^^^^^^^ help: try: `Option<&i32>`
    |
    = note: `-D clippy::ref-option-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ref_option_ref)]`
 
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
   --> $DIR/ref_option_ref.rs:14:18

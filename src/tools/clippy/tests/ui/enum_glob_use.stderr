@@ -5,6 +5,7 @@ LL | use std::cmp::Ordering::*;
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::cmp::Ordering::Less`
    |
    = note: `-D clippy::enum-glob-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::enum_glob_use)]`
 
 error: usage of wildcard import for enum variants
   --> $DIR/enum_glob_use.rs:11:5

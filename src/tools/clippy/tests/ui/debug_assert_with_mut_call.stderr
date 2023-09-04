@@ -5,6 +5,7 @@ LL |     debug_assert!(bool_mut(&mut 3));
    |                   ^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::debug-assert-with-mut-call` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::debug_assert_with_mut_call)]`
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
   --> $DIR/debug_assert_with_mut_call.rs:45:20

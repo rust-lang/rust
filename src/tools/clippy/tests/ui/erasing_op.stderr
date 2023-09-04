@@ -5,6 +5,7 @@ LL |     x * 0;
    |     ^^^^^
    |
    = note: `-D clippy::erasing-op` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::erasing_op)]`
 
 error: this operation will always return zero. This is likely not the intended outcome
   --> $DIR/erasing_op.rs:38:5

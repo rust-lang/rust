@@ -6,6 +6,7 @@ LL | struct DiagnosticCtx<'a, 'b>
    |
    = help: use a more informative name
    = note: `-D clippy::single-char-lifetime-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_char_lifetime_names)]`
 
 error: single-character lifetime names are likely uninformative
   --> $DIR/single_char_lifetime_names.rs:5:26

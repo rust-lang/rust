@@ -5,6 +5,7 @@ LL |     let _ = option.or(Some("fallback")).unwrap(); // should trigger lint
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or("fallback")`
    |
    = note: `-D clippy::or-then-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::or_then_unwrap)]`
 
 error: found `.or(Ok(…)).unwrap()`
   --> $DIR/or_then_unwrap.rs:25:20
