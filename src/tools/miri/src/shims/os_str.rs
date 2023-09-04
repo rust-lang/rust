@@ -143,9 +143,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let arg_type = Ty::new_array(this.tcx.tcx, this.tcx.types.u8, size);
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
-        let (written, _) = self.write_os_str_to_c_str(os_str, arg_place.ptr, size).unwrap();
+        let (written, _) = self.write_os_str_to_c_str(os_str, arg_place.ptr(), size).unwrap();
         assert!(written);
-        Ok(arg_place.ptr)
+        Ok(arg_place.ptr())
     }
 
     /// Allocate enough memory to store the given `OsStr` as a null-terminated sequence of `u16`.
@@ -160,9 +160,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let arg_type = Ty::new_array(this.tcx.tcx, this.tcx.types.u16, size);
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
         let (written, _) =
-            self.write_os_str_to_wide_str(os_str, arg_place.ptr, size, /*truncate*/ false).unwrap();
+            self.write_os_str_to_wide_str(os_str, arg_place.ptr(), size, /*truncate*/ false).unwrap();
         assert!(written);
-        Ok(arg_place.ptr)
+        Ok(arg_place.ptr())
     }
 
     /// Read a null-terminated sequence of bytes, and perform path separator conversion if needed.

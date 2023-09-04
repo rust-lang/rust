@@ -22,8 +22,7 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use crate::MirPass;
 use rustc_const_eval::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, ConstValue, FnArg, Frame, ImmTy,
-    Immediate, InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, PlaceTy, Pointer, Scalar,
-    StackPopCleanup,
+    Immediate, InterpCx, InterpResult, MemoryKind, OpTy, PlaceTy, Pointer, Scalar, StackPopCleanup,
 };
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
@@ -225,11 +224,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         throw_machine_stop_str!("pointer arithmetic or comparisons aren't supported in ConstProp")
     }
 
-    fn access_local_mut<'a>(
+    fn before_access_local_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
         frame: usize,
         local: Local,
-    ) -> InterpResult<'tcx, &'a mut interpret::Operand<Self::Provenance>> {
+    ) -> InterpResult<'tcx> {
         assert_eq!(frame, 0);
         match ecx.machine.can_const_prop[local] {
             ConstPropMode::NoPropagation => {
@@ -242,7 +241,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
             }
             ConstPropMode::FullConstProp => {}
         }
-        ecx.machine.stack[frame].locals[local].access_mut()
+        Ok(())
     }
 
     fn before_access_global(
@@ -382,8 +381,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // mark those as live... We rely on `local_to_place`/`local_to_op` in the interpreter
             // stopping us before those unsized immediates can cause issues deeper in the
             // interpreter.
-            ecx.frame_mut().locals[local].value =
-                LocalValue::Live(interpret::Operand::Immediate(Immediate::Uninit));
+            ecx.frame_mut().locals[local].make_live_uninit();
         }
 
         ConstPropagator { ecx, tcx, param_env, local_decls: &dummy_body.local_decls }
@@ -392,7 +390,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn get_const(&self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
         let op = match self.ecx.eval_place_to_op(place, None) {
             Ok(op) => {
-                if matches!(*op, interpret::Operand::Immediate(Immediate::Uninit)) {
+                if op
+                    .as_mplace_or_imm()
+                    .right()
+                    .is_some_and(|imm| matches!(*imm, Immediate::Uninit))
+                {
                     // Make sure nobody accidentally uses this value.
                     return None;
                 }
@@ -415,8 +417,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// Remove `local` from the pool of `Locals`. Allows writing to them,
     /// but not reading from them anymore.
     fn remove_const(ecx: &mut InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>, local: Local) {
-        ecx.frame_mut().locals[local].value =
-            LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit));
+        ecx.frame_mut().locals[local].make_live_uninit();
         ecx.machine.written_only_inside_own_block_locals.remove(&local);
     }
 
@@ -743,7 +744,8 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
     ) -> Option<PlaceElem<'tcx>> {
         if let PlaceElem::Index(local) = elem
             && let Some(value) = self.get_const(local.into())
-            && let interpret::Operand::Immediate(Immediate::Scalar(scalar)) = *value
+            && let Some(imm) = value.as_mplace_or_imm().right()
+            && let Immediate::Scalar(scalar) = *imm
             && let Ok(offset) = scalar.to_target_usize(&self.tcx)
             && let Some(min_length) = offset.checked_add(1)
         {

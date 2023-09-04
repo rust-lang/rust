@@ -89,7 +89,7 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
 }
 
 /// A type representing iteration over the elements of an array.
-pub struct ArrayIterator<'tcx, 'a, Prov: Provenance + 'static, P: Projectable<'tcx, Prov>> {
+pub struct ArrayIterator<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>> {
     base: &'a P,
     range: Range<u64>,
     stride: Size,
@@ -97,9 +97,7 @@ pub struct ArrayIterator<'tcx, 'a, Prov: Provenance + 'static, P: Projectable<'t
     _phantom: PhantomData<Prov>, // otherwise it says `Prov` is never used...
 }
 
-impl<'tcx, 'a, Prov: Provenance + 'static, P: Projectable<'tcx, Prov>>
-    ArrayIterator<'tcx, 'a, Prov, P>
-{
+impl<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>> ArrayIterator<'tcx, 'a, Prov, P> {
     /// Should be the same `ecx` on each call, and match the one used to create the iterator.
     pub fn next<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &mut self,
@@ -113,7 +111,7 @@ impl<'tcx, 'a, Prov: Provenance + 'static, P: Projectable<'tcx, Prov>>
 // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
 impl<'mir, 'tcx: 'mir, Prov, M> InterpCx<'mir, 'tcx, M>
 where
-    Prov: Provenance + 'static,
+    Prov: Provenance,
     M: Machine<'mir, 'tcx, Provenance = Prov>,
 {
     /// Offset a pointer to project to a field of a struct/union. Unlike `place_field`, this is

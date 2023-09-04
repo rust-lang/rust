@@ -381,7 +381,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Store how far we proceeded into the place so far. Everything to the left of
         // this offset has already been handled, in the sense that the frozen parts
         // have had `action` called on them.
-        let start_addr = place.ptr.addr();
+        let start_addr = place.ptr().addr();
         let mut cur_addr = start_addr;
         // Called when we detected an `UnsafeCell` at the given offset and size.
         // Calls `action` and advances `cur_ptr`.
@@ -413,7 +413,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let mut visitor = UnsafeCellVisitor {
                 ecx: this,
                 unsafe_cell_action: |place| {
-                    trace!("unsafe_cell_action on {:?}", place.ptr);
+                    trace!("unsafe_cell_action on {:?}", place.ptr());
                     // We need a size to go on.
                     let unsafe_cell_size = this
                         .size_and_align_of_mplace(place)?
@@ -422,7 +422,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         .unwrap_or_else(|| place.layout.size);
                     // Now handle this `UnsafeCell`, unless it is empty.
                     if unsafe_cell_size != Size::ZERO {
-                        unsafe_cell_action(&place.ptr, unsafe_cell_size)
+                        unsafe_cell_action(&place.ptr(), unsafe_cell_size)
                     } else {
                         Ok(())
                     }
@@ -432,7 +432,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
         // The part between the end_ptr and the end of the place is also frozen.
         // So pretend there is a 0-sized `UnsafeCell` at the end.
-        unsafe_cell_action(&place.ptr.offset(size, this)?, Size::ZERO)?;
+        unsafe_cell_action(&place.ptr().offset(size, this)?, Size::ZERO)?;
         // Done!
         return Ok(());
 
@@ -994,10 +994,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Mark a machine allocation that was just created as immutable.
-    fn mark_immutable(&mut self, mplace: &MemPlace<Provenance>) {
+    fn mark_immutable(&mut self, mplace: &MPlaceTy<'tcx, Provenance>) {
         let this = self.eval_context_mut();
         // This got just allocated, so there definitely is a pointer here.
-        let provenance = mplace.ptr.into_pointer_or_addr().unwrap().provenance;
+        let provenance = mplace.ptr().into_pointer_or_addr().unwrap().provenance;
         this.alloc_mark_immutable(provenance.get_alloc_id().unwrap()).unwrap();
     }
 

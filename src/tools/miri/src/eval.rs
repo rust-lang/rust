@@ -242,10 +242,7 @@ impl MainThreadState {
                 },
             Done => {
                 // Figure out exit code.
-                let ret_place = MPlaceTy::from_aligned_ptr(
-                    this.machine.main_fn_ret_place.unwrap().ptr,
-                    this.machine.layouts.isize,
-                );
+                let ret_place = this.machine.main_fn_ret_place.clone().unwrap();
                 let exit_code = this.read_target_isize(&ret_place)?;
                 // Need to call this ourselves since we are not going to return to the scheduler
                 // loop, and we want the main thread TLS to not show up as memory leaks.
@@ -308,7 +305,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             let arg_type = Ty::new_array(tcx, tcx.types.u8, size);
             let arg_place =
                 ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Machine.into())?;
-            ecx.write_os_str_to_c_str(OsStr::new(arg), arg_place.ptr, size)?;
+            ecx.write_os_str_to_c_str(OsStr::new(arg), arg_place.ptr(), size)?;
             ecx.mark_immutable(&arg_place);
             argvs.push(arg_place.to_ref(&ecx));
         }
@@ -332,7 +329,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
             ecx.write_scalar(argc, &argc_place)?;
             ecx.mark_immutable(&argc_place);
-            ecx.machine.argc = Some(*argc_place);
+            ecx.machine.argc = Some(argc_place.ptr());
 
             let argv_place = ecx.allocate(
                 ecx.layout_of(Ty::new_imm_ptr(tcx, tcx.types.unit))?,
@@ -340,7 +337,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             )?;
             ecx.write_immediate(argv, &argv_place)?;
             ecx.mark_immutable(&argv_place);
-            ecx.machine.argv = Some(*argv_place);
+            ecx.machine.argv = Some(argv_place.ptr());
         }
         // Store command line as UTF-16 for Windows `GetCommandLineW`.
         {
@@ -351,7 +348,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 Ty::new_array(tcx, tcx.types.u16, u64::try_from(cmd_utf16.len()).unwrap());
             let cmd_place =
                 ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Machine.into())?;
-            ecx.machine.cmd_line = Some(*cmd_place);
+            ecx.machine.cmd_line = Some(cmd_place.ptr());
             // Store the UTF-16 string. We just allocated so we know the bounds are fine.
             for (idx, &c) in cmd_utf16.iter().enumerate() {
                 let place = ecx.project_field(&cmd_place, idx)?;
@@ -364,7 +361,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
     // Return place (in static memory so that it does not count as leak).
     let ret_place = ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
-    ecx.machine.main_fn_ret_place = Some(*ret_place);
+    ecx.machine.main_fn_ret_place = Some(ret_place.clone());
     // Call start function.
 
     match entry_type {

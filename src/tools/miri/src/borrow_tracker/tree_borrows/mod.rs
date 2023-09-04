@@ -172,7 +172,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         let this = self.eval_context_mut();
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
         this.check_ptr_access_align(
-            place.ptr,
+            place.ptr(),
             ptr_size,
             Align::ONE,
             CheckInAllocMsg::InboundsTest,
@@ -197,7 +197,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         };
 
         trace!("Reborrow of size {:?}", ptr_size);
-        let (alloc_id, base_offset, parent_prov) = match this.ptr_try_get_alloc_id(place.ptr) {
+        let (alloc_id, base_offset, parent_prov) = match this.ptr_try_get_alloc_id(place.ptr()) {
             Ok(data) => {
                 // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
                 // After all, the pointer may be lazily initialized outside this initial range.
@@ -210,18 +210,18 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 trace!(
                     "reborrow of size 0: reference {:?} derived from {:?} (pointee {})",
                     new_tag,
-                    place.ptr,
+                    place.ptr(),
                     place.layout.ty,
                 );
                 log_creation(this, None)?;
                 // Keep original provenance.
-                return Ok(place.ptr.provenance);
+                return Ok(place.ptr().provenance);
             }
         };
         log_creation(this, Some((alloc_id, base_offset, parent_prov)))?;
 
         let orig_tag = match parent_prov {
-            ProvenanceExtra::Wildcard => return Ok(place.ptr.provenance), // TODO: handle wildcard pointers
+            ProvenanceExtra::Wildcard => return Ok(place.ptr().provenance), // TODO: handle wildcard pointers
             ProvenanceExtra::Concrete(tag) => tag,
         };
 
