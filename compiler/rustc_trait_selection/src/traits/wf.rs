@@ -518,6 +518,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     /// Pushes all the predicates needed to validate that `ty` is WF into `out`.
     #[instrument(level = "debug", skip(self))]
     fn compute(&mut self, arg: GenericArg<'tcx>) {
+        let tcx = self.tcx();
         let mut walker = arg.walk();
         let param_env = self.param_env;
         let depth = self.recursion_depth;
@@ -542,7 +543,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                 ));
                                 let cause = self.cause(traits::WellFormed(None));
                                 self.out.push(traits::Obligation::with_depth(
-                                    self.tcx(),
+                                    tcx,
                                     cause,
                                     self.recursion_depth,
                                     self.param_env,
@@ -554,7 +555,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             let cause = self.cause(traits::WellFormed(None));
 
                             self.out.push(traits::Obligation::with_depth(
-                                self.tcx(),
+                                tcx,
                                 cause,
                                 self.recursion_depth,
                                 self.param_env,
@@ -576,7 +577,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             ));
                             let cause = self.cause(traits::WellFormed(None));
                             self.out.push(traits::Obligation::with_depth(
-                                self.tcx(),
+                                tcx,
                                 cause,
                                 self.recursion_depth,
                                 self.param_env,
@@ -661,6 +662,16 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 }
 
                 ty::FnDef(did, args) => {
+                    // HACK: Check the return type of function definitions for
+                    // well-formedness to mostly fix #84533. This is still not
+                    // perfect and there may be ways to abuse the fact that we
+                    // ignore requirements with escaping bound vars. That's a
+                    // more general issue however.
+                    //
+                    // FIXME(eddyb) add the type to `walker` instead of recursing.
+                    let fn_sig = tcx.fn_sig(did).instantiate(tcx, args);
+                    self.compute(fn_sig.output().skip_binder().into());
+
                     let obligations = self.nominal_obligations(did, args);
                     self.out.extend(obligations);
                 }
@@ -670,7 +681,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     if !r.has_escaping_bound_vars() && !rty.has_escaping_bound_vars() {
                         let cause = self.cause(traits::ReferenceOutlivesReferent(ty));
                         self.out.push(traits::Obligation::with_depth(
-                            self.tcx(),
+                            tcx,
                             cause,
                             depth,
                             param_env,
@@ -745,7 +756,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // All of the requirements on type parameters
                     // have already been checked for `impl Trait` in
                     // return position. We do need to check type-alias-impl-trait though.
-                    if self.tcx().is_type_alias_impl_trait(def_id) {
+                    if tcx.is_type_alias_impl_trait(def_id) {
                         let obligations = self.nominal_obligations(def_id, args);
                         self.out.extend(obligations);
                     }
@@ -767,12 +778,12 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // obligations that don't refer to Self and
                     // checking those
 
-                    let defer_to_coercion = self.tcx().features().object_safe_for_dispatch;
+                    let defer_to_coercion = tcx.features().object_safe_for_dispatch;
 
                     if !defer_to_coercion {
                         let cause = self.cause(traits::WellFormed(None));
                         let component_traits = data.auto_traits().chain(data.principal_def_id());
-                        let tcx = self.tcx();
+                        let tcx = tcx;
                         self.out.extend(component_traits.map(|did| {
                             traits::Obligation::with_depth(
                                 tcx,
@@ -800,7 +811,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 ty::Infer(_) => {
                     let cause = self.cause(traits::WellFormed(None));
                     self.out.push(traits::Obligation::with_depth(
-                        self.tcx(),
+                        tcx,
                         cause,
                         self.recursion_depth,
                         param_env,
