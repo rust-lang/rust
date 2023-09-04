@@ -391,7 +391,7 @@ pub enum Mutability {
     Mut,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Safety {
     Unsafe,
     Normal,

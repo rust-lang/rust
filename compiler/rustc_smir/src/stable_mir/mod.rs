@@ -20,6 +20,7 @@ use self::ty::{
 };
 use crate::rustc_smir::Tables;
 
+pub mod fold;
 pub mod mir;
 pub mod ty;
 pub mod visitor;
@@ -157,6 +158,9 @@ pub trait Context {
 
     /// Obtain the representation of a type.
     fn ty_kind(&mut self, ty: Ty) -> TyKind;
+
+    /// Create a new `Ty` from scratch without information from rustc.
+    fn mk_ty(&mut self, kind: TyKind) -> Ty;
 
     /// HACK: Until we have fully stable consumers, we need an escape hatch
     /// to get `DefId`s out of `CrateItem`s.

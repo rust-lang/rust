@@ -10,6 +10,12 @@ impl Ty {
     }
 }
 
+impl From<TyKind> for Ty {
+    fn from(value: TyKind) -> Self {
+        with(|context| context.mk_ty(value))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Const {
     pub literal: ConstantKind,

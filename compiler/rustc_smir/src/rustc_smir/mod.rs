@@ -103,8 +103,13 @@ impl<'tcx> Context for Tables<'tcx> {
     }
 
     fn ty_kind(&mut self, ty: crate::stable_mir::ty::Ty) -> TyKind {
-        let ty = self.types[ty.0];
-        ty.stable(self)
+        self.types[ty.0].clone().stable(self)
+    }
+
+    fn mk_ty(&mut self, kind: TyKind) -> stable_mir::ty::Ty {
+        let n = self.types.len();
+        self.types.push(MaybeStable::Stable(kind));
+        stable_mir::ty::Ty(n)
     }
 
     fn generics_of(&mut self, def_id: stable_mir::DefId) -> stable_mir::ty::Generics {
@@ -128,20 +133,47 @@ impl<'tcx> Context for Tables<'tcx> {
     }
 }
 
+#[derive(Clone)]
+pub enum MaybeStable<S, R> {
+    Stable(S),
+    Rustc(R),
+}
+
+impl<'tcx, S, R> MaybeStable<S, R> {
+    fn stable(self, tables: &mut Tables<'tcx>) -> S
+    where
+        R: Stable<'tcx, T = S>,
+    {
+        match self {
+            MaybeStable::Stable(s) => s,
+            MaybeStable::Rustc(r) => r.stable(tables),
+        }
+    }
+}
+
+impl<S, R: PartialEq> PartialEq<R> for MaybeStable<S, R> {
+    fn eq(&self, other: &R) -> bool {
+        match self {
+            MaybeStable::Stable(_) => false,
+            MaybeStable::Rustc(r) => r == other,
+        }
+    }
+}
+
 pub struct Tables<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub def_ids: Vec<DefId>,
     pub alloc_ids: Vec<AllocId>,
-    pub types: Vec<Ty<'tcx>>,
+    pub types: Vec<MaybeStable<stable_mir::ty::TyKind, Ty<'tcx>>>,
 }
 
 impl<'tcx> Tables<'tcx> {
     fn intern_ty(&mut self, ty: Ty<'tcx>) -> stable_mir::ty::Ty {
-        if let Some(id) = self.types.iter().position(|&t| t == ty) {
+        if let Some(id) = self.types.iter().position(|t| *t == ty) {
             return stable_mir::ty::Ty(id);
         }
         let id = self.types.len();
-        self.types.push(ty);
+        self.types.push(MaybeStable::Rustc(ty));
         stable_mir::ty::Ty(id)
     }
 }
