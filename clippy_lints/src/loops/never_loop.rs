@@ -275,10 +275,9 @@ fn never_loop_expr<'tcx>(
         let Some(macro_call) = root_macro_call_first_node(cx, expr) &&
         let Some(sym::todo_macro) = cx.tcx.get_diagnostic_name(macro_call.def_id)
     {
-        // We return MayContinueMainLoop here because we treat `todo!()` and
-        // `unimplemented!()` macros as potentially containing any code,
-        // including a continue of the main loop. This effectively silences the lint
-        // whenever a loop contains one of these macros anywhere.
+        // We return MayContinueMainLoop here because we treat `todo!()`
+        // as potentially containing any code, including a continue of the main loop.
+        // This effectively silences the lint whenever a loop contains this macro anywhere.
         NeverLoopResult::MayContinueMainLoop
     } else {
         result
