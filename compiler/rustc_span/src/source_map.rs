@@ -262,10 +262,9 @@ impl SourceMap {
 
     fn register_source_file(
         &self,
+        file_id: StableSourceFileId,
         mut file: SourceFile,
     ) -> Result<Lrc<SourceFile>, OffsetOverflowError> {
-        let file_id = StableSourceFileId::new(&file);
-
         let mut files = self.files.borrow_mut();
 
         file.start_pos = BytePos(if let Some(last_file) = files.source_files.last() {
@@ -313,7 +312,7 @@ impl SourceMap {
                 // the ID we generate for the SourceFile we just created.
                 debug_assert_eq!(StableSourceFileId::new(&source_file), file_id);
 
-                self.register_source_file(source_file)
+                self.register_source_file(file_id, source_file)
             }
         }
     }
@@ -355,7 +354,8 @@ impl SourceMap {
             cnum,
         };
 
-        self.register_source_file(source_file)
+        let file_id = StableSourceFileId::new(&source_file);
+        self.register_source_file(file_id, source_file)
             .expect("not enough address space for imported source file")
     }
 
