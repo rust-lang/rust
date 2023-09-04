@@ -12,6 +12,8 @@
 //! If you need an internal construct, consider using `rustc_internal` or `rustc_smir`.
 
 use std::cell::Cell;
+use std::fmt;
+use std::fmt::Debug;
 
 use self::ty::{
     GenericPredicates, Generics, ImplDef, ImplTrait, Span, TraitDecl, TraitDef, Ty, TyKind,
@@ -29,8 +31,17 @@ pub type Symbol = String;
 pub type CrateNum = usize;
 
 /// A unique identification number for each item accessible for the current compilation unit.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct DefId(pub(crate) usize);
+
+impl Debug for DefId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DefId:")
+            .field("id", &self.0)
+            .field("name", &with(|cx| cx.name_of_def_id(*self)))
+            .finish()
+    }
+}
 
 /// A unique identification number for each provenance
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -126,6 +137,9 @@ pub trait Context {
 
     /// Find a crate with the given name.
     fn find_crate(&self, name: &str) -> Option<Crate>;
+
+    /// Prints the name of given `DefId`
+    fn name_of_def_id(&self, def_id: DefId) -> String;
 
     /// Obtain the representation of a type.
     fn ty_kind(&mut self, ty: Ty) -> TyKind;
