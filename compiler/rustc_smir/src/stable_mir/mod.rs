@@ -62,7 +62,7 @@ pub struct CrateItem(pub(crate) DefId);
 
 impl CrateItem {
     pub fn body(&self) -> mir::Body {
-        with(|cx| cx.mir_body(self))
+        with(|cx| cx.mir_body(self.0))
     }
 }
 
@@ -113,7 +113,7 @@ pub trait Context {
     fn entry_fn(&mut self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.
     fn all_local_items(&mut self) -> CrateItems;
-    fn mir_body(&mut self, item: &CrateItem) -> mir::Body;
+    fn mir_body(&mut self, item: DefId) -> mir::Body;
     fn all_trait_decls(&mut self) -> TraitDecls;
     fn trait_decl(&mut self, trait_def: &TraitDef) -> TraitDecl;
     fn all_trait_impls(&mut self) -> ImplTraitDecls;
