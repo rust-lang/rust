@@ -7,9 +7,11 @@ fn foo() -> Result<(), ()> {
 
 fn main() {
     match foo() {
-        Ok(_) => {},
-        Err(_) => {},
+        Ok(_) => {},  //~ ERROR: matching over `()` is more explicit
+        Err(_) => {}, //~ ERROR: matching over `()` is more explicit
     }
     if let Ok(_) = foo() {}
+    //~^ ERROR: matching over `()` is more explicit
     let _ = foo().map_err(|_| todo!());
+    //~^ ERROR: matching over `()` is more explicit
 }
