@@ -8,6 +8,7 @@
 
 #![feature(rustc_private)]
 #![feature(assert_matches)]
+#![feature(control_flow_enum)]
 
 extern crate rustc_hir;
 extern crate rustc_middle;
@@ -15,7 +16,10 @@ extern crate rustc_smir;
 
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::TyCtxt;
-use rustc_smir::{rustc_internal, stable_mir};
+use rustc_smir::{
+    rustc_internal,
+    stable_mir::{self, fold::Foldable},
+};
 use std::assert_matches::assert_matches;
 use std::io::Write;
 
@@ -115,7 +119,30 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
             stable_mir::mir::Terminator::Call { func, .. } => match func {
                 stable_mir::mir::Operand::Constant(c) => match &c.literal.literal {
                     stable_mir::ty::ConstantKind::Allocated(alloc) => {
-                        assert!(alloc.bytes.is_empty())
+                        assert!(alloc.bytes.is_empty());
+                        match c.literal.ty.kind() {
+                            stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::FnDef(
+                                def,
+                                mut args,
+                            )) => {
+                                let func = def.body();
+                                match func.locals[1]
+                                    .fold(&mut args)
+                                    .continue_value()
+                                    .unwrap()
+                                    .kind()
+                                {
+                                    stable_mir::ty::TyKind::RigidTy(
+                                        stable_mir::ty::RigidTy::Uint(_),
+                                    ) => {}
+                                    stable_mir::ty::TyKind::RigidTy(
+                                        stable_mir::ty::RigidTy::Tuple(_),
+                                    ) => {}
+                                    other => panic!("{other:?}"),
+                                }
+                            }
+                            other => panic!("{other:?}"),
+                        }
                     }
                     other => panic!("{other:?}"),
                 },
