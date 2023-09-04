@@ -799,6 +799,11 @@
                         "Do no snippet completions for callables."
                     ]
                 },
+                "rust-analyzer.completion.fullFunctionSignatures.enable": {
+                    "markdownDescription": "Whether to show full function/method signatures in completion docs.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.completion.limit": {
                     "markdownDescription": "Maximum number of completions to return. If `None`, the limit is infinite.",
                     "default": null,

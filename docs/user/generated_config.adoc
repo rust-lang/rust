@@ -244,6 +244,11 @@ with `self` prefixed to them when inside a method.
 --
 Whether to add parenthesis and argument snippets when completing function.
 --
+[[rust-analyzer.completion.fullFunctionSignatures.enable]]rust-analyzer.completion.fullFunctionSignatures.enable (default: `false`)::
++
+--
+Whether to show full function/method signatures in completion docs.
+--
 [[rust-analyzer.completion.limit]]rust-analyzer.completion.limit (default: `null`)::
 +
 --
