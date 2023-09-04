@@ -1109,7 +1109,7 @@ impl fmt::Debug for SpanData {
 /// Identifies an offset of a multi-byte character in a `SourceFile`.
 #[derive(Copy, Clone, Encodable, Decodable, Eq, PartialEq, Debug, HashStable_Generic)]
 pub struct MultiByteChar {
-    /// The absolute offset of the character in the `SourceMap`.
+    /// The relative offset of the character in the `SourceFile`.
     pub pos: RelativeBytePos,
     /// The number of bytes, `>= 2`.
     pub bytes: u8,
@@ -1136,7 +1136,7 @@ impl NonNarrowChar {
         }
     }
 
-    /// Returns the absolute offset of the character in the `SourceMap`.
+    /// Returns the relative offset of the character in the `SourceFile`.
     pub fn pos(&self) -> RelativeBytePos {
         match *self {
             NonNarrowChar::ZeroWidth(p) | NonNarrowChar::Wide(p) | NonNarrowChar::Tab(p) => p,
@@ -1180,7 +1180,7 @@ impl Sub<RelativeBytePos> for NonNarrowChar {
 /// Identifies an offset of a character that was normalized away from `SourceFile`.
 #[derive(Copy, Clone, Encodable, Decodable, Eq, PartialEq, Debug, HashStable_Generic)]
 pub struct NormalizedPos {
-    /// The absolute offset of the character in the `SourceMap`.
+    /// The relative offset of the character in the `SourceFile`.
     pub pos: RelativeBytePos,
     /// The difference between original and normalized string at position.
     pub diff: u32,
@@ -1351,7 +1351,7 @@ pub struct SourceFile {
     pub external_src: Lock<ExternalSource>,
     /// The start position of this source in the `SourceMap`.
     pub start_pos: BytePos,
-    /// The end position of this source in the `SourceMap`.
+    /// The byte length of this source.
     pub source_len: RelativeBytePos,
     /// Locations of lines beginnings in the source code.
     pub lines: Lock<SourceFileLines>,
@@ -1794,7 +1794,7 @@ impl SourceFile {
         BytePos::from_u32(self.start_pos.0 + offset - diff)
     }
 
-    /// Converts an absolute `BytePos` to a `CharPos` relative to the `SourceFile`.
+    /// Converts an relative `RelativeBytePos` to a `CharPos` relative to the `SourceFile`.
     fn bytepos_to_file_charpos(&self, bpos: RelativeBytePos) -> CharPos {
         // The number of extra bytes due to multibyte chars in the `SourceFile`.
         let mut total_extra_bytes = 0;
@@ -1818,7 +1818,7 @@ impl SourceFile {
     }
 
     /// Looks up the file's (1-based) line number and (0-based `CharPos`) column offset, for a
-    /// given `BytePos`.
+    /// given `RelativeBytePos`.
     fn lookup_file_pos(&self, pos: RelativeBytePos) -> (usize, CharPos) {
         let chpos = self.bytepos_to_file_charpos(pos);
         match self.lookup_line(pos) {
@@ -2028,8 +2028,6 @@ impl_pos! {
     pub struct BytePos(pub u32);
 
     /// A byte offset relative to file beginning.
-    ///
-    /// Keep this small (currently 32-bits), as AST contains a lot of them.
     #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
     pub struct RelativeBytePos(pub u32);
 
