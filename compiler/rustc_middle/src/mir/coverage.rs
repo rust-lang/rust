@@ -135,6 +135,20 @@ impl Op {
     }
 }
 
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub struct Mapping {
+    pub code_region: CodeRegion,
+
+    /// Indicates whether this mapping uses a counter value, expression value,
+    /// or zero value.
+    ///
+    /// FIXME: When we add support for mapping kinds other than `Code`
+    /// (e.g. branch regions, expansion regions), replace this with a dedicated
+    /// mapping-kind enum.
+    pub term: CovTerm,
+}
+
 /// Stores per-function coverage information attached to a `mir::Body`,
 /// to be used in conjunction with the individual coverage statements injected
 /// into the function's basic blocks.

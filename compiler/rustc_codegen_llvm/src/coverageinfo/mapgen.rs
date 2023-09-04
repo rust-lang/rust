@@ -61,7 +61,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     let mut function_data = Vec::new();
     for (instance, mut function_coverage) in function_coverage_map {
         debug!("Generate function coverage for {}, {:?}", cx.codegen_unit.name(), instance);
-        function_coverage.simplify_expressions();
+        function_coverage.finalize();
         let function_coverage = function_coverage;
 
         let mangled_function_name = tcx.symbol_name(instance).name;
@@ -169,10 +169,11 @@ fn encode_mappings_for_function(
     let mut virtual_file_mapping = IndexVec::<u32, u32>::new();
     let mut mapping_regions = Vec::with_capacity(counter_regions.len());
 
-    // Sort the list of (counter, region) mapping pairs by region, so that they
-    // can be grouped by filename. Prepare file IDs for each filename, and
-    // prepare the mapping data so that we can pass it through FFI to LLVM.
-    counter_regions.sort_by_key(|(_counter, region)| *region);
+    // Sort and group the list of (counter, region) mapping pairs by filename.
+    // (Preserve any further ordering imposed by `FunctionCoverage`.)
+    // Prepare file IDs for each filename, and prepare the mapping data so that
+    // we can pass it through FFI to LLVM.
+    counter_regions.sort_by_key(|(_counter, region)| region.file_name);
     for counter_regions_for_file in
         counter_regions.group_by(|(_, a), (_, b)| a.file_name == b.file_name)
     {

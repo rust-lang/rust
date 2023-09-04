@@ -1,9 +1,10 @@
 use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{
-    CodeRegion, CounterId, CovTerm, ExpressionId, FunctionCoverageInfo, Op,
+    CodeRegion, CounterId, CovTerm, ExpressionId, FunctionCoverageInfo, Mapping, Op,
 };
 use rustc_middle::ty::Instance;
 
@@ -12,28 +13,21 @@ pub struct Expression {
     lhs: CovTerm,
     op: Op,
     rhs: CovTerm,
-    code_regions: Vec<CodeRegion>,
 }
 
-/// Collects all of the coverage regions associated with (a) injected counters, (b) counter
-/// expressions (additions or subtraction), and (c) unreachable regions (always counted as zero),
-/// for a given Function. This struct also stores the `function_source_hash`,
-/// computed during instrumentation, and forwarded with counters.
-///
-/// Note, it may be important to understand LLVM's definitions of `unreachable` regions versus "gap
-/// regions" (or "gap areas"). A gap region is a code region within a counted region (either counter
-/// or expression), but the line or lines in the gap region are not executable (such as lines with
-/// only whitespace or comments). According to LLVM Code Coverage Mapping documentation, "A count
-/// for a gap area is only used as the line execution count if there are no other regions on a
-/// line."
+/// Holds all of the coverage mapping data associated with a function instance,
+/// collected during traversal of `Coverage` statements in the function's MIR.
 #[derive(Debug)]
 pub struct FunctionCoverage<'tcx> {
     /// Coverage info that was attached to this function by the instrumentor.
     function_coverage_info: &'tcx FunctionCoverageInfo,
     is_used: bool,
-    counters: IndexVec<CounterId, Option<Vec<CodeRegion>>>,
+
+    /// Tracks which counters have been seen, to avoid duplicate mappings
+    /// that might be introduced by MIR inlining.
+    counters_seen: BitSet<CounterId>,
     expressions: IndexVec<ExpressionId, Option<Expression>>,
-    unreachable_regions: Vec<CodeRegion>,
+    mappings: Vec<Mapping>,
 }
 
 impl<'tcx> FunctionCoverage<'tcx> {
@@ -67,9 +61,9 @@ impl<'tcx> FunctionCoverage<'tcx> {
         Self {
             function_coverage_info,
             is_used,
-            counters: IndexVec::from_elem_n(None, num_counters),
+            counters_seen: BitSet::new_empty(num_counters),
             expressions: IndexVec::from_elem_n(None, num_expressions),
-            unreachable_regions: Vec::new(),
+            mappings: Vec::new(),
         }
     }
 
@@ -81,19 +75,8 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// Adds code regions to be counted by an injected counter intrinsic.
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn add_counter(&mut self, id: CounterId, code_regions: &[CodeRegion]) {
-        if code_regions.is_empty() {
-            return;
-        }
-
-        let slot = &mut self.counters[id];
-        match slot {
-            None => *slot = Some(code_regions.to_owned()),
-            // If this counter ID slot has already been filled, it should
-            // contain identical information.
-            Some(ref previous_regions) => assert_eq!(
-                previous_regions, code_regions,
-                "add_counter: code regions for id changed"
-            ),
+        if self.counters_seen.insert(id) {
+            self.add_mappings(CovTerm::Counter(id), code_regions);
         }
     }
 
@@ -121,10 +104,13 @@ impl<'tcx> FunctionCoverage<'tcx> {
             self,
         );
 
-        let expression = Expression { lhs, op, rhs, code_regions: code_regions.to_owned() };
+        let expression = Expression { lhs, op, rhs };
         let slot = &mut self.expressions[expression_id];
         match slot {
-            None => *slot = Some(expression),
+            None => {
+                *slot = Some(expression);
+                self.add_mappings(CovTerm::Expression(expression_id), code_regions);
+            }
             // If this expression ID slot has already been filled, it should
             // contain identical information.
             Some(ref previous_expression) => assert_eq!(
@@ -138,7 +124,25 @@ impl<'tcx> FunctionCoverage<'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn add_unreachable_regions(&mut self, code_regions: &[CodeRegion]) {
         assert!(!code_regions.is_empty(), "unreachable regions always have code regions");
-        self.unreachable_regions.extend_from_slice(code_regions);
+        self.add_mappings(CovTerm::Zero, code_regions);
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn add_mappings(&mut self, term: CovTerm, code_regions: &[CodeRegion]) {
+        self.mappings
+            .extend(code_regions.iter().cloned().map(|code_region| Mapping { term, code_region }));
+    }
+
+    pub(crate) fn finalize(&mut self) {
+        self.simplify_expressions();
+
+        // Reorder the collected mappings so that counter mappings are first and
+        // zero mappings are last, matching the historical order.
+        self.mappings.sort_by_key(|mapping| match mapping.term {
+            CovTerm::Counter(_) => 0,
+            CovTerm::Expression(_) => 1,
+            CovTerm::Zero => u8::MAX,
+        });
     }
 
     /// Perform some simplifications to make the final coverage mappings
@@ -147,7 +151,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// This method mainly exists to preserve the simplifications that were
     /// already being performed by the Rust-side expression renumbering, so that
     /// the resulting coverage mappings don't get worse.
-    pub(crate) fn simplify_expressions(&mut self) {
+    fn simplify_expressions(&mut self) {
         // The set of expressions that either were optimized out entirely, or
         // have zero as both of their operands, and will therefore always have
         // a value of zero. Other expressions that refer to these as operands
@@ -212,25 +216,8 @@ impl<'tcx> FunctionCoverage<'tcx> {
         assert_eq!(self.expressions.len(), counter_expressions.len());
 
         let counter_regions = self.counter_regions();
-        let expression_regions = self.expression_regions();
-        let unreachable_regions = self.unreachable_regions();
 
-        let counter_regions =
-            counter_regions.chain(expression_regions.into_iter().chain(unreachable_regions));
         (counter_expressions, counter_regions)
-    }
-
-    fn counter_regions(&self) -> impl Iterator<Item = (Counter, &CodeRegion)> {
-        self.counters
-            .iter_enumerated()
-            // Filter out counter IDs that we never saw during MIR traversal.
-            // This can happen if a counter was optimized out by MIR transforms
-            // (and replaced with `CoverageKind::Unreachable` instead).
-            .filter_map(|(id, maybe_code_regions)| Some((id, maybe_code_regions.as_ref()?)))
-            .flat_map(|(id, code_regions)| {
-                let counter = Counter::counter_value_reference(id);
-                code_regions.iter().map(move |region| (counter, region))
-            })
     }
 
     /// Convert this function's coverage expression data into a form that can be
@@ -266,24 +253,12 @@ impl<'tcx> FunctionCoverage<'tcx> {
             .collect::<Vec<_>>()
     }
 
-    fn expression_regions(&self) -> Vec<(Counter, &CodeRegion)> {
-        // Find all of the expression IDs that weren't optimized out AND have
-        // one or more attached code regions, and return the corresponding
-        // mappings as counter/region pairs.
-        self.expressions
-            .iter_enumerated()
-            .filter_map(|(id, maybe_expression)| {
-                let code_regions = &maybe_expression.as_ref()?.code_regions;
-                Some((id, code_regions))
-            })
-            .flat_map(|(id, code_regions)| {
-                let counter = Counter::expression(id);
-                code_regions.iter().map(move |code_region| (counter, code_region))
-            })
-            .collect::<Vec<_>>()
-    }
-
-    fn unreachable_regions(&self) -> impl Iterator<Item = (Counter, &CodeRegion)> {
-        self.unreachable_regions.iter().map(|region| (Counter::ZERO, region))
+    /// Converts this function's coverage mappings into an intermediate form
+    /// that will be used by `mapgen` when preparing for FFI.
+    fn counter_regions(&self) -> impl Iterator<Item = (Counter, &CodeRegion)> {
+        self.mappings.iter().map(|&Mapping { term, ref code_region }| {
+            let counter = Counter::from_term(term);
+            (counter, code_region)
+        })
     }
 }
