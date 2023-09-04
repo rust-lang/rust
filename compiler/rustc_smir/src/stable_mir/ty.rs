@@ -1,4 +1,8 @@
-use super::{mir::Mutability, mir::Safety, with, AllocId, DefId};
+use super::{
+    mir::Safety,
+    mir::{Body, Mutability},
+    with, AllocId, DefId,
+};
 use crate::rustc_internal::Opaque;
 
 #[derive(Copy, Clone, Debug)]
@@ -94,6 +98,12 @@ pub struct ForeignDef(pub(crate) DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct FnDef(pub(crate) DefId);
+
+impl FnDef {
+    pub fn body(&self) -> Body {
+        with(|ctx| ctx.mir_body(self.0))
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ClosureDef(pub(crate) DefId);
