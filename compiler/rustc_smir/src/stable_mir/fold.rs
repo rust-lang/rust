@@ -3,8 +3,8 @@ use std::ops::ControlFlow;
 use crate::rustc_internal::Opaque;
 
 use super::ty::{
-    Allocation, Binder, Const, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,
-    Promoted, RigidTy, TermKind, Ty, UnevaluatedConst,
+    Allocation, Binder, Const, ConstDef, ConstantKind, ExistentialPredicate, FnSig, GenericArgKind,
+    GenericArgs, Promoted, RigidTy, TermKind, Ty, TyKind, UnevaluatedConst,
 };
 
 pub trait Folder: Sized {
@@ -202,6 +202,29 @@ impl Foldable for FnSig {
             c_variadic: self.c_variadic,
             unsafety: self.unsafety,
             abi: self.abi.clone(),
+        })
+    }
+}
+
+pub enum Never {}
+
+/// In order to instantiate a `Foldable`'s generic parameters with specific arguments,
+/// `GenericArgs` can be used as a `Folder` that replaces all mentions of generic params
+/// with the entries in its list.
+impl Folder for GenericArgs {
+    type Break = Never;
+
+    fn visit_ty(&mut self, ty: &Ty) -> ControlFlow<Self::Break, Ty> {
+        ControlFlow::Continue(match ty.kind() {
+            TyKind::Param(p) => self[p],
+            _ => *ty,
+        })
+    }
+
+    fn fold_const(&mut self, c: &Const) -> ControlFlow<Self::Break, Const> {
+        ControlFlow::Continue(match &c.literal {
+            ConstantKind::Param(p) => self[p.clone()].clone(),
+            _ => c.clone(),
         })
     }
 }

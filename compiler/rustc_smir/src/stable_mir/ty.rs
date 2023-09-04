@@ -138,11 +138,49 @@ pub struct ImplDef(pub(crate) DefId);
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);
 
+impl std::ops::Index<ParamTy> for GenericArgs {
+    type Output = Ty;
+
+    fn index(&self, index: ParamTy) -> &Self::Output {
+        self.0[index.index as usize].expect_ty()
+    }
+}
+
+impl std::ops::Index<ParamConst> for GenericArgs {
+    type Output = Const;
+
+    fn index(&self, index: ParamConst) -> &Self::Output {
+        self.0[index.index as usize].expect_const()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum GenericArgKind {
     Lifetime(Region),
     Type(Ty),
     Const(Const),
+}
+
+impl GenericArgKind {
+    /// Panic if this generic argument is not a type, otherwise
+    /// return the type.
+    #[track_caller]
+    pub fn expect_ty(&self) -> &Ty {
+        match self {
+            GenericArgKind::Type(ty) => ty,
+            _ => panic!("{self:?}"),
+        }
+    }
+
+    /// Panic if this generic argument is not a const, otherwise
+    /// return the const.
+    #[track_caller]
+    pub fn expect_const(&self) -> &Const {
+        match self {
+            GenericArgKind::Const(c) => c,
+            _ => panic!("{self:?}"),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
