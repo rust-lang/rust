@@ -1,10 +1,5 @@
 #![warn(clippy::useless_vec)]
-#![allow(
-    clippy::nonstandard_macro_braces,
-    clippy::never_loop,
-    clippy::uninlined_format_args,
-    unused
-)]
+#![allow(clippy::nonstandard_macro_braces, clippy::uninlined_format_args, unused)]
 
 use std::rc::Rc;
 
@@ -125,6 +120,7 @@ fn issue11075() {
             stringify!($e)
         };
     }
+    #[allow(clippy::never_loop)]
     for _string in [repro!(true), repro!(null)] {
         unimplemented!();
     }

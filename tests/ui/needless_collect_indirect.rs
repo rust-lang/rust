@@ -260,7 +260,6 @@ mod issue_8553 {
         let w = v.iter().collect::<Vec<_>>();
         //~^ ERROR: avoid using `collect()` when not needed
         // Do lint
-        #[allow(clippy::never_loop)]
         for _ in 0..w.len() {
             todo!();
         }
@@ -271,7 +270,6 @@ mod issue_8553 {
         let v: Vec<usize> = vec.iter().map(|i| i * i).collect();
         let w = v.iter().collect::<Vec<_>>();
         // Do not lint, because w is used.
-        #[allow(clippy::never_loop)]
         for _ in 0..w.len() {
             todo!();
         }
@@ -285,7 +283,6 @@ mod issue_8553 {
         let mut w = v.iter().collect::<Vec<_>>();
         //~^ ERROR: avoid using `collect()` when not needed
         // Do lint
-        #[allow(clippy::never_loop)]
         while 1 == w.len() {
             todo!();
         }
@@ -296,7 +293,6 @@ mod issue_8553 {
         let mut v: Vec<usize> = vec.iter().map(|i| i * i).collect();
         let mut w = v.iter().collect::<Vec<_>>();
         // Do not lint, because w is used.
-        #[allow(clippy::never_loop)]
         while 1 == w.len() {
             todo!();
         }
@@ -310,7 +306,6 @@ mod issue_8553 {
         let mut w = v.iter().collect::<Vec<_>>();
         //~^ ERROR: avoid using `collect()` when not needed
         // Do lint
-        #[allow(clippy::never_loop)]
         while let Some(i) = Some(w.len()) {
             todo!();
         }
@@ -321,7 +316,6 @@ mod issue_8553 {
         let mut v: Vec<usize> = vec.iter().map(|i| i * i).collect();
         let mut w = v.iter().collect::<Vec<_>>();
         // Do not lint, because w is used.
-        #[allow(clippy::never_loop)]
         while let Some(i) = Some(w.len()) {
             todo!();
         }
