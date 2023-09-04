@@ -1136,7 +1136,6 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                 ty::PlaceholderCt(_) => unimplemented!(),
                 ty::Unevaluated(uv) => {
                     stable_mir::ty::ConstantKind::Unevaluated(stable_mir::ty::UnevaluatedConst {
-                        ty: tables.intern_ty(self.ty()),
                         def: tables.const_def(uv.def),
                         args: uv.args.stable(tables),
                         promoted: None,
@@ -1144,6 +1143,7 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                 }
                 ty::ExprCt(_) => unimplemented!(),
             },
+            ty: tables.intern_ty(self.ty()),
         }
     }
 }
@@ -1224,17 +1224,18 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
             ConstantKind::Unevaluated(unev_const, ty) => stable_mir::ty::Const {
                 literal: stable_mir::ty::ConstantKind::Unevaluated(
                     stable_mir::ty::UnevaluatedConst {
-                        ty: tables.intern_ty(ty),
                         def: tables.const_def(unev_const.def),
                         args: unev_const.args.stable(tables),
                         promoted: unev_const.promoted.map(|u| u.as_u32()),
                     },
                 ),
+                ty: tables.intern_ty(ty),
             },
             ConstantKind::Val(val, ty) => stable_mir::ty::Const {
                 literal: stable_mir::ty::ConstantKind::Allocated(alloc::new_allocation(
                     ty, val, tables,
                 )),
+                ty: tables.intern_ty(ty),
             },
         }
     }
