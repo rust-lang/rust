@@ -372,7 +372,8 @@ impl<'gcc, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Type<'gcc> {
-        let (return_type, param_types, variadic, _) = fn_abi.gcc_type(self);
+        // // FIXME: Should we do something with `fn_attrs`?
+        let (return_type, param_types, variadic, _, _fn_attrs) = fn_abi.gcc_type(self);
         self.context.new_function_pointer_type(None, return_type, &param_types, variadic)
     }
 }

@@ -80,9 +80,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Function<'gcc> {
-        let (return_type, params, variadic, on_stack_param_indices) = fn_abi.gcc_type(self);
+        let (return_type, params, variadic, on_stack_param_indices, fn_attrs) = fn_abi.gcc_type(self);
         let func = declare_raw_fn(self, name, () /*fn_abi.llvm_cconv()*/, return_type, &params, variadic);
         self.on_stack_function_params.borrow_mut().insert(func, on_stack_param_indices);
+        // We need to handle `nonnull` here where we still have access to function args.
+        for fn_attr in fn_attrs {
+            func.add_attribute(fn_attr);
+        }
         func
     }
 
