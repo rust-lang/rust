@@ -566,6 +566,11 @@ impl rustc_errors::IntoDiagnosticArg for Clause<'_> {
 pub struct Clause<'tcx>(Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>);
 
 impl<'tcx> Clause<'tcx> {
+    pub fn from_projection_clause(tcx: TyCtxt<'tcx>, pred: PolyProjectionPredicate<'tcx>) -> Self {
+        let pred: Predicate<'tcx> = pred.to_predicate(tcx);
+        pred.expect_clause()
+    }
+
     pub fn as_predicate(self) -> Predicate<'tcx> {
         Predicate(self.0)
     }
@@ -1317,13 +1322,6 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
 }
 
 impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for ProjectionPredicate<'tcx> {
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
-        let p: Predicate<'tcx> = self.to_predicate(tcx);
-        p.expect_clause()
-    }
-}
-
-impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
         let p: Predicate<'tcx> = self.to_predicate(tcx);
         p.expect_clause()
