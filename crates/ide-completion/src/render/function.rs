@@ -241,7 +241,18 @@ fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type) -> &'sta
 
 fn detail(db: &dyn HirDatabase, func: hir::Function, full_function_signature: bool) -> String {
     if full_function_signature {
-        return format!("{}", func.display(db)).replace("\n", " ");
+        let signature = format!("{}", func.display(db));
+        let mut singleline = String::with_capacity(signature.len());
+
+        for segment in signature.split_whitespace() {
+            if !singleline.is_empty() {
+                singleline.push(' ');
+            }
+
+            singleline.push_str(segment);
+        }
+
+        return singleline;
     }
 
     let mut ret_ty = func.ret_type(db);
