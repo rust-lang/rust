@@ -812,7 +812,7 @@ impl<T> RawTable<T, Global> {
     #[inline]
     pub const fn new() -> Self {
         Self {
-            table: RawTableInner::new(),
+            table: RawTableInner::NEW,
             alloc: Global,
             marker: PhantomData,
         }
@@ -844,7 +844,7 @@ impl<T, A: Allocator> RawTable<T, A> {
     #[inline]
     pub const fn new_in(alloc: A) -> Self {
         Self {
-            table: RawTableInner::new(),
+            table: RawTableInner::NEW,
             alloc,
             marker: PhantomData,
         }
@@ -1034,7 +1034,7 @@ impl<T, A: Allocator> RawTable<T, A> {
         // space for.
         let min_size = usize::max(self.table.items, min_size);
         if min_size == 0 {
-            let mut old_inner = mem::replace(&mut self.table, RawTableInner::new());
+            let mut old_inner = mem::replace(&mut self.table, RawTableInner::NEW);
             unsafe {
                 // SAFETY:
                 // 1. We call the function only once;
@@ -1534,7 +1534,7 @@ impl<T, A: Allocator> RawTable<T, A> {
         debug_assert_eq!(iter.len(), self.len());
         RawDrain {
             iter,
-            table: mem::replace(&mut self.table, RawTableInner::new()),
+            table: mem::replace(&mut self.table, RawTableInner::NEW),
             orig_table: NonNull::from(&mut self.table),
             marker: PhantomData,
         }
@@ -1595,6 +1595,8 @@ where
 }
 
 impl RawTableInner {
+    const NEW: Self = RawTableInner::new();
+
     /// Creates a new empty hash table without allocating any memory.
     ///
     /// In effect this returns a table with exactly 1 bucket. However we can
@@ -1673,7 +1675,7 @@ impl RawTableInner {
         A: Allocator,
     {
         if capacity == 0 {
-            Ok(Self::new())
+            Ok(Self::NEW)
         } else {
             // SAFETY: We checked that we could successfully allocate the new table, and then
             // initialized all control bytes with the constant `EMPTY` byte.
@@ -2436,20 +2438,17 @@ impl RawTableInner {
     /// and return it inside ScopeGuard to protect against panic in the hash
     /// function.
     ///
-    /// # Safety:
-    ///
-    /// The `alloc` must be the same [`Allocator`] as the `Allocator` used
-    /// to allocate this table otherwise calling this function may result in
-    /// [`undefined behavior`].
-    ///
     /// # Note
     ///
     /// It is recommended (but not required):
     ///
     /// * That the new table's `capacity` be greater than or equal to `self.items`.
     ///
-    /// * The `table_layout` is the same [`TableLayout`] as the `TableLayout` that
-    ///   was used to allocate this table.
+    /// * The `alloc` is the same [`Allocator`] as the `Allocator` used
+    ///   to allocate this table.
+    ///
+    /// * The `table_layout` is the same [`TableLayout`] as the `TableLayout` used
+    ///   to allocate this table.
     ///
     /// If `table_layout` does not match the `TableLayout` that was used to allocate
     /// this table, then using `mem::swap` with the `self` and the new table returned
@@ -2458,7 +2457,7 @@ impl RawTableInner {
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[allow(clippy::mut_mut)]
     #[inline]
-    unsafe fn prepare_resize<'a, A>(
+    fn prepare_resize<'a, A>(
         &self,
         alloc: &'a A,
         table_layout: TableLayout,
@@ -2484,11 +2483,9 @@ impl RawTableInner {
             if !self_.is_empty_singleton() {
                 // SAFETY:
                 // 1. We have checked that our table is allocated.
-                // 2. The caller of this function ensures that `alloc` is the
-                // same [`Allocator`] used to allocate this table.
-                // 3. We know for sure that `table_layout` matches the [`TableLayout`]
-                // used to allocate this table.
-                self_.free_buckets(alloc, table_layout);
+                // 2. We know for sure that the `alloc` and `table_layout` matches the
+                //    [`Allocator`] and [`TableLayout`] used to allocate this table.
+                unsafe { self_.free_buckets(alloc, table_layout) };
             }
         }))
     }
@@ -3080,7 +3077,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
 
     fn clone_from(&mut self, source: &Self) {
         if source.table.is_empty_singleton() {
-            let mut old_inner = mem::replace(&mut self.table, RawTableInner::new());
+            let mut old_inner = mem::replace(&mut self.table, RawTableInner::NEW);
             unsafe {
                 // SAFETY:
                 // 1. We call the function only once;
