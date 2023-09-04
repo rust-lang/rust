@@ -788,6 +788,8 @@ pub(crate) struct TransparentLayoutEnum<'a> {
     pub non_zst_spans: Vec<Span>,
     pub field_count: usize,
     pub desc: &'a str,
+    #[note]
+    pub note: (),
 }
 
 #[derive(Diagnostic)]
@@ -802,6 +804,8 @@ pub(crate) struct TransparentLayout<'a> {
     pub non_zst_spans: Vec<Span>,
     pub field_count: usize,
     pub desc: &'a str,
+    #[note]
+    pub note: (),
 }
 
 #[derive(Diagnostic)]

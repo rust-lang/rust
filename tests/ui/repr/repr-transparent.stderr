@@ -1,20 +1,24 @@
-error[E0690]: transparent struct needs at most one field of non-zero size or alignment larger than 1, but has 2
+error[E0690]: transparent struct needs at most one field with non-trivial layout, but has 2
   --> $DIR/repr-transparent.rs:26:1
    |
 LL | struct MultipleNonZst(u8, u8);
    | ^^^^^^^^^^^^^^^^^^^^^ --  -- this field is non-zero-sized
    | |                     |
    | |                     this field is non-zero-sized
-   | needs at most one field of non-zero size or alignment larger than 1, but has 2
+   | needs at most one field with non-trivial layout, but has 2
+   |
+   = note: a layout is trivial if, any only if, it is zero-sized with an alignment of 1
 
-error[E0690]: transparent struct needs at most one field of non-zero size or alignment larger than 1, but has 2
+error[E0690]: transparent struct needs at most one field with non-trivial layout, but has 2
   --> $DIR/repr-transparent.rs:33:1
    |
 LL | pub struct StructWithProjection(f32, <f32 as Mirror>::It);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ---  ------------------- this field is non-zero-sized
    | |                               |
    | |                               this field is non-zero-sized
-   | needs at most one field of non-zero size or alignment larger than 1, but has 2
+   | needs at most one field with non-trivial layout, but has 2
+   |
+   = note: a layout is trivial if, any only if, it is zero-sized with an alignment of 1
 
 error[E0691]: zero-sized field in transparent struct has alignment larger than 1
   --> $DIR/repr-transparent.rs:37:32
@@ -42,15 +46,17 @@ error[E0731]: transparent enum needs exactly one variant, but has 0
 LL | enum Void {}
    | ^^^^^^^^^ needs exactly one variant, but has 0
 
-error[E0690]: the variant of a transparent enum needs at most one field of non-zero size or alignment larger than 1, but has 2
+error[E0690]: the variant of a transparent enum needs at most one field with non-trivial layout, but has 2
   --> $DIR/repr-transparent.rs:59:1
    |
 LL | enum TooManyFieldsEnum {
-   | ^^^^^^^^^^^^^^^^^^^^^^ needs at most one field of non-zero size or alignment larger than 1, but has 2
+   | ^^^^^^^^^^^^^^^^^^^^^^ needs at most one field with non-trivial layout, but has 2
 LL |     Foo(u32, String),
    |         ---  ------ this field is non-zero-sized
    |         |
    |         this field is non-zero-sized
+   |
+   = note: a layout is trivial if, any only if, it is zero-sized with an alignment of 1
 
 error[E0731]: transparent enum needs exactly one variant, but has 2
   --> $DIR/repr-transparent.rs:65:1
@@ -74,15 +80,17 @@ error[E0691]: zero-sized field in transparent enum has alignment larger than 1
 LL |     Foo { bar: ZstAlign32<T>, baz: u32 }
    |           ^^^^^^^^^^^^^^^^^^ has alignment of 32, which is larger than 1
 
-error[E0690]: transparent union needs at most one field of non-zero size or alignment larger than 1, but has 2
+error[E0690]: transparent union needs at most one field with non-trivial layout, but has 2
   --> $DIR/repr-transparent.rs:86:1
    |
 LL | union TooManyFields {
-   | ^^^^^^^^^^^^^^^^^^^ needs at most one field of non-zero size or alignment larger than 1, but has 2
+   | ^^^^^^^^^^^^^^^^^^^ needs at most one field with non-trivial layout, but has 2
 LL |     u: u32,
    |     ------ this field is non-zero-sized
 LL |     s: i32
    |     ------ this field is non-zero-sized
+   |
+   = note: a layout is trivial if, any only if, it is zero-sized with an alignment of 1
 
 error: aborting due to 11 previous errors
 

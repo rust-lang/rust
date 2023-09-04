@@ -1130,8 +1130,8 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
-    // For each field, figure out if it's known to be a ZST with layout, with "known"
-    // respecting #[non_exhaustive] attributes.
+    // For each field, collect information on its layout and whether it has a #[non_exhaustive]
+    // annotation.
     let field_infos = adt.all_fields().map(|field| {
         let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
         let param_env = tcx.param_env(field.did);
@@ -1177,6 +1177,13 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
 
         (span, zst, layout, check_non_exhaustive(tcx, ty).break_value())
     });
+
+    // For a transparent ADT we must know which member field controls its layout. Hence, we only
+    // allow at most one field with non-trivial or unknown layout. A layout is trivial if, and only
+    // if, it is zero-sized with an alignment of 1. A layout is unknown if, for instance, it
+    // contains generic type parameters or has a #[non_exhaustive] annotation in a non-local type.
+    // We will reject any transparent ADT with more than one field with non-trivial or unknown
+    // layout, but we try our best to point out the violating properties.
 
     let non_layout_fields = field_infos
         .clone()

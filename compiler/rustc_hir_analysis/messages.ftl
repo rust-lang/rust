@@ -270,15 +270,17 @@ hir_analysis_transparent_enum_variant = transparent enum needs exactly one varia
     .many_label = too many variants in `{$path}`
     .multi_label = variant here
 
-hir_analysis_transparent_layout = transparent {$desc} needs at most one field of non-zero size or alignment larger than 1, but has {$field_count}
-    .label = needs at most one field of non-zero size or alignment larger than 1, but has {$field_count}
+hir_analysis_transparent_layout = transparent {$desc} needs at most one field with non-trivial layout, but has {$field_count}
+    .label = needs at most one field with non-trivial layout, but has {$field_count}
     .non_layout_labels = this field may have an alignment larger than 1
     .non_zst_labels = this field is non-zero-sized
+    .note = a layout is trivial if, any only if, it is zero-sized with an alignment of 1
 
-hir_analysis_transparent_layout_enum = the variant of a transparent {$desc} needs at most one field of non-zero size or alignment larger than 1, but has {$field_count}
-    .label = needs at most one field of non-zero size or alignment larger than 1, but has {$field_count}
+hir_analysis_transparent_layout_enum = the variant of a transparent {$desc} needs at most one field with non-trivial layout, but has {$field_count}
+    .label = needs at most one field with non-trivial layout, but has {$field_count}
     .non_layout_labels = this field may have an alignment larger than 1
     .non_zst_labels = this field is non-zero-sized
+    .note = a layout is trivial if, any only if, it is zero-sized with an alignment of 1
 
 hir_analysis_typeof_reserved_keyword_used =
     `typeof` is a reserved keyword but unimplemented

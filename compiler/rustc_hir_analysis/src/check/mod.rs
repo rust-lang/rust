@@ -516,7 +516,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, d
     });
 }
 
-/// Emit an error when encountering two or more fields without layout or non-zero size
+/// Emit an error when encountering two or more fields with non-trivial layout
 /// in a transparent Adt.
 fn bad_transparent_layout<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -533,6 +533,7 @@ fn bad_transparent_layout<'tcx>(
             non_zst_spans: non_zst_spans.collect(),
             field_count,
             desc: adt.descr(),
+            note: (),
         });
     } else {
         tcx.sess.emit_err(errors::TransparentLayout {
@@ -541,6 +542,7 @@ fn bad_transparent_layout<'tcx>(
             non_zst_spans: non_zst_spans.collect(),
             field_count,
             desc: adt.descr(),
+            note: (),
         });
     }
 }
