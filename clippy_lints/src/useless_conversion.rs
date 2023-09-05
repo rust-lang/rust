@@ -12,7 +12,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty};
+use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -93,27 +93,35 @@ fn into_iter_bound<'tcx>(
 
     for (pred, span) in cx.tcx.explicit_predicates_of(fn_did).predicates {
         if let ty::ClauseKind::Trait(tr) = pred.kind().skip_binder() {
-            if tr.def_id() == into_iter_did && tr.self_ty().is_param(param_index) {
-                into_iter_span = Some(*span);
-            } else {
-                // Substitute generics in the predicate and replace the IntoIterator type parameter with the
-                // `.into_iter()` receiver to see if the bound also holds for that type.
-                let args = cx.tcx.mk_args_from_iter(node_args.iter().enumerate().map(|(i, arg)| {
-                    if i == param_index as usize {
-                        GenericArg::from(into_iter_receiver)
-                    } else {
-                        arg
+            if tr.self_ty().is_param(param_index) {
+                if tr.def_id() == into_iter_did {
+                    into_iter_span = Some(*span);
+                } else {
+                    let tr = cx.tcx.erase_regions(tr);
+                    if tr.has_escaping_bound_vars() {
+                        return None;
                     }
-                }));
-                let predicate = EarlyBinder::bind(tr).instantiate(cx.tcx, args);
-                let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), param_env, predicate);
-                if !cx
-                    .tcx
-                    .infer_ctxt()
-                    .build()
-                    .predicate_must_hold_modulo_regions(&obligation)
-                {
-                    return None;
+
+                    // Substitute generics in the predicate and replace the IntoIterator type parameter with the
+                    // `.into_iter()` receiver to see if the bound also holds for that type.
+                    let args = cx.tcx.mk_args_from_iter(node_args.iter().enumerate().map(|(i, arg)| {
+                        if i == param_index as usize {
+                            GenericArg::from(into_iter_receiver)
+                        } else {
+                            arg
+                        }
+                    }));
+
+                    let predicate = EarlyBinder::bind(tr).instantiate(cx.tcx, args);
+                    let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), param_env, predicate);
+                    if !cx
+                        .tcx
+                        .infer_ctxt()
+                        .build()
+                        .predicate_must_hold_modulo_regions(&obligation)
+                    {
+                        return None;
+                    }
                 }
             }
         }
@@ -216,7 +224,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                         return (
                                             did,
                                             args,
-                                            cx.typeck_results().node_args(recv.hir_id),
+                                            cx.typeck_results().node_args(parent.hir_id),
                                             MethodOrFunction::Method
                                         );
                                     })

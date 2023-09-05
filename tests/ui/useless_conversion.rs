@@ -244,6 +244,47 @@ mod issue11300 {
         // and `i32: Helper2<[i32, 3]>` is true, so this call is indeed unncessary.
         foo3([1, 2, 3].into_iter());
     }
+
+    fn ice() {
+        struct S1;
+        impl S1 {
+            pub fn foo<I: IntoIterator>(&self, _: I) {}
+        }
+
+        S1.foo([1, 2].into_iter());
+
+        // ICE that occured in itertools
+        trait Itertools {
+            fn interleave_shortest<J>(self, other: J)
+            where
+                J: IntoIterator,
+                Self: Sized;
+        }
+        impl<I: Iterator> Itertools for I {
+            fn interleave_shortest<J>(self, other: J)
+            where
+                J: IntoIterator,
+                Self: Sized,
+            {
+            }
+        }
+        let v0: Vec<i32> = vec![0, 2, 4];
+        let v1: Vec<i32> = vec![1, 3, 5, 7];
+        v0.into_iter().interleave_shortest(v1.into_iter());
+
+        trait TraitWithLifetime<'a> {}
+        impl<'a> TraitWithLifetime<'a> for std::array::IntoIter<&'a i32, 2> {}
+
+        struct Helper;
+        impl<'a> Helper {
+            fn with_lt<I>(&self, _: I)
+            where
+                I: IntoIterator + TraitWithLifetime<'a>,
+            {
+            }
+        }
+        Helper.with_lt([&1, &2].into_iter());
+    }
 }
 
 #[derive(Copy, Clone)]
