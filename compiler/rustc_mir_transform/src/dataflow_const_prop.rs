@@ -401,7 +401,7 @@ impl<'mir, 'tcx>
 
     fn visit_statement_before_primary_effect(
         &mut self,
-        results: &Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
+        results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
         state: &Self::FlowState,
         statement: &'mir Statement<'tcx>,
         location: Location,
@@ -417,7 +417,7 @@ impl<'mir, 'tcx>
 
     fn visit_statement_after_primary_effect(
         &mut self,
-        results: &Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
+        results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
         state: &Self::FlowState,
         statement: &'mir Statement<'tcx>,
         location: Location,
@@ -443,7 +443,7 @@ impl<'mir, 'tcx>
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        results: &Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
+        results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
         state: &Self::FlowState,
         terminator: &'mir Terminator<'tcx>,
         location: Location,

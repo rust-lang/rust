@@ -179,8 +179,8 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, GenericParamDefKind, Instance, InstanceDef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
-    VtblEntry,
+    self, AssocKind, GenericParamDefKind, Instance, InstanceDef, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
@@ -188,11 +188,13 @@ use rustc_session::config::EntryFnType;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_session::Limit;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
+use rustc_span::symbol::{sym, Ident};
 use rustc_target::abi::Size;
 use std::path::PathBuf;
 
 use crate::errors::{
-    EncounteredErrorWhileInstantiating, LargeAssignmentsLint, RecursionLimit, TypeLengthLimit,
+    EncounteredErrorWhileInstantiating, LargeAssignmentsLint, NoOptimizedMir, RecursionLimit,
+    TypeLengthLimit,
 };
 
 #[derive(PartialEq)]
@@ -431,7 +433,7 @@ fn collect_items_rec<'tcx>(
                         hir::InlineAsmOperand::SymFn { anon_const } => {
                             let fn_ty =
                                 tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
-                            visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items);
+                            visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items, &[]);
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             let instance = Instance::mono(tcx, *def_id);
@@ -592,6 +594,11 @@ struct MirUsedCollector<'a, 'tcx> {
     instance: Instance<'tcx>,
     /// Spans for move size lints already emitted. Helps avoid duplicate lints.
     move_size_spans: Vec<Span>,
+    /// If true, we should temporarily skip move size checks, because we are
+    /// processing an operand to a `skip_move_check_fns` function call.
+    skip_move_size_check: bool,
+    /// Set of functions for which it is OK to move large data into.
+    skip_move_check_fns: Vec<DefId>,
 }
 
 impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
@@ -690,7 +697,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             ) => {
                 let fn_ty = operand.ty(self.body, self.tcx);
                 let fn_ty = self.monomorphize(fn_ty);
-                visit_fn_use(self.tcx, fn_ty, false, span, &mut self.output);
+                visit_fn_use(
+                    self.tcx,
+                    fn_ty,
+                    false,
+                    span,
+                    &mut self.output,
+                    &self.skip_move_check_fns,
+                );
             }
             mir::Rvalue::Cast(
                 mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
@@ -789,7 +803,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             mir::TerminatorKind::Call { ref func, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
-                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
+                self.skip_move_size_check = visit_fn_use(
+                    self.tcx,
+                    callee_ty,
+                    true,
+                    source,
+                    &mut self.output,
+                    &self.skip_move_check_fns,
+                )
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -801,7 +822,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     match *op {
                         mir::InlineAsmOperand::SymFn { ref value } => {
                             let fn_ty = self.monomorphize(value.literal.ty());
-                            visit_fn_use(self.tcx, fn_ty, false, source, &mut self.output);
+                            visit_fn_use(self.tcx, fn_ty, false, source, &mut self.output, &[]);
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } => {
                             let instance = Instance::mono(self.tcx, def_id);
@@ -840,12 +861,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         }
 
         self.super_terminator(terminator, location);
+        self.skip_move_size_check = false;
     }
 
     fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
         let move_size_limit = self.tcx.move_size_limit().0;
-        if move_size_limit > 0 {
+        if move_size_limit > 0 && !self.skip_move_size_check {
             self.check_move_size(move_size_limit, operand, location);
         }
     }
@@ -876,8 +898,11 @@ fn visit_fn_use<'tcx>(
     is_direct_call: bool,
     source: Span,
     output: &mut MonoItems<'tcx>,
-) {
+    skip_move_check_fns: &[DefId],
+) -> bool {
+    let mut skip_move_size_check = false;
     if let ty::FnDef(def_id, args) = *ty.kind() {
+        skip_move_size_check = skip_move_check_fns.contains(&def_id);
         let instance = if is_direct_call {
             ty::Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
         } else {
@@ -888,6 +913,7 @@ fn visit_fn_use<'tcx>(
         };
         visit_instance_use(tcx, instance, is_direct_call, source, output);
     }
+    skip_move_size_check
 }
 
 fn visit_instance_use<'tcx>(
@@ -960,7 +986,10 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
     }
 
     if !tcx.is_mir_available(def_id) {
-        bug!("no MIR available for {:?}", def_id);
+        tcx.sess.emit_fatal(NoOptimizedMir {
+            span: tcx.def_span(def_id),
+            crate_name: tcx.crate_name(def_id.krate),
+        });
     }
 
     true
@@ -1365,6 +1394,31 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
     }
 }
 
+fn add_assoc_fn<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: Option<DefId>,
+    fn_ident: Ident,
+    skip_move_check_fns: &mut Vec<DefId>,
+) {
+    if let Some(def_id) = def_id.and_then(|def_id| assoc_fn_of_type(tcx, def_id, fn_ident)) {
+        skip_move_check_fns.push(def_id);
+    }
+}
+
+fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
+    for impl_def_id in tcx.inherent_impls(def_id) {
+        if let Some(new) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
+            tcx,
+            fn_ident,
+            AssocKind::Fn,
+            def_id,
+        ) {
+            return Some(new.def_id);
+        }
+    }
+    return None;
+}
+
 /// Scans the MIR in order to find function calls, closures, and drop-glue.
 #[instrument(skip(tcx, output), level = "debug")]
 fn collect_used_items<'tcx>(
@@ -1373,8 +1427,39 @@ fn collect_used_items<'tcx>(
     output: &mut MonoItems<'tcx>,
 ) {
     let body = tcx.instance_mir(instance.def);
-    MirUsedCollector { tcx, body: &body, output, instance, move_size_spans: vec![] }
-        .visit_body(&body);
+
+    let mut skip_move_check_fns = vec![];
+    if tcx.move_size_limit().0 > 0 {
+        add_assoc_fn(
+            tcx,
+            tcx.lang_items().owned_box(),
+            Ident::from_str("new"),
+            &mut skip_move_check_fns,
+        );
+        add_assoc_fn(
+            tcx,
+            tcx.get_diagnostic_item(sym::Arc),
+            Ident::from_str("new"),
+            &mut skip_move_check_fns,
+        );
+        add_assoc_fn(
+            tcx,
+            tcx.get_diagnostic_item(sym::Rc),
+            Ident::from_str("new"),
+            &mut skip_move_check_fns,
+        );
+    }
+
+    MirUsedCollector {
+        tcx,
+        body: &body,
+        output,
+        instance,
+        move_size_spans: vec![],
+        skip_move_size_check: false,
+        skip_move_check_fns,
+    }
+    .visit_body(&body);
 }
 
 #[instrument(skip(tcx, output), level = "debug")]
