@@ -4408,7 +4408,7 @@ declare_lint! {
     ///     pub struct S;
     /// }
     ///
-    /// pub fn get_voldemort() -> m::S { m::S }
+    /// pub fn get_unnameable() -> m::S { m::S }
     /// # fn main() {}
     /// ```
     ///

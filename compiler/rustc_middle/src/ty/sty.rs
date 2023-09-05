@@ -2857,7 +2857,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Uint(..)
             | ty::Float(..) => true,
 
-            // The voldemort ZSTs are fine.
+            // ZST which can't be named are fine.
             ty::FnDef(..) => true,
 
             ty::Array(element_ty, _len) => element_ty.is_trivially_pure_clone_copy(),
