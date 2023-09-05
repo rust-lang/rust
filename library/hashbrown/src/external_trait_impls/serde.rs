@@ -27,7 +27,7 @@ mod map {
         K: Serialize + Eq + Hash,
         V: Serialize,
         H: BuildHasher,
-        A: Allocator + Clone,
+        A: Allocator,
     {
         #[cfg_attr(feature = "inline-more", inline)]
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -43,7 +43,7 @@ mod map {
         K: Deserialize<'de> + Eq + Hash,
         V: Deserialize<'de>,
         S: BuildHasher + Default,
-        A: Allocator + Clone + Default,
+        A: Allocator + Default,
     {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
@@ -51,7 +51,7 @@ mod map {
         {
             struct MapVisitor<K, V, S, A>
             where
-                A: Allocator + Clone,
+                A: Allocator,
             {
                 marker: PhantomData<HashMap<K, V, S, A>>,
             }
@@ -61,7 +61,7 @@ mod map {
                 K: Deserialize<'de> + Eq + Hash,
                 V: Deserialize<'de>,
                 S: BuildHasher + Default,
-                A: Allocator + Clone + Default,
+                A: Allocator + Default,
             {
                 type Value = HashMap<K, V, S, A>;
 
@@ -112,7 +112,7 @@ mod set {
     where
         T: Serialize + Eq + Hash,
         H: BuildHasher,
-        A: Allocator + Clone,
+        A: Allocator,
     {
         #[cfg_attr(feature = "inline-more", inline)]
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -127,7 +127,7 @@ mod set {
     where
         T: Deserialize<'de> + Eq + Hash,
         S: BuildHasher + Default,
-        A: Allocator + Clone + Default,
+        A: Allocator + Default,
     {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
@@ -135,7 +135,7 @@ mod set {
         {
             struct SeqVisitor<T, S, A>
             where
-                A: Allocator + Clone,
+                A: Allocator,
             {
                 marker: PhantomData<HashSet<T, S, A>>,
             }
@@ -144,7 +144,7 @@ mod set {
             where
                 T: Deserialize<'de> + Eq + Hash,
                 S: BuildHasher + Default,
-                A: Allocator + Clone + Default,
+                A: Allocator + Default,
             {
                 type Value = HashSet<T, S, A>;
 
@@ -184,13 +184,13 @@ mod set {
         {
             struct SeqInPlaceVisitor<'a, T, S, A>(&'a mut HashSet<T, S, A>)
             where
-                A: Allocator + Clone;
+                A: Allocator;
 
             impl<'a, 'de, T, S, A> Visitor<'de> for SeqInPlaceVisitor<'a, T, S, A>
             where
                 T: Deserialize<'de> + Eq + Hash,
                 S: BuildHasher + Default,
-                A: Allocator + Clone,
+                A: Allocator,
             {
                 type Value = ();
 
