@@ -96,7 +96,7 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash {
-        self.untracked.definitions.read().def_path_hash(def_id)
+        self.untracked.definitions.read().unwrap().def_path_hash(def_id)
     }
 
     #[inline]

@@ -878,7 +878,12 @@ impl<'tcx> TyCtxt<'tcx> {
         // If this is a DefPathHash from the local crate, we can look up the
         // DefId in the tcx's `Definitions`.
         if stable_crate_id == self.stable_crate_id(LOCAL_CRATE) {
-            self.untracked.definitions.read().local_def_path_hash_to_def_id(hash, err).to_def_id()
+            self.untracked
+                .definitions
+                .read()
+                .unwrap()
+                .local_def_path_hash_to_def_id(hash, err)
+                .to_def_id()
         } else {
             // If this is a DefPathHash from an upstream crate, let the CrateStore map
             // it to a DefId.
@@ -938,7 +943,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         // This is fine because:
         // - those queries are `eval_always` so we won't miss their result changing;
         // - this write will have happened before these queries are called.
-        let key = self.untracked.definitions.write().create_def(parent, data);
+        let key = self.untracked.definitions.write().unwrap().create_def(parent, data);
 
         let feed = TyCtxtFeed { tcx: self.tcx, key };
         feed.def_span(self.span);
@@ -958,14 +963,14 @@ impl<'tcx> TyCtxt<'tcx> {
 
             // Recompute the number of definitions each time, because our caller may be creating
             // new ones.
-            while i < { definitions.read().num_definitions() } {
+            while i < { definitions.read().unwrap().num_definitions() } {
                 let local_def_index = rustc_span::def_id::DefIndex::from_usize(i);
                 yield LocalDefId { local_def_index };
                 i += 1;
             }
 
             // Leak a read lock once we finish iterating on definitions, to prevent adding new ones.
-            definitions.leak();
+            std::mem::forget(definitions.read());
         })
     }
 
@@ -976,8 +981,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // Leak a read lock once we start iterating on definitions, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
-        let definitions = self.untracked.definitions.leak();
-        definitions.def_path_table()
+        std::mem::forget(self.untracked.definitions.read());
+        let definitions = self.untracked.definitions.read().unwrap();
+        unsafe { &*(definitions.def_path_table() as *const rustc_hir::definitions::DefPathTable) }
     }
 
     pub fn def_path_hash_to_def_index_map(
@@ -988,8 +994,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self.ensure().hir_crate(());
         // Leak a read lock once we start iterating on definitions, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
-        let definitions = self.untracked.definitions.leak();
-        definitions.def_path_hash_to_def_index_map()
+        std::mem::forget(self.untracked.definitions.read());
+        let definitions = self.untracked.definitions.read().unwrap();
+        unsafe {
+            &*(definitions.def_path_hash_to_def_index_map()
+                as *const rustc_hir::def_path_hash_map::DefPathHashMap)
+        }
     }
 
     /// Note that this is *untracked* and should only be used within the query
@@ -1006,8 +1016,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
     #[inline]
-    pub fn definitions_untracked(self) -> ReadGuard<'tcx, Definitions> {
-        self.untracked.definitions.read()
+    pub fn definitions_untracked(self) -> std::sync::RwLockReadGuard<'tcx, Definitions> {
+        self.untracked.definitions.read().unwrap()
     }
 
     /// Note that this is *untracked* and should only be used within the query

@@ -261,5 +261,5 @@ pub struct Untracked {
     pub cstore: RwLock<Box<CrateStoreDyn>>,
     /// Reference span for definitions.
     pub source_span: AppendOnlyIndexVec<LocalDefId, Span>,
-    pub definitions: RwLock<Definitions>,
+    pub definitions: std::sync::RwLock<Definitions>,
 }

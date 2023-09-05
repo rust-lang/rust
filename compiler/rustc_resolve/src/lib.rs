@@ -1207,7 +1207,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         );
 
         // FIXME: remove `def_span` body, pass in the right spans here and call `tcx.at().create_def()`
-        let def_id = self.tcx.untracked().definitions.write().create_def(parent, data);
+        let def_id = self.tcx.untracked().definitions.write().unwrap().create_def(parent, data);
 
         // Create the definition.
         if expn_id != ExpnId::root() {

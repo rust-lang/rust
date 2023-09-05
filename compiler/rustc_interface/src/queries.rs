@@ -197,7 +197,7 @@ impl<'tcx> Queries<'tcx> {
                 self.codegen_backend().metadata_loader(),
                 stable_crate_id,
             )) as _);
-            let definitions = RwLock::new(Definitions::new(stable_crate_id));
+            let definitions = std::sync::RwLock::new(Definitions::new(stable_crate_id));
             let source_span = AppendOnlyIndexVec::new();
             let _id = source_span.push(krate.spans.inner_span);
             debug_assert_eq!(_id, CRATE_DEF_ID);
