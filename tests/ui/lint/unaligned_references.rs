@@ -1,3 +1,6 @@
+use std::mem::ManuallyDrop;
+use std::fmt::Debug;
+
 #[repr(packed)]
 pub struct Good {
     data: u64,
@@ -25,6 +28,16 @@ impl Foo for Packed2 {
             &self.x; //~ ERROR reference to packed field
         }
     }
+}
+
+// Test for #115396
+fn packed_dyn() {
+    #[repr(packed)]
+    struct Unaligned<T: ? Sized>(ManuallyDrop<T>);
+
+    let ref local = Unaligned(ManuallyDrop::new([3, 5, 8u64]));
+    let foo: &Unaligned<dyn Debug> = &*local;
+    println!("{:?}", &*foo.0); //~ ERROR reference to packed field
 }
 
 fn main() {

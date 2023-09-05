@@ -22,9 +22,11 @@ where
 
     let ty = place.ty(local_decls, tcx).ty;
     match tcx.layout_of(param_env.and(ty)) {
-        Ok(layout) if layout.align.abi <= pack => {
+        Ok(layout) if layout.align.abi <= pack && layout.is_sized() => {
             // If the packed alignment is greater or equal to the field alignment, the type won't be
             // further disaligned.
+            // However we need to ensure the field is sized; for unsized fields, `layout.align` is
+            // just an approximation.
             debug!(
                 "is_disaligned({:?}) - align = {}, packed = {}; not disaligned",
                 place,
