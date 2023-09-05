@@ -354,6 +354,12 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
         // FIXME(associated_const_equality): Also add associated consts to
         // the requirements here.
         if item.kind == ty::AssocKind::Type {
+            // associated types that require `Self: Sized` do not show up in the built-in
+            // implementation of `Trait for dyn Trait`, and can be dropped here.
+            if tcx.generics_require_sized_self(item.def_id) {
+                continue;
+            }
+
             requirements
                 .extend(tcx.item_bounds(item.def_id).iter_instantiated(tcx, trait_ref.args));
         }
