@@ -34,7 +34,7 @@ pub fn futex<'tcx>(
 
     let thread = this.get_active_thread();
     // This is a vararg function so we have to bring our own type for this pointer.
-    let addr = MPlaceTy::from_aligned_ptr(addr, this.machine.layouts.i32);
+    let addr = this.ptr_to_mplace(addr, this.machine.layouts.i32);
     let addr_usize = addr.ptr().addr().bytes();
 
     let futex_private = this.eval_libc_i32("FUTEX_PRIVATE_FLAG");

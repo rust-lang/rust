@@ -267,6 +267,7 @@ where
         let len = base.len(self)?;
         let field_layout = base.layout().field(self, 0);
         // Ensure that all the offsets are in-bounds once, up-front.
+        debug!("project_array_fields: {base:?} {len}");
         base.offset(len * stride, self.layout_of(self.tcx.types.unit).unwrap(), self)?;
         // Create the iterator.
         Ok(ArrayIterator { base, range: 0..len, stride, field_layout, _phantom: PhantomData })

@@ -13,14 +13,14 @@ use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::{
-    ExpectedKind, InterpError, InvalidMetaKind, PointerKind, ValidationErrorInfo,
+    ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, ValidationErrorInfo,
     ValidationErrorKind, ValidationErrorKind::*,
 };
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
-    Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
+    Abi, Align, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
 };
 
 use std::hash::Hash;
@@ -385,7 +385,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
             ),
             self.path,
-            Ub(AlignmentCheckFailed { required, has }) => UnalignedPtr {
+            Ub(AlignmentCheckFailed(Misalignment { required, has })) => UnalignedPtr {
                 ptr_kind,
                 required_bytes: required.bytes(),
                 found_bytes: has.bytes()
@@ -781,14 +781,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // Optimization: we just check the entire range at once.
                 // NOTE: Keep this in sync with the handling of integer and float
                 // types above, in `visit_primitive`.
-                // In run-time mode, we accept pointers in here. This is actually more
-                // permissive than a per-element check would be, e.g., we accept
-                // a &[u8] that contains a pointer even though bytewise checking would
-                // reject it. However, that's good: We don't inherently want
-                // to reject those pointers, we just do not have the machinery to
-                // talk about parts of a pointer.
-                // We also accept uninit, for consistency with the slow path.
-                let alloc = self.ecx.get_ptr_alloc(mplace.ptr(), size, mplace.align)?.expect("we already excluded size 0");
+                // No need for an alignment check here, this is not an actual memory access.
+                let alloc = self.ecx.get_ptr_alloc(mplace.ptr(), size, Align::ONE)?.expect("we already excluded size 0");
 
                 match alloc.get_bytes_strip_provenance() {
                     // In the happy case, we needn't check anything else.

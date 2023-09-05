@@ -1370,7 +1370,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         ("d_reclen", size.into()),
                         ("d_type", file_type.into()),
                     ],
-                    &MPlaceTy::from_aligned_ptr(entry, dirent64_layout),
+                    &this.ptr_to_mplace(entry, dirent64_layout),
                 )?;
 
                 let name_ptr = entry.offset(Size::from_bytes(d_name_offset), this)?;

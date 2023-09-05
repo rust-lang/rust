@@ -144,7 +144,7 @@ use crate::ty::{self, Instance, Ty, TyCtxt};
 pub use self::error::{
     struct_error, BadBytesAccess, CheckInAllocMsg, ErrorHandled, EvalToAllocationRawResult,
     EvalToConstValueResult, EvalToValTreeResult, ExpectedKind, InterpError, InterpErrorInfo,
-    InterpResult, InvalidMetaKind, InvalidProgramInfo, MachineStopType, PointerKind,
+    InterpResult, InvalidMetaKind, InvalidProgramInfo, MachineStopType, Misalignment, PointerKind,
     ReportedErrorInfo, ResourceExhaustionInfo, ScalarSizeMismatch, UndefinedBehaviorInfo,
     UnsupportedOpInfo, ValidationErrorInfo, ValidationErrorKind,
 };

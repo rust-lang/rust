@@ -697,10 +697,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_ref();
         let ptr = this.read_pointer(op)?;
-
-        let mplace = MPlaceTy::from_aligned_ptr(ptr, layout);
-
-        Ok(mplace)
+        Ok(this.ptr_to_mplace(ptr, layout))
     }
 
     /// Calculates the MPlaceTy given the offset and layout of an access on an operand

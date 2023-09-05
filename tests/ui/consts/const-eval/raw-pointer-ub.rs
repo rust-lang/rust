@@ -26,6 +26,17 @@ const MISALIGNED_COPY: () = unsafe {
     // The actual error points into the implementation of `copy_to_nonoverlapping`.
 };
 
+const MISALIGNED_FIELD: () = unsafe {
+    #[repr(align(16))]
+    struct Aligned(f32);
+
+    let mem = [0f32; 8];
+    let ptr = mem.as_ptr().cast::<Aligned>();
+    // Accessing an f32 field but we still require the alignment of the pointer type.
+    let _val = (*ptr).0; //~ERROR: evaluation of constant value failed
+    //~^NOTE: accessing memory with alignment 4, but alignment 16 is required
+};
+
 const OOB: () = unsafe {
     let mem = [0u32; 1];
     let ptr = mem.as_ptr().cast::<u64>();

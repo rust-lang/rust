@@ -5,8 +5,9 @@ use rustc_errors::{
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::interpret::{
-    CheckInAllocMsg, ExpectedKind, InterpError, InvalidMetaKind, InvalidProgramInfo, PointerKind,
-    ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
+    CheckInAllocMsg, ExpectedKind, InterpError, InvalidMetaKind, InvalidProgramInfo, Misalignment,
+    PointerKind, ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
+    ValidationErrorInfo,
 };
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
@@ -567,7 +568,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
 
                 builder.set_arg("bad_pointer_message", bad_pointer_message(msg, handler));
             }
-            AlignmentCheckFailed { required, has } => {
+            AlignmentCheckFailed(Misalignment { required, has }) => {
                 builder.set_arg("required", required.bytes());
                 builder.set_arg("has", has.bytes());
             }

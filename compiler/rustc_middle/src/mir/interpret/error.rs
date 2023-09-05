@@ -261,6 +261,13 @@ pub struct ScalarSizeMismatch {
     pub data_size: u64,
 }
 
+/// Information about a misaligned pointer.
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
+pub struct Misalignment {
+    pub has: Align,
+    pub required: Align,
+}
+
 macro_rules! impl_into_diagnostic_arg_through_debug {
     ($($ty:ty),*$(,)?) => {$(
         impl IntoDiagnosticArg for $ty {
@@ -322,7 +329,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using an integer as a pointer in the wrong way.
     DanglingIntPointer(u64, CheckInAllocMsg),
     /// Used a pointer with bad alignment.
-    AlignmentCheckFailed { required: Align, has: Align },
+    AlignmentCheckFailed(Misalignment),
     /// Writing to read-only memory.
     WriteToReadOnly(AllocId),
     /// Trying to access the data behind a function pointer.
