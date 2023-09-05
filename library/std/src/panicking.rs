@@ -629,7 +629,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
             );
         } else {
             rust_panic_with_hook(
-                &mut PanicPayload::new(msg),
+                &mut PanicPayload::new(&msg),
                 info.message(),
                 loc,
                 info.can_unwind(),
@@ -662,7 +662,7 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
             *(&msg as &dyn Any).downcast_ref::<&'static str>().unwrap_or(&"<non-str payload>");
         rust_panic_with_hook(
             &mut PanicPayload::new(msg),
-            &core::fmt::Arguments::new_v1(&[message], &[]),
+            core::fmt::Arguments::new_v1(&[message], &[]),
             loc,
             /* can_unwind */ true,
             /* force_no_backtrace */ false,
@@ -709,7 +709,7 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
 /// abort or unwind.
 fn rust_panic_with_hook(
     payload: &mut dyn BoxMeUp,
-    message: &fmt::Arguments<'_>,
+    message: fmt::Arguments<'_>,
     location: &Location<'_>,
     can_unwind: bool,
     force_no_backtrace: bool,
