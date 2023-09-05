@@ -1,5 +1,5 @@
 // compile-flags: --edition=2018
-#![feature(no_coverage)]
+#![feature(coverage_attribute)]
 
 macro_rules! bail {
     ($msg:literal $(,)?) => {
@@ -39,7 +39,7 @@ pub async fn test() -> Result<(), String> {
     Ok(())
 }
 
-#[no_coverage]
+#[coverage(off)]
 fn main() {
     executor::block_on(test()).unwrap();
 }
@@ -51,18 +51,18 @@ mod executor {
         task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
     };
 
-    #[no_coverage]
+    #[coverage(off)]
     pub fn block_on<F: Future>(mut future: F) -> F::Output {
         let mut future = unsafe { Pin::new_unchecked(&mut future) };
         use std::hint::unreachable_unchecked;
         static VTABLE: RawWakerVTable = RawWakerVTable::new(
-            #[no_coverage]
+            #[coverage(off)]
             |_| unsafe { unreachable_unchecked() }, // clone
-            #[no_coverage]
+            #[coverage(off)]
             |_| unsafe { unreachable_unchecked() }, // wake
-            #[no_coverage]
+            #[coverage(off)]
             |_| unsafe { unreachable_unchecked() }, // wake_by_ref
-            #[no_coverage]
+            #[coverage(off)]
             |_| (),
         );
         let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
