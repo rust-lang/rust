@@ -22,7 +22,7 @@ lto = "thin"
 
 > Note that LTO for `rustc` is currently supported and tested only for
 > the `x86_64-unknown-linux-gnu` target. Other targets *may* work, but no guarantees are provided.
-> Notably, LTO optimized `rustc` currently produces [miscompilations] on Windows.
+> Notably, LTO-optimized `rustc` currently produces [miscompilations] on Windows.
 
 [miscompilations]: https://github.com/rust-lang/rust/issues/109114
 
@@ -63,7 +63,7 @@ compile `rustc` for a specific instruction set architecture, you can set the `ta
 option in `RUSTFLAGS`:
 
 ```bash
-$ RUSTFLAGS="-C target_cpu=x86-64-v3" x.py build ...
+RUSTFLAGS="-C target_cpu=x86-64-v3" ./x build ...
 ```
 
 If you also want to compile LLVM for a specific instruction set, you can set `llvm` flags
@@ -78,9 +78,9 @@ cflags = "-march=x86-64-v3"
 ## Profile-guided optimization
 
 Applying profile-guided optimizations (or more generally, feedback-directed optimizations) can
-produce a large increase to `rustc` performance, by up to 25%. However, these techniques are not
-simply enabled by a configuration option, but rather they require a complex build workflow that
-compiles `rustc` multiple times and profiles it on selected benchmarks.
+produce a large increase to `rustc` performance, by up to 15% ([1], [2]). However, these techniques
+are not simply enabled by a configuration option, but rather they require a complex build workflow
+that compiles `rustc` multiple times and profiles it on selected benchmarks.
 
 There is a tool called `opt-dist` that is used to optimize `rustc` with [PGO] (profile-guided
 optimizations) and [BOLT] (a post-link binary optimizer) for builds distributed to end users. You
@@ -88,6 +88,9 @@ can examine the tool, which is located in `src/tools/opt-dist`, and build a cust
 workflow based on it, or try to use it directly. Note that the tool is currently quite hardcoded to
 the way we use it in Rust's continuous integration workflows, and it might require some custom
 changes to make it work in a different environment.
+
+[1]: https://blog.rust-lang.org/inside-rust/2020/11/11/exploring-pgo-for-the-rust-compiler.html#final-numbers-and-a-benchmarking-plot-twist
+[2]: https://github.com/rust-lang/rust/pull/96978
 
 [PGO]: https://doc.rust-lang.org/rustc/profile-guided-optimization.html
 
@@ -112,11 +115,11 @@ you execute the following commands on a Linux system):
 
 1. Build the tool with the following command:
     ```bash
-    $ python3 x.py build tools/opt-dist
+    ./x build tools/opt-dist
     ```
 2. Run the tool with the `PGO_HOST` environment variable set to the 64-bit Linux target:
     ```bash
-    $ PGO_HOST=x86_64-unknown-linux-gnu ./build/host/stage0-tools-bin/opt-dist
+    PGO_HOST=x86_64-unknown-linux-gnu ./build/host/stage0-tools-bin/opt-dist
     ```
    Note that the default Linux environment expects several hardcoded paths to exist:
     - `/checkout` should contain a checkout of the Rust compiler repository that will be compiled.
@@ -126,6 +129,6 @@ you execute the following commands on a Linux system):
 
 You can modify `LinuxEnvironment` (or implement your own) to override these paths.
 
-[`Environment`]: https://github.com/rust-lang/rust/blob/65e468f9c259749c210b1ae8972bfe14781f72f1/src/tools/opt-dist/src/environment/mod.rs#L8-L7
+[`Environment`]: https://github.com/rust-lang/rust/blob/65e468f9c259749c210b1ae8972bfe14781f72f1/src/tools/opt-dist/src/environment/mod.rs#L8-L70
 
 [Rust benchmark suite]: https://github.com/rust-lang/rustc-perf
