@@ -615,7 +615,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     }
 
     let loc = info.location().unwrap(); // The current implementation always returns Some
-    let msg = info.message(); // The current implementation always returns Some
+    let msg = info.message();
     crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
         // FIXME: can we just pass `info` along rather than taking it apart here, only to have
         // `rust_panic_with_hook` construct a new `PanicInfo`?
