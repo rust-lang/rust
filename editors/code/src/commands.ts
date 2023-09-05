@@ -3,7 +3,7 @@ import * as lc from "vscode-languageclient";
 import * as ra from "./lsp_ext";
 import * as path from "path";
 
-import { type Ctx, type Cmd, type CtxInit } from "./ctx";
+import type { Ctx, Cmd, CtxInit } from "./ctx";
 import { applySnippetWorkspaceEdit, applySnippetTextEdits } from "./snippets";
 import { spawnSync } from "child_process";
 import { type RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
@@ -878,7 +878,7 @@ export function addProject(ctx: CtxInit): Cmd {
         }
 
         const command = `${extensionName}.discoverWorkspaceCommand`;
-        const project = (await vscode.commands.executeCommand(command)) as JsonProject;
+        const project = await vscode.commands.executeCommand(command);
 
         ctx.addToDiscoveredWorkspaces([project]);
 

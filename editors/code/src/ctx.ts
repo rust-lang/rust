@@ -30,12 +30,12 @@ import { bootstrap } from "./bootstrap";
 export type Workspace =
     | { kind: "Empty" }
     | {
-          kind: "Workspace Folder";
-      }
+        kind: "Workspace Folder";
+    }
     | {
-          kind: "Detached Files";
-          files: vscode.TextDocument[];
-      };
+        kind: "Detached Files";
+        files: vscode.TextDocument[];
+    };
 
 export function fetchWorkspace(): Workspace {
     const folders = (vscode.workspace.workspaceFolders || []).filter(
@@ -49,9 +49,9 @@ export function fetchWorkspace(): Workspace {
         ? rustDocuments.length === 0
             ? { kind: "Empty" }
             : {
-                  kind: "Detached Files",
-                  files: rustDocuments,
-              }
+                kind: "Detached Files",
+                files: rustDocuments,
+            }
         : { kind: "Workspace Folder" };
 }
 
@@ -189,7 +189,7 @@ export class Ctx {
             if (this.config.discoverProjectRunner) {
                 const command = `${this.config.discoverProjectRunner}.discoverWorkspaceCommand`;
                 log.info(`running command: ${command}`);
-                const project = (await vscode.commands.executeCommand(command)) as JsonProject;
+                const project: JsonProject = await vscode.commands.executeCommand(command);
                 this.addToDiscoveredWorkspaces([project]);
             }
 
@@ -441,8 +441,7 @@ export class Ctx {
         }
         statusBar.tooltip.appendMarkdown("\n\n[Open Logs](command:rust-analyzer.openLogs)");
         statusBar.tooltip.appendMarkdown(
-            `\n\n[${
-                this.config.checkOnSave ? "Disable" : "Enable"
+            `\n\n[${this.config.checkOnSave ? "Disable" : "Enable"
             } Check on Save](command:rust-analyzer.toggleCheckOnSave)`,
         );
         statusBar.tooltip.appendMarkdown(
