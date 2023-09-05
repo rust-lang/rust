@@ -878,7 +878,7 @@ export function addProject(ctx: CtxInit): Cmd {
         }
 
         const command = `${extensionName}.discoverWorkspaceCommand`;
-        const project = await vscode.commands.executeCommand(command);
+        const project: JsonProject = await vscode.commands.executeCommand(command);
 
         ctx.addToDiscoveredWorkspaces([project]);
 
