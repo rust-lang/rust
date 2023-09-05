@@ -615,7 +615,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
     ) -> InterpResult<'tcx, Option<Provenance>> {
         let this = self.eval_context_mut();
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        this.check_ptr_access_align(place.ptr, size, Align::ONE, CheckInAllocMsg::InboundsTest)?;
+        this.check_ptr_access_align(place.ptr(), size, Align::ONE, CheckInAllocMsg::InboundsTest)?;
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriInterpCx<'mir, 'tcx>,
@@ -682,7 +682,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             trace!(
                 "reborrow of size 0: reference {:?} derived from {:?} (pointee {})",
                 new_tag,
-                place.ptr,
+                place.ptr(),
                 place.layout.ty,
             );
             // Don't update any stacks for a zero-sized access; borrow stacks are per-byte and this
@@ -692,7 +692,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             // attempt to use it for a non-zero-sized access.
             // Dangling slices are a common case here; it's valid to get their length but with raw
             // pointer tagging for example all calls to get_unchecked on them are invalid.
-            if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr) {
+            if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr()) {
                 log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
                 // Still give it the new provenance, it got retagged after all.
                 return Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));
@@ -700,11 +700,11 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 // This pointer doesn't come with an AllocId. :shrug:
                 log_creation(this, None)?;
                 // Provenance unchanged.
-                return Ok(place.ptr.provenance);
+                return Ok(place.ptr().provenance);
             }
         }
 
-        let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr)?;
+        let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr())?;
         log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
 
         trace!(

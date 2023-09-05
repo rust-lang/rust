@@ -62,7 +62,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // The rest jumps to `ret` immediately.
         this.emulate_intrinsic_by_name(intrinsic_name, args, dest)?;
 
-        trace!("{:?}", this.dump_place(**dest));
+        trace!("{:?}", this.dump_place(dest));
         this.go_to_block(ret);
         Ok(())
     }

@@ -190,7 +190,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.deref_pointer_as(system_info, this.windows_ty_layout("SYSTEM_INFO"))?;
                 // Initialize with `0`.
                 this.write_bytes_ptr(
-                    system_info.ptr,
+                    system_info.ptr(),
                     iter::repeat(0u8).take(system_info.layout.size.bytes_usize()),
                 )?;
                 // Set selected fields.
@@ -235,7 +235,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "GetCommandLineW" => {
                 let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.write_pointer(
-                    this.machine.cmd_line.expect("machine must be initialized").ptr,
+                    this.machine.cmd_line.expect("machine must be initialized"),
                     dest,
                 )?;
             }

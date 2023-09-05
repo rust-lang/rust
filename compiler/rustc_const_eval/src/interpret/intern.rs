@@ -25,7 +25,7 @@ use rustc_ast::Mutability;
 
 use super::{
     AllocId, Allocation, ConstAllocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy,
-    ValueVisitor,
+    Projectable, ValueVisitor,
 };
 use crate::const_eval;
 use crate::errors::{DanglingPtrInFinal, UnsupportedUntypedPointer};
@@ -177,7 +177,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
             if let ty::Dynamic(_, _, ty::Dyn) =
                 tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind()
             {
-                let ptr = mplace.meta.unwrap_meta().to_pointer(&tcx)?;
+                let ptr = mplace.meta().unwrap_meta().to_pointer(&tcx)?;
                 if let Some(alloc_id) = ptr.provenance {
                     // Explicitly choose const mode here, since vtables are immutable, even
                     // if the reference of the fat pointer is mutable.
@@ -191,7 +191,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
             }
             // Check if we have encountered this pointer+layout combination before.
             // Only recurse for allocation-backed pointers.
-            if let Some(alloc_id) = mplace.ptr.provenance {
+            if let Some(alloc_id) = mplace.ptr().provenance {
                 // Compute the mode with which we intern this. Our goal here is to make as many
                 // statics as we can immutable so they can be placed in read-only memory by LLVM.
                 let ref_mode = match self.mode {
@@ -267,7 +267,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
 
                     // If there is no provenance in this allocation, it does not contain references
                     // that point to another allocation, and we can avoid the interning walk.
-                    if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, align)? {
+                    if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr(), size, align)? {
                         if !alloc.has_provenance() {
                             return Ok(false);
                         }
@@ -353,7 +353,7 @@ pub fn intern_const_alloc_recursive<
         leftover_allocations,
         // The outermost allocation must exist, because we allocated it with
         // `Memory::allocate`.
-        ret.ptr.provenance.unwrap(),
+        ret.ptr().provenance.unwrap(),
         base_intern_mode,
         Some(ret.layout.ty),
     );
@@ -466,7 +466,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
     ) -> InterpResult<'tcx, ConstAllocation<'tcx>> {
         let dest = self.allocate(layout, MemoryKind::Stack)?;
         f(self, &dest.clone().into())?;
-        let mut alloc = self.memory.alloc_map.remove(&dest.ptr.provenance.unwrap()).unwrap().1;
+        let mut alloc = self.memory.alloc_map.remove(&dest.ptr().provenance.unwrap()).unwrap().1;
         alloc.mutability = Mutability::Not;
         Ok(self.tcx.mk_const_alloc(alloc))
     }

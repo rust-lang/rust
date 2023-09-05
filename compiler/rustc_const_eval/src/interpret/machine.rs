@@ -18,7 +18,7 @@ use crate::const_eval::CheckAlignment;
 
 use super::{
     AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, FnArg, Frame, ImmTy, InterpCx,
-    InterpResult, MPlaceTy, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar,
+    InterpResult, MPlaceTy, MemoryKind, OpTy, PlaceTy, Pointer, Provenance, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -237,22 +237,22 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         right: &ImmTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx, (Scalar<Self::Provenance>, bool, Ty<'tcx>)>;
 
-    /// Called to write the specified `local` from the `frame`.
+    /// Called before writing the specified `local` of the `frame`.
     /// Since writing a ZST is not actually accessing memory or locals, this is never invoked
     /// for ZST reads.
     ///
     /// Due to borrow checker trouble, we indicate the `frame` as an index rather than an `&mut
     /// Frame`.
-    #[inline]
-    fn access_local_mut<'a>(
-        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-        frame: usize,
-        local: mir::Local,
-    ) -> InterpResult<'tcx, &'a mut Operand<Self::Provenance>>
+    #[inline(always)]
+    fn before_access_local_mut<'a>(
+        _ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+        _frame: usize,
+        _local: mir::Local,
+    ) -> InterpResult<'tcx>
     where
         'tcx: 'mir,
     {
-        ecx.stack_mut()[frame].locals[local].access_mut()
+        Ok(())
     }
 
     /// Called before a basic block terminator is executed.
