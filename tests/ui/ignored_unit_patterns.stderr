@@ -19,10 +19,16 @@ LL |     if let Ok(_) = foo() {}
    |               ^ help: use `()` instead of `_`: `()`
 
 error: matching over `()` is more explicit
-  --> $DIR/ignored_unit_patterns.rs:14:28
+  --> $DIR/ignored_unit_patterns.rs:15:28
    |
 LL |     let _ = foo().map_err(|_| todo!());
    |                            ^ help: use `()` instead of `_`: `()`
 
-error: aborting due to 4 previous errors
+error: matching over `()` is more explicit
+  --> $DIR/ignored_unit_patterns.rs:21:9
+   |
+LL |     let _ = foo().unwrap();
+   |         ^ help: use `()` instead of `_`: `()`
+
+error: aborting due to 5 previous errors
 
