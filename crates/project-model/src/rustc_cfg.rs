@@ -4,10 +4,11 @@ use std::process::Command;
 
 use rustc_hash::FxHashMap;
 
-use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath};
+use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath, Sysroot};
 
 pub(crate) fn get(
     cargo_toml: Option<&ManifestPath>,
+    sysroot: Option<&Sysroot>,
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
 ) -> Vec<CfgFlag> {
@@ -25,7 +26,7 @@ pub(crate) fn get(
     // Add miri cfg, which is useful for mir eval in stdlib
     res.push(CfgFlag::Atom("miri".into()));
 
-    match get_rust_cfgs(cargo_toml, target, extra_env) {
+    match get_rust_cfgs(cargo_toml, sysroot, target, extra_env) {
         Ok(rustc_cfgs) => {
             tracing::debug!(
                 "rustc cfgs found: {:?}",
@@ -44,6 +45,7 @@ pub(crate) fn get(
 
 fn get_rust_cfgs(
     cargo_toml: Option<&ManifestPath>,
+    sysroot: Option<&Sysroot>,
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
 ) -> anyhow::Result<String> {
@@ -62,8 +64,22 @@ fn get_rust_cfgs(
             Err(e) => tracing::debug!("{e:?}: falling back to querying rustc for cfgs"),
         }
     }
+
+    let rustc = match sysroot {
+        Some(sysroot) => {
+            let rustc = sysroot.discover_rustc()?.into();
+            tracing::debug!(?rustc, "using rustc from sysroot");
+            rustc
+        }
+        None => {
+            let rustc = toolchain::rustc();
+            tracing::debug!(?rustc, "using rustc from env");
+            rustc
+        }
+    };
+
     // using unstable cargo features failed, fall back to using plain rustc
-    let mut cmd = Command::new(toolchain::rustc());
+    let mut cmd = Command::new(rustc);
     cmd.envs(extra_env);
     cmd.args(["--print", "cfg", "-O"]);
     if let Some(target) = target {

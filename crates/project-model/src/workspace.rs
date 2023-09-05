@@ -240,9 +240,9 @@ impl ProjectWorkspace {
                     Some(RustLibSource::Path(path)) => ManifestPath::try_from(path.clone())
                         .map_err(|p| Some(format!("rustc source path is not absolute: {p}"))),
                     Some(RustLibSource::Discover) => {
-                        sysroot.as_ref().ok().and_then(Sysroot::discover_rustc).ok_or_else(|| {
-                            Some(format!("Failed to discover rustc source for sysroot."))
-                        })
+                        sysroot.as_ref().ok().and_then(Sysroot::discover_rustc_src).ok_or_else(
+                            || Some(format!("Failed to discover rustc source for sysroot.")),
+                        )
                     }
                     None => Err(None),
                 };
@@ -279,8 +279,12 @@ impl ProjectWorkspace {
                     }
                 });
 
-                let rustc_cfg =
-                    rustc_cfg::get(Some(&cargo_toml), config.target.as_deref(), &config.extra_env);
+                let rustc_cfg = rustc_cfg::get(
+                    Some(&cargo_toml),
+                    None,
+                    config.target.as_deref(),
+                    &config.extra_env,
+                );
 
                 let cfg_overrides = config.cfg_overrides.clone();
                 let data_layout = target_data_layout::get(
@@ -335,7 +339,7 @@ impl ProjectWorkspace {
             tracing::info!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
         }
 
-        let rustc_cfg = rustc_cfg::get(None, target, extra_env);
+        let rustc_cfg = rustc_cfg::get(None, sysroot.as_ref().ok(), target, extra_env);
         ProjectWorkspace::Json { project: project_json, sysroot, rustc_cfg, toolchain }
     }
 
@@ -360,7 +364,7 @@ impl ProjectWorkspace {
         if let Ok(sysroot) = &sysroot {
             tracing::info!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
         }
-        let rustc_cfg = rustc_cfg::get(None, None, &Default::default());
+        let rustc_cfg = rustc_cfg::get(None, sysroot.as_ref().ok(), None, &Default::default());
         Ok(ProjectWorkspace::DetachedFiles { files: detached_files, sysroot, rustc_cfg })
     }
 
@@ -756,7 +760,7 @@ fn project_json_to_crate_graph(
                 let target_cfgs = match target.as_deref() {
                     Some(target) => cfg_cache
                         .entry(target)
-                        .or_insert_with(|| rustc_cfg::get(None, Some(target), extra_env)),
+                        .or_insert_with(|| rustc_cfg::get(None, sysroot, Some(target), extra_env)),
                     None => &rustc_cfg,
                 };
 
