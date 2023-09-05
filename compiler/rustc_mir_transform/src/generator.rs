@@ -814,7 +814,7 @@ impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
 
     fn visit_statement_before_primary_effect(
         &mut self,
-        _results: &R,
+        _results: &mut R,
         state: &Self::FlowState,
         _statement: &'mir Statement<'tcx>,
         loc: Location,
@@ -824,7 +824,7 @@ impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        _results: &R,
+        _results: &mut R,
         state: &Self::FlowState,
         _terminator: &'mir Terminator<'tcx>,
         loc: Location,
