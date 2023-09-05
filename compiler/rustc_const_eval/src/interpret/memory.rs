@@ -424,7 +424,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     throw_ub!(DanglingIntPointer(addr, msg));
                 }
                 // Must be aligned.
-                self.check_misalign(Self::offset_misalignment(addr, align))?;
+                if M::enforce_alignment(self) && align.bytes() > 1 {
+                    self.check_misalign(Self::offset_misalignment(addr, align))?;
+                }
                 None
             }
             Ok((alloc_id, offset, prov)) => {
@@ -446,7 +448,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
-                self.check_misalign(self.alloc_misalignment(ptr, offset, align, alloc_align))?;
+                if M::enforce_alignment(self) && align.bytes() > 1 {
+                    self.check_misalign(self.alloc_misalignment(ptr, offset, align, alloc_align))?;
+                }
 
                 // We can still be zero-sized in this branch, in which case we have to
                 // return `None`.
@@ -457,10 +461,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub(super) fn check_misalign(&self, misaligned: Option<Misalignment>) -> InterpResult<'tcx> {
-        if M::enforce_alignment(self) {
-            if let Some(misaligned) = misaligned {
-                throw_ub!(AlignmentCheckFailed(misaligned))
-            }
+        if let Some(misaligned) = misaligned {
+            throw_ub!(AlignmentCheckFailed(misaligned))
         }
         Ok(())
     }
@@ -502,6 +504,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
         align: Align,
     ) -> Option<Misalignment> {
+        if !M::enforce_alignment(self) {
+            return None;
+        }
         match self.ptr_try_get_alloc_id(ptr) {
             Err(addr) => Self::offset_misalignment(addr, align),
             Ok((alloc_id, offset, _prov)) => {
