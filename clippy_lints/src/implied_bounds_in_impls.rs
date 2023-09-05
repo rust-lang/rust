@@ -56,7 +56,9 @@ fn emit_lint(
     poly_trait: &rustc_hir::PolyTraitRef<'_>,
     opaque_ty: &rustc_hir::OpaqueTy<'_>,
     index: usize,
+    // The bindings that were implied
     implied_bindings: &[rustc_hir::TypeBinding<'_>],
+    // The original bindings that `implied_bindings` are implied from
     implied_by_bindings: &[rustc_hir::TypeBinding<'_>],
     implied_by_args: &[GenericArg<'_>],
     implied_by_span: Span,
@@ -69,7 +71,7 @@ fn emit_lint(
         poly_trait.span,
         &format!("this bound is already specified as the supertrait of `{implied_by}`"),
         |diag| {
-            // If we suggest removing a bound, we may also need extend the span
+            // If we suggest removing a bound, we may also need to extend the span
             // to include the `+` token that is ahead or behind,
             // so we don't end up with something like `impl + B` or `impl A + `
 
