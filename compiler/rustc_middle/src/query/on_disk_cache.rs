@@ -22,7 +22,7 @@ use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
 };
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
-use rustc_span::{BytePos, ExpnData, ExpnHash, Pos, SourceFile, Span};
+use rustc_span::{BytePos, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span};
 use rustc_span::{CachingSourceMapView, Symbol};
 use std::collections::hash_map::Entry;
 use std::io;
@@ -688,11 +688,12 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
 
         let file_lo_index = SourceFileIndex::decode(decoder);
         let line_lo = usize::decode(decoder);
-        let col_lo = BytePos::decode(decoder);
+        let col_lo = RelativeBytePos::decode(decoder);
         let len = BytePos::decode(decoder);
 
         let file_lo = decoder.file_index_to_file(file_lo_index);
         let lo = file_lo.lines(|lines| lines[line_lo - 1] + col_lo);
+        let lo = file_lo.absolute_position(lo);
         let hi = lo + len;
 
         Span::new(lo, hi, ctxt, parent)

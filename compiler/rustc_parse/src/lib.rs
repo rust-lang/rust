@@ -132,7 +132,7 @@ fn maybe_source_file_to_parser(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
 ) -> Result<Parser<'_>, Vec<Diagnostic>> {
-    let end_pos = source_file.end_pos;
+    let end_pos = source_file.end_position();
     let stream = maybe_file_to_stream(sess, source_file, None)?;
     let mut parser = stream_to_parser(sess, stream, None);
     if parser.token == token::Eof {

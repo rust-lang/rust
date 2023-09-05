@@ -68,7 +68,7 @@ fn make_mir_scope<'ll, 'tcx>(
         let file = cx.sess().source_map().lookup_source_file(mir.span.lo());
         debug_context.scopes[scope] = DebugScope {
             file_start_pos: file.start_pos,
-            file_end_pos: file.end_pos,
+            file_end_pos: file.end_position(),
             ..debug_context.scopes[scope]
         };
         instantiated.insert(scope);
@@ -120,7 +120,7 @@ fn make_mir_scope<'ll, 'tcx>(
         dbg_scope,
         inlined_at: inlined_at.or(parent_scope.inlined_at),
         file_start_pos: loc.file.start_pos,
-        file_end_pos: loc.file.end_pos,
+        file_end_pos: loc.file.end_position(),
     };
     instantiated.insert(scope);
 }
