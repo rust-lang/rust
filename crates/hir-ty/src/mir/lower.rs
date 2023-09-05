@@ -370,6 +370,12 @@ impl<'ctx> MirLowerCtx<'ctx> {
         mut current: BasicBlockId,
     ) -> Result<Option<BasicBlockId>> {
         match &self.body.exprs[expr_id] {
+            Expr::OffsetOf(_) => {
+                not_supported!("builtin#offset_of")
+            }
+            Expr::InlineAsm(_) => {
+                not_supported!("builtin#asm")
+            }
             Expr::Missing => {
                 if let DefWithBodyId::FunctionId(f) = self.owner {
                     let assoc = f.lookup(self.db.upcast());

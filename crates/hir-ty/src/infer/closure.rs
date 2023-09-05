@@ -452,6 +452,8 @@ impl InferenceContext<'_> {
 
     fn walk_expr_without_adjust(&mut self, tgt_expr: ExprId) {
         match &self.body[tgt_expr] {
+            Expr::OffsetOf(_) => (),
+            Expr::InlineAsm(e) => self.walk_expr_without_adjust(e.e),
             Expr::If { condition, then_branch, else_branch } => {
                 self.consume_expr(*condition);
                 self.consume_expr(*then_branch);
@@ -620,6 +622,7 @@ impl InferenceContext<'_> {
             | Expr::Tuple { exprs, is_assignee_expr: _ } => {
                 self.consume_exprs(exprs.iter().copied())
             }
+
             Expr::Missing
             | Expr::Continue { .. }
             | Expr::Path(_)

@@ -120,8 +120,7 @@ fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bool {
                 is_const &=
                     sema.resolve_method_call(&call).map(|it| it.is_const(sema.db)).unwrap_or(true)
             }
-            ast::Expr::BoxExpr(_)
-            | ast::Expr::ForExpr(_)
+            ast::Expr::ForExpr(_)
             | ast::Expr::ReturnExpr(_)
             | ast::Expr::TryExpr(_)
             | ast::Expr::YieldExpr(_)

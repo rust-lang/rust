@@ -843,6 +843,11 @@ impl InferenceContext<'_> {
                 });
                 expected
             }
+            Expr::OffsetOf(_) => TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner),
+            Expr::InlineAsm(it) => {
+                self.infer_expr_no_expect(it.e);
+                self.result.standard_types.unit.clone()
+            }
         };
         // use a new type variable if we got unknown here
         let ty = self.insert_type_vars_shallow(ty);
