@@ -37,9 +37,14 @@ impl<'tcx> Context for Tables<'tcx> {
         })
     }
 
+    fn name_of_def_id(&self, def_id: stable_mir::DefId) -> String {
+        self.tcx.def_path_str(self[def_id])
+    }
+
     fn all_local_items(&mut self) -> stable_mir::CrateItems {
         self.tcx.mir_keys(()).iter().map(|item| self.crate_item(item.to_def_id())).collect()
     }
+
     fn entry_fn(&mut self) -> Option<stable_mir::CrateItem> {
         Some(self.crate_item(self.tcx.entry_fn(())?.0))
     }
