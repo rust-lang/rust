@@ -379,7 +379,7 @@ OffsetOfExpr =
   Attr* 'builtin' '#' 'offset_of' '(' Type ',' fields:(NameRef ('.' NameRef)* ) ')'
 
 AsmExpr =
-  Attr* 'builtin' '#' 'asm' '(' ')'
+  Attr* 'builtin' '#' 'asm' '(' Expr ')'
 
 FormatArgsExpr =
   Attr* 'builtin' '#' 'format_args' '(' ')'

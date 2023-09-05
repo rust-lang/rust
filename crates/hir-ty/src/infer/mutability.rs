@@ -35,6 +35,7 @@ impl InferenceContext<'_> {
     fn infer_mut_expr_without_adjust(&mut self, tgt_expr: ExprId, mutability: Mutability) {
         match &self.body[tgt_expr] {
             Expr::Missing => (),
+            Expr::InlineAsm(e) => self.infer_mut_expr_without_adjust(e.e, Mutability::Not),
             Expr::OffsetOf(_) => (),
             &Expr::If { condition, then_branch, else_branch } => {
                 self.infer_mut_expr(condition, Mutability::Not);

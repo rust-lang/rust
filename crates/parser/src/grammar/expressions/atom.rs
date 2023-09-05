@@ -254,6 +254,7 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
     } else if p.at_contextual_kw(T![asm]) {
         p.bump_remap(T![asm]);
         p.expect(T!['(']);
+        // FIXME: We just put expression here so highlighting kind of keeps working
         expr(p);
         p.expect(T![')']);
         Some(m.complete(p, ASM_EXPR))

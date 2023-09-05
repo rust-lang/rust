@@ -373,6 +373,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
             Expr::OffsetOf(_) => {
                 not_supported!("builtin#offset_of")
             }
+            Expr::InlineAsm(_) => {
+                not_supported!("builtin#asm")
+            }
             Expr::Missing => {
                 if let DefWithBodyId::FunctionId(f) = self.owner {
                     let assoc = f.lookup(self.db.upcast());

@@ -155,8 +155,9 @@ impl Printer<'_> {
         match expr {
             Expr::Missing => w!(self, "�"),
             Expr::Underscore => w!(self, "_"),
+            Expr::InlineAsm(_) => w!(self, "builtin#asm(_)"),
             Expr::OffsetOf(offset_of) => {
-                w!(self, "builtin#offset_of!(");
+                w!(self, "builtin#offset_of(");
                 self.print_type_ref(&offset_of.container);
                 w!(
                     self,
