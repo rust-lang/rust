@@ -33,11 +33,21 @@ impl Foo for Packed2 {
 // Test for #115396
 fn packed_dyn() {
     #[repr(packed)]
-    struct Unaligned<T: ? Sized>(ManuallyDrop<T>);
+    struct Unaligned<T: ?Sized>(ManuallyDrop<T>);
 
     let ref local = Unaligned(ManuallyDrop::new([3, 5, 8u64]));
     let foo: &Unaligned<dyn Debug> = &*local;
     println!("{:?}", &*foo.0); //~ ERROR reference to packed field
+    let foo: &Unaligned<[u64]> = &*local;
+    println!("{:?}", &*foo.0); //~ ERROR reference to packed field
+
+    // Even if the actual alignment is 1, we cannot know that when looking at `dyn Debug.`
+    let ref local = Unaligned(ManuallyDrop::new([3, 5, 8u8]));
+    let foo: &Unaligned<dyn Debug> = &*local;
+    println!("{:?}", &*foo.0); //~ ERROR reference to packed field
+    // However, we *can* know the alignment when looking at a slice.
+    let foo: &Unaligned<[u8]> = &*local;
+    println!("{:?}", &*foo.0); // no error!
 }
 
 fn main() {
