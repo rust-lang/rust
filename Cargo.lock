@@ -723,6 +723,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e496a50fda8aacccc86d7529e2c1e0892dbd0f898a6b5645b5561b89c3210efa"
 
 [[package]]
+name = "coverage-dump"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "leb128",
+ "md-5",
+ "miniz_oxide",
+ "regex",
+ "rustc-demangle",
+]
+
+[[package]]
 name = "coverage_test_macros"
 version = "0.0.0"
 
@@ -2040,6 +2052,12 @@ name = "lazycell"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
+
+[[package]]
+name = "leb128"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "884e2677b40cc8c339eaefcb701c32ef1fd2493d71118dc0ca4b6a736c93bd67"
 
 [[package]]
 name = "levenshtein"
