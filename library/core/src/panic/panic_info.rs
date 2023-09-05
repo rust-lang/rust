@@ -25,7 +25,7 @@ use crate::panic::Location;
 #[derive(Debug)]
 pub struct PanicInfo<'a> {
     payload: &'a (dyn Any + Send),
-    message: Option<&'a fmt::Arguments<'a>>,
+    message: &'a fmt::Arguments<'a>,
     location: &'a Location<'a>,
     can_unwind: bool,
     force_no_backtrace: bool,
@@ -40,7 +40,7 @@ impl<'a> PanicInfo<'a> {
     #[doc(hidden)]
     #[inline]
     pub fn internal_constructor(
-        message: Option<&'a fmt::Arguments<'a>>,
+        message: &'a fmt::Arguments<'a>,
         location: &'a Location<'a>,
         can_unwind: bool,
         force_no_backtrace: bool,
@@ -92,7 +92,7 @@ impl<'a> PanicInfo<'a> {
     /// returns that message ready to be used for example with [`fmt::write`]
     #[must_use]
     #[unstable(feature = "panic_info_message", issue = "66745")]
-    pub fn message(&self) -> Option<&fmt::Arguments<'_>> {
+    pub fn message(&self) -> &fmt::Arguments<'_> {
         self.message
     }
 
@@ -161,13 +161,8 @@ impl fmt::Display for PanicInfo<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("panicked at ")?;
         self.location.fmt(formatter)?;
-        if let Some(message) = self.message {
-            formatter.write_str(":\n")?;
-            formatter.write_fmt(*message)?;
-        } else if let Some(payload) = self.payload.downcast_ref::<&'static str>() {
-            formatter.write_str(":\n")?;
-            formatter.write_str(payload)?;
-        }
+        formatter.write_str(":\n")?;
+        formatter.write_fmt(*self.message)?;
         // NOTE: we cannot use downcast_ref::<String>() here
         // since String is not available in core!
         // The payload is a String when `std::panic!` is called with multiple arguments,

@@ -615,7 +615,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     }
 
     let loc = info.location().unwrap(); // The current implementation always returns Some
-    let msg = info.message().unwrap(); // The current implementation always returns Some
+    let msg = info.message(); // The current implementation always returns Some
     crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
         // FIXME: can we just pass `info` along rather than taking it apart here, only to have
         // `rust_panic_with_hook` construct a new `PanicInfo`?
@@ -658,9 +658,11 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
 
     let loc = Location::caller();
     return crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
+        let message =
+            *(&msg as &dyn Any).downcast_ref::<&'static str>().unwrap_or(&"<non-str payload>");
         rust_panic_with_hook(
             &mut PanicPayload::new(msg),
-            None,
+            &core::fmt::Arguments::new_v1(&[message], &[]),
             loc,
             /* can_unwind */ true,
             /* force_no_backtrace */ false,
@@ -707,7 +709,7 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
 /// abort or unwind.
 fn rust_panic_with_hook(
     payload: &mut dyn BoxMeUp,
-    message: Option<&fmt::Arguments<'_>>,
+    message: &fmt::Arguments<'_>,
     location: &Location<'_>,
     can_unwind: bool,
     force_no_backtrace: bool,

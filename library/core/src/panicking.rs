@@ -62,7 +62,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     }
 
     let pi = PanicInfo::internal_constructor(
-        Some(&fmt),
+        &fmt,
         Location::caller(),
         /* can_unwind */ true,
         /* force_no_backtrace */ false,
@@ -96,7 +96,7 @@ pub fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: bool) -> 
 
     // PanicInfo with the `can_unwind` flag set to false forces an abort.
     let pi = PanicInfo::internal_constructor(
-        Some(&fmt),
+        &fmt,
         Location::caller(),
         /* can_unwind */ false,
         force_no_backtrace,
