@@ -79,6 +79,26 @@
 //!
 //! [lock-free]: https://en.wikipedia.org/wiki/Non-blocking_algorithm
 //!
+//! # Atomic accesses to read-only memory
+//!
+//! In general, atomic accesses on read-only memory are Undefined Behavior. For instance, attempting
+//! to do a `compare_exchange` that will definitely fail (making it conceptually a read-only
+//! operation) can still cause a page fault if the underlying memory page is mapped read-only. Since
+//! atomic `load`s might be implemented using compare-exchange operations, even a `load` can fault
+//! on read-only memory.
+//!
+//! However, as an exception from this general rule, Rust guarantees that "sufficiently small"
+//! atomic loads are implemented in a way that works on read-only memory. This threshold of
+//! "sufficiently small" depends on the architecture:
+//!
+//! | Target architecture | Maximal atomic `load` size that is guaranteed read-only |
+//! |----------|---------|
+//! | `x86`    | 4 bytes |
+//! | `x86_64` | 8 bytes |
+//!
+//! Any atomic `load` on read-only memory larger than the given size are Undefined Behavior. For
+//! architectures not listed above, all atomic `load` on read-only memory are Undefined Behavior.
+//!
 //! # Examples
 //!
 //! A simple spinlock:
