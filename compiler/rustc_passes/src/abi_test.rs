@@ -119,9 +119,13 @@ fn test_arg_abi_eq<'tcx>(
     abi2: &'tcx ArgAbi<'tcx, Ty<'tcx>>,
 ) -> bool {
     // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
-    // at the type. Comparing the `mode` and `layout.abi` should catch basically everything though
-    // (except for tricky cases around unized types).
-    abi1.mode.eq_abi(&abi2.mode) && abi1.layout.abi.eq_up_to_validity(&abi2.layout.abi)
+    // at the type. Comparing the `mode` and `layout.abi` as well as size and alignment should catch
+    // basically everything though (except for tricky cases around unized types).
+    abi1.mode.eq_abi(&abi2.mode)
+        && abi1.layout.abi.eq_up_to_validity(&abi2.layout.abi)
+        && abi1.layout.size == abi2.layout.size
+        && abi1.layout.align.abi == abi2.layout.align.abi
+        && abi1.layout.is_sized() == abi2.layout.is_sized()
 }
 
 fn test_abi_eq<'tcx>(abi1: &'tcx FnAbi<'tcx, Ty<'tcx>>, abi2: &'tcx FnAbi<'tcx, Ty<'tcx>>) -> bool {

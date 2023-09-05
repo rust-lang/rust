@@ -513,6 +513,154 @@ error: ABIs are not compatible
            args: [
                ArgAbi {
                    layout: TyAndLayout {
+                       ty: [u8; 32],
+                       layout: Layout {
+                           size: Size(32 bytes),
+                           align: AbiAndPrefAlign {
+                               abi: $SOME_ALIGN,
+                               pref: $SOME_ALIGN,
+                           },
+                           abi: Aggregate {
+                               sized: true,
+                           },
+                           fields: Array {
+                               stride: Size(1 bytes),
+                               count: 32,
+                           },
+                           largest_niche: None,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: $SOME_ALIGN,
+                       },
+                   },
+                   mode: Indirect {
+                       attrs: ArgAttributes {
+                           regular: NoAlias | NoCapture | NonNull | NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(32 bytes),
+                           pointee_align: Some(
+                               Align(1 bytes),
+                           ),
+                       },
+                       extra_attrs: None,
+                       on_stack: false,
+                   },
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: $SOME_ALIGN,
+                           pref: $SOME_ALIGN,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: $SOME_ALIGN,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: Rust,
+           can_unwind: $SOME_BOOL,
+       }
+       right ABI = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: [u32; 32],
+                       layout: Layout {
+                           size: Size(128 bytes),
+                           align: AbiAndPrefAlign {
+                               abi: $SOME_ALIGN,
+                               pref: $SOME_ALIGN,
+                           },
+                           abi: Aggregate {
+                               sized: true,
+                           },
+                           fields: Array {
+                               stride: Size(4 bytes),
+                               count: 32,
+                           },
+                           largest_niche: None,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: $SOME_ALIGN,
+                       },
+                   },
+                   mode: Indirect {
+                       attrs: ArgAttributes {
+                           regular: NoAlias | NoCapture | NonNull | NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(128 bytes),
+                           pointee_align: Some(
+                               Align(4 bytes),
+                           ),
+                       },
+                       extra_attrs: None,
+                       on_stack: false,
+                   },
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: $SOME_ALIGN,
+                           pref: $SOME_ALIGN,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: $SOME_ALIGN,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: Rust,
+           can_unwind: $SOME_BOOL,
+       }
+  --> $DIR/debug.rs:43:1
+   |
+LL | type TestAbiNeLarger = (fn([u8; 32]), fn([u32; 32]));
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: ABIs are not compatible
+       left ABI = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
                        ty: f32,
                        layout: Layout {
                            size: $SOME_SIZE,
@@ -646,7 +794,7 @@ error: ABIs are not compatible
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:43:1
+  --> $DIR/debug.rs:46:1
    |
 LL | type TestAbiNeFloat = (fn(f32), fn(u32));
    | ^^^^^^^^^^^^^^^^^^^
@@ -792,10 +940,10 @@ error: ABIs are not compatible
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:47:1
+  --> $DIR/debug.rs:50:1
    |
 LL | type TestAbiNeSign = (fn(i32), fn(u32));
    | ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
