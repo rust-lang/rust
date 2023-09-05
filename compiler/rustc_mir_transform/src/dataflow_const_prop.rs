@@ -9,7 +9,7 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{
     Map, State, TrackElem, ValueAnalysis, ValueAnalysisWrapper, ValueOrPlace,
 };
@@ -58,9 +58,13 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
             .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint());
 
         // Collect results and patch the body afterwards.
-        let mut visitor = CollectAndPatch::new(tcx);
+        let mut visitor = CollectAndPatch::new(tcx, &body.local_decls);
         debug_span!("collect").in_scope(|| results.visit_reachable_with(body, &mut visitor));
-        debug_span!("patch").in_scope(|| visitor.visit_body(body));
+        debug_span!("patch").in_scope(|| {
+            for (block, bbdata) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
+                visitor.visit_basic_block_data(block, bbdata);
+            }
+        })
     }
 }
 
@@ -73,7 +77,7 @@ struct ConstAnalysis<'a, 'tcx> {
 }
 
 impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
-    type Value = FlatSet<ScalarTy<'tcx>>;
+    type Value = FlatSet<ScalarInt>;
 
     const NAME: &'static str = "ConstAnalysis";
 
@@ -172,9 +176,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     if let Some(overflow_target) = overflow_target {
                         let overflow = match overflow {
                             FlatSet::Top => FlatSet::Top,
-                            FlatSet::Elem(overflow) => {
-                                self.wrap_scalar(Scalar::from_bool(overflow), self.tcx.types.bool)
-                            }
+                            FlatSet::Elem(overflow) => FlatSet::Elem(overflow.into()),
                             FlatSet::Bottom => FlatSet::Bottom,
                         };
                         // We have flooded `target` earlier.
@@ -209,7 +211,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     }
                     _ => unreachable!(),
                 }
-                .map(|result| ValueOrPlace::Value(self.wrap_immediate(result, *ty)))
+                .map(|result| ValueOrPlace::Value(self.wrap_immediate(result)))
                 .unwrap_or(ValueOrPlace::TOP),
                 _ => ValueOrPlace::TOP,
             },
@@ -242,9 +244,8 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         constant
             .literal
             .eval(self.tcx, self.param_env)
-            .try_to_scalar()
-            .map(|value| FlatSet::Elem(ScalarTy(value, constant.ty())))
-            .unwrap_or(FlatSet::Top)
+            .try_to_scalar_int()
+            .map_or(FlatSet::Top, FlatSet::Elem)
     }
 
     fn handle_switch_int<'mir>(
@@ -261,23 +262,12 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
             // We are branching on uninitialized data, this is UB, treat it as unreachable.
             // This allows the set of visited edges to grow monotonically with the lattice.
             FlatSet::Bottom => TerminatorEdges::None,
-            FlatSet::Elem(ScalarTy(scalar, _)) => {
-                let int = scalar.assert_int();
-                let choice = int.assert_bits(int.size());
+            FlatSet::Elem(scalar) => {
+                let choice = scalar.assert_bits(scalar.size());
                 TerminatorEdges::Single(targets.target_for_value(choice))
             }
             FlatSet::Top => TerminatorEdges::SwitchInt { discr, targets },
         }
-    }
-}
-
-#[derive(Clone, PartialEq, Eq)]
-struct ScalarTy<'tcx>(Scalar, Ty<'tcx>);
-
-impl<'tcx> std::fmt::Debug for ScalarTy<'tcx> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // This is used for dataflow visualization, so we return something more concise.
-        std::fmt::Display::fmt(&ConstantKind::Val(ConstValue::Scalar(self.0), self.1), f)
     }
 }
 
@@ -295,17 +285,19 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
 
     fn binary_op(
         &self,
-        state: &mut State<FlatSet<ScalarTy<'tcx>>>,
+        state: &mut State<FlatSet<ScalarInt>>,
         op: BinOp,
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
-    ) -> (FlatSet<ScalarTy<'tcx>>, FlatSet<bool>) {
+    ) -> (FlatSet<ScalarInt>, FlatSet<bool>) {
         let left = self.eval_operand(left, state);
         let right = self.eval_operand(right, state);
         match (left, right) {
             (FlatSet::Elem(left), FlatSet::Elem(right)) => {
                 match self.ecx.overflowing_binary_op(op, &left, &right) {
-                    Ok((val, overflow, ty)) => (self.wrap_scalar(val, ty), FlatSet::Elem(overflow)),
+                    Ok((Scalar::Int(val), overflow, _)) => {
+                        (FlatSet::Elem(val), FlatSet::Elem(overflow))
+                    }
                     _ => (FlatSet::Top, FlatSet::Top),
                 }
             }
@@ -320,7 +312,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     fn eval_operand(
         &self,
         op: &Operand<'tcx>,
-        state: &mut State<FlatSet<ScalarTy<'tcx>>>,
+        state: &mut State<FlatSet<ScalarInt>>,
     ) -> FlatSet<ImmTy<'tcx>> {
         let value = match self.handle_operand(op, state) {
             ValueOrPlace::Value(value) => value,
@@ -328,76 +320,76 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         };
         match value {
             FlatSet::Top => FlatSet::Top,
-            FlatSet::Elem(ScalarTy(scalar, ty)) => self
-                .tcx
-                .layout_of(self.param_env.and(ty))
-                .map(|layout| FlatSet::Elem(ImmTy::from_scalar(scalar, layout)))
-                .unwrap_or(FlatSet::Top),
+            FlatSet::Elem(scalar) => {
+                let ty = op.ty(self.local_decls, self.tcx);
+                self.tcx
+                    .layout_of(self.param_env.and(ty))
+                    .map(|layout| FlatSet::Elem(ImmTy::from_scalar(scalar.into(), layout)))
+                    .unwrap_or(FlatSet::Top)
+            }
             FlatSet::Bottom => FlatSet::Bottom,
         }
     }
 
-    fn eval_discriminant(
-        &self,
-        enum_ty: Ty<'tcx>,
-        variant_index: VariantIdx,
-    ) -> Option<ScalarTy<'tcx>> {
+    fn eval_discriminant(&self, enum_ty: Ty<'tcx>, variant_index: VariantIdx) -> Option<ScalarInt> {
         if !enum_ty.is_enum() {
             return None;
         }
         let discr = enum_ty.discriminant_for_variant(self.tcx, variant_index)?;
         let discr_layout = self.tcx.layout_of(self.param_env.and(discr.ty)).ok()?;
-        let discr_value = Scalar::try_from_uint(discr.val, discr_layout.size)?;
-        Some(ScalarTy(discr_value, discr.ty))
+        let discr_value = ScalarInt::try_from_uint(discr.val, discr_layout.size)?;
+        Some(discr_value)
     }
 
-    fn wrap_scalar(&self, scalar: Scalar, ty: Ty<'tcx>) -> FlatSet<ScalarTy<'tcx>> {
-        FlatSet::Elem(ScalarTy(scalar, ty))
-    }
-
-    fn wrap_immediate(&self, imm: Immediate, ty: Ty<'tcx>) -> FlatSet<ScalarTy<'tcx>> {
+    fn wrap_immediate(&self, imm: Immediate) -> FlatSet<ScalarInt> {
         match imm {
-            Immediate::Scalar(scalar) => self.wrap_scalar(scalar, ty),
+            Immediate::Scalar(Scalar::Int(scalar)) => FlatSet::Elem(scalar),
             _ => FlatSet::Top,
         }
     }
 
-    fn wrap_immty(&self, val: ImmTy<'tcx>) -> FlatSet<ScalarTy<'tcx>> {
-        self.wrap_immediate(*val, val.layout.ty)
+    fn wrap_immty(&self, val: ImmTy<'tcx>) -> FlatSet<ScalarInt> {
+        self.wrap_immediate(*val)
     }
 }
 
-struct CollectAndPatch<'tcx> {
+struct CollectAndPatch<'tcx, 'locals> {
     tcx: TyCtxt<'tcx>,
+    local_decls: &'locals LocalDecls<'tcx>,
 
     /// For a given MIR location, this stores the values of the operands used by that location. In
     /// particular, this is before the effect, such that the operands of `_1 = _1 + _2` are
     /// properly captured. (This may become UB soon, but it is currently emitted even by safe code.)
-    before_effect: FxHashMap<(Location, Place<'tcx>), ScalarTy<'tcx>>,
+    before_effect: FxHashMap<(Location, Place<'tcx>), ScalarInt>,
 
     /// Stores the assigned values for assignments where the Rvalue is constant.
-    assignments: FxHashMap<Location, ScalarTy<'tcx>>,
+    assignments: FxHashMap<Location, ScalarInt>,
 }
 
-impl<'tcx> CollectAndPatch<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> Self {
-        Self { tcx, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
+impl<'tcx, 'locals> CollectAndPatch<'tcx, 'locals> {
+    fn new(tcx: TyCtxt<'tcx>, local_decls: &'locals LocalDecls<'tcx>) -> Self {
+        Self {
+            tcx,
+            local_decls,
+            before_effect: FxHashMap::default(),
+            assignments: FxHashMap::default(),
+        }
     }
 
-    fn make_operand(&self, scalar: ScalarTy<'tcx>) -> Operand<'tcx> {
+    fn make_operand(&self, scalar: ScalarInt, ty: Ty<'tcx>) -> Operand<'tcx> {
         Operand::Constant(Box::new(Constant {
             span: DUMMY_SP,
             user_ty: None,
-            literal: ConstantKind::Val(ConstValue::Scalar(scalar.0), scalar.1),
+            literal: ConstantKind::Val(ConstValue::Scalar(scalar.into()), ty),
         }))
     }
 }
 
 impl<'mir, 'tcx>
     ResultsVisitor<'mir, 'tcx, Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>>
-    for CollectAndPatch<'tcx>
+    for CollectAndPatch<'tcx, '_>
 {
-    type FlowState = State<FlatSet<ScalarTy<'tcx>>>;
+    type FlowState = State<FlatSet<ScalarInt>>;
 
     fn visit_statement_before_primary_effect(
         &mut self,
@@ -453,8 +445,8 @@ impl<'mir, 'tcx>
     }
 }
 
-impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -462,7 +454,8 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx> {
         if let Some(value) = self.assignments.get(&location) {
             match &mut statement.kind {
                 StatementKind::Assign(box (_, rvalue)) => {
-                    *rvalue = Rvalue::Use(self.make_operand(value.clone()));
+                    let ty = rvalue.ty(self.local_decls, self.tcx);
+                    *rvalue = Rvalue::Use(self.make_operand(*value, ty));
                 }
                 _ => bug!("found assignment info for non-assign statement"),
             }
@@ -475,21 +468,22 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx> {
         match operand {
             Operand::Copy(place) | Operand::Move(place) => {
                 if let Some(value) = self.before_effect.get(&(location, *place)) {
-                    *operand = self.make_operand(value.clone());
+                    let ty = place.ty(self.local_decls, self.tcx).ty;
+                    *operand = self.make_operand(*value, ty);
                 }
             }
-            _ => (),
+            Operand::Constant(_) => {}
         }
     }
 }
 
-struct OperandCollector<'tcx, 'map, 'a> {
-    state: &'a State<FlatSet<ScalarTy<'tcx>>>,
-    visitor: &'a mut CollectAndPatch<'tcx>,
+struct OperandCollector<'tcx, 'map, 'locals, 'a> {
+    state: &'a State<FlatSet<ScalarInt>>,
+    visitor: &'a mut CollectAndPatch<'tcx, 'locals>,
     map: &'map Map,
 }
 
-impl<'tcx, 'map, 'a> Visitor<'tcx> for OperandCollector<'tcx, 'map, 'a> {
+impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         match operand {
             Operand::Copy(place) | Operand::Move(place) => {
@@ -572,7 +566,7 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         _bin_op: BinOp,
         _left: &rustc_const_eval::interpret::ImmTy<'tcx, Self::Provenance>,
         _right: &rustc_const_eval::interpret::ImmTy<'tcx, Self::Provenance>,
-    ) -> interpret::InterpResult<'tcx, (interpret::Scalar<Self::Provenance>, bool, Ty<'tcx>)> {
+    ) -> interpret::InterpResult<'tcx, (Scalar<Self::Provenance>, bool, Ty<'tcx>)> {
         throw_unsup!(Unsupported("".into()))
     }
 
