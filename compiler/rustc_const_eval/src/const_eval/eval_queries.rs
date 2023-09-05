@@ -79,7 +79,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
     // we leave alignment checks off, since this `ecx` will not be used for further evaluation anyway
 
-    debug!("eval_body_using_ecx done: {:?}", *ret);
+    debug!("eval_body_using_ecx done: {:?}", ret);
     Ok(ret)
 }
 
@@ -147,7 +147,7 @@ pub(super) fn op_to_const<'tcx>(
     // We know `offset` is relative to the allocation, so we can use `into_parts`.
     let to_const_value = |mplace: &MPlaceTy<'_>| {
         debug!("to_const_value(mplace: {:?})", mplace);
-        match mplace.ptr.into_parts() {
+        match mplace.ptr().into_parts() {
             (Some(alloc_id), offset) => {
                 let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
                 ConstValue::ByRef { alloc, offset }
@@ -370,7 +370,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     inner = true;
                 }
             };
-            let alloc_id = mplace.ptr.provenance.unwrap();
+            let alloc_id = mplace.ptr().provenance.unwrap();
 
             // Validation failed, report an error. This is always a hard error.
             if let Err(error) = validation {

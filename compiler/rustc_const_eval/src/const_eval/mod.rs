@@ -30,7 +30,7 @@ pub(crate) fn const_caller_location(
     if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {
         bug!("intern_const_alloc_recursive should not error in this case")
     }
-    ConstValue::Scalar(Scalar::from_maybe_pointer(loc_place.ptr, &tcx))
+    ConstValue::Scalar(Scalar::from_maybe_pointer(loc_place.ptr(), &tcx))
 }
 
 // We forbid type-level constants that contain more than `VALTREE_MAX_NODES` nodes.

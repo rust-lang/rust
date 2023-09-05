@@ -5,7 +5,7 @@ use crate::const_eval::CanAccessStatics;
 use crate::interpret::MPlaceTy;
 use crate::interpret::{
     intern_const_alloc_recursive, ConstValue, ImmTy, Immediate, InternKind, MemPlaceMeta,
-    MemoryKind, Place, Projectable, Scalar,
+    MemoryKind, PlaceTy, Projectable, Scalar,
 };
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
@@ -318,7 +318,7 @@ fn valtree_into_mplace<'tcx>(
                     let len_scalar = Scalar::from_target_usize(len as u64, &tcx);
 
                     Immediate::ScalarPair(
-                        Scalar::from_maybe_pointer((*pointee_place).ptr, &tcx),
+                        Scalar::from_maybe_pointer(pointee_place.ptr(), &tcx),
                         len_scalar,
                     )
                 }
@@ -383,5 +383,5 @@ fn valtree_into_mplace<'tcx>(
 }
 
 fn dump_place<'tcx>(ecx: &CompileTimeEvalContext<'tcx, 'tcx>, place: &MPlaceTy<'tcx>) {
-    trace!("{:?}", ecx.dump_place(Place::Ptr(**place)));
+    trace!("{:?}", ecx.dump_place(&PlaceTy::from(place.clone())));
 }

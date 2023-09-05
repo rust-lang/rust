@@ -1018,7 +1018,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         // be 8-aligned).
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
         this.check_ptr_access_align(
-            place.ptr,
+            place.ptr(),
             place.layout.size,
             align,
             CheckInAllocMsg::MemoryAccessTest,
@@ -1031,7 +1031,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         // We avoid `get_ptr_alloc` since we do *not* want to run the access hooks -- the actual
         // access will happen later.
         let (alloc_id, _offset, _prov) =
-            this.ptr_try_get_alloc_id(place.ptr).expect("there are no zero-sized atomic accesses");
+            this.ptr_try_get_alloc_id(place.ptr()).expect("there are no zero-sized atomic accesses");
         if this.get_alloc_mutability(alloc_id)? == Mutability::Not {
             // FIXME: make this prettier, once these messages have separate title/span/help messages.
             throw_ub_format!(
@@ -1135,7 +1135,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         if let Some(data_race) = &this.machine.data_race {
             if data_race.race_detecting() {
                 let size = place.layout.size;
-                let (alloc_id, base_offset, _prov) = this.ptr_get_alloc_id(place.ptr)?;
+                let (alloc_id, base_offset, _prov) = this.ptr_get_alloc_id(place.ptr())?;
                 // Load and log the atomic operation.
                 // Note that atomic loads are possible even from read-only allocations, so `get_alloc_extra_mut` is not an option.
                 let alloc_meta = this.get_alloc_extra(alloc_id)?.data_race.as_ref().unwrap();
@@ -1143,7 +1143,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                     "Atomic op({}) with ordering {:?} on {:?} (size={})",
                     description,
                     &atomic,
-                    place.ptr,
+                    place.ptr(),
                     size.bytes()
                 );
 
@@ -1186,7 +1186,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                     {
                         log::trace!(
                             "Updated atomic memory({:?}, size={}) to {:#?}",
-                            place.ptr,
+                            place.ptr(),
                             size.bytes(),
                             mem_clocks.atomic_ops
                         );

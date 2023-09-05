@@ -45,7 +45,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         }
 
-        trace!("{:?}", this.dump_place(**dest));
+        trace!("{:?}", this.dump_place(dest));
         this.go_to_block(ret);
         Ok(())
     }
