@@ -10,12 +10,13 @@
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
 use crate::stable_mir::ty::{FloatTy, GenericParamDef, IntTy, Movability, RigidTy, TyKind, UintTy};
-use crate::stable_mir::{self, Context};
+use crate::stable_mir::{self, CompilerError, Context};
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
 use rustc_middle::mir::{self, ConstantKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_span::ErrorGuaranteed;
 use rustc_target::abi::FieldIdx;
 use tracing::debug;
 
@@ -1450,5 +1451,11 @@ impl<'tcx> Stable<'tcx> for rustc_span::Span {
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         // FIXME: add a real implementation of stable spans
         opaque(self)
+    }
+}
+
+impl<T> From<ErrorGuaranteed> for CompilerError<T> {
+    fn from(_error: ErrorGuaranteed) -> Self {
+        CompilerError::CompilationFailed
     }
 }
