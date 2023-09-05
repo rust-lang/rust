@@ -281,6 +281,13 @@ pub enum Expr {
     Array(Array),
     Literal(Literal),
     Underscore,
+    OffsetOf(OffsetOf),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OffsetOf {
+    pub container: Interned<TypeRef>,
+    pub fields: Box<[Name]>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -341,7 +348,7 @@ impl Expr {
     pub fn walk_child_exprs(&self, mut f: impl FnMut(ExprId)) {
         match self {
             Expr::Missing => {}
-            Expr::Path(_) => {}
+            Expr::Path(_) | Expr::OffsetOf(_) => {}
             Expr::If { condition, then_branch, else_branch } => {
                 f(*condition);
                 f(*then_branch);

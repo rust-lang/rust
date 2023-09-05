@@ -3,6 +3,7 @@
 use std::fmt::{self, Write};
 
 use hir_expand::db::ExpandDatabase;
+use itertools::Itertools;
 use syntax::ast::HasName;
 
 use crate::{
@@ -154,6 +155,15 @@ impl Printer<'_> {
         match expr {
             Expr::Missing => w!(self, "�"),
             Expr::Underscore => w!(self, "_"),
+            Expr::OffsetOf(offset_of) => {
+                w!(self, "builtin#offset_of!(");
+                self.print_type_ref(&offset_of.container);
+                w!(
+                    self,
+                    ", {})",
+                    offset_of.fields.iter().format_with(".", |field, f| f(&field.display(self.db)))
+                );
+            }
             Expr::Path(path) => self.print_path(path),
             Expr::If { condition, then_branch, else_branch } => {
                 w!(self, "if ");

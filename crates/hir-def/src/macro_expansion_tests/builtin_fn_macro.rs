@@ -42,12 +42,22 @@ fn main() {
     }
 }
 "#,
-        expect![[r#"
+        expect![[r##"
 #[rustc_builtin_macro]
-macro_rules! column {() => {}}
+macro_rules! asm {() => {}}
 
-fn main() { 0 as u32; }
-"#]],
+fn main() {
+    let i: u64 = 3;
+    let o: u64;
+    unsafe {
+        builtin #asm ( {
+            $crate::format_args!("mov {0}, {1}");
+            $crate::format_args!("add {0}, 5");
+        }
+        );
+    }
+}
+"##]],
     );
 }
 

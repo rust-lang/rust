@@ -419,9 +419,9 @@ fn asm_expand(
 
     let pound = quote! {@PUNCT '#'};
     let expanded = quote! {
-        builtin #pound asm {
-            ##literals
-        }
+        builtin #pound asm (
+            {##literals}
+        )
     };
     ExpandResult::ok(expanded)
 }

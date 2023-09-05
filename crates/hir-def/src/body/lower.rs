@@ -31,7 +31,7 @@ use crate::{
     hir::{
         dummy_expr_id, Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy,
         ClosureKind, Expr, ExprId, Label, LabelId, Literal, LiteralOrConst, MatchArm, Movability,
-        Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+        OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
     lang_item::LangItem,
@@ -649,7 +649,11 @@ impl ExprCollector<'_> {
             }
             ast::Expr::UnderscoreExpr(_) => self.alloc_expr(Expr::Underscore, syntax_ptr),
             ast::Expr::AsmExpr(_) => self.missing_expr(),
-            ast::Expr::OffsetOfExpr(_) => self.missing_expr(),
+            ast::Expr::OffsetOfExpr(e) => {
+                let container = Interned::new(TypeRef::from_ast_opt(&self.ctx(), e.ty()));
+                let fields = e.fields().map(|it| it.as_name()).collect();
+                self.alloc_expr(Expr::OffsetOf(OffsetOf { container, fields }), syntax_ptr)
+            }
             ast::Expr::FormatArgsExpr(_) => self.missing_expr(),
         })
     }

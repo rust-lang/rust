@@ -1014,6 +1014,9 @@ impl OffsetOfExpr {
         support::token(&self.syntax, T![offset_of])
     }
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+    pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
+    pub fn fields(&self) -> AstChildren<NameRef> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 

@@ -220,24 +220,39 @@ fn tuple_expr(p: &mut Parser<'_>) -> CompletedMarker {
 // fn foo() {
 //     builtin#asm(0);
 //     builtin#format_args(0);
-//     builtin#builtin(0);
+//     builtin#offset_of(Foo, bar.baz.0);
 // }
 fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = p.start();
     p.bump_remap(T![builtin]);
     p.bump(T![#]);
     if p.at_contextual_kw(T![offset_of]) {
+        p.bump_remap(T![offset_of]);
         p.expect(T!['(']);
         type_(p);
-        p.bump(T![,]);
+        p.expect(T![,]);
+        while !p.at(EOF) && !p.at(T![')']) {
+            if p.at(IDENT) || p.at(INT_NUMBER) {
+                name_ref_or_index(p);
+            // } else if p.at(FLOAT_NUMBER) {
+            // FIXME: needs float hack
+            } else {
+                p.err_and_bump("expected field name or number");
+            }
+            if !p.at(T![')']) {
+                p.expect(T![.]);
+            }
+        }
         p.expect(T![')']);
         Some(m.complete(p, OFFSET_OF_EXPR))
     } else if p.at_contextual_kw(T![format_args]) {
+        p.bump_remap(T![format_args]);
         p.expect(T!['(']);
         expr(p);
         p.expect(T![')']);
         Some(m.complete(p, FORMAT_ARGS_EXPR))
     } else if p.at_contextual_kw(T![asm]) {
+        p.bump_remap(T![asm]);
         p.expect(T!['(']);
         expr(p);
         p.expect(T![')']);
