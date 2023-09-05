@@ -399,6 +399,8 @@ fn asm_expand(
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
+    // FIXME: parse asm here
+
     // We expand all assembly snippets to `format_args!` invocations to get format syntax
     // highlighting for them.
 
@@ -415,10 +417,12 @@ fn asm_expand(
         }
     }
 
-    let expanded = quote! {{
-        ##literals
-        loop {}
-    }};
+    let pound = quote! {@PUNCT '#'};
+    let expanded = quote! {
+        builtin #pound asm {
+            ##literals
+        }
+    };
     ExpandResult::ok(expanded)
 }
 

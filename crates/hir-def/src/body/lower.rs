@@ -579,11 +579,6 @@ impl ExprCollector<'_> {
                     syntax_ptr,
                 )
             }
-            ast::Expr::BoxExpr(e) => {
-                let expr = self.collect_expr_opt(e.expr());
-                self.alloc_expr(Expr::Box { expr }, syntax_ptr)
-            }
-
             ast::Expr::ArrayExpr(e) => {
                 let kind = e.kind();
 
@@ -653,6 +648,9 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Expr::UnderscoreExpr(_) => self.alloc_expr(Expr::Underscore, syntax_ptr),
+            ast::Expr::AsmExpr(_) => self.missing_expr(),
+            ast::Expr::OffsetOfExpr(_) => self.missing_expr(),
+            ast::Expr::FormatArgsExpr(_) => self.missing_expr(),
         })
     }
 
@@ -663,6 +661,7 @@ impl ExprCollector<'_> {
         let result_expr_id = self.alloc_expr(Expr::Missing, syntax_ptr);
         let prev_binding_owner = self.current_binding_owner.take();
         self.current_binding_owner = Some(result_expr_id);
+
         (result_expr_id, prev_binding_owner)
     }
 

@@ -23,6 +23,35 @@ fn main() { 0 as u32; }
 }
 
 #[test]
+fn test_asm_expand() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! asm {() => {}}
+
+fn main() {
+    let i: u64 = 3;
+    let o: u64;
+    unsafe {
+        asm!(
+            "mov {0}, {1}",
+            "add {0}, 5",
+            out(reg) o,
+            in(reg) i,
+        );
+    }
+}
+"#,
+        expect![[r#"
+#[rustc_builtin_macro]
+macro_rules! column {() => {}}
+
+fn main() { 0 as u32; }
+"#]],
+    );
+}
+
+#[test]
 fn test_line_expand() {
     check(
         r#"

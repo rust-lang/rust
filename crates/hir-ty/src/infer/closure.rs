@@ -620,6 +620,7 @@ impl InferenceContext<'_> {
             | Expr::Tuple { exprs, is_assignee_expr: _ } => {
                 self.consume_exprs(exprs.iter().copied())
             }
+
             Expr::Missing
             | Expr::Continue { .. }
             | Expr::Path(_)

@@ -534,7 +534,15 @@ fn main() {
     assert!(true, "{}", 1);
     assert!(true, "{} asdasd", 1);
     toho!("{}fmt", 0);
-    asm!("mov eax, {0}");
+    let i: u64 = 3;
+    let o: u64;
+    asm!(
+        "mov {0}, {1}",
+        "add {0}, 5",
+        out(reg) o,
+        in(reg) i,
+    );
+
     format_args!(concat!("{}"), "{}");
     format_args!("{} {} {} {} {} {}", backslash, format_args!("{}", 0), foo, "bar", toho!(), backslash);
 }"#,
