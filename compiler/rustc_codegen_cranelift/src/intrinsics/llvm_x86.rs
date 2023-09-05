@@ -506,14 +506,6 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             ret.place_lane(fx, 2).to_ptr().store(fx, res_2, MemFlags::trusted());
             ret.place_lane(fx, 3).to_ptr().store(fx, res_3, MemFlags::trusted());
         }
-        "llvm.x86.sse2.storeu.dq" | "llvm.x86.sse2.storeu.pd" => {
-            intrinsic_args!(fx, args => (mem_addr, a); intrinsic);
-            let mem_addr = mem_addr.load_scalar(fx);
-
-            // FIXME correctly handle the unalignment
-            let dest = CPlace::for_ptr(Pointer::new(mem_addr), a.layout());
-            dest.write_cvalue(fx, a);
-        }
         "llvm.x86.ssse3.pabs.b.128" | "llvm.x86.ssse3.pabs.w.128" | "llvm.x86.ssse3.pabs.d.128" => {
             let a = match args {
                 [a] => a,
