@@ -192,7 +192,8 @@ use rustc_target::abi::Size;
 use std::path::PathBuf;
 
 use crate::errors::{
-    EncounteredErrorWhileInstantiating, LargeAssignmentsLint, RecursionLimit, TypeLengthLimit,
+    EncounteredErrorWhileInstantiating, LargeAssignmentsLint, NoOptimizedMir, RecursionLimit,
+    TypeLengthLimit,
 };
 
 #[derive(PartialEq)]
@@ -960,7 +961,10 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
     }
 
     if !tcx.is_mir_available(def_id) {
-        bug!("no MIR available for {:?}", def_id);
+        tcx.sess.emit_fatal(NoOptimizedMir {
+            span: tcx.def_span(def_id),
+            crate_name: tcx.crate_name(def_id.krate),
+        });
     }
 
     true
