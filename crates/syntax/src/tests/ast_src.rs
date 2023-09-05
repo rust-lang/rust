@@ -169,6 +169,7 @@ pub(crate) const KINDS_SRC: KindsSrc<'_> = KindsSrc {
         "OFFSET_OF_EXPR",
         "ASM_EXPR",
         "FORMAT_ARGS_EXPR",
+        "FORMAT_ARGS_ARG",
         // postfix
         "CALL_EXPR",
         "INDEX_EXPR",

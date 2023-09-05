@@ -9,7 +9,10 @@ use chalk_ir::{
 };
 use hir_def::{
     data::adt::VariantData,
-    hir::{Array, BinaryOp, BindingId, CaptureBy, Expr, ExprId, Pat, PatId, Statement, UnaryOp},
+    hir::{
+        format_args::FormatArgumentKind, Array, BinaryOp, BindingId, CaptureBy, Expr, ExprId, Pat,
+        PatId, Statement, UnaryOp,
+    },
     lang_item::LangItem,
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
     DefWithBodyId, FieldId, HasModule, VariantId,
@@ -453,6 +456,14 @@ impl InferenceContext<'_> {
     fn walk_expr_without_adjust(&mut self, tgt_expr: ExprId) {
         match &self.body[tgt_expr] {
             Expr::OffsetOf(_) => (),
+            Expr::FormatArgs(fa) => {
+                self.walk_expr_without_adjust(fa.template_expr);
+                fa.arguments
+                    .arguments
+                    .iter()
+                    .filter(|it| !matches!(it.kind, FormatArgumentKind::Captured(_)))
+                    .for_each(|it| self.walk_expr_without_adjust(it.expr));
+            }
             Expr::InlineAsm(e) => self.walk_expr_without_adjust(e.e),
             Expr::If { condition, then_branch, else_branch } => {
                 self.consume_expr(*condition);

@@ -219,7 +219,7 @@ fn tuple_expr(p: &mut Parser<'_>) -> CompletedMarker {
 // test builtin_expr
 // fn foo() {
 //     builtin#asm(0);
-//     builtin#format_args(0);
+//     builtin#format_args("", 0, 1, a = 2 + 3, a + b);
 //     builtin#offset_of(Foo, bar.baz.0);
 // }
 fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -249,6 +249,24 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         p.bump_remap(T![format_args]);
         p.expect(T!['(']);
         expr(p);
+        if p.eat(T![,]) {
+            while !p.at(EOF) && !p.at(T![')']) {
+                let m = p.start();
+                if p.at(IDENT) && p.nth_at(1, T![=]) {
+                    name(p);
+                    p.bump(T![=]);
+                }
+                if expr(p).is_none() {
+                    m.abandon(p);
+                    break;
+                }
+                m.complete(p, FORMAT_ARGS_ARG);
+
+                if !p.at(T![')']) {
+                    p.expect(T![,]);
+                }
+            }
+        }
         p.expect(T![')']);
         Some(m.complete(p, FORMAT_ARGS_EXPR))
     } else if p.at_contextual_kw(T![asm]) {

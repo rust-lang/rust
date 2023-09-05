@@ -54,6 +54,12 @@ impl Name {
         Name(Repr::Text(text))
     }
 
+    // FIXME: See above, unfortunately some places really need this right now
+    #[doc(hidden)]
+    pub const fn new_text_dont_use(text: SmolStr) -> Name {
+        Name(Repr::Text(text))
+    }
+
     pub fn new_tuple_field(idx: usize) -> Name {
         Name(Repr::TupleField(idx))
     }

@@ -29,9 +29,13 @@ use crate::{
     db::DefDatabase,
     expander::Expander,
     hir::{
-        dummy_expr_id, Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy,
-        ClosureKind, Expr, ExprId, InlineAsm, Label, LabelId, Literal, LiteralOrConst, MatchArm,
-        Movability, OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+        dummy_expr_id,
+        format_args::{
+            self, FormatArgs, FormatArgument, FormatArgumentKind, FormatArgumentsCollector,
+        },
+        Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy, ClosureKind,
+        Expr, ExprId, InlineAsm, Label, LabelId, Literal, LiteralOrConst, MatchArm, Movability,
+        OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
     lang_item::LangItem,
@@ -649,15 +653,58 @@ impl ExprCollector<'_> {
             }
             ast::Expr::UnderscoreExpr(_) => self.alloc_expr(Expr::Underscore, syntax_ptr),
             ast::Expr::AsmExpr(e) => {
-                let expr = Expr::InlineAsm(InlineAsm { e: self.collect_expr_opt(e.expr()) });
-                self.alloc_expr(expr, syntax_ptr)
+                let e = self.collect_expr_opt(e.expr());
+                self.alloc_expr(Expr::InlineAsm(InlineAsm { e }), syntax_ptr)
             }
             ast::Expr::OffsetOfExpr(e) => {
                 let container = Interned::new(TypeRef::from_ast_opt(&self.ctx(), e.ty()));
                 let fields = e.fields().map(|it| it.as_name()).collect();
                 self.alloc_expr(Expr::OffsetOf(OffsetOf { container, fields }), syntax_ptr)
             }
-            ast::Expr::FormatArgsExpr(_) => self.missing_expr(),
+            ast::Expr::FormatArgsExpr(f) => {
+                let mut args = FormatArgumentsCollector::new();
+                f.args().for_each(|arg| {
+                    args.add(FormatArgument {
+                        kind: match arg.name() {
+                            Some(name) => FormatArgumentKind::Named(name.as_name()),
+                            None => FormatArgumentKind::Normal,
+                        },
+                        expr: self.collect_expr_opt(arg.expr()),
+                    });
+                });
+                let template = f.template();
+                let fmt_snippet = template.as_ref().map(ToString::to_string);
+                let expr = self.collect_expr_opt(f.template());
+                if let Expr::Literal(Literal::String(_)) = self.body[expr] {
+                    let source = self.source_map.expr_map_back[expr].clone();
+                    let is_direct_literal = source.file_id == self.expander.current_file_id;
+                    if let ast::Expr::Literal(l) =
+                        source.value.to_node(&self.db.parse_or_expand(source.file_id))
+                    {
+                        if let ast::LiteralKind::String(s) = l.kind() {
+                            return Some(self.alloc_expr(
+                                Expr::FormatArgs(format_args::parse(
+                                    expr,
+                                    &s,
+                                    fmt_snippet,
+                                    args,
+                                    is_direct_literal,
+                                )),
+                                syntax_ptr,
+                            ));
+                        }
+                    }
+                }
+
+                self.alloc_expr(
+                    Expr::FormatArgs(FormatArgs {
+                        template_expr: expr,
+                        template: Default::default(),
+                        arguments: args.finish(),
+                    }),
+                    syntax_ptr,
+                )
+            }
         })
     }
 

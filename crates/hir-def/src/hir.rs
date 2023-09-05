@@ -13,6 +13,7 @@
 //! See also a neighboring `body` module.
 
 pub mod type_ref;
+pub mod format_args;
 
 use std::fmt;
 
@@ -24,6 +25,7 @@ use syntax::ast;
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
+    hir::format_args::{FormatArgs, FormatArgumentKind},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
     BlockId, ConstBlockId,
@@ -117,7 +119,6 @@ impl From<ast::LiteralKind> for Literal {
     fn from(ast_lit_kind: ast::LiteralKind) -> Self {
         use ast::LiteralKind;
         match ast_lit_kind {
-            // FIXME: these should have actual values filled in, but unsure on perf impact
             LiteralKind::IntNumber(lit) => {
                 if let builtin @ Some(_) = lit.suffix().and_then(BuiltinFloat::from_suffix) {
                     Literal::Float(
@@ -283,6 +284,7 @@ pub enum Expr {
     Underscore,
     OffsetOf(OffsetOf),
     InlineAsm(InlineAsm),
+    FormatArgs(FormatArgs),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -355,7 +357,15 @@ impl Expr {
         match self {
             Expr::Missing => {}
             Expr::Path(_) | Expr::OffsetOf(_) => {}
-            Expr::InlineAsm(e) => f(e.e),
+            Expr::InlineAsm(it) => f(it.e),
+            Expr::FormatArgs(it) => {
+                f(it.template_expr);
+                it.arguments
+                    .arguments
+                    .iter()
+                    .filter(|it| !matches!(it.kind, FormatArgumentKind::Captured(_)))
+                    .for_each(|it| f(it.expr));
+            }
             Expr::If { condition, then_branch, else_branch } => {
                 f(*condition);
                 f(*then_branch);

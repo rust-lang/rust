@@ -541,6 +541,7 @@ dependencies = [
  "mbe",
  "once_cell",
  "profile",
+ "ra-ap-rustc_lexer",
  "rustc-hash",
  "smallvec",
  "stdx",

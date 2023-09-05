@@ -156,6 +156,11 @@ impl Printer<'_> {
             Expr::Missing => w!(self, "�"),
             Expr::Underscore => w!(self, "_"),
             Expr::InlineAsm(_) => w!(self, "builtin#asm(_)"),
+            Expr::FormatArgs(_fmt_args) => {
+                w!(self, "builtin#format_args(");
+                // FIXME
+                w!(self, ")");
+            }
             Expr::OffsetOf(offset_of) => {
                 w!(self, "builtin#offset_of(");
                 self.print_type_ref(&offset_of.container);
