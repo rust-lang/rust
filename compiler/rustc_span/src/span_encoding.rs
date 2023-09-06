@@ -193,6 +193,23 @@ impl Span {
         }
     }
 
+    /// Returns `true` if this is a dummy span with any hygienic context.
+    #[inline]
+    pub fn is_dummy(self) -> bool {
+        if self.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {
+            // Inline-context or inline-parent format.
+            let lo = self.lo_or_index;
+            let len = (self.len_with_tag_or_marker & !PARENT_TAG) as u32;
+            debug_assert!(len <= MAX_LEN);
+            lo == 0 && len == 0
+        } else {
+            // Fully-interned or partially-interned format.
+            let index = self.lo_or_index;
+            let data = with_span_interner(|interner| interner.spans[index as usize]);
+            data.lo == BytePos(0) && data.hi == BytePos(0)
+        }
+    }
+
     /// This function is used as a fast path when decoding the full `SpanData` is not necessary.
     /// It's a cut-down version of `data_untracked`.
     #[inline]
