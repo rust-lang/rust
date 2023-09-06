@@ -34,6 +34,7 @@ also add the calls we need to generate the GIMPLE:
 int main() {
     gcc_jit_context *ctxt = gcc_jit_context_acquire();
     create_code(ctxt, NULL);
+    gcc_jit_context_compile(ctxt);
     gcc_jit_context_dump_to_file(ctxt, "tmp.gimple", 1);
     return 0;
 }
