@@ -1019,7 +1019,7 @@ impl Build {
 
     fn info(&self, msg: &str) {
         match self.config.dry_run {
-            DryRun::SelfCheck => return,
+            DryRun::SelfCheck => (),
             DryRun::Disabled | DryRun::UserSelected => {
                 println!("{msg}");
             }
