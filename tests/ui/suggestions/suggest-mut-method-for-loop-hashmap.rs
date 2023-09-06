@@ -16,6 +16,6 @@ fn main() {
         //~| NOTE this iterator yields `&` references
         v.v += 1;
         //~^ ERROR cannot assign to `v.v`
-        //~| NOTE `v` is an `&' reference
+        //~| NOTE `v` is an `&` reference
     }
 }

@@ -26,7 +26,7 @@ fn main() {
 
     let s1 = String::from("hello world");
     let s2 = String::from("world");
-    // caller of `find()` is an `&'static str`
+    // caller of `find()` is an `&`static str`
     let _ = "hello world".find("world").is_some();
     let _ = "hello world".find(&s2).is_some();
     let _ = "hello world".find(&s2[2..]).is_some();
