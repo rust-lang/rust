@@ -4,9 +4,16 @@ use super::{
     with, AllocId, DefId,
 };
 use crate::rustc_internal::Opaque;
+use std::fmt::{self, Debug, Formatter};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct Ty(pub usize);
+
+impl Debug for Ty {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Ty").field("id", &self.0).field("kind", &self.kind()).finish()
+    }
+}
 
 impl Ty {
     pub fn kind(&self) -> TyKind {

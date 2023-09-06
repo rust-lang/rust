@@ -37,7 +37,7 @@ responsibilities they cover:
 The panic and error systems are not entirely distinct. Often times errors
 that are anticipated runtime failures in an API might instead represent bugs
 to a caller. For these situations the standard library provides APIs for
-constructing panics with an `Error` as it's source.
+constructing panics with an `Error` as its source.
 
 * [`Result::unwrap`]
 * [`Result::expect`]
