@@ -34,23 +34,17 @@ pub(crate) fn extract_expressions_from_format_string(
     let fmt_string = ctx.find_token_at_offset::<ast::String>()?;
     let tt = fmt_string.syntax().parent().and_then(ast::TokenTree::cast)?;
 
-    dbg!();
     let expanded_t = ast::String::cast(
         ctx.sema.descend_into_macros_with_kind_preference(fmt_string.syntax().clone(), 0.into()),
     )?;
-    dbg!();
     if !is_format_string(&expanded_t) {
-        dbg!();
         return None;
     }
 
-    dbg!();
     let (new_fmt, extracted_args) = parse_format_exprs(fmt_string.text()).ok()?;
-    dbg!();
     if extracted_args.is_empty() {
         return None;
     }
-    dbg!();
 
     acc.add(
         AssistId(

@@ -32,7 +32,7 @@ use crate::{
     hir::{
         dummy_expr_id,
         format_args::{
-            self, FormatAlignment, FormatArgsPiece, FormatArgument, FormatArgumentKind,
+            self, FormatAlignment, FormatArgs, FormatArgsPiece, FormatArgument, FormatArgumentKind,
             FormatArgumentsCollector, FormatCount, FormatDebugHex, FormatOptions,
             FormatPlaceholder, FormatSign, FormatTrait,
         },
@@ -1568,6 +1568,24 @@ impl ExprCollector<'_> {
     // endregion: labels
 
     // region: format
+    fn expand_macros_to_string(&mut self, expr: ast::Expr) -> Option<(ast::String, bool)> {
+        let m = match expr {
+            ast::Expr::MacroExpr(m) => m,
+            ast::Expr::Literal(l) => {
+                return match l.kind() {
+                    ast::LiteralKind::String(s) => Some((s, true)),
+                    _ => None,
+                }
+            }
+            _ => return None,
+        };
+        let e = m.macro_call()?;
+        let macro_ptr = AstPtr::new(&e);
+        let (exp, _) = self.collect_macro_call(e, macro_ptr, true, |this, expansion| {
+            expansion.and_then(|it| this.expand_macros_to_string(it))
+        })?;
+        Some((exp, false))
+    }
 
     fn collect_format_args(
         &mut self,
@@ -1586,31 +1604,13 @@ impl ExprCollector<'_> {
         });
         let template = f.template();
         let fmt_snippet = template.as_ref().map(ToString::to_string);
-
-        // FIXME: We shouldn't allocate this one, just resolve and expand the macros to fetch the
-        // string literal!
-        let expr = self.collect_expr_opt(template);
-
-        let fmt = 'b: {
-            if let Expr::Literal(Literal::String(_)) = self.body[expr] {
-                let source = self.source_map.expr_map_back[expr].clone();
-                let is_direct_literal = source.file_id == self.expander.current_file_id;
-                if let ast::Expr::Literal(l) =
-                    source.value.to_node(&self.db.parse_or_expand(source.file_id))
-                {
-                    if let ast::LiteralKind::String(s) = l.kind() {
-                        break 'b format_args::parse(
-                            expr,
-                            &s,
-                            fmt_snippet,
-                            args,
-                            is_direct_literal,
-                            |name| self.alloc_expr_desugared(Expr::Path(Path::from(name))),
-                        );
-                    }
-                }
+        let fmt = match template.and_then(|it| self.expand_macros_to_string(it)) {
+            Some((s, is_direct_literal)) => {
+                format_args::parse(&s, fmt_snippet, args, is_direct_literal, |name| {
+                    self.alloc_expr_desugared(Expr::Path(Path::from(name)))
+                })
             }
-            return self.missing_expr();
+            None => FormatArgs { template: Default::default(), arguments: args.finish() },
         };
 
         // Create a list of all _unique_ (argument, format trait) combinations.

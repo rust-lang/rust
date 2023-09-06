@@ -161,7 +161,7 @@ fn main() {
             let count = 10;
             builtin#lang(Arguments::new_v1_formatted)(
                 &[
-                    "\"hello ", " ", " friends, we ", " ", "", "\"", 
+                    "\"hello ", " ", " friends, we ", " ", "", "\"",
                 ],
                 &[
                     builtin#lang(Argument::new_display)(
@@ -172,7 +172,7 @@ fn main() {
                         &are,
                     ), builtin#lang(Argument::new_display)(
                         &"!",
-                    ), 
+                    ),
                 ],
                 &[
                     builtin#lang(Placeholder::new)(
@@ -212,7 +212,7 @@ fn main() {
                         0u32,
                         builtin#lang(Count::Implied),
                         builtin#lang(Count::Implied),
-                    ), 
+                    ),
                 ],
                 unsafe {
                     builtin#lang(UnsafeArg::new)()

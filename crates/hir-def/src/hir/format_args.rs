@@ -1,3 +1,4 @@
+//! Parses `format_args` input.
 use std::mem;
 
 use hir_expand::name::Name;
@@ -12,7 +13,6 @@ mod parse;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormatArgs {
-    pub template_expr: ExprId,
     pub template: Box<[FormatArgsPiece]>,
     pub arguments: FormatArguments,
 }
@@ -166,7 +166,6 @@ enum PositionUsedAs {
 use PositionUsedAs::*;
 
 pub(crate) fn parse(
-    expr: ExprId,
     s: &ast::String,
     fmt_snippet: Option<String>,
     mut args: FormatArgumentsCollector,
@@ -195,11 +194,7 @@ pub(crate) fn parse(
     let is_source_literal = parser.is_source_literal;
     if !parser.errors.is_empty() {
         // FIXME: Diagnose
-        return FormatArgs {
-            template_expr: expr,
-            template: Default::default(),
-            arguments: args.finish(),
-        };
+        return FormatArgs { template: Default::default(), arguments: args.finish() };
     }
 
     let to_span = |inner_span: parse::InnerSpan| {
@@ -419,11 +414,7 @@ pub(crate) fn parse(
         // FIXME: Diagnose
     }
 
-    FormatArgs {
-        template_expr: expr,
-        template: template.into_boxed_slice(),
-        arguments: args.finish(),
-    }
+    FormatArgs { template: template.into_boxed_slice(), arguments: args.finish() }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
