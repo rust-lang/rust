@@ -1352,8 +1352,6 @@ mod macros {
             /* compiler built-in */
         };
     }
-
-    pub(crate) use panic;
     // endregion:panic
 
     // region:fmt
@@ -1364,7 +1362,20 @@ mod macros {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
-    pub(crate) use const_format_args;
+    #[macro_export]
+    #[rustc_builtin_macro]
+    macro_rules! format_args {
+        ($fmt:expr) => {{ /* compiler built-in */ }};
+        ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
+    }
+
+    #[macro_export]
+    macro_rules! print {
+        ($($arg:tt)*) => {{
+            $crate::io::_print($crate::format_args!($($arg)*));
+        }};
+    }
+
     // endregion:fmt
 
     // region:derive
