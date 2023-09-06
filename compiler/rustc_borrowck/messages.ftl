@@ -166,6 +166,8 @@ borrowck_returned_lifetime_wrong =
 borrowck_returned_ref_escaped =
     returns a reference to a captured variable which escapes the closure body
 
+borrowck_simd_shuffle_last_const = last argument of `simd_shuffle` is required to be a `const` item
+
 borrowck_suggest_create_freash_reborrow =
     consider reborrowing the `Pin` instead of moving it
 
