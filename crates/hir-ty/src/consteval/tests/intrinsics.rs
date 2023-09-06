@@ -587,6 +587,24 @@ fn write_bytes() {
 }
 
 #[test]
+fn write_via_move() {
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            fn write_via_move<T>(ptr: *mut T, value: T);
+        }
+
+        const GOAL: i32 = unsafe {
+            let mut x = 2;
+            write_via_move(&mut x, 100);
+            x
+        };
+        "#,
+        100,
+    );
+}
+
+#[test]
 fn copy() {
     check_number(
         r#"
