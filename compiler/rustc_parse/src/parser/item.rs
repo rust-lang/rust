@@ -73,12 +73,16 @@ impl<'a> Parser<'a> {
             if !self.maybe_consume_incorrect_semicolon(&items) {
                 let msg = format!("expected item, found {token_str}");
                 let mut err = self.struct_span_err(self.token.span, msg);
-                let label = if self.is_kw_followed_by_ident(kw::Let) {
-                    "consider using `const` or `static` instead of `let` for global variables"
+                let span = self.token.span;
+                if self.is_kw_followed_by_ident(kw::Let) {
+                    err.span_label(
+                        span,
+                        "consider using `const` or `static` instead of `let` for global variables",
+                    );
                 } else {
-                    "expected item"
+                    err.span_label(span, "expected item")
+                        .note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
                 };
-                err.span_label(self.token.span, label);
                 return Err(err);
             }
         }

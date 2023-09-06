@@ -11,6 +11,8 @@ error: expected item, found reserved keyword `do`
    |
 LL |     default do
    |             ^^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
 
 error: aborting due to 2 previous errors
 
