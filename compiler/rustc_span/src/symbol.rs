@@ -865,6 +865,7 @@ symbols! {
         intra_doc_pointers,
         intrinsics,
         irrefutable_let_patterns,
+        is_internal,
         isa_attribute,
         isize,
         issue,

@@ -1,0 +1,15 @@
+error: the feature `unstable_test_feature_internal` is internal to the compiler or standard library
+  --> $DIR/lint-stability-internal.rs:3:12
+   |
+LL | #![feature(unstable_test_feature_internal)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: using it is strongly discouraged
+note: the lint level is defined here
+  --> $DIR/lint-stability-internal.rs:5:11
+   |
+LL | #![forbid(internal_features)]
+   |           ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

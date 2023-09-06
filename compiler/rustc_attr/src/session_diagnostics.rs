@@ -387,6 +387,13 @@ pub(crate) struct SoftNoArgs {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_internal_no_args)]
+pub(crate) struct InternalNoArgs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_unknown_version_literal)]
 pub(crate) struct UnknownVersionLiteral {
     #[primary_span]

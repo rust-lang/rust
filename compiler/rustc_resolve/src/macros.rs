@@ -849,7 +849,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) {
         let span = path.span;
         if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { reason, issue, is_soft, implied_by } = stability.level
+            if let StabilityLevel::Unstable { reason, issue, is_soft, implied_by, is_internal: _ } =
+                stability.level
             {
                 let feature = stability.feature;
 

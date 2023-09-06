@@ -51,7 +51,7 @@ use rustc_errors::{Applicability, DecorateLint, MultiSpan};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::intravisit::FnKind as HirFnKind;
 use rustc_hir::{Body, FnDecl, GenericParamKind, Node, PatKind, PredicateOrigin};
 use rustc_middle::lint::in_external_macro;
@@ -2249,9 +2249,9 @@ declare_lint_pass!(
     IncompleteInternalFeatures => [INCOMPLETE_FEATURES, INTERNAL_FEATURES]
 );
 
-impl EarlyLintPass for IncompleteInternalFeatures {
-    fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
-        let features = cx.builder.features();
+impl<'tcx> LateLintPass<'tcx> for IncompleteInternalFeatures {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
+        let features = cx.tcx.features();
         features
             .declared_lang_features
             .iter()
@@ -2278,6 +2278,21 @@ impl EarlyLintPass for IncompleteInternalFeatures {
                     );
                 }
             });
+
+        for cnum in [LOCAL_CRATE].into_iter().chain(cx.tcx.crates(()).iter().copied()) {
+            let crate_features = cx.tcx.lib_features(cnum);
+            for &(name, span) in &features.declared_lib_features {
+                if let Some((is_unstable, _)) = crate_features.unstable.get(&name) {
+                    if *is_unstable {
+                        cx.emit_spanned_lint(
+                            INTERNAL_FEATURES,
+                            span,
+                            BuiltinInternalFeatures { name, note: None },
+                        );
+                    }
+                }
+            }
+        }
     }
 }
 

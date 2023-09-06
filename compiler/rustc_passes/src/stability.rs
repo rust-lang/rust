@@ -14,6 +14,7 @@ use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{FieldDef, Item, ItemKind, TraitRef, Ty, TyKind, Variant};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability::{AllowUnstable, DeprecationEntry, Index};
 use rustc_middle::query::Providers;
@@ -660,6 +661,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
                     issue: NonZeroU32::new(27812),
                     is_soft: false,
                     implied_by: None,
+                    is_internal: false,
                 },
                 feature: sym::rustc_private,
             };
@@ -994,26 +996,27 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         tcx: TyCtxt<'tcx>,
         remaining_lib_features: &mut FxIndexMap<&Symbol, Span>,
         remaining_implications: &mut FxHashMap<Symbol, Symbol>,
-        defined_features: &[(Symbol, Option<Symbol>)],
+        defined_features: &LibFeatures,
         all_implications: &FxHashMap<Symbol, Symbol>,
     ) {
-        for (feature, since) in defined_features {
-            if let Some(since) = since && let Some(span) = remaining_lib_features.get(&feature) {
+        for (feature, stability) in defined_features.to_vec() {
+            if let FeatureStability::AcceptedSince(since) = stability
+                && let Some(span) = remaining_lib_features.get(&feature)
+            {
                 // Warn if the user has enabled an already-stable lib feature.
                 if let Some(implies) = all_implications.get(&feature) {
-                    unnecessary_partially_stable_feature_lint(tcx, *span, *feature, *implies, *since);
+                    unnecessary_partially_stable_feature_lint(tcx, *span, feature, *implies, since);
                 } else {
-                    unnecessary_stable_feature_lint(tcx, *span, *feature, *since);
+                    unnecessary_stable_feature_lint(tcx, *span, feature, since);
                 }
-
             }
-            remaining_lib_features.remove(feature);
+            remaining_lib_features.remove(&feature);
 
             // `feature` is the feature doing the implying, but `implied_by` is the feature with
             // the attribute that establishes this relationship. `implied_by` is guaranteed to be a
             // feature defined in the local crate because `remaining_implications` is only the
             // implications from this crate.
-            remaining_implications.remove(feature);
+            remaining_implications.remove(&feature);
 
             if remaining_lib_features.is_empty() && remaining_implications.is_empty() {
                 break;
@@ -1027,7 +1030,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
 
     // We always collect the lib features declared in the current crate, even if there are
     // no unknown features, because the collection also does feature attribute validation.
-    let local_defined_features = tcx.lib_features(()).to_vec();
+    let local_defined_features = tcx.lib_features(rustc_hir::def_id::LOCAL_CRATE);
     if !remaining_lib_features.is_empty() || !remaining_implications.is_empty() {
         // Loading the implications of all crates is unavoidable to be able to emit the partial
         // stabilization diagnostic, but it can be avoided when there are no
@@ -1041,7 +1044,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             tcx,
             &mut remaining_lib_features,
             &mut remaining_implications,
-            local_defined_features.as_slice(),
+            local_defined_features,
             &all_implications,
         );
 
@@ -1053,7 +1056,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
                 tcx,
                 &mut remaining_lib_features,
                 &mut remaining_implications,
-                tcx.defined_lib_features(cnum).to_vec().as_slice(),
+                tcx.lib_features(cnum),
                 &all_implications,
             );
         }
@@ -1064,12 +1067,12 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     }
 
     for (implied_by, feature) in remaining_implications {
-        let local_defined_features = tcx.lib_features(());
+        let local_defined_features = tcx.lib_features(rustc_hir::def_id::LOCAL_CRATE);
         let span = *local_defined_features
             .stable
             .get(&feature)
             .map(|(_, span)| span)
-            .or_else(|| local_defined_features.unstable.get(&feature))
+            .or_else(|| Some(&local_defined_features.unstable.get(&feature)?.1))
             .expect("feature that implied another does not exist");
         tcx.sess.emit_err(errors::ImpliedFeatureNotExist { span, feature, implied_by });
     }

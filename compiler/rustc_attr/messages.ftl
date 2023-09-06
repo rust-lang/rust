@@ -88,6 +88,9 @@ attr_rustc_promotable_pairing =
 attr_soft_no_args =
     `soft` should not have any arguments
 
+attr_internal_no_args =
+    `is_internal` should not have any arguments
+
 attr_unknown_meta_item =
     unknown meta item '{$item}'
     .label = expected one of {$expected}

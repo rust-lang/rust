@@ -186,3 +186,6 @@ macro_rules! macro_test_arg {
 macro_rules! macro_test_arg_nested {
     ($func:ident) => (macro_test_arg!($func()));
 }
+
+#[unstable(feature = "unstable_test_feature_internal", issue = "none", is_internal)]
+pub struct InternalStruct;

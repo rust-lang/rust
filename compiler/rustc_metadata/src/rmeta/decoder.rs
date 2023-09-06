@@ -21,6 +21,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
+use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -1007,8 +1008,19 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over all the stability attributes in the given crate.
-    fn get_lib_features(self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Option<Symbol>)] {
-        tcx.arena.alloc_from_iter(self.root.lib_features.decode(self))
+    fn get_lib_features(self, _tcx: TyCtxt<'tcx>) -> LibFeatures {
+        let mut features = LibFeatures::default();
+        for (symbol, stability) in self.root.lib_features.decode(self) {
+            match stability {
+                FeatureStability::AcceptedSince(since) => {
+                    features.stable.insert(symbol, (since, DUMMY_SP));
+                }
+                FeatureStability::Unstable(internal) => {
+                    features.unstable.insert(symbol, (internal, DUMMY_SP));
+                }
+            }
+        }
+        features
     }
 
     /// Iterates over the stability implications in the given crate (when a `#[unstable]` attribute

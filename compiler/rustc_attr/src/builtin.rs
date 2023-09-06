@@ -160,6 +160,8 @@ pub enum StabilityLevel {
         /// Relevant `rust-lang/rust` issue.
         issue: Option<NonZeroU32>,
         is_soft: bool,
+        /// If the feature is internal
+        is_internal: bool,
         /// If part of a feature is stabilized and a new feature is added for the remaining parts,
         /// then the `implied_by` attribute is used to indicate which now-stable feature previously
         /// contained a item.
@@ -461,6 +463,7 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
     let mut issue = None;
     let mut issue_num = None;
     let mut is_soft = false;
+    let mut is_internal = false;
     let mut implied_by = None;
     for meta in metas {
         let Some(mi) = meta.meta_item() else {
@@ -515,6 +518,12 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
                 }
                 is_soft = true;
             }
+            sym::is_internal => {
+                if !mi.is_word() {
+                    sess.emit_err(session_diagnostics::InternalNoArgs { span: mi.span });
+                }
+                is_internal = true;
+            }
             sym::implied_by => {
                 if !insert_or_error(mi, &mut implied_by) {
                     return None;
@@ -545,6 +554,7 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
                 issue: issue_num,
                 is_soft,
                 implied_by,
+                is_internal,
             };
             Some((feature, level))
         }

@@ -176,7 +176,6 @@ early_lint_methods!(
             WhileTrue: WhileTrue,
             NonAsciiIdents: NonAsciiIdents,
             HiddenUnicodeCodepoints: HiddenUnicodeCodepoints,
-            IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
             UnexpectedCfgs: UnexpectedCfgs,
@@ -200,6 +199,7 @@ late_lint_methods!(
             BoxPointers: BoxPointers,
             PathStatements: PathStatements,
             LetUnderscore: LetUnderscore,
+            IncompleteInternalFeatures: IncompleteInternalFeatures,
             InvalidReferenceCasting: InvalidReferenceCasting::default(),
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
