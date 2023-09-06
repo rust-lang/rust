@@ -220,7 +220,7 @@ fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProvi
 }
 
 fn more_trigger_character(config: &Config) -> Vec<String> {
-    let mut res = vec![".".to_string(), ">".to_string(), "{".to_string()];
+    let mut res = vec![".".to_string(), ">".to_string(), "{".to_string(), "(".to_string()];
     if config.snippet_cap() {
         res.push("<".to_string());
     }
