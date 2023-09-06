@@ -33,6 +33,7 @@ triomphe.workspace = true
 
 rustc_abi = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_abi", default-features = false }
 rustc_index = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_index", default-features = false }
+rustc_lexer = { version = "0.1.0", package = "ra-ap-rustc_lexer" }
 
 # local deps
 stdx.workspace = true

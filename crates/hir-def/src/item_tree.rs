@@ -177,7 +177,7 @@ impl ItemTree {
     }
 
     pub fn pretty_print(&self, db: &dyn DefDatabase) -> String {
-        pretty::print_item_tree(db.upcast(), self)
+        pretty::print_item_tree(db, self)
     }
 
     fn data(&self) -> &ItemTreeData {

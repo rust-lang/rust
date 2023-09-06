@@ -694,25 +694,12 @@ fn doctest_extract_expressions_from_format_string() {
     check_doc_test(
         "extract_expressions_from_format_string",
         r#####"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
-macro_rules! print {
-    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
-}
-
+//- minicore: fmt
 fn main() {
     print!("{var} {x + 1}$0");
 }
 "#####,
         r#####"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
-macro_rules! print {
-    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
-}
-
 fn main() {
     print!("{var} {}"$0, x + 1);
 }

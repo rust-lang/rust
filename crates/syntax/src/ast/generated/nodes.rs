@@ -931,6 +931,9 @@ impl FormatArgsExpr {
         support::token(&self.syntax, T![format_args])
     }
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    pub fn template(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
+    pub fn args(&self) -> AstChildren<FormatArgsArg> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 
@@ -1161,6 +1164,16 @@ pub struct UnderscoreExpr {
 impl ast::HasAttrs for UnderscoreExpr {}
 impl UnderscoreExpr {
     pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FormatArgsArg {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::HasName for FormatArgsArg {}
+impl FormatArgsArg {
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2855,6 +2868,17 @@ impl AstNode for UnderscoreExpr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for FormatArgsArg {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == FORMAT_ARGS_ARG }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for StmtList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == STMT_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -4254,6 +4278,7 @@ impl AstNode for AnyHasName {
                 | VARIANT
                 | CONST_PARAM
                 | TYPE_PARAM
+                | FORMAT_ARGS_ARG
                 | IDENT_PAT
         )
     }
@@ -4856,6 +4881,11 @@ impl std::fmt::Display for LetExpr {
     }
 }
 impl std::fmt::Display for UnderscoreExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for FormatArgsArg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

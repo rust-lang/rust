@@ -210,6 +210,7 @@ pub enum SyntaxKind {
     OFFSET_OF_EXPR,
     ASM_EXPR,
     FORMAT_ARGS_EXPR,
+    FORMAT_ARGS_ARG,
     CALL_EXPR,
     INDEX_EXPR,
     METHOD_CALL_EXPR,

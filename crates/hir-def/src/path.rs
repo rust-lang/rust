@@ -47,7 +47,7 @@ pub enum Path {
     },
     /// A link to a lang item. It is used in desugaring of things like `it?`. We can show these
     /// links via a normal path since they might be private and not accessible in the usage place.
-    LangItem(LangItemTarget),
+    LangItem(LangItemTarget, Option<Name>),
 }
 
 /// Generic arguments to a path segment (e.g. the `i32` in `Option<i32>`). This
@@ -122,33 +122,40 @@ impl Path {
     pub fn kind(&self) -> &PathKind {
         match self {
             Path::Normal { mod_path, .. } => &mod_path.kind,
-            Path::LangItem(_) => &PathKind::Abs,
+            Path::LangItem(..) => &PathKind::Abs,
         }
     }
 
     pub fn type_anchor(&self) -> Option<&TypeRef> {
         match self {
             Path::Normal { type_anchor, .. } => type_anchor.as_deref(),
-            Path::LangItem(_) => None,
+            Path::LangItem(..) => None,
         }
     }
 
     pub fn segments(&self) -> PathSegments<'_> {
-        let Path::Normal { mod_path, generic_args, .. } = self else {
-            return PathSegments { segments: &[], generic_args: None };
-        };
-        let s =
-            PathSegments { segments: mod_path.segments(), generic_args: generic_args.as_deref() };
-        if let Some(generic_args) = s.generic_args {
-            assert_eq!(s.segments.len(), generic_args.len());
+        match self {
+            Path::Normal { mod_path, generic_args, .. } => {
+                let s = PathSegments {
+                    segments: mod_path.segments(),
+                    generic_args: generic_args.as_deref(),
+                };
+                if let Some(generic_args) = s.generic_args {
+                    assert_eq!(s.segments.len(), generic_args.len());
+                }
+                s
+            }
+            Path::LangItem(_, seg) => PathSegments {
+                segments: seg.as_ref().map_or(&[], |seg| std::slice::from_ref(seg)),
+                generic_args: None,
+            },
         }
-        s
     }
 
     pub fn mod_path(&self) -> Option<&ModPath> {
         match self {
             Path::Normal { mod_path, .. } => Some(&mod_path),
-            Path::LangItem(_) => None,
+            Path::LangItem(..) => None,
         }
     }
 

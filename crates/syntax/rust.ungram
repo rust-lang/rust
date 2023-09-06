@@ -382,7 +382,13 @@ AsmExpr =
   Attr* 'builtin' '#' 'asm' '(' Expr ')'
 
 FormatArgsExpr =
-  Attr* 'builtin' '#' 'format_args' '(' ')'
+  Attr* 'builtin' '#' 'format_args' '('
+  template:Expr
+  (',' args:(FormatArgsArg (',' FormatArgsArg)* ','?)? )?
+  ')'
+
+FormatArgsArg =
+  (Name '=')? Expr
 
 MacroExpr =
   MacroCall

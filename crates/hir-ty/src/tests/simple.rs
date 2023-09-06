@@ -3612,3 +3612,18 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn builtin_format_args() {
+    check(
+        r#"
+//- minicore: fmt
+fn main() {
+    let are = "are";
+    let count = 10;
+    builtin#format_args("hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'_>
+}
+"#,
+    );
+}
