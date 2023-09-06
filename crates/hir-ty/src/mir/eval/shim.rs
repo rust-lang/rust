@@ -1200,6 +1200,22 @@ impl Evaluator<'_> {
                 let addr = Address::from_bytes(arg.interval.get(self)?)?;
                 destination.write_from_interval(self, Interval { addr, size: destination.size })
             }
+            "write_via_move" => {
+                let [ptr, val] = args else {
+                    return Err(MirEvalError::TypeError("write_via_move args are not provided"));
+                };
+                let dst = Address::from_bytes(ptr.get(self)?)?;
+                let Some(ty) =
+                    generic_args.as_slice(Interner).get(0).and_then(|it| it.ty(Interner))
+                else {
+                    return Err(MirEvalError::TypeError(
+                        "write_via_copy generic arg is not provided",
+                    ));
+                };
+                let size = self.size_of_sized(ty, locals, "write_via_move ptr type")?;
+                Interval { addr: dst, size }.write_from_interval(self, val.interval)?;
+                Ok(())
+            }
             "write_bytes" => {
                 let [dst, val, count] = args else {
                     return Err(MirEvalError::TypeError("write_bytes args are not provided"));
