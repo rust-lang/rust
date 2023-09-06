@@ -39,7 +39,9 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{self, Lock, Lrc, MappedReadGuard, ReadGuard, WorkerLocal};
+use rustc_data_structures::sync::{
+    self, FreezeReadGuard, Lock, Lrc, MappedReadGuard, ReadGuard, WorkerLocal,
+};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     DecorateLint, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
@@ -964,8 +966,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 i += 1;
             }
 
-            // Leak a read lock once we finish iterating on definitions, to prevent adding new ones.
-            definitions.leak();
+            // Freeze definitions once we finish iterating on them, to prevent adding new ones.
+            definitions.freeze();
         })
     }
 
@@ -974,10 +976,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // definitions change.
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
-        // Leak a read lock once we start iterating on definitions, to prevent adding new ones
+        // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
-        let definitions = self.untracked.definitions.leak();
-        definitions.def_path_table()
+        self.untracked.definitions.freeze().def_path_table()
     }
 
     pub fn def_path_hash_to_def_index_map(
@@ -986,10 +987,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.ensure().hir_crate(());
-        // Leak a read lock once we start iterating on definitions, to prevent adding new ones
+        // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
-        let definitions = self.untracked.definitions.leak();
-        definitions.def_path_hash_to_def_index_map()
+        self.untracked.definitions.freeze().def_path_hash_to_def_index_map()
     }
 
     /// Note that this is *untracked* and should only be used within the query
@@ -1006,7 +1006,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
     #[inline]
-    pub fn definitions_untracked(self) -> ReadGuard<'tcx, Definitions> {
+    pub fn definitions_untracked(self) -> FreezeReadGuard<'tcx, Definitions> {
         self.untracked.definitions.read()
     }
 
