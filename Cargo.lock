@@ -4175,7 +4175,7 @@ dependencies = [
 name = "rustc_parse_format"
 version = "0.0.0"
 dependencies = [
- "rustc_data_structures",
+ "rustc_index",
  "rustc_lexer",
 ]
 
