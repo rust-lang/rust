@@ -2131,6 +2131,7 @@ extern "C" {
         RelaxELFRelocations: bool,
         UseInitArray: bool,
         SplitDwarfFile: *const c_char,
+        DebugInfoCompression: *const c_char,
         ForceEmulatedTls: bool,
     ) -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
@@ -2356,6 +2357,10 @@ extern "C" {
     pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
 
     pub fn LLVMRustIsBitcode(ptr: *const u8, len: usize) -> bool;
+
+    pub fn LLVMRustLLVMHasZlibCompressionForDebugSymbols() -> bool;
+
+    pub fn LLVMRustLLVMHasZstdCompressionForDebugSymbols() -> bool;
 
     pub fn LLVMRustGetSymbols(
         buf_ptr: *const u8,

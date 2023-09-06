@@ -5,13 +5,17 @@ use crate::back::profiling::{
 use crate::base;
 use crate::common;
 use crate::errors::{
-    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, WithLlvmError, WriteBytecode,
+    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
+    WithLlvmError, WriteBytecode,
 };
 use crate::llvm::{self, DiagnosticInfo, PassManager};
 use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
+use llvm::{
+    LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
+};
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
@@ -216,6 +220,22 @@ pub fn target_machine_factory(
 
     let force_emulated_tls = sess.target.force_emulated_tls;
 
+    let debuginfo_compression = sess.opts.debuginfo_compression.to_string();
+    match sess.opts.debuginfo_compression {
+        rustc_session::config::DebugInfoCompression::Zlib => {
+            if !unsafe { LLVMRustLLVMHasZlibCompressionForDebugSymbols() } {
+                sess.emit_warning(UnknownCompression { algorithm: "zlib" });
+            }
+        }
+        rustc_session::config::DebugInfoCompression::Zstd => {
+            if !unsafe { LLVMRustLLVMHasZstdCompressionForDebugSymbols() } {
+                sess.emit_warning(UnknownCompression { algorithm: "zstd" });
+            }
+        }
+        rustc_session::config::DebugInfoCompression::None => {}
+    };
+    let debuginfo_compression = SmallCStr::new(&debuginfo_compression);
+
     Arc::new(move |config: TargetMachineFactoryConfig| {
         let split_dwarf_file =
             path_mapping.map_prefix(config.split_dwarf_file.unwrap_or_default()).0;
@@ -241,6 +261,7 @@ pub fn target_machine_factory(
                 relax_elf_relocations,
                 use_init_array,
                 split_dwarf_file.as_ptr(),
+                debuginfo_compression.as_ptr(),
                 force_emulated_tls,
             )
         };
