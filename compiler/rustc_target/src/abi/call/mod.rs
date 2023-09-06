@@ -36,7 +36,7 @@ pub enum PassMode {
     Ignore,
     /// Pass the argument directly.
     ///
-    /// The argument has a layout abi of `Scalar`, `Vector` or in rare cases `Aggregate`.
+    /// The argument has a layout abi of `Scalar`, `Vector` or in rare cases (e.g. on wasm) `Aggregate`.
     Direct(ArgAttributes),
     /// Pass a pair's elements directly in two arguments.
     ///
@@ -465,6 +465,7 @@ pub struct ArgAbi<'a, Ty> {
 }
 
 impl<'a, Ty> ArgAbi<'a, Ty> {
+    /// This defines the "default ABI" for that type, that is then later adjusted in `fn_abi_adjust_for_abi`.
     pub fn new(
         cx: &impl HasDataLayout,
         layout: TyAndLayout<'a, Ty>,
@@ -478,6 +479,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
                 scalar_attrs(&layout, b, a.size(cx).align_to(b.align(cx).abi)),
             ),
             Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
+            // The `Aggregate` ABI is almost always adjusted later.
             Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
         };
         ArgAbi { layout, mode }

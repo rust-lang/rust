@@ -340,15 +340,53 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         };
 
         for arg in args {
+            // Note that the exact number of arguments pushed here is carefully synchronized with
+            // code all over the place, both in the codegen_llvm and codegen_ssa crates. That's how
+            // other code then knows which LLVM argument(s) correspond to the n-th Rust argument.
             let llarg_ty = match &arg.mode {
                 PassMode::Ignore => continue,
-                PassMode::Direct(_) => arg.layout.immediate_llvm_type(cx),
+                PassMode::Direct(_) => {
+                    // ABI-compatible Rust types have the same `layout.abi` (up to validity ranges),
+                    // and for Scalar ABIs the LLVM type is fully determined by `layout.abi`,
+                    // guarnateeing that we generate ABI-compatible LLVM IR. Things get tricky for
+                    // aggregates...
+                    if matches!(arg.layout.abi, abi::Abi::Aggregate { .. }) {
+                        // This is the most critical case for ABI compatibility, since
+                        // `immediate_llvm_type` will use `layout.fields` to turn this Rust type
+                        // into an LLVM type. ABI-compatible Rust types can have different `fields`,
+                        // so we need to be very sure that LLVM wil treat those different types in
+                        // an ABI-compatible way. Mostly we do this by disallowing
+                        // `PassMode::Direct` for aggregates, but we actually do use that mode on
+                        // wasm. wasm doesn't have aggregate types so we are fairly sure that LLVM
+                        // will treat `{ i32, i32, i32 }` and `{ { i32, i32, i32 } }` the same way
+                        // for ABI purposes.
+                        assert!(
+                            matches!(&*cx.tcx.sess.target.arch, "wasm32" | "wasm64"),
+                            "`PassMode::Direct` for aggregates only allowed on wasm targets\nProblematic type: {:#?}",
+                            arg.layout,
+                        );
+                    }
+                    arg.layout.immediate_llvm_type(cx)
+                }
                 PassMode::Pair(..) => {
+                    // ABI-compatible Rust types have the same `layout.abi` (up to validity ranges),
+                    // so for ScalarPair we can easily be sure that we are generating ABI-compatible
+                    // LLVM IR.
+                    assert!(
+                        matches!(arg.layout.abi, abi::Abi::ScalarPair(..)),
+                        "PassMode::Pair for type {}",
+                        arg.layout.ty
+                    );
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 0, true));
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
                 PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
+                    assert!(arg.layout.is_unsized());
+                    // Construct the type of a (wide) pointer to `ty`, and pass its two fields.
+                    // Any two ABI-compatible unsized types have the same metadata type and
+                    // moreover the same metadata value leads to the same dynamic size and
+                    // alignment, so this respects ABI compatibility.
                     let ptr_ty = Ty::new_mut_ptr(cx.tcx, arg.layout.ty);
                     let ptr_layout = cx.layout_of(ptr_ty);
                     llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 0, true));
@@ -360,6 +398,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     if *pad_i32 {
                         llargument_tys.push(Reg::i32().llvm_type(cx));
                     }
+                    // Compute the LLVM type we use for this function from the cast type.
+                    // We assume here that ABI-compatible Rust types have the same cast type.
                     cast.llvm_type(cx)
                 }
                 PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => cx.type_ptr(),
