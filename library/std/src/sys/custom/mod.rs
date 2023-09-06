@@ -20,7 +20,7 @@ pub mod io;
 #[path = "../unsupported/args.rs"]
 pub mod args;
 
-// TODO: unsupported provides a thread-unsafe implementation
+// FIXME: unsupported provides a thread-unsafe implementations
 #[path = "../unsupported/once.rs"]
 pub mod once;
 
