@@ -1,5 +1,5 @@
 error: this function is only used once
-  --> $DIR/single_call_fn.rs:33:1
+  --> $DIR/single_call_fn.rs:34:1
    |
 LL | / fn c() {
 LL | |     println!("really");
@@ -9,44 +9,44 @@ LL | | }
    | |_^
    |
 help: used here
-  --> $DIR/single_call_fn.rs:40:5
+  --> $DIR/single_call_fn.rs:41:5
    |
 LL |     c();
    |     ^
    = note: `-D clippy::single-call-fn` implied by `-D warnings`
 
 error: this function is only used once
-  --> $DIR/single_call_fn.rs:12:1
+  --> $DIR/single_call_fn.rs:13:1
    |
 LL | fn i() {}
    | ^^^^^^^^^
    |
 help: used here
-  --> $DIR/single_call_fn.rs:17:13
+  --> $DIR/single_call_fn.rs:18:13
    |
 LL |     let a = i;
    |             ^
 
 error: this function is only used once
-  --> $DIR/single_call_fn.rs:43:1
+  --> $DIR/single_call_fn.rs:44:1
    |
 LL | fn a() {}
    | ^^^^^^^^^
    |
 help: used here
-  --> $DIR/single_call_fn.rs:46:5
+  --> $DIR/single_call_fn.rs:47:5
    |
 LL |     a();
    |     ^
 
 error: this function is only used once
-  --> $DIR/single_call_fn.rs:13:1
+  --> $DIR/single_call_fn.rs:14:1
    |
 LL | fn j() {}
    | ^^^^^^^^^
    |
 help: used here
-  --> $DIR/single_call_fn.rs:24:9
+  --> $DIR/single_call_fn.rs:25:9
    |
 LL |         j();
    |         ^
