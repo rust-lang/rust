@@ -105,6 +105,7 @@ test_transparent!(zst, Zst);
 test_transparent!(unit, ());
 test_transparent!(pair, (i32, f32)); // mixing in some floats since they often get special treatment
 test_transparent!(triple, (i8, i16, f32)); // chosen to fit into 64bit
+test_transparent!(float_triple, (f64, f64, f64)); // hits a bug in our MIPS64 adjustments
 test_transparent!(tuple, (i32, f32, i64, f64));
 test_transparent!(empty_array, [u32; 0]);
 test_transparent!(empty_1zst_array, [u8; 0]);
