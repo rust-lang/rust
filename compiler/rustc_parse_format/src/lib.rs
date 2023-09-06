@@ -210,7 +210,17 @@ pub struct ParseError {
     pub label: string::String,
     pub span: InnerSpan,
     pub secondary_label: Option<(string::String, InnerSpan)>,
-    pub should_be_replaced_with_positional_argument: bool,
+    pub suggestion: Suggestion,
+}
+
+pub enum Suggestion {
+    None,
+    /// Replace inline argument with positional argument:
+    /// `format!("{foo.bar}")` -> `format!("{}", foo.bar)`
+    UsePositional,
+    /// Remove `r#` from identifier:
+    /// `format!("{r#foo}")` -> `format!("{foo}")`
+    RemoveRawIdent(InnerSpan),
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -365,7 +375,7 @@ impl<'a> Parser<'a> {
             label: label.into(),
             span,
             secondary_label: None,
-            should_be_replaced_with_positional_argument: false,
+            suggestion: Suggestion::None,
         });
     }
 
@@ -389,7 +399,7 @@ impl<'a> Parser<'a> {
             label: label.into(),
             span,
             secondary_label: None,
-            should_be_replaced_with_positional_argument: false,
+            suggestion: Suggestion::None,
         });
     }
 
@@ -493,7 +503,7 @@ impl<'a> Parser<'a> {
             label,
             span: pos.to(pos),
             secondary_label,
-            should_be_replaced_with_positional_argument: false,
+            suggestion: Suggestion::None,
         });
 
         None
@@ -573,7 +583,37 @@ impl<'a> Parser<'a> {
             Some(ArgumentIs(i))
         } else {
             match self.cur.peek() {
-                Some(&(_, c)) if rustc_lexer::is_id_start(c) => Some(ArgumentNamed(self.word())),
+                Some(&(lo, c)) if rustc_lexer::is_id_start(c) => {
+                    let word = self.word();
+
+                    // Recover from `r#ident` in format strings.
+                    // FIXME: use a let chain
+                    if word == "r" {
+                        if let Some((pos, '#')) = self.cur.peek() {
+                            if self.input[pos + 1..]
+                                .chars()
+                                .next()
+                                .is_some_and(rustc_lexer::is_id_start)
+                            {
+                                self.cur.next();
+                                let word = self.word();
+                                let prefix_span = self.span(lo, lo + 2);
+                                let full_span = self.span(lo, lo + 2 + word.len());
+                                self.errors.insert(0, ParseError {
+                                    description: "raw identifiers are not supported".to_owned(),
+                                    note: Some("identifiers in format strings can be keywords and don't need to be prefixed with `r#`".to_string()),
+                                    label: "raw identifier used here".to_owned(),
+                                    span: full_span,
+                                    secondary_label: None,
+                                    suggestion: Suggestion::RemoveRawIdent(prefix_span),
+                                });
+                                return Some(ArgumentNamed(word));
+                            }
+                        }
+                    }
+
+                    Some(ArgumentNamed(word))
+                }
 
                 // This is an `ArgumentNext`.
                 // Record the fact and do the resolution after parsing the
@@ -841,7 +881,7 @@ impl<'a> Parser<'a> {
                     label: "expected `?` to occur after `:`".to_owned(),
                     span: pos.to(pos),
                     secondary_label: None,
-                    should_be_replaced_with_positional_argument: false,
+                    suggestion: Suggestion::None,
                 },
             );
         }
@@ -867,7 +907,7 @@ impl<'a> Parser<'a> {
                             label: "not supported".to_string(),
                             span: InnerSpan::new(arg.position_span.start, field.position_span.end),
                             secondary_label: None,
-                            should_be_replaced_with_positional_argument: true,
+                            suggestion: Suggestion::UsePositional,
                         },
                     );
                 }
