@@ -2541,7 +2541,7 @@ Released 2021-06-17
 * [`len_without_is_empty`]: Also lint if function signatures of `len` and
   `is_empty` don't match
   [#6980](https://github.com/rust-lang/rust-clippy/pull/6980)
-* [`redundant_pattern_matching`]: Also lint if the pattern is a `&` pattern
+* [`redundant_pattern_matching`]: Also lint if the pattern is an `&' pattern
   [#6991](https://github.com/rust-lang/rust-clippy/pull/6991)
 * [`clone_on_copy`]: Also lint on chained method calls taking `self` by value
   [#7000](https://github.com/rust-lang/rust-clippy/pull/7000)

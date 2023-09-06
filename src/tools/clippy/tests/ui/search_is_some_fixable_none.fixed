@@ -25,7 +25,7 @@ fn main() {
     let s1 = String::from("hello world");
     let s2 = String::from("world");
 
-    // caller of `find()` is a `&`static str`
+    // caller of `find()` is an `&'static str`
     let _ = !"hello world".contains("world");
     let _ = !"hello world".contains(&s2);
     let _ = !"hello world".contains(&s2[2..]);
