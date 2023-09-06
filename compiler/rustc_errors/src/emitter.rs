@@ -2348,7 +2348,13 @@ impl FileWithAnnotatedLines {
                 }
 
                 let label = label.as_ref().map(|m| {
-                    emitter.translate_message(m, args).map_err(Report::new).unwrap().to_string()
+                    normalize_whitespace(
+                        &emitter
+                            .translate_message(m, &args)
+                            .map_err(Report::new)
+                            .unwrap()
+                            .to_string(),
+                    )
                 });
 
                 if lo.line != hi.line {

@@ -7,6 +7,7 @@ LL | |     };
    | |______^ help: try: `let SingleVariantEnum::Variant(data) = wrapper;`
    |
    = note: `-D clippy::infallible-destructuring-match` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::infallible_destructuring_match)]`
 
 error: you seem to be trying to use `match` to destructure a single infallible pattern. Consider using `let`
   --> $DIR/infallible_destructuring_match.rs:60:5

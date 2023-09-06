@@ -5,6 +5,7 @@ LL |     true
    |     ^^^^ help: add `return` as shown: `return true`
    |
    = note: `-D clippy::implicit-return` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::implicit_return)]`
 
 error: missing `return` statement
   --> $DIR/implicit_return.rs:15:15

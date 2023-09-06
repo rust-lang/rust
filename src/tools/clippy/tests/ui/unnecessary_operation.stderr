@@ -5,6 +5,7 @@ LL |     Tuple(get_number());
    |     ^^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `get_number();`
    |
    = note: `-D clippy::unnecessary-operation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_operation)]`
 
 error: unnecessary operation
   --> $DIR/unnecessary_operation.rs:55:5

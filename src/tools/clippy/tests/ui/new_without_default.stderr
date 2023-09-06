@@ -9,6 +9,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::new-without-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::new_without_default)]`
 help: try adding this
    |
 LL + impl Default for Foo {

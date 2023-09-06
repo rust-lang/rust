@@ -1,7 +1,6 @@
 use rustc_middle::mir::interpret::{alloc_range, AllocRange, ConstValue, Pointer};
 
 use crate::{
-    rustc_internal::opaque,
     rustc_smir::{Stable, Tables},
     stable_mir::mir::Mutability,
     stable_mir::ty::{Allocation, ProvenanceMap},
@@ -113,7 +112,7 @@ pub(super) fn allocation_filter<'tcx>(
         .iter()
         .filter(|a| a.0 >= alloc_range.start && a.0 <= alloc_range.end())
     {
-        ptrs.push((offset.bytes_usize() - alloc_range.start.bytes_usize(), opaque(prov)));
+        ptrs.push((offset.bytes_usize() - alloc_range.start.bytes_usize(), tables.prov(*prov)));
     }
     Allocation {
         bytes: bytes,

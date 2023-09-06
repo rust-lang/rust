@@ -7,6 +7,7 @@ LL |     vec1.extend(repeat(0).take(len));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::slow-vector-initialization` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::slow_vector_initialization)]`
 
 error: slow zero-filling initialization
   --> $DIR/slow_vector_initialization.rs:20:5
@@ -103,6 +104,7 @@ LL | fn do_stuff(vec: &mut [u8]) {}
    |                  ^^^^^^^^^ help: consider changing to: `&[u8]`
    |
    = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
 
 error: aborting due to 13 previous errors
 

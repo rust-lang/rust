@@ -50,6 +50,7 @@ impl SourceMap {
     fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
         let idx = self.lookup_source_file_idx(bpos);
         let sf = &(*self.files.borrow().source_files)[idx];
+        let bpos = sf.relative_position(bpos);
         sf.bytepos_to_file_charpos(bpos)
     }
 }
@@ -230,8 +231,7 @@ fn t10() {
     let SourceFile {
         name,
         src_hash,
-        start_pos,
-        end_pos,
+        source_len,
         lines,
         multibyte_chars,
         non_narrow_chars,
@@ -244,13 +244,12 @@ fn t10() {
         name,
         src_hash,
         name_hash,
-        (end_pos - start_pos).to_usize(),
+        source_len.to_u32(),
         CrateNum::new(0),
         lines,
         multibyte_chars,
         non_narrow_chars,
         normalized_pos,
-        start_pos,
         0,
     );
 

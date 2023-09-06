@@ -5,6 +5,7 @@ LL | pub fn pub_fn_missing_errors_header() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::missing-errors-doc` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_errors_doc)]`
 
 error: docs for function returning `Result` missing `# Errors` section
   --> $DIR/doc_errors.rs:13:1

@@ -8,6 +8,7 @@ LL | | }
    | |_^
    |
    = note: `-D clippy::too-many-lines` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_many_lines)]`
 
 error: this function has too many lines (4/1)
   --> $DIR/test.rs:25:1

@@ -5,6 +5,7 @@ LL |         Foo(self.0 - other.0)
    |                    ^
    |
    = note: `-D clippy::suspicious-arithmetic-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_arithmetic_impl)]`
 
 error: suspicious use of `-` in `AddAssign` impl
   --> $DIR/suspicious_arithmetic_impl.rs:21:23
@@ -13,6 +14,7 @@ LL |         *self = *self - other;
    |                       ^
    |
    = note: `-D clippy::suspicious-op-assign-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_op_assign_impl)]`
 
 error: suspicious use of `/` in `MulAssign` impl
   --> $DIR/suspicious_arithmetic_impl.rs:36:16

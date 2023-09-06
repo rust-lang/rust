@@ -5,6 +5,7 @@ LL |     size_of::<i8>() * 8;
    |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `i8::BITS as usize`
    |
    = note: `-D clippy::manual-bits` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_bits)]`
 
 error: usage of `mem::size_of::<T>()` to obtain the size of `T` in bits
   --> $DIR/manual_bits.rs:15:5

@@ -5,6 +5,7 @@ LL | pub fn pure(i: u8) -> u8 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^ help: add the attribute: `#[must_use] pub fn pure(i: u8) -> u8`
    |
    = note: `-D clippy::must-use-candidate` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::must_use_candidate)]`
 
 error: this method could have a `#[must_use]` attribute
   --> $DIR/must_use_candidates.rs:21:5

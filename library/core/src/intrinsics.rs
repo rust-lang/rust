@@ -1130,7 +1130,10 @@ extern "rust-intrinsic" {
     /// may lead to unexpected and unstable compilation results. This makes `transmute` **incredibly
     /// unsafe**. `transmute` should be the absolute last resort.
     ///
-    /// Transmuting pointers to integers in a `const` context is [undefined behavior][ub].
+    /// Transmuting pointers *to* integers in a `const` context is [undefined behavior][ub],
+    /// unless the pointer was originally created *from* an integer.
+    /// (That includes this function specifically, integer-to-pointer casts, and helpers like [`invalid`][crate::ptr::invalid],
+    /// but also semantically-equivalent conversions such as punning through `repr(C)` union fields.)
     /// Any attempt to use the resulting value for integer operations will abort const-evaluation.
     /// (And even outside `const`, such transmutation is touching on many unspecified aspects of the
     /// Rust memory model and should be avoided. See below for alternatives.)
@@ -2704,9 +2707,13 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
+/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes, and must remain valid even
+///   when `dst` is written for `count * size_of::<T>()` bytes. (This means if the memory ranges
+///   overlap, the two pointers must not be subject to aliasing restrictions relative to each
+///   other.)
 ///
-/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
+/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes, and must remain valid even
+///   when `src` is read for `count * size_of::<T>()` bytes.
 ///
 /// * Both `src` and `dst` must be properly aligned.
 ///

@@ -9,6 +9,7 @@ LL |         FOO_REF_REF => {},
    = note: the traits must be derived, manual `impl`s are not sufficient
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
    = note: `-D indirect-structural-match` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(indirect_structural_match)]`
 
 error: aborting due to previous error
 

@@ -88,7 +88,7 @@ impl<Prov: Provenance> Immediate<Prov> {
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
 // as input for binary and cast operations.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct ImmTy<'tcx, Prov: Provenance = AllocId> {
     imm: Immediate<Prov>,
     pub layout: TyAndLayout<'tcx>,
@@ -134,56 +134,17 @@ impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
     }
 }
 
+impl<Prov: Provenance> std::fmt::Debug for ImmTy<'_, Prov> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ImmTy").field("imm", &self.imm).field("ty", &self.layout.ty).finish()
+    }
+}
+
 impl<'tcx, Prov: Provenance> std::ops::Deref for ImmTy<'tcx, Prov> {
     type Target = Immediate<Prov>;
     #[inline(always)]
     fn deref(&self) -> &Immediate<Prov> {
         &self.imm
-    }
-}
-
-/// An `Operand` is the result of computing a `mir::Operand`. It can be immediate,
-/// or still in memory. The latter is an optimization, to delay reading that chunk of
-/// memory and to avoid having to store arbitrary-sized data here.
-#[derive(Copy, Clone, Debug)]
-pub enum Operand<Prov: Provenance = AllocId> {
-    Immediate(Immediate<Prov>),
-    Indirect(MemPlace<Prov>),
-}
-
-#[derive(Clone, Debug)]
-pub struct OpTy<'tcx, Prov: Provenance = AllocId> {
-    op: Operand<Prov>, // Keep this private; it helps enforce invariants.
-    pub layout: TyAndLayout<'tcx>,
-    /// rustc does not have a proper way to represent the type of a field of a `repr(packed)` struct:
-    /// it needs to have a different alignment than the field type would usually have.
-    /// So we represent this here with a separate field that "overwrites" `layout.align`.
-    /// This means `layout.align` should never be used for an `OpTy`!
-    /// `None` means "alignment does not matter since this is a by-value operand"
-    /// (`Operand::Immediate`); this field is only relevant for `Operand::Indirect`.
-    /// Also CTFE ignores alignment anyway, so this is for Miri only.
-    pub align: Option<Align>,
-}
-
-impl<'tcx, Prov: Provenance> std::ops::Deref for OpTy<'tcx, Prov> {
-    type Target = Operand<Prov>;
-    #[inline(always)]
-    fn deref(&self) -> &Operand<Prov> {
-        &self.op
-    }
-}
-
-impl<'tcx, Prov: Provenance> From<MPlaceTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
-    #[inline(always)]
-    fn from(mplace: MPlaceTy<'tcx, Prov>) -> Self {
-        OpTy { op: Operand::Indirect(*mplace), layout: mplace.layout, align: Some(mplace.align) }
-    }
-}
-
-impl<'tcx, Prov: Provenance> From<ImmTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
-    #[inline(always)]
-    fn from(val: ImmTy<'tcx, Prov>) -> Self {
-        OpTy { op: Operand::Immediate(val.imm), layout: val.layout, align: None }
     }
 }
 
@@ -319,7 +280,61 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
     }
 }
 
-impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
+/// An `Operand` is the result of computing a `mir::Operand`. It can be immediate,
+/// or still in memory. The latter is an optimization, to delay reading that chunk of
+/// memory and to avoid having to store arbitrary-sized data here.
+#[derive(Copy, Clone, Debug)]
+pub(super) enum Operand<Prov: Provenance = AllocId> {
+    Immediate(Immediate<Prov>),
+    Indirect(MemPlace<Prov>),
+}
+
+#[derive(Clone)]
+pub struct OpTy<'tcx, Prov: Provenance = AllocId> {
+    op: Operand<Prov>, // Keep this private; it helps enforce invariants.
+    pub layout: TyAndLayout<'tcx>,
+    /// rustc does not have a proper way to represent the type of a field of a `repr(packed)` struct:
+    /// it needs to have a different alignment than the field type would usually have.
+    /// So we represent this here with a separate field that "overwrites" `layout.align`.
+    /// This means `layout.align` should never be used for an `OpTy`!
+    /// `None` means "alignment does not matter since this is a by-value operand"
+    /// (`Operand::Immediate`); this field is only relevant for `Operand::Indirect`.
+    /// Also CTFE ignores alignment anyway, so this is for Miri only.
+    pub align: Option<Align>,
+}
+
+impl<Prov: Provenance> std::fmt::Debug for OpTy<'_, Prov> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OpTy").field("op", &self.op).field("ty", &self.layout.ty).finish()
+    }
+}
+
+impl<'tcx, Prov: Provenance> From<ImmTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
+    #[inline(always)]
+    fn from(val: ImmTy<'tcx, Prov>) -> Self {
+        OpTy { op: Operand::Immediate(val.imm), layout: val.layout, align: None }
+    }
+}
+
+impl<'tcx, Prov: Provenance> From<MPlaceTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
+    #[inline(always)]
+    fn from(mplace: MPlaceTy<'tcx, Prov>) -> Self {
+        OpTy {
+            op: Operand::Indirect(*mplace.mplace()),
+            layout: mplace.layout,
+            align: Some(mplace.align),
+        }
+    }
+}
+
+impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
+    #[inline(always)]
+    pub(super) fn op(&self) -> &Operand<Prov> {
+        &self.op
+    }
+}
+
+impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
@@ -328,7 +343,7 @@ impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for OpTy<'tcx, Pr
     #[inline]
     fn meta(&self) -> MemPlaceMeta<Prov> {
         match self.as_mplace_or_imm() {
-            Left(mplace) => mplace.meta,
+            Left(mplace) => mplace.meta(),
             Right(_) => {
                 debug_assert!(self.layout.is_sized(), "unsized immediates are not a thing");
                 MemPlaceMeta::None
@@ -362,18 +377,19 @@ impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for OpTy<'tcx, Pr
     }
 }
 
+/// The `Readable` trait describes interpreter values that one can read from.
 pub trait Readable<'tcx, Prov: Provenance>: Projectable<'tcx, Prov> {
     fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>>;
 }
 
-impl<'tcx, Prov: Provenance + 'static> Readable<'tcx, Prov> for OpTy<'tcx, Prov> {
+impl<'tcx, Prov: Provenance> Readable<'tcx, Prov> for OpTy<'tcx, Prov> {
     #[inline(always)]
     fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
         self.as_mplace_or_imm()
     }
 }
 
-impl<'tcx, Prov: Provenance + 'static> Readable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
+impl<'tcx, Prov: Provenance> Readable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
     #[inline(always)]
     fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
         Left(self.clone())
@@ -535,7 +551,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Turn the wide MPlace into a string (must already be dereferenced!)
     pub fn read_str(&self, mplace: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
-        let bytes = self.read_bytes_ptr_strip_provenance(mplace.ptr, Size::from_bytes(len))?;
+        let bytes = self.read_bytes_ptr_strip_provenance(mplace.ptr(), Size::from_bytes(len))?;
         let str = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
         Ok(str)
     }
@@ -630,7 +646,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             op = self.project(&op, elem)?
         }
 
-        trace!("eval_place_to_op: got {:?}", *op);
+        trace!("eval_place_to_op: got {:?}", op);
         // Sanity-check the type we ended up with.
         debug_assert!(
             mir_assign_valid_types(
@@ -673,7 +689,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.eval_mir_constant(&c, Some(constant.span), layout)?
             }
         };
-        trace!("{:?}: {:?}", mir_op, *op);
+        trace!("{:?}: {:?}", mir_op, op);
         Ok(op)
     }
 

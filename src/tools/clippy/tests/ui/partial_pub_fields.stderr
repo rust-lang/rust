@@ -6,6 +6,7 @@ LL |         pub paths: HashMap<u32, String>,
    |
    = help: consider using private field here
    = note: `-D clippy::partial-pub-fields` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::partial_pub_fields)]`
 
 error: mixed usage of pub and non-pub fields
   --> $DIR/partial_pub_fields.rs:17:9

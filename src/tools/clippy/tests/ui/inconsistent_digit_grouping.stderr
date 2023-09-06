@@ -5,6 +5,7 @@ LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f
    |                ^^^^^^^^ help: consider: `123_456`
    |
    = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inconsistent_digit_grouping)]`
 
 error: digits grouped inconsistently by underscores
   --> $DIR/inconsistent_digit_grouping.rs:25:26

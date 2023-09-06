@@ -5,6 +5,7 @@ LL |             println!("{}", crate::unhygienic::MESSAGE);
    |                            ^^^^^ help: to reference the macro definition's crate, use: `$crate`
    |
    = note: `-D clippy::crate-in-macro-def` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::crate_in_macro_def)]`
 
 error: aborting due to previous error
 

@@ -9,6 +9,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::self-named-constructors` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::self_named_constructors)]`
 
 error: aborting due to previous error
 

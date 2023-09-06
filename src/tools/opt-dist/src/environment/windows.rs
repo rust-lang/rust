@@ -1,8 +1,10 @@
 use crate::environment::Environment;
 use crate::exec::cmd;
 use crate::utils::io::move_directory;
+use crate::utils::retry_action;
 use camino::Utf8PathBuf;
 use std::io::Cursor;
+use std::time::Duration;
 use zip::ZipArchive;
 
 pub(super) struct WindowsEnvironment {
@@ -42,8 +44,16 @@ impl Environment for WindowsEnvironment {
         // rustc-perf version from 2023-05-30
         const PERF_COMMIT: &str = "8b2ac3042e1ff2c0074455a0a3618adef97156b1";
 
-        let url = format!("https://github.com/rust-lang/rustc-perf/archive/{PERF_COMMIT}.zip");
-        let response = reqwest::blocking::get(url)?.error_for_status()?.bytes()?.to_vec();
+        let url = format!("https://ci-mirrors.rust-lang.org/rustc/rustc-perf-{PERF_COMMIT}.zip");
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(60 * 2))
+            .connect_timeout(Duration::from_secs(60 * 2))
+            .build()?;
+        let response = retry_action(
+            || Ok(client.get(&url).send()?.error_for_status()?.bytes()?.to_vec()),
+            "Download rustc-perf archive",
+            5,
+        )?;
 
         let mut archive = ZipArchive::new(Cursor::new(response))?;
         archive.extract(self.rustc_perf_dir())?;

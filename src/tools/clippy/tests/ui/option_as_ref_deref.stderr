@@ -5,6 +5,7 @@ LL |     let _ = opt.clone().as_ref().map(Deref::deref).map(str::len);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using as_deref instead: `opt.clone().as_deref()`
    |
    = note: `-D clippy::option-as-ref-deref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_as_ref_deref)]`
 
 error: called `.as_ref().map(Deref::deref)` on an Option value. This can be done more directly by calling `opt.clone().as_deref()` instead
   --> $DIR/option_as_ref_deref.rs:14:13

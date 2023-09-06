@@ -21,8 +21,8 @@ use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayou
 
 use super::{
     AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, PointerArithmetic, Provenance,
-    Scalar, StackPopJump,
+    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer, PointerArithmetic,
+    Projectable, Provenance, Scalar, StackPopJump,
 };
 use crate::errors::{self, ErroneousConstUsed};
 use crate::util;
@@ -155,17 +155,26 @@ pub enum StackPopCleanup {
 }
 
 /// State of a local variable including a memoized layout
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct LocalState<'tcx, Prov: Provenance = AllocId> {
-    pub value: LocalValue<Prov>,
+    value: LocalValue<Prov>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice.
     /// Avoids computing the layout of locals that are never actually initialized.
-    pub layout: Cell<Option<TyAndLayout<'tcx>>>,
+    layout: Cell<Option<TyAndLayout<'tcx>>>,
+}
+
+impl<Prov: Provenance> std::fmt::Debug for LocalState<'_, Prov> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LocalState")
+            .field("value", &self.value)
+            .field("ty", &self.layout.get().map(|l| l.ty))
+            .finish()
+    }
 }
 
 /// Current value of a local variable
 #[derive(Copy, Clone, Debug)] // Miri debug-prints these
-pub enum LocalValue<Prov: Provenance = AllocId> {
+pub(super) enum LocalValue<Prov: Provenance = AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
     /// A normal, live local.
@@ -176,10 +185,27 @@ pub enum LocalValue<Prov: Provenance = AllocId> {
     Live(Operand<Prov>),
 }
 
-impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
+impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
+    pub fn make_live_uninit(&mut self) {
+        self.value = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
+    }
+
+    /// This is a hack because Miri needs a way to visit all the provenance in a `LocalState`
+    /// without having a layout or `TyCtxt` available, and we want to keep the `Operand` type
+    /// private.
+    pub fn as_mplace_or_imm(
+        &self,
+    ) -> Option<Either<(Pointer<Option<Prov>>, MemPlaceMeta<Prov>), Immediate<Prov>>> {
+        match self.value {
+            LocalValue::Dead => None,
+            LocalValue::Live(Operand::Indirect(mplace)) => Some(Left((mplace.ptr, mplace.meta))),
+            LocalValue::Live(Operand::Immediate(imm)) => Some(Right(imm)),
+        }
+    }
+
     /// Read the local's value or error if the local is not yet live or not live anymore.
     #[inline(always)]
-    pub fn access(&self) -> InterpResult<'tcx, &Operand<Prov>> {
+    pub(super) fn access(&self) -> InterpResult<'tcx, &Operand<Prov>> {
         match &self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
             LocalValue::Live(val) => Ok(val),
@@ -189,10 +215,10 @@ impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
     /// Overwrite the local. If the local can be overwritten in place, return a reference
     /// to do so; otherwise return the `MemPlace` to consult instead.
     ///
-    /// Note: This may only be invoked from the `Machine::access_local_mut` hook and not from
-    /// anywhere else. You may be invalidating machine invariants if you do!
+    /// Note: Before calling this, call the `before_access_local_mut` machine hook! You may be
+    /// invalidating machine invariants otherwise!
     #[inline(always)]
-    pub fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
+    pub(super) fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
         match &mut self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
             LocalValue::Live(val) => Ok(val),
@@ -694,7 +720,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         mplace: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        self.size_and_align_of(&mplace.meta, &mplace.layout)
+        self.size_and_align_of(&mplace.meta(), &mplace.layout)
     }
 
     #[instrument(skip(self, body, return_place, return_to_block), level = "debug")]
@@ -826,7 +852,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 .expect("return place should always be live");
             let dest = self.frame().return_place.clone();
             let err = self.copy_op(&op, &dest, /*allow_transmute*/ true);
-            trace!("return value: {:?}", self.dump_place(*dest));
+            trace!("return value: {:?}", self.dump_place(&dest));
             // We delay actually short-circuiting on this error until *after* the stack frame is
             // popped, since we want this error to be attributed to the caller, whose type defines
             // this transmute.
@@ -974,7 +1000,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             // Need to allocate some memory, since `Immediate::Uninit` cannot be unsized.
             let dest_place = self.allocate_dyn(layout, MemoryKind::Stack, meta)?;
-            Operand::Indirect(*dest_place)
+            Operand::Indirect(*dest_place.mplace())
         } else {
             assert!(!meta.has_meta()); // we're dropping the metadata
             // Just make this an efficient immediate.
@@ -1068,8 +1094,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[must_use]
-    pub fn dump_place(&self, place: Place<M::Provenance>) -> PlacePrinter<'_, 'mir, 'tcx, M> {
-        PlacePrinter { ecx: self, place }
+    pub fn dump_place(
+        &self,
+        place: &PlaceTy<'tcx, M::Provenance>,
+    ) -> PlacePrinter<'_, 'mir, 'tcx, M> {
+        PlacePrinter { ecx: self, place: *place.place() }
     }
 
     #[must_use]

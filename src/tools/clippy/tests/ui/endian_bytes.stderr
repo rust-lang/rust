@@ -9,6 +9,7 @@ LL | fn host() { fn_body!(); }
    |
    = help: specify the desired endianness explicitly
    = note: `-D clippy::host-endian-bytes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::host_endian_bytes)]`
    = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the `i8::to_ne_bytes` method
@@ -346,6 +347,7 @@ LL | fn little() { fn_body!(); }
    |
    = help: use the native endianness instead
    = note: `-D clippy::little-endian-bytes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::little_endian_bytes)]`
    = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the `i8::to_le_bytes` method
@@ -707,6 +709,7 @@ LL | fn host_encourage_little() { fn_body_smol!(); }
    |
    = help: use `u8::to_le_bytes` instead
    = note: `-D clippy::big-endian-bytes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::big_endian_bytes)]`
    = note: this error originates in the macro `fn_body_smol` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the function `u8::from_be_bytes`

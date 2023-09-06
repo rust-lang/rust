@@ -10,6 +10,7 @@ LL | |     None
    | |________^ help: replace with an iterator: `ARRAY.iter().find(|&&v| v == n).copied()`
    |
    = note: `-D clippy::manual-find` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_find)]`
 
 error: manual implementation of `Iterator::find`
   --> $DIR/manual_find_fixable.rs:19:5

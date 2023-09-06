@@ -6,6 +6,7 @@ LL |     let hello = "hello world".to_string();
    |
    = help: consider using `.to_owned()`
    = note: `-D clippy::str-to-string` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::str_to_string)]`
 
 error: `to_string()` called on a `&str`
   --> $DIR/str_to_string.rs:7:5

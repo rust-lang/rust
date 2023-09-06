@@ -73,7 +73,7 @@ pub(crate) struct SyntaxRange {
 impl SyntaxRange {
     fn new(span: rustc_span::Span, file: &SourceFile) -> Option<Self> {
         let get_pos = |bytepos: BytePos| file.original_relative_byte_pos(bytepos).0;
-        let get_line = |bytepos: BytePos| file.lookup_line(bytepos);
+        let get_line = |bytepos: BytePos| file.lookup_line(file.relative_position(bytepos));
 
         Some(SyntaxRange {
             byte_span: (get_pos(span.lo()), get_pos(span.hi())),

@@ -1439,7 +1439,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let file_name = dir_entry.file_name(); // not a Path as there are no separators!
                 let (name_fits, file_name_buf_len) = this.write_os_str_to_c_str(
                     &file_name,
-                    name_place.ptr,
+                    name_place.ptr(),
                     name_place.layout.size.bytes(),
                 )?;
                 let file_name_len = file_name_buf_len.checked_sub(1).unwrap();

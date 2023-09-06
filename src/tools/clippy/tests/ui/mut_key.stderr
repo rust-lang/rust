@@ -5,6 +5,7 @@ LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> Hash
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::mutable-key-type` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mutable_key_type)]`
 
 error: mutable key type
   --> $DIR/mut_key.rs:31:72
@@ -109,6 +110,7 @@ LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> Hash
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing to: `&HashMap<Key, usize>`
    |
    = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
 
 error: aborting due to 18 previous errors
 

@@ -597,7 +597,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_pointer(buf, &pw_dir)?;
 
                 if written {
-                    this.write_pointer(pwd.ptr, &result)?;
+                    this.write_pointer(pwd.ptr(), &result)?;
                     this.write_null(dest)?;
                 } else {
                     this.write_null(&result)?;

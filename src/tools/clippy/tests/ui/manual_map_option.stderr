@@ -8,6 +8,7 @@ LL | |     };
    | |_____^ help: try: `Some(0).map(|_| 2)`
    |
    = note: `-D clippy::manual-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_map)]`
 
 error: manual implementation of `Option::map`
   --> $DIR/manual_map_option.rs:18:5

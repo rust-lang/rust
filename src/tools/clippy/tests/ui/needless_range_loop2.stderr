@@ -5,6 +5,7 @@ LL |     for i in 3..10 {
    |              ^^^^^
    |
    = note: `-D clippy::needless-range-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_range_loop)]`
 help: consider using an iterator
    |
 LL |     for <item> in ns.iter().take(10).skip(3) {

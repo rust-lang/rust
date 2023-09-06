@@ -7,6 +7,7 @@ LL | | fn with_doc_and_newline() { assert!(true)}
    | |_
    |
    = note: `-D clippy::empty-line-after-doc-comments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_doc_comments)]`
 
 error: found an empty line after a doc comment. Perhaps you need to use `//!` to make a comment on a module, remove the empty line, or make a regular comment with `//`?
   --> $DIR/empty_line_after_doc_comments.rs:68:1

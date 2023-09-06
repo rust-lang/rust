@@ -5,6 +5,7 @@ LL |     let _: *const [u8] = unsafe { std::slice::from_raw_parts(ptr, 1) as *co
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `core::ptr::slice_from_raw_parts(ptr, 1)`
    |
    = note: `-D clippy::cast-slice-from-raw-parts` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_slice_from_raw_parts)]`
 
 error: casting the result of `from_raw_parts_mut` to *mut [u8]
   --> $DIR/cast_raw_slice_pointer_cast.rs:9:35

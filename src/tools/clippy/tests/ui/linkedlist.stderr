@@ -6,6 +6,7 @@ LL | const C: LinkedList<i32> = LinkedList::new();
    |
    = help: a `VecDeque` might work
    = note: `-D clippy::linkedlist` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::linkedlist)]`
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
   --> $DIR/linkedlist.rs:10:11

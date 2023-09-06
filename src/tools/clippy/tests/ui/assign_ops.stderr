@@ -5,6 +5,7 @@ LL |     a = a + 1;
    |     ^^^^^^^^^ help: replace it with: `a += 1`
    |
    = note: `-D clippy::assign-op-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::assign_op_pattern)]`
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:8:5

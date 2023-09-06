@@ -8,6 +8,7 @@ LL | |     bar.b = temp;
    |
    = note: or maybe you should use `std::mem::replace`?
    = note: `-D clippy::manual-swap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_swap)]`
 
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:40:5
@@ -108,6 +109,7 @@ LL | |     b = a;
    |
    = note: or maybe you should use `std::mem::replace`?
    = note: `-D clippy::almost-swapped` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::almost_swapped)]`
 
 error: this looks like you are trying to swap `c.0` and `a`
   --> $DIR/swap.rs:144:5

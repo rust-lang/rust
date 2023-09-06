@@ -9,6 +9,7 @@ LL | |     };
    | |_____^ help: try: `matches!(x, Some(0))`
    |
    = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_like_matches_macro)]`
 
 error: redundant pattern matching, consider using `is_some()`
   --> $DIR/match_expr_like_matches_macro.rs:20:14
@@ -21,6 +22,7 @@ LL | |     };
    | |_____^ help: try: `x.is_some()`
    |
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 
 error: redundant pattern matching, consider using `is_none()`
   --> $DIR/match_expr_like_matches_macro.rs:26:14

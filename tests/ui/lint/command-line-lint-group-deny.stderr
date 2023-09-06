@@ -5,6 +5,7 @@ LL |     let _InappropriateCamelCasing = true;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `_inappropriate_camel_casing`
    |
    = note: `-D non-snake-case` implied by `-D bad-style`
+   = help: to override `-D bad-style` add `#[allow(non_snake_case)]`
 
 error: aborting due to previous error
 

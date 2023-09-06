@@ -5,6 +5,7 @@ LL |     const C: Vec<Box<i32>> = Vec::new();
    |              ^^^^^^^^^^^^^ help: try: `Vec<i32>`
    |
    = note: `-D clippy::vec-box` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::vec_box)]`
 
 error: `Vec<T>` is already on the heap, the boxing is unnecessary
   --> $DIR/vec_box_sized.rs:11:15

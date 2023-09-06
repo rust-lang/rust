@@ -64,6 +64,10 @@ pub enum Reason {
     SrcLayoutUnknown,
     /// The layout of dst is unknown
     DstLayoutUnknown,
+    /// The size of src is overflow
+    SrcSizeOverflow,
+    /// The size of dst is overflow
+    DstSizeOverflow,
 }
 
 #[cfg(feature = "rustc")]

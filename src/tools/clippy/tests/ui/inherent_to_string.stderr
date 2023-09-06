@@ -9,6 +9,7 @@ LL | |     }
    |
    = help: implement trait `Display` for type `A` instead
    = note: `-D clippy::inherent-to-string` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inherent_to_string)]`
 
 error: type `C` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`
   --> $DIR/inherent_to_string.rs:47:5

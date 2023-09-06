@@ -1,5 +1,5 @@
 //! Module that implements what will become the rustc side of Stable MIR.
-//!
+
 //! This module is responsible for building Stable MIR components from internal components.
 //!
 //! This module is not intended to be invoked directly by users. It will eventually
@@ -10,12 +10,13 @@
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
 use crate::stable_mir::ty::{FloatTy, GenericParamDef, IntTy, Movability, RigidTy, TyKind, UintTy};
-use crate::stable_mir::{self, Context};
+use crate::stable_mir::{self, CompilerError, Context};
 use rustc_hir as hir;
-use rustc_middle::mir::interpret::alloc_range;
+use rustc_middle::mir::interpret::{alloc_range, AllocId};
 use rustc_middle::mir::{self, ConstantKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_span::ErrorGuaranteed;
 use rustc_target::abi::FieldIdx;
 use tracing::debug;
 
@@ -37,9 +38,14 @@ impl<'tcx> Context for Tables<'tcx> {
         })
     }
 
+    fn name_of_def_id(&self, def_id: stable_mir::DefId) -> String {
+        self.tcx.def_path_str(self[def_id])
+    }
+
     fn all_local_items(&mut self) -> stable_mir::CrateItems {
         self.tcx.mir_keys(()).iter().map(|item| self.crate_item(item.to_def_id())).collect()
     }
+
     fn entry_fn(&mut self) -> Option<stable_mir::CrateItem> {
         Some(self.crate_item(self.tcx.entry_fn(())?.0))
     }
@@ -125,6 +131,7 @@ impl<'tcx> Context for Tables<'tcx> {
 pub struct Tables<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub def_ids: Vec<DefId>,
+    pub alloc_ids: Vec<AllocId>,
     pub types: Vec<Ty<'tcx>>,
 }
 
@@ -1444,5 +1451,11 @@ impl<'tcx> Stable<'tcx> for rustc_span::Span {
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         // FIXME: add a real implementation of stable spans
         opaque(self)
+    }
+}
+
+impl<T> From<ErrorGuaranteed> for CompilerError<T> {
+    fn from(_error: ErrorGuaranteed) -> Self {
+        CompilerError::CompilationFailed
     }
 }

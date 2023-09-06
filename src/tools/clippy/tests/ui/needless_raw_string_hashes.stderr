@@ -5,6 +5,7 @@ LL |     r##"Hello "world"!"##;
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `r#"Hello "world"!"#`
    |
    = note: `-D clippy::needless-raw-string-hashes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_string_hashes)]`
 
 error: unnecessary hashes around raw string literal
   --> $DIR/needless_raw_string_hashes.rs:8:5

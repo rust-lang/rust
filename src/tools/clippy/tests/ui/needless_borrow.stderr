@@ -5,6 +5,7 @@ LL |     let _ = x(&&a); // warn
    |               ^^^ help: change this to: `&a`
    |
    = note: `-D clippy::needless-borrow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:19:13

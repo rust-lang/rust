@@ -5,6 +5,7 @@ LL |     y.to_owned() == *x;
    |     ^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
    |
    = note: `-D clippy::cmp-owned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
 
 error: this creates an owned instance just for comparison
   --> $DIR/without_suggestion.rs:13:5

@@ -91,7 +91,7 @@ fn annotation_type_for_level(level: Level) -> AnnotationType {
         }
         Level::Warning(_) => AnnotationType::Warning,
         Level::Note | Level::OnceNote => AnnotationType::Note,
-        Level::Help => AnnotationType::Help,
+        Level::Help | Level::OnceHelp => AnnotationType::Help,
         // FIXME(#59346): Not sure how to map this level
         Level::FailureNote => AnnotationType::Error,
         Level::Allow => panic!("Should not call with Allow"),

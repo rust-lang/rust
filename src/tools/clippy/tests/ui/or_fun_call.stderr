@@ -5,6 +5,7 @@ LL |     with_constructor.unwrap_or(make());
    |                      ^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(make)`
    |
    = note: `-D clippy::or-fun-call` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::or_fun_call)]`
 
 error: use of `unwrap_or` to construct default value
   --> $DIR/or_fun_call.rs:55:14
@@ -13,6 +14,7 @@ LL |     with_new.unwrap_or(Vec::new());
    |              ^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
    |
    = note: `-D clippy::unwrap-or-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unwrap_or_default)]`
 
 error: use of `unwrap_or` followed by a function call
   --> $DIR/or_fun_call.rs:58:21

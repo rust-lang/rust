@@ -535,6 +535,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let assoc_types: Vec<_> = tcx
             .associated_items(trait_predicate.def_id())
             .in_definition_order()
+            // Associated types that require `Self: Sized` do not show up in the built-in
+            // implementation of `Trait for dyn Trait`, and can be dropped here.
+            .filter(|item| !tcx.generics_require_sized_self(item.def_id))
             .filter_map(
                 |item| if item.kind == ty::AssocKind::Type { Some(item.def_id) } else { None },
             )

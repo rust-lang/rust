@@ -18,6 +18,7 @@ LL |     hidden: u32,
    = help: consider including all fields in this `Debug` impl
    = help: consider calling `.finish_non_exhaustive()` if you intend to ignore fields
    = note: `-D clippy::missing-fields-in-debug` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_fields_in_debug)]`
 
 error: manual `Debug` impl does not include all fields
   --> $DIR/missing_fields_in_debug.rs:32:1

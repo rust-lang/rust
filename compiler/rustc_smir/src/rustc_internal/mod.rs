@@ -4,15 +4,17 @@
 //! until stable MIR is complete.
 
 use std::fmt::Debug;
-use std::ops::Index;
+use std::ops::{ControlFlow, Index};
 
 use crate::rustc_internal;
+use crate::stable_mir::CompilerError;
 use crate::{
     rustc_smir::Tables,
     stable_mir::{self, with},
 };
 use rustc_driver::{Callbacks, Compilation, RunCompiler};
 use rustc_interface::{interface, Queries};
+use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::EarlyErrorHandler;
 pub use rustc_span::def_id::{CrateNum, DefId};
@@ -133,6 +135,10 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::ImplDef(self.create_def_id(did))
     }
 
+    pub fn prov(&mut self, aid: AllocId) -> stable_mir::ty::Prov {
+        stable_mir::ty::Prov(self.create_alloc_id(aid))
+    }
+
     fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
         // FIXME: this becomes inefficient when we have too many ids
         for (i, &d) in self.def_ids.iter().enumerate() {
@@ -144,6 +150,16 @@ impl<'tcx> Tables<'tcx> {
         self.def_ids.push(did);
         stable_mir::DefId(id)
     }
+
+    fn create_alloc_id(&mut self, aid: AllocId) -> stable_mir::AllocId {
+        // FIXME: this becomes inefficient when we have too many ids
+        if let Some(i) = self.alloc_ids.iter().position(|a| *a == aid) {
+            return stable_mir::AllocId(i);
+        };
+        let id = self.def_ids.len();
+        self.alloc_ids.push(aid);
+        stable_mir::AllocId(id)
+    }
 }
 
 pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
@@ -151,7 +167,7 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 }
 
 pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
-    crate::stable_mir::run(Tables { tcx, def_ids: vec![], types: vec![] }, f);
+    crate::stable_mir::run(Tables { tcx, def_ids: vec![], alloc_ids: vec![], types: vec![] }, f);
 }
 
 /// A type that provides internal information but that can still be used for debug purpose.
@@ -174,27 +190,45 @@ pub(crate) fn opaque<T: Debug>(value: &T) -> Opaque {
     Opaque(format!("{value:?}"))
 }
 
-pub struct StableMir {
+pub struct StableMir<B = (), C = ()>
+where
+    B: Send,
+    C: Send,
+{
     args: Vec<String>,
-    callback: fn(TyCtxt<'_>),
+    callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>,
+    result: Option<ControlFlow<B, C>>,
 }
 
-impl StableMir {
+impl<B, C> StableMir<B, C>
+where
+    B: Send,
+    C: Send,
+{
     /// Creates a new `StableMir` instance, with given test_function and arguments.
-    pub fn new(args: Vec<String>, callback: fn(TyCtxt<'_>)) -> Self {
-        StableMir { args, callback }
+    pub fn new(args: Vec<String>, callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>) -> Self {
+        StableMir { args, callback, result: None }
     }
 
     /// Runs the compiler against given target and tests it with `test_function`
-    pub fn run(&mut self) {
-        rustc_driver::catch_fatal_errors(|| {
-            RunCompiler::new(&self.args.clone(), self).run().unwrap();
-        })
-        .unwrap();
+    pub fn run(&mut self) -> Result<C, CompilerError<B>> {
+        let compiler_result =
+            rustc_driver::catch_fatal_errors(|| RunCompiler::new(&self.args.clone(), self).run());
+        match (compiler_result, self.result.take()) {
+            (Ok(Ok(())), Some(ControlFlow::Continue(value))) => Ok(value),
+            (Ok(Ok(())), Some(ControlFlow::Break(value))) => Err(CompilerError::Interrupted(value)),
+            (Ok(Ok(_)), None) => Err(CompilerError::Skipped),
+            (Ok(Err(_)), _) => Err(CompilerError::CompilationFailed),
+            (Err(_), _) => Err(CompilerError::ICE),
+        }
     }
 }
 
-impl Callbacks for StableMir {
+impl<B, C> Callbacks for StableMir<B, C>
+where
+    B: Send,
+    C: Send,
+{
     /// Called after analysis. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
     fn after_analysis<'tcx>(
@@ -204,9 +238,14 @@ impl Callbacks for StableMir {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            rustc_internal::run(tcx, || (self.callback)(tcx));
-        });
-        // No need to keep going.
-        Compilation::Stop
+            rustc_internal::run(tcx, || {
+                self.result = Some((self.callback)(tcx));
+            });
+            if self.result.as_ref().is_some_and(|val| val.is_continue()) {
+                Compilation::Continue
+            } else {
+                Compilation::Stop
+            }
+        })
     }
 }

@@ -5,6 +5,7 @@ LL |     let foo = &5 - &6;
    |               ^^^^^^^
    |
    = note: `-D clippy::op-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::op_ref)]`
 help: use the values directly
    |
 LL |     let foo = 5 - 6;

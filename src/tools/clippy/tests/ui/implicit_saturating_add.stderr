@@ -7,6 +7,7 @@ LL | |     }
    | |_____^ help: use instead: `u_8 = u_8.saturating_add(1);`
    |
    = note: `-D clippy::implicit-saturating-add` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::implicit_saturating_add)]`
 
 error: manual saturating add detected
   --> $DIR/implicit_saturating_add.rs:25:5

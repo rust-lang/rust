@@ -5,6 +5,7 @@ LL | #[cfg(all(windows))]
    |       ^^^^^^^^^^^^ help: try: `windows`
    |
    = note: `-D clippy::non-minimal-cfg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::non_minimal_cfg)]`
 
 error: unneeded sub `cfg` when there is only one condition
   --> $DIR/non_minimal_cfg.rs:6:7

@@ -7,6 +7,7 @@ LL |     let _ = opt.unwrap_or_else(|| 2);
    |                 help: use `unwrap_or(..)` instead: `unwrap_or(2)`
    |
    = note: `-D clippy::unnecessary-lazy-evaluations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_lazy_evaluations)]`
 
 error: unnecessary closure used to substitute value for `Option::None`
   --> $DIR/unnecessary_lazy_eval.rs:69:13

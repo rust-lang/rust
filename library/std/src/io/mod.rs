@@ -1647,7 +1647,7 @@ pub trait Write {
                     ));
                 }
                 Ok(n) => IoSlice::advance_slices(&mut bufs, n),
-                Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }

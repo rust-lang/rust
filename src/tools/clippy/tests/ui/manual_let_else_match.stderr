@@ -10,6 +10,7 @@ LL | |     };
    | |______^ help: consider writing: `let Some(v) = g() else { return };`
    |
    = note: `-D clippy::manual-let-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
 
 error: this could be rewritten as `let...else`
   --> $DIR/manual_let_else_match.rs:43:5

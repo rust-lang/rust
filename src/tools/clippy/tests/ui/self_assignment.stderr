@@ -5,6 +5,7 @@ LL |     a = a;
    |     ^^^^^
    |
    = note: `-D clippy::self-assignment` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::self_assignment)]`
 
 error: self-assignment of `*b` to `*b`
   --> $DIR/self_assignment.rs:16:5

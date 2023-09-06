@@ -9,6 +9,7 @@ LL |     let _ = any_box.type_id();
    = note: this returns the type id of the literal type `Box<dyn Any>` instead of the type id of the boxed value, which is most likely not what you want
    = note: if this is intentional, use `TypeId::of::<Box<dyn Any>>()` instead, which makes it more clear
    = note: `-D clippy::type-id-on-box` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::type_id_on_box)]`
 
 error: calling `.type_id()` on a `Box<dyn Any>`
   --> $DIR/type_id_on_box.rs:28:13

@@ -11,6 +11,7 @@ LL | |     }
    | |_____^ help: try: `while let Some(_x) = y { .. }`
    |
    = note: `-D clippy::while-let-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::while_let_loop)]`
 
 error: this loop could be written as a `while let` loop
   --> $DIR/while_let_loop.rs:25:5

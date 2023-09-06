@@ -1501,11 +1501,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
                 // We can't reuse an existing SourceFile, so allocate a new one
                 // containing the information we need.
+                let original_end_pos = source_file_to_import.end_position();
                 let rustc_span::SourceFile {
                     mut name,
                     src_hash,
-                    start_pos,
-                    end_pos,
+                    start_pos: original_start_pos,
+                    source_len,
                     lines,
                     multibyte_chars,
                     non_narrow_chars,
@@ -1547,35 +1548,32 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 // on `try_to_translate_virtual_to_real`).
                 try_to_translate_virtual_to_real(&mut name);
 
-                let source_length = (end_pos - start_pos).to_usize();
-
                 let local_version = sess.source_map().new_imported_source_file(
                     name,
                     src_hash,
                     name_hash,
-                    source_length,
+                    source_len.to_u32(),
                     self.cnum,
                     lines,
                     multibyte_chars,
                     non_narrow_chars,
                     normalized_pos,
-                    start_pos,
                     source_file_index,
                 );
                 debug!(
                     "CrateMetaData::imported_source_files alloc \
-                         source_file {:?} original (start_pos {:?} end_pos {:?}) \
-                         translated (start_pos {:?} end_pos {:?})",
+                         source_file {:?} original (start_pos {:?} source_len {:?}) \
+                         translated (start_pos {:?} source_len {:?})",
                     local_version.name,
-                    start_pos,
-                    end_pos,
+                    original_start_pos,
+                    source_len,
                     local_version.start_pos,
-                    local_version.end_pos
+                    local_version.source_len
                 );
 
                 ImportedSourceFile {
-                    original_start_pos: start_pos,
-                    original_end_pos: end_pos,
+                    original_start_pos,
+                    original_end_pos,
                     translated_source_file: local_version,
                 }
             })

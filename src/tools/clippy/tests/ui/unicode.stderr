@@ -5,6 +5,7 @@ LL |     print!("Here >​< is a ZWS, and ​another");
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing the string with: `"Here >\u{200B}< is a ZWS, and \u{200B}another"`
    |
    = note: `-D clippy::invisible-characters` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::invisible_characters)]`
 
 error: invisible character detected
   --> $DIR/unicode.rs:7:12
@@ -25,6 +26,7 @@ LL |     print!("̀àh?");
    |            ^^^^^ help: consider replacing the string with: `"̀àh?"`
    |
    = note: `-D clippy::unicode-not-nfc` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unicode_not_nfc)]`
 
 error: literal non-ASCII character detected
   --> $DIR/unicode.rs:23:16

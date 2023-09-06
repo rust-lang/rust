@@ -5,6 +5,7 @@ LL |         write!(std::io::stdout(), "test").unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `print!("test")`
    |
    = note: `-D clippy::explicit-write` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::explicit_write)]`
 
 error: use of `write!(stderr(), ...).unwrap()`
   --> $DIR/explicit_write.rs:24:9

@@ -5,6 +5,7 @@ LL |     let _ = true as u8;
    |             ^^^^^^^^^^ help: try: `u8::from(true)`
    |
    = note: `-D clippy::cast-lossless` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
 
 error: casting `bool` to `u16` is more cleanly stated with `u16::from(_)`
   --> $DIR/cast_lossless_bool.rs:7:13

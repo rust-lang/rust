@@ -6,6 +6,7 @@ LL |     let _ = [1, 2, 3].iter().skip(0);
    |
    = note: this call to `skip` does nothing and is useless; remove it
    = note: `-D clippy::iter-skip-zero` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_skip_zero)]`
 
 error: usage of `.skip(0)`
   --> $DIR/iter_skip_zero.rs:12:39

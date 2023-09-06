@@ -9,6 +9,7 @@ LL | |     }
    | |_____^ help: you can reduce it to: `a.field = random() && random();`
    |
    = note: `-D clippy::needless-bool-assign` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_bool_assign)]`
 
 error: this if-then-else expression assigns a bool literal
   --> $DIR/needless_bool_assign.rs:18:5

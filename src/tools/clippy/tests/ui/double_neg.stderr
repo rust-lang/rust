@@ -5,6 +5,7 @@ LL |     --x;
    |     ^^^
    |
    = note: `-D clippy::double-neg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::double_neg)]`
 
 error: aborting due to previous error
 

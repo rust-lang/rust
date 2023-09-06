@@ -5,6 +5,7 @@ LL |     42.clone();
    |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
    |
    = note: `-D clippy::clone-on-copy` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::clone_on_copy)]`
 
 error: using `clone` on type `i32` which implements the `Copy` trait
   --> $DIR/clone_on_copy.rs:27:5

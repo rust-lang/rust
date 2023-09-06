@@ -5,6 +5,7 @@ LL |     let _ = x.powi(2) + y;
    |             ^^^^^^^^^^^^^ help: consider using: `x.mul_add(x, y)`
    |
    = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
 
 error: multiply and add expressions can be calculated more efficiently and accurately
   --> $DIR/floating_point_powi.rs:10:13

@@ -51,6 +51,7 @@ impl Number {
     /// There is an exception: disguised fast-path cases, where we can shift
     /// powers-of-10 from the exponent to the significant digits.
     pub fn try_fast_path<F: RawFloat>(&self) -> Option<F> {
+        // Here we need to work around <https://github.com/rust-lang/rust/issues/114479>.
         // The fast path crucially depends on arithmetic being rounded to the correct number of bits
         // without any intermediate rounding. On x86 (without SSE or SSE2) this requires the precision
         // of the x87 FPU stack to be changed so that it directly rounds to 64/32 bit.

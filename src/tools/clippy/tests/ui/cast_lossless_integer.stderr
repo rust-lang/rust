@@ -5,6 +5,7 @@ LL |     let _ = 1i8 as i16;
    |             ^^^^^^^^^^ help: try: `i16::from(1i8)`
    |
    = note: `-D clippy::cast-lossless` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
 
 error: casting `i8` to `i32` may become silently lossy if you later change the type
   --> $DIR/cast_lossless_integer.rs:7:13

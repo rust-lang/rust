@@ -102,7 +102,7 @@ impl Socket {
             match unsafe { netc::poll(&mut pollfd, 1, timeout) } {
                 -1 => {
                     let err = io::Error::last_os_error();
-                    if err.kind() != io::ErrorKind::Interrupted {
+                    if !err.is_interrupted() {
                         return Err(err);
                     }
                 }

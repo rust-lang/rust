@@ -793,7 +793,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         throw_ub_custom!(fluent::const_eval_dyn_star_call_vtable_mismatch);
                     }
 
-                    (vptr, dyn_ty, recv.ptr)
+                    (vptr, dyn_ty, recv.ptr())
                 } else {
                     // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
                     // (For that reason we also cannot use `unpack_dyn_trait`.)
@@ -810,7 +810,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     assert!(receiver_place.layout.is_unsized());
 
                     // Get the required information from the vtable.
-                    let vptr = receiver_place.meta.unwrap_meta().to_pointer(self)?;
+                    let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
                     let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
                     if dyn_trait != data.principal() {
                         throw_ub_custom!(fluent::const_eval_dyn_call_vtable_mismatch);
@@ -819,7 +819,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // It might be surprising that we use a pointer as the receiver even if this
                     // is a by-val case; this works because by-val passing of an unsized `dyn
                     // Trait` to a function is actually desugared to a pointer.
-                    (vptr, dyn_ty, receiver_place.ptr)
+                    (vptr, dyn_ty, receiver_place.ptr())
                 };
 
                 // Now determine the actual method to call. We can do that in two different ways and

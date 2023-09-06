@@ -1202,7 +1202,11 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
 
     Ret->ModuleMap[module->identifier] = mem_buffer;
 
+#if LLVM_VERSION_GE(18, 0)
+    if (Error Err = readModuleSummaryIndex(mem_buffer, Ret->Index)) {
+#else
     if (Error Err = readModuleSummaryIndex(mem_buffer, Ret->Index, i)) {
+#endif
       LLVMRustSetLastError(toString(std::move(Err)).c_str());
       return nullptr;
     }

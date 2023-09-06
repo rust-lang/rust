@@ -204,7 +204,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         )
     }
 
-    fn parse_operand(&self, expr_id: ExprId) -> PResult<Operand<'tcx>> {
+    pub fn parse_operand(&self, expr_id: ExprId) -> PResult<Operand<'tcx>> {
         parse_by_kind!(self, expr_id, expr, "operand",
             @call("mir_move", args) => self.parse_place(args[0]).map(Operand::Move),
             @call("mir_static", args) => self.parse_static(args[0]),

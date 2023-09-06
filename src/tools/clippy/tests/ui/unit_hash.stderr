@@ -6,6 +6,7 @@ LL |         Foo::Empty => ().hash(&mut state),
    |
    = note: the implementation of `Hash` for `()` is a no-op
    = note: `-D clippy::unit-hash` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unit_hash)]`
 
 error: this call to `hash` on the unit type will do nothing
   --> $DIR/unit_hash.rs:26:5

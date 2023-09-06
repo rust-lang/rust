@@ -11,7 +11,7 @@ use crate::hash::Hash;
 /// The `..` syntax is a `RangeFull`:
 ///
 /// ```
-/// assert_eq!((..), std::ops::RangeFull);
+/// assert_eq!(.., std::ops::RangeFull);
 /// ```
 ///
 /// It does not have an [`IntoIterator`] implementation, so you can't use it in

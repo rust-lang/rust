@@ -10,6 +10,7 @@ note: the suggestion might change the behavior of the program when merging `filt
 LL |     let _ = (0..).find(|n| to_opt(*n).is_some()).map(|a| to_opt(a).unwrap());
    |                            ^^^^^^^^^^
    = note: `-D clippy::manual-find-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_find_map)]`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
   --> $DIR/manual_find_map.rs:11:19

@@ -11,6 +11,7 @@ LL | | }
    | |_^
    |
    = note: `-D clippy::unnecessary-wraps` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_wraps)]`
 help: remove `Option` from the return type...
    |
 LL | fn func1(a: bool, b: bool) -> i32 {

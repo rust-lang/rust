@@ -10,6 +10,7 @@ note: this expression returning a `std::io::Lines` may produce an infinite numbe
 LL |     BufReader::new(f).lines().filter_map(Result::ok).for_each(|_| ());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::lines-filter-map-ok` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::lines_filter_map_ok)]`
 
 error: `flat_map()` will run forever if the iterator repeatedly produces an `Err`
   --> $DIR/lines_filter_map_ok.rs:12:31

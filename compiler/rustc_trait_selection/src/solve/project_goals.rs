@@ -244,7 +244,21 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             // Finally we construct the actual value of the associated type.
             let term = match assoc_def.item.kind {
                 ty::AssocKind::Type => tcx.type_of(assoc_def.item.def_id).map_bound(|ty| ty.into()),
-                ty::AssocKind::Const => bug!("associated const projection is not supported yet"),
+                ty::AssocKind::Const => {
+                    if tcx.features().associated_const_equality {
+                        bug!("associated const projection is not supported yet")
+                    } else {
+                        ty::EarlyBinder::bind(
+                            ty::Const::new_error_with_message(
+                                tcx,
+                                tcx.type_of(assoc_def.item.def_id).instantiate_identity(),
+                                DUMMY_SP,
+                                "associated const projection is not supported yet",
+                            )
+                            .into(),
+                        )
+                    }
+                }
                 ty::AssocKind::Fn => unreachable!("we should never project to a fn"),
             };
 

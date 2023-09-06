@@ -5,6 +5,7 @@ LL |     let mut x = HashMap::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::collection-is-never-read` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collection_is_never_read)]`
 
 error: collection is never read
   --> $DIR/collection_is_never_read.rs:62:5

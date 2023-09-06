@@ -5,6 +5,7 @@ LL | ///! Fake module documentation.
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::suspicious-doc-comments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_doc_comments)]`
 help: use an inner doc comment to document the parent module or crate
    |
 LL | //! Fake module documentation.

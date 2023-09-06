@@ -8,6 +8,7 @@ LL | |     };
    | |_____^ help: replace with: `Some(1).unwrap_or(42)`
    |
    = note: `-D clippy::manual-unwrap-or` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_unwrap_or)]`
 
 error: this pattern reimplements `Option::unwrap_or`
   --> $DIR/manual_unwrap_or.rs:12:5

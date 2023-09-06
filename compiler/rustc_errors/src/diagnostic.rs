@@ -270,6 +270,7 @@ impl Diagnostic {
             | Level::Note
             | Level::OnceNote
             | Level::Help
+            | Level::OnceHelp
             | Level::Allow
             | Level::Expect(_) => false,
         }
@@ -529,6 +530,13 @@ impl Diagnostic {
     #[rustc_lint_diagnostics]
     pub fn help(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
         self.sub(Level::Help, msg, MultiSpan::new(), None);
+        self
+    }
+
+    /// Prints the span with a help above it.
+    /// This is like [`Diagnostic::help()`], but it gets its own span.
+    pub fn help_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
+        self.sub(Level::OnceHelp, msg, MultiSpan::new(), None);
         self
     }
 

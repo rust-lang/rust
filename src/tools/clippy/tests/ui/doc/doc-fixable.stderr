@@ -5,6 +5,7 @@ LL | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot t
    |         ^^^^^^^
    |
    = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
 help: try
    |
 LL | /// The `foo_bar` function does _nothing_. See also foo::bar. (note the dot there)

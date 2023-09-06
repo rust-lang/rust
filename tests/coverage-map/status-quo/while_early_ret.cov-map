@@ -1,0 +1,26 @@
+Function name: while_early_ret::main
+Raw bytes (61): 0x[01, 01, 06, 01, 05, 03, 09, 0e, 05, 03, 09, 17, 09, 0d, 11, 09, 01, 04, 01, 01, 1b, 03, 03, 09, 02, 0a, 0e, 05, 0d, 02, 0e, 0a, 06, 15, 02, 16, 0d, 04, 15, 00, 1b, 11, 04, 15, 00, 1b, 05, 03, 0a, 03, 0a, 09, 06, 05, 00, 0b, 13, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 6
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Expression(0, Add), rhs = Counter(2)
+- expression 2 operands: lhs = Expression(3, Sub), rhs = Counter(1)
+- expression 3 operands: lhs = Expression(0, Add), rhs = Counter(2)
+- expression 4 operands: lhs = Expression(5, Add), rhs = Counter(2)
+- expression 5 operands: lhs = Counter(3), rhs = Counter(4)
+Number of file 0 mappings: 9
+- Code(Counter(0)) at (prev + 4, 1) to (start + 1, 27)
+- Code(Expression(0, Add)) at (prev + 3, 9) to (start + 2, 10)
+    = (c0 + c1)
+- Code(Expression(3, Sub)) at (prev + 5, 13) to (start + 2, 14)
+    = ((c0 + c1) - c2)
+- Code(Expression(2, Sub)) at (prev + 6, 21) to (start + 2, 22)
+    = (((c0 + c1) - c2) - c1)
+- Code(Counter(3)) at (prev + 4, 21) to (start + 0, 27)
+- Code(Counter(4)) at (prev + 4, 21) to (start + 0, 27)
+- Code(Counter(1)) at (prev + 3, 10) to (start + 3, 10)
+- Code(Counter(2)) at (prev + 6, 5) to (start + 0, 11)
+- Code(Expression(4, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = ((c3 + c4) + c2)
+

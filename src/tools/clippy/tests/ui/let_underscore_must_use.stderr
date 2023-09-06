@@ -6,6 +6,7 @@ LL |     let _ = f();
    |
    = help: consider explicitly using function result
    = note: `-D clippy::let-underscore-must-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::let_underscore_must_use)]`
 
 error: non-binding `let` on an expression with `#[must_use]` type
   --> $DIR/let_underscore_must_use.rs:69:5

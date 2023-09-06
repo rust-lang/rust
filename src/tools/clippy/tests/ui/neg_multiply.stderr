@@ -5,6 +5,7 @@ LL |     x * -1;
    |     ^^^^^^ help: consider using: `-x`
    |
    = note: `-D clippy::neg-multiply` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::neg_multiply)]`
 
 error: this multiplication by -1 can be written more succinctly
   --> $DIR/neg_multiply.rs:30:5

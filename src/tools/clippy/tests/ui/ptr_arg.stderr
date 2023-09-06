@@ -5,6 +5,7 @@ LL | fn do_vec(x: &Vec<i64>) {
    |              ^^^^^^^^^ help: change this to: `&[i64]`
    |
    = note: `-D clippy::ptr-arg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ptr_arg)]`
 
 error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
   --> $DIR/ptr_arg.rs:20:18

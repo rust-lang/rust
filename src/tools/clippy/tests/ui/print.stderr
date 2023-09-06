@@ -5,6 +5,7 @@ LL |         write!(f, "{:?}", 43.1415)
    |                    ^^^^
    |
    = note: `-D clippy::use-debug` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::use_debug)]`
 
 error: use of `println!`
   --> $DIR/print.rs:25:5
@@ -13,6 +14,7 @@ LL |     println!("Hello");
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::print-stdout` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_stdout)]`
 
 error: use of `print!`
   --> $DIR/print.rs:28:5

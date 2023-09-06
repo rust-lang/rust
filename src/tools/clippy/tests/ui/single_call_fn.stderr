@@ -14,6 +14,7 @@ help: used here
 LL |     c();
    |     ^
    = note: `-D clippy::single-call-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_call_fn)]`
 
 error: this function is only used once
   --> $DIR/single_call_fn.rs:12:1

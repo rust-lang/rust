@@ -603,7 +603,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
 
     fn visit_statement_before_primary_effect(
         &mut self,
-        _results: &R,
+        _results: &mut R,
         flow_state: &Flows<'cx, 'tcx>,
         stmt: &'cx Statement<'tcx>,
         location: Location,
@@ -673,7 +673,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        _results: &R,
+        _results: &mut R,
         flow_state: &Flows<'cx, 'tcx>,
         term: &'cx Terminator<'tcx>,
         loc: Location,
@@ -784,7 +784,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
 
     fn visit_terminator_after_primary_effect(
         &mut self,
-        _results: &R,
+        _results: &mut R,
         flow_state: &Flows<'cx, 'tcx>,
         term: &'cx Terminator<'tcx>,
         loc: Location,

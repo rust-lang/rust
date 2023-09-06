@@ -5,6 +5,7 @@ LL |     let _ = string.as_ptr() as *mut u8;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `string.as_mut_ptr()`
    |
    = note: `-D clippy::as-ptr-cast-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::as_ptr_cast_mut)]`
 
 error: casting the result of `as_ptr` to *mut i8
   --> $DIR/as_ptr_cast_mut.rs:25:22

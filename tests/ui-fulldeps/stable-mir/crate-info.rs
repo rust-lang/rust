@@ -18,11 +18,12 @@ use rustc_middle::ty::TyCtxt;
 use rustc_smir::{rustc_internal, stable_mir};
 use std::assert_matches::assert_matches;
 use std::io::Write;
+use std::ops::ControlFlow;
 
 const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
-fn test_stable_mir(tcx: TyCtxt<'_>) {
+fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
     // Get the local crate using stable_mir API.
     let local = stable_mir::local_crate();
     assert_eq!(&local.name, CRATE_NAME);
@@ -108,6 +109,8 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
         stable_mir::mir::Terminator::Assert { .. } => {}
         other => panic!("{other:?}"),
     }
+
+    ControlFlow::Continue(())
 }
 
 // Use internal API to find a function in a crate.
@@ -136,7 +139,7 @@ fn main() {
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    rustc_internal::StableMir::new(args, test_stable_mir).run();
+    rustc_internal::StableMir::new(args, test_stable_mir).run().unwrap();
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {
