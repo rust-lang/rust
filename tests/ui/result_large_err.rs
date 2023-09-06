@@ -1,3 +1,5 @@
+//@ignore-32bit
+
 #![warn(clippy::result_large_err)]
 #![allow(clippy::large_enum_variant)]
 

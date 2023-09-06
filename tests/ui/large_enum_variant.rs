@@ -144,7 +144,7 @@ enum WithGenerics {
     Small(u8),
 }
 
-enum PossiblyLargeEnumWithConst<const U: usize> {
+enum PossiblyLargeEnumWithConst<const U: u64> {
     SmallBuffer([u8; 4]),
     MightyBuffer([u16; U]),
 }
