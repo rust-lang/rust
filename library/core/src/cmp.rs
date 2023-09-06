@@ -63,6 +63,11 @@ use self::Ordering::*;
 /// (transitive) impls are not forced to exist, but these requirements apply
 /// whenever they do exist.
 ///
+/// Violating these requirements is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
+/// methods.
+///
 /// ## Derivable
 ///
 /// This trait can be used with `#[derive]`. When `derive`d on structs, two
@@ -249,6 +254,11 @@ pub macro PartialEq($item:item) {
 ///
 /// This property cannot be checked by the compiler, and therefore `Eq` implies
 /// [`PartialEq`], and has no extra methods.
+///
+/// Violating this property is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
+/// methods.
 ///
 /// ## Derivable
 ///
@@ -656,6 +666,11 @@ impl<T: Clone> Clone for Reverse<T> {
 /// It's easy to accidentally make `cmp` and `partial_cmp` disagree by
 /// deriving some of the traits and manually implementing others.
 ///
+/// Violating these requirements is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
+/// methods.
+///
 /// ## Corollaries
 ///
 /// From the above and the requirements of `PartialOrd`, it follows that `<` defines a strict total order.
@@ -888,6 +903,11 @@ pub macro Ord($item:item) {
 /// Note that these requirements mean that the trait itself must be implemented symmetrically and
 /// transitively: if `T: PartialOrd<U>` and `U: PartialOrd<V>` then `U: PartialOrd<T>` and `T:
 /// PartialOrd<V>`.
+///
+/// Violating these requirements is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
+/// methods.
 ///
 /// ## Corollaries
 ///
