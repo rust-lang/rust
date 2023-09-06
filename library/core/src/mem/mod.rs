@@ -80,7 +80,7 @@ pub use crate::intrinsics::transmute;
 ///
 /// # Relationship with `ManuallyDrop`
 ///
-/// While `mem::forget` can also be used to transfer *memory* ownership, doing so is error-prone.
+/// While `mem::forget` can also be used to *transfer* memory ownership, doing so is error-prone.
 /// [`ManuallyDrop`] should be used instead. Consider, for example, this code:
 ///
 /// ```
