@@ -13,15 +13,10 @@ pub(crate) fn provide(providers: &mut Providers) {
     providers.covered_code_regions = |tcx, def_id| covered_code_regions(tcx, def_id);
 }
 
-/// The `num_counters` argument to `llvm.instrprof.increment` is the max counter_id + 1, or in
-/// other words, the number of counter value references injected into the MIR (plus 1 for the
-/// reserved `ZERO` counter, which uses counter ID `0` when included in an expression). Injected
-/// counters have a counter ID from `1..num_counters-1`.
-///
-/// `num_expressions` is the number of counter expressions added to the MIR body.
-///
-/// Both `num_counters` and `num_expressions` are used to initialize new vectors, during backend
-/// code generate, to lookup counters and expressions by simple u32 indexes.
+/// Coverage codegen needs to know the total number of counter IDs and expression IDs that have
+/// been used by a function's coverage mappings. These totals are used to create vectors to hold
+/// the relevant counter and expression data, and the maximum counter ID (+ 1) is also needed by
+/// the `llvm.instrprof.increment` intrinsic.
 ///
 /// MIR optimization may split and duplicate some BasicBlock sequences, or optimize out some code
 /// including injected counters. (It is OK if some counters are optimized out, but those counters
@@ -34,28 +29,27 @@ pub(crate) fn provide(providers: &mut Providers) {
 /// determining the maximum counter/expression ID, even if the underlying counter/expression is
 /// no longer present.
 struct CoverageVisitor {
-    info: CoverageInfo,
+    max_counter_id: CounterId,
+    max_expression_id: ExpressionId,
 }
 
 impl CoverageVisitor {
-    /// Updates `num_counters` to the maximum encountered counter ID plus 1.
+    /// Updates `max_counter_id` to the maximum encountered counter ID.
     #[inline(always)]
-    fn update_num_counters(&mut self, counter_id: CounterId) {
-        let counter_id = counter_id.as_u32();
-        self.info.num_counters = std::cmp::max(self.info.num_counters, counter_id + 1);
+    fn update_max_counter_id(&mut self, counter_id: CounterId) {
+        self.max_counter_id = self.max_counter_id.max(counter_id);
     }
 
-    /// Updates `num_expressions` to the maximum encountered expression ID plus 1.
+    /// Updates `max_expression_id` to the maximum encountered expression ID.
     #[inline(always)]
-    fn update_num_expressions(&mut self, expression_id: ExpressionId) {
-        let expression_id = expression_id.as_u32();
-        self.info.num_expressions = std::cmp::max(self.info.num_expressions, expression_id + 1);
+    fn update_max_expression_id(&mut self, expression_id: ExpressionId) {
+        self.max_expression_id = self.max_expression_id.max(expression_id);
     }
 
     fn update_from_expression_operand(&mut self, operand: Operand) {
         match operand {
-            Operand::Counter(id) => self.update_num_counters(id),
-            Operand::Expression(id) => self.update_num_expressions(id),
+            Operand::Counter(id) => self.update_max_counter_id(id),
+            Operand::Expression(id) => self.update_max_expression_id(id),
             Operand::Zero => {}
         }
     }
@@ -68,9 +62,9 @@ impl CoverageVisitor {
 
     fn visit_coverage(&mut self, coverage: &Coverage) {
         match coverage.kind {
-            CoverageKind::Counter { id, .. } => self.update_num_counters(id),
+            CoverageKind::Counter { id, .. } => self.update_max_counter_id(id),
             CoverageKind::Expression { id, lhs, rhs, .. } => {
-                self.update_num_expressions(id);
+                self.update_max_expression_id(id);
                 self.update_from_expression_operand(lhs);
                 self.update_from_expression_operand(rhs);
             }
@@ -82,12 +76,18 @@ impl CoverageVisitor {
 fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, instance_def: ty::InstanceDef<'tcx>) -> CoverageInfo {
     let mir_body = tcx.instance_mir(instance_def);
 
-    let mut coverage_visitor =
-        CoverageVisitor { info: CoverageInfo { num_counters: 0, num_expressions: 0 } };
+    let mut coverage_visitor = CoverageVisitor {
+        max_counter_id: CounterId::START,
+        max_expression_id: ExpressionId::START,
+    };
 
     coverage_visitor.visit_body(mir_body);
 
-    coverage_visitor.info
+    // Add 1 to the highest IDs to get the total number of IDs.
+    CoverageInfo {
+        num_counters: (coverage_visitor.max_counter_id + 1).as_u32(),
+        num_expressions: (coverage_visitor.max_expression_id + 1).as_u32(),
+    }
 }
 
 fn covered_code_regions(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<&CodeRegion> {
