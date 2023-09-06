@@ -112,17 +112,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Access to command-line arguments
             "_NSGetArgc" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.write_pointer(
-                    this.machine.argc.expect("machine must be initialized"),
-                    dest,
-                )?;
+                this.write_pointer(this.machine.argc.expect("machine must be initialized"), dest)?;
             }
             "_NSGetArgv" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.write_pointer(
-                    this.machine.argv.expect("machine must be initialized"),
-                    dest,
-                )?;
+                this.write_pointer(this.machine.argv.expect("machine must be initialized"), dest)?;
             }
             "_NSGetExecutablePath" => {
                 let [buf, bufsize] =

@@ -159,8 +159,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let arg_type = Ty::new_array(this.tcx.tcx, this.tcx.types.u16, size);
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
-        let (written, _) =
-            self.write_os_str_to_wide_str(os_str, arg_place.ptr(), size, /*truncate*/ false).unwrap();
+        let (written, _) = self
+            .write_os_str_to_wide_str(os_str, arg_place.ptr(), size, /*truncate*/ false)
+            .unwrap();
         assert!(written);
         Ok(arg_place.ptr())
     }

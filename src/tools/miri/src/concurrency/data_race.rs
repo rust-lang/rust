@@ -1030,8 +1030,9 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         // <https://github.com/rust-lang/miri/pull/2464#discussion_r939636130> for details.
         // We avoid `get_ptr_alloc` since we do *not* want to run the access hooks -- the actual
         // access will happen later.
-        let (alloc_id, _offset, _prov) =
-            this.ptr_try_get_alloc_id(place.ptr()).expect("there are no zero-sized atomic accesses");
+        let (alloc_id, _offset, _prov) = this
+            .ptr_try_get_alloc_id(place.ptr())
+            .expect("there are no zero-sized atomic accesses");
         if this.get_alloc_mutability(alloc_id)? == Mutability::Not {
             // FIXME: make this prettier, once these messages have separate title/span/help messages.
             throw_ub_format!(
