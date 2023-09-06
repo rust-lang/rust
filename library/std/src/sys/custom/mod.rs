@@ -50,6 +50,11 @@ pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
     custom_os_impl!(os, decode_error_kind, errno)
 }
 
+#[inline]
+pub(crate) fn is_interrupted(errno: i32) -> bool {
+    custom_os_impl!(os, is_interrupted, errno)
+}
+
 pub fn abort_internal() -> ! {
     fn infinite_loop() -> ! {
         loop {}

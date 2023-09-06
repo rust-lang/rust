@@ -219,6 +219,7 @@ pub mod os {
         fn get_pid(&self) -> u32;
 
         fn decode_error_kind(&self, errno: i32) -> crate::io::ErrorKind;
+        fn is_interrupted(&self, errno: i32) -> bool;
         fn hashmap_random_keys(&self) -> (u64, u64);
     }
 }
