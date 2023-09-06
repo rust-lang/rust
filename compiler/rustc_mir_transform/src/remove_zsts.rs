@@ -87,11 +87,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
                     var_debug_info.value = VarDebugInfoContents::Const(self.make_zst(place_ty))
                 }
             }
-            VarDebugInfoContents::Composite { ty, fragments: _ } => {
-                if self.known_to_be_zst(ty) {
-                    var_debug_info.value = VarDebugInfoContents::Const(self.make_zst(ty))
-                }
-            }
         }
     }
 

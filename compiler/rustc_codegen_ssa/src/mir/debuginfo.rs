@@ -484,46 +484,81 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 None
             };
 
-            let dbg_var = dbg_scope_and_span.map(|(dbg_scope, _, span)| {
-                let (var_ty, var_kind) = match var.value {
+            let var_ty = if let Some(ref fragment) = var.composite {
+                self.monomorphize(fragment.ty)
+            } else {
+                match var.value {
                     mir::VarDebugInfoContents::Place(place) => {
-                        let var_ty = self.monomorphized_place_ty(place.as_ref());
-                        let var_kind = if let Some(arg_index) = var.argument_index
-                            && place.projection.is_empty()
-                        {
-                            let arg_index = arg_index as usize;
-                            if target_is_msvc {
-                                // ScalarPair parameters are spilled to the stack so they need to
-                                // be marked as a `LocalVariable` for MSVC debuggers to visualize
-                                // their data correctly. (See #81894 & #88625)
-                                let var_ty_layout = self.cx.layout_of(var_ty);
-                                if let Abi::ScalarPair(_, _) = var_ty_layout.abi {
-                                    VariableKind::LocalVariable
-                                } else {
-                                    VariableKind::ArgumentVariable(arg_index)
-                                }
-                            } else {
-                                // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
-                                // offset in closures to account for the hidden environment?
-                                VariableKind::ArgumentVariable(arg_index)
-                            }
-                        } else {
+                        self.monomorphized_place_ty(place.as_ref())
+                    }
+                    mir::VarDebugInfoContents::Const(c) => self.monomorphize(c.ty()),
+                }
+            };
+
+            let dbg_var = dbg_scope_and_span.map(|(dbg_scope, _, span)| {
+                let var_kind = if let Some(arg_index) = var.argument_index
+                    && var.composite.is_none()
+                    && let mir::VarDebugInfoContents::Place(place) = var.value
+                    && place.projection.is_empty()
+                {
+                    let arg_index = arg_index as usize;
+                    if target_is_msvc {
+                        // ScalarPair parameters are spilled to the stack so they need to
+                        // be marked as a `LocalVariable` for MSVC debuggers to visualize
+                        // their data correctly. (See #81894 & #88625)
+                        let var_ty_layout = self.cx.layout_of(var_ty);
+                        if let Abi::ScalarPair(_, _) = var_ty_layout.abi {
                             VariableKind::LocalVariable
-                        };
-                        (var_ty, var_kind)
+                        } else {
+                            VariableKind::ArgumentVariable(arg_index)
+                        }
+                    } else {
+                        // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
+                        // offset in closures to account for the hidden environment?
+                        VariableKind::ArgumentVariable(arg_index)
                     }
-                    mir::VarDebugInfoContents::Const(c) => {
-                        let ty = self.monomorphize(c.ty());
-                        (ty, VariableKind::LocalVariable)
-                    }
-                    mir::VarDebugInfoContents::Composite { ty, fragments: _ } => {
-                        let ty = self.monomorphize(ty);
-                        (ty, VariableKind::LocalVariable)
-                    }
+                } else {
+                    VariableKind::LocalVariable
                 };
 
                 self.cx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span)
             });
+
+            let fragment = if let Some(ref fragment) = var.composite {
+                let var_layout = self.cx.layout_of(var_ty);
+
+                let mut fragment_start = Size::ZERO;
+                let mut fragment_layout = var_layout;
+
+                for elem in &fragment.projection {
+                    match *elem {
+                        mir::ProjectionElem::Field(field, _) => {
+                            let i = field.index();
+                            fragment_start += fragment_layout.fields.offset(i);
+                            fragment_layout = fragment_layout.field(self.cx, i);
+                        }
+                        _ => span_bug!(
+                            var.source_info.span,
+                            "unsupported fragment projection `{:?}`",
+                            elem,
+                        ),
+                    }
+                }
+
+                if fragment_layout.size == Size::ZERO {
+                    // Fragment is a ZST, so does not represent anything. Avoid generating anything
+                    // as this may conflict with a fragment that covers the entire variable.
+                    continue;
+                } else if fragment_layout.size == var_layout.size {
+                    // Fragment covers entire variable, so as far as
+                    // DWARF is concerned, it's not really a fragment.
+                    None
+                } else {
+                    Some(fragment_start..fragment_start + fragment_layout.size)
+                }
+            } else {
+                None
+            };
 
             match var.value {
                 mir::VarDebugInfoContents::Place(place) => {
@@ -531,7 +566,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         name: var.name,
                         source_info: var.source_info,
                         dbg_var,
-                        fragment: None,
+                        fragment,
                         projection: place.projection,
                     });
                 }
@@ -547,51 +582,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bx,
                             );
 
-                            bx.dbg_var_addr(dbg_var, dbg_loc, base.llval, Size::ZERO, &[], None);
+                            bx.dbg_var_addr(
+                                dbg_var,
+                                dbg_loc,
+                                base.llval,
+                                Size::ZERO,
+                                &[],
+                                fragment,
+                            );
                         }
-                    }
-                }
-                mir::VarDebugInfoContents::Composite { ty, ref fragments } => {
-                    let var_ty = self.monomorphize(ty);
-                    let var_layout = self.cx.layout_of(var_ty);
-                    for fragment in fragments {
-                        let mut fragment_start = Size::ZERO;
-                        let mut fragment_layout = var_layout;
-
-                        for elem in &fragment.projection {
-                            match *elem {
-                                mir::ProjectionElem::Field(field, _) => {
-                                    let i = field.index();
-                                    fragment_start += fragment_layout.fields.offset(i);
-                                    fragment_layout = fragment_layout.field(self.cx, i);
-                                }
-                                _ => span_bug!(
-                                    var.source_info.span,
-                                    "unsupported fragment projection `{:?}`",
-                                    elem,
-                                ),
-                            }
-                        }
-
-                        let place = fragment.contents;
-                        let fragment = if fragment_layout.size == Size::ZERO {
-                            // Fragment is a ZST, so does not represent anything.
-                            continue;
-                        } else if fragment_layout.size == var_layout.size {
-                            // Fragment covers entire variable, so as far as
-                            // DWARF is concerned, it's not really a fragment.
-                            None
-                        } else {
-                            Some(fragment_start..fragment_start + fragment_layout.size)
-                        };
-
-                        per_local[place.local].push(PerLocalVarDebugInfo {
-                            name: var.name,
-                            source_info: var.source_info,
-                            dbg_var,
-                            fragment,
-                            projection: place.projection,
-                        });
                     }
                 }
             }
