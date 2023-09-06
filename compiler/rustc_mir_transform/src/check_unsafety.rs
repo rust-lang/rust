@@ -483,7 +483,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def: LocalDefId) -> &UnsafetyCheckResu
     // `mir_built` force this.
     let body = &tcx.mir_built(def).borrow();
 
-    if body.is_custom_mir() {
+    if body.is_custom_mir() || body.tainted_by_errors.is_some() {
         return tcx.arena.alloc(UnsafetyCheckResult {
             violations: Vec::new(),
             used_unsafe_blocks: Default::default(),
