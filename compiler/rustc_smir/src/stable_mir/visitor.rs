@@ -30,11 +30,12 @@ impl Visitable for Ty {
     }
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
         match self.kind() {
-            super::ty::TyKind::RigidTy(ty) => ty.visit(visitor),
-            super::ty::TyKind::Alias(_, alias) => alias.args.visit(visitor),
-            super::ty::TyKind::Param(_) => todo!(),
-            super::ty::TyKind::Bound(_, _) => todo!(),
+            super::ty::TyKind::RigidTy(ty) => ty.visit(visitor)?,
+            super::ty::TyKind::Alias(_, alias) => alias.args.visit(visitor)?,
+            super::ty::TyKind::Param(_) => {}
+            super::ty::TyKind::Bound(_, _) => {}
         }
+        ControlFlow::Continue(())
     }
 }
 
@@ -44,10 +45,11 @@ impl Visitable for Const {
     }
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
         match &self.literal {
-            super::ty::ConstantKind::Allocated(alloc) => alloc.visit(visitor),
-            super::ty::ConstantKind::Unevaluated(uv) => uv.visit(visitor),
-            super::ty::ConstantKind::ParamCt(param) => param.visit(visitor),
+            super::ty::ConstantKind::Allocated(alloc) => alloc.visit(visitor)?,
+            super::ty::ConstantKind::Unevaluated(uv) => uv.visit(visitor)?,
+            super::ty::ConstantKind::Param(_) => {}
         }
+        self.ty.visit(visitor)
     }
 }
 
@@ -65,8 +67,7 @@ impl Visitable for Allocation {
 
 impl Visitable for UnevaluatedConst {
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
-        let UnevaluatedConst { ty, def, args, promoted } = self;
-        ty.visit(visitor)?;
+        let UnevaluatedConst { def, args, promoted } = self;
         def.visit(visitor)?;
         args.visit(visitor)?;
         promoted.visit(visitor)

@@ -1,6 +1,6 @@
 use crate::rustc_internal::Opaque;
 use crate::stable_mir::ty::{
-    AdtDef, ClosureDef, Const, ConstantKind, GeneratorDef, GenericArgs, Movability, Region,
+    AdtDef, ClosureDef, Const, GeneratorDef, GenericArgs, Movability, Region,
 };
 use crate::stable_mir::{self, ty::Ty, Span};
 
@@ -352,7 +352,7 @@ type UserTypeAnnotationIndex = usize;
 pub struct Constant {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub literal: ConstantKind,
+    pub literal: Const,
 }
 
 #[derive(Clone, Debug)]
@@ -391,7 +391,7 @@ pub enum Mutability {
     Mut,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Safety {
     Unsafe,
     Normal,
