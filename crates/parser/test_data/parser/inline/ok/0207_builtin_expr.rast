@@ -30,7 +30,50 @@ SOURCE_FILE
             FORMAT_ARGS_KW "format_args"
             L_PAREN "("
             LITERAL
-              INT_NUMBER "0"
+              STRING "\"\""
+            COMMA ","
+            WHITESPACE " "
+            FORMAT_ARGS_ARG
+              LITERAL
+                INT_NUMBER "0"
+            COMMA ","
+            WHITESPACE " "
+            FORMAT_ARGS_ARG
+              LITERAL
+                INT_NUMBER "1"
+            COMMA ","
+            WHITESPACE " "
+            FORMAT_ARGS_ARG
+              NAME
+                IDENT "a"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              BIN_EXPR
+                LITERAL
+                  INT_NUMBER "2"
+                WHITESPACE " "
+                PLUS "+"
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "3"
+            COMMA ","
+            WHITESPACE " "
+            FORMAT_ARGS_ARG
+              BIN_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "a"
+                WHITESPACE " "
+                PLUS "+"
+                WHITESPACE " "
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "b"
             R_PAREN ")"
           SEMICOLON ";"
         WHITESPACE "\n    "
