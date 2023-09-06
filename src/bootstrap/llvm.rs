@@ -598,9 +598,9 @@ fn configure_cmake(
         } else if target.contains("linux") {
             cfg.define("CMAKE_SYSTEM_NAME", "Linux");
         } else {
-            builder.info(
+            builder.info(&format!(
                 "could not determine CMAKE_SYSTEM_NAME from the target `{target}`, build may fail",
-            );
+            ));
         }
 
         // When cross-compiling we should also set CMAKE_SYSTEM_VERSION, but in
