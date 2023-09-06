@@ -666,10 +666,7 @@ impl ExprCollector<'_> {
                 let fields = e.fields().map(|it| it.as_name()).collect();
                 self.alloc_expr(Expr::OffsetOf(OffsetOf { container, fields }), syntax_ptr)
             }
-            ast::Expr::FormatArgsExpr(f) => match self.collect_format_args(f, syntax_ptr) {
-                Ok(value) => value,
-                Err(value) => return value,
-            },
+            ast::Expr::FormatArgsExpr(f) => self.collect_format_args(f, syntax_ptr),
         })
     }
 
@@ -1576,7 +1573,7 @@ impl ExprCollector<'_> {
         &mut self,
         f: ast::FormatArgsExpr,
         syntax_ptr: AstPtr<ast::Expr>,
-    ) -> Result<la_arena::Idx<Expr>, Option<la_arena::Idx<Expr>>> {
+    ) -> ExprId {
         let mut args = FormatArgumentsCollector::new();
         f.args().for_each(|arg| {
             args.add(FormatArgument {
@@ -1613,7 +1610,7 @@ impl ExprCollector<'_> {
                     }
                 }
             }
-            todo!();
+            return self.missing_expr();
         };
 
         // Create a list of all _unique_ (argument, format trait) combinations.
@@ -1735,12 +1732,12 @@ impl ExprCollector<'_> {
         let Some(new_v1_formatted) =
             LangItem::FormatArguments.ty_rel_path(self.db, self.krate, name![new_v1_formatted])
         else {
-            todo!()
+            return self.missing_expr();
         };
         let Some(unsafe_arg_new) =
             LangItem::FormatUnsafeArg.ty_rel_path(self.db, self.krate, name![new])
         else {
-            todo!()
+            return self.missing_expr();
         };
         let new_v1_formatted = self.alloc_expr_desugared(Expr::Path(new_v1_formatted));
 
@@ -1756,14 +1753,14 @@ impl ExprCollector<'_> {
             tail: Some(unsafe_arg_new),
         });
 
-        Ok(self.alloc_expr(
+        self.alloc_expr(
             Expr::Call {
                 callee: new_v1_formatted,
                 args: Box::new([lit_pieces, args, format_options, unsafe_arg_new]),
                 is_assignee_expr: false,
             },
             syntax_ptr,
-        ))
+        )
     }
 
     /// Generate a hir expression for a format_args placeholder specification.
@@ -1808,19 +1805,22 @@ impl ExprCollector<'_> {
         } = &placeholder.format_options;
         let fill = self.alloc_expr_desugared(Expr::Literal(Literal::Char(fill.unwrap_or(' '))));
 
-        let Some(align) = LangItem::FormatAlignment.ty_rel_path(
-            self.db,
-            self.krate,
-            match alignment {
-                Some(FormatAlignment::Left) => name![Left],
-                Some(FormatAlignment::Right) => name![Right],
-                Some(FormatAlignment::Center) => name![Center],
-                None => name![Unknown],
-            },
-        ) else {
-            todo!()
+        let align = {
+            let align = LangItem::FormatAlignment.ty_rel_path(
+                self.db,
+                self.krate,
+                match alignment {
+                    Some(FormatAlignment::Left) => name![Left],
+                    Some(FormatAlignment::Right) => name![Right],
+                    Some(FormatAlignment::Center) => name![Center],
+                    None => name![Unknown],
+                },
+            );
+            match align {
+                Some(path) => self.alloc_expr_desugared(Expr::Path(path)),
+                None => self.missing_expr(),
+            }
         };
-        let align = self.alloc_expr_desugared(Expr::Path(align));
         // This needs to match `Flag` in library/core/src/fmt/rt.rs.
         let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
             | ((sign == Some(FormatSign::Minus)) as u32) << 1
@@ -1834,12 +1834,16 @@ impl ExprCollector<'_> {
         )));
         let precision = self.make_count(&precision, argmap);
         let width = self.make_count(&width, argmap);
-        let Some(format_placeholder_new) =
-            LangItem::FormatPlaceholder.ty_rel_path(self.db, self.krate, name![new])
-        else {
-            todo!()
+
+        let format_placeholder_new = {
+            let format_placeholder_new =
+                LangItem::FormatPlaceholder.ty_rel_path(self.db, self.krate, name![new]);
+            match format_placeholder_new {
+                Some(path) => self.alloc_expr_desugared(Expr::Path(path)),
+                None => self.missing_expr(),
+            }
         };
-        let format_placeholder_new = self.alloc_expr_desugared(Expr::Path(format_placeholder_new));
+
         self.alloc_expr_desugared(Expr::Call {
             callee: format_placeholder_new,
             args: Box::new([position, fill, align, flags, precision, width]),
@@ -1873,52 +1877,49 @@ impl ExprCollector<'_> {
     ) -> ExprId {
         match count {
             Some(FormatCount::Literal(n)) => {
-                let Some(count_is) =
-                    LangItem::FormatCount.ty_rel_path(self.db, self.krate, name![Is])
-                else {
-                    todo!()
-                };
-                let count_is = self.alloc_expr_desugared(Expr::Path(count_is));
-                let args = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
-                    *n as u128,
-                    Some(BuiltinUint::Usize),
-                )));
-                self.alloc_expr_desugared(Expr::Call {
-                    callee: count_is,
-                    args: Box::new([args]),
-                    is_assignee_expr: false,
-                })
+                match LangItem::FormatCount.ty_rel_path(self.db, self.krate, name![Is]) {
+                    Some(count_is) => {
+                        let count_is = self.alloc_expr_desugared(Expr::Path(count_is));
+                        let args = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
+                            *n as u128,
+                            Some(BuiltinUint::Usize),
+                        )));
+                        self.alloc_expr_desugared(Expr::Call {
+                            callee: count_is,
+                            args: Box::new([args]),
+                            is_assignee_expr: false,
+                        })
+                    }
+                    None => self.missing_expr(),
+                }
             }
             Some(FormatCount::Argument(arg)) => {
                 if let Ok(arg_index) = arg.index {
                     let (i, _) = argmap.insert_full((arg_index, ArgumentType::Usize));
-                    let Some(count_param) =
-                        LangItem::FormatCount.ty_rel_path(self.db, self.krate, name![Param])
-                    else {
-                        todo!()
-                    };
-                    let count_param = self.alloc_expr_desugared(Expr::Path(count_param));
-                    let args = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
-                        i as u128,
-                        Some(BuiltinUint::Usize),
-                    )));
-                    self.alloc_expr_desugared(Expr::Call {
-                        callee: count_param,
-                        args: Box::new([args]),
-                        is_assignee_expr: false,
-                    })
+
+                    match LangItem::FormatCount.ty_rel_path(self.db, self.krate, name![Param]) {
+                        Some(count_param) => {
+                            let count_param = self.alloc_expr_desugared(Expr::Path(count_param));
+                            let args = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
+                                i as u128,
+                                Some(BuiltinUint::Usize),
+                            )));
+                            self.alloc_expr_desugared(Expr::Call {
+                                callee: count_param,
+                                args: Box::new([args]),
+                                is_assignee_expr: false,
+                            })
+                        }
+                        None => self.missing_expr(),
+                    }
                 } else {
                     self.missing_expr()
                 }
             }
-            None => {
-                let Some(count_param) =
-                    LangItem::FormatCount.ty_rel_path(self.db, self.krate, name![Implied])
-                else {
-                    todo!()
-                };
-                self.alloc_expr_desugared(Expr::Path(count_param))
-            }
+            None => match LangItem::FormatCount.ty_rel_path(self.db, self.krate, name![Implied]) {
+                Some(count_param) => self.alloc_expr_desugared(Expr::Path(count_param)),
+                None => self.missing_expr(),
+            },
         }
     }
 
@@ -1932,7 +1933,7 @@ impl ExprCollector<'_> {
     fn make_argument(&mut self, arg: ExprId, ty: ArgumentType) -> ExprId {
         use ArgumentType::*;
         use FormatTrait::*;
-        let Some(new_fn) = LangItem::FormatArgument.ty_rel_path(
+        match LangItem::FormatArgument.ty_rel_path(
             self.db,
             self.krate,
             match ty {
@@ -1947,15 +1948,17 @@ impl ExprCollector<'_> {
                 Format(UpperHex) => name![new_upper_hex],
                 Usize => name![from_usize],
             },
-        ) else {
-            todo!()
-        };
-        let new_fn = self.alloc_expr_desugared(Expr::Path(new_fn));
-        self.alloc_expr_desugared(Expr::Call {
-            callee: new_fn,
-            args: Box::new([arg]),
-            is_assignee_expr: false,
-        })
+        ) {
+            Some(new_fn) => {
+                let new_fn = self.alloc_expr_desugared(Expr::Path(new_fn));
+                self.alloc_expr_desugared(Expr::Call {
+                    callee: new_fn,
+                    args: Box::new([arg]),
+                    is_assignee_expr: false,
+                })
+            }
+            None => self.missing_expr(),
+        }
     }
     // endregion: format
 }

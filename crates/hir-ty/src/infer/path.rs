@@ -191,7 +191,7 @@ impl InferenceContext<'_> {
                     path.segments().skip(remaining_index),
                 )
             }
-            Path::LangItem(_, seg) => (
+            Path::LangItem(..) => (
                 PathSegment {
                     name: {
                         _d = hir_expand::name::known::Unknown;
