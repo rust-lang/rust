@@ -562,7 +562,7 @@ impl fmt::Debug for Command {
                 write!(f, "env -i ")?;
                 // Altered env vars will be printed next, that should exactly work as expected.
             } else {
-                // Removed env vars need the command to be wrappen in `env`.
+                // Removed env vars need the command to be wrapped in `env`.
                 let mut any_removed = false;
                 for (key, value_opt) in self.get_envs() {
                     if value_opt.is_none() {
