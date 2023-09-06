@@ -6,6 +6,10 @@
 
 passes_abi_invalid_attribute =
     `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
+passes_abi_ne =
+    ABIs are not compatible
+    left ABI = {$left}
+    right ABI = {$right}
 passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 

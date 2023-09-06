@@ -387,6 +387,7 @@ symbols! {
         asm_sym,
         asm_unwind,
         assert,
+        assert_eq,
         assert_eq_macro,
         assert_inhabited,
         assert_macro,

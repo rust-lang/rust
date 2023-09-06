@@ -32,3 +32,9 @@ impl S {
     #[rustc_abi(debug)]
     fn assoc_test(&self) { } //~ ERROR: fn_abi
 }
+
+#[rustc_abi(assert_eq)]
+type TestAbiEq = (fn(bool), fn(bool));
+
+#[rustc_abi(assert_eq)]
+type TestAbiNe = (fn(u8), fn(u32)); //~ ERROR: ABIs are not compatible

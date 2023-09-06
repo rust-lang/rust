@@ -930,6 +930,15 @@ pub struct AbiOf {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_abi_ne)]
+pub struct AbiNe {
+    #[primary_span]
+    pub span: Span,
+    pub left: String,
+    pub right: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_abi_invalid_attribute)]
 pub struct AbiInvalidAttribute {
     #[primary_span]

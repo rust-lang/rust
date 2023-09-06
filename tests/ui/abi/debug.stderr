@@ -362,5 +362,151 @@ error: fn_abi_of(assoc_test) = FnAbi {
 LL |     fn assoc_test(&self) { }
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: ABIs are not compatible
+       left ABI = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: u8,
+                       layout: Layout {
+                           size: Size(1 bytes),
+                           align: AbiAndPrefAlign {
+                               abi: $SOME_ALIGN,
+                               pref: $SOME_ALIGN,
+                           },
+                           abi: Scalar(
+                               Initialized {
+                                   value: Int(
+                                       I8,
+                                       false,
+                                   ),
+                                   valid_range: 0..=255,
+                               },
+                           ),
+                           fields: Primitive,
+                           largest_niche: None,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: $SOME_ALIGN,
+                       },
+                   },
+                   mode: Direct(
+                       ArgAttributes {
+                           regular: NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(0 bytes),
+                           pointee_align: None,
+                       },
+                   ),
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: $SOME_ALIGN,
+                           pref: $SOME_ALIGN,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: $SOME_ALIGN,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: Rust,
+           can_unwind: $SOME_BOOL,
+       }
+       right ABI = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: u32,
+                       layout: Layout {
+                           size: $SOME_SIZE,
+                           align: AbiAndPrefAlign {
+                               abi: $SOME_ALIGN,
+                               pref: $SOME_ALIGN,
+                           },
+                           abi: Scalar(
+                               Initialized {
+                                   value: Int(
+                                       I32,
+                                       false,
+                                   ),
+                                   valid_range: $FULL,
+                               },
+                           ),
+                           fields: Primitive,
+                           largest_niche: None,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: $SOME_ALIGN,
+                       },
+                   },
+                   mode: Direct(
+                       ArgAttributes {
+                           regular: NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(0 bytes),
+                           pointee_align: None,
+                       },
+                   ),
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: $SOME_ALIGN,
+                           pref: $SOME_ALIGN,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: $SOME_ALIGN,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: Rust,
+           can_unwind: $SOME_BOOL,
+       }
+  --> $DIR/debug.rs:40:1
+   |
+LL | type TestAbiNe = (fn(u8), fn(u32));
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
 

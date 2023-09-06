@@ -5,9 +5,9 @@ use rustc_middle::ty::layout::{FnAbiError, LayoutError};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_target::abi::call::FnAbi;
+use rustc_target::abi::call::{ArgAbi, FnAbi};
 
-use crate::errors::{AbiInvalidAttribute, AbiOf, UnrecognizedField};
+use crate::errors::{AbiInvalidAttribute, AbiNe, AbiOf, UnrecognizedField};
 
 pub fn test_abi(tcx: TyCtxt<'_>) {
     if !tcx.features().rustc_attrs {
@@ -114,6 +114,32 @@ fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: DefId, attr: &Attribute) {
     }
 }
 
+fn test_arg_abi_eq<'tcx>(
+    abi1: &'tcx ArgAbi<'tcx, Ty<'tcx>>,
+    abi2: &'tcx ArgAbi<'tcx, Ty<'tcx>>,
+) -> bool {
+    // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
+    // at the type. Comparing the `mode` and `layout.abi` should catch basically everything though
+    // (except for tricky cases around unized types).
+    // This *is* overly strict (e.g. we compare the sign of integer `Primitive`s, or parts of `ArgAttributes` that do not affect ABI),
+    // but for the purpose of ensuring repr(transparent) ABI compatibility that is fine.
+    abi1.mode == abi2.mode && abi1.layout.abi == abi2.layout.abi
+}
+
+fn test_abi_eq<'tcx>(abi1: &'tcx FnAbi<'tcx, Ty<'tcx>>, abi2: &'tcx FnAbi<'tcx, Ty<'tcx>>) -> bool {
+    if abi1.conv != abi2.conv
+        || abi1.args.len() != abi2.args.len()
+        || abi1.c_variadic != abi2.c_variadic
+        || abi1.fixed_count != abi2.fixed_count
+        || abi1.can_unwind != abi2.can_unwind
+    {
+        return false;
+    }
+
+    test_arg_abi_eq(&abi1.ret, &abi2.ret)
+        && abi1.args.iter().zip(abi2.args.iter()).all(|(arg1, arg2)| test_arg_abi_eq(arg1, arg2))
+}
+
 fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: DefId, attr: &Attribute) {
     let param_env = tcx.param_env(item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
@@ -139,6 +165,54 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: DefId, attr: &Attribute) {
                     fn_name,
                     fn_abi: format!("{:#?}", abi),
                 });
+            }
+            sym::assert_eq => {
+                let ty::Tuple(fields) = ty.kind() else {
+                    span_bug!(
+                        meta_item.span(),
+                        "`#[rustc_abi(assert_eq)]` on a type alias requires pair type"
+                    );
+                };
+                let [field1, field2] = ***fields else {
+                    span_bug!(
+                        meta_item.span(),
+                        "`#[rustc_abi(assert_eq)]` on a type alias requires pair type"
+                    );
+                };
+                let ty::FnPtr(sig1) = field1.kind() else {
+                    span_bug!(
+                        meta_item.span(),
+                        "`#[rustc_abi(assert_eq)]` on a type alias requires pair of function pointer types"
+                    );
+                };
+                let abi1 = unwrap_fn_abi(
+                    tcx.fn_abi_of_fn_ptr(
+                        param_env.and((*sig1, /* extra_args */ ty::List::empty())),
+                    ),
+                    tcx,
+                    item_def_id,
+                );
+                let ty::FnPtr(sig2) = field2.kind() else {
+                    span_bug!(
+                        meta_item.span(),
+                        "`#[rustc_abi(assert_eq)]` on a type alias requires pair of function pointer types"
+                    );
+                };
+                let abi2 = unwrap_fn_abi(
+                    tcx.fn_abi_of_fn_ptr(
+                        param_env.and((*sig2, /* extra_args */ ty::List::empty())),
+                    ),
+                    tcx,
+                    item_def_id,
+                );
+
+                if !test_abi_eq(abi1, abi2) {
+                    tcx.sess.emit_err(AbiNe {
+                        span: tcx.def_span(item_def_id),
+                        left: format!("{:#?}", abi1),
+                        right: format!("{:#?}", abi2),
+                    });
+                }
             }
             name => {
                 tcx.sess.emit_err(UnrecognizedField { span: meta_item.span(), name });
