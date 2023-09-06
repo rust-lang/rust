@@ -140,9 +140,14 @@ impl Printer<'_> {
     }
 
     fn newline(&mut self) {
-        match self.buf.chars().rev().find(|ch| *ch != ' ') {
-            Some('\n') | None => {}
-            _ => writeln!(self).unwrap(),
+        match self.buf.chars().rev().find_position(|ch| *ch != ' ') {
+            Some((_, '\n')) | None => {}
+            Some((idx, _)) => {
+                if idx != 0 {
+                    self.buf.drain(self.buf.len() - idx..);
+                }
+                writeln!(self).unwrap()
+            }
         }
     }
 
