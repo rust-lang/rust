@@ -156,22 +156,19 @@ impl Resolver {
     ) -> Option<(TypeNs, Option<usize>, Option<ImportOrExternCrate>)> {
         let path = match path {
             Path::Normal { mod_path, .. } => mod_path,
-            Path::LangItem(l) => {
-                return Some((
-                    match *l {
-                        LangItemTarget::Union(it) => TypeNs::AdtId(it.into()),
-                        LangItemTarget::TypeAlias(it) => TypeNs::TypeAliasId(it),
-                        LangItemTarget::Struct(it) => TypeNs::AdtId(it.into()),
-                        LangItemTarget::EnumVariant(it) => TypeNs::EnumVariantId(it),
-                        LangItemTarget::EnumId(it) => TypeNs::AdtId(it.into()),
-                        LangItemTarget::Trait(it) => TypeNs::TraitId(it),
-                        LangItemTarget::Function(_)
-                        | LangItemTarget::ImplDef(_)
-                        | LangItemTarget::Static(_) => return None,
-                    },
-                    None,
-                    None,
-                ))
+            Path::LangItem(l, seg) => {
+                let type_ns = match *l {
+                    LangItemTarget::Union(it) => TypeNs::AdtId(it.into()),
+                    LangItemTarget::TypeAlias(it) => TypeNs::TypeAliasId(it),
+                    LangItemTarget::Struct(it) => TypeNs::AdtId(it.into()),
+                    LangItemTarget::EnumVariant(it) => TypeNs::EnumVariantId(it),
+                    LangItemTarget::EnumId(it) => TypeNs::AdtId(it.into()),
+                    LangItemTarget::Trait(it) => TypeNs::TraitId(it),
+                    LangItemTarget::Function(_)
+                    | LangItemTarget::ImplDef(_)
+                    | LangItemTarget::Static(_) => return None,
+                };
+                return Some((type_ns, seg.as_ref().map(|_| 1), None));
             }
         };
         let first_name = path.segments().first()?;
@@ -256,7 +253,7 @@ impl Resolver {
     ) -> Option<ResolveValueResult> {
         let path = match path {
             Path::Normal { mod_path, .. } => mod_path,
-            Path::LangItem(l) => {
+            Path::LangItem(l, None) => {
                 return Some(ResolveValueResult::ValueNs(
                     match *l {
                         LangItemTarget::Function(it) => ValueNs::FunctionId(it),
@@ -271,6 +268,20 @@ impl Resolver {
                     },
                     None,
                 ))
+            }
+            Path::LangItem(l, Some(_)) => {
+                let type_ns = match *l {
+                    LangItemTarget::Union(it) => TypeNs::AdtId(it.into()),
+                    LangItemTarget::TypeAlias(it) => TypeNs::TypeAliasId(it),
+                    LangItemTarget::Struct(it) => TypeNs::AdtId(it.into()),
+                    LangItemTarget::EnumVariant(it) => TypeNs::EnumVariantId(it),
+                    LangItemTarget::EnumId(it) => TypeNs::AdtId(it.into()),
+                    LangItemTarget::Trait(it) => TypeNs::TraitId(it),
+                    LangItemTarget::Function(_)
+                    | LangItemTarget::ImplDef(_)
+                    | LangItemTarget::Static(_) => return None,
+                };
+                return Some(ResolveValueResult::Partial(type_ns, 1, None));
             }
         };
         let n_segments = path.segments().len();

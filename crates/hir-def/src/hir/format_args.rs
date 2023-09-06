@@ -6,7 +6,7 @@ use syntax::{
     AstToken, SmolStr, TextRange,
 };
 
-use crate::hir::{dummy_expr_id, ExprId};
+use crate::hir::ExprId;
 
 mod parse;
 
@@ -31,7 +31,7 @@ pub enum FormatArgsPiece {
     Placeholder(FormatPlaceholder),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq)]
 pub struct FormatPlaceholder {
     /// Index into [`FormatArgs::arguments`].
     pub argument: FormatArgPosition,
@@ -43,7 +43,7 @@ pub struct FormatPlaceholder {
     pub format_options: FormatOptions,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq)]
 pub struct FormatArgPosition {
     /// Which argument this position refers to (Ok),
     /// or would've referred to if it existed (Err).
@@ -64,7 +64,7 @@ pub enum FormatArgPositionKind {
     Named,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum FormatTrait {
     /// `{}`
     Display,
@@ -86,7 +86,7 @@ pub enum FormatTrait {
     UpperHex,
 }
 
-#[derive(Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub struct FormatOptions {
     /// The width. E.g. `{:5}` or `{:width$}`.
     pub width: Option<FormatCount>,
@@ -131,7 +131,7 @@ pub enum FormatAlignment {
     Center,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FormatCount {
     /// `{:5}` or `{:.5}`
     Literal(usize),
@@ -171,6 +171,7 @@ pub(crate) fn parse(
     fmt_snippet: Option<String>,
     mut args: FormatArgumentsCollector,
     is_direct_literal: bool,
+    mut synth: impl FnMut(Name) -> ExprId,
 ) -> FormatArgs {
     let text = s.text();
     let str_style = match s.quote_offsets() {
@@ -252,10 +253,10 @@ pub(crate) fn parse(
                         // FIXME: Diagnose
                     }
                     Ok(args.add(FormatArgument {
-                        kind: FormatArgumentKind::Captured(name),
+                        kind: FormatArgumentKind::Captured(name.clone()),
                         // FIXME: This is problematic, we might want to synthesize a dummy
                         // expression proper and/or desugar these.
-                        expr: dummy_expr_id(),
+                        expr: synth(name),
                     }))
                 }
             }

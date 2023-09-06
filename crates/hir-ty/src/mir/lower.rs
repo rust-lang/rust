@@ -376,9 +376,6 @@ impl<'ctx> MirLowerCtx<'ctx> {
             Expr::InlineAsm(_) => {
                 not_supported!("builtin#asm")
             }
-            Expr::FormatArgs(_) => {
-                not_supported!("builtin#format_args")
-            }
             Expr::Missing => {
                 if let DefWithBodyId::FunctionId(f) = self.owner {
                     let assoc = f.lookup(self.db.upcast());

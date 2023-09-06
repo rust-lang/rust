@@ -3,10 +3,7 @@
 
 use chalk_ir::Mutability;
 use hir_def::{
-    hir::{
-        format_args::FormatArgumentKind, Array, BinaryOp, BindingAnnotation, Expr, ExprId, PatId,
-        Statement, UnaryOp,
-    },
+    hir::{Array, BinaryOp, BindingAnnotation, Expr, ExprId, PatId, Statement, UnaryOp},
     lang_item::LangItem,
 };
 use hir_expand::name;
@@ -40,13 +37,6 @@ impl InferenceContext<'_> {
             Expr::Missing => (),
             Expr::InlineAsm(e) => self.infer_mut_expr_without_adjust(e.e, Mutability::Not),
             Expr::OffsetOf(_) => (),
-            Expr::FormatArgs(fa) => {
-                fa.arguments
-                    .arguments
-                    .iter()
-                    .filter(|it| !matches!(it.kind, FormatArgumentKind::Captured(_)))
-                    .for_each(|arg| self.infer_mut_expr_without_adjust(arg.expr, Mutability::Not));
-            }
             &Expr::If { condition, then_branch, else_branch } => {
                 self.infer_mut_expr(condition, Mutability::Not);
                 self.infer_mut_expr(then_branch, Mutability::Not);

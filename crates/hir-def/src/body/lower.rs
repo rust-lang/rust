@@ -25,13 +25,16 @@ use triomphe::Arc;
 
 use crate::{
     body::{Body, BodyDiagnostic, BodySourceMap, ExprPtr, LabelPtr, PatPtr},
+    builtin_type::BuiltinUint,
     data::adt::StructKind,
     db::DefDatabase,
     expander::Expander,
     hir::{
         dummy_expr_id,
         format_args::{
-            self, FormatArgs, FormatArgument, FormatArgumentKind, FormatArgumentsCollector,
+            self, FormatAlignment, FormatArgsPiece, FormatArgument, FormatArgumentKind,
+            FormatArgumentsCollector, FormatCount, FormatDebugHex, FormatOptions,
+            FormatPlaceholder, FormatSign, FormatTrait,
         },
         Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy, ClosureKind,
         Expr, ExprId, InlineAsm, Label, LabelId, Literal, LiteralOrConst, MatchArm, Movability,
@@ -45,6 +48,8 @@ use crate::{
     type_ref::{Mutability, Rawness, TypeRef},
     AdtId, BlockId, BlockLoc, ConstBlockLoc, DefWithBodyId, ModuleDefId, UnresolvedMacro,
 };
+
+type FxIndexSet<K> = indexmap::IndexSet<K, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 
 pub(super) fn lower(
     db: &dyn DefDatabase,
@@ -661,50 +666,10 @@ impl ExprCollector<'_> {
                 let fields = e.fields().map(|it| it.as_name()).collect();
                 self.alloc_expr(Expr::OffsetOf(OffsetOf { container, fields }), syntax_ptr)
             }
-            ast::Expr::FormatArgsExpr(f) => {
-                let mut args = FormatArgumentsCollector::new();
-                f.args().for_each(|arg| {
-                    args.add(FormatArgument {
-                        kind: match arg.name() {
-                            Some(name) => FormatArgumentKind::Named(name.as_name()),
-                            None => FormatArgumentKind::Normal,
-                        },
-                        expr: self.collect_expr_opt(arg.expr()),
-                    });
-                });
-                let template = f.template();
-                let fmt_snippet = template.as_ref().map(ToString::to_string);
-                let expr = self.collect_expr_opt(f.template());
-                if let Expr::Literal(Literal::String(_)) = self.body[expr] {
-                    let source = self.source_map.expr_map_back[expr].clone();
-                    let is_direct_literal = source.file_id == self.expander.current_file_id;
-                    if let ast::Expr::Literal(l) =
-                        source.value.to_node(&self.db.parse_or_expand(source.file_id))
-                    {
-                        if let ast::LiteralKind::String(s) = l.kind() {
-                            return Some(self.alloc_expr(
-                                Expr::FormatArgs(format_args::parse(
-                                    expr,
-                                    &s,
-                                    fmt_snippet,
-                                    args,
-                                    is_direct_literal,
-                                )),
-                                syntax_ptr,
-                            ));
-                        }
-                    }
-                }
-
-                self.alloc_expr(
-                    Expr::FormatArgs(FormatArgs {
-                        template_expr: expr,
-                        template: Default::default(),
-                        arguments: args.finish(),
-                    }),
-                    syntax_ptr,
-                )
-            }
+            ast::Expr::FormatArgsExpr(f) => match self.collect_format_args(f, syntax_ptr) {
+                Ok(value) => value,
+                Err(value) => return value,
+            },
         })
     }
 
@@ -1604,6 +1569,395 @@ impl ExprCollector<'_> {
         }
     }
     // endregion: labels
+
+    // region: format
+
+    fn collect_format_args(
+        &mut self,
+        f: ast::FormatArgsExpr,
+        syntax_ptr: AstPtr<ast::Expr>,
+    ) -> Result<la_arena::Idx<Expr>, Option<la_arena::Idx<Expr>>> {
+        let mut args = FormatArgumentsCollector::new();
+        f.args().for_each(|arg| {
+            args.add(FormatArgument {
+                kind: match arg.name() {
+                    Some(name) => FormatArgumentKind::Named(name.as_name()),
+                    None => FormatArgumentKind::Normal,
+                },
+                expr: self.collect_expr_opt(arg.expr()),
+            });
+        });
+        let template = f.template();
+        let fmt_snippet = template.as_ref().map(ToString::to_string);
+
+        // FIXME: We shouldn't allocate this one, just resolve and expand the macros to fetch the
+        // string literal!
+        let expr = self.collect_expr_opt(template);
+
+        let fmt = 'b: {
+            if let Expr::Literal(Literal::String(_)) = self.body[expr] {
+                let source = self.source_map.expr_map_back[expr].clone();
+                let is_direct_literal = source.file_id == self.expander.current_file_id;
+                if let ast::Expr::Literal(l) =
+                    source.value.to_node(&self.db.parse_or_expand(source.file_id))
+                {
+                    if let ast::LiteralKind::String(s) = l.kind() {
+                        break 'b format_args::parse(
+                            expr,
+                            &s,
+                            fmt_snippet,
+                            args,
+                            is_direct_literal,
+                            |name| self.alloc_expr_desugared(Expr::Path(Path::from(name))),
+                        );
+                    }
+                }
+            }
+            todo!();
+        };
+
+        // Create a list of all _unique_ (argument, format trait) combinations.
+        // E.g. "{0} {0:x} {0} {1}" -> [(0, Display), (0, LowerHex), (1, Display)]
+        let mut argmap = FxIndexSet::default();
+        for piece in fmt.template.iter() {
+            let FormatArgsPiece::Placeholder(placeholder) = piece else { continue };
+            if let Ok(index) = placeholder.argument.index {
+                argmap.insert((index, ArgumentType::Format(placeholder.format_trait)));
+            }
+        }
+
+        let lit_pieces =
+            fmt.template
+                .iter()
+                .enumerate()
+                .filter_map(|(i, piece)| {
+                    match piece {
+                        FormatArgsPiece::Literal(s) => Some(
+                            self.alloc_expr_desugared(Expr::Literal(Literal::String(s.clone()))),
+                        ),
+                        &FormatArgsPiece::Placeholder(_) => {
+                            // Inject empty string before placeholders when not already preceded by a literal piece.
+                            if i == 0
+                                || matches!(fmt.template[i - 1], FormatArgsPiece::Placeholder(_))
+                            {
+                                Some(self.alloc_expr_desugared(Expr::Literal(Literal::String(
+                                    "".into(),
+                                ))))
+                            } else {
+                                None
+                            }
+                        }
+                    }
+                })
+                .collect();
+        let lit_pieces = self.alloc_expr_desugared(Expr::Array(Array::ElementList {
+            elements: lit_pieces,
+            is_assignee_expr: false,
+        }));
+        let lit_pieces = self.alloc_expr_desugared(Expr::Ref {
+            expr: lit_pieces,
+            rawness: Rawness::Ref,
+            mutability: Mutability::Shared,
+        });
+        let format_options = {
+            // Generate:
+            //     &[format_spec_0, format_spec_1, format_spec_2]
+            let elements = fmt
+                .template
+                .iter()
+                .filter_map(|piece| {
+                    let FormatArgsPiece::Placeholder(placeholder) = piece else { return None };
+                    Some(self.make_format_spec(placeholder, &mut argmap))
+                })
+                .collect();
+            let array = self.alloc_expr_desugared(Expr::Array(Array::ElementList {
+                elements,
+                is_assignee_expr: false,
+            }));
+            self.alloc_expr_desugared(Expr::Ref {
+                expr: array,
+                rawness: Rawness::Ref,
+                mutability: Mutability::Shared,
+            })
+        };
+        let arguments = &*fmt.arguments.arguments;
+
+        let args = if arguments.is_empty() {
+            let expr = self.alloc_expr_desugared(Expr::Array(Array::ElementList {
+                elements: Box::default(),
+                is_assignee_expr: false,
+            }));
+            self.alloc_expr_desugared(Expr::Ref {
+                expr,
+                rawness: Rawness::Ref,
+                mutability: Mutability::Shared,
+            })
+        } else {
+            // Generate:
+            //     &match (&arg0, &arg1, &…) {
+            //         args => [
+            //             <core::fmt::Argument>::new_display(args.0),
+            //             <core::fmt::Argument>::new_lower_hex(args.1),
+            //             <core::fmt::Argument>::new_debug(args.0),
+            //             …
+            //         ]
+            //     }
+            let args = argmap
+                .iter()
+                .map(|&(arg_index, ty)| {
+                    let arg = self.alloc_expr_desugared(Expr::Ref {
+                        expr: arguments[arg_index].expr,
+                        rawness: Rawness::Ref,
+                        mutability: Mutability::Shared,
+                    });
+                    self.make_argument(arg, ty)
+                })
+                .collect();
+            let array = self.alloc_expr_desugared(Expr::Array(Array::ElementList {
+                elements: args,
+                is_assignee_expr: false,
+            }));
+            self.alloc_expr_desugared(Expr::Ref {
+                expr: array,
+                rawness: Rawness::Ref,
+                mutability: Mutability::Shared,
+            })
+        };
+
+        // Generate:
+        //     <core::fmt::Arguments>::new_v1_formatted(
+        //         lit_pieces,
+        //         args,
+        //         format_options,
+        //         unsafe { ::core::fmt::UnsafeArg::new() }
+        //     )
+
+        let Some(new_v1_formatted) =
+            LangItem::FormatArguments.ty_rel_path(self.db, self.krate, name![new_v1_formatted])
+        else {
+            todo!()
+        };
+        let Some(unsafe_arg_new) =
+            LangItem::FormatUnsafeArg.ty_rel_path(self.db, self.krate, name![new])
+        else {
+            todo!()
+        };
+        let new_v1_formatted = self.alloc_expr_desugared(Expr::Path(new_v1_formatted));
+
+        let unsafe_arg_new = self.alloc_expr_desugared(Expr::Path(unsafe_arg_new));
+        let unsafe_arg_new = self.alloc_expr_desugared(Expr::Call {
+            callee: unsafe_arg_new,
+            args: Box::default(),
+            is_assignee_expr: false,
+        });
+        let unsafe_arg_new = self.alloc_expr_desugared(Expr::Unsafe {
+            id: None,
+            statements: Box::default(),
+            tail: Some(unsafe_arg_new),
+        });
+
+        Ok(self.alloc_expr(
+            Expr::Call {
+                callee: new_v1_formatted,
+                args: Box::new([lit_pieces, args, format_options, unsafe_arg_new]),
+                is_assignee_expr: false,
+            },
+            syntax_ptr,
+        ))
+    }
+
+    /// Generate a hir expression for a format_args placeholder specification.
+    ///
+    /// Generates
+    ///
+    /// ```text
+    ///     <core::fmt::rt::Placeholder::new(
+    ///         …usize, // position
+    ///         '…', // fill
+    ///         <core::fmt::rt::Alignment>::…, // alignment
+    ///         …u32, // flags
+    ///         <core::fmt::rt::Count::…>, // width
+    ///         <core::fmt::rt::Count::…>, // precision
+    ///     )
+    /// ```
+    fn make_format_spec(
+        &mut self,
+        placeholder: &FormatPlaceholder,
+        argmap: &mut FxIndexSet<(usize, ArgumentType)>,
+    ) -> ExprId {
+        let position = match placeholder.argument.index {
+            Ok(arg_index) => {
+                let (i, _) =
+                    argmap.insert_full((arg_index, ArgumentType::Format(placeholder.format_trait)));
+                self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
+                    i as u128,
+                    Some(BuiltinUint::Usize),
+                )))
+            }
+            Err(_) => self.missing_expr(),
+        };
+        let &FormatOptions {
+            ref width,
+            ref precision,
+            alignment,
+            fill,
+            sign,
+            alternate,
+            zero_pad,
+            debug_hex,
+        } = &placeholder.format_options;
+        let fill = self.alloc_expr_desugared(Expr::Literal(Literal::Char(fill.unwrap_or(' '))));
+
+        let Some(align) = LangItem::FormatAlignment.ty_rel_path(
+            self.db,
+            self.krate,
+            match alignment {
+                Some(FormatAlignment::Left) => name![Left],
+                Some(FormatAlignment::Right) => name![Right],
+                Some(FormatAlignment::Center) => name![Center],
+                None => name![Unknown],
+            },
+        ) else {
+            todo!()
+        };
+        let align = self.alloc_expr_desugared(Expr::Path(align));
+        // This needs to match `Flag` in library/core/src/fmt/rt.rs.
+        let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
+            | ((sign == Some(FormatSign::Minus)) as u32) << 1
+            | (alternate as u32) << 2
+            | (zero_pad as u32) << 3
+            | ((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 4
+            | ((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 5;
+        let flags = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
+            flags as u128,
+            Some(BuiltinUint::U32),
+        )));
+        let precision = self.make_count(&precision, argmap);
+        let width = self.make_count(&width, argmap);
+        let Some(format_placeholder_new) =
+            LangItem::FormatPlaceholder.ty_rel_path(self.db, self.krate, name![new])
+        else {
+            todo!()
+        };
+        let format_placeholder_new = self.alloc_expr_desugared(Expr::Path(format_placeholder_new));
+        self.alloc_expr_desugared(Expr::Call {
+            callee: format_placeholder_new,
+            args: Box::new([position, fill, align, flags, precision, width]),
+            is_assignee_expr: false,
+        })
+    }
+
+    /// Generate a hir expression for a format_args Count.
+    ///
+    /// Generates:
+    ///
+    /// ```text
+    ///     <core::fmt::rt::Count>::Is(…)
+    /// ```
+    ///
+    /// or
+    ///
+    /// ```text
+    ///     <core::fmt::rt::Count>::Param(…)
+    /// ```
+    ///
+    /// or
+    ///
+    /// ```text
+    ///     <core::fmt::rt::Count>::Implied
+    /// ```
+    fn make_count(
+        &mut self,
+        count: &Option<FormatCount>,
+        argmap: &mut FxIndexSet<(usize, ArgumentType)>,
+    ) -> ExprId {
+        match count {
+            Some(FormatCount::Literal(n)) => {
+                let Some(count_is) =
+                    LangItem::FormatCount.ty_rel_path(self.db, self.krate, name![Is])
+                else {
+                    todo!()
+                };
+                let count_is = self.alloc_expr_desugared(Expr::Path(count_is));
+                let args = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
+                    *n as u128,
+                    Some(BuiltinUint::Usize),
+                )));
+                self.alloc_expr_desugared(Expr::Call {
+                    callee: count_is,
+                    args: Box::new([args]),
+                    is_assignee_expr: false,
+                })
+            }
+            Some(FormatCount::Argument(arg)) => {
+                if let Ok(arg_index) = arg.index {
+                    let (i, _) = argmap.insert_full((arg_index, ArgumentType::Usize));
+                    let Some(count_param) =
+                        LangItem::FormatCount.ty_rel_path(self.db, self.krate, name![Param])
+                    else {
+                        todo!()
+                    };
+                    let count_param = self.alloc_expr_desugared(Expr::Path(count_param));
+                    let args = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
+                        i as u128,
+                        Some(BuiltinUint::Usize),
+                    )));
+                    self.alloc_expr_desugared(Expr::Call {
+                        callee: count_param,
+                        args: Box::new([args]),
+                        is_assignee_expr: false,
+                    })
+                } else {
+                    self.missing_expr()
+                }
+            }
+            None => {
+                let Some(count_param) =
+                    LangItem::FormatCount.ty_rel_path(self.db, self.krate, name![Implied])
+                else {
+                    todo!()
+                };
+                self.alloc_expr_desugared(Expr::Path(count_param))
+            }
+        }
+    }
+
+    /// Generate a hir expression representing an argument to a format_args invocation.
+    ///
+    /// Generates:
+    ///
+    /// ```text
+    ///     <core::fmt::Argument>::new_…(arg)
+    /// ```
+    fn make_argument(&mut self, arg: ExprId, ty: ArgumentType) -> ExprId {
+        use ArgumentType::*;
+        use FormatTrait::*;
+        let Some(new_fn) = LangItem::FormatArgument.ty_rel_path(
+            self.db,
+            self.krate,
+            match ty {
+                Format(Display) => name![new_display],
+                Format(Debug) => name![new_debug],
+                Format(LowerExp) => name![new_lower_exp],
+                Format(UpperExp) => name![new_upper_exp],
+                Format(Octal) => name![new_octal],
+                Format(Pointer) => name![new_pointer],
+                Format(Binary) => name![new_binary],
+                Format(LowerHex) => name![new_lower_hex],
+                Format(UpperHex) => name![new_upper_hex],
+                Usize => name![from_usize],
+            },
+        ) else {
+            todo!()
+        };
+        let new_fn = self.alloc_expr_desugared(Expr::Path(new_fn));
+        self.alloc_expr_desugared(Expr::Call {
+            callee: new_fn,
+            args: Box::new([arg]),
+            is_assignee_expr: false,
+        })
+    }
+    // endregion: format
 }
 
 fn pat_literal_to_hir(lit: &ast::LiteralPat) -> Option<(Literal, ast::Literal)> {
@@ -1678,4 +2032,10 @@ impl ExprCollector<'_> {
 fn comma_follows_token(t: Option<syntax::SyntaxToken>) -> bool {
     (|| syntax::algo::skip_trivia_token(t?.next_token()?, syntax::Direction::Next))()
         .map_or(false, |it| it.kind() == syntax::T![,])
+}
+
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+enum ArgumentType {
+    Format(FormatTrait),
+    Usize,
 }

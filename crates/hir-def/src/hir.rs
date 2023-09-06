@@ -25,7 +25,6 @@ use syntax::ast;
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
-    hir::format_args::{FormatArgs, FormatArgumentKind},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
     BlockId, ConstBlockId,
@@ -284,7 +283,6 @@ pub enum Expr {
     Underscore,
     OffsetOf(OffsetOf),
     InlineAsm(InlineAsm),
-    FormatArgs(FormatArgs),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -358,14 +356,6 @@ impl Expr {
             Expr::Missing => {}
             Expr::Path(_) | Expr::OffsetOf(_) => {}
             Expr::InlineAsm(it) => f(it.e),
-            Expr::FormatArgs(it) => {
-                f(it.template_expr);
-                it.arguments
-                    .arguments
-                    .iter()
-                    .filter(|it| !matches!(it.kind, FormatArgumentKind::Captured(_)))
-                    .for_each(|it| f(it.expr));
-            }
             Expr::If { condition, then_branch, else_branch } => {
                 f(*condition);
                 f(*then_branch);

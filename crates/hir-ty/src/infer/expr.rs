@@ -9,8 +9,7 @@ use chalk_ir::{cast::Cast, fold::Shift, DebruijnIndex, Mutability, TyVariableKin
 use hir_def::{
     generics::TypeOrConstParamData,
     hir::{
-        format_args::FormatArgumentKind, ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId,
-        LabelId, Literal, Statement, UnaryOp,
+        ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
     },
     lang_item::{LangItem, LangItemTarget},
     path::{GenericArg, GenericArgs},
@@ -848,25 +847,6 @@ impl InferenceContext<'_> {
             Expr::InlineAsm(it) => {
                 self.infer_expr_no_expect(it.e);
                 self.result.standard_types.unit.clone()
-            }
-            Expr::FormatArgs(fa) => {
-                fa.arguments
-                    .arguments
-                    .iter()
-                    .filter(|it| !matches!(it.kind, FormatArgumentKind::Captured(_)))
-                    .for_each(|it| _ = self.infer_expr_no_expect(it.expr));
-
-                match self
-                    .resolve_lang_item(LangItem::FormatArguments)
-                    .and_then(|it| it.as_struct())
-                {
-                    Some(s) => {
-                        // NOTE: This struct has a lifetime parameter, but we don't currently emit
-                        // those to chalk
-                        TyKind::Adt(AdtId(s.into()), Substitution::empty(Interner)).intern(Interner)
-                    }
-                    None => self.err_ty(),
-                }
             }
         };
         // use a new type variable if we got unknown here

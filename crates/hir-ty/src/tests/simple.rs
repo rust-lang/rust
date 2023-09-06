@@ -3615,22 +3615,15 @@ fn main() {
 
 #[test]
 fn builtin_format_args() {
-    check_infer(
+    check(
         r#"
-#[lang = "format_arguments"]
-pub struct Arguments<'a>;
+//- minicore: fmt
 fn main() {
     let are = "are";
-    builtin#format_args("hello {} friends, we {are} {0}{last}", "fancy", last = "!");
+    let count = 10;
+    builtin#format_args("hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'_>
 }
 "#,
-        expect![[r#"
-            65..175 '{     ...!"); }': ()
-            75..78 'are': &str
-            81..86 '"are"': &str
-            92..172 'builti...= "!")': Arguments<'_>
-            152..159 '"fancy"': &str
-            168..171 '"!"': &str
-        "#]],
     );
 }
