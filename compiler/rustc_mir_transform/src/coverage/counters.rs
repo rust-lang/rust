@@ -114,7 +114,7 @@ impl CoverageCounters {
     /// Counter IDs start from one and go up.
     fn next_counter(&mut self) -> CounterId {
         let next = self.next_counter_id;
-        self.next_counter_id = next.next_id();
+        self.next_counter_id = self.next_counter_id + 1;
         next
     }
 
@@ -122,7 +122,7 @@ impl CoverageCounters {
     /// (Counter IDs and Expression IDs are distinguished by the `Operand` enum.)
     fn next_expression(&mut self) -> ExpressionId {
         let next = self.next_expression_id;
-        self.next_expression_id = next.next_id();
+        self.next_expression_id = self.next_expression_id + 1;
         next
     }
 
