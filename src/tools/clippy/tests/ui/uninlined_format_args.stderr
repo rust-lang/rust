@@ -5,6 +5,7 @@ LL |     println!("val='{}'", local_i32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::uninlined-format-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::uninlined_format_args)]`
 help: change this to
    |
 LL -     println!("val='{}'", local_i32);

@@ -5,6 +5,7 @@ LL |     let _ = vec!["A", "B", "B"].iter().step_by(0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::iterator-step-by-zero` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iterator_step_by_zero)]`
 
 error: `Iterator::step_by(0)` will panic at runtime
   --> $DIR/iterator_step_by_zero.rs:7:13

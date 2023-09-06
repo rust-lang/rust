@@ -5,6 +5,7 @@ LL |     let _ = 2f32.powf(x);
    |             ^^^^^^^^^^^^ help: consider using: `x.exp2()`
    |
    = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
 
 error: exponent for bases 2 and e can be computed more accurately
   --> $DIR/floating_point_powf.rs:7:13
@@ -49,6 +50,7 @@ LL |     let _ = x.powf(1.0 / 3.0);
    |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.cbrt()`
    |
    = note: `-D clippy::imprecise-flops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::imprecise_flops)]`
 
 error: cube-root of a number can be computed more accurately
   --> $DIR/floating_point_powf.rs:14:13

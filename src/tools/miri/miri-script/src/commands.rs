@@ -102,8 +102,8 @@ impl Command {
         cmd.stdout(process::Stdio::null());
         cmd.stderr(process::Stdio::null());
         let josh = cmd.spawn().context("failed to start josh-proxy, make sure it is installed")?;
-        // Give it some time so hopefully the port is open. (10ms was not enough.)
-        thread::sleep(time::Duration::from_millis(100));
+        // Give it some time so hopefully the port is open. (100ms was not enough.)
+        thread::sleep(time::Duration::from_millis(200));
 
         // Create a wrapper that stops it on drop.
         struct Josh(process::Child);

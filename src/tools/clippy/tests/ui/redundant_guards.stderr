@@ -5,6 +5,7 @@ LL |         C(x, y) if let 1 = y => ..,
    |                    ^^^^^^^^^
    |
    = note: `-D clippy::redundant-guards` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_guards)]`
 help: try
    |
 LL -         C(x, y) if let 1 = y => ..,

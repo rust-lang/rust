@@ -5,6 +5,7 @@ LL |         let _: *const f32 = std::mem::transmute(ptr);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr as *const f32`
    |
    = note: `-D clippy::transmute-ptr-to-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_ptr_to_ptr)]`
 
 error: transmute from a pointer to a pointer
   --> $DIR/transmute_ptr_to_ptr.rs:33:27

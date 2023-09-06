@@ -5,6 +5,7 @@ LL | struct HTTPResponse; // not linted by default, but with cfg option
    |        ^^^^^^^^^^^^ help: consider making the acronym lowercase, except the initial letter: `HttpResponse`
    |
    = note: `-D clippy::upper-case-acronyms` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::upper_case_acronyms)]`
 
 error: name `NS` contains a capitalized acronym
   --> $DIR/upper_case_acronyms.rs:8:5

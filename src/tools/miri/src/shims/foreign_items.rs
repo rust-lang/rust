@@ -324,7 +324,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Second: functions that return immediately.
         match this.emulate_foreign_item_by_name(link_name, abi, args, dest)? {
             EmulateByNameResult::NeedsJumping => {
-                trace!("{:?}", this.dump_place(**dest));
+                trace!("{:?}", this.dump_place(dest));
                 this.go_to_block(ret);
             }
             EmulateByNameResult::AlreadyJumped => (),

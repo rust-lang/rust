@@ -5,6 +5,7 @@ LL | impl Into<StringWrapper> for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::from-over-into` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::from_over_into)]`
 help: replace the `Into` implementation with `From<std::string::String>`
    |
 LL ~ impl From<String> for StringWrapper {

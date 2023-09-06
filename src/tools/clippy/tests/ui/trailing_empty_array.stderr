@@ -10,6 +10,7 @@ LL | | }
    |
    = help: consider annotating `RarelyUseful` with `#[repr(C)]` or another `repr` attribute
    = note: `-D clippy::trailing-empty-array` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::trailing_empty_array)]`
 
 error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
   --> $DIR/trailing_empty_array.rs:11:1

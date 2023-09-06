@@ -10,6 +10,7 @@ note: this value is dropped without further use
 LL |     let _s = ["lorem", "ipsum"].join(" ").to_string();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::redundant-clone` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_clone)]`
 
 error: redundant clone
   --> $DIR/redundant_clone.rs:18:15

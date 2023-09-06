@@ -2537,18 +2537,25 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             let crateSize = 0;
 
             /**
-             * The raw search data for a given crate. `n`, `t`, `d`, and `q`, `i`, and `f`
-             * are arrays with the same length. n[i] contains the name of an item.
-             * t[i] contains the type of that item (as a string of characters that represent an
-             * offset in `itemTypes`). d[i] contains the description of that item.
+             * The raw search data for a given crate. `n`, `t`, `d`, `i`, and `f`
+             * are arrays with the same length. `q`, `a`, and `c` use a sparse
+             * representation for compactness.
              *
-             * q[i] contains the full path of the item, or an empty string indicating
-             * "same as q[i-1]".
+             * `n[i]` contains the name of an item.
              *
-             * i[i] contains an item's parent, usually a module. For compactness,
+             * `t[i]` contains the type of that item
+             * (as a string of characters that represent an offset in `itemTypes`).
+             *
+             * `d[i]` contains the description of that item.
+             *
+             * `q` contains the full paths of the items. For compactness, it is a set of
+             * (index, path) pairs used to create a map. If a given index `i` is
+             * not present, this indicates "same as the last index present".
+             *
+             * `i[i]` contains an item's parent, usually a module. For compactness,
              * it is a set of indexes into the `p` array.
              *
-             * f[i] contains function signatures, or `0` if the item isn't a function.
+             * `f[i]` contains function signatures, or `0` if the item isn't a function.
              * Functions are themselves encoded as arrays. The first item is a list of
              * types representing the function's inputs, and the second list item is a list
              * of types representing the function's output. Tuples are flattened.
@@ -2561,6 +2568,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
              * `doc` contains the description of the crate.
              *
              * `p` is a list of path/type pairs. It is used for parents and function parameters.
+             *
+             * `c` is an array of item indices that are deprecated.
              *
              * @type {{
              *   doc: string,

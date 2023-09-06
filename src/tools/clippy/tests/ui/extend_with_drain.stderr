@@ -5,6 +5,7 @@ LL |     vec2.extend(vec1.drain(..));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec2.append(&mut vec1)`
    |
    = note: `-D clippy::extend-with-drain` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::extend_with_drain)]`
 
 error: use of `extend` instead of `append` for adding the full range of a second vector
   --> $DIR/extend_with_drain.rs:13:5

@@ -6,6 +6,7 @@ LL |         let _: fn() = std::mem::transmute(0 as *const ());
    |
    = help: try wrapping your function pointer type in `Option<T>` instead, and using `None` as a null pointer value
    = note: `-D clippy::transmute-null-to-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_null_to_fn)]`
 
 error: transmuting a known null pointer into a function pointer
   --> $DIR/transmute_null_to_fn.rs:10:23

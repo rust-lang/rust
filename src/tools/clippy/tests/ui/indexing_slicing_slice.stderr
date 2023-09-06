@@ -6,6 +6,7 @@ LL |     &x[index..];
    |
    = help: consider using `.get(n..)` or .get_mut(n..)` instead
    = note: `-D clippy::indexing-slicing` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::indexing_slicing)]`
 
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:14:6
@@ -54,6 +55,7 @@ LL |     &x[5..][..10];
    |        ^
    |
    = note: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::out_of_bounds_indexing)]`
 
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:25:6

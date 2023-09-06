@@ -5,6 +5,7 @@ LL |         big_fut([0u8; 1024 * 16]).await;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Box::pin` on it: `Box::pin(big_fut([0u8; 1024 * 16]))`
    |
    = note: `-D clippy::large-futures` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_futures)]`
 
 error: large future with a size of 16386 bytes
   --> $DIR/large_futures.rs:15:5

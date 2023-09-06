@@ -10,6 +10,7 @@ note: whether read occurs before this write depends on evaluation order
 LL |         x = 1;
    |         ^^^^^
    = note: `-D clippy::mixed-read-write-in-expression` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mixed_read_write_in_expression)]`
 
 error: unsequenced read of `x`
   --> $DIR/mixed_read_write_in_expression.rs:18:5

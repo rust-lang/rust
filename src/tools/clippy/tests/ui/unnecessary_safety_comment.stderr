@@ -10,6 +10,7 @@ help: consider removing the safety comment
 LL |     // SAFETY:
    |     ^^^^^^^^^^
    = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_safety_comment)]`
 
 error: static item has unnecessary safety comment
   --> $DIR/unnecessary_safety_comment.rs:9:5

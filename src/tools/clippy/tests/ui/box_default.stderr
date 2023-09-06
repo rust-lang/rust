@@ -5,6 +5,7 @@ LL |     let _string: Box<String> = Box::new(Default::default());
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
    |
    = note: `-D clippy::box-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::box_default)]`
 
 error: `Box::new(_)` of default value
   --> $DIR/box_default.rs:23:17

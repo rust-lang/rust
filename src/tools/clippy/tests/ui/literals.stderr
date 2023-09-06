@@ -5,6 +5,7 @@ LL |     let ok4 = 0xab_cd_i32;
    |               ^^^^^^^^^^^ help: remove the underscore: `0xab_cdi32`
    |
    = note: `-D clippy::separated-literal-suffix` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::separated_literal_suffix)]`
 
 error: integer type suffix should not be separated by an underscore
   --> $DIR/literals.rs:16:15
@@ -25,6 +26,7 @@ LL |     let fail1 = 0xabCD;
    |                 ^^^^^^
    |
    = note: `-D clippy::mixed-case-hex-literals` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mixed_case_hex_literals)]`
 
 error: integer type suffix should not be separated by an underscore
   --> $DIR/literals.rs:23:17
@@ -57,6 +59,7 @@ LL |     let fail_multi_zero = 000_123usize;
    |                           ^^^^^^^^^^^^ help: add an underscore: `000_123_usize`
    |
    = note: `-D clippy::unseparated-literal-suffix` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unseparated_literal_suffix)]`
 
 error: this is a decimal constant
   --> $DIR/literals.rs:29:27
@@ -65,6 +68,7 @@ LL |     let fail_multi_zero = 000_123usize;
    |                           ^^^^^^^^^^^^
    |
    = note: `-D clippy::zero-prefixed-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::zero_prefixed_literal)]`
 help: if you mean to use a decimal constant, remove the `0` to avoid confusion
    |
 LL |     let fail_multi_zero = 123usize;
@@ -108,6 +112,7 @@ LL |     let fail19 = 12_3456_21;
    |                  ^^^^^^^^^^ help: consider: `12_345_621`
    |
    = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inconsistent_digit_grouping)]`
 
 error: digits grouped inconsistently by underscores
   --> $DIR/literals.rs:55:18
@@ -128,6 +133,7 @@ LL |     let fail24 = 0xAB_ABC_AB;
    |                  ^^^^^^^^^^^ help: consider: `0x0ABA_BCAB`
    |
    = note: `-D clippy::unusual-byte-groupings` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unusual_byte_groupings)]`
 
 error: this is a decimal constant
   --> $DIR/literals.rs:70:13

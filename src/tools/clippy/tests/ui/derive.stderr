@@ -20,6 +20,7 @@ LL | |     }
 LL | | }
    | |_^
    = note: `-D clippy::expl-impl-clone-on-copy` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::expl_impl_clone_on_copy)]`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
   --> $DIR/derive.rs:37:1

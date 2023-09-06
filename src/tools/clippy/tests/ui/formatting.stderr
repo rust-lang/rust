@@ -6,6 +6,7 @@ LL |     a =- 35;
    |
    = note: to remove this lint, use either `-=` or `= -`
    = note: `-D clippy::suspicious-assignment-formatting` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_assignment_formatting)]`
 
 error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
   --> $DIR/formatting.rs:19:6
@@ -31,6 +32,7 @@ LL |         -1, -2, -3 // <= no comma here
    |
    = note: to remove this lint, add a comma or write the expr in a single line
    = note: `-D clippy::possible-missing-comma` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::possible_missing_comma)]`
 
 error: possibly missing a comma here
   --> $DIR/formatting.rs:41:19

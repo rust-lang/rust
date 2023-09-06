@@ -28,7 +28,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{CharPos, ExpnKind, Pos, SourceFile, Span, Symbol};
+use rustc_span::{ExpnKind, SourceFile, Span, Symbol};
 
 /// A simple error message wrapper for `coverage::Error`s.
 #[derive(Debug)]
@@ -314,8 +314,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             };
             graphviz_data.add_bcb_coverage_span_with_counter(bcb, &covspan, &counter_kind);
 
-            let code_region =
-                make_code_region(source_map, file_name, &self.source_file, span, body_span);
+            let code_region = make_code_region(source_map, file_name, span, body_span);
 
             inject_statement(
                 self.mir_body,
@@ -510,40 +509,36 @@ fn inject_intermediate_expression(mir_body: &mut mir::Body<'_>, expression: Cove
 fn make_code_region(
     source_map: &SourceMap,
     file_name: Symbol,
-    source_file: &Lrc<SourceFile>,
     span: Span,
     body_span: Span,
 ) -> CodeRegion {
     debug!(
-        "Called make_code_region(file_name={}, source_file={:?}, span={}, body_span={})",
+        "Called make_code_region(file_name={}, span={}, body_span={})",
         file_name,
-        source_file,
         source_map.span_to_diagnostic_string(span),
         source_map.span_to_diagnostic_string(body_span)
     );
 
-    let (start_line, mut start_col) = source_file.lookup_file_pos(span.lo());
-    let (end_line, end_col) = if span.hi() == span.lo() {
-        let (end_line, mut end_col) = (start_line, start_col);
+    let (file, mut start_line, mut start_col, mut end_line, mut end_col) =
+        source_map.span_to_location_info(span);
+    if span.hi() == span.lo() {
         // Extend an empty span by one character so the region will be counted.
-        let CharPos(char_pos) = start_col;
         if span.hi() == body_span.hi() {
-            start_col = CharPos(char_pos.saturating_sub(1));
+            start_col = start_col.saturating_sub(1);
         } else {
-            end_col = CharPos(char_pos + 1);
+            end_col = start_col + 1;
         }
-        (end_line, end_col)
-    } else {
-        source_file.lookup_file_pos(span.hi())
     };
-    let start_line = source_map.doctest_offset_line(&source_file.name, start_line);
-    let end_line = source_map.doctest_offset_line(&source_file.name, end_line);
+    if let Some(file) = file {
+        start_line = source_map.doctest_offset_line(&file.name, start_line);
+        end_line = source_map.doctest_offset_line(&file.name, end_line);
+    }
     CodeRegion {
         file_name,
         start_line: start_line as u32,
-        start_col: start_col.to_u32() + 1,
+        start_col: start_col as u32,
         end_line: end_line as u32,
-        end_col: end_col.to_u32() + 1,
+        end_col: end_col as u32,
     }
 }
 

@@ -5,6 +5,7 @@ LL | /// fn main() {
    |    ^^^^^^^^^^^^
    |
    = note: `-D clippy::needless-doctest-main` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_doctest_main)]`
 
 error: needless `fn main` in doctest
   --> $DIR/needless_doc_main.rs:16:4

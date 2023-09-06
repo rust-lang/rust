@@ -5,6 +5,7 @@ LL |         let _: Ty2C<u32, i32> = transmute(value::<Ty2<u32, i32>>());
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::transmute-undefined-repr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_undefined_repr)]`
 
 error: transmute into `Ty2<u32, i32>` which has an undefined layout
   --> $DIR/transmute_undefined_repr.rs:33:32

@@ -82,12 +82,9 @@ impl DebugContext {
         match tcx.sess.source_map().lookup_line(span.lo()) {
             Ok(SourceFileAndLine { sf: file, line }) => {
                 let line_pos = file.lines(|lines| lines[line]);
+                let col = file.relative_position(span.lo()) - line_pos;
 
-                (
-                    file,
-                    u64::try_from(line).unwrap() + 1,
-                    u64::from((span.lo() - line_pos).to_u32()) + 1,
-                )
+                (file, u64::try_from(line).unwrap() + 1, u64::from(col.to_u32()) + 1)
             }
             Err(file) => (file, 0, 0),
         }

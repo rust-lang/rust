@@ -5,6 +5,7 @@ LL |     let _ = x0 as f32;
    |             ^^^^^^^^^ help: try: `f32::from(x0)`
    |
    = note: `-D clippy::cast-lossless` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
 
 error: casting `i8` to `f64` may become silently lossy if you later change the type
   --> $DIR/cast_lossless_float.rs:8:13

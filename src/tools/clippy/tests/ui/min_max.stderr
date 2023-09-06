@@ -5,6 +5,7 @@ LL |     min(1, max(3, x));
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::min-max` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::min_max)]`
 
 error: this `min`/`max` combination leads to constant result
   --> $DIR/min_max.rs:25:5

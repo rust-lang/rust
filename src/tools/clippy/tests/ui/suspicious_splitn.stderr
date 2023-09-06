@@ -6,6 +6,7 @@ LL |     let _ = "a,b".splitn(0, ',');
    |
    = note: the resulting iterator will always return `None`
    = note: `-D clippy::suspicious-splitn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_splitn)]`
 
 error: `rsplitn` called with `0` splits
   --> $DIR/suspicious_splitn.rs:13:13

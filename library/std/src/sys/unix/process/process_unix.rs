@@ -165,7 +165,7 @@ impl Command {
                     assert!(p.wait().is_ok(), "wait() should either return Ok or panic");
                     return Err(Error::from_raw_os_error(errno));
                 }
-                Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => {
                     assert!(p.wait().is_ok(), "wait() should either return Ok or panic");
                     panic!("the CLOEXEC pipe failed: {e:?}")

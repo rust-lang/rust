@@ -8,6 +8,7 @@ LL |     assert_in_macro_def!();
    |     ---------------------- in this macro invocation
    |
    = note: `-D clippy::eq-op` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::eq_op)]`
    = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: identical args used in this `assert_ne!` macro call

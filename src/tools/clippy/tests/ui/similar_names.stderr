@@ -10,6 +10,7 @@ note: existing binding defined here
 LL |     let apple: i32;
    |         ^^^^^
    = note: `-D clippy::similar-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::similar_names)]`
 
 error: binding's name is too similar to existing binding
   --> $DIR/similar_names.rs:24:9

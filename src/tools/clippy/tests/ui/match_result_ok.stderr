@@ -5,6 +5,7 @@ LL |     if let Some(y) = x.parse().ok() { y } else { 0 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::match-result-ok` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_result_ok)]`
 help: consider matching on `Ok(y)` and removing the call to `ok` instead
    |
 LL |     if let Ok(y) = x.parse() { y } else { 0 }

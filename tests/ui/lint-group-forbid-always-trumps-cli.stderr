@@ -5,6 +5,7 @@ LL |     let x = 1;
    |         ^ help: if this is intentional, prefix it with an underscore: `_x`
    |
    = note: `-F unused-variables` implied by `-F unused`
+   = help: to override `-F unused` add `#[allow(unused_variables)]`
 
 error: aborting due to previous error
 

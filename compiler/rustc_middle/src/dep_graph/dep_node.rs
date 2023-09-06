@@ -80,10 +80,54 @@ macro_rules! define_dep_nodes {
         }
 
         /// This enum serves as an index into arrays built by `make_dep_kind_array`.
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
+        // This enum has more than u8::MAX variants so we need some kind of multi-byte
+        // encoding. The derived Encodable/Decodable uses leb128 encoding which is
+        // dense when only considering this enum. But DepKind is encoded in a larger
+        // struct, and there we can take advantage of the unused bits in the u16.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
         #[allow(non_camel_case_types)]
+        #[repr(u16)]
         pub enum DepKind {
             $( $( #[$attr] )* $variant),*
+        }
+
+        impl DepKind {
+            // This const implements two things: A bounds check so that we can decode
+            // a DepKind from a u16 with just one check, and a const check that the
+            // discriminants of the variants have been assigned consecutively from 0
+            // so that just the one comparison suffices to check that the u16 can be
+            // transmuted to a DepKind.
+            const VARIANTS: u16 = {
+                let deps: &[DepKind] = &[$(DepKind::$variant,)*];
+                let mut i = 0;
+                while i < deps.len() {
+                    if i as u16 != deps[i] as u16 {
+                        panic!();
+                    }
+                    i += 1;
+                }
+                deps.len() as u16
+            };
+        }
+
+        impl<S: rustc_serialize::Encoder> rustc_serialize::Encodable<S> for DepKind {
+            #[inline]
+            fn encode(&self, s: &mut S) {
+                s.emit_u16(*self as u16);
+            }
+        }
+
+        impl<D: rustc_serialize::Decoder> rustc_serialize::Decodable<D> for DepKind {
+            #[inline]
+            fn decode(d: &mut D) -> DepKind {
+                let discrim = d.read_u16();
+                assert!(discrim < DepKind::VARIANTS);
+                // SAFETY: DepKind::VARIANTS checks that the discriminant values permit
+                // this one check to soundly guard the transmute.
+                unsafe {
+                    std::mem::transmute::<u16, DepKind>(discrim)
+                }
+            }
         }
 
         pub(super) fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
@@ -113,6 +157,8 @@ rustc_query_append!(define_dep_nodes![
     [] fn CompileCodegenUnit() -> (),
     [] fn CompileMonoItem() -> (),
 ]);
+
+static_assert_size!(DepKind, 2);
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
 // Be very careful changing this type signature!

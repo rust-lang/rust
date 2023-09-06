@@ -360,7 +360,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
         if place.layout.is_unsized() {
-            self.check_wide_ptr_meta(place.meta, place.layout)?;
+            self.check_wide_ptr_meta(place.meta(), place.layout)?;
         }
         // Make sure this is dereferenceable and all.
         let size_and_align = try_validation!(
@@ -379,7 +379,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
         try_validation!(
             self.ecx.check_ptr_access_align(
-                place.ptr,
+                place.ptr(),
                 size,
                 align,
                 CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
@@ -414,7 +414,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         if let Some(ref_tracking) = self.ref_tracking.as_deref_mut() {
             // Proceed recursively even for ZST, no reason to skip them!
             // `!` is a ZST and we want to validate it.
-            if let Ok((alloc_id, _offset, _prov)) = self.ecx.ptr_try_get_alloc_id(place.ptr) {
+            if let Ok((alloc_id, _offset, _prov)) = self.ecx.ptr_try_get_alloc_id(place.ptr()) {
                 // Let's see what kind of memory this points to.
                 let alloc_kind = self.ecx.tcx.try_get_global_alloc(alloc_id);
                 match alloc_kind {
@@ -521,7 +521,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let place =
                     self.ecx.ref_to_mplace(&self.read_immediate(value, ExpectedKind::RawPtr)?)?;
                 if place.layout.is_unsized() {
-                    self.check_wide_ptr_meta(place.meta, place.layout)?;
+                    self.check_wide_ptr_meta(place.meta(), place.layout)?;
                 }
                 Ok(true)
             }
@@ -739,7 +739,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 let mplace = op.assert_mem_place(); // strings are unsized and hence never immediate
                 let len = mplace.len(self.ecx)?;
                 try_validation!(
-                    self.ecx.read_bytes_ptr_strip_provenance(mplace.ptr, Size::from_bytes(len)),
+                    self.ecx.read_bytes_ptr_strip_provenance(mplace.ptr(), Size::from_bytes(len)),
                     self.path,
                     Ub(InvalidUninitBytes(..)) => Uninit { expected: ExpectedKind::Str },
                     Unsup(ReadPointerAsInt(_)) => PointerAsInt { expected: ExpectedKind::Str }
@@ -789,7 +789,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // to reject those pointers, we just do not have the machinery to
                 // talk about parts of a pointer.
                 // We also accept uninit, for consistency with the slow path.
-                let alloc = self.ecx.get_ptr_alloc(mplace.ptr, size, mplace.align)?.expect("we already excluded size 0");
+                let alloc = self.ecx.get_ptr_alloc(mplace.ptr(), size, mplace.align)?.expect("we already excluded size 0");
 
                 match alloc.get_bytes_strip_provenance() {
                     // In the happy case, we needn't check anything else.

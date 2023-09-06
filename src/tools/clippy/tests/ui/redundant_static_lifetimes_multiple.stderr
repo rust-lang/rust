@@ -5,6 +5,7 @@ LL | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; 
    |                 -^^^^^^^------------------ help: consider removing `'static`: `&[&[&'static str]]`
    |
    = note: `-D clippy::redundant-static-lifetimes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_static_lifetimes)]`
 
 error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes_multiple.rs:4:30

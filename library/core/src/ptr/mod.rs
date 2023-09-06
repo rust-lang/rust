@@ -795,7 +795,9 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * Both `x` and `y` must be [valid] for both reads and writes.
+/// * Both `x` and `y` must be [valid] for both reads and writes. They must remain valid even when the
+///   other pointer is written. (This means if the memory ranges overlap, the two pointers must not
+///   be subject to aliasing restrictions relative to each other.)
 ///
 /// * Both `x` and `y` must be properly aligned.
 ///

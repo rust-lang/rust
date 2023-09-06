@@ -626,6 +626,7 @@ rustdoc = [
     "@jsha",
     "@GuillaumeGomez",
     "@notriddle",
+    "@fmease",
 ]
 docs = [
     "@ehuss",

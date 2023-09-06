@@ -10,6 +10,7 @@ help: remove the explicit type `_` declaration
 LL |     let x: _ = 1;
    |          ^^^
    = note: `-D clippy::let-with-type-underscore` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::let_with_type_underscore)]`
 
 error: variable declared with type underscore
   --> $DIR/let_with_type_underscore.rs:16:5

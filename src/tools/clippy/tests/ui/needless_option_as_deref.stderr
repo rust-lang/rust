@@ -5,6 +5,7 @@ LL |     let _: Option<&usize> = Some(&1).as_deref();
    |                             ^^^^^^^^^^^^^^^^^^^ help: try: `Some(&1)`
    |
    = note: `-D clippy::needless-option-as-deref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_option_as_deref)]`
 
 error: derefed type is same as origin
   --> $DIR/needless_option_as_deref.rs:8:33

@@ -5,6 +5,7 @@ LL | pub fn apocalypse(universe: &mut ()) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnecessary-safety-doc` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_safety_doc)]`
 
 error: safe function's docs have unnecessary `# Safety` section
   --> $DIR/unnecessary_unsafety_doc.rs:45:5

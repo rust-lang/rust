@@ -5,6 +5,7 @@ LL | use crate::fn_mod::*;
    |     ^^^^^^^^^^^^^^^^ help: try: `crate::fn_mod::foo`
    |
    = note: `-D clippy::wildcard-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::wildcard_imports)]`
 
 error: usage of wildcard import
   --> $DIR/wildcard_imports_2021.rs:14:5

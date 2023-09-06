@@ -5,6 +5,7 @@ LL | #[allow(dead_code)]
    |   ^^^^^ help: replace it with: `expect`
    |
    = note: `-D clippy::allow-attributes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::allow_attributes)]`
 
 error: #[allow] attribute found
   --> $DIR/allow_attributes.rs:22:30

@@ -11,6 +11,7 @@ LL | |     };
    | |_____^ help: replace it with: `i`
    |
    = note: `-D clippy::needless-match` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_match)]`
 
 error: this match expression is unnecessary
   --> $DIR/needless_match.rs:22:19

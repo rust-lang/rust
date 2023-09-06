@@ -5,6 +5,7 @@ LL |     ptr as *const T
    |     ^^^^^^^^^^^^^^^ help: try: `ptr`
    |
    = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_cast)]`
 
 error: casting integer literal to `i32` is unnecessary
   --> $DIR/unnecessary_cast.rs:53:5

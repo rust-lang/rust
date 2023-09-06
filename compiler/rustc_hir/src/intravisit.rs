@@ -152,7 +152,7 @@ pub mod nested_filter {
     /// visit fn bodies for fns that it encounters, and closure bodies, but
     /// skip over nested item-like things.
     ///
-    /// See the comments on `ItemLikeVisitor` for more details on the overall
+    /// See the comments at [`rustc_hir::intravisit`] for more details on the overall
     /// visit strategy.
     pub trait NestedFilter<'hir> {
         type Map: Map<'hir>;
@@ -229,8 +229,8 @@ pub trait Visitor<'v>: Sized {
     /// `Self::NestedFilter` is `nested_filter::None`, this method does
     /// nothing. **You probably don't want to override this method** --
     /// instead, override [`Self::NestedFilter`] or use the "shallow" or
-    /// "deep" visit patterns described on
-    /// `itemlikevisit::ItemLikeVisitor`. The only reason to override
+    /// "deep" visit patterns described at
+    /// [`rustc_hir::intravisit`]. The only reason to override
     /// this method is if you want a nested pattern but cannot supply a
     /// [`Map`]; see `nested_visit_map` for advice.
     fn visit_nested_item(&mut self, id: ItemId) {

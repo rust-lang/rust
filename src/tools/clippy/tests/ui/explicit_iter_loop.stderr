@@ -53,6 +53,7 @@ LL |     for _ in (&mut [1, 2, 3]).iter() {}
    |              ^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnecessary-mut-passed` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_mut_passed)]`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
   --> $DIR/explicit_iter_loop.rs:33:14

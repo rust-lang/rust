@@ -2920,6 +2920,16 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     rustc_transmute::Reason::DstIsTooBig => {
                         format!("The size of `{src}` is smaller than the size of `{dst}`")
                     }
+                    rustc_transmute::Reason::SrcSizeOverflow => {
+                        format!(
+                            "values of the type `{src}` are too big for the current architecture"
+                        )
+                    }
+                    rustc_transmute::Reason::DstSizeOverflow => {
+                        format!(
+                            "values of the type `{dst}` are too big for the current architecture"
+                        )
+                    }
                     rustc_transmute::Reason::DstHasStricterAlignment {
                         src_min_align,
                         dst_min_align,

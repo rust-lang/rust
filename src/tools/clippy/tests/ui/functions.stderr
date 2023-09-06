@@ -5,6 +5,7 @@ LL | fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::too-many-arguments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_many_arguments)]`
 
 error: this function has too many arguments (8/7)
   --> $DIR/functions.rs:13:1
@@ -37,6 +38,7 @@ LL |         println!("{}", unsafe { *p });
    |                                  ^
    |
    = note: `-D clippy::not-unsafe-ptr-arg-deref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::not_unsafe_ptr_arg_deref)]`
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
   --> $DIR/functions.rs:71:35

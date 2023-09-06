@@ -5,6 +5,7 @@ LL |     a += a + 1;
    |     ^^^^^^^^^^
    |
    = note: `-D clippy::misrefactored-assign-op` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::misrefactored_assign_op)]`
 help: did you mean `a = a + 1` or `a = a + a + 1`? Consider replacing it with
    |
 LL |     a += 1;
@@ -141,6 +142,7 @@ LL |     buf = buf + cows.clone();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `buf += cows.clone()`
    |
    = note: `-D clippy::assign-op-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::assign_op_pattern)]`
 
 error: aborting due to 10 previous errors
 

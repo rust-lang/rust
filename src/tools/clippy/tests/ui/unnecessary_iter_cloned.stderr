@@ -5,6 +5,7 @@ LL |     for (t, path) in files.iter().copied() {
    |                      ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnecessary-to-owned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_to_owned)]`
 help: use
    |
 LL |     for (t, path) in files {

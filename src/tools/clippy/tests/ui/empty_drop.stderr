@@ -7,6 +7,7 @@ LL | | }
    | |_^ help: try removing this impl
    |
    = note: `-D clippy::empty-drop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_drop)]`
 
 error: empty drop implementation
   --> $DIR/empty_drop.rs:23:1

@@ -6,6 +6,7 @@ LL |     assert!(true);
    |
    = help: remove it
    = note: `-D clippy::assertions-on-constants` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::assertions_on_constants)]`
 
 error: `assert!(false)` should probably be replaced
   --> $DIR/assertions_on_constants.rs:12:5

@@ -6,6 +6,7 @@ LL | |     v1.reserve(10);
    | |___________________^ help: consider using `Vec::with_capacity(/* Space hint */)`: `let mut v1: Vec<usize> = Vec::with_capacity(10);`
    |
    = note: `-D clippy::reserve-after-initialization` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::reserve_after_initialization)]`
 
 error: call to `reserve` immediately after creation
   --> $DIR/reserve_after_initialization.rs:17:5

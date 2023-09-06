@@ -2477,9 +2477,7 @@ impl<'a> Parser<'a> {
         } else {
             self.expect(&token::Eq)?;
         }
-        let expr = self.with_res(self.restrictions | Restrictions::NO_STRUCT_LITERAL, |this| {
-            this.parse_expr_assoc_with(1 + prec_let_scrutinee_needs_par(), None.into())
-        })?;
+        let expr = self.parse_expr_assoc_with(1 + prec_let_scrutinee_needs_par(), None.into())?;
         let span = lo.to(expr.span);
         self.sess.gated_spans.gate(sym::let_chains, span);
         Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span)))

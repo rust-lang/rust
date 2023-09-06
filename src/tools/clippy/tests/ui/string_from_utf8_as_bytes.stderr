@@ -5,6 +5,7 @@ LL |     let _ = std::str::from_utf8(&"Hello World!".as_bytes()[6..11]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(&"Hello World!"[6..11])`
    |
    = note: `-D clippy::string-from-utf8-as-bytes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::string_from_utf8_as_bytes)]`
 
 error: aborting due to previous error
 

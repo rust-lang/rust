@@ -9,6 +9,7 @@ LL | |     };
    | |_____^ help: try: `owned.as_ref()`
    |
    = note: `-D clippy::match-as-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_as_ref)]`
 
 error: use `as_mut()` instead
   --> $DIR/match_as_ref.rs:12:39

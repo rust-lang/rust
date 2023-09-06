@@ -1,0 +1,57 @@
+Function name: abort::main
+Raw bytes (105): 0x[01, 01, 12, 01, 47, 05, 09, 03, 0d, 42, 11, 03, 0d, 11, 3e, 42, 11, 03, 0d, 3b, 15, 11, 3e, 42, 11, 03, 0d, 15, 36, 3b, 15, 11, 3e, 42, 11, 03, 0d, 05, 09, 0d, 01, 0d, 01, 01, 1b, 03, 02, 0b, 00, 18, 42, 01, 0c, 00, 19, 11, 00, 1a, 02, 0a, 3e, 02, 0a, 00, 0b, 3b, 02, 0c, 00, 19, 15, 00, 1a, 00, 31, 36, 00, 31, 00, 32, 33, 04, 0c, 00, 19, 05, 00, 1a, 00, 31, 09, 00, 31, 00, 32, 47, 01, 09, 00, 17, 0d, 02, 05, 01, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 18
+- expression 0 operands: lhs = Counter(0), rhs = Expression(17, Add)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 2 operands: lhs = Expression(0, Add), rhs = Counter(3)
+- expression 3 operands: lhs = Expression(16, Sub), rhs = Counter(4)
+- expression 4 operands: lhs = Expression(0, Add), rhs = Counter(3)
+- expression 5 operands: lhs = Counter(4), rhs = Expression(15, Sub)
+- expression 6 operands: lhs = Expression(16, Sub), rhs = Counter(4)
+- expression 7 operands: lhs = Expression(0, Add), rhs = Counter(3)
+- expression 8 operands: lhs = Expression(14, Add), rhs = Counter(5)
+- expression 9 operands: lhs = Counter(4), rhs = Expression(15, Sub)
+- expression 10 operands: lhs = Expression(16, Sub), rhs = Counter(4)
+- expression 11 operands: lhs = Expression(0, Add), rhs = Counter(3)
+- expression 12 operands: lhs = Counter(5), rhs = Expression(13, Sub)
+- expression 13 operands: lhs = Expression(14, Add), rhs = Counter(5)
+- expression 14 operands: lhs = Counter(4), rhs = Expression(15, Sub)
+- expression 15 operands: lhs = Expression(16, Sub), rhs = Counter(4)
+- expression 16 operands: lhs = Expression(0, Add), rhs = Counter(3)
+- expression 17 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 13
+- Code(Counter(0)) at (prev + 13, 1) to (start + 1, 27)
+- Code(Expression(0, Add)) at (prev + 2, 11) to (start + 0, 24)
+    = (c0 + (c1 + c2))
+- Code(Expression(16, Sub)) at (prev + 1, 12) to (start + 0, 25)
+    = ((c0 + (c1 + c2)) - c3)
+- Code(Counter(4)) at (prev + 0, 26) to (start + 2, 10)
+- Code(Expression(15, Sub)) at (prev + 2, 10) to (start + 0, 11)
+    = (((c0 + (c1 + c2)) - c3) - c4)
+- Code(Expression(14, Add)) at (prev + 2, 12) to (start + 0, 25)
+    = (c4 + (((c0 + (c1 + c2)) - c3) - c4))
+- Code(Counter(5)) at (prev + 0, 26) to (start + 0, 49)
+- Code(Expression(13, Sub)) at (prev + 0, 49) to (start + 0, 50)
+    = ((c4 + (((c0 + (c1 + c2)) - c3) - c4)) - c5)
+- Code(Expression(12, Add)) at (prev + 4, 12) to (start + 0, 25)
+    = (c5 + ((c4 + (((c0 + (c1 + c2)) - c3) - c4)) - c5))
+- Code(Counter(1)) at (prev + 0, 26) to (start + 0, 49)
+- Code(Counter(2)) at (prev + 0, 49) to (start + 0, 50)
+- Code(Expression(17, Add)) at (prev + 1, 9) to (start + 0, 23)
+    = (c1 + c2)
+- Code(Counter(3)) at (prev + 2, 5) to (start + 1, 2)
+
+Function name: abort::might_abort
+Raw bytes (21): 0x[01, 01, 01, 01, 05, 03, 01, 04, 01, 01, 14, 05, 02, 09, 01, 24, 02, 02, 0c, 03, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 4, 1) to (start + 1, 20)
+- Code(Counter(1)) at (prev + 2, 9) to (start + 1, 36)
+- Code(Expression(0, Sub)) at (prev + 2, 12) to (start + 3, 2)
+    = (c0 - c1)
+

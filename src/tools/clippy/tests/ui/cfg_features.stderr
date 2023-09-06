@@ -5,6 +5,7 @@ LL |     #[cfg(features = "not-really-a-feature")]
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `feature = "not-really-a-feature"`
    |
    = note: `-D clippy::maybe-misused-cfg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::maybe_misused_cfg)]`
 
 error: feature may misspelled as features
   --> $DIR/cfg_features.rs:9:34

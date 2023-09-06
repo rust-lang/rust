@@ -3,6 +3,7 @@ pub mod io;
 use crate::environment::Environment;
 use crate::utils::io::{delete_directory, get_files_from_dir};
 use humansize::{format_size, BINARY};
+use std::time::Duration;
 use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
 
 pub fn format_env_variables() -> String {
@@ -68,6 +69,24 @@ pub fn with_log_group<F: FnOnce() -> R, R>(group: &str, func: F) -> R {
     } else {
         func()
     }
+}
+
+#[allow(unused)]
+pub fn retry_action<F: Fn() -> anyhow::Result<R>, R>(
+    action: F,
+    name: &str,
+    count: u64,
+) -> anyhow::Result<R> {
+    for attempt in 0..count {
+        match action() {
+            Ok(result) => return Ok(result),
+            Err(error) => {
+                log::error!("Failed to perform action `{name}`, attempt #{attempt}: {error:?}");
+                std::thread::sleep(Duration::from_secs(5));
+            }
+        }
+    }
+    Err(anyhow::anyhow!("Failed to perform action `{name}` after {count} retries"))
 }
 
 fn is_in_ci() -> bool {

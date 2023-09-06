@@ -5,6 +5,7 @@ LL |     for _ in 0..3 + 1 {}
    |              ^^^^^^^^ help: use: `0..=3`
    |
    = note: `-D clippy::range-plus-one` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::range_plus_one)]`
 
 error: an inclusive range would be more readable
   --> $DIR/range_plus_minus_one.rs:32:14
@@ -31,6 +32,7 @@ LL |     let _ = ..=11 - 1;
    |             ^^^^^^^^^ help: use: `..11`
    |
    = note: `-D clippy::range-minus-one` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::range_minus_one)]`
 
 error: an exclusive range would be more readable
   --> $DIR/range_plus_minus_one.rs:46:13

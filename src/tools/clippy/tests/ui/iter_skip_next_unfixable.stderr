@@ -10,6 +10,7 @@ help: for this change `sp` has to be mutable
 LL |     let sp = test_string.split('|').map(|s| s.trim());
    |         ^^
    = note: `-D clippy::iter-skip-next` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_skip_next)]`
 
 error: called `skip(..).next()` on an iterator
   --> $DIR/iter_skip_next_unfixable.rs:12:29

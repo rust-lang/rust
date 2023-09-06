@@ -5,6 +5,7 @@ LL |     str: Sized;
    |          ^^^^^
    |
    = note: `-D trivial-bounds` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(trivial_bounds)]`
 
 error: trait bound for<'a> Dst<(dyn A + 'a)>: std::marker::Sized does not depend on any type or lifetime parameters
   --> $DIR/ice-3969.rs:26:30

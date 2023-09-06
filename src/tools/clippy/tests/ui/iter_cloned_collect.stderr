@@ -5,6 +5,7 @@ LL |     let v2: Vec<isize> = v.iter().cloned().collect();
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
    |
    = note: `-D clippy::iter-cloned-collect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_cloned_collect)]`
 
 error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
   --> $DIR/iter_cloned_collect.rs:13:38

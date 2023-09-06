@@ -7,6 +7,7 @@ LL |     foo({});
    |         help: use a unit literal instead: `()`
    |
    = note: `-D clippy::unit-arg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unit_arg)]`
 
 error: passing a unit value to a function
   --> $DIR/unit_arg_empty_blocks.rs:17:5

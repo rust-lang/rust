@@ -5,6 +5,7 @@ LL |     for (_, v) in &m {
    |                   ^^
    |
    = note: `-D clippy::for-kv-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::for_kv_map)]`
 help: use the corresponding method
    |
 LL |     for v in m.values() {

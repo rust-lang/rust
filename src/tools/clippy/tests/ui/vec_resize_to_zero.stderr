@@ -8,6 +8,7 @@ LL |     v.resize(0, 5);
    |
    = help: the arguments may be inverted...
    = note: `-D clippy::vec-resize-to-zero` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::vec_resize_to_zero)]`
 
 error: aborting due to previous error
 

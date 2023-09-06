@@ -5,6 +5,7 @@ LL |     let len = sample.iter().collect::<Vec<_>>().len();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `count()`
    |
    = note: `-D clippy::needless-collect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_collect)]`
 
 error: avoid using `collect()` when not needed
   --> $DIR/needless_collect.rs:10:22

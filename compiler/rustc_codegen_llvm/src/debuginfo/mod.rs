@@ -267,7 +267,7 @@ impl CodegenCx<'_, '_> {
 
                 // Use 1-based indexing.
                 let line = (line + 1) as u32;
-                let col = (pos - line_pos).to_u32() + 1;
+                let col = (file.relative_position(pos) - line_pos).to_u32() + 1;
 
                 (file, line, col)
             }

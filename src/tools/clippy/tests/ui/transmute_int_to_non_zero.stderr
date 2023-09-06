@@ -5,6 +5,7 @@ LL |     let _: NonZeroU8 = unsafe { std::mem::transmute(int_u8) };
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `NonZeroU8::new_unchecked(int_u8)`
    |
    = note: `-D clippy::transmute-int-to-non-zero` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_int_to_non_zero)]`
 
 error: transmute from a `u16` to a `NonZeroU16`
   --> $DIR/transmute_int_to_non_zero.rs:21:34

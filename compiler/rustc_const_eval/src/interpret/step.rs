@@ -204,7 +204,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // avoid writing each operand individually and instead just make many copies
                     // of the first element.
                     let elem_size = first.layout.size;
-                    let first_ptr = first.ptr;
+                    let first_ptr = first.ptr();
                     let rest_ptr = first_ptr.offset(elem_size, self)?;
                     // For the alignment of `rest_ptr`, we crucially do *not* use `first.align` as
                     // that place might be more aligned than its type mandates (a `u8` array could
@@ -305,7 +305,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-        trace!("{:?}", self.dump_place(*dest));
+        trace!("{:?}", self.dump_place(&dest));
 
         Ok(())
     }

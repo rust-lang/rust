@@ -5,6 +5,7 @@ LL |     let _ = !a.is_some();
    |             ^^^^^^^^^^^^ help: try: `a.is_none()`
    |
    = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
 
 error: this boolean expression can be simplified
   --> $DIR/nonminimal_bool_methods.rs:10:13

@@ -703,7 +703,8 @@ impl<'a> Builder<'a> {
                 llvm::Lld,
                 llvm::CrtBeginEnd,
                 tool::RustdocGUITest,
-                tool::OptimizedDist
+                tool::OptimizedDist,
+                tool::CoverageDump,
             ),
             Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,
@@ -725,6 +726,7 @@ impl<'a> Builder<'a> {
                 test::Tidy,
                 test::Ui,
                 test::RunPassValgrind,
+                test::CoverageMap,
                 test::RunCoverage,
                 test::MirOpt,
                 test::Codegen,

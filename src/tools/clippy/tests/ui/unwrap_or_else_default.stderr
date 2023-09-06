@@ -5,6 +5,7 @@ LL |     with_new.unwrap_or_else(Vec::new);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
    |
    = note: `-D clippy::unwrap-or-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unwrap_or_default)]`
 
 error: use of `unwrap_or_else` to construct default value
   --> $DIR/unwrap_or_else_default.rs:60:23

@@ -5,6 +5,7 @@ LL |     let _ = s == "";
    |             ^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
    |
    = note: `-D clippy::comparison-to-empty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::comparison_to_empty)]`
 
 error: comparison to empty slice
   --> $DIR/comparison_to_empty.rs:9:13

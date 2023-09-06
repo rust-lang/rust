@@ -6,6 +6,7 @@ LL |     let _ = opt.expect("");
    |
    = note: if this value is `None`, it will panic
    = note: `-D clippy::expect-used` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::expect_used)]`
 
 error: used `expect()` on a `Result` value
   --> $DIR/expect.rs:12:13

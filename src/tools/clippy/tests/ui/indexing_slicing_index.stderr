@@ -7,6 +7,7 @@ LL | const REF: &i32 = &ARR[idx()]; // This should be linted, since `suppress-re
    = help: consider using `.get(n)` or `.get_mut(n)` instead
    = note: the suggestion might not be applicable in constant blocks
    = note: `-D clippy::indexing-slicing` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::indexing_slicing)]`
 
 error: indexing may panic
   --> $DIR/indexing_slicing_index.rs:16:24

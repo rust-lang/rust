@@ -5,6 +5,7 @@ LL |     matches!(maybe_some, None if !boolean)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `maybe_some.is_none() && (!boolean)`
    |
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 
 error: redundant pattern matching, consider using `is_none()`
   --> $DIR/redundant_pattern_matching_option.rs:18:13

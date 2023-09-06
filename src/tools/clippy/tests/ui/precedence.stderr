@@ -5,6 +5,7 @@ LL |     1 << 2 + 3;
    |     ^^^^^^^^^^ help: consider parenthesizing your expression: `1 << (2 + 3)`
    |
    = note: `-D clippy::precedence` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::precedence)]`
 
 error: operator precedence can trip the unwary
   --> $DIR/precedence.rs:17:5
