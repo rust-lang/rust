@@ -1,5 +1,4 @@
 // compile-flags: -O -Ccodegen-units=1
-// only-x86_64-unknown-linux-gnu
 
 #![crate_type = "lib"]
 
@@ -19,6 +18,7 @@ impl Copy for Boolean {}
 
 extern "C" {
     fn set_value(foo: *mut i64);
+    fn bar();
 }
 
 pub fn foo(x: bool) {
@@ -39,12 +39,8 @@ pub fn foo(x: bool) {
     let l2 = unsafe { *foo.as_mut_ptr() };
     if l2 == 2 {
         // CHECK: call void @bar
-        bar();
+        unsafe {
+            bar();
+        }
     }
-}
-
-#[no_mangle]
-#[inline(never)]
-pub fn bar() {
-    println!("Working correctly!");
 }
