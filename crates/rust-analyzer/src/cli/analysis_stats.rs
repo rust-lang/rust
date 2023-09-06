@@ -317,9 +317,13 @@ impl flags::AnalysisStats {
 
     fn run_mir_lowering(&self, db: &RootDatabase, bodies: &[DefWithBody], verbosity: Verbosity) {
         let mut sw = self.stop_watch();
-        let all = bodies.len() as u64;
+        let mut all = 0;
         let mut fail = 0;
         for &body in bodies {
+            if matches!(body, DefWithBody::Variant(_)) {
+                continue;
+            }
+            all += 1;
             let Err(e) = db.mir_body(body.into()) else {
                 continue;
             };
