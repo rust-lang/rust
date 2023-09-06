@@ -1,4 +1,6 @@
-name: CI libgccjit 12
+# TODO: check if qemu-user-static-binfmt is needed (perhaps to run some tests since it probably calls exec).
+
+name: m68k CI
 
 on:
   - push
@@ -10,7 +12,8 @@ permissions:
 env:
   # Enable backtraces for easier debugging
   RUST_BACKTRACE: 1
-  TEST_FLAGS: "-Cpanic=abort -Zpanic-abort-tests"
+  # TODO: remove when confish.sh is removed.
+  OVERWRITE_TARGET_TRIPLE: m68k-unknown-linux-gnu
 
 jobs:
   build:
@@ -21,10 +24,8 @@ jobs:
       matrix:
         commands: [
           "--mini-tests",
-          # TODO(antoyo): re-enable those commands when the build with libgccjit 12 is fixed.
-          #"--std-tests",
-          # FIXME: re-enable asm tests when GCC can emit in the right syntax.
-          # "--asm-tests",
+          "--std-tests",
+          # TODO(antoyo): fix those on m68k.
           #"--test-libcore",
           #"--extended-rand-tests",
           #"--extended-regex-example-tests",
@@ -35,14 +36,35 @@ jobs:
         ]
 
     steps:
+    - name: Install packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install qemu qemu-user-static
+
     - uses: actions/checkout@v3
 
-    - name: Install packages
-      # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
-      run: sudo apt-get install ninja-build ripgrep llvm-14-tools libgccjit-12-dev
+    - name: Download GCC artifact
+      uses: dawidd6/action-download-artifact@v2
+      with:
+          workflow: m68k.yml
+          name: gcc-m68k-13
+          repo: cross-cg-gcc-tools/cross-gcc
+          branch: master
+          event: push
+
+    - name: Download VM artifact
+      uses: dawidd6/action-download-artifact@v2
+      with:
+          workflow: m68k.yml
+          name: debian-m68k
+          repo: cross-cg-gcc-tools/vms
+          branch: master
+          event: push
 
     - name: Setup path to libgccjit
-      run: echo /usr/lib/gcc/x86_64-linux-gnu/12 > gcc_path
+      run: |
+          sudo dpkg -i gcc-m68k-13.deb
+          echo /usr/lib/ > gcc_path
 
     - name: Set env
       run: |
@@ -56,17 +78,17 @@ jobs:
         path: ~/.cargo/bin
         key: cargo-installed-crates2-ubuntu-latest
 
-    - name: Cache cargo registry
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry2-${{ hashFiles('**/Cargo.lock') }}
+    #- name: Cache cargo registry
+      #uses: actions/cache@v3
+      #with:
+        #path: ~/.cargo/registry
+        #key: ${{ runner.os }}-cargo-registry2-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Cache cargo index
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    #- name: Cache cargo index
+      #uses: actions/cache@v3
+      #with:
+        #path: ~/.cargo/git
+        #key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache cargo target dir
       uses: actions/cache@v3
@@ -83,20 +105,24 @@ jobs:
         #path: rust
         #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
 
+    - name: Prepare VM
+      run: |
+        mkdir vm
+        sudo mount debian-m68k.img vm
+        sudo cp $(which qemu-m68k-static) vm/usr/bin/
+
     - name: Build
       run: |
-        ./y.sh prepare --only-libcore
-        # TODO(antoyo): build the sysroot when the build with libgccjit 12 is fixed.
-        #./y.sh build --no-default-features
-        # TODO(antoyo): run the tests when we can build the sysroot with libgccjit 12.
-        #cargo test --no-default-features
+        ./y.sh prepare --only-libcore --cross
+        ./y.sh build --target-triple m68k-unknown-linux-gnu
+        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu cargo test
         ./clean_all.sh
 
     - name: Prepare dependencies
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
-        ./y.sh prepare
+        ./y.sh prepare --cross
 
     # Compile is a separate step, as the actions-rs/cargo action supports error annotations
     - name: Compile
@@ -105,12 +131,9 @@ jobs:
         command: build
         args: --release
 
-    - name: Add more failing tests for GCC 12
-      run: cat failing-ui-tests12.txt >> failing-ui-tests.txt
+    - name: Add more failing tests because the sysroot is not compiled with LTO
+      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
 
     - name: Run tests
       run: |
-        # TODO(antoyo): add --build-sysroot when the build with libgccjit 12 is fixed.
-        # FIXME(antoyo): we need to set GCC_EXEC_PREFIX so that the linker can find the linker plugin.
-        # Not sure why it's not found otherwise.
-        GCC_EXEC_PREFIX=/usr/lib/gcc/ ./test.sh --release --clean ${{ matrix.commands }} --no-default-features
+        ./test.sh --release --clean --build-sysroot ${{ matrix.commands }}

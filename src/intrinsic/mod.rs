@@ -930,15 +930,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                             128 => "__rust_i128_addo",
                             _ => unreachable!(),
                         };
-                    let param_a = self.context.new_parameter(None, result_type, "a");
-                    let param_b = self.context.new_parameter(None, result_type, "b");
-                    let result_field = self.context.new_field(None, result_type, "result");
-                    let overflow_field = self.context.new_field(None, self.bool_type, "overflow");
-                    let return_type = self.context.new_struct_type(None, "result_overflow", &[result_field, overflow_field]);
-                    let func = self.context.new_function(None, FunctionType::Extern, return_type.as_type(), &[param_a, param_b], func_name, false);
-                    let result = self.context.new_call(None, func, &[lhs, rhs]);
-                    let overflow = result.access_field(None, overflow_field);
-                    let int_result = result.access_field(None, result_field);
+                    let (int_result, overflow) = self.operation_with_overflow(func_name, lhs, rhs);
                     self.llbb().add_assignment(None, res, int_result);
                     overflow
                 };
@@ -1000,15 +992,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                             128 => "__rust_i128_subo",
                             _ => unreachable!(),
                         };
-                    let param_a = self.context.new_parameter(None, result_type, "a");
-                    let param_b = self.context.new_parameter(None, result_type, "b");
-                    let result_field = self.context.new_field(None, result_type, "result");
-                    let overflow_field = self.context.new_field(None, self.bool_type, "overflow");
-                    let return_type = self.context.new_struct_type(None, "result_overflow", &[result_field, overflow_field]);
-                    let func = self.context.new_function(None, FunctionType::Extern, return_type.as_type(), &[param_a, param_b], func_name, false);
-                    let result = self.context.new_call(None, func, &[lhs, rhs]);
-                    let overflow = result.access_field(None, overflow_field);
-                    let int_result = result.access_field(None, result_field);
+                    let (int_result, overflow) = self.operation_with_overflow(func_name, lhs, rhs);
                     self.llbb().add_assignment(None, res, int_result);
                     overflow
                 };

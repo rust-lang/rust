@@ -2,7 +2,7 @@
 use std::{
     env::{self, current_dir},
     path::PathBuf,
-    process::Command,
+    process::{self, Command},
 };
 
 use lang_tester::LangTester;
@@ -50,6 +50,19 @@ pub fn main_inner(profile: Profile) {
                 "-o", exe.to_str().expect("to_str"),
                 path.to_str().expect("to_str"),
             ]);
+
+            // TODO(antoyo): find a way to send this via a cli argument.
+            let test_target = std::env::var("CG_GCC_TEST_TARGET");
+            if let Ok(ref target) = test_target {
+                compiler.args(&["--target", &target]);
+                let linker = format!("{}-gcc", target);
+                compiler.args(&[format!("-Clinker={}", linker)]);
+                let mut env_path = std::env::var("PATH").unwrap_or_default();
+                // TODO(antoyo): find a better way to add the PATH necessary locally.
+                env_path = format!("/opt/m68k-unknown-linux-gnu/bin:{}", env_path);
+                compiler.env("PATH", env_path);
+            }
+
             if let Some(flags) = option_env!("TEST_FLAGS") {
                 for flag in flags.split_whitespace() {
                     compiler.arg(&flag);
@@ -65,8 +78,37 @@ pub fn main_inner(profile: Profile) {
                 }
             }
             // Test command 2: run `tempdir/x`.
-            let runtime = Command::new(exe);
-            vec![("Compiler", compiler), ("Run-time", runtime)]
+            if test_target.is_ok() {
+                let vm_parent_dir = std::env::var("CG_GCC_VM_DIR")
+                    .map(|dir| PathBuf::from(dir))
+                    .unwrap_or_else(|_| std::env::current_dir().unwrap());
+                let vm_dir = "vm";
+                let exe_filename = exe.file_name().unwrap();
+                let vm_home_dir = vm_parent_dir.join(vm_dir).join("home");
+                let vm_exe_path = vm_home_dir.join(exe_filename);
+                // FIXME(antoyo): panicking here makes the test pass.
+                let inside_vm_exe_path = PathBuf::from("/home").join(&exe_filename);
+                let mut copy = Command::new("sudo");
+                copy.arg("cp");
+                copy.args(&[&exe, &vm_exe_path]);
+
+                let mut runtime = Command::new("sudo");
+                runtime.args(&["chroot", vm_dir, "qemu-m68k-static"]);
+                runtime.arg(inside_vm_exe_path);
+                runtime.current_dir(vm_parent_dir);
+                vec![
+                    ("Compiler", compiler),
+                    ("Copy", copy),
+                    ("Run-time", runtime),
+                ]
+            }
+            else {
+                let runtime = Command::new(exe);
+                vec![
+                    ("Compiler", compiler),
+                    ("Run-time", runtime),
+                ]
+            }
         })
         .run();
 }
