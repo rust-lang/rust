@@ -5,6 +5,7 @@ LL |     println!("{}", s.to_string());
    |                     ^^^^^^^^^^^^ help: remove this
    |
    = note: `-D clippy::to-string-in-format-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::to_string_in_format_args)]`
 
 error: aborting due to previous error
 

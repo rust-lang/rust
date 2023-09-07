@@ -5,6 +5,7 @@ LL |     pub fn foo_bar() {}
    |            ^^^^^^^
    |
    = note: `-D clippy::module-name-repetitions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::module_name_repetitions)]`
 
 error: item name ends with its containing module's name
   --> $DIR/module_name_repetitions.rs:11:12

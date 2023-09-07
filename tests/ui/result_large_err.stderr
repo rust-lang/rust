@@ -6,6 +6,7 @@ LL | pub fn large_err() -> Result<(), [u8; 512]> {
    |
    = help: try reducing the size of `[u8; 512]`, for example by boxing large elements or replacing it with `Box<[u8; 512]>`
    = note: `-D clippy::result-large-err` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::result_large_err)]`
 
 error: the `Err`-variant returned from this function is very large
   --> $DIR/result_large_err.rs:22:21

@@ -5,6 +5,7 @@ LL |     let _ = "12345".replace('1', "1");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::no-effect-replace` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::no_effect_replace)]`
 
 error: replacing text with itself
   --> $DIR/no_effect_replace.rs:7:13

@@ -5,6 +5,7 @@ LL |     let _ = &arr[3usize..=1usize];
    |                  ^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::reversed-empty-ranges` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::reversed_empty_ranges)]`
 
 error: this range is reversed and using it to index a slice will panic at run-time
   --> $DIR/reversed_empty_ranges_unfixable.rs:11:18

@@ -5,6 +5,7 @@ LL |     let _ = Some(Some(1)).filter(Option::is_some).map(Option::unwrap);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
    |
    = note: `-D clippy::option-filter-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_filter_map)]`
 
 error: `filter` for `Some` followed by `unwrap`
   --> $DIR/option_filter_map.rs:6:27

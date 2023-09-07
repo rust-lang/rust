@@ -5,6 +5,7 @@ LL |     let _ = vec.to_owned();
    |             ^^^^^^^^^^^^^^ help: consider using: `vec.clone()`
    |
    = note: `-D clippy::implicit-clone` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::implicit_clone)]`
 
 error: implicitly cloning a `Vec` by calling `to_vec` on its dereferenced type
   --> $DIR/implicit_clone.rs:66:13

@@ -5,6 +5,7 @@ LL |     let c_i64: i64 = c as i64;
    |                      ^^^^^^^^ help: try: `i64::from(c)`
    |
    = note: `-D clippy::cast-lossless` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
 
 error: aborting due to previous error
 

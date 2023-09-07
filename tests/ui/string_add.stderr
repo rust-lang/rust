@@ -5,6 +5,7 @@ LL |         x = x + ".";
    |         ^^^^^^^^^^^ help: replace it with: `x += "."`
    |
    = note: `-D clippy::assign-op-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::assign_op_pattern)]`
 
 error: you added something to a string. Consider using `String::push_str()` instead
   --> $DIR/string_add.rs:13:13
@@ -13,6 +14,7 @@ LL |         x = x + ".";
    |             ^^^^^^^
    |
    = note: `-D clippy::string-add` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::string_add)]`
 
 error: you added something to a string. Consider using `String::push_str()` instead
   --> $DIR/string_add.rs:17:13

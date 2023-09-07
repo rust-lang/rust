@@ -10,6 +10,7 @@ note: first possible panic found here
 LL |     result.unwrap()
    |     ^^^^^^^^^^^^^^^
    = note: `-D clippy::missing-panics-doc` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_panics_doc)]`
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:19:1

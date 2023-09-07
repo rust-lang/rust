@@ -12,6 +12,7 @@ LL | |         .flatten();
    | |__________________^
    |
    = note: `-D clippy::map-flatten` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_flatten)]`
 help: try replacing `map` with `and_then` and remove the `.flatten()`
    |
 LL ~         .and_then(|x| {

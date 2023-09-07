@@ -5,6 +5,7 @@ LL | #[derive(Debug, PartialEq)]
    |                 ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
    |
    = note: `-D clippy::derive-partial-eq-without-eq` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::derive_partial_eq_without_eq)]`
 
 error: you are deriving `PartialEq` and can implement `Eq`
   --> $DIR/derive_partial_eq_without_eq.rs:53:10

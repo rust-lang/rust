@@ -25,6 +25,7 @@ LL | |     }
    | |_____^ help: try: `while let Some(ele) = iter.next() { .. }`
    |
    = note: `-D clippy::while-let-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::while_let_loop)]`
 
 error: empty `loop {}` wastes CPU cycles
   --> $DIR/ice-360.rs:13:9
@@ -34,6 +35,7 @@ LL |         loop {}
    |
    = help: you should either use `panic!()` or add `std::thread::sleep(..);` to the loop body
    = note: `-D clippy::empty-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_loop)]`
 
 error: aborting due to 3 previous errors
 

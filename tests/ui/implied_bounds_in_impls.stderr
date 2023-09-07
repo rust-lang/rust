@@ -5,6 +5,7 @@ LL | fn deref_derefmut<T>(x: T) -> impl Deref<Target = T> + DerefMut<Target = T>
    |                                    ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::implied-bounds-in-impls` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::implied_bounds_in_impls)]`
 help: try removing this bound
    |
 LL - fn deref_derefmut<T>(x: T) -> impl Deref<Target = T> + DerefMut<Target = T> {

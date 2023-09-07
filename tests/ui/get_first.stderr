@@ -5,6 +5,7 @@ LL |     let _ = x.get(0); // Use x.first()
    |             ^^^^^^^^ help: try: `x.first()`
    |
    = note: `-D clippy::get-first` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::get_first)]`
 
 error: accessing first element with `y.get(0)`
   --> $DIR/get_first.rs:22:13

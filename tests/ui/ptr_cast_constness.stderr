@@ -5,6 +5,7 @@ LL |     let _: &mut T = std::mem::transmute(p as *mut T);
    |                                         ^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `p.cast_mut()`
    |
    = note: `-D clippy::ptr-cast-constness` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ptr_cast_constness)]`
 
 error: `as` casting between raw pointers while changing only its constness
   --> $DIR/ptr_cast_constness.rs:11:19

@@ -5,6 +5,7 @@ LL |     let _ = x.get(x.len() - 1);
    |             ^^^^^^^^^^^^^^^^^^ help: try: `x.last()`
    |
    = note: `-D clippy::get-last-with-len` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::get_last_with_len)]`
 
 error: accessing last element with `s.field.get(s.field.len() - 1)`
   --> $DIR/get_last_with_len.rs:32:13

@@ -11,6 +11,7 @@ LL | |      };
    | |______- outer async construct
    |
    = note: `-D clippy::async-yields-async` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::async_yields_async)]`
 help: consider awaiting this value
    |
 LL ~         async {

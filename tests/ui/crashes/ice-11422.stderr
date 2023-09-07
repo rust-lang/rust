@@ -5,6 +5,7 @@ LL | fn gen() -> impl PartialOrd + PartialEq + Debug {}
    |                               ^^^^^^^^^
    |
    = note: `-D clippy::implied-bounds-in-impls` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::implied_bounds_in_impls)]`
 help: try removing this bound
    |
 LL - fn gen() -> impl PartialOrd + PartialEq + Debug {}

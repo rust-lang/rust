@@ -5,6 +5,7 @@ LL |     let _p = &val as *const i32;
    |              ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::addr_of!(val)`
    |
    = note: `-D clippy::borrow-as-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::borrow_as_ptr)]`
 
 error: borrow as raw pointer
   --> $DIR/borrow_as_ptr.rs:17:18

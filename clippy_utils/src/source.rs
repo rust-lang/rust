@@ -8,7 +8,7 @@ use rustc_hir::{BlockCheckMode, Expr, ExprKind, UnsafeSource};
 use rustc_lint::{LateContext, LintContext};
 use rustc_session::Session;
 use rustc_span::source_map::{original_sp, SourceMap};
-use rustc_span::{hygiene, BytePos, Pos, SourceFile, Span, SpanData, SyntaxContext, DUMMY_SP};
+use rustc_span::{hygiene, BytePos, Pos, SourceFile, SourceFileAndLine, Span, SpanData, SyntaxContext, DUMMY_SP};
 use std::borrow::Cow;
 use std::ops::Range;
 
@@ -117,9 +117,9 @@ fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePo
 /// ```
 fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
     let span = original_sp(span, DUMMY_SP);
-    let source_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
-    let line_no = source_map_and_line.line;
-    let line_start = source_map_and_line.sf.lines(|lines| lines[line_no]);
+    let SourceFileAndLine { sf, line } = cx.sess().source_map().lookup_line(span.lo()).unwrap();
+    let line_start = sf.lines(|lines| lines[line]);
+    let line_start = sf.absolute_position(line_start);
     span.with_lo(line_start)
 }
 

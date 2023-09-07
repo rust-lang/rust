@@ -6,6 +6,7 @@ LL | pub fn returns_unit_error() -> Result<u32, ()> {
    |
    = help: use a custom `Error` type instead
    = note: `-D clippy::result-unit-err` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::result_unit_err)]`
 
 error: this returns a `Result<_, ()>`
   --> $DIR/result_unit_error.rs:13:5

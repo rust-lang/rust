@@ -5,6 +5,7 @@ LL |     let _ = 0 as *const usize;
    |             ^^^^^^^^^^^^^^^^^ help: try: `std::ptr::null::<usize>()`
    |
    = note: `-D clippy::zero-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::zero_ptr)]`
 
 error: `0 as *mut _` detected
   --> $DIR/zero_ptr.rs:5:13

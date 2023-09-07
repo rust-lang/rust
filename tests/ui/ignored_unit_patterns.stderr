@@ -5,6 +5,7 @@ LL |         Ok(_) => {},
    |            ^ help: use `()` instead of `_`: `()`
    |
    = note: `-D clippy::ignored-unit-patterns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ignored_unit_patterns)]`
 
 error: matching over `()` is more explicit
   --> $DIR/ignored_unit_patterns.rs:11:13

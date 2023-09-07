@@ -1,3 +1,4 @@
+//@stderr-per-bitwidth
 //@aux-build:proc_macros.rs
 //@no-rustfix
 #![allow(dead_code)]
@@ -144,7 +145,7 @@ enum WithGenerics {
     Small(u8),
 }
 
-enum PossiblyLargeEnumWithConst<const U: u64> {
+enum PossiblyLargeEnumWithConst<const U: usize> {
     SmallBuffer([u8; 4]),
     MightyBuffer([u16; U]),
 }

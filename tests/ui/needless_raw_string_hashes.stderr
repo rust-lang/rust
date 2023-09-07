@@ -5,6 +5,7 @@ LL |     r#"\aaa"#;
    |     ^^^^^^^^^
    |
    = note: `-D clippy::needless-raw-string-hashes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_string_hashes)]`
 help: remove all the hashes around the literal
    |
 LL -     r#"\aaa"#;

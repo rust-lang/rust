@@ -6,6 +6,7 @@ LL |     res.ok().expect("disaster!");
    |
    = help: you can call `expect()` directly on the `Result`
    = note: `-D clippy::ok-expect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ok_expect)]`
 
 error: called `ok().expect()` on a `Result` value
   --> $DIR/ok_expect.rs:23:5

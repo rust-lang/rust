@@ -5,6 +5,7 @@ LL |     let ducks = ["quack", "quack"];
    |         ^^^^^
    |
    = note: `-D clippy::disallowed-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_names)]`
 
 error: aborting due to previous error
 

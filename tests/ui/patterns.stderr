@@ -5,6 +5,7 @@ LL |         y @ _ => (),
    |         ^^^^^ help: try: `y`
    |
    = note: `-D clippy::redundant-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern)]`
 
 error: the `x @ _` pattern can be written as just `x`
   --> $DIR/patterns.rs:29:9

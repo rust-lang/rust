@@ -15,6 +15,7 @@ LL | |     fn first() {}
 LL | | }
    | |_^
    = note: `-D clippy::multiple-inherent-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::multiple_inherent_impl)]`
 
 error: multiple implementations of this structure
   --> $DIR/impl.rs:25:5

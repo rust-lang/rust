@@ -6,6 +6,7 @@ LL |     let my_e = 2.7182;
    |
    = help: consider using the constant directly
    = note: `-D clippy::approx-constant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::approx_constant)]`
 
 error: approximate value of `f{32, 64}::consts::E` found
   --> $DIR/approx_const.rs:6:20

@@ -9,6 +9,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::partialeq-ne-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::partialeq_ne_impl)]`
 
 error: aborting due to previous error
 

@@ -23,6 +23,7 @@ LL | |             a
 LL | |         },
    | |_________^
    = note: `-D clippy::match-same-arms` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
 
 error: this match arm has an identical body to another arm
   --> $DIR/match_same_arms2.rs:38:9
@@ -147,6 +148,7 @@ LL | |     };
    | |_____^ help: try: `!matches!(x, E::A | E::B)`
    |
    = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_like_matches_macro)]`
 
 error: this match arm has an identical body to another arm
   --> $DIR/match_same_arms2.rs:199:9

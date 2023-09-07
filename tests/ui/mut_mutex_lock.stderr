@@ -5,6 +5,7 @@ LL |     let mut value = value_mutex.lock().unwrap();
    |                                 ^^^^ help: change this to: `get_mut`
    |
    = note: `-D clippy::mut-mutex-lock` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mut_mutex_lock)]`
 
 error: aborting due to previous error
 

@@ -5,6 +5,7 @@ LL | pub fn pub_foo() {}
    | ^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::missing-inline-in-public-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_inline_in_public_items)]`
 
 error: missing `#[inline]` for a default trait method
   --> $DIR/missing_inline.rs:39:5

@@ -137,6 +137,7 @@ LL |                 break 'a;
    |                 ^^^^^^^^
    |
    = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::diverging_sub_expression)]`
 
 error: this loop never actually loops
   --> $DIR/never_loop.rs:294:13

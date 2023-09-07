@@ -5,6 +5,7 @@ LL |         self.x == other.y && self.y == other.y && self.z == other.z
    |         ^^^^^^^^^^^^^^^^^ help: did you mean: `self.x == other.x`
    |
    = note: `-D clippy::suspicious-operation-groupings` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_operation_groupings)]`
 
 error: this sequence of operators looks suspiciously like a bug
   --> $DIR/suspicious_operation_groupings.rs:28:20

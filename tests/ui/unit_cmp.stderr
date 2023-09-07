@@ -12,6 +12,7 @@ LL | |     } {}
    | |_____^
    |
    = note: `-D clippy::unit-cmp` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unit_cmp)]`
 
 error: >-comparison of unit values detected. This will always be false
   --> $DIR/unit_cmp.rs:25:8

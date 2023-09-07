@@ -6,6 +6,7 @@ LL |     ONE as f64 != 2.0;
    |
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
    = note: `-D clippy::float-cmp` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::float_cmp)]`
 
 error: strict comparison of `f32` or `f64`
   --> $DIR/float_cmp.rs:77:5

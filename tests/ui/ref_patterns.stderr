@@ -6,6 +6,7 @@ LL |         Some(ref opt) => {},
    |
    = help: consider using `&` for clarity instead
    = note: `-D clippy::ref-patterns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ref_patterns)]`
 
 error: usage of ref pattern
   --> $DIR/ref_patterns.rs:15:9

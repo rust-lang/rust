@@ -6,6 +6,7 @@ LL |                 let w = { 3 };
    |
    = help: try refactoring your code to minimize nesting
    = note: `-D clippy::excessive-nesting` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::excessive_nesting)]`
 
 error: this block is too nested
   --> $DIR/excessive_nesting.rs:67:17

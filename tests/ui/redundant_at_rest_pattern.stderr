@@ -5,6 +5,7 @@ LL |     if let [a @ ..] = [()] {}
    |            ^^^^^^^^ help: this is better represented with just the binding: `a`
    |
    = note: `-D clippy::redundant-at-rest-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_at_rest_pattern)]`
 
 error: using a rest pattern to bind an entire slice to a local
   --> $DIR/redundant_at_rest_pattern.rs:10:12

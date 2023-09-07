@@ -10,6 +10,7 @@ note: `PartialOrd` implemented here
 LL | impl PartialOrd for DeriveOrd {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::derive-ord-xor-partial-ord` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::derive_ord_xor_partial_ord)]`
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `Ord` but have implemented `PartialOrd` explicitly

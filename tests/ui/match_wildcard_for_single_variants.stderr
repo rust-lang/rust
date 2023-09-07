@@ -5,6 +5,7 @@ LL |             _ => (),
    |             ^ help: try: `Self::Rgb(..)`
    |
    = note: `-D clippy::match-wildcard-for-single-variants` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_wildcard_for_single_variants)]`
 
 error: wildcard matches only a single variant and will also match any future added variants
   --> $DIR/match_wildcard_for_single_variants.rs:32:9

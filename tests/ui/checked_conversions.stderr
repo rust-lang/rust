@@ -5,6 +5,7 @@ LL |     let _ = value <= (u32::max_value() as i64) && value >= 0;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u32::try_from(value).is_ok()`
    |
    = note: `-D clippy::checked-conversions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::checked_conversions)]`
 
 error: checked cast can be simplified
   --> $DIR/checked_conversions.rs:15:13

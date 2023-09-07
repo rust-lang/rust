@@ -5,6 +5,7 @@ LL |     return Some(to.magic?);
    |            ^^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `to.magic`
    |
    = note: `-D clippy::needless-question-mark` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_question_mark)]`
 
 error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:28:12

@@ -5,6 +5,7 @@ LL |     if a.to_string() != "bar" {
    |        ^^^^^^^^^^^^^ help: try: `a`
    |
    = note: `-D clippy::cmp-owned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
 
 error: this creates an owned instance just for comparison
   --> $DIR/comparison_flip.rs:10:17

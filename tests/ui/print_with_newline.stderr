@@ -5,6 +5,7 @@ LL |     print!("Hello\n");
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::print-with-newline` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_with_newline)]`
 help: use `println!` instead
    |
 LL -     print!("Hello\n");

@@ -5,6 +5,7 @@ LL | pub fn a(_: impl Trait) {}
    |             ^^^^^^^^^^
    |
    = note: `-D clippy::impl-trait-in-params` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::impl_trait_in_params)]`
 help: add a type parameter
    |
 LL | pub fn a<{ /* Generic name */ }: Trait>(_: impl Trait) {}

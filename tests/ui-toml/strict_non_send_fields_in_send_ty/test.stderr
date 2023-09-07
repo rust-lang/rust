@@ -11,6 +11,7 @@ LL |     rc_is_not_send: Rc<String>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use a thread-safe type that implements `Send`
    = note: `-D clippy::non-send-fields-in-send-ty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::non_send_fields_in_send_ty)]`
 
 error: some fields in `MultiField<T>` are not safe to be sent to another thread
   --> $DIR/test.rs:19:1

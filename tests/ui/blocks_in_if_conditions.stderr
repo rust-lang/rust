@@ -8,6 +8,7 @@ LL | |     } {
    | |_____^
    |
    = note: `-D clippy::blocks-in-if-conditions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::blocks_in_if_conditions)]`
 help: try
    |
 LL ~     let res = {
@@ -29,6 +30,7 @@ LL |     if true && x == 3 { 6 } else { 10 }
    |        ^^^^^^^^^^^^^^ help: try: `x == 3`
    |
    = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
 
 error: aborting due to 3 previous errors
 

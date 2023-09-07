@@ -1,6 +1,5 @@
 //@stderr-per-bitwidth
 //@no-rustfix
-
 #![warn(clippy::fn_to_numeric_cast, clippy::fn_to_numeric_cast_with_truncation)]
 
 fn foo() -> String {

@@ -5,6 +5,7 @@ LL |     let _bad = (0b110110_i64, 0x12345678_usize, 123456_f32, 1.234567_f32);
    |                 ^^^^^^^^^^^^ help: consider: `0b11_0110_i64`
    |
    = note: `-D clippy::unreadable-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unreadable_literal)]`
 
 error: long literal lacking separators
   --> $DIR/unreadable_literal.rs:32:31

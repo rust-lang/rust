@@ -5,6 +5,7 @@ LL |     let _: Vec<_> = x.iter().map(not_identity).map(|x| return x).collect();
    |                                               ^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
    |
    = note: `-D clippy::map-identity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_identity)]`
 
 error: unnecessary map of the identity function
   --> $DIR/map_identity.rs:8:57

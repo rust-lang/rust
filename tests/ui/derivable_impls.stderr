@@ -11,6 +11,7 @@ LL | | }
    | |_^
    |
    = note: `-D clippy::derivable-impls` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::derivable_impls)]`
    = help: remove the manual implementation...
 help: ...and instead derive it
    |

@@ -5,6 +5,7 @@ LL |     let _ = Baz + Baz;
    |             ^^^^^^^^^
    |
    = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::arithmetic_side_effects)]`
 
 error: arithmetic operation that can potentially result in unexpected side-effects
   --> $DIR/arithmetic_side_effects_allowed.rs:80:13

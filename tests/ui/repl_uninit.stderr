@@ -5,6 +5,7 @@ LL |         let taken_v = mem::replace(&mut v, mem::uninitialized());
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::ptr::read(&mut v)`
    |
    = note: `-D clippy::mem-replace-with-uninit` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_uninit)]`
 
 error: replacing with `mem::MaybeUninit::uninit().assume_init()`
   --> $DIR/repl_uninit.rs:23:23

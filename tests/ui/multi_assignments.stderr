@@ -5,6 +5,7 @@ LL |     a = b = c;
    |     ^^^^^^^^^
    |
    = note: `-D clippy::multi-assignments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::multi_assignments)]`
 
 error: assignments don't nest intuitively
   --> $DIR/multi_assignments.rs:7:5

@@ -6,6 +6,7 @@ LL |     1isize as i8;
    |
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
    = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_possible_truncation)]`
 help: ... or use `try_from` and handle the error accordingly
    |
 LL |     i8::try_from(1isize);
@@ -18,6 +19,7 @@ LL |     x0 as f64;
    |     ^^^^^^^^^
    |
    = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_precision_loss)]`
 
 error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
   --> $DIR/cast_size.rs:19:5
@@ -92,6 +94,7 @@ LL |     1usize as i32;
    |     ^^^^^^^^^^^^^
    |
    = note: `-D clippy::cast-possible-wrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_possible_wrap)]`
 
 error: casting `i64` to `isize` may truncate the value on targets with 32-bit wide pointers
   --> $DIR/cast_size.rs:26:5

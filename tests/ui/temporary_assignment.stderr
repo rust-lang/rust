@@ -5,6 +5,7 @@ LL |     Struct { field: 0 }.field = 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::temporary-assignment` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::temporary_assignment)]`
 
 error: assignment to temporary
   --> $DIR/temporary_assignment.rs:50:5

@@ -5,6 +5,7 @@ LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| *x < 0)`
    |
    = note: `-D clippy::search-is-some` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::search_is_some)]`
 
 error: called `is_some()` after searching an `Iterator` with `find`
   --> $DIR/search_is_some_fixable_some.rs:10:20

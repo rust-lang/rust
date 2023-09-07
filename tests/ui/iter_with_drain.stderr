@@ -5,6 +5,7 @@ LL |     let mut a: BinaryHeap<_> = a.drain(..).collect();
    |                                  ^^^^^^^^^ help: try: `into_iter()`
    |
    = note: `-D clippy::iter-with-drain` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_with_drain)]`
 
 error: `drain(..)` used on a `VecDeque`
   --> $DIR/iter_with_drain.rs:13:27

@@ -5,6 +5,7 @@ LL |         print!("{}", 1);
    |         ^^^^^^^^^^^^^^^ help: replace with: `write!(f, ..)`
    |
    = note: `-D clippy::print-in-format-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_in_format_impl)]`
 
 error: use of `println!` in `Debug` impl
   --> $DIR/print_in_format_impl.rs:23:9

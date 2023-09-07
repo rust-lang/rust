@@ -5,6 +5,7 @@ LL |     let _ = 1u32.checked_add(1).unwrap_or(u32::max_value());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `saturating_add`: `1u32.saturating_add(1)`
    |
    = note: `-D clippy::manual-saturating-arithmetic` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_saturating_arithmetic)]`
 
 error: manual saturating arithmetic
   --> $DIR/manual_saturating_arithmetic.rs:7:13

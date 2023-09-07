@@ -6,6 +6,7 @@ LL |     vec.sort();
    |
    = note: an unstable sort typically performs faster without any observable difference for this data type
    = note: `-D clippy::stable-sort-primitive` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::stable_sort_primitive)]`
 
 error: used `sort` on primitive type `bool`
   --> $DIR/stable_sort_primitive.rs:9:5

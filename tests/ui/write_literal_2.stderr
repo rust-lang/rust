@@ -5,6 +5,7 @@ LL |     writeln!(v, r"{}", r"{hello}");
    |                        ^^^^^^^^^^
    |
    = note: `-D clippy::needless-raw-strings` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_strings)]`
 help: try
    |
 LL -     writeln!(v, r"{}", r"{hello}");
@@ -18,6 +19,7 @@ LL |     writeln!(v, "{}", "{hello}");
    |                       ^^^^^^^^^
    |
    = note: `-D clippy::write-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::write_literal)]`
 help: try
    |
 LL -     writeln!(v, "{}", "{hello}");
