@@ -529,6 +529,18 @@ impl StdoutWriter {
             StdoutWriter::BufWriter(BufWriter::new(stdout))
         }
     }
+
+    #[allow(dead_code)]
+    /// Creates a new `StdoutWriter` with at least the specified capacity for the internal buffer.
+    ///
+    /// Will check if the output is a terminal and use the appropriate writer.
+    fn with_capacity(capacity: usize, stdout: StdoutRaw) -> StdoutWriter {
+        if stdout.0.is_terminal() {
+            StdoutWriter::LineWriter(LineWriter::with_capacity(capacity, stdout))
+        } else {
+            StdoutWriter::BufWriter(BufWriter::with_capacity(capacity, stdout))
+        }
+    }
 }
 
 impl Write for StdoutWriter {
