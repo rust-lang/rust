@@ -8,10 +8,10 @@ pub struct S;
 
 // @has issue_88600/enum.FooEnum.html
 pub enum FooEnum {
-    // @has - '//*[@id="variant.HiddenTupleItem"]//h3' 'HiddenTupleItem(_)'
+    // @has - '//*[@id="variant.HiddenTupleItem"]//h3' 'HiddenTupleItem(/* private fields */)'
     // @count - '//*[@id="variant.HiddenTupleItem.field.0"]' 0
     HiddenTupleItem(#[doc(hidden)] H),
-    // @has - '//*[@id="variant.MultipleHidden"]//h3' 'MultipleHidden(_, _)'
+    // @has - '//*[@id="variant.MultipleHidden"]//h3' 'MultipleHidden(/* private fields */)'
     // @count - '//*[@id="variant.MultipleHidden.field.0"]' 0
     // @count - '//*[@id="variant.MultipleHidden.field.1"]' 0
     MultipleHidden(#[doc(hidden)] H, #[doc(hidden)] H),
