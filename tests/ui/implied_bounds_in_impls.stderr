@@ -120,5 +120,29 @@ LL -     fn f() -> impl Deref + DerefMut<Target = u8> {
 LL +     fn f() -> impl DerefMut<Target = u8> {
    |
 
-error: aborting due to 10 previous errors
+error: this bound is already specified as the supertrait of `PartialOrd`
+  --> $DIR/implied_bounds_in_impls.rs:74:41
+   |
+LL |     fn default_generic_param1() -> impl PartialEq + PartialOrd + Debug {}
+   |                                         ^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn default_generic_param1() -> impl PartialEq + PartialOrd + Debug {}
+LL +     fn default_generic_param1() -> impl PartialOrd + Debug {}
+   |
+
+error: this bound is already specified as the supertrait of `PartialOrd`
+  --> $DIR/implied_bounds_in_impls.rs:75:54
+   |
+LL |     fn default_generic_param2() -> impl PartialOrd + PartialEq + Debug {}
+   |                                                      ^^^^^^^^^
+   |
+help: try removing this bound
+   |
+LL -     fn default_generic_param2() -> impl PartialOrd + PartialEq + Debug {}
+LL +     fn default_generic_param2() -> impl PartialOrd + Debug {}
+   |
+
+error: aborting due to 12 previous errors
 

@@ -1,4 +1,4 @@
-//@aux-build:proc_macro_unsafe.rs
+//@aux-build:../../ui/auxiliary/proc_macro_unsafe.rs
 
 #![warn(clippy::undocumented_unsafe_blocks, clippy::unnecessary_safety_comment)]
 #![allow(deref_nullptr, clippy::let_unit_value, clippy::missing_safety_doc)]
@@ -563,5 +563,19 @@ fn issue_8679<T: Copy>() {
     // This also works I guess
     unsafe {}
 }
+
+mod issue_11246 {
+    // Safety: foo
+    const _: () = unsafe {};
+
+    // Safety: A safety comment
+    const FOO: () = unsafe {};
+
+    // Safety: bar
+    static BAR: u8 = unsafe { 0 };
+}
+
+// Safety: Another safety comment
+const FOO: () = unsafe {};
 
 fn main() {}

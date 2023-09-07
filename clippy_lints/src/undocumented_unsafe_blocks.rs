@@ -341,44 +341,21 @@ fn block_parents_have_safety_comment(
     id: hir::HirId,
 ) -> bool {
     if let Some(node) = get_parent_node(cx.tcx, id) {
-        return match node {
-            Node::Expr(expr) => {
-                if let Some(
-                    Node::Local(hir::Local { span, .. })
-                    | Node::Item(hir::Item {
-                        kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
-                        span,
-                        ..
-                    }),
-                ) = get_parent_node(cx.tcx, expr.hir_id)
-                {
-                    let hir_id = match get_parent_node(cx.tcx, expr.hir_id) {
-                        Some(Node::Local(hir::Local { hir_id, .. })) => *hir_id,
-                        Some(Node::Item(hir::Item { owner_id, .. })) => {
-                            cx.tcx.hir().local_def_id_to_hir_id(owner_id.def_id)
-                        },
-                        _ => unreachable!(),
-                    };
-
-                    // if unsafe block is part of a let/const/static statement,
-                    // and accept_comment_above_statement is set to true
-                    // we accept the safety comment in the line the precedes this statement.
-                    accept_comment_above_statement
-                        && span_with_attrs_in_body_has_safety_comment(
-                            cx,
-                            *span,
-                            hir_id,
-                            accept_comment_above_attributes,
-                        )
-                } else {
-                    !is_branchy(expr)
-                        && span_with_attrs_in_body_has_safety_comment(
-                            cx,
-                            expr.span,
-                            expr.hir_id,
-                            accept_comment_above_attributes,
-                        )
-                }
+        let (span, hir_id) = match node {
+            Node::Expr(expr) => match get_parent_node(cx.tcx, expr.hir_id) {
+                Some(Node::Local(hir::Local { span, hir_id, .. })) => (*span, *hir_id),
+                Some(Node::Item(hir::Item {
+                    kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
+                    span,
+                    owner_id,
+                    ..
+                })) => (*span, cx.tcx.hir().local_def_id_to_hir_id(owner_id.def_id)),
+                _ => {
+                    if is_branchy(expr) {
+                        return false;
+                    }
+                    (expr.span, expr.hir_id)
+                },
             },
             Node::Stmt(hir::Stmt {
                 kind:
@@ -387,28 +364,27 @@ fn block_parents_have_safety_comment(
                     | hir::StmtKind::Semi(hir::Expr { span, hir_id, .. }),
                 ..
             })
-            | Node::Local(hir::Local { span, hir_id, .. }) => {
-                span_with_attrs_in_body_has_safety_comment(cx, *span, *hir_id, accept_comment_above_attributes)
-            },
+            | Node::Local(hir::Local { span, hir_id, .. }) => (*span, *hir_id),
             Node::Item(hir::Item {
                 kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
                 span,
                 owner_id,
                 ..
-            }) => span_with_attrs_in_body_has_safety_comment(
-                cx,
-                *span,
-                cx.tcx.hir().local_def_id_to_hir_id(owner_id.def_id),
-                accept_comment_above_attributes,
-            ),
-            _ => false,
+            }) => (*span, cx.tcx.hir().local_def_id_to_hir_id(owner_id.def_id)),
+            _ => return false,
         };
+        // if unsafe block is part of a let/const/static statement,
+        // and accept_comment_above_statement is set to true
+        // we accept the safety comment in the line the precedes this statement.
+        accept_comment_above_statement
+            && span_with_attrs_has_safety_comment(cx, span, hir_id, accept_comment_above_attributes)
+    } else {
+        false
     }
-    false
 }
 
 /// Extends `span` to also include its attributes, then checks if that span has a safety comment.
-fn span_with_attrs_in_body_has_safety_comment(
+fn span_with_attrs_has_safety_comment(
     cx: &LateContext<'_>,
     span: Span,
     hir_id: HirId,
@@ -420,7 +396,7 @@ fn span_with_attrs_in_body_has_safety_comment(
         span
     };
 
-    span_in_body_has_safety_comment(cx, span)
+    span_has_safety_comment(cx, span)
 }
 
 /// Checks if an expression is "branchy", e.g. loop, match/if/etc.
@@ -444,7 +420,7 @@ fn block_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
     matches!(
         span_from_macro_expansion_has_safety_comment(cx, span),
         HasSafetyComment::Yes(_)
-    ) || span_in_body_has_safety_comment(cx, span)
+    ) || span_has_safety_comment(cx, span)
 }
 
 fn include_attrs_in_span(cx: &LateContext<'_>, hir_id: HirId, span: Span) -> Span {
@@ -639,29 +615,36 @@ fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
     let body = cx.enclosing_body?;
     let map = cx.tcx.hir();
     let mut span = map.body(body).value.span;
+    let mut maybe_global_var = false;
     for (_, node) in map.parent_iter(body.hir_id) {
         match node {
             Node::Expr(e) => span = e.span,
-            Node::Block(_)
-            | Node::Arm(_)
-            | Node::Stmt(_)
-            | Node::Local(_)
-            | Node::Item(hir::Item {
+            Node::Block(_) | Node::Arm(_) | Node::Stmt(_) | Node::Local(_) => (),
+            Node::Item(hir::Item {
                 kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
                 ..
-            }) => (),
+            }) => maybe_global_var = true,
+            Node::Item(hir::Item {
+                kind: hir::ItemKind::Mod(_),
+                span: item_span,
+                ..
+            }) => {
+                span = *item_span;
+                break;
+            },
+            Node::Crate(mod_) if maybe_global_var => {
+                span = mod_.spans.inner_span;
+            },
             _ => break,
         }
     }
     Some(span)
 }
 
-fn span_in_body_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
+fn span_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
     let source_map = cx.sess().source_map();
     let ctxt = span.ctxt();
-    if ctxt == SyntaxContext::root()
-        && let Some(search_span) = get_body_search_span(cx)
-    {
+    if ctxt.is_root() && let Some(search_span) = get_body_search_span(cx) {
         if let Ok(unsafe_line) = source_map.lookup_line(span.lo())
             && let Some(body_span) = walk_span_to_context(search_span, SyntaxContext::root())
             && let Ok(body_line) = source_map.lookup_line(body_span.lo())

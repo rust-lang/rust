@@ -4,6 +4,7 @@
     clippy::similar_names,
     clippy::needless_borrow,
     clippy::deref_addrof,
+    clippy::unnecessary_mut_passed,
     dead_code
 )]
 

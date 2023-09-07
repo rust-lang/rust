@@ -5,6 +5,7 @@ use clippy_utils::{get_parent_node, is_res_lang_ctor, last_path_segment, match_d
 use rustc_errors::Applicability;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, ItemKind, LangItem, Node, UnOp};
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::EarlyBinder;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -125,7 +126,7 @@ impl LateLintPass<'_> for IncorrectImpls {
         if cx.tcx.is_automatically_derived(item.owner_id.to_def_id()) {
             return;
         }
-        let ItemKind::Impl(_) = item.kind else {
+        let ItemKind::Impl(imp) = item.kind else {
             return;
         };
         let ImplItemKind::Fn(_, impl_item_id) = cx.tcx.hir().impl_item(impl_item.impl_item_id()).kind else {
@@ -188,12 +189,7 @@ impl LateLintPass<'_> for IncorrectImpls {
                 .diagnostic_items(trait_impl.def_id.krate)
                 .name_to_id
                 .get(&sym::Ord)
-            && implements_trait(
-                    cx,
-                    trait_impl.self_ty(),
-                    *ord_def_id,
-                    &[],
-                )
+            && implements_trait(cx, hir_ty_to_ty(cx.tcx, imp.self_ty), *ord_def_id, &[])
         {
             // If the `cmp` call likely needs to be fully qualified in the suggestion
             // (like `std::cmp::Ord::cmp`). It's unfortunate we must put this here but we can't

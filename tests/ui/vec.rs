@@ -120,6 +120,7 @@ fn issue11075() {
             stringify!($e)
         };
     }
+    #[allow(clippy::never_loop)]
     for _string in vec![repro!(true), repro!(null)] {
         unimplemented!();
     }

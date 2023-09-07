@@ -217,8 +217,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             if let &Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind();
             if let attrs = cx.tcx.hir().attrs(item.hir_id());
             if !attrs.iter().any(|attr| attr.doc_str().is_some());
-            if let child_attrs = cx.tcx.hir().attrs(impl_item_hir);
-            if !child_attrs.iter().any(|attr| attr.doc_str().is_some());
+            if cx.tcx.hir().attrs(impl_item_hir).is_empty();
 
             then {
                 if adt_def.is_struct() {
