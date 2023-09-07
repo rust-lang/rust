@@ -121,6 +121,27 @@ impl AsRawHandle for io::Stderr {
     }
 }
 
+#[stable(feature = "asraw_stdio", since = "1.21.0")]
+impl AsRawHandle for sys::stdio::Stdin {
+    fn as_raw_handle(&self) -> RawHandle {
+        stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_INPUT_HANDLE) as RawHandle })
+    }
+}
+
+#[stable(feature = "asraw_stdio", since = "1.21.0")]
+impl AsRawHandle for sys::stdio::Stdout {
+    fn as_raw_handle(&self) -> RawHandle {
+        stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_OUTPUT_HANDLE) as RawHandle })
+    }
+}
+
+#[stable(feature = "asraw_stdio", since = "1.21.0")]
+impl AsRawHandle for sys::stdio::Stderr {
+    fn as_raw_handle(&self) -> RawHandle {
+        stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_ERROR_HANDLE) as RawHandle })
+    }
+}
+
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawHandle for io::StdinLock<'a> {
     fn as_raw_handle(&self) -> RawHandle {
