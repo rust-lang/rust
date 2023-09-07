@@ -46,7 +46,7 @@ LL |     fn bar() -> impl Sized {}
    |                 ~~~~~~~~~~
 
 error: impl trait in impl method signature does not match trait method signature
-  --> $DIR/refine.rs:32:27
+  --> $DIR/refine.rs:44:27
    |
 LL |     fn bar<'a>(&'a self) -> impl Sized + 'a;
    |                             --------------- return type from trait method defined here

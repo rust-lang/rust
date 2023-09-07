@@ -4496,7 +4496,7 @@ declare_lint! {
     ///
     /// use std::fmt::Display;
     ///
-    /// trait AsDisplay {
+    /// pub trait AsDisplay {
     ///     fn as_display(&self) -> impl Display;
     /// }
     ///

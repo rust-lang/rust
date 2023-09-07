@@ -23,8 +23,22 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     if !tcx.impl_method_has_trait_impl_trait_tys(impl_m.def_id) {
         return;
     }
+    // crate-private traits don't have any library guarantees, there's no need to do this check.
+    if !tcx.visibility(trait_m.container_id(tcx)).is_public() {
+        return;
+    }
 
+    // If a type in the trait ref is private, then there's also no reason to to do this check.
     let impl_def_id = impl_m.container_id(tcx);
+    for arg in impl_trait_ref.args {
+        if let Some(ty) = arg.as_type()
+            && let Some(self_visibility) = type_visibility(tcx, ty)
+            && !self_visibility.is_public()
+        {
+            return;
+        }
+    }
+
     let impl_m_args = ty::GenericArgs::identity_for_item(tcx, impl_m.def_id);
     let trait_m_to_impl_m_args = impl_m_args.rebase_onto(tcx, impl_def_id, impl_trait_ref.args);
     let bound_trait_m_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_to_impl_m_args);
@@ -280,4 +294,18 @@ fn report_mismatched_rpitit_signature<'tcx>(
             unmatched_bound,
         },
     );
+}
+
+fn type_visibility<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<ty::Visibility<DefId>> {
+    match *ty.kind() {
+        ty::Ref(_, ty, _) => type_visibility(tcx, ty),
+        ty::Adt(def, args) => {
+            if def.is_fundamental() {
+                type_visibility(tcx, args.type_at(0))
+            } else {
+                Some(tcx.visibility(def.did()))
+            }
+        }
+        _ => None,
+    }
 }

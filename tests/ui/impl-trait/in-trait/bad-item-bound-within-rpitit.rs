@@ -2,7 +2,7 @@
 
 #![feature(return_position_impl_trait_in_trait)]
 
-trait Iterable {
+pub trait Iterable {
     type Item<'a>
     where
         Self: 'a;
