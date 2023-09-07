@@ -11,6 +11,29 @@
 //! sequence of NodeInfos to the different arrays in SerializedDepGraph. Since the
 //! node and edge count are stored at the end of the file, all the arrays can be
 //! pre-allocated with the right length.
+//!
+//! The encoding of the de-pgraph is generally designed around the fact that fixed-size
+//! reads of encoded data are generally faster than variable-sized reads. Ergo we adopt
+//! essentially the same varint encoding scheme used in the rmeta format; the edge lists
+//! for each node on the graph store a 2-bit integer which is the number of bytes per edge
+//! index in that node's edge list. We effectively ignore that an edge index of 0 could be
+//! encoded with 0 bytes in order to not require 3 bits to store the byte width of the edges.
+//! The overhead of calculating the correct byte width for each edge is mitigated by
+//! building edge lists with [`EdgesVec`] which keeps a running max of the edges in a node.
+//!
+//! When we decode this data, we do not immediately create [`SerializedDepNodeIndex`] and
+//! instead keep the data in its denser serialized form which lets us turn our on-disk size
+//! efficiency directly into a peak memory reduction. When we convert these encoded-in-memory
+//! values into their fully-deserialized type, we use a fixed-size read of the encoded array
+//! then mask off any errant bytes we read. The array of edge index bytes is padded to permit this.
+//!
+//! We also encode and decode the entire rest of each node using [`SerializedNodeHeader`]
+//! to let this encoding and decoding be done in one fixed-size operation. These headers contain
+//! two [`Fingerprint`]s along with the serialized [`DepKind`], and the number of edge indices
+//! in the node and the number of bytes used to encode the edge indices for this node. The
+//! [`DepKind`], number of edges, and bytes per edge are all bit-packed together, if they fit.
+//! If the number of edges in this node does not fit in the bits available in the header, we
+//! store it directly after the header with leb128.
 
 use super::query::DepGraphQuery;
 use super::{DepKind, DepNode, DepNodeIndex};
@@ -37,7 +60,7 @@ const DEP_NODE_SIZE: usize = std::mem::size_of::<SerializedDepNodeIndex>();
 /// Amount of padding we need to add to the edge list data so that we can retrieve every
 /// SerializedDepNodeIndex with a fixed-size read then mask.
 const DEP_NODE_PAD: usize = DEP_NODE_SIZE - 1;
-/// Amount of bits we need to store the number of used bytes in a SerializedDepNodeIndex.
+/// Number of bits we need to store the number of used bytes in a SerializedDepNodeIndex.
 /// Note that wherever we encode byte widths like this we actually store the number of bytes used
 /// minus 1; for a 4-byte value we technically would have 5 widths to store, but using one byte to
 /// store zeroes (which are relatively rare) is a decent tradeoff to save a bit in our bitfields.
@@ -181,8 +204,15 @@ impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> Decodable<MemDecoder<'a>>
         let mut nodes = IndexVec::with_capacity(node_count);
         let mut fingerprints = IndexVec::with_capacity(node_count);
         let mut edge_list_indices = IndexVec::with_capacity(node_count);
-        // This slightly over-estimates the amount of bytes used for all the edge data but never by
-        // more than ~6%, because over-estimation only occurs for large nodes.
+        // This estimation assumes that all of the encoded bytes are for the edge lists or for the
+        // fixed-size node headers. But that's not necessarily true; if any edge list has a length
+        // that spills out of the size we can bit-pack into SerializedNodeHeader then some of the
+        // total serialized size is also used by leb128-encoded edge list lengths. Neglecting that
+        // contribution to graph_bytes means our estimation of the bytes needed for edge_list_data
+        // slightly overshoots. But it cannot overshoot by much; consider that the worse case is
+        // for a node with length 64, which means the spilled 1-byte leb128 length is 1 byte of at
+        // least (34 byte header + 1 byte len + 64 bytes edge data), which is ~1%. A 2-byte leb128
+        // length is about the same fractional overhead and it amortizes for yet greater lengths.
         let mut edge_list_data = Vec::with_capacity(
             graph_bytes - node_count * std::mem::size_of::<SerializedNodeHeader<K>>(),
         );
@@ -254,10 +284,13 @@ struct Unpacked<K> {
     fingerprint: Fingerprint,
 }
 
-// Bit fields are
-// 0..?    length of the edge
-// ?..?+2  bytes per index
-// ?+2..16 kind
+// Bit fields, where
+// M: bits used to store the length of a node's edge list
+// N: bits used to store the byte width of elements of the edge list
+// are
+// 0..M    length of the edge
+// M..M+N  bytes per index
+// M+N..16 kind
 impl<K: DepKind> SerializedNodeHeader<K> {
     const TOTAL_BITS: usize = std::mem::size_of::<K>() * 8;
     const LEN_BITS: usize = Self::TOTAL_BITS - Self::KIND_BITS - Self::WIDTH_BITS;

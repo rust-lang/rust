@@ -574,11 +574,7 @@ impl<K: DepKind> DepGraph<K> {
 
             let mut edges = EdgesVec::new();
             K::read_deps(|task_deps| match task_deps {
-                TaskDepsRef::Allow(deps) => {
-                    for index in deps.lock().reads.iter().copied() {
-                        edges.push(index);
-                    }
-                }
+                TaskDepsRef::Allow(deps) => edges.extend(deps.lock().reads.iter().copied()),
                 TaskDepsRef::EvalAlways => {
                     edges.push(DepNodeIndex::FOREVER_RED_NODE);
                 }
