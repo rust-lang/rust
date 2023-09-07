@@ -26,6 +26,7 @@ pub type DepKindStruct<'tcx> = rustc_query_system::dep_graph::DepKindStruct<TyCt
 impl rustc_query_system::dep_graph::DepKind for DepKind {
     const NULL: Self = DepKind::Null;
     const RED: Self = DepKind::Red;
+    const MAX: u16 = DepKind::VARIANTS - 1;
 
     fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}(", node.kind)?;
@@ -67,6 +68,21 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
             let Some(icx) = icx else { return };
             op(icx.task_deps)
         })
+    }
+
+    #[track_caller]
+    #[inline]
+    fn from_u16(u: u16) -> Self {
+        if u > Self::MAX {
+            panic!("Invalid DepKind {u}");
+        }
+        // SAFETY: See comment on DepKind::VARIANTS
+        unsafe { std::mem::transmute(u) }
+    }
+
+    #[inline]
+    fn to_u16(self) -> u16 {
+        self as u16
     }
 }
 

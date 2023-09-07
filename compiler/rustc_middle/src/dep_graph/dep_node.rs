@@ -97,7 +97,7 @@ macro_rules! define_dep_nodes {
             // discriminants of the variants have been assigned consecutively from 0
             // so that just the one comparison suffices to check that the u16 can be
             // transmuted to a DepKind.
-            const VARIANTS: u16 = {
+            pub const VARIANTS: u16 = {
                 let deps: &[DepKind] = &[$(DepKind::$variant,)*];
                 let mut i = 0;
                 while i < deps.len() {
