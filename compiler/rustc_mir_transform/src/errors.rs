@@ -258,10 +258,3 @@ pub(crate) struct MustNotSuspendReason {
     pub span: Span,
     pub reason: String,
 }
-
-#[derive(Diagnostic)]
-#[diag(mir_transform_simd_shuffle_last_const)]
-pub(crate) struct SimdShuffleLastConst {
-    #[primary_span]
-    pub span: Span,
-}
