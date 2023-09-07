@@ -1,11 +1,10 @@
 //! Lowers intrinsic calls
 
-use crate::{errors, MirPass};
+use crate::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 pub struct LowerIntrinsics;
@@ -304,9 +303,6 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Unreachable;
                         }
                     }
-                    sym::simd_shuffle => {
-                        validate_simd_shuffle(tcx, args, terminator.source_info.span);
-                    }
                     _ => {}
                 }
             }
@@ -324,10 +320,4 @@ fn resolve_rust_intrinsic<'tcx>(
         }
     }
     None
-}
-
-fn validate_simd_shuffle<'tcx>(tcx: TyCtxt<'tcx>, args: &[Operand<'tcx>], span: Span) {
-    if !matches!(args[2], Operand::Constant(_)) {
-        tcx.sess.emit_err(errors::SimdShuffleLastConst { span });
-    }
 }
