@@ -54,7 +54,7 @@ These are a few functions that allow you to easily run rust code from the shell 
 
 ```bash
 function jit_naked() {
-    echo "$@" | $cg_clif_dir/dist/rustc-clif - -Zunstable-features -Cllvm-args=mode=jit -Cprefer-dynamic
+    echo "$@" | $cg_clif_dir/dist/rustc-clif - -Zunstable-options -Cllvm-args=mode=jit-lazy -Cprefer-dynamic
 }
 
 function jit() {
