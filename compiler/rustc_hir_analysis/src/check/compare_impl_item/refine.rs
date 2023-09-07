@@ -29,6 +29,18 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     let trait_m_to_impl_m_args = impl_m_args.rebase_onto(tcx, impl_def_id, impl_trait_ref.args);
     let bound_trait_m_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_to_impl_m_args);
     let trait_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, bound_trait_m_sig);
+    // replace the self type of the trait ref with `Self` so that diagnostics render better.
+    let trait_m_sig_with_self_for_diag = tcx.liberate_late_bound_regions(
+        impl_m.def_id,
+        tcx.fn_sig(trait_m.def_id).instantiate(
+            tcx,
+            tcx.mk_args_from_iter(
+                [tcx.types.self_param.into()]
+                    .into_iter()
+                    .chain(trait_m_to_impl_m_args.iter().skip(1)),
+            ),
+        ),
+    );
 
     let Ok(hidden_tys) = tcx.collect_return_position_impl_trait_in_trait_tys(impl_m.def_id) else {
         // Error already emitted, no need to delay another.
@@ -51,7 +63,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         let ty::Alias(ty::Opaque, impl_opaque) = *hidden_ty.kind() else {
             report_mismatched_rpitit_signature(
                 tcx,
-                trait_m_sig,
+                trait_m_sig_with_self_for_diag,
                 trait_m.def_id,
                 impl_m.def_id,
                 None,
@@ -70,7 +82,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         }) {
             report_mismatched_rpitit_signature(
                 tcx,
-                trait_m_sig,
+                trait_m_sig_with_self_for_diag,
                 trait_m.def_id,
                 impl_m.def_id,
                 None,
@@ -163,7 +175,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         if !trait_bounds.contains(&clause) {
             report_mismatched_rpitit_signature(
                 tcx,
-                trait_m_sig,
+                trait_m_sig_with_self_for_diag,
                 trait_m.def_id,
                 impl_m.def_id,
                 Some(span),

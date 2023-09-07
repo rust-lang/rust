@@ -24,8 +24,8 @@ LL |     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
    = note: `#[warn(refining_impl_trait)]` on by default
 help: replace the return type so that it matches the trait
    |
-LL |     fn iter(&self) -> impl Iterator<Item = <&'a I as Iterable>::Item<'_>> + '_ {
-   |                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     fn iter(&self) -> impl Iterator<Item = <Self as Iterable>::Item<'_>> + '_ {
+   |                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error; 1 warning emitted
 
