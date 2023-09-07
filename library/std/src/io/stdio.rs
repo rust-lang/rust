@@ -8,7 +8,9 @@ use crate::io::prelude::*;
 use crate::cell::{Cell, RefCell};
 use crate::fmt;
 use crate::fs::File;
-use crate::io::{self, BorrowedCursor, BufReader, BufWriter, IoSlice, IoSliceMut, LineWriter, Lines};
+use crate::io::{
+    self, BorrowedCursor, BufReader, BufWriter, IoSlice, IoSliceMut, LineWriter, Lines,
+};
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantMutex, ReentrantMutexGuard};
 use crate::sys::stdio;
@@ -1155,7 +1157,18 @@ macro_rules! impl_is_terminal {
     )*}
 }
 
-impl_is_terminal!(File, Stdin, StdinLock<'_>, Stdout, StdoutLock<'_>, Stderr, StderrLock<'_>, stdio::Stdin, stdio::Stdout, stdio::Stderr);
+impl_is_terminal!(
+    File,
+    Stdin,
+    StdinLock<'_>,
+    Stdout,
+    StdoutLock<'_>,
+    Stderr,
+    StderrLock<'_>,
+    stdio::Stdin,
+    stdio::Stdout,
+    stdio::Stderr
+);
 
 #[unstable(
     feature = "print_internals",
