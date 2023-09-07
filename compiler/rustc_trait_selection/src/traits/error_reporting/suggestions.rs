@@ -838,7 +838,20 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         obligation.param_env,
                         real_trait_pred_and_base_ty,
                     );
-                    if self.predicate_may_hold(&obligation) {
+                    let sized_obligation = Obligation::new(
+                        self.tcx,
+                        obligation.cause.clone(),
+                        obligation.param_env,
+                        ty::TraitRef::from_lang_item(
+                            self.tcx,
+                            hir::LangItem::Sized,
+                            obligation.cause.span,
+                            [base_ty],
+                        ),
+                    );
+                    if self.predicate_may_hold(&obligation)
+                        && self.predicate_must_hold_modulo_regions(&sized_obligation)
+                    {
                         let call_node = self.tcx.hir().get(*call_hir_id);
                         let msg = "consider dereferencing here";
                         let is_receiver = matches!(
