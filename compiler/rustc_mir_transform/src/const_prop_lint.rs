@@ -39,6 +39,10 @@ pub struct ConstProp;
 
 impl<'tcx> MirLint<'tcx> for ConstProp {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+        if body.tainted_by_errors.is_some() {
+            return;
+        }
+
         // will be evaluated by miri and produce its errors there
         if body.source.promoted.is_some() {
             return;
