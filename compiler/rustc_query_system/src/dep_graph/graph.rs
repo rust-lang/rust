@@ -911,11 +911,7 @@ impl<D: Deps> DepGraphData<D> {
             // Promote the previous diagnostics to the current session.
             qcx.store_side_effects(dep_node_index, side_effects.clone());
 
-            let dcx = qcx.dep_context().sess().dcx();
-
-            for diagnostic in side_effects.diagnostics {
-                dcx.emit_diagnostic(diagnostic);
-            }
+            qcx.apply_side_effects(side_effects);
         }
     }
 }

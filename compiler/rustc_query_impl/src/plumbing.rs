@@ -7,7 +7,6 @@ use std::num::NonZero;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::DiagInner;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{
@@ -31,7 +30,6 @@ use rustc_query_system::{LayoutOfDepth, QueryOverflow};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
-use thin_vec::ThinVec;
 
 use crate::QueryConfigRestored;
 
@@ -127,7 +125,7 @@ impl QueryContext for QueryCtxt<'_> {
         self,
         token: QueryJobId,
         depth_limit: bool,
-        diagnostics: Option<&Lock<ThinVec<DiagInner>>>,
+        side_effects: Option<&Lock<QuerySideEffects>>,
         compute: impl FnOnce() -> R,
     ) -> R {
         // The `TyCtxt` stored in TLS has the same global interner lifetime
@@ -142,7 +140,7 @@ impl QueryContext for QueryCtxt<'_> {
             let new_icx = ImplicitCtxt {
                 tcx: self.tcx,
                 query: Some(token),
-                diagnostics,
+                side_effects,
                 query_depth: current_icx.query_depth + depth_limit as usize,
                 task_deps: current_icx.task_deps,
             };
@@ -173,6 +171,16 @@ impl QueryContext for QueryCtxt<'_> {
             suggested_limit,
             crate_name: self.crate_name(LOCAL_CRATE),
         });
+    }
+
+    #[tracing::instrument(level = "trace", skip(self))]
+    fn apply_side_effects(self, side_effects: QuerySideEffects) {
+        let dcx = self.dep_context().sess().dcx();
+        let QuerySideEffects { diagnostics } = side_effects;
+
+        for diagnostic in diagnostics {
+            dcx.emit_diagnostic(diagnostic);
+        }
     }
 }
 
