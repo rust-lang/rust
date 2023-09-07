@@ -7,7 +7,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath, Sysroot};
 
-pub(crate) enum Config<'a> {
+pub(crate) enum RustcCfgConfig<'a> {
     Cargo(&'a ManifestPath),
     Explicit(&'a Sysroot),
     Discover,
@@ -16,7 +16,7 @@ pub(crate) enum Config<'a> {
 pub(crate) fn get(
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
-    config: Config<'_>,
+    config: RustcCfgConfig<'_>,
 ) -> Vec<CfgFlag> {
     let _p = profile::span("rustc_cfg::get");
     let mut res = Vec::with_capacity(6 * 2 + 1);
@@ -61,10 +61,10 @@ pub(crate) fn get(
 fn get_rust_cfgs(
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
-    config: Config<'_>,
+    config: RustcCfgConfig<'_>,
 ) -> anyhow::Result<String> {
     let mut cmd = match config {
-        Config::Cargo(cargo_toml) => {
+        RustcCfgConfig::Cargo(cargo_toml) => {
             let mut cmd = Command::new(toolchain::cargo());
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
@@ -76,12 +76,12 @@ fn get_rust_cfgs(
 
             return utf8_stdout(cmd).context("Unable to run `cargo rustc`");
         }
-        Config::Explicit(sysroot) => {
+        RustcCfgConfig::Explicit(sysroot) => {
             let rustc: std::path::PathBuf = sysroot.discover_rustc()?.into();
             tracing::debug!(?rustc, "using explicit rustc from sysroot");
             Command::new(rustc)
         }
-        Config::Discover => {
+        RustcCfgConfig::Discover => {
             let rustc = toolchain::rustc();
             tracing::debug!(?rustc, "using rustc from env");
             Command::new(rustc)

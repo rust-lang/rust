@@ -21,7 +21,7 @@ use crate::{
     cargo_workspace::{DepKind, PackageData, RustLibSource},
     cfg_flag::CfgFlag,
     project_json::Crate,
-    rustc_cfg,
+    rustc_cfg::{self, RustcCfgConfig},
     sysroot::SysrootCrate,
     target_data_layout, utf8_stdout, CargoConfig, CargoWorkspace, InvocationStrategy, ManifestPath,
     Package, ProjectJson, ProjectManifest, Sysroot, TargetData, TargetKind, WorkspaceBuildScripts,
@@ -282,7 +282,7 @@ impl ProjectWorkspace {
                 let rustc_cfg = rustc_cfg::get(
                     config.target.as_deref(),
                     &config.extra_env,
-                    rustc_cfg::Config::Cargo(cargo_toml),
+                    RustcCfgConfig::Cargo(cargo_toml),
                 );
 
                 let cfg_overrides = config.cfg_overrides.clone();
@@ -337,11 +337,11 @@ impl ProjectWorkspace {
         let config = match &sysroot {
             Ok(sysroot) => {
                 tracing::debug!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
-                rustc_cfg::Config::Explicit(sysroot)
+                RustcCfgConfig::Explicit(sysroot)
             }
             Err(_) => {
                 tracing::debug!("discovering sysroot");
-                rustc_cfg::Config::Discover
+                RustcCfgConfig::Discover
             }
         };
 
@@ -370,11 +370,11 @@ impl ProjectWorkspace {
         let rustc_config = match &sysroot {
             Ok(sysroot) => {
                 tracing::info!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
-                rustc_cfg::Config::Explicit(sysroot)
+                RustcCfgConfig::Explicit(sysroot)
             }
             Err(_) => {
                 tracing::info!("discovering sysroot");
-                rustc_cfg::Config::Discover
+                RustcCfgConfig::Discover
             }
         };
 
@@ -774,8 +774,8 @@ fn project_json_to_crate_graph(
                 let target_cfgs = match target.as_deref() {
                     Some(target) => cfg_cache.entry(target).or_insert_with(|| {
                         let rustc_cfg = match sysroot {
-                            Some(sysroot) => rustc_cfg::Config::Explicit(sysroot),
-                            None => rustc_cfg::Config::Discover,
+                            Some(sysroot) => RustcCfgConfig::Explicit(sysroot),
+                            None => RustcCfgConfig::Discover,
                         };
 
                         rustc_cfg::get(Some(target), extra_env, rustc_cfg)
