@@ -96,13 +96,21 @@ LL |     vec1 = Vec::new();
 LL |     vec1.resize(10, 0);
    |     ^^^^^^^^^^^^^^^^^^
 
+error: slow zero-filling initialization
+  --> $DIR/slow_vector_initialization.rs:91:5
+   |
+LL |     vec1 = vec![];
+   |            ------ help: consider replacing this with: `vec![0; 10]`
+LL |     vec1.resize(10, 0);
+   |     ^^^^^^^^^^^^^^^^^^
+
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/slow_vector_initialization.rs:91:18
+  --> $DIR/slow_vector_initialization.rs:105:18
    |
 LL | fn do_stuff(vec: &mut [u8]) {}
    |                  ^^^^^^^^^ help: consider changing to: `&[u8]`
    |
    = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
 
-error: aborting due to 13 previous errors
+error: aborting due to 14 previous errors
 
