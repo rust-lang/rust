@@ -11,6 +11,7 @@ use crate::marker::PhantomData;
 use crate::mem::forget;
 #[cfg(not(any(target_arch = "wasm32", target_env = "sgx", target_os = "hermit")))]
 use crate::sys::cvt;
+use crate::sys::stdio;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// A borrowed file descriptor.
@@ -433,6 +434,15 @@ impl<'a> AsFd for io::StdinLock<'a> {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for stdio::Stdin {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stdin out from under the standard library
+        unsafe { BorrowedFd::borrow_raw(0) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for io::Stdout {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -450,6 +460,15 @@ impl<'a> AsFd for io::StdoutLock<'a> {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for stdio::Stdout {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stdout out from under the standard library
+        unsafe { BorrowedFd::borrow_raw(1) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for io::Stderr {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -459,6 +478,15 @@ impl AsFd for io::Stderr {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl<'a> AsFd for io::StderrLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stderr out from under the standard library
+        unsafe { BorrowedFd::borrow_raw(2) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for stdio::Stderr {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         // SAFETY: user code should not close stderr out from under the standard library
