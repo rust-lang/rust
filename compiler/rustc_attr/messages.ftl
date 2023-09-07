@@ -34,6 +34,9 @@ attr_incorrect_repr_format_generic =
 attr_incorrect_repr_format_packed_one_or_zero_arg =
     incorrect `repr(packed)` attribute format: `packed` takes exactly one parenthesized argument, or no parentheses at all
 
+attr_internal_no_args =
+    `is_internal` should not have any arguments
+
 attr_invalid_issue_string =
     `issue` must be a non-zero numeric string or "none"
     .must_not_be_zero = `issue` must not be "0", use "none" instead
@@ -87,9 +90,6 @@ attr_rustc_promotable_pairing =
 
 attr_soft_no_args =
     `soft` should not have any arguments
-
-attr_internal_no_args =
-    `is_internal` should not have any arguments
 
 attr_unknown_meta_item =
     unknown meta item '{$item}'

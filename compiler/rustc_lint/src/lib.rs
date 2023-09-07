@@ -171,6 +171,7 @@ early_lint_methods!(
             SpecialModuleName: SpecialModuleName,
             AnonymousParameters: AnonymousParameters,
             EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
+            IncompleteInternalLangFeatures: IncompleteInternalLangFeatures,
             NonCamelCaseTypes: NonCamelCaseTypes,
             DeprecatedAttr: DeprecatedAttr::new(),
             WhileTrue: WhileTrue,
@@ -199,7 +200,7 @@ late_lint_methods!(
             BoxPointers: BoxPointers,
             PathStatements: PathStatements,
             LetUnderscore: LetUnderscore,
-            IncompleteInternalFeatures: IncompleteInternalFeatures,
+            InternalLibFeatures: InternalLibFeatures,
             InvalidReferenceCasting: InvalidReferenceCasting::default(),
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,

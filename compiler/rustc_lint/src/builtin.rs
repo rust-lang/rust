@@ -2246,12 +2246,17 @@ declare_lint! {
 
 declare_lint_pass!(
     /// Check for used feature gates in `INCOMPLETE_FEATURES` in `rustc_feature/src/active.rs`.
-    IncompleteInternalFeatures => [INCOMPLETE_FEATURES, INTERNAL_FEATURES]
+    IncompleteInternalLangFeatures => [INCOMPLETE_FEATURES, INTERNAL_FEATURES]
 );
 
-impl<'tcx> LateLintPass<'tcx> for IncompleteInternalFeatures {
-    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
-        let features = cx.tcx.features();
+declare_lint_pass!(
+    /// Check for used library features declared as `unstable(is_internal)`.
+    InternalLibFeatures => []
+);
+
+impl EarlyLintPass for IncompleteInternalLangFeatures {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
+        let features = cx.builder.features();
         features
             .declared_lang_features
             .iter()
@@ -2278,7 +2283,13 @@ impl<'tcx> LateLintPass<'tcx> for IncompleteInternalFeatures {
                     );
                 }
             });
+    }
+}
 
+// Needs to be a late pass because we need the list of parent crates
+impl<'tcx> LateLintPass<'tcx> for InternalLibFeatures {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
+        let features = cx.tcx.features();
         for cnum in [LOCAL_CRATE].into_iter().chain(cx.tcx.crates(()).iter().copied()) {
             let crate_features = cx.tcx.lib_features(cnum);
             for &(name, span) in &features.declared_lib_features {

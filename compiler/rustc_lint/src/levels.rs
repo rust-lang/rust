@@ -534,6 +534,10 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         self.sess
     }
 
+    pub(crate) fn features(&self) -> &Features {
+        self.features
+    }
+
     pub(crate) fn lint_store(&self) -> &LintStore {
         self.store
     }
