@@ -49,8 +49,17 @@ jobs:
     strategy:
       matrix:
         include:
+          - name: mingw-check
+            os: ubuntu-20.04-4core-16gb
+            env: {}
           - name: mingw-check-tidy
             os: ubuntu-20.04-4core-16gb
+            env: {}
+          - name: x86_64-gnu-llvm-15
+            os: ubuntu-20.04-16core-64gb
+            env: {}
+          - name: x86_64-gnu-tools
+            os: ubuntu-20.04-16core-64gb
             env: {}
           - name: x86_64-msvc
             env:
