@@ -1528,7 +1528,9 @@ options! {
     incremental_relative_spans: bool = (false, parse_bool, [TRACKED],
         "hash spans relative to their parent item for incr. comp. (default: no)"),
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],
-        "verify incr. comp. hashes of green query instances (default: no)"),
+        "verify extended properties for incr. comp. (default: no):
+        - hashes of green query instances;
+        - hash collisions when creating dep-nodes."),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether `#[inline]` functions are in all CGUs"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
