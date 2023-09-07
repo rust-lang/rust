@@ -24,6 +24,7 @@ use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, AdtKind, EarlyBinder, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -955,6 +956,43 @@ fn clean_ty_generics<'tcx>(
     }
 }
 
+fn clean_ty_alias_inner_type<'tcx>(
+    ty: Ty<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> Option<TypeAliasInnerType> {
+    let ty::Adt(adt_def, args) = ty.kind() else {
+        return None;
+    };
+
+    Some(if adt_def.is_enum() {
+        let variants: rustc_index::IndexVec<_, _> = adt_def
+            .variants()
+            .iter()
+            .map(|variant| clean_variant_def_with_args(variant, args, cx))
+            .collect();
+
+        TypeAliasInnerType::Enum {
+            variants,
+            is_non_exhaustive: adt_def.is_variant_list_non_exhaustive(),
+        }
+    } else {
+        let variant = adt_def
+            .variants()
+            .iter()
+            .next()
+            .unwrap_or_else(|| bug!("a struct or union should always have one variant def"));
+
+        let fields: Vec<_> =
+            clean_variant_def_with_args(variant, args, cx).kind.inner_items().cloned().collect();
+
+        if adt_def.is_struct() {
+            TypeAliasInnerType::Struct { ctor_kind: variant.ctor_kind(), fields }
+        } else {
+            TypeAliasInnerType::Union { fields }
+        }
+    })
+}
+
 fn clean_proc_macro<'tcx>(
     item: &hir::Item<'tcx>,
     name: &mut Symbol,
@@ -1222,6 +1260,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                     Box::new(TypeAlias {
                         type_: clean_ty(default, cx),
                         generics,
+                        inner_type: None,
                         item_type: Some(item_type),
                     }),
                     bounds,
@@ -1264,7 +1303,12 @@ pub(crate) fn clean_impl_item<'tcx>(
                     None,
                 );
                 AssocTypeItem(
-                    Box::new(TypeAlias { type_, generics, item_type: Some(item_type) }),
+                    Box::new(TypeAlias {
+                        type_,
+                        generics,
+                        inner_type: None,
+                        item_type: Some(item_type),
+                    }),
                     Vec::new(),
                 )
             }
@@ -1471,6 +1515,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                                 None,
                             ),
                             generics,
+                            inner_type: None,
                             item_type: None,
                         }),
                         bounds,
@@ -1490,6 +1535,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                             None,
                         ),
                         generics,
+                        inner_type: None,
                         item_type: None,
                     }),
                     // Associated types inside trait or inherent impls are not allowed to have
@@ -2363,6 +2409,83 @@ pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocCont
     )
 }
 
+pub(crate) fn clean_variant_def_with_args<'tcx>(
+    variant: &ty::VariantDef,
+    args: &GenericArgsRef<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> Item {
+    let discriminant = match variant.discr {
+        ty::VariantDiscr::Explicit(def_id) => Some(Discriminant { expr: None, value: def_id }),
+        ty::VariantDiscr::Relative(_) => None,
+    };
+
+    use rustc_middle::traits::ObligationCause;
+    use rustc_trait_selection::infer::TyCtxtInferExt;
+    use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
+
+    let infcx = cx.tcx.infer_ctxt().build();
+    let kind = match variant.ctor_kind() {
+        Some(CtorKind::Const) => VariantKind::CLike,
+        Some(CtorKind::Fn) => VariantKind::Tuple(
+            variant
+                .fields
+                .iter()
+                .map(|field| {
+                    let ty = cx.tcx.type_of(field.did).instantiate(cx.tcx, args);
+
+                    // normalize the type to only show concrete types
+                    // note: we do not use try_normalize_erasing_regions since we
+                    // do care about showing the regions
+                    let ty = infcx
+                        .at(&ObligationCause::dummy(), cx.param_env)
+                        .query_normalize(ty)
+                        .map(|normalized| normalized.value)
+                        .unwrap_or(ty);
+
+                    clean_field_with_def_id(
+                        field.did,
+                        field.name,
+                        clean_middle_ty(ty::Binder::dummy(ty), cx, Some(field.did), None),
+                        cx,
+                    )
+                })
+                .collect(),
+        ),
+        None => VariantKind::Struct(VariantStruct {
+            fields: variant
+                .fields
+                .iter()
+                .map(|field| {
+                    let ty = cx.tcx.type_of(field.did).instantiate(cx.tcx, args);
+
+                    // normalize the type to only show concrete types
+                    // note: we do not use try_normalize_erasing_regions since we
+                    // do care about showing the regions
+                    let ty = infcx
+                        .at(&ObligationCause::dummy(), cx.param_env)
+                        .query_normalize(ty)
+                        .map(|normalized| normalized.value)
+                        .unwrap_or(ty);
+
+                    clean_field_with_def_id(
+                        field.did,
+                        field.name,
+                        clean_middle_ty(ty::Binder::dummy(ty), cx, Some(field.did), None),
+                        cx,
+                    )
+                })
+                .collect(),
+        }),
+    };
+
+    Item::from_def_id_and_parts(
+        variant.def_id,
+        Some(variant.name),
+        VariantItem(Variant { kind, discriminant }),
+        cx,
+    )
+}
+
 fn clean_variant_data<'tcx>(
     variant: &hir::VariantData<'tcx>,
     disr_expr: &Option<hir::AnonConst>,
@@ -2617,7 +2740,7 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::TyAlias(hir_ty, generics) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
                 let rustdoc_ty = clean_ty(hir_ty, cx);
-                let ty = clean_middle_ty(
+                let type_ = clean_middle_ty(
                     ty::Binder::dummy(hir_ty_to_ty(cx.tcx, hir_ty)),
                     cx,
                     None,
@@ -2630,10 +2753,15 @@ fn clean_maybe_renamed_item<'tcx>(
                         cx.current_type_aliases.remove(&def_id);
                     }
                 }
+
+                let ty = cx.tcx.type_of(def_id).instantiate_identity();
+                let inner_type = clean_ty_alias_inner_type(ty, cx);
+
                 TypeAliasItem(Box::new(TypeAlias {
-                    type_: rustdoc_ty,
                     generics,
-                    item_type: Some(ty),
+                    inner_type,
+                    type_: rustdoc_ty,
+                    item_type: Some(type_),
                 }))
             }
             ItemKind::Enum(ref def, generics) => EnumItem(Enum {

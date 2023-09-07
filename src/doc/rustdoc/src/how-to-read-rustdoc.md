@@ -38,6 +38,22 @@ followed by a list of fields or variants for Rust types.
 Finally, the page lists associated functions and trait implementations,
 including automatic and blanket implementations that `rustdoc` knows about.
 
+### Sections
+
+<!-- FIXME: Implementations -->
+<!-- FIXME: Trait Implementations -->
+<!-- FIXME: Implementors -->
+<!-- FIXME: Auto Trait Implementations -->
+
+#### Aliased Type
+
+A type alias is expanded at compile time to its
+[aliased type](https://doc.rust-lang.org/reference/items/type-aliases.html).
+That may involve substituting some or all of the type parameters in the target
+type with types provided by the type alias definition. The Aliased Type section
+shows the result of this expansion, including the types of public fields or
+variants, which may depend on those substitutions.
+
 ### Navigation
 
 Subheadings, variants, fields, and many other things in this documentation

@@ -82,7 +82,7 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
         clean::PrimitiveItem(_) => sidebar_primitive(cx, it),
         clean::UnionItem(ref u) => sidebar_union(cx, it, u),
         clean::EnumItem(ref e) => sidebar_enum(cx, it, e),
-        clean::TypeAliasItem(_) => sidebar_type_alias(cx, it),
+        clean::TypeAliasItem(ref t) => sidebar_type_alias(cx, it, t),
         clean::ModuleItem(ref m) => vec![sidebar_module(&m.items)],
         clean::ForeignTypeItem => sidebar_foreign_type(cx, it),
         _ => vec![],
@@ -230,8 +230,32 @@ fn sidebar_primitive<'a>(cx: &'a Context<'_>, it: &'a clean::Item) -> Vec<LinkBl
     }
 }
 
-fn sidebar_type_alias<'a>(cx: &'a Context<'_>, it: &'a clean::Item) -> Vec<LinkBlock<'a>> {
+fn sidebar_type_alias<'a>(
+    cx: &'a Context<'_>,
+    it: &'a clean::Item,
+    t: &'a clean::TypeAlias,
+) -> Vec<LinkBlock<'a>> {
     let mut items = vec![];
+    if let Some(inner_type) = &t.inner_type {
+        match inner_type {
+            clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive: _ } => {
+                let mut variants = variants
+                    .iter()
+                    .filter(|i| !i.is_stripped())
+                    .filter_map(|v| v.name)
+                    .map(|name| Link::new(format!("variant.{name}"), name.to_string()))
+                    .collect::<Vec<_>>();
+                variants.sort_unstable();
+
+                items.push(LinkBlock::new(Link::new("variants", "Variants"), variants));
+            }
+            clean::TypeAliasInnerType::Union { fields }
+            | clean::TypeAliasInnerType::Struct { ctor_kind: _, fields } => {
+                let fields = get_struct_fields_name(fields);
+                items.push(LinkBlock::new(Link::new("fields", "Fields"), fields));
+            }
+        }
+    }
     sidebar_assoc_items(cx, it, &mut items);
     items
 }
