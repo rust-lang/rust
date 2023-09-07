@@ -13,8 +13,8 @@ fn main() {
     let _ = matches!(f, 1 | 2147483647);
     let _ = matches!(f, 0 | 2147483647);
     let _ = matches!(f, -2147483647 | 2147483647);
-    let _ = matches!(f, 1 | (2..=4));
-    let _ = matches!(f, 1 | (2..4));
+    let _ = matches!(f, 1..=4);
+    let _ = matches!(f, 1..4);
     let _ = matches!(f, 1..=48324729);
     let _ = matches!(f, 0..=48324730);
     let _ = matches!(f, 0..=3);
@@ -25,8 +25,19 @@ fn main() {
     };
     let _ = matches!(f, -5..=3);
     let _ = matches!(f, -1 | -5 | 3 | -2 | -4 | -3 | 0 | 1); // 2 is missing
-    let _ = matches!(f, -1000001..=1000001);
+    let _ = matches!(f, -1_000_001..=1_000_001);
     let _ = matches!(f, -1_000_000..=1_000_000 | -1_000_001 | 1_000_002);
+
+    matches!(f, 0x00..=0x03);
+    matches!(f, 0x00..=0x07);
+    matches!(f, -0x09..=0x00);
+
+    matches!(f, 0..=5);
+    matches!(f, 0..5);
+
+    matches!(f, 0..10);
+    matches!(f, 0..=10);
+    matches!(f, 0..=10);
 
     macro_rules! mac {
         ($e:expr) => {
