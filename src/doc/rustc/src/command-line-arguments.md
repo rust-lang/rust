@@ -260,6 +260,10 @@ The valid types of print values are:
   This returns rustc's minimum supported deployment target if no `*_DEPLOYMENT_TARGET` variable
   is present in the environment, or otherwise returns the variable's parsed value.
 
+A filepath may optionally be specified for each requested information kind, in
+the format `--print KIND=PATH`, just like for `--emit`. When a path is
+specified, information will be written there instead of to stdout.
+
 [conditional compilation]: ../reference/conditional-compilation.html
 [deployment target]: https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/cross_development/Configuring/configuring.html
 
