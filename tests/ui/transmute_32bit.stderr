@@ -5,6 +5,7 @@ LL |         let _: *const usize = std::mem::transmute(6.0f32);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::wrong-transmute` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::wrong_transmute)]`
 
 error: transmute from a `f32` to a pointer
   --> $DIR/transmute_32bit.rs:8:29
