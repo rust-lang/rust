@@ -38,20 +38,20 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 13, 20) to (start + 0, 25)
 
 Function name: async::e (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 0f, 01, 00, 14]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 0f, 01, 00, 14]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 15, 1) to (start + 0, 20)
+- Code(Zero) at (prev + 15, 1) to (start + 0, 20)
 
 Function name: async::e::{closure#0} (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 0f, 14, 00, 19]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 0f, 14, 00, 19]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 15, 20) to (start + 0, 25)
+- Code(Zero) at (prev + 15, 20) to (start + 0, 25)
 
 Function name: async::executor::block_on::<core::pin::Pin<&mut async::i::{closure#0}>>
 Raw bytes (44): 0x[01, 01, 05, 0b, 05, 01, 05, 01, 05, 02, 00, 02, 00, 06, 01, 6e, 05, 0a, 36, 02, 0d, 20, 00, 23, 0b, 00, 27, 00, 49, 0f, 01, 17, 00, 1a, 05, 01, 0e, 00, 0f, 13, 02, 05, 00, 06]
@@ -124,20 +124,20 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 17, 20) to (start + 0, 25)
 
 Function name: async::foo (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 13, 01, 00, 1e]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 13, 01, 00, 1e]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 19, 1) to (start + 0, 30)
+- Code(Zero) at (prev + 19, 1) to (start + 0, 30)
 
 Function name: async::foo::{closure#0} (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 13, 1e, 00, 2d]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 13, 1e, 00, 2d]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 19, 30) to (start + 0, 45)
+- Code(Zero) at (prev + 19, 30) to (start + 0, 45)
 
 Function name: async::g
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 15, 01, 00, 17]
@@ -148,14 +148,14 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 21, 1) to (start + 0, 23)
 
 Function name: async::g::{closure#0} (unused)
-Raw bytes (69): 0x[01, 01, 00, 0d, 00, 15, 17, 01, 0c, 00, 02, 09, 00, 0a, 01, 00, 0e, 00, 11, 00, 00, 12, 00, 17, 00, 00, 1b, 00, 1c, 00, 00, 20, 00, 22, 00, 01, 09, 00, 0a, 00, 00, 0e, 00, 11, 00, 00, 12, 00, 17, 00, 00, 1b, 00, 1c, 00, 00, 20, 00, 22, 00, 01, 0e, 00, 10, 00, 02, 01, 00, 02]
+Raw bytes (69): 0x[01, 01, 00, 0d, 00, 15, 17, 01, 0c, 00, 02, 09, 00, 0a, 00, 00, 0e, 00, 11, 00, 00, 12, 00, 17, 00, 00, 1b, 00, 1c, 00, 00, 20, 00, 22, 00, 01, 09, 00, 0a, 00, 00, 0e, 00, 11, 00, 00, 12, 00, 17, 00, 00, 1b, 00, 1c, 00, 00, 20, 00, 22, 00, 01, 0e, 00, 10, 00, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 13
 - Code(Zero) at (prev + 21, 23) to (start + 1, 12)
 - Code(Zero) at (prev + 2, 9) to (start + 0, 10)
-- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 17)
+- Code(Zero) at (prev + 0, 14) to (start + 0, 17)
 - Code(Zero) at (prev + 0, 18) to (start + 0, 23)
 - Code(Zero) at (prev + 0, 27) to (start + 0, 28)
 - Code(Zero) at (prev + 0, 32) to (start + 0, 34)
@@ -176,14 +176,14 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 29, 1) to (start + 0, 22)
 
 Function name: async::h::{closure#0} (unused)
-Raw bytes (44): 0x[01, 01, 00, 08, 00, 1d, 16, 03, 0c, 00, 04, 09, 00, 0a, 01, 00, 0e, 00, 13, 00, 00, 14, 00, 19, 00, 00, 1a, 00, 1b, 00, 00, 20, 00, 22, 00, 01, 0e, 00, 10, 00, 02, 01, 00, 02]
+Raw bytes (44): 0x[01, 01, 00, 08, 00, 1d, 16, 03, 0c, 00, 04, 09, 00, 0a, 00, 00, 0e, 00, 13, 00, 00, 14, 00, 19, 00, 00, 1a, 00, 1b, 00, 00, 20, 00, 22, 00, 01, 0e, 00, 10, 00, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 8
 - Code(Zero) at (prev + 29, 22) to (start + 3, 12)
 - Code(Zero) at (prev + 4, 9) to (start + 0, 10)
-- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 19)
+- Code(Zero) at (prev + 0, 14) to (start + 0, 19)
 - Code(Zero) at (prev + 0, 20) to (start + 0, 25)
 - Code(Zero) at (prev + 0, 26) to (start + 0, 27)
 - Code(Zero) at (prev + 0, 32) to (start + 0, 34)
@@ -285,12 +285,12 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 67, 5) to (start + 0, 23)
 
 Function name: async::k (unused)
-Raw bytes (29): 0x[01, 01, 00, 05, 01, 4b, 01, 01, 0c, 00, 02, 0e, 00, 10, 00, 01, 0e, 00, 10, 00, 01, 0e, 00, 10, 00, 02, 01, 00, 02]
+Raw bytes (29): 0x[01, 01, 00, 05, 00, 4b, 01, 01, 0c, 00, 02, 0e, 00, 10, 00, 01, 0e, 00, 10, 00, 01, 0e, 00, 10, 00, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 5
-- Code(Counter(0)) at (prev + 75, 1) to (start + 1, 12)
+- Code(Zero) at (prev + 75, 1) to (start + 1, 12)
 - Code(Zero) at (prev + 2, 14) to (start + 0, 16)
 - Code(Zero) at (prev + 1, 14) to (start + 0, 16)
 - Code(Zero) at (prev + 1, 14) to (start + 0, 16)
@@ -323,12 +323,12 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 91, 1) to (start + 0, 25)
 
 Function name: async::m::{closure#0} (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 5b, 19, 00, 22]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 5b, 19, 00, 22]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 91, 25) to (start + 0, 34)
+- Code(Zero) at (prev + 91, 25) to (start + 0, 34)
 
 Function name: async::main
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 5d, 01, 08, 02]

@@ -90,36 +90,36 @@ Number of file 0 mappings: 4
     = (c1 + (c0 - c1))
 
 Function name: closure::main::{closure#10} (unused)
-Raw bytes (10): 0x[01, 01, 00, 01, 01, 9a, 01, 07, 00, 21]
+Raw bytes (10): 0x[01, 01, 00, 01, 00, 9a, 01, 07, 00, 21]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 154, 7) to (start + 0, 33)
+- Code(Zero) at (prev + 154, 7) to (start + 0, 33)
 
 Function name: closure::main::{closure#11} (unused)
-Raw bytes (10): 0x[01, 01, 00, 01, 01, 9e, 01, 07, 00, 21]
+Raw bytes (10): 0x[01, 01, 00, 01, 00, 9e, 01, 07, 00, 21]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 158, 7) to (start + 0, 33)
+- Code(Zero) at (prev + 158, 7) to (start + 0, 33)
 
 Function name: closure::main::{closure#12} (unused)
-Raw bytes (10): 0x[01, 01, 00, 01, 01, a6, 01, 01, 00, 17]
+Raw bytes (10): 0x[01, 01, 00, 01, 00, a6, 01, 01, 00, 17]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 166, 1) to (start + 0, 23)
+- Code(Zero) at (prev + 166, 1) to (start + 0, 23)
 
 Function name: closure::main::{closure#13} (unused)
-Raw bytes (10): 0x[01, 01, 00, 01, 01, ab, 01, 0d, 02, 0e]
+Raw bytes (10): 0x[01, 01, 00, 01, 00, ab, 01, 0d, 02, 0e]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 171, 13) to (start + 2, 14)
+- Code(Zero) at (prev + 171, 13) to (start + 2, 14)
 
 Function name: closure::main::{closure#14}
 Raw bytes (38): 0x[01, 01, 04, 05, 0a, 01, 05, 01, 05, 03, 00, 05, 03, b2, 01, 0d, 00, 15, 01, 01, 11, 01, 1b, 05, 01, 1e, 00, 25, 0a, 00, 2f, 00, 33, 0f, 01, 0d, 00, 0e]
@@ -264,23 +264,23 @@ Number of file 0 mappings: 4
     = (c1 + (c0 - c1))
 
 Function name: closure::main::{closure#3} (unused)
-Raw bytes (25): 0x[01, 01, 00, 04, 01, 80, 01, 05, 01, 14, 00, 01, 15, 02, 0a, 00, 02, 0a, 00, 0b, 00, 01, 09, 01, 06]
+Raw bytes (25): 0x[01, 01, 00, 04, 00, 80, 01, 05, 01, 14, 00, 01, 15, 02, 0a, 00, 02, 0a, 00, 0b, 00, 01, 09, 01, 06]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 128, 5) to (start + 1, 20)
+- Code(Zero) at (prev + 128, 5) to (start + 1, 20)
 - Code(Zero) at (prev + 1, 21) to (start + 2, 10)
 - Code(Zero) at (prev + 2, 10) to (start + 0, 11)
 - Code(Zero) at (prev + 1, 9) to (start + 1, 6)
 
 Function name: closure::main::{closure#4} (unused)
-Raw bytes (10): 0x[01, 01, 00, 01, 01, 88, 01, 35, 00, 43]
+Raw bytes (10): 0x[01, 01, 00, 01, 00, 88, 01, 35, 00, 43]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 136, 53) to (start + 0, 67)
+- Code(Zero) at (prev + 136, 53) to (start + 0, 67)
 
 Function name: closure::main::{closure#5}
 Raw bytes (10): 0x[01, 01, 00, 01, 01, 8b, 01, 3d, 00, 4f]
@@ -299,26 +299,26 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 140, 65) to (start + 0, 87)
 
 Function name: closure::main::{closure#7} (unused)
-Raw bytes (10): 0x[01, 01, 00, 01, 01, 8d, 01, 3b, 00, 51]
+Raw bytes (10): 0x[01, 01, 00, 01, 00, 8d, 01, 3b, 00, 51]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 141, 59) to (start + 0, 81)
+- Code(Zero) at (prev + 141, 59) to (start + 0, 81)
 
 Function name: closure::main::{closure#8} (unused)
-Raw bytes (10): 0x[01, 01, 00, 01, 01, 92, 01, 3b, 00, 55]
+Raw bytes (10): 0x[01, 01, 00, 01, 00, 92, 01, 3b, 00, 55]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 146, 59) to (start + 0, 85)
+- Code(Zero) at (prev + 146, 59) to (start + 0, 85)
 
 Function name: closure::main::{closure#9} (unused)
-Raw bytes (10): 0x[01, 01, 00, 01, 01, 94, 01, 38, 02, 06]
+Raw bytes (10): 0x[01, 01, 00, 01, 00, 94, 01, 38, 02, 06]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 148, 56) to (start + 2, 6)
+- Code(Zero) at (prev + 148, 56) to (start + 2, 6)
 

@@ -89,9 +89,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// `function_coverage_map` (keyed by function `Instance`) during codegen.
     /// But in this case, since the unused function was _not_ previously
     /// codegenned, collect the coverage `CodeRegion`s from the MIR and add
-    /// them. The first `CodeRegion` is used to add a single counter, with the
-    /// same counter ID used in the injected `instrprof.increment` intrinsic
-    /// call. Since the function is never called, all other `CodeRegion`s can be
+    /// them. Since the function is never called, all of its `CodeRegion`s can be
     /// added as `unreachable_region`s.
     fn define_unused_fn(&self, def_id: DefId) {
         let instance = declare_unused_fn(self, def_id);
@@ -227,14 +225,8 @@ fn add_unused_function_coverage<'tcx>(
     let tcx = cx.tcx;
 
     let mut function_coverage = FunctionCoverage::unused(tcx, instance);
-    for (index, &code_region) in tcx.covered_code_regions(def_id).iter().enumerate() {
-        if index == 0 {
-            // Insert at least one real counter so the LLVM CoverageMappingReader will find expected
-            // definitions.
-            function_coverage.add_counter(UNUSED_FUNCTION_COUNTER_ID, code_region.clone());
-        } else {
-            function_coverage.add_unreachable_region(code_region.clone());
-        }
+    for &code_region in tcx.covered_code_regions(def_id) {
+        function_coverage.add_unreachable_region(code_region.clone());
     }
 
     if let Some(coverage_context) = cx.coverage_context() {
