@@ -9,7 +9,7 @@ where
     I: Iterator<Item = i32>,
 {
     use_iterator(i);
-    //~^ ERROR `&dyn IntoIterator<Item = i32, IntoIter = I>` is not an iterator
+    //~^ ERROR `&dyn IntoIterator<IntoIter = I, Item = i32>` is not an iterator
 }
 
 fn main() {}

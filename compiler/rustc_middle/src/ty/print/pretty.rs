@@ -1239,21 +1239,18 @@ pub trait PrettyPrinter<'tcx>:
                         .generics_of(principal.def_id)
                         .own_args_no_defaults(cx.tcx(), principal.args);
 
-                    let mut projections = predicates.projection_bounds();
+                    let mut projections: Vec<_> = predicates.projection_bounds().collect();
+                    projections.sort_by_cached_key(|proj| {
+                        cx.tcx().item_name(proj.item_def_id()).to_string()
+                    });
 
-                    let mut args = args.iter().cloned();
-                    let arg0 = args.next();
-                    let projection0 = projections.next();
-                    if arg0.is_some() || projection0.is_some() {
-                        let args = arg0.into_iter().chain(args);
-                        let projections = projection0.into_iter().chain(projections);
-
+                    if !args.is_empty() || !projections.is_empty() {
                         p!(generic_delimiters(|mut cx| {
-                            cx = cx.comma_sep(args)?;
-                            if arg0.is_some() && projection0.is_some() {
+                            cx = cx.comma_sep(args.iter().copied())?;
+                            if !args.is_empty() && !projections.is_empty() {
                                 write!(cx, ", ")?;
                             }
-                            cx.comma_sep(projections)
+                            cx.comma_sep(projections.iter().copied())
                         }));
                     }
                 }
