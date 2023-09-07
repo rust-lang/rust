@@ -752,7 +752,7 @@ impl Map {
             let old = self.projections.insert((place, TrackElem::Discriminant), discr);
             assert!(old.is_none());
 
-            // Allocate a value slot if it doesn't have one.
+            // Allocate a value slot since it doesn't have one.
             assert!(self.places[discr].value_index.is_none());
             self.places[discr].value_index = Some(self.value_count.into());
             self.value_count += 1;
@@ -769,11 +769,10 @@ impl Map {
             let old = self.projections.insert((place, TrackElem::DerefLen), len);
             assert!(old.is_none());
 
-            // Allocate a value slot if it doesn't have one.
-            if self.places[len].value_index.is_none() {
-                self.places[len].value_index = Some(self.value_count.into());
-                self.value_count += 1;
-            }
+            // Allocate a value slot since it doesn't have one.
+            assert!( self.places[len].value_index.is_none() );
+            self.places[len].value_index = Some(self.value_count.into());
+            self.value_count += 1;
         }
 
         // Recurse with all fields of this place.
