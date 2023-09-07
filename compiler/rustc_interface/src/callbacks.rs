@@ -33,9 +33,8 @@ fn track_diagnostic<R>(diagnostic: DiagInner, f: &mut dyn FnMut(DiagInner) -> R)
     tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
             if let Some(side_effects) = icx.side_effects {
-                let mut side_effects = side_effects.lock();
-                side_effects.diagnostics.push(diagnostic.clone());
-                std::mem::drop(side_effects);
+                let diagnostic = diagnostic.clone();
+                side_effects.lock().diagnostics.push(diagnostic);
             }
 
             // Diagnostics are tracked, we can ignore the dependency.
