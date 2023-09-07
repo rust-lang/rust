@@ -1,4 +1,4 @@
-#![feature(unchecked_math)]
+#![feature(unchecked_shifts)]
 
 fn main() {
     unsafe {
