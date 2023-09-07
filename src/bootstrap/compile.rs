@@ -574,7 +574,9 @@ fn copy_sanitizers(
             || target == "aarch64-apple-darwin"
             || target == "aarch64-apple-ios"
             || target == "aarch64-apple-ios-sim"
+            || target == "aarch64-apple-ios-catalyst"
             || target == "x86_64-apple-ios"
+            || target == "x86_64-apple-ios-catalyst"
         {
             // Update the library’s install name to reflect that it has been renamed.
             apple_darwin_update_library_name(&dst, &format!("@rpath/{}", &runtime.name));
