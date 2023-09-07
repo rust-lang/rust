@@ -197,7 +197,9 @@ pub(crate) fn try_hard_link(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
 
 #[track_caller]
 pub(crate) fn spawn_and_wait(mut cmd: Command) {
-    if !cmd.spawn().unwrap().wait().unwrap().success() {
+    let status = cmd.spawn().unwrap().wait().unwrap();
+    if !status.success() {
+        eprintln!("{cmd:?} exited with status {:?}", status);
         process::exit(1);
     }
 }
@@ -233,6 +235,7 @@ pub(crate) fn spawn_and_wait_with_input(mut cmd: Command, input: String) -> Stri
 
     let output = child.wait_with_output().expect("Failed to read stdout");
     if !output.status.success() {
+        eprintln!("{cmd:?} exited with status {:?}", output.status);
         process::exit(1);
     }
 
