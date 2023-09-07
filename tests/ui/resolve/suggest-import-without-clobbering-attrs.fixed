@@ -1,8 +1,8 @@
 // run-rustfix
 // compile-flags: --cfg=whatever -Aunused
 
-#[cfg(whatever)]
 use y::z;
+#[cfg(whatever)]
 use y::Whatever;
 
 mod y {
