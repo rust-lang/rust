@@ -36,7 +36,10 @@ pub enum PassMode {
     Ignore,
     /// Pass the argument directly.
     ///
-    /// The argument has a layout abi of `Scalar`, `Vector` or in rare cases (e.g. on wasm) `Aggregate`.
+    /// The argument has a layout abi of `Scalar` or `Vector`.
+    /// Unfortunately due to past mistakes, in rare cases on wasm, it can also be `Aggregate`.
+    /// This is bad since it leaks LLVM implementation details into the ABI.
+    /// (Also see <https://github.com/rust-lang/rust/issues/115666>.)
     Direct(ArgAttributes),
     /// Pass a pair's elements directly in two arguments.
     ///
@@ -527,7 +530,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
                 scalar_attrs(&layout, b, a.size(cx).align_to(b.align(cx).abi)),
             ),
             Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
-            // The `Aggregate` ABI is almost always adjusted later.
+            // The `Aggregate` ABI should always be adjusted later.
             Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
         };
         ArgAbi { layout, mode }

@@ -351,15 +351,12 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     // guarnateeing that we generate ABI-compatible LLVM IR. Things get tricky for
                     // aggregates...
                     if matches!(arg.layout.abi, abi::Abi::Aggregate { .. }) {
-                        // This is the most critical case for ABI compatibility, since
-                        // `immediate_llvm_type` will use `layout.fields` to turn this Rust type
-                        // into an LLVM type. ABI-compatible Rust types can have different `fields`,
-                        // so we need to be very sure that LLVM wil treat those different types in
-                        // an ABI-compatible way. Mostly we do this by disallowing
-                        // `PassMode::Direct` for aggregates, but we actually do use that mode on
-                        // wasm. wasm doesn't have aggregate types so we are fairly sure that LLVM
-                        // will treat `{ i32, i32, i32 }` and `{ { i32, i32, i32 } }` the same way
-                        // for ABI purposes.
+                        // This really shouldn't happen, since `immediate_llvm_type` will use
+                        // `layout.fields` to turn this Rust type into an LLVM type. This means all
+                        // sorts of Rust type details leak into the ABI. However wasm sadly *does*
+                        // currently use this mode so we have to allow it -- but we absolutely
+                        // shouldn't let any more targets do that.
+                        // (Also see <https://github.com/rust-lang/rust/issues/115666>.)
                         assert!(
                             matches!(&*cx.tcx.sess.target.arch, "wasm32" | "wasm64"),
                             "`PassMode::Direct` for aggregates only allowed on wasm targets\nProblematic type: {:#?}",
