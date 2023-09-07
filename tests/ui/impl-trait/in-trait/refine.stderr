@@ -7,6 +7,7 @@ LL |     fn bar() -> impl Sized;
 LL |     fn bar() -> impl Copy {}
    |                      ^^^^ this bound is stronger than that defined on the trait
    |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
 note: the lint level is defined here
   --> $DIR/refine.rs:2:9
    |
@@ -26,6 +27,7 @@ LL |     fn bar() -> impl Sized;
 LL |     fn bar() {}
    |     ^^^^^^^^
    |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
 help: replace the return type so that it matches the trait
    |
 LL |     fn bar() -> impl Sized {}
@@ -40,6 +42,7 @@ LL |     fn bar() -> impl Sized;
 LL |     fn bar() -> () {}
    |                 ^^
    |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
 help: replace the return type so that it matches the trait
    |
 LL |     fn bar() -> impl Sized {}
@@ -54,6 +57,7 @@ LL |     fn bar<'a>(&'a self) -> impl Sized + 'a;
 LL |     fn bar(&self) -> impl Copy + '_ {}
    |                           ^^^^ this bound is stronger than that defined on the trait
    |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
 help: replace the return type so that it matches the trait
    |
 LL |     fn bar(&self) -> impl Sized + '_ {}

@@ -21,6 +21,7 @@ LL |     fn iter(&self) -> impl '_ + Iterator<Item = Self::Item<'_>>;
 LL |     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
    |                            ^^ this bound is stronger than that defined on the trait
    |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
    = note: `#[warn(refining_impl_trait)]` on by default
 help: replace the return type so that it matches the trait
    |
