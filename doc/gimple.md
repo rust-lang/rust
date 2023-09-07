@@ -33,9 +33,17 @@ also add the calls we need to generate the GIMPLE:
 ```C
 int main() {
     gcc_jit_context *ctxt = gcc_jit_context_acquire();
+    // To set `-O3`, update it depending on your needs.
+    gcc_jit_context_set_int_option(ctxt, GCC_JIT_INT_OPTION_OPTIMIZATION_LEVEL, 3);
+    // Very important option to generate the gimple format.
+    gcc_jit_context_add_command_line_option(ctxt, "-fdump-tree-gimple");
     create_code(ctxt, NULL);
+
     gcc_jit_context_compile(ctxt);
-    gcc_jit_context_dump_to_file(ctxt, "tmp.gimple", 1);
+    // If you want to compile to assembly (or any other format) directly, you can
+    // use the following call instead:
+    // gcc_jit_context_compile_to_file(ctxt, GCC_JIT_OUTPUT_KIND_ASSEMBLER, "out.s");
+
     return 0;
 }
 ```
@@ -46,13 +54,21 @@ Then we can compile it by using:
 gcc local.c -I `pwd`/gcc/gcc/jit/ -L `pwd`/gcc-build/gcc -lgccjit -o out
 ```
 
+Before running it, I recommend running:
+
+```console
+rm -rf /tmp/libgccjit-*
+```
+
+to make it easier for you to know which folder to look into.
+
 And finally when you run it:
 
 ```console
 LD_LIBRARY_PATH=`pwd`/gcc-build/gcc LIBRARY_PATH=`pwd`/gcc-build/gcc ./out
 ```
 
-You should now have a file named `tmp.gimple` which contains:
+You should now have a file named with path looking like `/tmp/libgccjit-9OFqkD/fake.c.006t.gimple` which contains:
 
 ```c
 __attribute__((const))
