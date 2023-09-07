@@ -244,7 +244,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
         if round_count != 0 {
             // Merging can introduce overlap between moved arguments and/or call destination in an
             // unreachable code, which validator considers to be ill-formed.
-            remove_dead_blocks(tcx, body);
+            remove_dead_blocks(body);
         }
 
         trace!(round_count);

@@ -63,7 +63,7 @@ impl<'tcx> MirPass<'tcx> for Inline {
         if inline(tcx, body) {
             debug!("running simplify cfg on {:?}", body.source);
             CfgSimplifier::new(body).simplify();
-            remove_dead_blocks(tcx, body);
+            remove_dead_blocks(body);
             deref_finder(tcx, body);
         }
     }

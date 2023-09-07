@@ -66,7 +66,7 @@ impl SimplifyCfg {
 pub fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     CfgSimplifier::new(body).simplify();
     remove_duplicate_unreachable_blocks(tcx, body);
-    remove_dead_blocks(tcx, body);
+    remove_dead_blocks(body);
 
     // FIXME: Should probably be moved into some kind of pass manager
     body.basic_blocks_mut().raw.shrink_to_fit();
@@ -335,7 +335,7 @@ pub fn remove_duplicate_unreachable_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut B
     }
 }
 
-pub fn remove_dead_blocks<'tcx>(_tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+pub fn remove_dead_blocks(body: &mut Body<'_>) {
     let reachable = traversal::reachable_as_bitset(body);
     let num_blocks = body.basic_blocks.len();
     if num_blocks == reachable.count() {
