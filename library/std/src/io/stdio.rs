@@ -8,7 +8,7 @@ use crate::io::prelude::*;
 use crate::cell::{Cell, RefCell};
 use crate::fmt;
 use crate::fs::File;
-use crate::io::{self, BorrowedCursor, BufReader, IoSlice, IoSliceMut, LineWriter, Lines};
+use crate::io::{self, BorrowedCursor, BufReader, BufWriter, IoSlice, IoSliceMut, LineWriter, Lines};
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantMutex, ReentrantMutexGuard};
 use crate::sys::stdio;
@@ -506,6 +506,74 @@ impl BufRead for StdinLock<'_> {
 impl fmt::Debug for StdinLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("StdinLock").finish_non_exhaustive()
+    }
+}
+
+/// Either a [`LineWriter`] or [`BufWriter`] wrapping a [`StdoutRaw`].
+///
+/// Standard output is line-buffered when outputting to a terminal and normally buffered otherwise.
+enum StdoutWriter {
+    #[allow(dead_code)]
+    LineWriter(LineWriter<StdoutRaw>),
+    #[allow(dead_code)]
+    BufWriter(BufWriter<StdoutRaw>),
+}
+
+impl StdoutWriter {
+    #[allow(dead_code)]
+    /// Creates a new `StdoutWriter`. Will check if the output is a terminal and use the appropriate writer.
+    fn new(stdout: StdoutRaw) -> StdoutWriter {
+        if stdout.0.is_terminal() {
+            StdoutWriter::LineWriter(LineWriter::new(stdout))
+        } else {
+            StdoutWriter::BufWriter(BufWriter::new(stdout))
+        }
+    }
+}
+
+impl Write for StdoutWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            StdoutWriter::LineWriter(writer) => writer.write(buf),
+            StdoutWriter::BufWriter(writer) => writer.write(buf),
+        }
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            StdoutWriter::LineWriter(writer) => writer.flush(),
+            StdoutWriter::BufWriter(writer) => writer.flush(),
+        }
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        match self {
+            StdoutWriter::LineWriter(writer) => writer.write_all(buf),
+            StdoutWriter::BufWriter(writer) => writer.write_all(buf),
+        }
+    }
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        match self {
+            StdoutWriter::LineWriter(writer) => writer.write_fmt(fmt),
+            StdoutWriter::BufWriter(writer) => writer.write_fmt(fmt),
+        }
+    }
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        match self {
+            StdoutWriter::LineWriter(writer) => writer.write_vectored(bufs),
+            StdoutWriter::BufWriter(writer) => writer.write_vectored(bufs),
+        }
+    }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        match self {
+            StdoutWriter::LineWriter(writer) => writer.is_write_vectored(),
+            StdoutWriter::BufWriter(writer) => writer.is_write_vectored(),
+        }
+    }
+    fn write_all_vectored(&mut self, bufs: &mut [io::IoSlice<'_>]) -> io::Result<()> {
+        match self {
+            StdoutWriter::LineWriter(writer) => writer.write_all_vectored(bufs),
+            StdoutWriter::BufWriter(writer) => writer.write_all_vectored(bufs),
+        }
     }
 }
 
