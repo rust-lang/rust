@@ -7,6 +7,14 @@ use rustc_hash::FxHashMap;
 
 use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath, Sysroot};
 
+/// Determines how `rustc --print cfg` is discovered and invoked.
+///
+/// There options are supported:
+/// - [`RustcCfgConfig::Cargo`], which relies on `cargo rustc --print cfg`
+///   and `RUSTC_BOOTSTRAP`.
+/// - [`RustcCfgConfig::Explicit`], which uses an explicit path to the `rustc`
+///   binary in the sysroot.
+/// - [`RustcCfgConfig::Discover`], which uses [`toolchain::rustc`].
 pub(crate) enum RustcCfgConfig<'a> {
     Cargo(&'a ManifestPath),
     Explicit(&'a Sysroot),
