@@ -609,8 +609,6 @@ impl Write for StdoutWriter {
 /// [`io::stdout`]: stdout
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdout {
-    // FIXME: if this is not line buffered it should also flush-on-panic or some form of
-    //        flush-on-abort.
     inner: &'static ReentrantMutex<RefCell<StdoutWriter>>,
 }
 
