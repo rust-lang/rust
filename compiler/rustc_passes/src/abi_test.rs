@@ -5,7 +5,7 @@ use rustc_middle::ty::layout::{FnAbiError, LayoutError};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_target::abi::call::{ArgAbi, FnAbi};
+use rustc_target::abi::call::FnAbi;
 
 use crate::errors::{AbiInvalidAttribute, AbiNe, AbiOf, UnrecognizedField};
 
@@ -114,20 +114,6 @@ fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: DefId, attr: &Attribute) {
     }
 }
 
-fn test_arg_abi_eq<'tcx>(
-    abi1: &'tcx ArgAbi<'tcx, Ty<'tcx>>,
-    abi2: &'tcx ArgAbi<'tcx, Ty<'tcx>>,
-) -> bool {
-    // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
-    // at the type. Comparing the `mode` and `layout.abi` as well as size and alignment should catch
-    // basically everything though (except for tricky cases around unized types).
-    abi1.mode.eq_abi(&abi2.mode)
-        && abi1.layout.abi.eq_up_to_validity(&abi2.layout.abi)
-        && abi1.layout.size == abi2.layout.size
-        && abi1.layout.align.abi == abi2.layout.align.abi
-        && abi1.layout.is_sized() == abi2.layout.is_sized()
-}
-
 fn test_abi_eq<'tcx>(abi1: &'tcx FnAbi<'tcx, Ty<'tcx>>, abi2: &'tcx FnAbi<'tcx, Ty<'tcx>>) -> bool {
     if abi1.conv != abi2.conv
         || abi1.args.len() != abi2.args.len()
@@ -138,8 +124,8 @@ fn test_abi_eq<'tcx>(abi1: &'tcx FnAbi<'tcx, Ty<'tcx>>, abi2: &'tcx FnAbi<'tcx, 
         return false;
     }
 
-    test_arg_abi_eq(&abi1.ret, &abi2.ret)
-        && abi1.args.iter().zip(abi2.args.iter()).all(|(arg1, arg2)| test_arg_abi_eq(arg1, arg2))
+    abi1.ret.eq_abi(&abi2.ret)
+        && abi1.args.iter().zip(abi2.args.iter()).all(|(arg1, arg2)| arg1.eq_abi(arg2))
 }
 
 fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: DefId, attr: &Attribute) {

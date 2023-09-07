@@ -332,12 +332,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if self.layout_compat(caller_abi.layout, callee_abi.layout)
             && caller_abi.mode.eq_abi(&callee_abi.mode)
         {
-            // Something went very wrong if our checks don't even imply that the layout is the same.
-            assert!(
-                caller_abi.layout.size == callee_abi.layout.size
-                    && caller_abi.layout.align.abi == callee_abi.layout.align.abi
-                    && caller_abi.layout.is_sized() == callee_abi.layout.is_sized()
-            );
+            // Something went very wrong if our checks don't imply layout ABI compatibility.
+            assert!(caller_abi.layout.eq_abi(&callee_abi.layout));
             return true;
         } else {
             trace!(

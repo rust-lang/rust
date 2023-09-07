@@ -1300,10 +1300,16 @@ impl Abi {
         matches!(*self, Abi::Uninhabited)
     }
 
-    /// Returns `true` is this is a scalar type
+    /// Returns `true` if this is a scalar type
     #[inline]
     pub fn is_scalar(&self) -> bool {
         matches!(*self, Abi::Scalar(_))
+    }
+
+    /// Returns `true` if this is a bool
+    #[inline]
+    pub fn is_bool(&self) -> bool {
+        matches!(*self, Abi::Scalar(s) if s.is_bool())
     }
 
     /// Returns the fixed alignment of this ABI, if any is mandated.
@@ -1702,6 +1708,22 @@ impl LayoutS {
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }
+    }
+
+    /// Checks if these two `Layout` are equal enough to be considered "the same for all function
+    /// call ABIs". Note however that real ABIs depend on more details that are not reflected in the
+    /// `Layout`; the `PassMode` need to be compared as well.
+    pub fn eq_abi(&self, other: &Self) -> bool {
+        // The one thing that we are not capturing here is that for unsized types, the metadata must
+        // also have the same ABI, and moreover that the same metadata leads to the same size. The
+        // 2nd point is quite hard to check though.
+        self.size == other.size
+            && self.is_sized() == other.is_sized()
+            && self.abi.eq_up_to_validity(&other.abi)
+            && self.abi.is_bool() == other.abi.is_bool()
+            && self.align.abi == other.align.abi
+            && self.max_repr_align == other.max_repr_align
+            && self.unadjusted_abi_align == other.unadjusted_abi_align
     }
 }
 
