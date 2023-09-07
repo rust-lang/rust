@@ -215,9 +215,7 @@ impl Interval {
     }
 
     fn write_from_interval(&self, memory: &mut Evaluator<'_>, interval: Interval) -> Result<()> {
-        // FIXME: this could be more efficient
-        let bytes = &interval.get(memory)?.to_vec();
-        memory.write_memory(self.addr, bytes)
+        memory.copy_from_interval(self.addr, interval)
     }
 
     fn slice(self, range: Range<usize>) -> Interval {
@@ -1757,6 +1755,48 @@ impl Evaluator<'_> {
             return Ok(());
         }
         self.write_memory_using_ref(addr, r.len())?.copy_from_slice(r);
+        Ok(())
+    }
+
+    fn copy_from_interval(&mut self, addr: Address, r: Interval) -> Result<()> {
+        if r.size == 0 {
+            return Ok(());
+        }
+
+        let oob = || MirEvalError::UndefinedBehavior("out of bounds memory write".to_string());
+
+        match (addr, r.addr) {
+            (Stack(dst), Stack(src)) => {
+                if self.stack.len() < src + r.size || self.stack.len() < dst + r.size {
+                    return Err(oob());
+                }
+                self.stack.copy_within(src..src + r.size, dst)
+            }
+            (Heap(dst), Heap(src)) => {
+                if self.stack.len() < src + r.size || self.stack.len() < dst + r.size {
+                    return Err(oob());
+                }
+                self.heap.copy_within(src..src + r.size, dst)
+            }
+            (Stack(dst), Heap(src)) => {
+                self.stack
+                    .get_mut(dst..dst + r.size)
+                    .ok_or_else(oob)?
+                    .copy_from_slice(self.heap.get(src..src + r.size).ok_or_else(oob)?);
+            }
+            (Heap(dst), Stack(src)) => {
+                self.heap
+                    .get_mut(dst..dst + r.size)
+                    .ok_or_else(oob)?
+                    .copy_from_slice(self.stack.get(src..src + r.size).ok_or_else(oob)?);
+            }
+            _ => {
+                return Err(MirEvalError::UndefinedBehavior(format!(
+                    "invalid memory write at address {addr:?}"
+                )))
+            }
+        }
+
         Ok(())
     }
 
