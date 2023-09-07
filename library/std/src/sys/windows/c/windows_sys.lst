@@ -2091,7 +2091,7 @@ Windows.Win32.Networking.WinSock.WSA_QOS_EPSFLOWSPEC
 Windows.Win32.Networking.WinSock.WSA_QOS_ESDMODEOBJ
 Windows.Win32.Networking.WinSock.WSA_QOS_ESERVICETYPE
 Windows.Win32.Networking.WinSock.WSA_QOS_ESHAPERATEOBJ
-Windows.Win32.Networking.WinSock.WSA_QOS_EUNKOWNPSOBJ
+Windows.Win32.Networking.WinSock.WSA_QOS_EUNKNOWNPSOBJ
 Windows.Win32.Networking.WinSock.WSA_QOS_GENERIC_ERROR
 Windows.Win32.Networking.WinSock.WSA_QOS_NO_RECEIVERS
 Windows.Win32.Networking.WinSock.WSA_QOS_NO_SENDERS
