@@ -10,6 +10,7 @@ include ../tools.mk
 # actual parsing would be better, but this is a simple and good enough solution for now
 
 all:
+	ls '$(TMPDIR)'
 	$(RUSTC_ORIGINAL) main.rs -g --crate-name my_crate_name --crate-type bin -C metadata=dc9ef878b0a48666 --out-dir $(TMPDIR)
 	cat '$(TMPDIR)/my_crate_name.pdb' | grep -F '$(RUSTC_ORIGINAL)'
 # using a file containing the string so I don't have problems with escaping quotes and spaces 

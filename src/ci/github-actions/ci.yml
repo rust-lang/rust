@@ -315,17 +315,118 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-4c
-
           - name: mingw-check-tidy
             <<: *job-linux-4c
 
-          - name: x86_64-gnu-llvm-15
-            <<: *job-linux-16c
+          - name: x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+              SCRIPT: make ci-msvc
+            <<: *job-windows-8c
 
-          - name: x86_64-gnu-tools
-            <<: *job-linux-16c
+          - name: i686-msvc
+            env:
+              RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+              SCRIPT: make ci-msvc
+            <<: *job-windows-8c
+
+          - name: x86_64-msvc-ext
+            env:
+              SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+              DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
+            <<: *job-windows-8c
+
+          - name: i686-mingw
+            env:
+              RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+              SCRIPT: make ci-mingw
+              # We are intentionally allowing an old toolchain on this builder (and that's
+              # incompatible with LLVM downloads today).
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+            <<: *job-windows-8c
+
+          - name: x86_64-mingw
+            env:
+              SCRIPT: make ci-mingw
+              RUST_CONFIGURE_ARGS: >-
+                --build=x86_64-pc-windows-gnu
+                --enable-profiler
+              # We are intentionally allowing an old toolchain on this builder (and that's
+              # incompatible with LLVM downloads today).
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+            <<: *job-windows-8c
+
+          - name: dist-x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: >-
+                --build=x86_64-pc-windows-msvc
+                --host=x86_64-pc-windows-msvc
+                --target=x86_64-pc-windows-msvc
+                --enable-full-tools
+                --enable-profiler
+              SCRIPT: python x.py build --set rust.debug=true opt-dist && PGO_HOST=x86_64-pc-windows-msvc ./build/x86_64-pc-windows-msvc/stage0-tools-bin/opt-dist python x.py dist bootstrap --include-default-paths
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-windows-8c
+
+          - name: dist-i686-msvc
+            env:
+              RUST_CONFIGURE_ARGS: >-
+                --build=i686-pc-windows-msvc
+                --host=i686-pc-windows-msvc
+                --target=i686-pc-windows-msvc,i586-pc-windows-msvc
+                --enable-full-tools
+                --enable-profiler
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-windows-8c
+
+          - name: dist-aarch64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: >-
+                --build=x86_64-pc-windows-msvc
+                --host=aarch64-pc-windows-msvc
+                --enable-full-tools
+                --enable-profiler
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-windows-8c
+
+          - name: dist-i686-mingw
+            env:
+              RUST_CONFIGURE_ARGS: >-
+                --build=i686-pc-windows-gnu
+                --enable-full-tools
+                --enable-profiler
+              # We are intentionally allowing an old toolchain on this builder (and that's
+              # incompatible with LLVM downloads today).
+              NO_DOWNLOAD_CI_LLVM: 1
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              CUSTOM_MINGW: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-windows-8c
+
+          - name: dist-x86_64-mingw
+            env:
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              RUST_CONFIGURE_ARGS: >-
+                --build=x86_64-pc-windows-gnu
+                --enable-full-tools
+                --enable-profiler
+              # We are intentionally allowing an old toolchain on this builder (and that's
+              # incompatible with LLVM downloads today).
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-windows-8c
+
+          - name: dist-x86_64-msvc-alt
+            env:
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+            <<: *job-windows-8c
 
   auto:
     <<: *base-ci-job
