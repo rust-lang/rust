@@ -9,7 +9,7 @@ help: consider changing this to be mutable
 LL | fn deref_mut1(mut x: Own<isize>) {
    |               +++
 
-error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*x` as mutable, as it is behind an `&` reference
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:41:11
    |
 LL |     &mut **x
@@ -31,7 +31,7 @@ help: consider changing this to be mutable
 LL | fn assign1<'a>(mut x: Own<isize>) {
    |                +++
 
-error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*x` as mutable, as it is behind an `&` reference
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:53:6
    |
 LL |     **x = 3;

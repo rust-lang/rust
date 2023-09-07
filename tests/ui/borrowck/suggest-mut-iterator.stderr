@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow `*test` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*test` as mutable, as it is behind an `&` reference
   --> $DIR/suggest-mut-iterator.rs:22:9
    |
 LL |     for test in &tests {

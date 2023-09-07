@@ -91,7 +91,7 @@ pub fn main() {
 
     // In all these cases, we trip over the rules designed to cover
     // the case where we are taking addr of rvalue and storing that
-    // addr into a stack slot, either via `let ref` or via a `&` in
+    // addr into a stack slot, either via `let ref` or via an `&` reference in
     // the initializer.
 
     end_of_block!(_x, AddFlags(1));

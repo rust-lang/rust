@@ -468,7 +468,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 );
             }
 
-            // We want to point out when a `&` can be readily replaced
+            // We want to point out when an `&` reference can be readily replaced
             // with an `&mut`.
             //
             // FIXME: can this case be generalized to work for an
@@ -1195,7 +1195,7 @@ fn suggest_ampmut<'tcx>(
     opt_assignment_rhs_span: Option<Span>,
     opt_ty_info: Option<Span>,
 ) -> (bool, Span, String) {
-    // if there is a RHS and it starts with a `&` from it, then check if it is
+    // if there is a RHS and it starts with an `&` reference from it, then check if it is
     // mutable, and if not, put suggest putting `mut ` to make it mutable.
     // we don't have to worry about lifetime annotations here because they are
     // not valid when taking a reference. For example, the following is not valid Rust:

@@ -7,14 +7,14 @@
 
 fn main() {
     let Some(n) = &&Some(5i32) else { return };
-    *n += 1; //~ ERROR cannot assign to `*n`, which is behind a `&` reference
+    *n += 1; //~ ERROR cannot assign to `*n`, which is behind an `&` reference
     let _ = n;
 
     let Some(n) = &mut &Some(5i32) else { return };
-    *n += 1; //~ ERROR cannot assign to `*n`, which is behind a `&` reference
+    *n += 1; //~ ERROR cannot assign to `*n`, which is behind an `&` reference
     let _ = n;
 
     let Some(n) = &&mut Some(5i32) else { return };
-    *n += 1; //~ ERROR cannot assign to `*n`, which is behind a `&` reference
+    *n += 1; //~ ERROR cannot assign to `*n`, which is behind an `&` reference
     let _ = n;
 }

@@ -4615,7 +4615,7 @@ pub enum Adjust {
     NeverToAny,
     /// Dereference once, producing a place.
     Deref(Option<OverloadedDeref>),
-    /// Take the address and produce either a `&` or `*` pointer.
+    /// Take the address and produce either an `&` reference or `*` pointer.
     Borrow(AutoBorrow),
     Pointer(PointerCast),
 }

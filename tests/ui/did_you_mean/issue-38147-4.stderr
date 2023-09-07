@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow `*f.s` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*f.s` as mutable, as it is behind an `&` reference
   --> $DIR/issue-38147-4.rs:6:5
    |
 LL |     f.s.push('x');

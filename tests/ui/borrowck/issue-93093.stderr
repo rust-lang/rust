@@ -1,4 +1,4 @@
-error[E0594]: cannot assign to `self.foo`, which is behind a `&` reference
+error[E0594]: cannot assign to `self.foo`, which is behind an `&` reference
   --> $DIR/issue-93093.rs:8:9
    |
 LL |         self.foo += 1;

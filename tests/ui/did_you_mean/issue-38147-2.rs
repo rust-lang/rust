@@ -7,10 +7,10 @@ struct Bar<'a> {
 impl<'a> Bar<'a> {
     fn f(&mut self) {
         self.s.push('x');
-        //~^ ERROR cannot borrow `*self.s` as mutable, as it is behind a `&` reference
+        //~^ ERROR cannot borrow `*self.s` as mutable, as it is behind an `&` reference
 
         self.longer_name.push(13);
-        //~^ ERROR cannot borrow `*self.longer_name` as mutable, as it is behind a `&` reference
+        //~^ ERROR cannot borrow `*self.longer_name` as mutable, as it is behind an `&` reference
     }
 }
 

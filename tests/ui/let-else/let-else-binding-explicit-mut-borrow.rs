@@ -5,7 +5,7 @@
 
 fn main() {
     let Some(n): &mut Option<i32> = &mut &Some(5i32) else {
-        //~^ ERROR cannot borrow data in a `&` reference as mutable
+        //~^ ERROR cannot borrow data in an `&` reference as mutable
         return
     };
     *n += 1;

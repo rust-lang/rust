@@ -10,7 +10,7 @@ fn x(cb: &mut Option<&mut dyn FnMut()>) {
 
 fn x2(cb: &mut Option<&mut dyn FnMut()>) {
     cb.as_ref().map(|cb| cb());
-    //~^ ERROR cannot borrow `*cb` as mutable, as it is behind a `&` reference
+    //~^ ERROR cannot borrow `*cb` as mutable, as it is behind an `&` reference
 }
 
 fn main() {}

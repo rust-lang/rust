@@ -854,7 +854,7 @@ impl<'a> From<&'a CStr> for Cow<'a, CStr> {
 
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
 impl<'a> From<&'a CString> for Cow<'a, CStr> {
-    /// Converts a `&`[`CString`] into a borrowed [`Cow`] without copying or allocating.
+    /// Converts an `&` reference[`CString`] into a borrowed [`Cow`] without copying or allocating.
     #[inline]
     fn from(s: &'a CString) -> Cow<'a, CStr> {
         Cow::Borrowed(s.as_c_str())

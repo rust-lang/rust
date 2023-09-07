@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow data in a `&` reference as mutable
+error[E0596]: cannot borrow data in an `&` reference as mutable
   --> $DIR/dont-print-desugared.rs:4:10
    |
 LL |     for &ref mut x in s {}

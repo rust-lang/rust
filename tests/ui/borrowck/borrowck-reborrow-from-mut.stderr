@@ -102,7 +102,7 @@ LL |     let _foo2 = &mut *foo;
 LL |     use_imm(_bar1);
    |             ----- immutable borrow later used here
 
-error[E0596]: cannot borrow `foo.bar1` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `foo.bar1` as mutable, as it is behind an `&` reference
   --> $DIR/borrowck-reborrow-from-mut.rs:88:17
    |
 LL |     let _bar1 = &mut foo.bar1;

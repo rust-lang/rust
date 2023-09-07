@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow `*v` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*v` as mutable, as it is behind an `&` reference
   --> $DIR/issue-82032.rs:10:13
    |
 LL |         for v in self.0.values() {

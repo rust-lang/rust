@@ -715,7 +715,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
     pub(super) fn describe_for_immutable_place(&self, tcx: TyCtxt<'_>) -> String {
         match *self {
             BorrowedContentSource::DerefRawPointer => "a `*const` pointer".to_string(),
-            BorrowedContentSource::DerefSharedRef => "a `&` reference".to_string(),
+            BorrowedContentSource::DerefSharedRef => "an `&` reference".to_string(),
             BorrowedContentSource::DerefMutableRef => {
                 bug!("describe_for_immutable_place: DerefMutableRef isn't immutable")
             }

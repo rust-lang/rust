@@ -1,4 +1,4 @@
-error[E0594]: cannot assign to `v.v`, which is behind a `&` reference
+error[E0594]: cannot assign to `v.v`, which is behind an `&` reference
   --> $DIR/suggest-mut-method-for-loop-hashmap.rs:17:9
    |
 LL |     for (_k, v) in map.iter() {

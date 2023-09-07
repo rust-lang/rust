@@ -3,7 +3,7 @@
 // Make sure we catch this even without validation
 //@compile-flags: -Zmiri-disable-validation
 
-// Make sure that we cannot load from memory a `&` that got already invalidated.
+// Make sure that we cannot load from memory an `&` reference that got already invalidated.
 fn main() {
     let x = &mut 42;
     let xraw = x as *mut _;

@@ -23,7 +23,7 @@ fn test1() {
 
 fn test2<F>(f: &F) where F: FnMut() {
     (*f)();
-    //~^ ERROR cannot borrow `*f` as mutable, as it is behind a `&` reference
+    //~^ ERROR cannot borrow `*f` as mutable, as it is behind an `&` reference
 }
 
 fn test3<F>(f: &mut F) where F: FnMut() {
@@ -32,7 +32,7 @@ fn test3<F>(f: &mut F) where F: FnMut() {
 
 fn test4(f: &Test) {
     f.f.call_mut(())
-    //~^ ERROR: cannot borrow `f.f` as mutable, as it is behind a `&` reference
+    //~^ ERROR: cannot borrow `f.f` as mutable, as it is behind an `&` reference
 }
 
 fn test5(f: &mut Test) {

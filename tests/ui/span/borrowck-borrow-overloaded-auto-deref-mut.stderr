@@ -9,7 +9,7 @@ help: consider changing this to be mutable
 LL | fn deref_mut_field1(mut x: Own<Point>) {
    |                     +++
 
-error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*x` as mutable, as it is behind an `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:65:10
    |
 LL |     &mut x.y
@@ -41,7 +41,7 @@ help: consider changing this to be mutable
 LL | fn assign_field1<'a>(mut x: Own<Point>) {
    |                      +++
 
-error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*x` as mutable, as it is behind an `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:92:5
    |
 LL |     x.y = 3;
@@ -73,7 +73,7 @@ help: consider changing this to be mutable
 LL | fn deref_mut_method1(mut x: Own<Point>) {
    |                      +++
 
-error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*x` as mutable, as it is behind an `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:121:5
    |
 LL |     x.y_mut()
@@ -95,7 +95,7 @@ help: consider changing this to be mutable
 LL | fn assign_method1<'a>(mut x: Own<Point>) {
    |                       +++
 
-error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*x` as mutable, as it is behind an `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:133:6
    |
 LL |     *x.y_mut() = 3;

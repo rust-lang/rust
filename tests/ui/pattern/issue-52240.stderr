@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow data in a `&` reference as mutable
+error[E0596]: cannot borrow data in an `&` reference as mutable
   --> $DIR/issue-52240.rs:9:27
    |
 LL |     if let (Some(Foo::Bar(ref mut val)), _) = (&arr.get(0), 0) {

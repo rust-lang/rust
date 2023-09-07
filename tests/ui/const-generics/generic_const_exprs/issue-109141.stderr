@@ -9,7 +9,7 @@ help: you might be missing a const parameter
 LL | struct EntriesBuffer<const HashesEntryLEN: /* Type */>(Box<[[u8; HashesEntryLEN]; 5]>);
    |                     ++++++++++++++++++++++++++++++++++
 
-error[E0596]: cannot borrow `*self.0` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*self.0` as mutable, as it is behind an `&` reference
   --> $DIR/issue-109141.rs:6:9
    |
 LL |         self.0.iter_mut()

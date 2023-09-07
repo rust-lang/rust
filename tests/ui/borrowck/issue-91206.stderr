@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow `*inner` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*inner` as mutable, as it is behind an `&` reference
   --> $DIR/issue-91206.rs:13:5
    |
 LL |     inner.clear();

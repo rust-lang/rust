@@ -1292,7 +1292,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     ///
     /// No need to find every potential function which could make a coercion to transform a
-    /// `String` into a `&str` since a `&` would do the trick!
+    /// `String` into a `&str` since an `&` reference would do the trick!
     ///
     /// In addition of this check, it also checks between references mutability state. If the
     /// expected is mutable but the provided isn't, maybe we could just say "Hey, try with
@@ -1486,7 +1486,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 // We have `&T`, check if what was expected was `T`. If so,
-                // we may want to suggest removing a `&`.
+                // we may want to suggest removing an `&` reference.
                 if sm.is_imported(expr.span) {
                     // Go through the spans from which this span was expanded,
                     // and find the one that's pointing inside `sp`.

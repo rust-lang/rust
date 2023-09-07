@@ -9,7 +9,7 @@ fn main() {
     for v in Query.iter_mut() {
         //~^ NOTE this iterator yields `&` references
         *v -= 1;
-        //~^ ERROR cannot assign to `*v`, which is behind a `&` reference
+        //~^ ERROR cannot assign to `*v`, which is behind an `&` reference
         //~| NOTE `v` is an `&` reference, so the data it refers to cannot be written
     }
 }

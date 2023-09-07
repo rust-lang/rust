@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow `*self.s` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*self.s` as mutable, as it is behind an `&` reference
   --> $DIR/issue-38147-2.rs:9:9
    |
 LL |         self.s.push('x');
@@ -9,7 +9,7 @@ help: consider changing this to be mutable
 LL |     s: &'a mut String,
    |            +++
 
-error[E0596]: cannot borrow `*self.longer_name` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*self.longer_name` as mutable, as it is behind an `&` reference
   --> $DIR/issue-38147-2.rs:12:9
    |
 LL |         self.longer_name.push(13);

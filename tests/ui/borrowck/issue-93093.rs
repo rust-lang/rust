@@ -5,7 +5,7 @@ struct S {
 impl S {
     async fn bar(&self) { //~ HELP consider changing this to be a mutable reference
         //~| SUGGESTION &mut self
-        self.foo += 1; //~ ERROR cannot assign to `self.foo`, which is behind a `&` reference [E0594]
+        self.foo += 1; //~ ERROR cannot assign to `self.foo`, which is behind an `&` reference [E0594]
     }
 }
 

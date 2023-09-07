@@ -5,7 +5,7 @@ struct Qux<'a> {
 impl<'a> Qux<'a> {
     fn f(&self) {
         self.s.push('x');
-        //~^ ERROR cannot borrow `*self.s` as mutable, as it is behind a `&` reference
+        //~^ ERROR cannot borrow `*self.s` as mutable, as it is behind an `&` reference
     }
 }
 

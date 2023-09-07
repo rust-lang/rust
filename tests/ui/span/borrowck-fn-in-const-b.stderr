@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*x` as mutable, as it is behind an `&` reference
   --> $DIR/borrowck-fn-in-const-b.rs:7:9
    |
 LL |         x.push(format!("this is broken"));

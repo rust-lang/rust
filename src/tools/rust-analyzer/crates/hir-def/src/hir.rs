@@ -450,7 +450,7 @@ impl Expr {
 #[derive(Clone, PartialEq, Eq, Debug, Copy)]
 pub enum BindingAnnotation {
     /// No binding annotation given: this means that the final binding mode
-    /// will depend on whether we have skipped through a `&` reference
+    /// will depend on whether we have skipped through an `&` reference
     /// when matching. For example, the `x` in `Some(x)` will have binding
     /// mode `None`; if you do `let Some(x) = &Some(22)`, it will
     /// ultimately be inferred to be by-reference.

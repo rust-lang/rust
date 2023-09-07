@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow `*buf` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*buf` as mutable, as it is behind an `&` reference
   --> $DIR/issue-40823.rs:3:5
    |
 LL |     buf.iter_mut();

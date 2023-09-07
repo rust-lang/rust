@@ -9,7 +9,7 @@ impl Foo {
     pub fn baz(&self) {
         || bar(&mut self);
         //~^ ERROR cannot borrow `self` as mutable, as it is not declared as mutable
-        //~| ERROR cannot borrow data in a `&` reference as mutable
+        //~| ERROR cannot borrow data in an `&` reference as mutable
     }
 
     pub fn qux(mut self) {

@@ -174,7 +174,7 @@ impl NewPermission {
 /// U2: If the top is `Uniq`, accesses must be through that `Uniq` or remove it.
 /// U3: If an access happens with a `Uniq`, it requires the `Uniq` to be in the stack.
 ///
-/// F1: After creating a `&`, the parts outside `UnsafeCell` have our `SharedReadOnly` on top.
+/// F1: After creating an `&` reference, the parts outside `UnsafeCell` have our `SharedReadOnly` on top.
 /// F2: If a write access happens, it pops the `SharedReadOnly`.  This has three pieces:
 ///     F2a: If a write happens granted by an item below our `SharedReadOnly`, the `SharedReadOnly`
 ///          gets popped.

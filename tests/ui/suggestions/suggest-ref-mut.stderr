@@ -1,4 +1,4 @@
-error[E0594]: cannot assign to `self.0`, which is behind a `&` reference
+error[E0594]: cannot assign to `self.0`, which is behind an `&` reference
   --> $DIR/suggest-ref-mut.rs:7:9
    |
 LL |         self.0 = 32;
@@ -9,7 +9,7 @@ help: consider changing this to be a mutable reference
 LL |     fn zap(&mut self) {
    |            ~~~~~~~~~
 
-error[E0594]: cannot assign to `*foo`, which is behind a `&` reference
+error[E0594]: cannot assign to `*foo`, which is behind an `&` reference
   --> $DIR/suggest-ref-mut.rs:15:5
    |
 LL |     *foo = 32;
@@ -20,7 +20,7 @@ help: consider changing this to be a mutable reference
 LL |     let ref mut foo = 16;
    |             +++
 
-error[E0594]: cannot assign to `*bar`, which is behind a `&` reference
+error[E0594]: cannot assign to `*bar`, which is behind an `&` reference
   --> $DIR/suggest-ref-mut.rs:19:9
    |
 LL |         *bar = 32;
@@ -31,7 +31,7 @@ help: consider changing this to be a mutable reference
 LL |     if let Some(ref mut bar) = Some(16) {
    |                     +++
 
-error[E0594]: cannot assign to `*quo`, which is behind a `&` reference
+error[E0594]: cannot assign to `*quo`, which is behind an `&` reference
   --> $DIR/suggest-ref-mut.rs:23:22
    |
 LL |         ref quo => { *quo = 32; },

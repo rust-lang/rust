@@ -3,6 +3,6 @@
 // edition:2018
 
 async fn async_fn(&ref mut s: &[i32]) {}
-//~^ ERROR cannot borrow data in a `&` reference as mutable [E0596]
+//~^ ERROR cannot borrow data in an `&` reference as mutable [E0596]
 
 fn main() {}

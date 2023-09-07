@@ -7,5 +7,5 @@ use std::io::Write;
 fn main() {
     let mut v = vec![];
     mywrite!(&v, "Hello world");
-    //~^ ERROR cannot borrow data in a `&` reference as mutable
+    //~^ ERROR cannot borrow data in an `&` reference as mutable
 }

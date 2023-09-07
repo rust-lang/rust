@@ -11,6 +11,6 @@ fn main() {
     let inner = client.get_inner_ref();
     //~^ HELP consider specifying this binding's type
     inner.clear();
-    //~^ ERROR cannot borrow `*inner` as mutable, as it is behind a `&` reference [E0596]
+    //~^ ERROR cannot borrow `*inner` as mutable, as it is behind an `&` reference [E0596]
     //~| NOTE `inner` is an `&` reference, so the data it refers to cannot be borrowed as mutable
 }

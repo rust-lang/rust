@@ -2,7 +2,7 @@
 
 fn for_loop(s: &[i32]) {
     for &ref mut x in s {}
-    //~^ ERROR cannot borrow data in a `&` reference as mutable [E0596]
+    //~^ ERROR cannot borrow data in an `&` reference as mutable [E0596]
 }
 
 struct D<'a>(&'a ());

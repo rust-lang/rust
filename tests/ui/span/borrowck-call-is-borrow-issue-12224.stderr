@@ -10,7 +10,7 @@ LL |
 LL |         f((Box::new(|| {})))
    |         - second borrow occurs due to use of `f` in closure
 
-error[E0596]: cannot borrow `*f` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*f` as mutable, as it is behind an `&` reference
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:25:5
    |
 LL |     (*f)();
@@ -21,7 +21,7 @@ help: consider changing this to be a mutable reference
 LL | fn test2<F>(f: &mut F) where F: FnMut() {
    |                 +++
 
-error[E0596]: cannot borrow `f.f` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `f.f` as mutable, as it is behind an `&` reference
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:34:5
    |
 LL |     f.f.call_mut(())

@@ -19,7 +19,7 @@ fn main() {
         tests.push(Test {a: i});
     }
     for test in &tests {
-        test.add(2); //~ ERROR cannot borrow `*test` as mutable, as it is behind a `&` reference
+        test.add(2); //~ ERROR cannot borrow `*test` as mutable, as it is behind an `&` reference
     }
     for test in &mut tests {
         test.add(2);

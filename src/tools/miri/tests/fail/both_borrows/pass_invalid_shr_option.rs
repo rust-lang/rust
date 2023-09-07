@@ -1,7 +1,7 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 
-// Make sure that we cannot pass by argument a `&` that got already invalidated.
+// Make sure that we cannot pass by argument an `&` reference that got already invalidated.
 fn foo(_: Option<&i32>) {}
 
 fn main() {

@@ -1,4 +1,4 @@
-error[E0594]: cannot assign to `*foo`, which is behind a `&` reference
+error[E0594]: cannot assign to `*foo`, which is behind an `&` reference
   --> $DIR/issue-92015.rs:6:5
    |
 LL |     *foo = 1;

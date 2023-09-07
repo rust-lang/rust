@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+error[E0596]: cannot borrow `*x` as mutable, as it is behind an `&` reference
   --> $DIR/borrowck-call-method-from-mut-aliasable.rs:17:5
    |
 LL |     x.h();
