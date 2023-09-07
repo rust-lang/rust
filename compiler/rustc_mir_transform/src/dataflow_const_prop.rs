@@ -119,6 +119,12 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     self.assign_operand(state, target, operand);
                 }
             }
+            Rvalue::CopyForDeref(rhs) => {
+                state.flood(target.as_ref(), self.map());
+                if let Some(target) = self.map.find(target.as_ref()) {
+                    self.assign_operand(state, target, &Operand::Copy(*rhs));
+                }
+            }
             Rvalue::Aggregate(kind, operands) => {
                 // If we assign `target = Enum::Variant#0(operand)`,
                 // we must make sure that all `target as Variant#i` are `Top`.
