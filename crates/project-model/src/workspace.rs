@@ -2,7 +2,7 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{collections::VecDeque, fmt, fs, process::Command, sync};
+use std::{collections::VecDeque, fmt, fs, process::Command, str::FromStr, sync};
 
 use anyhow::{format_err, Context};
 use base_db::{
@@ -1228,6 +1228,10 @@ fn add_target_crate_root(
 
     let mut env = Env::default();
     inject_cargo_env(pkg, &mut env);
+    if let Ok(cname) = String::from_str(cargo_name) {
+        // CARGO_CRATE_NAME is the name of the Cargo target with - converted to _, such as the name of the library, binary, example, integration test, or benchmark.
+        env.set("CARGO_CRATE_NAME", cname.replace("-", "_"));
+    }
 
     if let Some(envs) = build_data.map(|it| &it.envs) {
         for (k, v) in envs {
