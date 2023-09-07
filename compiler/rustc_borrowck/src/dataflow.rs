@@ -403,13 +403,10 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         regioncx: &'a RegionInferenceContext<'tcx>,
         borrow_set: &'a BorrowSet<'tcx>,
     ) -> Self {
-        let mut borrows_out_of_scope_at_location =
-            calculate_borrows_out_of_scope_at_location(body, regioncx, borrow_set);
-
-        // The in-tree polonius analysis computes loans going out of scope using the set-of-loans
-        // model, and makes sure they're identical to the existing computation of the set-of-points
-        // model.
-        if tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
+        let borrows_out_of_scope_at_location = {
+            // The in-tree polonius analysis computes loans going out of scope using the set-of-loans
+            // model, and makes sure they're identical to the existing computation of the set-of-points
+            // model.
             let mut polonius_prec = PoloniusOutOfScopePrecomputer::new(body, regioncx);
             for (loan_idx, loan_data) in borrow_set.iter_enumerated() {
                 let issuing_region = loan_data.region;
@@ -422,13 +419,8 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
                 );
             }
 
-            assert_eq!(
-                borrows_out_of_scope_at_location, polonius_prec.loans_out_of_scope_at_location,
-                "the loans out of scope must be the same as the borrows out of scope"
-            );
-
-            borrows_out_of_scope_at_location = polonius_prec.loans_out_of_scope_at_location;
-        }
+            polonius_prec.loans_out_of_scope_at_location
+        };
 
         Borrows { tcx, body, borrow_set, borrows_out_of_scope_at_location }
     }

@@ -3433,7 +3433,7 @@ pub enum Polonius {
 
 impl Default for Polonius {
     fn default() -> Self {
-        Polonius::Off
+        Polonius::Next
     }
 }
 
