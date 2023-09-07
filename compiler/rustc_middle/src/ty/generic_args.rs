@@ -440,7 +440,7 @@ impl<'tcx> GenericArgs<'tcx> {
         target_args: GenericArgsRef<'tcx>,
     ) -> GenericArgsRef<'tcx> {
         let defs = tcx.generics_of(source_ancestor);
-        tcx.mk_args_from_iter(target_args.iter().chain(self.iter().skip(defs.params.len())))
+        tcx.mk_args_from_iter(target_args.iter().chain(self.iter().skip(defs.count())))
     }
 
     pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> GenericArgsRef<'tcx> {

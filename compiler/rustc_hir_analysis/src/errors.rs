@@ -919,6 +919,22 @@ pub struct UnusedAssociatedTypeBounds {
     pub span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_rpitit_refined)]
+#[note]
+pub(crate) struct ReturnPositionImplTraitInTraitRefined<'tcx> {
+    #[suggestion(applicability = "maybe-incorrect", code = "{pre}{return_ty}{post}")]
+    pub impl_return_span: Span,
+    #[label]
+    pub trait_return_span: Option<Span>,
+    #[label(hir_analysis_unmatched_bound_label)]
+    pub unmatched_bound: Option<Span>,
+
+    pub pre: &'static str,
+    pub post: &'static str,
+    pub return_ty: Ty<'tcx>,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_analysis_assoc_bound_on_const)]
 #[note]

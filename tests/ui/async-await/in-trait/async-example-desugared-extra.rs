@@ -2,14 +2,14 @@
 // edition: 2021
 
 #![feature(async_fn_in_trait)]
-#![feature(return_position_impl_trait_in_trait)]
+#![feature(return_position_impl_trait_in_trait, lint_reasons)]
 #![allow(incomplete_features)]
 
 use std::future::Future;
 use std::pin::Pin;
 use std::task::Poll;
 
-trait MyTrait {
+pub trait MyTrait {
     async fn foo(&self) -> i32;
 }
 
@@ -27,8 +27,7 @@ impl Future for MyFuture {
 }
 
 impl MyTrait for i32 {
-    // FIXME: this should eventually require `#[refine]` to compile, because it also provides
-    // `Clone`.
+    #[expect(refining_impl_trait)]
     fn foo(&self) -> impl Future<Output = i32> + Clone {
         MyFuture(*self)
     }

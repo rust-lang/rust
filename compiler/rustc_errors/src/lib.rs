@@ -44,7 +44,7 @@ use rustc_fluent_macro::fluent_messages;
 pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_span::source_map::SourceMap;
 pub use rustc_span::ErrorGuaranteed;
-use rustc_span::{Loc, Span};
+use rustc_span::{Loc, Span, DUMMY_SP};
 
 use std::borrow::Cow;
 use std::error::Report;
@@ -1754,7 +1754,7 @@ impl DelayedDiagnostic {
             BacktraceStatus::Captured => {
                 let inner = &self.inner;
                 self.inner.subdiagnostic(DelayedAtWithNewline {
-                    span: inner.span.primary_span().unwrap(),
+                    span: inner.span.primary_span().unwrap_or(DUMMY_SP),
                     emitted_at: inner.emitted_at.clone(),
                     note: self.note,
                 });
@@ -1764,7 +1764,7 @@ impl DelayedDiagnostic {
             _ => {
                 let inner = &self.inner;
                 self.inner.subdiagnostic(DelayedAtWithoutNewline {
-                    span: inner.span.primary_span().unwrap(),
+                    span: inner.span.primary_span().unwrap_or(DUMMY_SP),
                     emitted_at: inner.emitted_at.clone(),
                     note: self.note,
                 });

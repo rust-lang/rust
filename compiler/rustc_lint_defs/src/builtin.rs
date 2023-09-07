@@ -3381,6 +3381,7 @@ declare_lint_pass! {
         PROC_MACRO_BACK_COMPAT,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+        REFINING_IMPL_TRAIT,
         RENAMED_AND_REMOVED_LINTS,
         REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
         RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
@@ -4448,7 +4449,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    ///
     /// #![deny(ambiguous_glob_imports)]
     /// pub fn foo() -> u32 {
     ///     use sub::*;
@@ -4482,6 +4482,50 @@ declare_lint! {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #114095 <https://github.com/rust-lang/rust/issues/114095>",
     };
+}
+
+declare_lint! {
+    /// The `refining_impl_trait` lint detects usages of return-position impl
+    /// traits in trait signatures which are refined by implementations.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(return_position_impl_trait_in_trait)]
+    /// #![deny(refining_impl_trait)]
+    ///
+    /// use std::fmt::Display;
+    ///
+    /// pub trait AsDisplay {
+    ///     fn as_display(&self) -> impl Display;
+    /// }
+    ///
+    /// impl<'s> AsDisplay for &'s str {
+    ///     fn as_display(&self) -> Self {
+    ///         *self
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     // users can observe that the return type of
+    ///     // `<&str as AsDisplay>::as_display()` is `&str`.
+    ///     let x: &str = "".as_display();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Return-position impl trait in traits (RPITITs) desugar to associated types,
+    /// and callers of methods for types where the implementation is known are
+    /// able to observe the types written in the impl signature. This may be
+    /// intended behavior, but may also pose a semver hazard for authors of libraries
+    /// who do not wish to make stronger guarantees about the types than what is
+    /// written in the trait signature.
+    pub REFINING_IMPL_TRAIT,
+    Warn,
+    "impl trait in impl method signature does not match trait method signature",
 }
 
 declare_lint! {
