@@ -26,7 +26,6 @@ use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
-use thin_vec::ThinVec;
 
 use super::QueryConfig;
 
@@ -511,10 +510,10 @@ where
     }
 
     let prof_timer = qcx.dep_context().profiler().query_provider();
-    let diagnostics = Lock::new(ThinVec::new());
+    let side_effects = Lock::new(QuerySideEffects::default());
 
     let (result, dep_node_index) =
-        qcx.start_query(job_id, query.depth_limit(), Some(&diagnostics), || {
+        qcx.start_query(job_id, query.depth_limit(), Some(&side_effects), || {
             if query.anon() {
                 return dep_graph_data.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
                     query.compute(qcx, key)
@@ -536,7 +535,7 @@ where
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-    let side_effects = QuerySideEffects { diagnostics: diagnostics.into_inner() };
+    let side_effects = side_effects.into_inner();
 
     if std::intrinsics::unlikely(side_effects.maybe_any()) {
         if query.anon() {

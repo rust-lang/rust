@@ -86,7 +86,7 @@ pub struct QuerySideEffects {
     /// Stores any diagnostics emitted during query execution.
     /// These diagnostics will be re-emitted if we mark
     /// the query as green.
-    pub(super) diagnostics: ThinVec<DiagInner>,
+    pub diagnostics: ThinVec<DiagInner>,
 }
 
 impl QuerySideEffects {
@@ -118,6 +118,9 @@ pub trait QueryContext: HasDepContext {
     /// Register diagnostics for the given node, for use in next session.
     fn store_side_effects(self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects);
 
+    /// Actually execute the side effects
+    fn apply_side_effects(self, side_effects: QuerySideEffects);
+
     /// Register diagnostics for the given node, for use in next session.
     fn store_side_effects_for_anon_node(
         self,
@@ -132,7 +135,7 @@ pub trait QueryContext: HasDepContext {
         self,
         token: QueryJobId,
         depth_limit: bool,
-        diagnostics: Option<&Lock<ThinVec<DiagInner>>>,
+        side_effects: Option<&Lock<QuerySideEffects>>,
         compute: impl FnOnce() -> R,
     ) -> R;
 
