@@ -148,7 +148,7 @@ where
                 PassMode::Direct(ref mut attrs) => attrs,
                 PassMode::Pair(..)
                 | PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ }
-                | PassMode::Cast(..) => {
+                | PassMode::Cast { .. } => {
                     unreachable!("x86 shouldn't be passing arguments by {:?}", arg.mode)
                 }
             };

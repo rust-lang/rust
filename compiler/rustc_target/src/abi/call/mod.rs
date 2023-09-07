@@ -45,10 +45,9 @@ pub enum PassMode {
     ///
     /// The argument has a layout abi of `ScalarPair`.
     Pair(ArgAttributes, ArgAttributes),
-    /// Pass the argument after casting it, to either a single uniform or a
-    /// pair of registers. The bool indicates if a `Reg::i32()` dummy argument
-    /// is emitted before the real argument.
-    Cast(Box<CastTarget>, bool),
+    /// Pass the argument after casting it. See the `CastTarget` docs for details. The bool
+    /// indicates if a `Reg::i32()` dummy argument is emitted before the real argument.
+    Cast { pad_i32: bool, cast: Box<CastTarget> },
     /// Pass the argument indirectly via a hidden pointer.
     /// The `extra_attrs` value, if any, is for the extra data (vtable or length)
     /// which indicates that it refers to an unsized rvalue.
@@ -64,10 +63,13 @@ impl PassMode {
     /// so that needs to be compared as well!
     pub fn eq_abi(&self, other: &Self) -> bool {
         match (self, other) {
-            (PassMode::Ignore, PassMode::Ignore) => true, // can still be reached for the return type
+            (PassMode::Ignore, PassMode::Ignore) => true,
             (PassMode::Direct(a1), PassMode::Direct(a2)) => a1.eq_abi(a2),
             (PassMode::Pair(a1, b1), PassMode::Pair(a2, b2)) => a1.eq_abi(a2) && b1.eq_abi(b2),
-            (PassMode::Cast(c1, pad1), PassMode::Cast(c2, pad2)) => c1.eq_abi(c2) && pad1 == pad2,
+            (
+                PassMode::Cast { cast: c1, pad_i32: pad1 },
+                PassMode::Cast { cast: c2, pad_i32: pad2 },
+            ) => c1.eq_abi(c2) && pad1 == pad2,
             (
                 PassMode::Indirect { attrs: a1, extra_attrs: None, on_stack: s1 },
                 PassMode::Indirect { attrs: a2, extra_attrs: None, on_stack: s2 },
@@ -255,6 +257,13 @@ impl Uniform {
     }
 }
 
+/// Describes the type used for `PassMode::Cast`.
+///
+/// Passing arguments in this mode works as follows: the registers in the `prefix` (the ones that
+/// are `Some`) get laid out one after the other (using `repr(C)` layout rules). Then the
+/// `rest.unit` register type gets repeated often enough to cover `rest.size`. This describes the
+/// actual type used for the call; the Rust type of the argument is then transmuted to this ABI type
+/// (and all data in the padding between the registers is dropped).
 #[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct CastTarget {
     pub prefix: [Option<Reg>; 8],
@@ -607,11 +616,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn cast_to<T: Into<CastTarget>>(&mut self, target: T) {
-        self.mode = PassMode::Cast(Box::new(target.into()), false);
+        self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32: false };
     }
 
     pub fn cast_to_and_pad_i32<T: Into<CastTarget>>(&mut self, target: T, pad_i32: bool) {
-        self.mode = PassMode::Cast(Box::new(target.into()), pad_i32);
+        self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32 };
     }
 
     pub fn is_indirect(&self) -> bool {

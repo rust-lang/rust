@@ -211,7 +211,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             OperandValue::Ref(val, None, self.layout.align.abi).store(bx, dst)
         } else if self.is_unsized_indirect() {
             bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
-        } else if let PassMode::Cast(cast, _) = &self.mode {
+        } else if let PassMode::Cast { cast, pad_i32: _ } = &self.mode {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
@@ -279,7 +279,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             }
             PassMode::Direct(_)
             | PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ }
-            | PassMode::Cast(..) => {
+            | PassMode::Cast { .. } => {
                 let next_arg = next();
                 self.store(bx, next_arg, dst);
             }
@@ -332,7 +332,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         let llreturn_ty = match &self.ret.mode {
             PassMode::Ignore => cx.type_void(),
             PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
-            PassMode::Cast(cast, _) => cast.llvm_type(cx),
+            PassMode::Cast { cast, pad_i32: _ } => cast.llvm_type(cx),
             PassMode::Indirect { .. } => {
                 llargument_tys.push(cx.type_ptr());
                 cx.type_void()
@@ -390,7 +390,9 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
-                PassMode::Cast(cast, pad_i32) => {
+                PassMode::Cast { cast, pad_i32 } => {
+                    // `Cast` means "transmute to `CastType`"; that only makes sense for sized types.
+                    assert!(arg.layout.is_sized());
                     // add padding
                     if *pad_i32 {
                         llargument_tys.push(Reg::i32().llvm_type(cx));
@@ -448,7 +450,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 let sret = llvm::CreateStructRetAttr(cx.llcx, self.ret.layout.llvm_type(cx));
                 attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[sret]);
             }
-            PassMode::Cast(cast, _) => {
+            PassMode::Cast { cast, pad_i32: _ } => {
                 cast.attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
             }
             _ => {}
@@ -474,7 +476,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply(a);
                     apply(b);
                 }
-                PassMode::Cast(cast, pad_i32) => {
+                PassMode::Cast { cast, pad_i32 } => {
                     if *pad_i32 {
                         apply(&ArgAttributes::new());
                     }
@@ -510,7 +512,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 let sret = llvm::CreateStructRetAttr(bx.cx.llcx, self.ret.layout.llvm_type(bx));
                 attributes::apply_to_callsite(callsite, llvm::AttributePlace::Argument(i), &[sret]);
             }
-            PassMode::Cast(cast, _) => {
+            PassMode::Cast { cast, pad_i32: _ } => {
                 cast.attrs.apply_attrs_to_callsite(
                     llvm::AttributePlace::ReturnValue,
                     &bx.cx,
@@ -553,7 +555,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply(bx.cx, a);
                     apply(bx.cx, b);
                 }
-                PassMode::Cast(cast, pad_i32) => {
+                PassMode::Cast { cast, pad_i32 } => {
                     if *pad_i32 {
                         apply(bx.cx, &ArgAttributes::new());
                     }
