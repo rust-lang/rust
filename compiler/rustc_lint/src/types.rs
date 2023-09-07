@@ -923,7 +923,12 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
         }
 
         // Return the nullable type this Option-like enum can be safely represented with.
-        let field_ty_abi = &tcx.layout_of(param_env.and(field_ty)).unwrap().abi;
+        let field_ty_layout = tcx.layout_of(param_env.and(field_ty));
+        if field_ty_layout.is_err() && !field_ty.has_non_region_param() {
+            bug!("should be able to compute the layout of non-polymorphic type");
+        }
+
+        let field_ty_abi = &field_ty_layout.ok()?.abi;
         if let Abi::Scalar(field_ty_scalar) = field_ty_abi {
             match field_ty_scalar.valid_range(&tcx) {
                 WrappingRange { start: 0, end }
