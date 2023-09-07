@@ -513,14 +513,11 @@ impl fmt::Debug for StdinLock<'_> {
 ///
 /// Standard output is line-buffered when outputting to a terminal and normally buffered otherwise.
 enum StdoutWriter {
-    #[allow(dead_code)]
     LineWriter(LineWriter<StdoutRaw>),
-    #[allow(dead_code)]
     BufWriter(BufWriter<StdoutRaw>),
 }
 
 impl StdoutWriter {
-    #[allow(dead_code)]
     /// Creates a new `StdoutWriter`. Will check if the output is a terminal and use the appropriate writer.
     fn new(stdout: StdoutRaw) -> StdoutWriter {
         if stdout.0.is_terminal() {
@@ -530,7 +527,6 @@ impl StdoutWriter {
         }
     }
 
-    #[allow(dead_code)]
     /// Creates a new `StdoutWriter` with at least the specified capacity for the internal buffer.
     ///
     /// Will check if the output is a terminal and use the appropriate writer.
@@ -613,10 +609,9 @@ impl Write for StdoutWriter {
 /// [`io::stdout`]: stdout
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdout {
-    // FIXME: this should be LineWriter or BufWriter depending on the state of
-    //        stdout (tty or not). Note that if this is not line buffered it
-    //        should also flush-on-panic or some form of flush-on-abort.
-    inner: &'static ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>,
+    // FIXME: if this is not line buffered it should also flush-on-panic or some form of
+    //        flush-on-abort.
+    inner: &'static ReentrantMutex<RefCell<StdoutWriter>>,
 }
 
 /// A locked reference to the [`Stdout`] handle.
@@ -638,10 +633,10 @@ pub struct Stdout {
 #[must_use = "if unused stdout will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdoutLock<'a> {
-    inner: ReentrantMutexGuard<'a, RefCell<LineWriter<StdoutRaw>>>,
+    inner: ReentrantMutexGuard<'a, RefCell<StdoutWriter>>,
 }
 
-static STDOUT: OnceLock<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = OnceLock::new();
+static STDOUT: OnceLock<ReentrantMutex<RefCell<StdoutWriter>>> = OnceLock::new();
 
 /// Constructs a new handle to the standard output of the current process.
 ///
@@ -694,7 +689,7 @@ static STDOUT: OnceLock<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = OnceLo
 pub fn stdout() -> Stdout {
     Stdout {
         inner: STDOUT
-            .get_or_init(|| ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw())))),
+            .get_or_init(|| ReentrantMutex::new(RefCell::new(StdoutWriter::new(stdout_raw())))),
     }
 }
 
@@ -705,7 +700,7 @@ pub fn cleanup() {
     let mut initialized = false;
     let stdout = STDOUT.get_or_init(|| {
         initialized = true;
-        ReentrantMutex::new(RefCell::new(LineWriter::with_capacity(0, stdout_raw())))
+        ReentrantMutex::new(RefCell::new(StdoutWriter::with_capacity(0, stdout_raw())))
     });
 
     if !initialized {
@@ -714,7 +709,7 @@ pub fn cleanup() {
         // might have leaked a StdoutLock, which would
         // otherwise cause a deadlock here.
         if let Some(lock) = stdout.try_lock() {
-            *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
+            *lock.borrow_mut() = StdoutWriter::with_capacity(0, stdout_raw());
         }
     }
 }
