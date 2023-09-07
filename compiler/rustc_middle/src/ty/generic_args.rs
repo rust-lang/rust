@@ -450,6 +450,11 @@ impl<'tcx> GenericArgs<'tcx> {
     pub fn host_effect_param(&'tcx self) -> Option<ty::Const<'tcx>> {
         self.consts().rfind(|x| matches!(x.kind(), ty::ConstKind::Param(p) if p.name == sym::host))
     }
+
+    pub fn print_as_list(&self) -> String {
+        let v = self.iter().map(|arg| arg.to_string()).collect::<Vec<_>>();
+        format!("[{}]", v.join(", "))
+    }
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArgsRef<'tcx> {

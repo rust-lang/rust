@@ -8,6 +8,7 @@ use crate::mir::interpret::{
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
+use crate::ty::print::with_no_trimmed_paths;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, List, Ty, TyCtxt};
@@ -1794,7 +1795,7 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
                 write!(fmt, ")")?;
             }
             ProjectionElem::Field(field, ty) => {
-                write!(fmt, ".{:?}: {:?})", field.index(), ty)?;
+                with_no_trimmed_paths!(write!(fmt, ".{:?}: {})", field.index(), ty)?);
             }
             ProjectionElem::Index(ref index) => {
                 write!(fmt, "[{index:?}]")?;
@@ -2077,7 +2078,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
             Len(ref a) => write!(fmt, "Len({a:?})"),
             Cast(ref kind, ref place, ref ty) => {
-                write!(fmt, "{place:?} as {ty:?} ({kind:?})")
+                with_no_trimmed_paths!(write!(fmt, "{place:?} as {ty} ({kind:?})"))
             }
             BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             CheckedBinaryOp(ref op, box (ref a, ref b)) => {
@@ -2085,11 +2086,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
-            NullaryOp(ref op, ref t) => match op {
-                NullOp::SizeOf => write!(fmt, "SizeOf({t:?})"),
-                NullOp::AlignOf => write!(fmt, "AlignOf({t:?})"),
-                NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t:?}, {fields:?})"),
-            },
+            NullaryOp(ref op, ref t) => {
+                let t = with_no_trimmed_paths!(format!("{}", t));
+                match op {
+                    NullOp::SizeOf => write!(fmt, "SizeOf({t})"),
+                    NullOp::AlignOf => write!(fmt, "AlignOf({t})"),
+                    NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
+                }
+            }
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
@@ -2225,7 +2229,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
 
             ShallowInitBox(ref place, ref ty) => {
-                write!(fmt, "ShallowInitBox({place:?}, {ty:?})")
+                with_no_trimmed_paths!(write!(fmt, "ShallowInitBox({place:?}, {ty})"))
             }
         }
     }

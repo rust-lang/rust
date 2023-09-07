@@ -27,6 +27,7 @@ use crate::ty::GenericArg;
 use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
 use rustc_macros::HashStable;
 use smallvec::SmallVec;
+use std::fmt::Display;
 use std::ops::Index;
 
 /// A "canonicalized" type `V` is one where all free inference
@@ -38,6 +39,16 @@ pub struct Canonical<'tcx, V> {
     pub value: V,
     pub max_universe: ty::UniverseIndex,
     pub variables: CanonicalVarInfos<'tcx>,
+}
+
+impl<'tcx, V: Display> std::fmt::Display for Canonical<'tcx, V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Canonical {{ value: {}, max_universe: {:?}, variables: {:?} }}",
+            self.value, self.max_universe, self.variables
+        )
+    }
 }
 
 pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;

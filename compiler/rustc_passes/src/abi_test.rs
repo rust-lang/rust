@@ -89,6 +89,7 @@ fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                 tcx.sess.emit_err(AbiOf {
                     span: tcx.def_span(item_def_id),
                     fn_name,
+                    // FIXME: using the `Debug` impl here isn't ideal.
                     fn_abi: format!("{:#?}", abi),
                 });
             }

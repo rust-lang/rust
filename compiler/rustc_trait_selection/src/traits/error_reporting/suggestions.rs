@@ -1805,7 +1805,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         );
                     } else {
                         err.note(format!(
-                            "`{}` is implemented for `{:?}`, but not for `{:?}`",
+                            "`{}` is implemented for `{}`, but not for `{}`",
                             trait_pred.print_modifiers_and_trait_path(),
                             suggested_ty,
                             trait_pred.skip_binder().self_ty(),

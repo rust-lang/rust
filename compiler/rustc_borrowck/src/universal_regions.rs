@@ -21,6 +21,7 @@ use rustc_hir::BodyOwnerKind;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_span::symbol::{kw, sym};
@@ -332,10 +333,16 @@ impl<'tcx> UniversalRegions<'tcx> {
     pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
         match self.defining_ty {
             DefiningTy::Closure(def_id, args) => {
+                let v = with_no_trimmed_paths!(
+                    args[tcx.generics_of(def_id).parent_count..]
+                        .iter()
+                        .map(|arg| arg.to_string())
+                        .collect::<Vec<_>>()
+                );
                 err.note(format!(
-                    "defining type: {} with closure args {:#?}",
+                    "defining type: {} with closure args [\n    {},\n]",
                     tcx.def_path_str_with_args(def_id, args),
-                    &args[tcx.generics_of(def_id).parent_count..],
+                    v.join(",\n    "),
                 ));
 
                 // FIXME: It'd be nice to print the late-bound regions
@@ -348,10 +355,16 @@ impl<'tcx> UniversalRegions<'tcx> {
                 });
             }
             DefiningTy::Generator(def_id, args, _) => {
+                let v = with_no_trimmed_paths!(
+                    args[tcx.generics_of(def_id).parent_count..]
+                        .iter()
+                        .map(|arg| arg.to_string())
+                        .collect::<Vec<_>>()
+                );
                 err.note(format!(
-                    "defining type: {} with generator args {:#?}",
+                    "defining type: {} with generator args [\n    {},\n]",
                     tcx.def_path_str_with_args(def_id, args),
-                    &args[tcx.generics_of(def_id).parent_count..],
+                    v.join(",\n    "),
                 ));
 
                 // FIXME: As above, we'd like to print out the region

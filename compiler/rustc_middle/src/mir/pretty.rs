@@ -583,8 +583,10 @@ fn write_scope_tree(
 
         let mut_str = local_decl.mutability.prefix_str();
 
-        let mut indented_decl =
-            format!("{0:1$}let {2}{3:?}: {4:?}", INDENT, indent, mut_str, local, local_decl.ty);
+        let mut indented_decl = ty::print::with_no_trimmed_paths!(format!(
+            "{0:1$}let {2}{3:?}: {4}",
+            INDENT, indent, mut_str, local, local_decl.ty
+        ));
         if let Some(user_ty) = &local_decl.user_ty {
             for user_ty in user_ty.projections() {
                 write!(indented_decl, " as {user_ty:?}").unwrap();
@@ -1058,11 +1060,11 @@ fn write_user_type_annotations(
     for (index, annotation) in body.user_type_annotations.iter_enumerated() {
         writeln!(
             w,
-            "| {:?}: user_ty: {:?}, span: {}, inferred_ty: {:?}",
+            "| {:?}: user_ty: {}, span: {}, inferred_ty: {}",
             index.index(),
             annotation.user_ty,
             tcx.sess.source_map().span_to_embeddable_string(annotation.span),
-            annotation.inferred_ty,
+            with_no_trimmed_paths!(format!("{}", annotation.inferred_ty)),
         )?;
     }
     if !body.user_type_annotations.is_empty() {

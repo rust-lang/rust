@@ -760,9 +760,12 @@ pub trait PrettyPrinter<'tcx>:
                 // only affect certain debug messages (e.g. messages printed
                 // from `rustc_middle::ty` during the computation of `tcx.predicates_of`),
                 // and should have no effect on any compiler output.
+                // [Unless `-Zverbose` is used, e.g. in the output of
+                // `tests/ui/nll/ty-outlives/impl-trait-captures.rs`, for
+                // example.]
                 if self.should_print_verbose() {
                     // FIXME(eddyb) print this with `print_def_path`.
-                    p!(write("Opaque({:?}, {:?})", def_id, args));
+                    p!(write("Opaque({:?}, {})", def_id, args.print_as_list()));
                     return Ok(self);
                 }
 
@@ -894,7 +897,7 @@ pub trait PrettyPrinter<'tcx>:
                     p!(print_def_path(did, args));
                     if !args.as_closure().is_valid() {
                         p!(" closure_args=(unavailable)");
-                        p!(write(" args={:?}", args));
+                        p!(write(" args={}", args.print_as_list()));
                     } else {
                         p!(" closure_kind_ty=", print(args.as_closure().kind_ty()));
                         p!(

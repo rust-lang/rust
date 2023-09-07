@@ -15,7 +15,7 @@ LL | |     });
    |       within this `[async block@$DIR/async-is-unwindsafe.rs:12:19: 29:6]`
    |
    = help: within `[async block@$DIR/async-is-unwindsafe.rs:12:19: 29:6]`, the trait `UnwindSafe` is not implemented for `&mut Context<'_>`
-   = note: `UnwindSafe` is implemented for `&std::task::Context<'_>`, but not for `&mut std::task::Context<'_>`
+   = note: `UnwindSafe` is implemented for `&Context<'_>`, but not for `&mut Context<'_>`
 note: future does not implement `UnwindSafe` as this value is used across an await
   --> $DIR/async-is-unwindsafe.rs:25:18
    |
