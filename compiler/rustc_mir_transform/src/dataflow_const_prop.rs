@@ -270,9 +270,10 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 val
             }
             Rvalue::UnaryOp(op, operand) => match self.eval_operand(operand, state) {
-                FlatSet::Elem(value) => {
-                    self.ecx.unary_op(*op, &value).map_or(FlatSet::Top, |val| self.wrap_immty(val))
-                }
+                FlatSet::Elem(value) => self
+                    .ecx
+                    .unary_op(*op, &value)
+                    .map_or(FlatSet::Top, |val| self.wrap_immediate(*val)),
                 FlatSet::Bottom => FlatSet::Bottom,
                 FlatSet::Top => FlatSet::Top,
             },
@@ -420,9 +421,9 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             &mut |place, op| {
                 if let Ok(imm) = self.ecx.read_immediate_raw(op)
                     && let Some(imm) = imm.right()
-                    && let Immediate::Scalar(scalar) = *imm
                 {
-                    state.insert_value_idx(place, FlatSet::Elem(scalar), &self.map);
+                    let elem = self.wrap_immediate(*imm);
+                    state.insert_value_idx(place, elem, &self.map);
                 }
             },
         );
@@ -492,10 +493,9 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             FlatSet::Top => FlatSet::Top,
             FlatSet::Elem(scalar) => {
                 let ty = op.ty(self.local_decls, self.tcx);
-                self.tcx
-                    .layout_of(self.param_env.and(ty))
-                    .map(|layout| FlatSet::Elem(ImmTy::from_scalar(scalar.into(), layout)))
-                    .unwrap_or(FlatSet::Top)
+                self.tcx.layout_of(self.param_env.and(ty)).map_or(FlatSet::Top, |layout| {
+                    FlatSet::Elem(ImmTy::from_scalar(scalar.into(), layout))
+                })
             }
             FlatSet::Bottom => FlatSet::Bottom,
         }
@@ -514,12 +514,9 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     fn wrap_immediate(&self, imm: Immediate) -> FlatSet<Scalar> {
         match imm {
             Immediate::Scalar(scalar) => FlatSet::Elem(scalar),
+            Immediate::Uninit => FlatSet::Bottom,
             _ => FlatSet::Top,
         }
-    }
-
-    fn wrap_immty(&self, val: ImmTy<'tcx>) -> FlatSet<Scalar> {
-        self.wrap_immediate(*val)
     }
 }
 
