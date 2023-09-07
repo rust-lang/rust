@@ -31,9 +31,10 @@ smallvec.workspace = true
 hashbrown.workspace = true
 triomphe.workspace = true
 
-rustc_abi = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_abi", default-features = false }
-rustc_index = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_index", default-features = false }
-rustc_lexer = { version = "0.1.0", package = "ra-ap-rustc_lexer" }
+rustc_abi.workspace = true
+rustc_index.workspace = true
+rustc_parse_format.workspace = true
+
 
 # local deps
 stdx.workspace = true

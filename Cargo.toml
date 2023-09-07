@@ -103,4 +103,9 @@ triomphe = { version = "0.1.8", default-features = false, features = ["std"] }
 # can't upgrade due to dashmap depending on 0.12.3 currently
 hashbrown = { version = "0.12.3", features = ["inline-more"], default-features = false }
 
-rustc_lexer = { version = "0.1.0", package = "ra-ap-rustc_lexer" }
+rustc_lexer = { version = "0.10.0", package = "ra-ap-rustc_lexer" }
+rustc_parse_format = { version = "0.10.0", package = "ra-ap-rustc_parse_format", default-features = false }
+
+# Upstream broke this for us so we can't update it
+rustc_abi = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_abi", default-features = false }
+rustc_index = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_index", default-features = false }
