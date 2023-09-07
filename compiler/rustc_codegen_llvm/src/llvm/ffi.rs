@@ -2319,6 +2319,12 @@ extern "C" {
         len: usize,
         out_len: &mut usize,
     ) -> *const u8;
+    pub fn LLVMRustGetSliceFromObjectDataByName(
+        data: *const u8,
+        len: usize,
+        name: *const u8,
+        out_len: &mut usize,
+    ) -> *const u8;
 
     pub fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
     pub fn LLVMRustLinkerAdd(

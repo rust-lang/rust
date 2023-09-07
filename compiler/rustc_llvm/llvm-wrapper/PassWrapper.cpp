@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include <cstddef>
 #include <iomanip>
 #include <vector>
 #include <set>
@@ -1509,6 +1510,38 @@ LLVMRustGetBitcodeSliceFromObjectData(const char *data,
 
   *out_len = BitcodeOrError->getBufferSize();
   return BitcodeOrError->getBufferStart();
+}
+
+// Find a section of an object file by name. Fail if the section is missing or
+// empty.
+extern "C" const char *LLVMRustGetSliceFromObjectDataByName(const char *data,
+                                                            size_t len,
+                                                            const char *name,
+                                                            size_t *out_len) {
+  *out_len = 0;
+  StringRef Data(data, len);
+  MemoryBufferRef Buffer(Data, ""); // The id is unused.
+  file_magic Type = identify_magic(Buffer.getBuffer());
+  Expected<std::unique_ptr<object::ObjectFile>> ObjFileOrError =
+      object::ObjectFile::createObjectFile(Buffer, Type);
+  if (!ObjFileOrError) {
+    LLVMRustSetLastError(toString(ObjFileOrError.takeError()).c_str());
+    return nullptr;
+  }
+  for (const object::SectionRef &Sec : (*ObjFileOrError)->sections()) {
+    Expected<StringRef> Name = Sec.getName();
+    if (Name && *Name == name) {
+      Expected<StringRef> SectionOrError = Sec.getContents();
+      if (!SectionOrError) {
+        LLVMRustSetLastError(toString(SectionOrError.takeError()).c_str());
+        return nullptr;
+      }
+      *out_len = SectionOrError->size();
+      return SectionOrError->data();
+    }
+  }
+  LLVMRustSetLastError("could not find requested section");
+  return nullptr;
 }
 
 // Computes the LTO cache key for the provided 'ModId' in the given 'Data',
