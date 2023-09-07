@@ -1390,8 +1390,25 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
                     && let Ok(mut out) =
                         File::options().create(true).append(true).open(&ice_path)
                 {
-                    let _ =
-                        write!(&mut out, "{info}{:#}", std::backtrace::Backtrace::force_capture());
+                    // The current implementation always returns `Some`.
+                    let location = info.location().unwrap();
+                    let msg = match info.payload().downcast_ref::<&'static str>() {
+                        Some(s) => *s,
+                        None => match info.payload().downcast_ref::<String>() {
+                            Some(s) => &s[..],
+                            None => "Box<dyn Any>",
+                        },
+                    };
+                    let thread = std::thread::current();
+                    let name = thread.name().unwrap_or("<unnamed>");
+                    let _ = write!(
+                        &mut out,
+                        "thread '{name}' panicked at {location}:\n\
+                        {msg}\n\
+                        stack backtrace:\n\
+                        {:#}",
+                        std::backtrace::Backtrace::force_capture()
+                    );
                 }
             }
 
