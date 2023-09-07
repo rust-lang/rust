@@ -62,6 +62,12 @@ show you the MIR for your program. Try putting this program into play
 button on the top:
 
 [sample-play]: https://play.rust-lang.org/?gist=30074856e62e74e91f06abd19bd72ece&version=stable
+MIR shown by above link is optimized.
+Some statements like `StorageLive` are removed in optimization.
+This happens because compiler notices the value is never acessed in the code.
+We can use `rustc [filename].rs -Z mir-opt-level=0 --emit mir` to view unoptimized MIR.
+This requires the nightly toolchain.
+
 
 ```rust
 fn main() {
