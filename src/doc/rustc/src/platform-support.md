@@ -277,7 +277,7 @@ target | std | host | notes
 [`loongarch64-unknown-none`](platform-support/loongarch-none.md) | * |  | LoongArch64 Bare-metal (LP64D ABI)
 [`loongarch64-unknown-none-softfloat`](platform-support/loongarch-none.md) | * |  | LoongArch64 Bare-metal (LP64S ABI)
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
-`mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc
+[`mips-unknown-linux-uclibc`](platform-support/mips_unknown_linux_uclibc.md) | ✓ |  | MIPS Linux with uClibc
 [`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux MUSL
 [`mipsel-sony-psp`](platform-support/mipsel_sony_psp.md) | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
 [`mipsel-sony-psx`](platform-support/mipsel-sony-psx.md) | * |  | MIPS (LE) Sony PlayStation 1 (PSX)
