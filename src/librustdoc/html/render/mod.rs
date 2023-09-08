@@ -54,6 +54,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{
     symbol::{sym, Symbol},
@@ -62,6 +63,7 @@ use rustc_span::{
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Serialize, Serializer};
 
+use crate::clean::types::TypeAliasItem;
 use crate::clean::{self, ItemId, RenderedLink, SelfTy};
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -1139,8 +1141,40 @@ fn render_assoc_items_inner(
     info!("Documenting associated items of {:?}", containing_item.name);
     let shared = Rc::clone(&cx.shared);
     let cache = &shared.cache;
-    let Some(v) = cache.impls.get(&it) else { return };
-    let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
+    let tcx = cx.tcx();
+    let av = if let TypeAliasItem(ait) = &*containing_item.kind &&
+        let aliased_clean_type = ait.item_type.as_ref().unwrap_or(&ait.type_) &&
+        let Some(aliased_type_defid) = aliased_clean_type.def_id(cache) &&
+        let Some(mut av) = cache.impls.get(&aliased_type_defid).cloned() &&
+        let Some(alias_def_id) = containing_item.item_id.as_def_id()
+    {
+        // This branch of the compiler compares types structually, but does
+        // not check trait bounds. That's probably fine, since type aliases
+        // don't normally constrain on them anyway.
+        // https://github.com/rust-lang/rust/issues/21903
+        //
+        // FIXME(lazy_type_alias): Once the feature is complete or stable, rewrite this to use type unification.
+        // Be aware of `tests/rustdoc/issue-112515-impl-ty-alias.rs` which might regress.
+        let aliased_ty = tcx.type_of(alias_def_id).skip_binder();
+        let reject_cx = DeepRejectCtxt {
+            treat_obligation_params: TreatParams::AsCandidateKey,
+        };
+        av.retain(|impl_| {
+            if let Some(impl_def_id) = impl_.impl_item.item_id.as_def_id() {
+                reject_cx.types_may_unify(aliased_ty, tcx.type_of(impl_def_id).skip_binder())
+            } else {
+                false
+            }
+        });
+        av
+    } else {
+        Vec::new()
+    };
+    let blank = Vec::new();
+    let v = cache.impls.get(&it).unwrap_or(&blank);
+    let (non_trait, traits): (Vec<_>, _) =
+        v.iter().chain(&av[..]).partition(|i| i.inner_impl().trait_.is_none());
+    let mut saw_impls = FxHashSet::default();
     if !non_trait.is_empty() {
         let mut tmp_buf = Buffer::html();
         let (render_mode, id, class_html) = match what {
@@ -1169,6 +1203,9 @@ fn render_assoc_items_inner(
         };
         let mut impls_buf = Buffer::html();
         for i in &non_trait {
+            if !saw_impls.insert(i.def_id()) {
+                continue;
+            }
             render_impl(
                 &mut impls_buf,
                 cx,
@@ -1214,8 +1251,10 @@ fn render_assoc_items_inner(
 
         let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
             traits.into_iter().partition(|t| t.inner_impl().kind.is_auto());
-        let (blanket_impl, concrete): (Vec<&Impl>, _) =
-            concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
+        let (blanket_impl, concrete): (Vec<&Impl>, _) = concrete
+            .into_iter()
+            .filter(|t| saw_impls.insert(t.def_id()))
+            .partition(|t| t.inner_impl().kind.is_blanket());
 
         render_all_impls(w, cx, containing_item, &concrete, &synthetic, &blanket_impl);
     }
