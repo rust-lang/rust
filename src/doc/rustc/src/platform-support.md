@@ -289,7 +289,7 @@ target | std | host | notes
 [`mipsisa64r6el-unknown-linux-gnuabi64`](platform-support/mips-release-6.md) | ✓ | ✓ | 64-bit MIPS Release 6 Little Endian
 `msp430-none-elf` | * |  | 16-bit MSP430 microcontrollers
 `powerpc-unknown-linux-gnuspe` | ✓ |  | PowerPC SPE Linux
-`powerpc-unknown-linux-musl` | ? |  |
+[`powerpc-unknown-linux-musl`](platform-support/powerpc_unknown_linux_musl.md) | ? |  | PowerPC MUSL Linux
 [`powerpc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD 32-bit powerpc systems
 [`powerpc-unknown-openbsd`](platform-support/openbsd.md) | ✓  | ✓ | OpenBSD/macppc
 [`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ? |  | PowerPC SPE VxWorks
