@@ -1,5 +1,5 @@
 // check-pass
-#![feature(rustc_attrs, transparent_unions)]
+#![feature(rustc_attrs, unsized_fn_params, transparent_unions)]
 #![allow(unused, improper_ctypes_definitions)]
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
@@ -26,7 +26,7 @@ macro_rules! assert_abi_compatible {
 struct Zst;
 
 #[repr(C)]
-struct ReprC1<T>(T);
+struct ReprC1<T: ?Sized>(T);
 #[repr(C)]
 struct ReprC2Int<T>(i32, T);
 #[repr(C)]
@@ -118,6 +118,23 @@ test_transparent!(small_array, [i32; 2]); // chosen to fit into 64bit
 test_transparent!(large_array, [i32; 16]);
 test_transparent!(enum_, Option<i32>);
 test_transparent!(enum_niched, Option<&'static i32>);
+
+// Some tests with unsized types (not all wrappers are compatible with that).
+macro_rules! test_transparent_unsized {
+    ($name:ident, $t:ty) => {
+        mod $name {
+            use super::*;
+            assert_abi_compatible!(wrap1, $t, Wrapper1<$t>);
+            assert_abi_compatible!(wrap1_reprc, ReprC1<$t>, ReprC1<Wrapper1<$t>>);
+            assert_abi_compatible!(wrap2, $t, Wrapper2<$t>);
+            assert_abi_compatible!(wrap2_reprc, ReprC1<$t>, ReprC1<Wrapper2<$t>>);
+        }
+    };
+}
+
+test_transparent_unsized!(str_, str);
+test_transparent_unsized!(slice, [u8]);
+test_transparent_unsized!(dyn_trait, dyn std::any::Any);
 
 // RFC 3391 <https://rust-lang.github.io/rfcs/3391-result_ffi_guarantees.html>.
 macro_rules! test_nonnull {
