@@ -25,7 +25,15 @@ pub fn provide(providers: &mut Providers) {
             tcx.hir().krate_attrs(),
             tcx.sess,
             sym::move_size_limit,
-            tcx.sess.opts.unstable_opts.move_size_limit.unwrap_or(0),
+            // The check is enabled by default in nightly compilers without
+            // needing `#![feature(large_assignments)]` with a limit of 4096
+            // bytes. But if the user wants to use adjust `#![move_size_limit]`,
+            // then `#![feature(large_assignments)]` is needed.
+            tcx.sess.opts.unstable_opts.move_size_limit.unwrap_or(if tcx.sess.is_nightly_build() {
+                4096
+            } else {
+                0
+            }),
         ),
         type_length_limit: get_limit(
             tcx.hir().krate_attrs(),
