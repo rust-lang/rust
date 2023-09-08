@@ -21,7 +21,7 @@ use crate::{
     cargo_workspace::{DepKind, PackageData, RustLibSource},
     cfg_flag::CfgFlag,
     project_json::Crate,
-    rustc_cfg,
+    rustc_cfg::{self, RustcCfgConfig},
     sysroot::SysrootCrate,
     target_data_layout, utf8_stdout, CargoConfig, CargoWorkspace, InvocationStrategy, ManifestPath,
     Package, ProjectJson, ProjectManifest, Sysroot, TargetData, TargetKind, WorkspaceBuildScripts,
@@ -240,9 +240,9 @@ impl ProjectWorkspace {
                     Some(RustLibSource::Path(path)) => ManifestPath::try_from(path.clone())
                         .map_err(|p| Some(format!("rustc source path is not absolute: {p}"))),
                     Some(RustLibSource::Discover) => {
-                        sysroot.as_ref().ok().and_then(Sysroot::discover_rustc).ok_or_else(|| {
-                            Some(format!("Failed to discover rustc source for sysroot."))
-                        })
+                        sysroot.as_ref().ok().and_then(Sysroot::discover_rustc_src).ok_or_else(
+                            || Some(format!("Failed to discover rustc source for sysroot.")),
+                        )
                     }
                     None => Err(None),
                 };
@@ -279,8 +279,11 @@ impl ProjectWorkspace {
                     }
                 });
 
-                let rustc_cfg =
-                    rustc_cfg::get(Some(&cargo_toml), config.target.as_deref(), &config.extra_env);
+                let rustc_cfg = rustc_cfg::get(
+                    config.target.as_deref(),
+                    &config.extra_env,
+                    RustcCfgConfig::Cargo(cargo_toml),
+                );
 
                 let cfg_overrides = config.cfg_overrides.clone();
                 let data_layout = target_data_layout::get(
@@ -331,11 +334,18 @@ impl ProjectWorkspace {
             }
             (None, None) => Err(None),
         };
-        if let Ok(sysroot) = &sysroot {
-            tracing::info!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
-        }
+        let config = match &sysroot {
+            Ok(sysroot) => {
+                tracing::debug!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
+                RustcCfgConfig::Explicit(sysroot)
+            }
+            Err(_) => {
+                tracing::debug!("discovering sysroot");
+                RustcCfgConfig::Discover
+            }
+        };
 
-        let rustc_cfg = rustc_cfg::get(None, target, extra_env);
+        let rustc_cfg = rustc_cfg::get(target, extra_env, config);
         ProjectWorkspace::Json { project: project_json, sysroot, rustc_cfg, toolchain }
     }
 
@@ -357,10 +367,18 @@ impl ProjectWorkspace {
             }
             None => Err(None),
         };
-        if let Ok(sysroot) = &sysroot {
-            tracing::info!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
-        }
-        let rustc_cfg = rustc_cfg::get(None, None, &Default::default());
+        let rustc_config = match &sysroot {
+            Ok(sysroot) => {
+                tracing::info!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
+                RustcCfgConfig::Explicit(sysroot)
+            }
+            Err(_) => {
+                tracing::info!("discovering sysroot");
+                RustcCfgConfig::Discover
+            }
+        };
+
+        let rustc_cfg = rustc_cfg::get(None, &FxHashMap::default(), rustc_config);
         Ok(ProjectWorkspace::DetachedFiles { files: detached_files, sysroot, rustc_cfg })
     }
 
@@ -755,9 +773,14 @@ fn project_json_to_crate_graph(
                 let env = env.clone().into_iter().collect();
 
                 let target_cfgs = match target.as_deref() {
-                    Some(target) => cfg_cache
-                        .entry(target)
-                        .or_insert_with(|| rustc_cfg::get(None, Some(target), extra_env)),
+                    Some(target) => cfg_cache.entry(target).or_insert_with(|| {
+                        let rustc_cfg = match sysroot {
+                            Some(sysroot) => RustcCfgConfig::Explicit(sysroot),
+                            None => RustcCfgConfig::Discover,
+                        };
+
+                        rustc_cfg::get(Some(target), extra_env, rustc_cfg)
+                    }),
                     None => &rustc_cfg,
                 };
 

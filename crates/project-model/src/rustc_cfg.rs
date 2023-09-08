@@ -2,14 +2,29 @@
 
 use std::process::Command;
 
+use anyhow::Context;
 use rustc_hash::FxHashMap;
 
-use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath};
+use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath, Sysroot};
+
+/// Determines how `rustc --print cfg` is discovered and invoked.
+///
+/// There options are supported:
+/// - [`RustcCfgConfig::Cargo`], which relies on `cargo rustc --print cfg`
+///   and `RUSTC_BOOTSTRAP`.
+/// - [`RustcCfgConfig::Explicit`], which uses an explicit path to the `rustc`
+///   binary in the sysroot.
+/// - [`RustcCfgConfig::Discover`], which uses [`toolchain::rustc`].
+pub(crate) enum RustcCfgConfig<'a> {
+    Cargo(&'a ManifestPath),
+    Explicit(&'a Sysroot),
+    Discover,
+}
 
 pub(crate) fn get(
-    cargo_toml: Option<&ManifestPath>,
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
+    config: RustcCfgConfig<'_>,
 ) -> Vec<CfgFlag> {
     let _p = profile::span("rustc_cfg::get");
     let mut res = Vec::with_capacity(6 * 2 + 1);
@@ -25,49 +40,67 @@ pub(crate) fn get(
     // Add miri cfg, which is useful for mir eval in stdlib
     res.push(CfgFlag::Atom("miri".into()));
 
-    match get_rust_cfgs(cargo_toml, target, extra_env) {
-        Ok(rustc_cfgs) => {
-            tracing::debug!(
-                "rustc cfgs found: {:?}",
-                rustc_cfgs
-                    .lines()
-                    .map(|it| it.parse::<CfgFlag>().map(|it| it.to_string()))
-                    .collect::<Vec<_>>()
-            );
-            res.extend(rustc_cfgs.lines().filter_map(|it| it.parse().ok()));
+    let rustc_cfgs = get_rust_cfgs(target, extra_env, config);
+
+    let rustc_cfgs = match rustc_cfgs {
+        Ok(cfgs) => cfgs,
+        Err(e) => {
+            tracing::error!(?e, "failed to get rustc cfgs");
+            return res;
         }
-        Err(e) => tracing::error!("failed to get rustc cfgs: {e:?}"),
+    };
+
+    let rustc_cfgs =
+        rustc_cfgs.lines().map(|it| it.parse::<CfgFlag>()).collect::<Result<Vec<_>, _>>();
+
+    match rustc_cfgs {
+        Ok(rustc_cfgs) => {
+            tracing::debug!(?rustc_cfgs, "rustc cfgs found");
+            res.extend(rustc_cfgs);
+        }
+        Err(e) => {
+            tracing::error!(?e, "failed to get rustc cfgs")
+        }
     }
 
     res
 }
 
 fn get_rust_cfgs(
-    cargo_toml: Option<&ManifestPath>,
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
+    config: RustcCfgConfig<'_>,
 ) -> anyhow::Result<String> {
-    if let Some(cargo_toml) = cargo_toml {
-        let mut cargo_config = Command::new(toolchain::cargo());
-        cargo_config.envs(extra_env);
-        cargo_config
-            .current_dir(cargo_toml.parent())
-            .args(["rustc", "-Z", "unstable-options", "--print", "cfg"])
-            .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(target) = target {
-            cargo_config.args(["--target", target]);
+    let mut cmd = match config {
+        RustcCfgConfig::Cargo(cargo_toml) => {
+            let mut cmd = Command::new(toolchain::cargo());
+            cmd.envs(extra_env);
+            cmd.current_dir(cargo_toml.parent())
+                .args(["rustc", "-Z", "unstable-options", "--print", "cfg"])
+                .env("RUSTC_BOOTSTRAP", "1");
+            if let Some(target) = target {
+                cmd.args(["--target", target]);
+            }
+
+            return utf8_stdout(cmd).context("Unable to run `cargo rustc`");
         }
-        match utf8_stdout(cargo_config) {
-            Ok(it) => return Ok(it),
-            Err(e) => tracing::debug!("{e:?}: falling back to querying rustc for cfgs"),
+        RustcCfgConfig::Explicit(sysroot) => {
+            let rustc: std::path::PathBuf = sysroot.discover_rustc()?.into();
+            tracing::debug!(?rustc, "using explicit rustc from sysroot");
+            Command::new(rustc)
         }
-    }
-    // using unstable cargo features failed, fall back to using plain rustc
-    let mut cmd = Command::new(toolchain::rustc());
+        RustcCfgConfig::Discover => {
+            let rustc = toolchain::rustc();
+            tracing::debug!(?rustc, "using rustc from env");
+            Command::new(rustc)
+        }
+    };
+
     cmd.envs(extra_env);
     cmd.args(["--print", "cfg", "-O"]);
     if let Some(target) = target {
         cmd.args(["--target", target]);
     }
-    utf8_stdout(cmd)
+
+    utf8_stdout(cmd).context("Unable to run `rustc`")
 }
