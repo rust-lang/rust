@@ -303,7 +303,7 @@ target | std | host | notes
 [`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
 `powerpc64-ibm-aix` | ? |  | 64-bit AIX (7.2 and newer)
 `riscv32gc-unknown-linux-gnu` |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
-`riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl + RISCV32 support patches)
+[`riscv32gc-unknown-linux-musl`](platform-support/riscvgc_unknown_linux_musl.md) |   |   | RISC-V Linux (kernel 5.4, MUSL + RISCV32 support patches)
 [`riscv32im-unknown-none-elf`](platform-support/riscv32im_unknown_none_elf.md) | * |  | Bare RISC-V (RV32IM ISA)
 [`riscv32imac-unknown-xous-elf`](platform-support/riscv32imac-unknown-xous-elf.md) | ? |  | RISC-V Xous (RV32IMAC ISA)
 [`riscv32imc-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
@@ -311,7 +311,7 @@ target | std | host | notes
 [`riscv64gc-unknown-hermit`](platform-support/hermit.md) | ✓ |   | RISC-V Hermit
 [`riscv64gc-unknown-freebsd`](platform-support/freebsd.md) |   |   | RISC-V FreeBSD
 [`riscv64gc-unknown-fuchsia`](platform-support/fuchsia.md) |   |   | RISC-V Fuchsia
-`riscv64gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 4.20, musl 1.2.0)
+[`riscv64gc-unknown-linux-musl`](platform-support/riscvgc_unknown_linux_musl.md) |   |   | RISC-V Linux (kernel 4.20, MUSL 1.2.0)
 [`riscv64gc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | RISC-V NetBSD
 [`riscv64gc-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/riscv64
 [`riscv64-linux-android`](platform-support/android.md) |   |   | RISC-V 64-bit Android
