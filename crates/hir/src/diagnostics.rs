@@ -43,6 +43,7 @@ diagnostics![
     MacroExpansionParseError,
     MalformedDerive,
     MismatchedArgCount,
+    MismatchedTupleStructPatArgCount,
     MissingFields,
     MissingMatchArms,
     MissingUnsafe,
@@ -180,6 +181,13 @@ pub struct PrivateAssocItem {
     pub expr_or_pat:
         InFile<Either<AstPtr<ast::Expr>, Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>>>,
     pub item: AssocItem,
+}
+
+#[derive(Debug)]
+pub struct MismatchedTupleStructPatArgCount {
+    pub expr_or_pat: InFile<Either<AstPtr<ast::Expr>, AstPtr<ast::Pat>>>,
+    pub expected: usize,
+    pub found: usize,
 }
 
 #[derive(Debug)]
