@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<dyn Trait<B = B, A = A> as SuperTrait>::A == B`
+error[E0271]: type mismatch resolving `<dyn Trait<A = A, B = B> as SuperTrait>::A == B`
   --> $DIR/enforce-supertrait-projection.rs:9:17
    |
 LL | fn transmute<A, B>(x: A) -> B {
