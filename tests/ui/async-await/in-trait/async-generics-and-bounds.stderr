@@ -14,6 +14,10 @@ note: ...so that the reference type `&(T, U)` does not outlive the data it point
    |
 LL |     async fn foo(&self) -> &(T, U) where T: Debug + Sized, U: Hash;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider adding an explicit lifetime bound...
+   |
+LL |     async fn foo<'a>(&'a self) -> &'a (T, U) where T: Debug + Sized, U: Hash, U: 'a;
+   |                 ++++  ++           ++                                       +++++++
 
 error[E0311]: the parameter type `T` may not live long enough
   --> $DIR/async-generics-and-bounds.rs:12:5
@@ -31,6 +35,10 @@ note: ...so that the reference type `&(T, U)` does not outlive the data it point
    |
 LL |     async fn foo(&self) -> &(T, U) where T: Debug + Sized, U: Hash;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider adding an explicit lifetime bound...
+   |
+LL |     async fn foo<'a>(&'a self) -> &'a (T, U) where T: Debug + Sized, U: Hash, T: 'a;
+   |                 ++++  ++           ++                                       +++++++
 
 error: aborting due to 2 previous errors
 

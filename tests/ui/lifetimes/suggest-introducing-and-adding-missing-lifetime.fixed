@@ -2,7 +2,7 @@
 
 #![allow(warnings)]
 
-fn no_restriction<'a, T: 'a>(x: &'a ()) -> &() {
+fn no_restriction<'a, T: 'a>(x: &'a ()) -> &'a () {
     with_restriction::<T>(x) //~ ERROR the parameter type `T` may not live long enough
 }
 
