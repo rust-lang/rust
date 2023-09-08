@@ -200,12 +200,12 @@ fn replace_usages(edit: &mut SourceChangeBuilder, usages: &UsageSearchResult) {
                     cov_mark::hit!(replaces_assignment);
 
                     replace_bool_expr(edit, initializer);
-                } else if let Some((prefix_expr, expr)) = find_negated_usage(name_ref) {
+                } else if let Some((prefix_expr, inner_expr)) = find_negated_usage(name_ref) {
                     cov_mark::hit!(replaces_negation);
 
                     edit.replace(
                         prefix_expr.syntax().text_range(),
-                        format!("{} == Bool::False", expr),
+                        format!("{} == Bool::False", inner_expr),
                     );
                 } else if let Some((record_field, initializer)) = find_record_expr_usage(name_ref) {
                     cov_mark::hit!(replaces_record_expr);
@@ -235,8 +235,8 @@ fn find_negated_usage(name_ref: &ast::NameRef) -> Option<(ast::PrefixExpr, ast::
     let prefix_expr = name_ref.syntax().ancestors().find_map(ast::PrefixExpr::cast)?;
 
     if let Some(ast::UnaryOp::Not) = prefix_expr.op_kind() {
-        let initializer = prefix_expr.expr()?;
-        Some((prefix_expr, initializer))
+        let inner_expr = prefix_expr.expr()?;
+        Some((prefix_expr, inner_expr))
     } else {
         None
     }
