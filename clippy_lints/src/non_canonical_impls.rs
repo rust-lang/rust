@@ -14,11 +14,12 @@ use rustc_span::symbol::kw;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for manual implementations of `Clone` when `Copy` is already implemented.
+    /// Checks for non-canonical implementations of `Clone` when `Copy` is already implemented.
     ///
     /// ### Why is this bad?
-    /// If both `Clone` and `Copy` are implemented, they must agree. This is done by dereferencing
-    /// `self` in `Clone`'s implementation. Anything else is incorrect.
+    /// If both `Clone` and `Copy` are implemented, they must agree. This can done by dereferencing
+    /// `self` in `Clone`'s implementation, which will avoid any possibility of the implementations
+    /// becoming out of sync.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -47,14 +48,13 @@ declare_clippy_lint! {
     /// impl Copy for A {}
     /// ```
     #[clippy::version = "1.72.0"]
-    pub INCORRECT_CLONE_IMPL_ON_COPY_TYPE,
-    correctness,
-    "manual implementation of `Clone` on a `Copy` type"
+    pub NON_CANONICAL_CLONE_IMPL,
+    suspicious,
+    "non-canonical implementation of `Clone` on a `Copy` type"
 }
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for manual implementations of both `PartialOrd` and `Ord` when only `Ord` is
-    /// necessary.
+    /// Checks for non-canonical implementations of `PartialOrd` when `Ord` is already implemented.
     ///
     /// ### Why is this bad?
     /// If both `PartialOrd` and `Ord` are implemented, they must agree. This is commonly done by
@@ -62,11 +62,8 @@ declare_clippy_lint! {
     /// introduce an error upon refactoring.
     ///
     /// ### Known issues
-    /// Code that calls the `.into()` method instead will be flagged as incorrect, despite `.into()`
-    /// wrapping it in `Some`.
-    ///
-    /// ### Limitations
-    /// Will not lint if `Self` and `Rhs` do not have the same type.
+    /// Code that calls the `.into()` method instead will be flagged, despite `.into()` wrapping it
+    /// in `Some`.
     ///
     /// ### Example
     /// ```rust
@@ -108,13 +105,13 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.72.0"]
-    pub INCORRECT_PARTIAL_ORD_IMPL_ON_ORD_TYPE,
-    correctness,
-    "manual implementation of `PartialOrd` when `Ord` is already implemented"
+    pub NON_CANONICAL_PARTIAL_ORD_IMPL,
+    suspicious,
+    "non-canonical implementation of `PartialOrd` on an `Ord` type"
 }
-declare_lint_pass!(IncorrectImpls => [INCORRECT_CLONE_IMPL_ON_COPY_TYPE, INCORRECT_PARTIAL_ORD_IMPL_ON_ORD_TYPE]);
+declare_lint_pass!(NonCanonicalImpls => [NON_CANONICAL_CLONE_IMPL, NON_CANONICAL_PARTIAL_ORD_IMPL]);
 
-impl LateLintPass<'_> for IncorrectImpls {
+impl LateLintPass<'_> for NonCanonicalImpls {
     #[expect(clippy::too_many_lines)]
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
         let Some(Node::Item(item)) = get_parent_node(cx.tcx, impl_item.hir_id()) else {
@@ -155,9 +152,9 @@ impl LateLintPass<'_> for IncorrectImpls {
                 {} else {
                     span_lint_and_sugg(
                         cx,
-                        INCORRECT_CLONE_IMPL_ON_COPY_TYPE,
+                        NON_CANONICAL_CLONE_IMPL,
                         block.span,
-                        "incorrect implementation of `clone` on a `Copy` type",
+                        "non-canonical implementation of `clone` on a `Copy` type",
                         "change this to",
                         "{ *self }".to_owned(),
                         Applicability::MaybeIncorrect,
@@ -170,9 +167,9 @@ impl LateLintPass<'_> for IncorrectImpls {
             if impl_item.ident.name == sym::clone_from {
                 span_lint_and_sugg(
                     cx,
-                    INCORRECT_CLONE_IMPL_ON_COPY_TYPE,
+                    NON_CANONICAL_CLONE_IMPL,
                     impl_item.span,
-                    "incorrect implementation of `clone_from` on a `Copy` type",
+                    "unnecessary implementation of `clone_from` on a `Copy` type",
                     "remove it",
                     String::new(),
                     Applicability::MaybeIncorrect,
@@ -218,9 +215,9 @@ impl LateLintPass<'_> for IncorrectImpls {
 
                 span_lint_and_then(
                     cx,
-                    INCORRECT_PARTIAL_ORD_IMPL_ON_ORD_TYPE,
+                    NON_CANONICAL_PARTIAL_ORD_IMPL,
                     item.span,
-                    "incorrect implementation of `partial_cmp` on an `Ord` type",
+                    "non-canonical implementation of `partial_cmp` on an `Ord` type",
                     |diag| {
                         let [_, other] = body.params else {
                             return;

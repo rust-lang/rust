@@ -154,7 +154,6 @@ mod implicit_saturating_add;
 mod implicit_saturating_sub;
 mod implied_bounds_in_impls;
 mod inconsistent_struct_constructor;
-mod incorrect_impls;
 mod index_refutable_slice;
 mod indexing_slicing;
 mod infinite_iter;
@@ -244,6 +243,7 @@ mod neg_multiply;
 mod new_without_default;
 mod no_effect;
 mod no_mangle_with_rust_abi;
+mod non_canonical_impls;
 mod non_copy_const;
 mod non_expressive_names;
 mod non_octal_unix_permissions;
@@ -1070,7 +1070,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             avoid_breaking_exported_api,
         ))
     });
-    store.register_late_pass(|_| Box::new(incorrect_impls::IncorrectImpls));
+    store.register_late_pass(|_| Box::new(non_canonical_impls::NonCanonicalImpls));
     store.register_late_pass(move |_| {
         Box::new(single_call_fn::SingleCallFn {
             avoid_breaking_exported_api,
