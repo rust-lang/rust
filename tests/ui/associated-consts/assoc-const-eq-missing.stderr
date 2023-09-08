@@ -2,19 +2,25 @@ error[E0220]: associated type `Z` not found for `Foo`
   --> $DIR/assoc-const-eq-missing.rs:15:16
    |
 LL | fn foo1<F: Foo<Z=3>>() {}
-   |                ^ associated type `Z` not found
+   |                ^
+   |
+   = help: `Foo` has no associated type, try removing `Z`
 
 error[E0220]: associated type `Z` not found for `Foo`
   --> $DIR/assoc-const-eq-missing.rs:17:16
    |
 LL | fn foo2<F: Foo<Z=usize>>() {}
-   |                ^ associated type `Z` not found
+   |                ^
+   |
+   = help: `Foo` has no associated type, try removing `Z`
 
 error[E0220]: associated type `Z` not found for `Foo`
   --> $DIR/assoc-const-eq-missing.rs:19:16
    |
 LL | fn foo3<F: Foo<Z=5>>() {}
-   |                ^ associated type `Z` not found
+   |                ^
+   |
+   = help: `Foo` has no associated type, try removing `Z`
 
 error: aborting due to 3 previous errors
 
