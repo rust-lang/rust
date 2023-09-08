@@ -1737,6 +1737,13 @@ impl<'tcx> PlaceRef<'tcx> {
     }
 }
 
+impl From<Local> for PlaceRef<'_> {
+    #[inline]
+    fn from(local: Local) -> Self {
+        PlaceRef { local, projection: &[] }
+    }
+}
+
 impl Debug for Place<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         self.as_ref().fmt(fmt)
@@ -2317,7 +2324,7 @@ impl<'tcx> ConstantKind<'tcx> {
 
     #[inline]
     pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
-        Some(self.try_to_scalar()?.assert_int())
+        self.try_to_scalar()?.try_to_int().ok()
     }
 
     #[inline]
