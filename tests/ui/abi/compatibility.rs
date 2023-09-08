@@ -1,11 +1,17 @@
 // check-pass
 #![feature(rustc_attrs, unsized_fn_params, transparent_unions)]
-#![allow(unused, improper_ctypes_definitions)]
+#![allow(unused, improper_ctypes_definitions, internal_features)]
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::num::NonZeroI32;
 use std::ptr::NonNull;
-use std::mem::ManuallyDrop;
+
+// FIXME: a bunch of targets are broken in various ways.
+// Hence there are `cfg` throughout this test to disable parts of it on those targets.
+// sparc64: https://github.com/rust-lang/rust/issues/115336
+// mips64: https://github.com/rust-lang/rust/issues/115404
+// riscv64: https://github.com/rust-lang/rust/issues/115481
+// loongarch64: https://github.com/rust-lang/rust/issues/115509
 
 macro_rules! assert_abi_compatible {
     ($name:ident, $t1:ty, $t2:ty) => {
@@ -75,6 +81,7 @@ test_abi_compatible!(fn_fn, fn(), fn(i32) -> i32);
 
 // Some further guarantees we will likely (have to) make.
 test_abi_compatible!(zst_unit, Zst, ());
+#[cfg(not(any(target_arch = "sparc64")))]
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
 test_abi_compatible!(nonzero_int, NonZeroI32, i32);
 
@@ -98,6 +105,7 @@ macro_rules! test_transparent {
             test_abi_compatible!(wrap1, $t, Wrapper1<$t>);
             test_abi_compatible!(wrap2, $t, Wrapper2<$t>);
             test_abi_compatible!(wrap3, $t, Wrapper3<$t>);
+            #[cfg(not(any(target_arch = "riscv64", target_arch = "loongarch64")))]
             test_abi_compatible!(wrap4, $t, WrapperUnion<$t>);
         }
     };
@@ -107,17 +115,30 @@ test_transparent!(simple, i32);
 test_transparent!(reference, &'static i32);
 test_transparent!(zst, Zst);
 test_transparent!(unit, ());
-test_transparent!(pair, (i32, f32)); // mixing in some floats since they often get special treatment
-test_transparent!(triple, (i8, i16, f32)); // chosen to fit into 64bit
-test_transparent!(triple_f32, (f32, f32, f32)); // homogeneous case
-test_transparent!(triple_f64, (f64, f64, f64));
-test_transparent!(tuple, (i32, f32, i64, f64));
-test_transparent!(empty_array, [u32; 0]);
-test_transparent!(empty_1zst_array, [u8; 0]);
-test_transparent!(small_array, [i32; 2]); // chosen to fit into 64bit
-test_transparent!(large_array, [i32; 16]);
 test_transparent!(enum_, Option<i32>);
 test_transparent!(enum_niched, Option<&'static i32>);
+#[cfg(not(any(target_arch = "mips64", target_arch = "sparc64")))]
+mod tuples {
+    use super::*;
+    // mixing in some floats since they often get special treatment
+    test_transparent!(pair, (i32, f32));
+    // chosen to fit into 64bit
+    test_transparent!(triple, (i8, i16, f32));
+    // Pure-float types that are not ScalarPair seem to be tricky.
+    test_transparent!(triple_f32, (f32, f32, f32));
+    test_transparent!(triple_f64, (f64, f64, f64));
+    // and also something that's larger than 2 pointers
+    test_transparent!(tuple, (i32, f32, i64, f64));
+}
+// Some targets have special rules for arrays.
+#[cfg(not(any(target_arch = "mips64", target_arch = "sparc64")))]
+mod arrays {
+    use super::*;
+    test_transparent!(empty_array, [u32; 0]);
+    test_transparent!(empty_1zst_array, [u8; 0]);
+    test_transparent!(small_array, [i32; 2]); // chosen to fit into 64bit
+    test_transparent!(large_array, [i32; 16]);
+}
 
 // Some tests with unsized types (not all wrappers are compatible with that).
 macro_rules! test_transparent_unsized {
@@ -132,9 +153,13 @@ macro_rules! test_transparent_unsized {
     };
 }
 
-test_transparent_unsized!(str_, str);
-test_transparent_unsized!(slice, [u8]);
-test_transparent_unsized!(dyn_trait, dyn std::any::Any);
+#[cfg(not(any(target_arch = "mips64", target_arch = "sparc64")))]
+mod unsized_ {
+    use super::*;
+    test_transparent_unsized!(str_, str);
+    test_transparent_unsized!(slice, [u8]);
+    test_transparent_unsized!(dyn_trait, dyn std::any::Any);
+}
 
 // RFC 3391 <https://rust-lang.github.io/rfcs/3391-result_ffi_guarantees.html>.
 macro_rules! test_nonnull {
