@@ -71,16 +71,26 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
     return hasFoundFile;
 }
 
+window.rustdocCloseSourceSidebar = () => {
+    const toggleLabel = document.querySelector("#src-sidebar-toggle button");
+    removeClass(document.documentElement, "src-sidebar-expanded");
+    toggleLabel.innerText = ">";
+    updateLocalStorage("source-sidebar-show", "false");
+};
+
+window.rustdocShowSourceSidebar = () => {
+    const toggleLabel = document.querySelector("#src-sidebar-toggle button");
+    addClass(document.documentElement, "src-sidebar-expanded");
+    toggleLabel.innerText = "<";
+    updateLocalStorage("source-sidebar-show", "true");
+};
+
 function toggleSidebar() {
     const child = this.parentNode.children[0];
     if (child.innerText === ">") {
-        addClass(document.documentElement, "src-sidebar-expanded");
-        child.innerText = "<";
-        updateLocalStorage("source-sidebar-show", "true");
+        window.rustdocShowSourceSidebar();
     } else {
-        removeClass(document.documentElement, "src-sidebar-expanded");
-        child.innerText = ">";
-        updateLocalStorage("source-sidebar-show", "false");
+        window.rustdocCloseSourceSidebar();
     }
 }
 

@@ -100,6 +100,7 @@ static_files! {
     storage_js => "static/js/storage.js",
     scrape_examples_js => "static/js/scrape-examples.js",
     wheel_svg => "static/images/wheel.svg",
+    sidebar_svg => "static/images/sidebar.svg",
     clipboard_svg => "static/images/clipboard.svg",
     copyright => "static/COPYRIGHT.txt",
     license_apache => "static/LICENSE-APACHE.txt",

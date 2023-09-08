@@ -17,10 +17,10 @@ define-function: (
         reload:
         // Struct
         assert-css: (
-            ".sidebar .block.struct a:not(.current)",
+            ".sidebar .block.struct li:not(.current) a",
             {"color": |struct|, "background-color": "rgba(0, 0, 0, 0)"},
         )
-        move-cursor-to: ".sidebar .block.struct a:not(.current)"
+        move-cursor-to: ".sidebar .block.struct li:not(.current) a"
         assert-css: (
             ".sidebar .block.struct a:hover",
             {"color": |struct_hover|, "background-color": |struct_hover_background|},

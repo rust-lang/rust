@@ -96,4 +96,6 @@
 	--scrape-example-help-hover-color: #000;
 	--scrape-example-code-wrapper-background-start: rgba(255, 255, 255, 1);
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
+	--sidebar-resizer-hover: hsl(207, 90%, 66%);
+	--sidebar-resizer-active: hsl(207, 90%, 54%);
 }

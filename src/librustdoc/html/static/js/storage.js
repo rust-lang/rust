@@ -202,6 +202,30 @@ if (getSettingValue("source-sidebar-show") === "true") {
     addClass(document.documentElement, "src-sidebar-expanded");
 }
 
+if (getSettingValue("hide-sidebar") === "true") {
+    // At this point in page load, `document.body` is not available yet.
+    // Set a class on the `<html>` element instead.
+    addClass(document.documentElement, "hide-sidebar");
+}
+
+function updateSidebarWidth() {
+    const desktopSidebarWidth = getSettingValue("desktop-sidebar-width");
+    if (desktopSidebarWidth && desktopSidebarWidth !== "null") {
+        document.documentElement.style.setProperty(
+            "--desktop-sidebar-width",
+            desktopSidebarWidth + "px"
+        );
+    }
+    const srcSidebarWidth = getSettingValue("src-sidebar-width");
+    if (srcSidebarWidth && srcSidebarWidth !== "null") {
+        document.documentElement.style.setProperty(
+            "--src-sidebar-width",
+            srcSidebarWidth + "px"
+        );
+    }
+}
+updateSidebarWidth();
+
 // If we navigate away (for example to a settings page), and then use the back or
 // forward button to get back to a page, the theme may have changed in the meantime.
 // But scripts may not be re-loaded in such a case due to the bfcache
@@ -214,5 +238,6 @@ if (getSettingValue("source-sidebar-show") === "true") {
 window.addEventListener("pageshow", ev => {
     if (ev.persisted) {
         setTimeout(updateTheme, 0);
+        setTimeout(updateSidebarWidth, 0);
     }
 });

@@ -383,7 +383,7 @@ img {
 
 .sidebar {
 	font-size: 0.875rem;
-	flex: 0 0 200px;
+	flex: 0 0 var(--desktop-sidebar-width, 200px);
 	overflow-y: scroll;
 	overscroll-behavior: contain;
 	position: sticky;
@@ -401,6 +401,87 @@ img {
 	z-index: 1;
 }
 
+.hide-sidebar .sidebar,
+.hide-sidebar .sidebar-resizer {
+	display: none;
+}
+
+.sidebar-resizer {
+	touch-action: none;
+	width: 9px;
+	cursor: col-resize;
+	z-index: 10;
+	position: absolute;
+	height: 100%;
+	/* make sure there's a 1px gap between the scrollbar and resize handle */
+	left: calc(var(--desktop-sidebar-width, 200px) + 1px);
+}
+
+.rustdoc.src .sidebar-resizer {
+	/* when closed, place resizer glow on top of the normal src sidebar border (no need to worry
+	   about sidebar) */
+	left: 49px;
+}
+
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer {
+	/* for src sidebar, gap is already provided by 1px border on sidebar itself, so place resizer
+	   to right of it */
+	left: var(--src-sidebar-width, 300px);
+}
+
+.sidebar-resizing {
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+}
+
+.sidebar-resizing * {
+	cursor: col-resize !important;
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer:active,
+.sidebar-resizer:focus,
+.sidebar-resizer.active {
+	width: 10px;
+	margin: 0;
+	/* when active or hovered, place resizer glow on top of the sidebar (right next to, or even
+	   on top of, the scrollbar) */
+	left: var(--desktop-sidebar-width, 200px);
+	border-left: solid 1px var(--sidebar-resizer-hover);
+}
+
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer:hover,
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer:active,
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer:focus,
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer.active {
+	/* when active or hovered, place resizer glow on top of the normal src sidebar border */
+	left: calc(var(--src-sidebar-width, 300px) - 1px);
+}
+
+@media (pointer: coarse) {
+	.sidebar-resizer {
+		/* too easy to hit the resizer while trying to hit the [-] toggle */
+		display: none !important;
+	}
+}
+
+.sidebar-resizer.active {
+	/* make the resize tool bigger when actually resizing, to avoid :hover styles on other stuff
+	   while resizing */
+	padding: 0 140px;
+	width: 2px;
+	margin-left: -140px;
+	border-left: none;
+}
+.sidebar-resizer.active:before {
+	border-left: solid 2px var(--sidebar-resizer-active);
+	display: block;
+	height: 100%;
+	content: "";
+}
+
 .sidebar, .mobile-topbar, .sidebar-menu-toggle,
 #src-sidebar-toggle, #src-sidebar {
 	background-color: var(--sidebar-background-color);
@@ -416,7 +497,7 @@ img {
 
 .src-sidebar-expanded .src .sidebar {
 	overflow-y: auto;
-	flex-basis: 300px;
+	flex-basis: var(--src-sidebar-width, 300px);
 }
 
 .src-sidebar-expanded .src .sidebar > *:not(#src-sidebar-toggle) {
@@ -477,6 +558,7 @@ ul.block, .block li {
 	display: block;
 	padding: 0.25rem; /* 4px */
 	margin-left: -0.25rem;
+	margin-right: 0.25rem;
 }
 
 .sidebar h2 {
@@ -778,7 +860,7 @@ h2.small-section-header > .anchor {
 	text-decoration: underline;
 }
 
-.crate.block a.current { font-weight: 500; }
+.crate.block li.current a { font-weight: 500; }
 
 /*  In most contexts we use `overflow-wrap: anywhere` to ensure that we can wrap
 	as much as needed on mobile (see
@@ -1477,7 +1559,20 @@ a.tooltip:hover::after {
 	margin-left: 4px;
 	display: flex;
 }
-#settings-menu > a, #help-button > a {
+#sidebar-button {
+	display: none;
+}
+.hide-sidebar #sidebar-button {
+	display: flex;
+	margin-right: 4px;
+	position: fixed;
+	left: 6px;
+	height: 34px;
+	width: 34px;
+	background-color: var(--main-background-color);
+	z-index: 1;
+}
+#settings-menu > a, #help-button > a, #sidebar-button > a {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1492,7 +1587,8 @@ a.tooltip:hover::after {
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > a:hover, #help-button > a:focus {
+#help-button > a:hover, #help-button > a:focus,
+#sidebar-button > a:hover, #sidebar-button > a:focus {
 	border-color: var(--settings-button-border-focus);
 }
 
@@ -1721,6 +1817,10 @@ in src-script.js
 		scroll-margin-top: 45px;
 	}
 
+	.hide-sidebar #sidebar-button {
+		position: static;
+	}
+
 	.rustdoc {
 		/* Sidebar should overlay main content, rather than pushing main content to the right.
 		   Turn off `display: flex` on the body element. */
@@ -1749,7 +1849,8 @@ in src-script.js
 	/* Hide the logo and item name from the sidebar. Those are displayed
 	   in the mobile-topbar instead. */
 	.sidebar .logo-container,
-	.sidebar .location {
+	.sidebar .location,
+	.sidebar-resizer {
 		display: none;
 	}
 
@@ -1817,6 +1918,10 @@ in src-script.js
 		top: 0;
 	}
 
+	.hide-sidebar .mobile-topbar {
+		display: none;
+	}
+
 	.sidebar-menu-toggle {
 		width: 45px;
 		/* Rare exception to specifying font sizes in rem. Since this is acting
@@ -1824,6 +1929,10 @@ in src-script.js
 		font-size: 32px;
 		border: none;
 		color: var(--main-color);
+	}
+
+	.hide-sidebar .sidebar-menu-toggle {
+		display: none;
 	}
 
 	.sidebar-elems {
@@ -2273,6 +2382,8 @@ in src-script.js
 	--scrape-example-help-hover-color: #000;
 	--scrape-example-code-wrapper-background-start: rgba(255, 255, 255, 1);
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
+	--sidebar-resizer-hover: hsl(207, 90%, 66%);
+	--sidebar-resizer-active: hsl(207, 90%, 54%);
 }
 /* End theme: light */
 
@@ -2378,6 +2489,8 @@ in src-script.js
 	--scrape-example-help-hover-color: #fff;
 	--scrape-example-code-wrapper-background-start: rgba(53, 53, 53, 1);
 	--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
+	--sidebar-resizer-hover: hsl(207, 30%, 54%);
+	--sidebar-resizer-active: hsl(207, 90%, 54%);
 }
 /* End theme: dark */
 
@@ -2487,6 +2600,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--scrape-example-help-hover-color: #fff;
 	--scrape-example-code-wrapper-background-start: rgba(15, 20, 25, 1);
 	--scrape-example-code-wrapper-background-end: rgba(15, 20, 25, 0);
+	--sidebar-resizer-hover: hsl(34, 50%, 33%);
+	--sidebar-resizer-active: hsl(34, 100%, 66%);
 }
 
 :root[data-theme="ayu"] h1,
@@ -2518,6 +2633,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 }
 
 :root[data-theme="ayu"] .sidebar .current,
+:root[data-theme="ayu"] .sidebar .current a,
 :root[data-theme="ayu"] .sidebar a:hover,
 :root[data-theme="ayu"] #src-sidebar div.files > a:hover,
 :root[data-theme="ayu"] details.dir-entry summary:hover,
@@ -2568,7 +2684,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
 
-:root[data-theme="ayu"] #settings-menu > a img {
+:root[data-theme="ayu"] #settings-menu > a img,
+:root[data-theme="ayu"] #sidebar-button > a img {
 	filter: invert(100);
 }
 /* End theme: ayu */

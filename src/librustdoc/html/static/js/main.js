@@ -1,5 +1,5 @@
 // Local js definitions:
-/* global addClass, getSettingValue, hasClass, searchState */
+/* global addClass, getSettingValue, hasClass, searchState, updateLocalStorage */
 /* global onEach, onEachLazy, removeClass, getVar */
 
 "use strict";
@@ -505,7 +505,7 @@ function preLoadCss(cssUrl) {
                 }
                 const link = document.createElement("a");
                 link.href = path;
-                if (link.href === current_page) {
+                if (path === current_page) {
                     link.className = "current";
                 }
                 link.textContent = name;
@@ -656,12 +656,12 @@ function preLoadCss(cssUrl) {
         for (const crate of window.ALL_CRATES) {
             const link = document.createElement("a");
             link.href = window.rootPath + crate + "/index.html";
-            if (window.rootPath !== "./" && crate === window.currentCrate) {
-                link.className = "current";
-            }
             link.textContent = crate;
 
             const li = document.createElement("li");
+            if (window.rootPath !== "./" && crate === window.currentCrate) {
+                li.className = "current";
+            }
             li.appendChild(link);
             ul.appendChild(li);
         }
@@ -1271,6 +1271,112 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
     onHashChange(null);
     window.addEventListener("hashchange", onHashChange);
     searchState.setup();
+}());
+
+(function() {
+    const sidebarButton = document.getElementById("sidebar-button");
+    if (sidebarButton) {
+        sidebarButton.addEventListener("click", e => {
+            removeClass(document.documentElement, "hide-sidebar");
+            updateLocalStorage("hide-sidebar", "false");
+            e.preventDefault();
+        });
+    }
+    let currentPointerId = null;
+    const resizer = document.getElementsByClassName("sidebar-resizer")[0];
+    const sidebar = document.getElementsByClassName("sidebar")[0];
+    if (!resizer || !sidebar) {
+        return;
+    }
+    const isSrcPage = hasClass(document.body, "src");
+    function hideSidebar() {
+        if (isSrcPage) {
+            window.rustdocCloseSourceSidebar();
+            updateLocalStorage("src-sidebar-width", null);
+            document.documentElement.style.removeProperty("--src-sidebar-width");
+        } else {
+            addClass(document.documentElement, "hide-sidebar");
+            updateLocalStorage("hide-sidebar", "true");
+            updateLocalStorage("desktop-sidebar-width", null);
+            document.documentElement.style.removeProperty("--desktop-sidebar-width");
+        }
+    }
+    function showSidebar() {
+        if (isSrcPage) {
+            window.rustdocShowSourceSidebar();
+        } else {
+            removeClass(document.documentElement, "hide-sidebar");
+            updateLocalStorage("hide-sidebar", "false");
+        }
+    }
+    function changeSidebarSize(size) {
+        if (isSrcPage) {
+            updateLocalStorage("src-sidebar-width", size);
+            document.documentElement.style.setProperty("--src-sidebar-width", size + "px");
+        } else {
+            updateLocalStorage("desktop-sidebar-width", size);
+            document.documentElement.style.setProperty("--desktop-sidebar-width", size + "px");
+        }
+    }
+    function isSidebarHidden() {
+        return isSrcPage ?
+            !hasClass(document.documentElement, "src-sidebar-expanded") :
+            hasClass(document.documentElement, "hide-sidebar");
+    }
+    function resize(e) {
+        if (currentPointerId === null || currentPointerId !== e.pointerId) {
+            return;
+        }
+        e.preventDefault();
+        const pos = e.clientX - sidebar.offsetLeft - 3;
+        if (pos < 50) {
+            hideSidebar();
+        } else if (pos >= 100) {
+            // 100 is the size of the logo
+            // don't let the sidebar get smaller than that, or it'll get squished
+            if (isSidebarHidden()) {
+                showSidebar();
+            }
+            // don't let the sidebar get wider than 500
+            changeSidebarSize(Math.min(pos, window.innerWidth - 100, 500));
+        }
+    }
+    function stopResize(e) {
+        if (currentPointerId === null) {
+            return;
+        }
+        e.preventDefault();
+        removeClass(resizer, "active");
+        window.removeEventListener("pointermove", resize, false);
+        window.removeEventListener("pointerup", stopResize, false);
+        removeClass(document.documentElement, "sidebar-resizing");
+        if (resizer.releasePointerCapture) {
+            resizer.releasePointerCapture(currentPointerId);
+            currentPointerId = null;
+        }
+    }
+    function initResize(e) {
+        if (currentPointerId !== null || e.altKey || e.ctrlKey || e.metaKey || e.button !== 0) {
+            return;
+        }
+        if (resizer.setPointerCapture) {
+            resizer.setPointerCapture(e.pointerId);
+            if (!resizer.hasPointerCapture(e.pointerId)) {
+                // unable to capture pointer; something else has it
+                // on iOS, this usually means you long-clicked a link instead
+                resizer.releasePointerCapture(e.pointerId);
+                return;
+            }
+            currentPointerId = e.pointerId;
+        }
+        e.preventDefault();
+        window.addEventListener("pointermove", resize, false);
+        window.addEventListener("pointercancel", stopResize, false);
+        window.addEventListener("pointerup", stopResize, false);
+        addClass(resizer, "active");
+        addClass(document.documentElement, "sidebar-resizing");
+    }
+    resizer.addEventListener("pointerdown", initResize, false);
 }());
 
 (function() {
