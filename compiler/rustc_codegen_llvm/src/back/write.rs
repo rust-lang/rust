@@ -873,6 +873,27 @@ fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: 
     asm
 }
 
+fn target_is_apple(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
+    cgcx.opts.target_triple.triple().contains("-ios")
+        || cgcx.opts.target_triple.triple().contains("-darwin")
+        || cgcx.opts.target_triple.triple().contains("-tvos")
+        || cgcx.opts.target_triple.triple().contains("-watchos")
+}
+
+fn target_is_aix(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
+    cgcx.opts.target_triple.triple().contains("-aix")
+}
+
+pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) -> &'static str {
+    if target_is_apple(cgcx) {
+        "__LLVM,__bitcode\0"
+    } else if target_is_aix(cgcx) {
+        ".ipa\0"
+    } else {
+        ".llvmbc\0"
+    }
+}
+
 /// Embed the bitcode of an LLVM module in the LLVM module itself.
 ///
 /// This is done primarily for iOS where it appears to be standard to compile C
@@ -933,11 +954,8 @@ unsafe fn embed_bitcode(
     // Unfortunately, LLVM provides no way to set custom section flags. For ELF
     // and COFF we emit the sections using module level inline assembly for that
     // reason (see issue #90326 for historical background).
-    let is_aix = cgcx.opts.target_triple.triple().contains("-aix");
-    let is_apple = cgcx.opts.target_triple.triple().contains("-ios")
-        || cgcx.opts.target_triple.triple().contains("-darwin")
-        || cgcx.opts.target_triple.triple().contains("-tvos")
-        || cgcx.opts.target_triple.triple().contains("-watchos");
+    let is_aix = target_is_aix(cgcx);
+    let is_apple = target_is_apple(cgcx);
     if is_apple
         || is_aix
         || cgcx.opts.target_triple.triple().starts_with("wasm")
@@ -952,13 +970,7 @@ unsafe fn embed_bitcode(
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
 
-        let section = if is_apple {
-            "__LLVM,__bitcode\0"
-        } else if is_aix {
-            ".ipa\0"
-        } else {
-            ".llvmbc\0"
-        };
+        let section = bitcode_section_name(cgcx);
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
         llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
