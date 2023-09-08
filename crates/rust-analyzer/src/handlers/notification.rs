@@ -113,6 +113,10 @@ pub(crate) fn handle_did_close_text_document(
             tracing::error!("orphan DidCloseTextDocument: {}", path);
         }
 
+        if let Some(file_id) = state.vfs.read().0.file_id(&path) {
+            state.diagnostics.clear_native_for(file_id);
+        }
+
         state.semantic_tokens_cache.lock().remove(&params.text_document.uri);
 
         if let Some(path) = path.as_path() {
