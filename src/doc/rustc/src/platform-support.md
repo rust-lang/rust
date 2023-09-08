@@ -304,7 +304,7 @@ target | std | host | notes
 `powerpc64-ibm-aix` | ? |  | 64-bit AIX (7.2 and newer)
 `riscv32gc-unknown-linux-gnu` |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
 `riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl + RISCV32 support patches)
-`riscv32im-unknown-none-elf` | * |  | Bare RISC-V (RV32IM ISA)
+[`riscv32im-unknown-none-elf`](platform-support/riscv32im_unknown_none_elf.md) | * |  | Bare RISC-V (RV32IM ISA)
 [`riscv32imac-unknown-xous-elf`](platform-support/riscv32imac-unknown-xous-elf.md) | ? |  | RISC-V Xous (RV32IMAC ISA)
 [`riscv32imc-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv32imac-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
