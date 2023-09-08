@@ -194,6 +194,7 @@ fn replace_usages(edit: &mut SourceChangeBuilder, usages: &UsageSearchResult) {
                 ast::NameLike::NameRef(name) => Some((*range, name)),
                 _ => None,
             })
+            .rev()
             .for_each(|(range, name_ref)| {
                 if let Some(initializer) = find_assignment_usage(name_ref) {
                     cov_mark::hit!(replaces_assignment);
@@ -609,6 +610,46 @@ mod foo {
         fn new(baz: bool) -> Self {
             Self { baz: if baz { Bool::True } else { Bool::False } }
         }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn field_multiple_initializations() {
+        check_assist(
+            bool_to_enum,
+            r#"
+struct Foo {
+    $0bar: bool,
+    baz: bool,
+}
+
+fn main() {
+    let foo1 = Foo { bar: true, baz: false };
+    let foo2 = Foo { bar: false, baz: false };
+
+    if foo1.bar && foo2.bar {
+        println!("foo");
+    }
+}
+"#,
+            r#"
+#[derive(PartialEq, Eq)]
+enum $0Bool { True, False }
+
+struct Foo {
+    bar: Bool,
+    baz: bool,
+}
+
+fn main() {
+    let foo1 = Foo { bar: Bool::True, baz: false };
+    let foo2 = Foo { bar: Bool::False, baz: false };
+
+    if foo1.bar == Bool::True && foo2.bar == Bool::True {
+        println!("foo");
     }
 }
 "#,
