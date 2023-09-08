@@ -320,8 +320,11 @@ impl GlobalState {
                 }
 
                 // Refresh inlay hints if the client supports it.
-                if self.config.inlay_hints_refresh() {
+                if (self.send_hint_refresh_query || self.proc_macro_changed)
+                    && self.config.inlay_hints_refresh()
+                {
                     self.send_request::<lsp_types::request::InlayHintRefreshRequest>((), |_, _| ());
+                    self.send_hint_refresh_query = false;
                 }
             }
 
@@ -538,6 +541,7 @@ impl GlobalState {
                         }
 
                         self.switch_workspaces("fetched build data".to_string());
+                        self.send_hint_refresh_query = true;
 
                         (Some(Progress::End), None)
                     }
@@ -554,7 +558,7 @@ impl GlobalState {
                     ProcMacroProgress::End(proc_macro_load_result) => {
                         self.fetch_proc_macros_queue.op_completed(true);
                         self.set_proc_macros(proc_macro_load_result);
-
+                        self.send_hint_refresh_query = true;
                         (Some(Progress::End), None)
                     }
                 };
