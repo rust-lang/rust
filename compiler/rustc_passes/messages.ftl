@@ -4,14 +4,14 @@
 -passes_see_issue =
     see issue #{$issue} <https://github.com/rust-lang/rust/issues/{$issue}> for more information
 
-passes_abi =
-    abi: {$abi}
-
+passes_abi_invalid_attribute =
+    `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
+passes_abi_ne =
+    ABIs are not compatible
+    left ABI = {$left}
+    right ABI = {$right}
 passes_abi_of =
-    fn_abi_of_instance({$fn_name}) = {$fn_abi}
-
-passes_align =
-    align: {$align}
+    fn_abi_of({$fn_name}) = {$fn_abi}
 
 passes_allow_incoherent_impl =
     `rustc_allow_incoherent_impl` attribute should be applied to impl items.
@@ -318,9 +318,6 @@ passes_has_incoherent_inherent_impl =
     `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits.
     .label = only adts, extern types and traits are supported
 
-passes_homogeneous_aggregate =
-    homogeneous_aggregate: {$homogeneous_aggregate}
-
 passes_ignored_attr =
     `#[{$sym}]` is ignored on struct fields and match arms
     .warn = {-passes_previously_accepted}
@@ -404,9 +401,18 @@ passes_lang_item_on_incorrect_target =
 
 passes_layout =
     layout error: {$layout_error}
-
+passes_layout_abi =
+    abi: {$abi}
+passes_layout_align =
+    align: {$align}
+passes_layout_homogeneous_aggregate =
+    homogeneous_aggregate: {$homogeneous_aggregate}
+passes_layout_invalid_attribute =
+    `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
 passes_layout_of =
     layout_of({$normalized_ty}) = {$ty_layout}
+passes_layout_size =
+    size: {$size}
 
 passes_link =
     attribute should be applied to an `extern` block with non-Rust ABI
@@ -661,9 +667,6 @@ passes_should_be_applied_to_struct_enum =
 passes_should_be_applied_to_trait =
     attribute should be applied to a trait
     .label = not a trait
-
-passes_size =
-    size: {$size}
 
 passes_skipping_const_checks = skipping const checks
 

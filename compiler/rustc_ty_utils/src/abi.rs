@@ -520,6 +520,8 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
                 _ => return,
             }
+            // `Aggregate` ABI must be adjusted to ensure that ABI-compatible Rust types are passed
+            // the same way.
 
             let size = arg.layout.size;
             if arg.layout.is_unsized() || size > Pointer(AddressSpace::DATA).size(cx) {

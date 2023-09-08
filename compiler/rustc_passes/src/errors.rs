@@ -873,32 +873,32 @@ pub struct DuplicateDiagnosticItemInCrate {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_abi)]
-pub struct Abi {
+#[diag(passes_layout_abi)]
+pub struct LayoutAbi {
     #[primary_span]
     pub span: Span,
     pub abi: String,
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_align)]
-pub struct Align {
+#[diag(passes_layout_align)]
+pub struct LayoutAlign {
     #[primary_span]
     pub span: Span,
     pub align: String,
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_size)]
-pub struct Size {
+#[diag(passes_layout_size)]
+pub struct LayoutSize {
     #[primary_span]
     pub span: Span,
     pub size: String,
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_homogeneous_aggregate)]
-pub struct HomogeneousAggregate {
+#[diag(passes_layout_homogeneous_aggregate)]
+pub struct LayoutHomogeneousAggregate {
     #[primary_span]
     pub span: Span,
     pub homogeneous_aggregate: String,
@@ -914,12 +914,35 @@ pub struct LayoutOf {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_layout_invalid_attribute)]
+pub struct LayoutInvalidAttribute {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_abi_of)]
 pub struct AbiOf {
     #[primary_span]
     pub span: Span,
     pub fn_name: Symbol,
     pub fn_abi: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_abi_ne)]
+pub struct AbiNe {
+    #[primary_span]
+    pub span: Span,
+    pub left: String,
+    pub right: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_abi_invalid_attribute)]
+pub struct AbiInvalidAttribute {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

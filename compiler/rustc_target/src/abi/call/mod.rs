@@ -36,7 +36,10 @@ pub enum PassMode {
     Ignore,
     /// Pass the argument directly.
     ///
-    /// The argument has a layout abi of `Scalar`, `Vector` or in rare cases `Aggregate`.
+    /// The argument has a layout abi of `Scalar` or `Vector`.
+    /// Unfortunately due to past mistakes, in rare cases on wasm, it can also be `Aggregate`.
+    /// This is bad since it leaks LLVM implementation details into the ABI.
+    /// (Also see <https://github.com/rust-lang/rust/issues/115666>.)
     Direct(ArgAttributes),
     /// Pass a pair's elements directly in two arguments.
     ///
@@ -53,6 +56,29 @@ pub enum PassMode {
     /// stack offset in accordance to the ABI rather than passed using a
     /// pointer. This corresponds to the `byval` LLVM argument attribute.
     Indirect { attrs: ArgAttributes, extra_attrs: Option<ArgAttributes>, on_stack: bool },
+}
+
+impl PassMode {
+    /// Checks if these two `PassMode` are equal enough to be considered "the same for all
+    /// function call ABIs". However, the `Layout` can also impact ABI decisions,
+    /// so that needs to be compared as well!
+    pub fn eq_abi(&self, other: &Self) -> bool {
+        match (self, other) {
+            (PassMode::Ignore, PassMode::Ignore) => true, // can still be reached for the return type
+            (PassMode::Direct(a1), PassMode::Direct(a2)) => a1.eq_abi(a2),
+            (PassMode::Pair(a1, b1), PassMode::Pair(a2, b2)) => a1.eq_abi(a2) && b1.eq_abi(b2),
+            (PassMode::Cast(c1, pad1), PassMode::Cast(c2, pad2)) => c1.eq_abi(c2) && pad1 == pad2,
+            (
+                PassMode::Indirect { attrs: a1, extra_attrs: None, on_stack: s1 },
+                PassMode::Indirect { attrs: a2, extra_attrs: None, on_stack: s2 },
+            ) => a1.eq_abi(a2) && s1 == s2,
+            (
+                PassMode::Indirect { attrs: a1, extra_attrs: Some(e1), on_stack: s1 },
+                PassMode::Indirect { attrs: a2, extra_attrs: Some(e2), on_stack: s2 },
+            ) => a1.eq_abi(a2) && e1.eq_abi(e2) && s1 == s2,
+            _ => false,
+        }
+    }
 }
 
 // Hack to disable non_upper_case_globals only for the bitflags! and not for the rest
@@ -126,6 +152,24 @@ impl ArgAttributes {
 
     pub fn contains(&self, attr: ArgAttribute) -> bool {
         self.regular.contains(attr)
+    }
+
+    /// Checks if these two `ArgAttributes` are equal enough to be considered "the same for all
+    /// function call ABIs".
+    pub fn eq_abi(&self, other: &Self) -> bool {
+        // There's only one regular attribute that matters for the call ABI: InReg.
+        // Everything else is things like noalias, dereferenceable, nonnull, ...
+        // (This also applies to pointee_size, pointee_align.)
+        if self.regular.contains(ArgAttribute::InReg) != other.regular.contains(ArgAttribute::InReg)
+        {
+            return false;
+        }
+        // We also compare the sign extension mode -- this could let the callee make assumptions
+        // about bits that conceptually were not even passed.
+        if self.arg_ext != other.arg_ext {
+            return false;
+        }
+        return true;
     }
 }
 
@@ -271,6 +315,14 @@ impl CastTarget {
             .fold(cx.data_layout().aggregate_align.abi.max(self.rest.align(cx)), |acc, align| {
                 acc.max(align)
             })
+    }
+
+    /// Checks if these two `CastTarget` are equal enough to be considered "the same for all
+    /// function call ABIs".
+    pub fn eq_abi(&self, other: &Self) -> bool {
+        let CastTarget { prefix: prefix_l, rest: rest_l, attrs: attrs_l } = self;
+        let CastTarget { prefix: prefix_r, rest: rest_r, attrs: attrs_r } = other;
+        prefix_l == prefix_r && rest_l == rest_r && attrs_l.eq_abi(attrs_r)
     }
 }
 
@@ -465,6 +517,7 @@ pub struct ArgAbi<'a, Ty> {
 }
 
 impl<'a, Ty> ArgAbi<'a, Ty> {
+    /// This defines the "default ABI" for that type, that is then later adjusted in `fn_abi_adjust_for_abi`.
     pub fn new(
         cx: &impl HasDataLayout,
         layout: TyAndLayout<'a, Ty>,
@@ -478,6 +531,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
                 scalar_attrs(&layout, b, a.size(cx).align_to(b.align(cx).abi)),
             ),
             Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
+            // The `Aggregate` ABI should always be adjusted later.
             Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
         };
         ArgAbi { layout, mode }
@@ -569,6 +623,14 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 
     pub fn is_ignore(&self) -> bool {
         matches!(self.mode, PassMode::Ignore)
+    }
+
+    /// Checks if these two `ArgAbi` are equal enough to be considered "the same for all
+    /// function call ABIs".
+    pub fn eq_abi(&self, other: &Self) -> bool {
+        // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
+        // at the type.
+        self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode)
     }
 }
 

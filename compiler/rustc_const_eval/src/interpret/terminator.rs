@@ -10,7 +10,7 @@ use rustc_middle::{
         Instance, Ty,
     },
 };
-use rustc_target::abi::call::{ArgAbi, ArgAttribute, ArgAttributes, FnAbi, PassMode};
+use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 use rustc_target::abi::{self, FieldIdx};
 use rustc_target::spec::abi::Abi;
 
@@ -291,32 +291,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return true;
         }
 
-        match (caller_layout.abi, callee_layout.abi) {
-            // If both sides have Scalar/Vector/ScalarPair ABI, we can easily directly compare them.
-            // Different valid ranges are okay (the validity check will complain if this leads to
-            // invalid transmutes). Different signs are *not* okay on some targets (e.g. `extern
-            // "C"` on `s390x` where small integers are passed zero/sign-extended in large
-            // registers), so we generally reject them to increase portability.
+        match caller_layout.abi {
+            // For Scalar/Vector/ScalarPair ABI, we directly compare them.
             // NOTE: this is *not* a stable guarantee! It just reflects a property of our current
             // ABIs. It's also fragile; the same pair of types might be considered ABI-compatible
             // when used directly by-value but not considered compatible as a struct field or array
             // element.
-            (abi::Abi::Scalar(caller), abi::Abi::Scalar(callee)) => {
-                caller.primitive() == callee.primitive()
+            abi::Abi::Scalar(..) | abi::Abi::ScalarPair(..) | abi::Abi::Vector { .. } => {
+                caller_layout.abi.eq_up_to_validity(&callee_layout.abi)
             }
-            (
-                abi::Abi::Vector { element: caller_element, count: caller_count },
-                abi::Abi::Vector { element: callee_element, count: callee_count },
-            ) => {
-                caller_element.primitive() == callee_element.primitive()
-                    && caller_count == callee_count
-            }
-            (abi::Abi::ScalarPair(caller1, caller2), abi::Abi::ScalarPair(callee1, callee2)) => {
-                caller1.primitive() == callee1.primitive()
-                    && caller2.primitive() == callee2.primitive()
-            }
-            (abi::Abi::Aggregate { .. }, abi::Abi::Aggregate { .. }) => {
-                // Aggregates are compatible only if they newtype-wrap the same type, or if they are both 1-ZST.
+            _ => {
+                // Everything else is compatible only if they newtype-wrap the same type, or if they are both 1-ZST.
                 // (The latter part is needed to ensure e.g. that `struct Zst` is compatible with `struct Wrap((), Zst)`.)
                 // This is conservative, but also means that our check isn't quite so heavily dependent on the `PassMode`,
                 // which means having ABI-compatibility on one target is much more likely to imply compatibility for other targets.
@@ -329,9 +314,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         == self.unfold_transparent(callee_layout).ty
                 }
             }
-            // What remains is `Abi::Uninhabited` (which can never be passed anyway) and
-            // mismatching ABIs, that should all be rejected.
-            _ => false,
         }
     }
 
@@ -340,40 +322,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         caller_abi: &ArgAbi<'tcx, Ty<'tcx>>,
         callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     ) -> bool {
-        // When comparing the PassMode, we have to be smart about comparing the attributes.
-        let arg_attr_compat = |a1: &ArgAttributes, a2: &ArgAttributes| {
-            // There's only one regular attribute that matters for the call ABI: InReg.
-            // Everything else is things like noalias, dereferenceable, nonnull, ...
-            // (This also applies to pointee_size, pointee_align.)
-            if a1.regular.contains(ArgAttribute::InReg) != a2.regular.contains(ArgAttribute::InReg)
-            {
-                return false;
-            }
-            // We also compare the sign extension mode -- this could let the callee make assumptions
-            // about bits that conceptually were not even passed.
-            if a1.arg_ext != a2.arg_ext {
-                return false;
-            }
-            return true;
-        };
-        let mode_compat = || match (&caller_abi.mode, &callee_abi.mode) {
-            (PassMode::Ignore, PassMode::Ignore) => true, // can still be reached for the return type
-            (PassMode::Direct(a1), PassMode::Direct(a2)) => arg_attr_compat(a1, a2),
-            (PassMode::Pair(a1, b1), PassMode::Pair(a2, b2)) => {
-                arg_attr_compat(a1, a2) && arg_attr_compat(b1, b2)
-            }
-            (PassMode::Cast(c1, pad1), PassMode::Cast(c2, pad2)) => c1 == c2 && pad1 == pad2,
-            (
-                PassMode::Indirect { attrs: a1, extra_attrs: None, on_stack: s1 },
-                PassMode::Indirect { attrs: a2, extra_attrs: None, on_stack: s2 },
-            ) => arg_attr_compat(a1, a2) && s1 == s2,
-            (
-                PassMode::Indirect { attrs: a1, extra_attrs: Some(e1), on_stack: s1 },
-                PassMode::Indirect { attrs: a2, extra_attrs: Some(e2), on_stack: s2 },
-            ) => arg_attr_compat(a1, a2) && arg_attr_compat(e1, e2) && s1 == s2,
-            _ => false,
-        };
-
         // Ideally `PassMode` would capture everything there is about argument passing, but that is
         // not the case: in `FnAbi::llvm_type`, also parts of the layout and type information are
         // used. So we need to check that *both* sufficiently agree to ensures the arguments are
@@ -381,13 +329,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // For instance, `layout_compat` is needed to reject `i32` vs `f32`, which is not reflected
         // in `PassMode`. `mode_compat` is needed to reject `u8` vs `bool`, which have the same
         // `abi::Primitive` but different `arg_ext`.
-        if self.layout_compat(caller_abi.layout, callee_abi.layout) && mode_compat() {
-            // Something went very wrong if our checks don't even imply that the layout is the same.
-            assert!(
-                caller_abi.layout.size == callee_abi.layout.size
-                    && caller_abi.layout.align.abi == callee_abi.layout.align.abi
-                    && caller_abi.layout.is_sized() == callee_abi.layout.is_sized()
-            );
+        if self.layout_compat(caller_abi.layout, callee_abi.layout)
+            && caller_abi.mode.eq_abi(&callee_abi.mode)
+        {
+            // Something went very wrong if our checks don't imply layout ABI compatibility.
+            assert!(caller_abi.layout.eq_abi(&callee_abi.layout));
             return true;
         } else {
             trace!(
