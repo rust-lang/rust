@@ -13,14 +13,12 @@ are currently defined running NetBSD:
 
 |          Target name           | NetBSD Platform |
 |--------------------------------|-----------------|
-| `amd64-unknown-netbsd`         | [amd64 / x86_64 systems](https://wiki.netbsd.org/ports/amd64/) |
+| `x86_64-unknown-netbsd`         | [amd64 / x86_64 systems](https://wiki.netbsd.org/ports/amd64/) |
 | `armv7-unknown-netbsd-eabihf`  | [32-bit ARMv7 systems with hard-float](https://wiki.netbsd.org/ports/evbarm/) |
 | `armv6-unknown-netbsd-eabihf`  | [32-bit ARMv6 systems with hard-float](https://wiki.netbsd.org/ports/evbarm/) |
 | `aarch64-unknown-netbsd`       | [64-bit ARM systems, little-endian](https://wiki.netbsd.org/ports/evbarm/) |
 | `aarch64_be-unknown-netbsd`    | [64-bit ARM systems, big-endian](https://wiki.netbsd.org/ports/evbarm/) |
-| `i586-unknown-netbsd`          | [32-bit i386, restricted to Pentium](https://wiki.netbsd.org/ports/i386/) |
 | `i686-unknown-netbsd`          | [32-bit i386 with SSE](https://wiki.netbsd.org/ports/i386/) |
-| `mipsel-unknown-netbsd`        | [32-bit mips, requires mips32 cpu support](https://wiki.netbsd.org/ports/evbmips/) |
 | `powerpc-unknown-netbsd`       | [Various 32-bit PowerPC systems, e.g. MacPPC](https://wiki.netbsd.org/ports/macppc/) |
 | `riscv64gc-unknown-netbsd`     | [64-bit RISC-V](https://wiki.netbsd.org/ports/riscv/)
 | `sparc64-unknown-netbsd`       | [Sun UltraSPARC systems](https://wiki.netbsd.org/ports/sparc64/) |
