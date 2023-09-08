@@ -498,6 +498,10 @@ impl GlobalStateSnapshot {
     pub(crate) fn vfs_memory_usage(&self) -> usize {
         self.vfs_read().memory_usage()
     }
+
+    pub(crate) fn file_exists(&self, file_id: FileId) -> bool {
+        self.vfs.read().0.exists(file_id)
+    }
 }
 
 pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
