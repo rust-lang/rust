@@ -1322,7 +1322,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 _ => bug!("codegen_argument: {:?} invalid for pair argument", op),
             },
-            PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => match op.val {
+            PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => match op.val {
                 Ref(a, Some(b), _) => {
                     llargs.push(a);
                     llargs.push(b);

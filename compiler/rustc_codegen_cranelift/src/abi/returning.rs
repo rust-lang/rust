@@ -26,7 +26,7 @@ pub(super) fn codegen_return_param<'tcx>(
                 smallvec![],
             )
         }
-        PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
+        PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
             let ret_param = block_params_iter.next().unwrap();
             assert_eq!(fx.bcx.func.dfg.value_type(ret_param), fx.pointer_type);
             (
@@ -34,7 +34,7 @@ pub(super) fn codegen_return_param<'tcx>(
                 smallvec![ret_param],
             )
         }
-        PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
+        PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
             unreachable!("unsized return value")
         }
     };
@@ -62,7 +62,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx>(
 ) {
     let (ret_temp_place, return_ptr) = match ret_arg_abi.mode {
         PassMode::Ignore => (None, None),
-        PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
+        PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
             if let Some(ret_ptr) = ret_place.try_to_ptr() {
                 // This is an optimization to prevent unnecessary copies of the return value when
                 // the return place is already a memory place as opposed to a register.
@@ -73,7 +73,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx>(
                 (Some(place), Some(place.to_ptr().get_addr(fx)))
             }
         }
-        PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
+        PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
             unreachable!("unsized return value")
         }
         PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast(..) => (None, None),
@@ -100,14 +100,14 @@ pub(super) fn codegen_with_call_return_arg<'tcx>(
                 super::pass_mode::from_casted_value(fx, &results, ret_place.layout(), cast);
             ret_place.write_cvalue(fx, result);
         }
-        PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
+        PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
             if let Some(ret_temp_place) = ret_temp_place {
                 // If ret_temp_place is None, it is not necessary to copy the return value.
                 let ret_temp_value = ret_temp_place.to_cvalue(fx);
                 ret_place.write_cvalue(fx, ret_temp_value);
             }
         }
-        PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
+        PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
             unreachable!("unsized return value")
         }
     }
@@ -116,10 +116,10 @@ pub(super) fn codegen_with_call_return_arg<'tcx>(
 /// Codegen a return instruction with the right return value(s) if any.
 pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, '_>) {
     match fx.fn_abi.as_ref().unwrap().ret.mode {
-        PassMode::Ignore | PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
+        PassMode::Ignore | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
             fx.bcx.ins().return_(&[]);
         }
-        PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
+        PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
             unreachable!("unsized return value")
         }
         PassMode::Direct(_) => {

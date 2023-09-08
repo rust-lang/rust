@@ -129,7 +129,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     argument_tys.push(arg.layout.scalar_pair_element_gcc_type(cx, 1));
                     continue;
                 }
-                PassMode::Indirect { extra_attrs: Some(_), .. } => {
+                PassMode::Indirect { meta_attrs: Some(_), .. } => {
                     unimplemented!();
                 }
                 PassMode::Cast(ref cast, pad_i32) => {
@@ -139,11 +139,11 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     }
                     cast.gcc_type(cx)
                 }
-                PassMode::Indirect { extra_attrs: None, on_stack: true, .. } => {
+                PassMode::Indirect { meta_attrs: None, on_stack: true, .. } => {
                     on_stack_param_indices.insert(argument_tys.len());
                     arg.memory_ty(cx)
                 },
-                PassMode::Indirect { extra_attrs: None, on_stack: false, .. } => cx.type_ptr_to(arg.memory_ty(cx)),
+                PassMode::Indirect { meta_attrs: None, on_stack: false, .. } => cx.type_ptr_to(arg.memory_ty(cx)),
             };
             argument_tys.push(arg_ty);
         }

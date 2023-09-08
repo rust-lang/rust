@@ -49,12 +49,13 @@ pub enum PassMode {
     /// indicates if a `Reg::i32()` dummy argument is emitted before the real argument.
     Cast { pad_i32: bool, cast: Box<CastTarget> },
     /// Pass the argument indirectly via a hidden pointer.
-    /// The `extra_attrs` value, if any, is for the extra data (vtable or length)
-    /// which indicates that it refers to an unsized rvalue.
-    /// `on_stack` defines that the value should be passed at a fixed
-    /// stack offset in accordance to the ABI rather than passed using a
-    /// pointer. This corresponds to the `byval` LLVM argument attribute.
-    Indirect { attrs: ArgAttributes, extra_attrs: Option<ArgAttributes>, on_stack: bool },
+    /// The `meta_attrs` value, if any, is for the metadata (vtable or length) of an unsized
+    /// argument. (This is the only mode that supports unsized arguments.)
+    /// `on_stack` defines that the value should be passed at a fixed stack offset in accordance to
+    /// the ABI rather than passed using a pointer. This corresponds to the `byval` LLVM argument
+    /// attribute (using the Rust type of this argument). `on_stack` cannot be true for unsized
+    /// arguments, i.e., when `meta_attrs` is `Some`.
+    Indirect { attrs: ArgAttributes, meta_attrs: Option<ArgAttributes>, on_stack: bool },
 }
 
 impl PassMode {
@@ -71,12 +72,12 @@ impl PassMode {
                 PassMode::Cast { cast: c2, pad_i32: pad2 },
             ) => c1.eq_abi(c2) && pad1 == pad2,
             (
-                PassMode::Indirect { attrs: a1, extra_attrs: None, on_stack: s1 },
-                PassMode::Indirect { attrs: a2, extra_attrs: None, on_stack: s2 },
+                PassMode::Indirect { attrs: a1, meta_attrs: None, on_stack: s1 },
+                PassMode::Indirect { attrs: a2, meta_attrs: None, on_stack: s2 },
             ) => a1.eq_abi(a2) && s1 == s2,
             (
-                PassMode::Indirect { attrs: a1, extra_attrs: Some(e1), on_stack: s1 },
-                PassMode::Indirect { attrs: a2, extra_attrs: Some(e2), on_stack: s2 },
+                PassMode::Indirect { attrs: a1, meta_attrs: Some(e1), on_stack: s1 },
+                PassMode::Indirect { attrs: a2, meta_attrs: Some(e2), on_stack: s2 },
             ) => a1.eq_abi(a2) && e1.eq_abi(e2) && s1 == s2,
             _ => false,
         }
@@ -565,15 +566,15 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         attrs.pointee_size = layout.size;
         attrs.pointee_align = Some(layout.align.abi);
 
-        let extra_attrs = layout.is_unsized().then_some(ArgAttributes::new());
+        let meta_attrs = layout.is_unsized().then_some(ArgAttributes::new());
 
-        PassMode::Indirect { attrs, extra_attrs, on_stack: false }
+        PassMode::Indirect { attrs, meta_attrs, on_stack: false }
     }
 
     pub fn make_indirect(&mut self) {
         match self.mode {
             PassMode::Direct(_) | PassMode::Pair(_, _) => {}
-            PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: false } => return,
+            PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: false } => return,
             _ => panic!("Tried to make {:?} indirect", self.mode),
         }
 
@@ -583,7 +584,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn make_indirect_byval(&mut self, byval_align: Option<Align>) {
         self.make_indirect();
         match self.mode {
-            PassMode::Indirect { ref mut attrs, extra_attrs: _, ref mut on_stack } => {
+            PassMode::Indirect { ref mut attrs, meta_attrs: _, ref mut on_stack } => {
                 *on_stack = true;
 
                 // Some platforms, like 32-bit x86, change the alignment of the type when passing
@@ -628,11 +629,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn is_sized_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ })
+        matches!(self.mode, PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ })
     }
 
     pub fn is_unsized_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ })
+        matches!(self.mode, PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ })
     }
 
     pub fn is_ignore(&self) -> bool {
