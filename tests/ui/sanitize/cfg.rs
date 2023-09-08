@@ -2,19 +2,19 @@
 // the `#[cfg(sanitize = "option")]` attribute is configured.
 
 // needs-sanitizer-support
-// needs-sanitizer-address
-// needs-sanitizer-cfi
-// needs-sanitizer-kcfi
-// needs-sanitizer-leak
-// needs-sanitizer-memory
-// needs-sanitizer-thread
 // check-pass
-// revisions: address leak memory thread
+// revisions: address cfi kcfi leak memory thread
+//[address]needs-sanitizer-address
 //[address]compile-flags: -Zsanitizer=address --cfg address
-//[cfi]compile-flags:     -Zsanitizer=cfi     --cfg cfi
+//[cfi]needs-sanitizer-cfi
+//[cfi]compile-flags:     -Zsanitizer=cfi     --cfg cfi -Clto
+//[kcfi]needs-sanitizer-kcfi
 //[kcfi]compile-flags:    -Zsanitizer=kcfi    --cfg kcfi
+//[leak]needs-sanitizer-leak
 //[leak]compile-flags:    -Zsanitizer=leak    --cfg leak
+//[memory]needs-sanitizer-memory
 //[memory]compile-flags:  -Zsanitizer=memory  --cfg memory
+//[thread]needs-sanitizer-thread
 //[thread]compile-flags:  -Zsanitizer=thread  --cfg thread
 
 #![feature(cfg_sanitize)]
