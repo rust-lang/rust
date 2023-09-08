@@ -287,7 +287,7 @@ target | std | host | notes
 [`mipsisa32r6el-unknown-linux-gnu`](platform-support/mips-release-6.md) | ? |  | 32-bit MIPS Release 6 Little Endian
 [`mipsisa64r6-unknown-linux-gnuabi64`](platform-support/mips-release-6.md) | ? |  | 64-bit MIPS Release 6 Big Endian
 [`mipsisa64r6el-unknown-linux-gnuabi64`](platform-support/mips-release-6.md) | ✓ | ✓ | 64-bit MIPS Release 6 Little Endian
-`msp430-none-elf` | * |  | 16-bit MSP430 microcontrollers
+[`msp430-none-elf`](platform-support/msp430_none_elf.md) | * |  | 16-bit MSP430 microcontrollers
 [`powerpc-unknown-linux-gnuspe`](platform-support/powerpc_unknown_linux_gnuspe.md) | ✓ |  | PowerPC SPE Linux
 [`powerpc-unknown-linux-musl`](platform-support/powerpc_unknown_linux_musl.md) | ? |  | PowerPC MUSL Linux
 [`powerpc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD 32-bit powerpc systems
