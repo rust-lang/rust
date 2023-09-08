@@ -48,6 +48,11 @@ pub(crate) fn wrap_return_type_in_result(acc: &mut Assists, ctx: &AssistContext<
         return None;
     }
 
+    let new_result_ty =
+        make::ext::ty_result(type_ref.clone(), make::ty_placeholder()).clone_for_update();
+    let generic_args = new_result_ty.syntax().descendants().find_map(ast::GenericArgList::cast)?;
+    let last_genarg = generic_args.generic_args().last()?;
+
     acc.add(
         AssistId("wrap_return_type_in_result", AssistKind::RefactorRewrite),
         "Wrap return type in Result",
@@ -75,19 +80,12 @@ pub(crate) fn wrap_return_type_in_result(acc: &mut Assists, ctx: &AssistContext<
                 ted::replace(ret_expr_arg.syntax(), ok_wrapped.syntax());
             }
 
-            let new_result_ty =
-                make::ext::ty_result(type_ref.clone(), make::ty_placeholder()).clone_for_update();
             let old_result_ty = edit.make_mut(type_ref.clone());
 
             ted::replace(old_result_ty.syntax(), new_result_ty.syntax());
 
             if let Some(cap) = ctx.config.snippet_cap {
-                let generic_args = new_result_ty
-                    .syntax()
-                    .descendants()
-                    .find_map(ast::GenericArgList::cast)
-                    .unwrap();
-                edit.add_placeholder_snippet(cap, generic_args.generic_args().last().unwrap());
+                edit.add_placeholder_snippet(cap, last_genarg);
             }
         },
     )
