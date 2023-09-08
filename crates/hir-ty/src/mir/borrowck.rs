@@ -88,7 +88,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
         Operand::Copy(p) | Operand::Move(p) => {
             let mut ty: Ty = body.locals[p.local].ty.clone();
             let mut is_dereference_of_ref = false;
-            for proj in &*p.projection {
+            for proj in p.projection.lookup(&body.projection_store) {
                 if *proj == ProjectionElem::Deref && ty.as_reference().is_some() {
                     is_dereference_of_ref = true;
                 }
@@ -195,7 +195,7 @@ enum ProjectionCase {
 fn place_case(db: &dyn HirDatabase, body: &MirBody, lvalue: &Place) -> ProjectionCase {
     let mut is_part_of = false;
     let mut ty = body.locals[lvalue.local].ty.clone();
-    for proj in lvalue.projection.iter() {
+    for proj in lvalue.projection.lookup(&body.projection_store).iter() {
         match proj {
             ProjectionElem::Deref if ty.as_adt().is_none() => return ProjectionCase::Indirect, // It's indirect in case of reference and raw
             ProjectionElem::Deref // It's direct in case of `Box<T>`
@@ -254,7 +254,7 @@ fn ever_initialized_map(
         for statement in &block.statements {
             match &statement.kind {
                 StatementKind::Assign(p, _) => {
-                    if p.projection.len() == 0 && p.local == l {
+                    if p.projection.lookup(&body.projection_store).len() == 0 && p.local == l {
                         is_ever_initialized = true;
                     }
                 }
@@ -289,7 +289,9 @@ fn ever_initialized_map(
             | TerminatorKind::Return
             | TerminatorKind::Unreachable => (),
             TerminatorKind::Call { target, cleanup, destination, .. } => {
-                if destination.projection.len() == 0 && destination.local == l {
+                if destination.projection.lookup(&body.projection_store).len() == 0
+                    && destination.local == l
+                {
                     is_ever_initialized = true;
                 }
                 target
@@ -389,7 +391,7 @@ fn mutability_of_locals(
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Yield { .. } => (),
             TerminatorKind::Call { destination, .. } => {
-                if destination.projection.len() == 0 {
+                if destination.projection.lookup(&body.projection_store).len() == 0 {
                     if ever_init_map.get(destination.local).copied().unwrap_or_default() {
                         push_mut_span(destination.local, MirSpan::Unknown);
                     } else {
