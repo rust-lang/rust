@@ -195,6 +195,7 @@ pub(crate) type InferResult<T> = Result<InferOk<T>, TypeError>;
 pub enum InferenceDiagnostic {
     NoSuchField {
         expr: ExprId,
+        private: bool,
     },
     PrivateField {
         expr: ExprId,

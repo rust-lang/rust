@@ -1505,9 +1505,9 @@ impl DefWithBody {
         let expr_syntax = |expr| source_map.expr_syntax(expr).expect("unexpected synthetic");
         for d in &infer.diagnostics {
             match d {
-                &hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
+                &hir_ty::InferenceDiagnostic::NoSuchField { expr, private } => {
                     let field = source_map.field_syntax(expr);
-                    acc.push(NoSuchField { field }.into())
+                    acc.push(NoSuchField { field, private }.into())
                 }
                 &hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
                     acc.push(

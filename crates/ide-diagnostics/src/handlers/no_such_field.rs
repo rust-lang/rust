@@ -14,14 +14,22 @@ use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
-        DiagnosticCode::RustcHardError("E0559"),
-        "no such field",
+        if d.private {
+            DiagnosticCode::RustcHardError("E0451")
+        } else {
+            DiagnosticCode::RustcHardError("E0559")
+        },
+        if d.private { "field is private" } else { "no such field" },
         d.field.clone().map(|it| it.into()),
     )
     .with_fixes(fixes(ctx, d))
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Option<Vec<Assist>> {
+    if d.private {
+        // FIXME: quickfix to add required visibility
+        return None;
+    }
     let root = ctx.sema.db.parse_or_expand(d.field.file_id);
     missing_record_expr_field_fixes(
         &ctx.sema,
@@ -291,6 +299,25 @@ fn main() {
     Struct {
         0$0: 0
     }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_struct_field_private() {
+        check_diagnostics(
+            r#"
+mod m {
+    pub struct Struct {
+        field: u32
+    }
+}
+fn main() {
+    m::Struct {
+        field: 0
+      //^^^^^^^^ error: field is private
+    };
 }
 "#,
         )
