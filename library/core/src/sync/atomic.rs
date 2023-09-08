@@ -92,13 +92,14 @@
 //! "sufficiently small" depends on the architecture:
 //!
 //! | Target architecture | Maximal atomic `load` size that is guaranteed read-only |
-//! |-----------|---------|
-//! | `x86`     | 4 bytes |
-//! | `x86_64`  | 8 bytes |
-//! | `arm`     | 4 bytes |
-//! | `aarch64` | 8 bytes |
-//! | `riscv32` | 4 bytes |
-//! | `riscv64` | 8 bytes |
+//! |---------------|---------|
+//! | `x86`         | 4 bytes |
+//! | `x86_64`      | 8 bytes |
+//! | `arm`         | 4 bytes |
+//! | `aarch64`     | 8 bytes |
+//! | `riscv32`     | 4 bytes |
+//! | `riscv64`     | 8 bytes |
+//! | `powerpc64le` | 8 bytes |
 //!
 //! Any atomic `load` on read-only memory larger than the given size are Undefined Behavior. For
 //! architectures not listed above, all atomic `load` on read-only memory are Undefined Behavior.
