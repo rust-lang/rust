@@ -3,6 +3,7 @@ use crate::sync::{AtomicBool, ReadGuard, RwLock, WriteGuard};
 use crate::sync::{DynSend, DynSync};
 use std::{
     cell::UnsafeCell,
+    intrinsics::likely,
     marker::PhantomData,
     ops::{Deref, DerefMut},
     sync::atomic::Ordering,
@@ -27,7 +28,47 @@ unsafe impl<T: DynSync + DynSend> DynSync for FreezeLock<T> {}
 impl<T> FreezeLock<T> {
     #[inline]
     pub fn new(value: T) -> Self {
-        Self { data: UnsafeCell::new(value), frozen: AtomicBool::new(false), lock: RwLock::new(()) }
+        Self::with(value, false)
+    }
+
+    #[inline]
+    pub fn frozen(value: T) -> Self {
+        Self::with(value, true)
+    }
+
+    #[inline]
+    pub fn with(value: T, frozen: bool) -> Self {
+        Self {
+            data: UnsafeCell::new(value),
+            frozen: AtomicBool::new(frozen),
+            lock: RwLock::new(()),
+        }
+    }
+
+    /// Clones the inner value along with the frozen state.
+    #[inline]
+    pub fn clone(&self) -> Self
+    where
+        T: Clone,
+    {
+        let lock = self.read();
+        Self::with(lock.clone(), self.is_frozen())
+    }
+
+    #[inline]
+    pub fn is_frozen(&self) -> bool {
+        self.frozen.load(Ordering::Acquire)
+    }
+
+    /// Get the inner value if frozen.
+    #[inline]
+    pub fn get(&self) -> Option<&T> {
+        if likely(self.frozen.load(Ordering::Acquire)) {
+            // SAFETY: This is frozen so the data cannot be modified.
+            unsafe { Some(&*self.data.get()) }
+        } else {
+            None
+        }
     }
 
     #[inline]
@@ -43,12 +84,25 @@ impl<T> FreezeLock<T> {
     }
 
     #[inline]
+    pub fn borrow(&self) -> FreezeReadGuard<'_, T> {
+        self.read()
+    }
+
+    #[inline]
     #[track_caller]
     pub fn write(&self) -> FreezeWriteGuard<'_, T> {
+        self.try_write().expect("still mutable")
+    }
+
+    #[inline]
+    pub fn try_write(&self) -> Option<FreezeWriteGuard<'_, T>> {
         let _lock_guard = self.lock.write();
         // Use relaxed ordering since we're in the write lock.
-        assert!(!self.frozen.load(Ordering::Relaxed), "still mutable");
-        FreezeWriteGuard { _lock_guard, lock: self, marker: PhantomData }
+        if self.frozen.load(Ordering::Relaxed) {
+            None
+        } else {
+            Some(FreezeWriteGuard { _lock_guard, lock: self, marker: PhantomData })
+        }
     }
 
     #[inline]
@@ -88,6 +142,15 @@ pub struct FreezeWriteGuard<'a, T> {
     _lock_guard: WriteGuard<'a, ()>,
     lock: &'a FreezeLock<T>,
     marker: PhantomData<&'a mut T>,
+}
+
+impl<'a, T> FreezeWriteGuard<'a, T> {
+    pub fn freeze(self) -> &'a T {
+        self.lock.frozen.store(true, Ordering::Release);
+
+        // SAFETY: This is frozen so the data cannot be modified and shared access is sound.
+        unsafe { &*self.lock.data.get() }
+    }
 }
 
 impl<'a, T: 'a> Deref for FreezeWriteGuard<'a, T> {

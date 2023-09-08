@@ -280,8 +280,8 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
             // All of this logic ensures that the final result of deserialization is a 'normal'
             // Span that can be used without any additional trouble.
             let metadata_index = {
-                // Introduce a new scope so that we drop the 'lock()' temporary
-                match &*source_file.external_src.lock() {
+                // Introduce a new scope so that we drop the 'read()' temporary
+                match &*source_file.external_src.read() {
                     ExternalSource::Foreign { metadata_index, .. } => *metadata_index,
                     src => panic!("Unexpected external source {src:?}"),
                 }

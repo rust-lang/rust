@@ -558,7 +558,7 @@ impl DiagnosticSpanLine {
             .span_to_lines(span)
             .map(|lines| {
                 // We can't get any lines if the source is unavailable.
-                if !je.sm.ensure_source_file_source_present(lines.file.clone()) {
+                if !je.sm.ensure_source_file_source_present(&lines.file) {
                     return vec![];
                 }
 
