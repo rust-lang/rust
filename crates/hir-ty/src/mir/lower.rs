@@ -244,6 +244,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
         let locals = Arena::new();
         let binding_locals: ArenaMap<BindingId, LocalId> = ArenaMap::new();
         let mir = MirBody {
+            projection_store: ProjectionStore::default(),
             basic_blocks,
             locals,
             start_block,
@@ -809,36 +810,34 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             current = c;
                             operands[u32::from(field_id.into_raw()) as usize] = Some(op);
                         }
-                        self.push_assignment(
-                            current,
-                            place,
-                            Rvalue::Aggregate(
-                                AggregateKind::Adt(variant_id, subst),
-                                match spread_place {
-                                    Some(sp) => operands
-                                        .into_iter()
-                                        .enumerate()
-                                        .map(|(i, it)| match it {
-                                            Some(it) => it,
-                                            None => {
-                                                let p =
-                                                    sp.project(ProjectionElem::Field(FieldId {
-                                                        parent: variant_id,
-                                                        local_id: LocalFieldId::from_raw(
-                                                            RawIdx::from(i as u32),
-                                                        ),
-                                                    }));
-                                                Operand::Copy(p)
-                                            }
-                                        })
-                                        .collect(),
-                                    None => operands.into_iter().collect::<Option<_>>().ok_or(
-                                        MirLowerError::TypeError("missing field in record literal"),
-                                    )?,
-                                },
-                            ),
-                            expr_id.into(),
+                        let rvalue = Rvalue::Aggregate(
+                            AggregateKind::Adt(variant_id, subst),
+                            match spread_place {
+                                Some(sp) => operands
+                                    .into_iter()
+                                    .enumerate()
+                                    .map(|(i, it)| match it {
+                                        Some(it) => it,
+                                        None => {
+                                            let p = sp.project(
+                                                ProjectionElem::Field(FieldId {
+                                                    parent: variant_id,
+                                                    local_id: LocalFieldId::from_raw(RawIdx::from(
+                                                        i as u32,
+                                                    )),
+                                                }),
+                                                &mut self.result.projection_store,
+                                            );
+                                            Operand::Copy(p)
+                                        }
+                                    })
+                                    .collect(),
+                                None => operands.into_iter().collect::<Option<_>>().ok_or(
+                                    MirLowerError::TypeError("missing field in record literal"),
+                                )?,
+                            },
                         );
+                        self.push_assignment(current, place, rvalue, expr_id.into());
                         Ok(Some(current))
                     }
                     VariantId::UnionId(union_id) => {
@@ -847,10 +846,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         };
                         let local_id =
                             variant_data.field(name).ok_or(MirLowerError::UnresolvedField)?;
-                        let place = place.project(PlaceElem::Field(FieldId {
-                            parent: union_id.into(),
-                            local_id,
-                        }));
+                        let place = place.project(
+                            PlaceElem::Field(FieldId { parent: union_id.into(), local_id }),
+                            &mut self.result.projection_store,
+                        );
                         self.lower_expr_to_place(*expr, place, current)
                     }
                 }
@@ -904,7 +903,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 else {
                     return Ok(None);
                 };
-                let p = place.project(ProjectionElem::Deref);
+                let p = place.project(ProjectionElem::Deref, &mut self.result.projection_store);
                 self.push_assignment(current, p, operand.into(), expr_id.into());
                 Ok(Some(current))
             }
@@ -1126,27 +1125,31 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 for capture in captures.iter() {
                     let p = Place {
                         local: self.binding_local(capture.place.local)?,
-                        projection: capture
-                            .place
-                            .projections
-                            .clone()
-                            .into_iter()
-                            .map(|it| match it {
-                                ProjectionElem::Deref => ProjectionElem::Deref,
-                                ProjectionElem::Field(it) => ProjectionElem::Field(it),
-                                ProjectionElem::TupleOrClosureField(it) => {
-                                    ProjectionElem::TupleOrClosureField(it)
-                                }
-                                ProjectionElem::ConstantIndex { offset, from_end } => {
-                                    ProjectionElem::ConstantIndex { offset, from_end }
-                                }
-                                ProjectionElem::Subslice { from, to } => {
-                                    ProjectionElem::Subslice { from, to }
-                                }
-                                ProjectionElem::OpaqueCast(it) => ProjectionElem::OpaqueCast(it),
-                                ProjectionElem::Index(it) => match it {},
-                            })
-                            .collect(),
+                        projection: self.result.projection_store.intern(
+                            capture
+                                .place
+                                .projections
+                                .clone()
+                                .into_iter()
+                                .map(|it| match it {
+                                    ProjectionElem::Deref => ProjectionElem::Deref,
+                                    ProjectionElem::Field(it) => ProjectionElem::Field(it),
+                                    ProjectionElem::TupleOrClosureField(it) => {
+                                        ProjectionElem::TupleOrClosureField(it)
+                                    }
+                                    ProjectionElem::ConstantIndex { offset, from_end } => {
+                                        ProjectionElem::ConstantIndex { offset, from_end }
+                                    }
+                                    ProjectionElem::Subslice { from, to } => {
+                                        ProjectionElem::Subslice { from, to }
+                                    }
+                                    ProjectionElem::OpaqueCast(it) => {
+                                        ProjectionElem::OpaqueCast(it)
+                                    }
+                                    ProjectionElem::Index(it) => match it {},
+                                })
+                                .collect(),
+                        ),
                     };
                     match &capture.kind {
                         CaptureKind::ByRef(bk) => {
@@ -1261,12 +1264,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
         match &self.body.exprs[lhs] {
             Expr::Tuple { exprs, is_assignee_expr: _ } => {
                 for (i, expr) in exprs.iter().enumerate() {
-                    let Some(c) = self.lower_destructing_assignment(
-                        current,
-                        *expr,
-                        rhs.project(ProjectionElem::TupleOrClosureField(i)),
-                        span,
-                    )?
+                    let rhs = rhs.project(
+                        ProjectionElem::TupleOrClosureField(i),
+                        &mut self.result.projection_store,
+                    );
+                    let Some(c) = self.lower_destructing_assignment(current, *expr, rhs, span)?
                     else {
                         return Ok(None);
                     };
@@ -1323,17 +1325,21 @@ impl<'ctx> MirLowerCtx<'ctx> {
         placeholder_subst
     }
 
-    fn push_field_projection(&self, place: &mut Place, expr_id: ExprId) -> Result<()> {
+    fn push_field_projection(&mut self, place: &mut Place, expr_id: ExprId) -> Result<()> {
         if let Expr::Field { expr, name } = &self.body[expr_id] {
             if let TyKind::Tuple(..) = self.expr_ty_after_adjustments(*expr).kind(Interner) {
                 let index = name
                     .as_tuple_index()
                     .ok_or(MirLowerError::TypeError("named field on tuple"))?;
-                *place = place.project(ProjectionElem::TupleOrClosureField(index))
+                *place = place.project(
+                    ProjectionElem::TupleOrClosureField(index),
+                    &mut self.result.projection_store,
+                )
             } else {
                 let field =
                     self.infer.field_resolution(expr_id).ok_or(MirLowerError::UnresolvedField)?;
-                *place = place.project(ProjectionElem::Field(field));
+                *place =
+                    place.project(ProjectionElem::Field(field), &mut self.result.projection_store);
             }
         } else {
             not_supported!("")
@@ -1995,13 +2001,14 @@ pub fn mir_body_for_closure_query(
         FnTrait::FnOnce => vec![],
         FnTrait::FnMut | FnTrait::Fn => vec![ProjectionElem::Deref],
     };
-    ctx.result.walk_places(|p| {
+    ctx.result.walk_places(|p, store| {
         if let Some(it) = upvar_map.get(&p.local) {
             let r = it.iter().find(|it| {
-                if p.projection.len() < it.0.place.projections.len() {
+                if p.projection.lookup(&store).len() < it.0.place.projections.len() {
                     return false;
                 }
-                for (it, y) in p.projection.iter().zip(it.0.place.projections.iter()) {
+                for (it, y) in p.projection.lookup(&store).iter().zip(it.0.place.projections.iter())
+                {
                     match (it, y) {
                         (ProjectionElem::Deref, ProjectionElem::Deref) => (),
                         (ProjectionElem::Field(it), ProjectionElem::Field(y)) if it == y => (),
@@ -2019,13 +2026,18 @@ pub fn mir_body_for_closure_query(
                     p.local = closure_local;
                     let mut next_projs = closure_projection.clone();
                     next_projs.push(PlaceElem::TupleOrClosureField(it.1));
-                    let prev_projs = mem::take(&mut p.projection);
+                    let prev_projs = p.projection;
                     if it.0.kind != CaptureKind::ByValue {
                         next_projs.push(ProjectionElem::Deref);
                     }
-                    next_projs
-                        .extend(prev_projs.iter().cloned().skip(it.0.place.projections.len()));
-                    p.projection = next_projs.into();
+                    next_projs.extend(
+                        prev_projs
+                            .lookup(&store)
+                            .iter()
+                            .cloned()
+                            .skip(it.0.place.projections.len()),
+                    );
+                    p.projection = store.intern(next_projs.into());
                 }
                 None => err = Some(p.clone()),
             }
