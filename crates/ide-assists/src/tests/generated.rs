@@ -1742,6 +1742,40 @@ fn foo() {
 }
 
 #[test]
+fn doctest_into_to_qualified_from() {
+    check_doc_test(
+        "into_to_qualified_from",
+        r#####"
+//- minicore: from
+struct B;
+impl From<i32> for B {
+    fn from(a: i32) -> Self {
+       B
+    }
+}
+
+fn main() -> () {
+    let a = 3;
+    let b: B = a.in$0to();
+}
+"#####,
+        r#####"
+struct B;
+impl From<i32> for B {
+    fn from(a: i32) -> Self {
+       B
+    }
+}
+
+fn main() -> () {
+    let a = 3;
+    let b: B = B::from(a);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_introduce_named_generic() {
     check_doc_test(
         "introduce_named_generic",
