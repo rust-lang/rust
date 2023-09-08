@@ -68,6 +68,7 @@ fn mk_session(handler: &mut EarlyErrorHandler, matches: getopts::Matches) -> (Se
         None,
         "",
         None,
+        Default::default(),
     );
     (sess, cfg)
 }
