@@ -316,7 +316,7 @@ target | std | host | notes
 [`riscv64gc-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/riscv64
 [`riscv64-linux-android`](platform-support/android.md) |   |   | RISC-V 64-bit Android
 `s390x-unknown-linux-musl` |  |  | S390x Linux (kernel 3.2, MUSL)
-`sparc-unknown-linux-gnu` | ✓ |  | 32-bit SPARC Linux
+[`sparc-unknown-linux-gnu`](./platform-support/sparc_unknown_linux_gnu.md) | ✓ |  | 32-bit SPARC Linux
 [`sparc-unknown-none-elf`](./platform-support/sparc-unknown-none-elf.md) | * |  | Bare 32-bit SPARC V7+
 [`sparc64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/sparc64
 [`sparc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/sparc64
