@@ -81,11 +81,18 @@
 //!
 //! # Atomic accesses to read-only memory
 //!
-//! In general, atomic accesses on read-only memory are Undefined Behavior. For instance, attempting
+//! In general, *all* atomic accesses on read-only memory are Undefined Behavior. For instance, attempting
 //! to do a `compare_exchange` that will definitely fail (making it conceptually a read-only
 //! operation) can still cause a page fault if the underlying memory page is mapped read-only. Since
 //! atomic `load`s might be implemented using compare-exchange operations, even a `load` can fault
 //! on read-only memory.
+//!
+//! For the purpose of this section, "read-only memory" is defined as memory that is read-only in
+//! the underlying target, i.e., the pages are mapped with a read-only flag and any attempt to write
+//! will cause a page fault. In particular, an `&u128` reference that points to memory that is
+//! read-write mapped is *not* considered to point to "read-only memory". In Rust, almost all memory
+//! is read-write; the only exceptions are memory created by `const` items or `static` items without
+//! interior mutability.
 //!
 //! However, as an exception from this general rule, Rust guarantees that "sufficiently small"
 //! atomic loads are implemented in a way that works on read-only memory. This threshold of
