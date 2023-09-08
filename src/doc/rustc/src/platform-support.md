@@ -99,7 +99,7 @@ target | notes
 `powerpc64le-unknown-linux-gnu` | PPC64LE Linux (kernel 3.10, glibc 2.17)
 `riscv64gc-unknown-linux-gnu` | RISC-V Linux (kernel 4.20, glibc 2.29)
 `s390x-unknown-linux-gnu` | S390x Linux (kernel 3.2, glibc 2.17)
-`x86_64-unknown-freebsd` | 64-bit FreeBSD
+[`x86_64-unknown-freebsd`](platform-support/freebsd.md) | 64-bit FreeBSD
 `x86_64-unknown-illumos` | illumos
 `x86_64-unknown-linux-musl` | 64-bit Linux with MUSL
 [`x86_64-unknown-netbsd`](platform-support/netbsd.md) | NetBSD/amd64
@@ -154,7 +154,7 @@ target | std | notes
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17)
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android
-`i686-unknown-freebsd` | ✓ | 32-bit FreeBSD
+[`i686-unknown-freebsd`](platform-support/freebsd.md) | ✓ | 32-bit FreeBSD
 `i686-unknown-linux-musl` | ✓ | 32-bit Linux with MUSL
 [`i686-unknown-uefi`](platform-support/unknown-uefi.md) | * | 32-bit UEFI
 `mips-unknown-linux-musl` | ✓ | MIPS Linux with MUSL
@@ -225,7 +225,7 @@ target | std | host | notes
 [`aarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | ARM64 OpenHarmony |
 [`aarch64-unknown-teeos`](platform-support/aarch64-unknown-teeos.md) | ? |  | ARM64 TEEOS |
 [`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS |
-`aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
+[`aarch64-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | ARM64 FreeBSD
 [`aarch64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
@@ -242,7 +242,7 @@ target | std | host | notes
 `armv4t-unknown-linux-gnueabi` | ? |  | ARMv4T Linux
 [`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | Bare ARMv5TE
 `armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
-`armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
+[`armv6-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | ARMv6 FreeBSD
 [`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | ARMv6 NetBSD w/hard-float
 [`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | ARMv6K Nintendo 3DS, Horizon (Requires devkitARM toolchain)
 `armv7-apple-ios` | ✓ |  | ARMv7-A Cortex-A8 iOS
@@ -250,7 +250,7 @@ target | std | host | notes
 [`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | ARMv7-A OpenHarmony |
 [`armv7-unknown-linux-uclibceabi`](platform-support/armv7-unknown-linux-uclibceabi.md) | ✓ | ✓ | ARMv7-A Linux with uClibc, softfloat
 [`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | ARMv7-A Linux with uClibc, hardfloat
-`armv7-unknown-freebsd` | ✓ | ✓ | ARMv7-A FreeBSD
+[`armv7-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | ARMv7-A FreeBSD
 [`armv7-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | ARMv7-A NetBSD w/hard-float
 [`armv7-wrs-vxworks-eabihf`](platform-support/vxworks.md) | ? |  | ARMv7-A VxWorks
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
@@ -294,9 +294,9 @@ target | std | host | notes
 [`powerpc-unknown-openbsd`](platform-support/openbsd.md) | ✓  | ✓ | OpenBSD/macppc
 [`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ? |  | PowerPC SPE VxWorks
 [`powerpc-wrs-vxworks`](platform-support/vxworks.md) | ? |  | PowerPC VxWorks
-`powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
-`powerpc64le-unknown-freebsd` |   |   | PPC64LE FreeBSD
-`powerpc-unknown-freebsd` |   |   | PowerPC FreeBSD
+[`powerpc64-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
+[`powerpc64le-unknown-freebsd`](platform-support/freebsd.md) |   |   | PPC64LE FreeBSD
+[`powerpc-unknown-freebsd`](platform-support/freebsd.md) |   |   | PowerPC FreeBSD
 `powerpc64-unknown-linux-musl` | ? |  |
 [`powerpc64-wrs-vxworks`](platform-support/vxworks.md) | ? |  | PPC64 VxWorks
 `powerpc64le-unknown-linux-musl` | ? |  |
@@ -309,7 +309,7 @@ target | std | host | notes
 [`riscv32imc-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv32imac-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv64gc-unknown-hermit`](platform-support/hermit.md) | ✓ |   | RISC-V Hermit
-`riscv64gc-unknown-freebsd` |   |   | RISC-V FreeBSD
+[`riscv64gc-unknown-freebsd`](platform-support/freebsd.md) |   |   | RISC-V FreeBSD
 [`riscv64gc-unknown-fuchsia`](platform-support/fuchsia.md) |   |   | RISC-V Fuchsia
 `riscv64gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 4.20, musl 1.2.0)
 [`riscv64gc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | RISC-V NetBSD
