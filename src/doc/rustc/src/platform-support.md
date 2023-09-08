@@ -301,7 +301,7 @@ target | std | host | notes
 [`powerpc64-wrs-vxworks`](platform-support/vxworks.md) | ? |  | PPC64 VxWorks
 `powerpc64le-unknown-linux-musl` | ? |  |
 [`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
-`powerpc64-ibm-aix` | ? |  | 64-bit AIX (7.2 and newer)
+[`powerpc64-ibm-aix`](platform-support/powerpc64_ibm_aix.md) | ? |  | 64-bit AIX (7.2 and newer)
 [`riscv32gc-unknown-linux-gnu`](platform-support/riscv32gc_unknown_linux_gnu.md) |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
 [`riscv32gc-unknown-linux-musl`](platform-support/riscvgc_unknown_linux_musl.md) |   |   | RISC-V Linux (kernel 5.4, MUSL + RISCV32 support patches)
 [`riscv32im-unknown-none-elf`](platform-support/riscv32im_unknown_none_elf.md) | * |  | Bare RISC-V (RV32IM ISA)
