@@ -33,9 +33,17 @@ also add the calls we need to generate the GIMPLE:
 ```C
 int main() {
     gcc_jit_context *ctxt = gcc_jit_context_acquire();
+    // To set `-O3`, update it depending on your needs.
+    gcc_jit_context_set_int_option(ctxt, GCC_JIT_INT_OPTION_OPTIMIZATION_LEVEL, 3);
+    // Very important option to generate the gimple format.
+    gcc_jit_context_set_bool_option(ctxt, GCC_JIT_BOOL_OPTION_DUMP_INITIAL_GIMPLE, 1);
     create_code(ctxt, NULL);
+
     gcc_jit_context_compile(ctxt);
-    gcc_jit_context_dump_to_file(ctxt, "tmp.gimple", 1);
+    // If you want to compile to assembly (or any other format) directly, you can
+    // use the following call instead:
+    // gcc_jit_context_compile_to_file(ctxt, GCC_JIT_OUTPUT_KIND_ASSEMBLER, "out.s");
+
     return 0;
 }
 ```
@@ -52,7 +60,7 @@ And finally when you run it:
 LD_LIBRARY_PATH=`pwd`/gcc-build/gcc LIBRARY_PATH=`pwd`/gcc-build/gcc ./out
 ```
 
-You should now have a file named `tmp.gimple` which contains:
+It should display:
 
 ```c
 __attribute__((const))
@@ -79,3 +87,25 @@ int xxx ()
   return D.3394;
 }
 ```
+
+An alternative way to generate the GIMPLE is to replace:
+
+```c
+    gcc_jit_context_set_bool_option(ctxt, GCC_JIT_BOOL_OPTION_DUMP_INITIAL_GIMPLE, 1);
+```
+
+with:
+
+```c
+    gcc_jit_context_add_command_line_option(ctxt, "-fdump-tree-gimple");
+```
+
+(although you can have both at the same time too). Then you can compile it like previously. Only one difference: before executing it, I recommend to run:
+
+```console
+rm -rf /tmp/libgccjit-*
+```
+
+to make it easier for you to know which folder to look into.
+
+Once the execution is done, you should now have a file with path looking like `/tmp/libgccjit-9OFqkD/fake.c.006t.gimple` which contains the GIMPLE format.
