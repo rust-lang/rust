@@ -139,6 +139,7 @@ top_level_options!(
         /// can influence whether overflow checks are done or not.
         debug_assertions: bool [TRACKED],
         debuginfo: DebugInfo [TRACKED],
+        debuginfo_compression: DebugInfoCompression [TRACKED],
         lint_opts: Vec<(String, lint::Level)> [TRACKED_NO_CRATE_HASH],
         lint_cap: Option<lint::Level> [TRACKED_NO_CRATE_HASH],
         describe_lints: bool [UNTRACKED],
@@ -376,6 +377,7 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
     pub const parse_cfprotection: &str = "`none`|`no`|`n` (default), `branch`, `return`, or `full`|`yes`|`y` (equivalent to `branch` and `return`)";
     pub const parse_debuginfo: &str = "either an integer (0, 1, 2), `none`, `line-directives-only`, `line-tables-only`, `limited`, or `full`";
+    pub const parse_debuginfo_compression: &str = "one of `none`, `zlib`, or `zstd`";
     pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
@@ -779,6 +781,19 @@ mod parse {
             Some("2") | Some("full") => *slot = DebugInfo::Full,
             _ => return false,
         }
+        true
+    }
+
+    pub(crate) fn parse_debuginfo_compression(
+        slot: &mut DebugInfoCompression,
+        v: Option<&str>,
+    ) -> bool {
+        match v {
+            Some("none") => *slot = DebugInfoCompression::None,
+            Some("zlib") => *slot = DebugInfoCompression::Zlib,
+            Some("zstd") => *slot = DebugInfoCompression::Zstd,
+            _ => return false,
+        };
         true
     }
 
@@ -1424,6 +1439,8 @@ options! {
         "emit discriminators and other data necessary for AutoFDO"),
     debug_macros: bool = (false, parse_bool, [TRACKED],
         "emit line numbers debug info inside macros (default: no)"),
+    debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
+        "compress debug info sections (none, zlib, zstd, default: none)"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],
         "deduplicate identical diagnostics (default: yes)"),
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],

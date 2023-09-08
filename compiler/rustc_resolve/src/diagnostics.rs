@@ -2753,7 +2753,13 @@ fn search_for_any_use_in_items(items: &[P<ast::Item>]) -> Option<Span> {
     for item in items {
         if let ItemKind::Use(..) = item.kind {
             if is_span_suitable_for_use_injection(item.span) {
-                return Some(item.span.shrink_to_lo());
+                let mut lo = item.span.lo();
+                for attr in &item.attrs {
+                    if attr.span.eq_ctxt(item.span) {
+                        lo = std::cmp::min(lo, attr.span.lo());
+                    }
+                }
+                return Some(Span::new(lo, lo, item.span.ctxt(), item.span.parent()));
             }
         }
     }

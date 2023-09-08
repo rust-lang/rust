@@ -381,6 +381,24 @@ pub enum DebugInfo {
     Full,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum DebugInfoCompression {
+    None,
+    Zlib,
+    Zstd,
+}
+
+impl ToString for DebugInfoCompression {
+    fn to_string(&self) -> String {
+        match self {
+            DebugInfoCompression::None => "none",
+            DebugInfoCompression::Zlib => "zlib",
+            DebugInfoCompression::Zstd => "zstd",
+        }
+        .to_owned()
+    }
+}
+
 /// Split debug-information is enabled by `-C split-debuginfo`, this enum is only used if split
 /// debug-information is enabled (in either `Packed` or `Unpacked` modes), and the platform
 /// uses DWARF for debug-information.
@@ -1015,6 +1033,7 @@ impl Default for Options {
             crate_types: Vec::new(),
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
+            debuginfo_compression: DebugInfoCompression::None,
             lint_opts: Vec::new(),
             lint_cap: None,
             describe_lints: false,
@@ -2277,6 +2296,13 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
     if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
 }
 
+fn select_debuginfo_compression(
+    _handler: &EarlyErrorHandler,
+    unstable_opts: &UnstableOptions,
+) -> DebugInfoCompression {
+    unstable_opts.debuginfo_compression
+}
+
 pub(crate) fn parse_assert_incr_state(
     handler: &EarlyErrorHandler,
     opt_assertion: &Option<String>,
@@ -2752,6 +2778,8 @@ pub fn build_session_options(
     // for more details.
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
     let debuginfo = select_debuginfo(matches, &cg);
+    let debuginfo_compression: DebugInfoCompression =
+        select_debuginfo_compression(handler, &unstable_opts);
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
@@ -2828,6 +2856,7 @@ pub fn build_session_options(
         crate_types,
         optimize: opt_level,
         debuginfo,
+        debuginfo_compression,
         lint_opts,
         lint_cap,
         describe_lints,
@@ -3113,11 +3142,11 @@ impl PpMode {
 /// how the hash should be calculated when adding a new command-line argument.
 pub(crate) mod dep_tracking {
     use super::{
-        BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
-        InstrumentCoverage, InstrumentXRay, LdImpl, LinkerPluginLto, LocationDetail, LtoCli,
-        OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Passes, ResolveDocLinks,
-        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
-        TraitSolver, TrimmedDefPaths,
+        BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
+        ErrorOutputType, InstrumentCoverage, InstrumentXRay, LdImpl, LinkerPluginLto,
+        LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
+        Passes, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
+        SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -3195,6 +3224,7 @@ pub(crate) mod dep_tracking {
         OptLevel,
         LtoCli,
         DebugInfo,
+        DebugInfoCompression,
         UnstableFeatures,
         NativeLib,
         NativeLibKind,
