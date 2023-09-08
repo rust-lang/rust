@@ -48,4 +48,4 @@ fn other_markdown() {}
 ///   /// `lol`
 ///   pub struct Struct;
 ///   ```
-fn iss_7421() {}
+fn issue_7421() {}

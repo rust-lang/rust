@@ -558,7 +558,6 @@ dependencies = [
  "declare_clippy_lint",
  "if_chain",
  "itertools",
- "pulldown-cmark",
  "quine-mc_cluskey",
  "regex",
  "regex-syntax 0.7.2",
