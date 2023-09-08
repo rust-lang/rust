@@ -297,7 +297,6 @@
                 "debug_assertions",
                 "feature=default",
                 "feature=std",
-                "rust_analyzer",
             ],
         ),
         potential_cfg_options: Some(
@@ -311,7 +310,6 @@
                     "feature=rustc-dep-of-std",
                     "feature=std",
                     "feature=use_std",
-                    "rust_analyzer",
                 ],
             ),
         ),

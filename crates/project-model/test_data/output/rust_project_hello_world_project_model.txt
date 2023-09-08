@@ -16,7 +16,6 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
-                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -58,7 +57,6 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
-                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -92,7 +90,6 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
-                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -126,7 +123,6 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
-                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -160,7 +156,6 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
-                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -209,7 +204,6 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
-                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -243,7 +237,6 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
-                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -334,7 +327,6 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
-                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -368,7 +360,6 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
-                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -402,7 +393,6 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
-                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,

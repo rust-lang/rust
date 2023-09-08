@@ -867,6 +867,9 @@ fn cargo_to_crate_graph(
             if cargo[pkg].is_local {
                 cfg_options.insert_atom("test".into());
             }
+            if cargo[pkg].is_member {
+                cfg_options.insert_atom("rust_analyzer".into());
+            }
 
             if !override_cfg.global.is_empty() {
                 cfg_options.apply_diff(override_cfg.global.clone());
@@ -1030,7 +1033,8 @@ fn detached_files_to_crate_graph(
         None => (SysrootPublicDeps::default(), None),
     };
 
-    let cfg_options = create_cfg_options(rustc_cfg);
+    let mut cfg_options = create_cfg_options(rustc_cfg);
+    cfg_options.insert_atom("rust_analyzer".into());
 
     for detached_file in detached_files {
         let file_id = match load(detached_file) {
@@ -1479,6 +1483,5 @@ fn create_cfg_options(rustc_cfg: Vec<CfgFlag>) -> CfgOptions {
     let mut cfg_options = CfgOptions::default();
     cfg_options.extend(rustc_cfg);
     cfg_options.insert_atom("debug_assertions".into());
-    cfg_options.insert_atom("rust_analyzer".into());
     cfg_options
 }
