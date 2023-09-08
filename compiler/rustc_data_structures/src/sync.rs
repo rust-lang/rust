@@ -49,7 +49,7 @@ use std::ops::{Deref, DerefMut};
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
 mod lock;
-pub use lock::{Assume, Lock, LockGuard};
+pub use lock::{Lock, LockGuard, Mode};
 
 mod worker_local;
 pub use worker_local::{Registry, WorkerLocal};

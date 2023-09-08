@@ -1,7 +1,7 @@
 use crate::fx::{FxHashMap, FxHasher};
 #[cfg(parallel_compiler)]
 use crate::sync::{is_dyn_thread_safe, CacheAligned};
-use crate::sync::{Assume, Lock, LockGuard};
+use crate::sync::{Lock, LockGuard, Mode};
 #[cfg(parallel_compiler)]
 use itertools::Either;
 use std::borrow::Borrow;
@@ -84,7 +84,7 @@ impl<T> Sharded<T> {
 
                 // SAFETY: We know `is_dyn_thread_safe` was false when creating the lock thus
                 // `might_be_dyn_thread_safe` was also false.
-                unsafe { single.lock_assume(Assume::NoSync) }
+                unsafe { single.lock_assume(Mode::NoSync) }
             }
             #[cfg(parallel_compiler)]
             Self::Shards(..) => self.lock_shard_by_hash(make_hash(_val)),
@@ -107,7 +107,7 @@ impl<T> Sharded<T> {
 
                 // SAFETY: We know `is_dyn_thread_safe` was false when creating the lock thus
                 // `might_be_dyn_thread_safe` was also false.
-                unsafe { single.lock_assume(Assume::NoSync) }
+                unsafe { single.lock_assume(Mode::NoSync) }
             }
             #[cfg(parallel_compiler)]
             Self::Shards(shards) => {
@@ -118,7 +118,7 @@ impl<T> Sharded<T> {
                 // always inbounds.
                 // SAFETY (lock_assume_sync): We know `is_dyn_thread_safe` was true when creating
                 // the lock thus `might_be_dyn_thread_safe` was also true.
-                unsafe { shards.get_unchecked(_i & (SHARDS - 1)).0.lock_assume(Assume::Sync) }
+                unsafe { shards.get_unchecked(_i & (SHARDS - 1)).0.lock_assume(Mode::Sync) }
             }
         }
     }

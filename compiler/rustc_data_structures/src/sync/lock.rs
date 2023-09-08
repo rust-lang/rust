@@ -7,19 +7,19 @@
 
 use std::fmt;
 
-#[cfg(not(parallel_compiler))]
-pub use disabled::*;
 #[cfg(parallel_compiler)]
-pub use enabled::*;
+pub use maybe_sync::*;
+#[cfg(not(parallel_compiler))]
+pub use no_sync::*;
 
 #[derive(Clone, Copy, PartialEq)]
-pub enum Assume {
+pub enum Mode {
     NoSync,
     Sync,
 }
 
-mod enabled {
-    use super::Assume;
+mod maybe_sync {
+    use super::Mode;
     use crate::sync::mode;
     #[cfg(parallel_compiler)]
     use crate::sync::{DynSend, DynSync};
@@ -27,9 +27,9 @@ mod enabled {
     use parking_lot::RawMutex;
     use std::cell::Cell;
     use std::cell::UnsafeCell;
-    use std::hint::unreachable_unchecked;
     use std::intrinsics::unlikely;
     use std::marker::PhantomData;
+    use std::mem::ManuallyDrop;
     use std::ops::{Deref, DerefMut};
 
     /// A guard holding mutable access to a `Lock` which is in a locked state.
@@ -40,7 +40,7 @@ mod enabled {
 
         /// The syncronization mode of the lock. This is explicitly passed to let LLVM relate it
         /// to the original lock operation.
-        assume: Assume,
+        mode: Mode,
     }
 
     impl<'a, T: 'a> Deref for LockGuard<'a, T> {
@@ -64,36 +64,26 @@ mod enabled {
     impl<'a, T: 'a> Drop for LockGuard<'a, T> {
         #[inline]
         fn drop(&mut self) {
-            // SAFETY (dispatch): We get `self.assume` from the lock operation so it is consistent
-            // with the lock state.
-            // SAFETY (unlock): We know that the lock is locked as this type is a proof of that.
-            unsafe {
-                self.lock.dispatch(
-                    self.assume,
-                    |cell| {
-                        debug_assert_eq!(cell.get(), true);
-                        cell.set(false);
-                        Some(())
-                    },
-                    |lock| lock.unlock(),
-                );
-            };
-        }
-    }
-
-    enum LockMode {
-        NoSync(Cell<bool>),
-        Sync(RawMutex),
-    }
-
-    impl LockMode {
-        #[inline(always)]
-        fn to_assume(&self) -> Assume {
-            match self {
-                LockMode::NoSync(..) => Assume::NoSync,
-                LockMode::Sync(..) => Assume::Sync,
+            // SAFETY (union access): We get `self.mode` from the lock operation so it is consistent
+            // with the `lock.mode` state. This means we access the right union fields.
+            match self.mode {
+                Mode::NoSync => {
+                    let cell = unsafe { &self.lock.mode_union.no_sync };
+                    debug_assert_eq!(cell.get(), true);
+                    cell.set(false);
+                }
+                // SAFETY (unlock): We know that the lock is locked as this type is a proof of that.
+                Mode::Sync => unsafe { self.lock.mode_union.sync.unlock() },
             }
         }
+    }
+
+    union ModeUnion {
+        /// Indicates if the cell is locked. Only used if `Lock.mode` is `NoSync`.
+        no_sync: ManuallyDrop<Cell<bool>>,
+
+        /// A lock implementation that's only used if `Lock.mode` is `Sync`.
+        sync: ManuallyDrop<RawMutex>,
     }
 
     /// The value representing a locked state for the `Cell`.
@@ -102,23 +92,26 @@ mod enabled {
     /// A lock which only uses synchronization if `might_be_dyn_thread_safe` is true.
     /// It implements `DynSend` and `DynSync` instead of the typical `Send` and `Sync`.
     pub struct Lock<T> {
-        mode: LockMode,
+        /// Indicates if synchronization is used via `mode_union.sync` if it's `Sync`, or if a
+        /// not thread safe cell is used via `mode_union.no_sync` if it's `NoSync`.
+        /// This is set on initialization and never changed.
+        mode: Mode,
+
+        mode_union: ModeUnion,
         data: UnsafeCell<T>,
     }
 
     impl<T> Lock<T> {
         #[inline(always)]
         pub fn new(inner: T) -> Self {
-            Lock {
-                mode: if unlikely(mode::might_be_dyn_thread_safe()) {
-                    // Create the lock with synchronization enabled using the `RawMutex` type.
-                    LockMode::Sync(RawMutex::INIT)
-                } else {
-                    // Create the lock with synchronization disabled.
-                    LockMode::NoSync(Cell::new(!LOCKED))
-                },
-                data: UnsafeCell::new(inner),
-            }
+            let (mode, mode_union) = if unlikely(mode::might_be_dyn_thread_safe()) {
+                // Create the lock with synchronization enabled using the `RawMutex` type.
+                (Mode::Sync, ModeUnion { sync: ManuallyDrop::new(RawMutex::INIT) })
+            } else {
+                // Create the lock with synchronization disabled.
+                (Mode::NoSync, ModeUnion { no_sync: ManuallyDrop::new(Cell::new(!LOCKED)) })
+            };
+            Lock { mode, mode_union, data: UnsafeCell::new(inner) }
         }
 
         #[inline(always)]
@@ -131,20 +124,32 @@ mod enabled {
             self.data.get_mut()
         }
 
-        /// This dispatches on the `LockMode` and gives access to its variants depending on
-        /// `assume`. If `no_sync` returns `None` this will panic.
+        #[inline(always)]
+        pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
+            let mode = self.mode;
+            // SAFETY: This is safe since the union fields are used in accordance with `self.mode`.
+            match mode {
+                Mode::NoSync => {
+                    let cell = unsafe { &self.mode_union.no_sync };
+                    let was_unlocked = cell.get() != LOCKED;
+                    if was_unlocked {
+                        cell.set(LOCKED);
+                    }
+                    was_unlocked
+                }
+                Mode::Sync => unsafe { self.mode_union.sync.try_lock() },
+            }
+            .then(|| LockGuard { lock: self, marker: PhantomData, mode })
+        }
+
+        /// This acquires the lock assuming syncronization is in a specific mode.
         ///
         /// Safety
-        /// This method must only be called if `might_be_dyn_thread_safe` on lock creation matches
-        /// matches the `assume` argument.
+        /// This method must only be called with `Mode::Sync` if `might_be_dyn_thread_safe` was
+        /// true on lock creation.
         #[inline(always)]
         #[track_caller]
-        unsafe fn dispatch<R>(
-            &self,
-            assume: Assume,
-            no_sync: impl FnOnce(&Cell<bool>) -> Option<R>,
-            sync: impl FnOnce(&RawMutex) -> R,
-        ) -> R {
+        pub unsafe fn lock_assume(&self, mode: Mode) -> LockGuard<'_, T> {
             #[inline(never)]
             #[track_caller]
             #[cold]
@@ -152,58 +157,25 @@ mod enabled {
                 panic!("lock was already held")
             }
 
-            match assume {
-                Assume::NoSync => {
-                    let LockMode::NoSync(cell) = &self.mode else {
-                        unsafe { unreachable_unchecked() }
-                    };
-                    if let Some(v) = no_sync(cell) {
-                        v
-                    } else {
-                        // Call this here instead of in `no_sync` so `track_caller` gets properly
-                        // passed along.
-                        lock_held()
+            // SAFETY: This is safe since the union fields are used in accordance with `mode`
+            // which also must match `self.mode` due to the safety precondition.
+            unsafe {
+                match mode {
+                    Mode::NoSync => {
+                        if unlikely(self.mode_union.no_sync.replace(LOCKED) == LOCKED) {
+                            lock_held()
+                        }
                     }
-                }
-                Assume::Sync => {
-                    let LockMode::Sync(lock) = &self.mode else {
-                        unsafe { unreachable_unchecked() }
-                    };
-                    sync(lock)
+                    Mode::Sync => self.mode_union.sync.lock(),
                 }
             }
-        }
-
-        #[inline(always)]
-        pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
-            let assume = self.mode.to_assume();
-            unsafe {
-                self.dispatch(
-                    assume,
-                    |cell| Some((cell.get() != LOCKED).then(|| cell.set(LOCKED)).is_some()),
-                    RawMutex::try_lock,
-                )
-                .then(|| LockGuard { lock: self, marker: PhantomData, assume })
-            }
-        }
-
-        #[inline(always)]
-        #[track_caller]
-        pub unsafe fn lock_assume(&self, assume: Assume) -> LockGuard<'_, T> {
-            unsafe {
-                self.dispatch(
-                    assume,
-                    |cell| (cell.replace(LOCKED) != LOCKED).then(|| ()),
-                    RawMutex::lock,
-                );
-                LockGuard { lock: self, marker: PhantomData, assume }
-            }
+            LockGuard { lock: self, marker: PhantomData, mode }
         }
 
         #[inline(always)]
         #[track_caller]
         pub fn lock(&self) -> LockGuard<'_, T> {
-            unsafe { self.lock_assume(self.mode.to_assume()) }
+            unsafe { self.lock_assume(self.mode) }
         }
     }
 
@@ -213,8 +185,8 @@ mod enabled {
     unsafe impl<T: DynSend> DynSync for Lock<T> {}
 }
 
-mod disabled {
-    use super::Assume;
+mod no_sync {
+    use super::Mode;
     use std::cell::RefCell;
 
     pub use std::cell::RefMut as LockGuard;
@@ -245,7 +217,7 @@ mod disabled {
         #[inline(always)]
         #[track_caller]
         // This is unsafe to match the API for the `parallel_compiler` case.
-        pub unsafe fn lock_assume(&self, _assume: Assume) -> LockGuard<'_, T> {
+        pub unsafe fn lock_assume(&self, _mode: Mode) -> LockGuard<'_, T> {
             self.0.borrow_mut()
         }
 
