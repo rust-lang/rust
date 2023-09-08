@@ -1,5 +1,5 @@
 // assembly-output: emit-asm
-// compile-flags: --target powerpc-unknown-linux-musl
+// compile-flags: --target powerpc-unknown-linux-gnuspe
 // needs-llvm-components: powerpc
 
 #![feature(no_core, lang_items)]
