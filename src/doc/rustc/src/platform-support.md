@@ -297,9 +297,9 @@ target | std | host | notes
 [`powerpc64-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
 [`powerpc64le-unknown-freebsd`](platform-support/freebsd.md) |   |   | PPC64LE FreeBSD
 [`powerpc-unknown-freebsd`](platform-support/freebsd.md) |   |   | PowerPC FreeBSD
-`powerpc64-unknown-linux-musl` | ? |  |
+[`powerpc64-unknown-linux-musl`](platform-support/powerpc64_unknown_linux_musl.md) | ? |  | PPC64LE Linux (MUSL)
 [`powerpc64-wrs-vxworks`](platform-support/vxworks.md) | ? |  | PPC64 VxWorks
-`powerpc64le-unknown-linux-musl` | ? |  |
+[`powerpc64le-unknown-linux-musl`](platform-support/powerpc64le_unknown_linux_musl.md) | ? |  | PPC64 Linux (MUSL)
 [`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
 [`powerpc64-ibm-aix`](platform-support/powerpc64_ibm_aix.md) | ? |  | 64-bit AIX (7.2 and newer)
 [`riscv32gc-unknown-linux-gnu`](platform-support/riscv32gc_unknown_linux_gnu.md) |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
