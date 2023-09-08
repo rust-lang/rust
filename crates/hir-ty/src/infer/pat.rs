@@ -15,7 +15,8 @@ use crate::{
     infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
-    static_lifetime, Interner, Scalar, Substitution, Ty, TyBuilder, TyExt, TyKind,
+    static_lifetime, InferenceDiagnostic, Interner, Scalar, Substitution, Ty, TyBuilder, TyExt,
+    TyKind,
 };
 
 /// Used to generalize patterns and assignee expressions.
@@ -74,6 +75,18 @@ impl InferenceContext<'_> {
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }
+        if let Some(var) = &var_data {
+            let cmp = if ellipsis.is_some() { usize::gt } else { usize::ne };
+
+            if cmp(&subs.len(), &var.fields().len()) {
+                self.push_diagnostic(InferenceDiagnostic::MismatchedTupleStructPatArgCount {
+                    pat: id.into(),
+                    expected: var.fields().len(),
+                    found: subs.len(),
+                });
+            }
+        }
+
         self.unify(&ty, expected);
 
         let substs =

@@ -92,9 +92,10 @@ pub use crate::{
     diagnostics::{
         AnyDiagnostic, BreakOutsideOfLoop, CaseType, ExpectedFunction, InactiveCode,
         IncoherentImpl, IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError,
-        MacroExpansionParseError, MalformedDerive, MismatchedArgCount, MissingFields,
-        MissingMatchArms, MissingUnsafe, MovedOutOfRef, NeedMut, NoSuchField, PrivateAssocItem,
-        PrivateField, ReplaceFilterMapNextWithFindMap, TypeMismatch, TypedHole, UndeclaredLabel,
+        MacroExpansionParseError, MalformedDerive, MismatchedArgCount,
+        MismatchedTupleStructPatArgCount, MissingFields, MissingMatchArms, MissingUnsafe,
+        MovedOutOfRef, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
+        ReplaceFilterMapNextWithFindMap, TypeMismatch, TypedHole, UndeclaredLabel,
         UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate, UnresolvedField,
         UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule,
         UnresolvedProcMacro, UnusedMut,
@@ -1595,6 +1596,23 @@ impl DefWithBody {
                             expected: Type::new(db, DefWithBodyId::from(self), expected.clone()),
                         }
                         .into(),
+                    )
+                }
+                &hir_ty::InferenceDiagnostic::MismatchedTupleStructPatArgCount {
+                    pat,
+                    expected,
+                    found,
+                } => {
+                    let expr_or_pat = match pat {
+                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(Either::Left),
+                        ExprOrPatId::PatId(pat) => source_map
+                            .pat_syntax(pat)
+                            .expect("unexpected synthetic")
+                            .map(|it| it.unwrap_left())
+                            .map(Either::Right),
+                    };
+                    acc.push(
+                        MismatchedTupleStructPatArgCount { expr_or_pat, expected, found }.into(),
                     )
                 }
             }

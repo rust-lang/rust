@@ -228,6 +228,11 @@ pub enum InferenceDiagnostic {
         expected: usize,
         found: usize,
     },
+    MismatchedTupleStructPatArgCount {
+        pat: ExprOrPatId,
+        expected: usize,
+        found: usize,
+    },
     ExpectedFunction {
         call_expr: ExprId,
         found: Ty,
