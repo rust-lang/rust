@@ -59,8 +59,8 @@
             if (settingValue !== null) {
                 toggle.checked = settingValue === "true";
             }
-            toggle.onchange = function() {
-                changeSetting(this.id, this.checked);
+            toggle.onchange = () => {
+                changeSetting(toggle.id, toggle.checked);
             };
         });
         onEachLazy(settingsElement.querySelectorAll("input[type=\"radio\"]"), elem => {
@@ -224,14 +224,14 @@
 
     if (isSettingsPage) {
         // We replace the existing "onclick" callback to do nothing if clicked.
-        getSettingsButton().onclick = function(event) {
+        getSettingsButton().onclick = event => {
             event.preventDefault();
         };
     } else {
         // We replace the existing "onclick" callback.
         const settingsButton = getSettingsButton();
         const settingsMenu = document.getElementById("settings");
-        settingsButton.onclick = function(event) {
+        settingsButton.onclick = event => {
             if (elemIsInParent(event.target, settingsMenu)) {
                 return;
             }
