@@ -78,7 +78,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 unary_op_ss(this, which, op, dest)?;
             }
-            // Used to implement _mm_{sqrt,rcp,rsqrt}_ss functions.
+            // Used to implement _mm_{sqrt,rcp,rsqrt}_ps functions.
             // Performs the operations on all components of `op`.
             "sqrt.ps" | "rcp.ps" | "rsqrt.ps" => {
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -146,7 +146,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 bin_op_ps(this, which, left, right, dest)?;
             }
-            // Used to implement _mm_{,u}comi{eq,lt,le,gt,ge,neq}_ps functions.
+            // Used to implement _mm_{,u}comi{eq,lt,le,gt,ge,neq}_ss functions.
             // Compares the first component of `left` and `right` and returns
             // a scalar value (0 or 1).
             "comieq.ss" | "comilt.ss" | "comile.ss" | "comigt.ss" | "comige.ss" | "comineq.ss"
@@ -436,8 +436,8 @@ fn bin_op_ss<'tcx>(
     Ok(())
 }
 
-/// Performs `which` operation on each component of `left`, and
-/// `right` storing the result is stored in `dest`.
+/// Performs `which` operation on each component of `left` and
+/// `right`, storing the result is stored in `dest`.
 fn bin_op_ps<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     which: FloatBinOp,
