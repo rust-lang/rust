@@ -1,9 +1,13 @@
-# `aarch64-unknown-fuchsia` and `x86_64-unknown-fuchsia`
-
-**Tier: 2**
+# `*-unknown-fuchsia`
 
 [Fuchsia] is a modern open source operating system that's simple, secure,
 updatable, and performant.
+
+| Target                      | Tier   |
+| --------------------------- | ------ |
+| `aarch64-unknown-fuchsia`   | Tier 2 |
+| `x86_64-unknown-fuchsia`    | Tier 2 |
+| `riscv64gc-unknown-fuchsia` | Tier 3 |
 
 ## Target maintainers
 
