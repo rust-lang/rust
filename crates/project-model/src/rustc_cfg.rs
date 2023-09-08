@@ -102,6 +102,5 @@ fn get_rust_cfgs(
         cmd.args(["--target", target]);
     }
 
-    let out = utf8_stdout(cmd).context("Unable to run `rustc`")?;
-    Ok(out)
+    utf8_stdout(cmd).context("Unable to run `rustc`")
 }
