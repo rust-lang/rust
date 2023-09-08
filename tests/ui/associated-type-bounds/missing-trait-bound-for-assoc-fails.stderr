@@ -8,9 +8,7 @@ error[E0220]: associated type `Item` not found for `M`
   --> $DIR/missing-trait-bound-for-assoc-fails.rs:4:8
    |
 LL |     M::Item: Temp,
-   |        ^^^^
-   |
-   = help: `M` has no associated type, try removing `Item`
+   |        ^^^^ associated type `Item` not found
 
 error: aborting due to 2 previous errors
 

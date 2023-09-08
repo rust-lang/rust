@@ -201,33 +201,27 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        // If we still couldn't find any associated type, just list them all.
+        // If we still couldn't find any associated type, and only one associated type exists,
+        // suggests using it.
 
-        if all_candidate_names.is_empty() {
-            err.help(format!(
-                "`{ty_param_name}` has no associated type, try removing `{assoc_name}`"
-            ));
-            return err.emit();
+        if all_candidate_names.len() == 1 {
+            // this should still compile, except on `#![feature(associated_type_defaults)]`
+            // where it could suggests `type A = Self::A`, thus recursing infinitely
+            let applicability = if self.tcx().features().associated_type_defaults {
+                Applicability::Unspecified
+            } else {
+                Applicability::MaybeIncorrect
+            };
+
+            err.span_suggestion(
+                assoc_name.span,
+                format!("`{ty_param_name}` has the following associated type"),
+                all_candidate_names.first().unwrap().to_string(),
+                applicability,
+            );
+        } else {
+            err.span_label(assoc_name.span, format!("associated type `{assoc_name}` not found"));
         }
-
-        let msg = if all_candidate_names.len() > 1 {
-            format!("`{ty_param_name}` has the following associated types")
-        } else {
-            format!("`{ty_param_name}` has the following associated type")
-        };
-
-        let applicability = if self.tcx().features().associated_type_defaults {
-            Applicability::Unspecified // `type A = Self::B` would suggest `type A = Self::A`
-        } else {
-            Applicability::MaybeIncorrect
-        };
-
-        err.span_suggestions(
-            assoc_name.span,
-            msg,
-            all_candidate_names.iter().map(|symbol| symbol.to_string()),
-            applicability,
-        );
 
         err.emit()
     }
