@@ -1367,16 +1367,10 @@ impl Clone for SourceFile {
             name: self.name.clone(),
             src: self.src.clone(),
             src_hash: self.src_hash,
-            external_src: {
-                let lock = self.external_src.read();
-                FreezeLock::with(lock.clone(), self.external_src.is_frozen())
-            },
+            external_src: self.external_src.clone(),
             start_pos: self.start_pos,
             source_len: self.source_len,
-            lines: {
-                let lock = self.lines.read();
-                FreezeLock::with(lock.clone(), self.lines.is_frozen())
-            },
+            lines: self.lines.clone(),
             multibyte_chars: self.multibyte_chars.clone(),
             non_narrow_chars: self.non_narrow_chars.clone(),
             normalized_pos: self.normalized_pos.clone(),

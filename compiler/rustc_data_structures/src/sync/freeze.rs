@@ -45,6 +45,16 @@ impl<T> FreezeLock<T> {
         }
     }
 
+    /// Clones the inner value along with the frozen state.
+    #[inline]
+    pub fn clone(&self) -> Self
+    where
+        T: Clone,
+    {
+        let lock = self.read();
+        Self::with(lock.clone(), self.is_frozen())
+    }
+
     #[inline]
     pub fn is_frozen(&self) -> bool {
         self.frozen.load(Ordering::Acquire)
