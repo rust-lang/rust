@@ -5,11 +5,14 @@ use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::num::NonZeroI32;
 use std::ptr::NonNull;
+use std::mem::ManuallyDrop;
 
 macro_rules! assert_abi_compatible {
     ($name:ident, $t1:ty, $t2:ty) => {
         mod $name {
             use super::*;
+            // Declaring a `type` doesn't even check well-formedness, so we also declare a function.
+            fn check_wf(_x: $t1, _y: $t2) {}
             // Test argument and return value, `Rust` and `C` ABIs.
             #[rustc_abi(assert_eq)]
             type TestRust = (fn($t1) -> $t1, fn($t2) -> $t2);
@@ -77,9 +80,9 @@ test_abi_compatible!(nonzero_int, NonZeroI32, i32);
 
 // `repr(transparent)` compatibility.
 #[repr(transparent)]
-struct Wrapper1<T>(T);
+struct Wrapper1<T: ?Sized>(T);
 #[repr(transparent)]
-struct Wrapper2<T>((), Zst, T);
+struct Wrapper2<T: ?Sized>((), Zst, T);
 #[repr(transparent)]
 struct Wrapper3<T>(T, [u8; 0], PhantomData<u64>);
 #[repr(transparent)]
