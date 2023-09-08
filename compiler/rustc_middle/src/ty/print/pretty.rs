@@ -1123,6 +1123,17 @@ pub trait PrettyPrinter<'tcx>:
             }
         }
 
+        if self.tcx().features().return_type_notation
+            && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) = self.tcx().opt_rpitit_info(def_id)
+            && let ty::Alias(_, alias_ty) = self.tcx().fn_sig(fn_def_id).skip_binder().output().skip_binder().kind()
+            && alias_ty.def_id == def_id
+        {
+            let num_args = self.tcx().generics_of(fn_def_id).count();
+            write!(self, " {{ ")?;
+            self = self.print_def_path(fn_def_id, &args[..num_args])?;
+            write!(self, "() }}")?;
+        }
+
         Ok(self)
     }
 
