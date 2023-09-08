@@ -253,8 +253,8 @@ export class Config {
         return this.get<boolean>("trace.extension");
     }
 
-    get discoverProjectCommand() {
-        return this.get<string[] | undefined>("discoverProjectCommand");
+    get discoverProjectRunner(): string | undefined {
+        return this.get<string | undefined>("discoverProjectRunner");
     }
 
     get problemMatcher(): string[] {
