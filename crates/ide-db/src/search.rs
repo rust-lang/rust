@@ -221,7 +221,6 @@ impl Definition {
         }
 
         // def is crate root
-        // FIXME: We don't do searches for crates currently, as a crate does not actually have a single name
         if let &Definition::Module(module) = self {
             if module.is_crate_root() {
                 return SearchScope::reverse_dependencies(db, module.krate());
@@ -393,7 +392,10 @@ impl<'a> FindUsages<'a> {
         let name = match self.def {
             // special case crate modules as these do not have a proper name
             Definition::Module(module) if module.is_crate_root() => {
-                // FIXME: This assumes the crate name is always equal to its display name when it really isn't
+                // FIXME: This assumes the crate name is always equal to its display name when it
+                // really isn't
+                // we should instead look at the dependency edge name and recursively search our way
+                // up the ancestors
                 module
                     .krate()
                     .display_name(self.sema.db)
