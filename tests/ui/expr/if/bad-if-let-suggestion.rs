@@ -6,7 +6,7 @@ fn a() {
     //~^ ERROR cannot find value `i` in this scope
     //~| ERROR `let` expressions in this position are unstable
     //~| ERROR mismatched types
-    //~| ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
 }
 
 fn b() {

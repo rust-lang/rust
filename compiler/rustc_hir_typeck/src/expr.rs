@@ -1203,7 +1203,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // otherwise check exactly as a let statement
         self.check_decl(let_expr.into());
         // but return a bool, for this is a boolean expression
-        self.tcx.types.bool
+        if let Some(error_guaranteed) = let_expr.is_recovered {
+            self.set_tainted_by_errors(error_guaranteed);
+            Ty::new_error(self.tcx, error_guaranteed)
+        } else {
+            self.tcx.types.bool
+        }
     }
 
     fn check_expr_loop(

@@ -10,7 +10,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;
-use crate::parser::TokenDescription;
+use crate::parser::{ForbiddenLetReason, TokenDescription};
 
 #[derive(Diagnostic)]
 #[diag(parse_maybe_report_ambiguous_plus)]
@@ -395,6 +395,8 @@ pub(crate) struct IfExpressionMissingCondition {
 pub(crate) struct ExpectedExpressionFoundLet {
     #[primary_span]
     pub span: Span,
+    #[subdiagnostic]
+    pub reason: ForbiddenLetReason,
 }
 
 #[derive(Diagnostic)]

@@ -1,10 +1,8 @@
-error: `let` expressions are not supported here
+error: expected expression, found `let` statement
   --> $DIR/bad-if-let-suggestion.rs:5:8
    |
 LL |     if let x = 1 && i = 2 {}
    |        ^^^^^^^^^
-   |
-   = note: only supported directly in conditions of `if` and `while` expressions
 
 error[E0425]: cannot find value `i` in this scope
   --> $DIR/bad-if-let-suggestion.rs:5:21
