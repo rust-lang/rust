@@ -75,6 +75,7 @@ impl Rewrite for ast::Local {
                 false,
             )?
         };
+        let let_kw_offset = result.len() - "let ".len();
 
         // 4 = "let ".len()
         let pat_shape = shape.offset_left(4)?;
@@ -127,8 +128,15 @@ impl Rewrite for ast::Local {
 
             if let Some(block) = else_block {
                 let else_kw_span = init.span.between(block.span);
+                // Strip attributes and comments to check if newline is needed before the else
+                // keyword from the initializer part. (#5901)
+                let init_str = if context.config.version() == Version::Two {
+                    &result[let_kw_offset..]
+                } else {
+                    result.as_str()
+                };
                 let force_newline_else = pat_str.contains('\n')
-                    || !same_line_else_kw_and_brace(&result, context, else_kw_span, nested_shape);
+                    || !same_line_else_kw_and_brace(init_str, context, else_kw_span, nested_shape);
                 let else_kw = rewrite_else_kw_with_comments(
                     force_newline_else,
                     true,
@@ -146,11 +154,16 @@ impl Rewrite for ast::Local {
                     std::cmp::min(shape.width, context.config.single_line_let_else_max_width());
 
                 // If available_space hits zero we know for sure this will be a multi-lined block
-                let available_space = max_width.saturating_sub(result.len());
+                let assign_str_with_else_kw = if context.config.version() == Version::Two {
+                    &result[let_kw_offset..]
+                } else {
+                    result.as_str()
+                };
+                let available_space = max_width.saturating_sub(assign_str_with_else_kw.len());
 
                 let allow_single_line = !force_newline_else
                     && available_space > 0
-                    && allow_single_line_let_else_block(&result, block);
+                    && allow_single_line_let_else_block(assign_str_with_else_kw, block);
 
                 let mut rw_else_block =
                     rewrite_let_else_block(block, allow_single_line, context, shape)?;
