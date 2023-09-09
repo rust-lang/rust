@@ -167,7 +167,7 @@ impl TcpStream {
     /// each of the addresses until a connection is successful. If none of
     /// the addresses result in a successful connection, the error returned from
     /// the last connection attempt (the last address) is returned.
-    #[unstable(feature = "tcpstream_connect_from", issue = "none")]
+    #[unstable(feature = "tcpstream_connect_from", issue = "115710")]
     pub fn connect_from<A: ToSocketAddrs>(from: &SocketAddr, addr: A) -> io::Result<TcpStream> {
         super::each_addr(addr, |addr| net_imp::TcpStream::connect_from(from, addr)).map(TcpStream)
     }
@@ -194,8 +194,12 @@ impl TcpStream {
     /// timeout must be applied to individual addresses.
     ///
     /// It is an error to pass a zero `Duration` to this function.
-    #[unstable(feature = "tcpstream_connect_from", issue = "none")]
-    pub fn connect_from_timeout(from: &SocketAddr, addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
+    #[unstable(feature = "tcpstream_connect_from", issue = "115710")]
+    pub fn connect_from_timeout(
+        from: &SocketAddr,
+        addr: &SocketAddr,
+        timeout: Duration
+    ) -> io::Result<TcpStream> {
         net_imp::TcpStream::connect_from_timeout(from, addr, timeout).map(TcpStream)
     }
 
