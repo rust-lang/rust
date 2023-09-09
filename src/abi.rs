@@ -113,7 +113,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             match self.ret.mode {
                 PassMode::Ignore => cx.type_void(),
                 PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_gcc_type(cx),
-                PassMode::Cast(ref cast, _) => cast.gcc_type(cx),
+                PassMode::Cast { ref cast, .. } => cast.gcc_type(cx),
                 PassMode::Indirect { .. } => {
                     argument_tys.push(cx.type_ptr_to(self.ret.memory_ty(cx)));
                     cx.type_void()
@@ -132,7 +132,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Indirect { meta_attrs: Some(_), .. } => {
                     unimplemented!();
                 }
-                PassMode::Cast(ref cast, pad_i32) => {
+                PassMode::Cast { ref cast, pad_i32 } => {
                     // add padding
                     if pad_i32 {
                         argument_tys.push(Reg::i32().gcc_type(cx));
