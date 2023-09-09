@@ -5,6 +5,8 @@ use std::ptr;
 #[derive(Copy, Clone, Default)]
 struct Zst;
 
+fn id<T>(x: T) -> T { x }
+
 fn test_abi_compat<T: Clone, U: Clone>(t: T, u: U) {
     fn id<T>(x: T) -> T {
         x
@@ -70,8 +72,11 @@ fn main() {
     test_abi_compat(&(), ptr::NonNull::<()>::dangling());
     // Reference/pointer types with different but sized pointees.
     test_abi_compat(&0u32, &([true; 4], [0u32; 0]));
+    // `fn` types
+    test_abi_compat(main as fn(), id::<i32> as fn(i32) -> i32);
     // Guaranteed null-pointer-optimizations.
     test_abi_compat(&0u32 as *const u32, Some(&0u32));
+    test_abi_compat(main as fn(), Some(main as fn()));
     test_abi_compat(42u32, num::NonZeroU32::new(1).unwrap());
     test_abi_compat(0u32, Some(num::NonZeroU32::new(1).unwrap()));
 

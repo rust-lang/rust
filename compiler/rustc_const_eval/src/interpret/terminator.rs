@@ -298,8 +298,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         // Check if the inner type is one of the NPO-guaranteed ones.
         Ok(match inner_ty.kind() {
-            ty::Ref(..) => {
-                // Option<&T> behaves like &T
+            ty::Ref(..) | ty::FnPtr(..) => {
+                // Option<&T> behaves like &T, and same for fn()
                 inner_ty
             }
             ty::Adt(def, _)
@@ -364,6 +364,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 meta
             };
             return Ok(meta_ty(left) == meta_ty(right));
+        }
+
+        // Compatible function pointer types.
+        if let (ty::FnPtr(..), ty::FnPtr(..)) = (caller_ty.kind(), callee_ty.kind()) {
+            return Ok(true);
         }
 
         // Compatible integer types (in particular, usize vs ptr-sized-u32/u64).
