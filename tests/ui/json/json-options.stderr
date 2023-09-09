@@ -1,1 +1,1 @@
-{"artifact":"$TEST_BUILD_DIR/json/json-options/libjson_options.rlib","emit":"link"}
+{"type":"artifact","artifact":"$TEST_BUILD_DIR/json/json-options/libjson_options.rlib","emit":"link"}

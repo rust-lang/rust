@@ -1,1 +1,1 @@
-{"artifact":"$TEST_BUILD_DIR/json/json-multiple/libjson_multiple.rlib","emit":"link"}
+{"type":"artifact","artifact":"$TEST_BUILD_DIR/json/json-multiple/libjson_multiple.rlib","emit":"link"}

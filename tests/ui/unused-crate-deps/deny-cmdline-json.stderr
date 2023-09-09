@@ -1,1 +1,1 @@
-{"lint_level":"deny","unused_extern_names":["bar"]}
+{"type":"unused_extern","lint_level":"deny","unused_extern_names":["bar"]}

@@ -145,6 +145,24 @@ impl JsonEmitter {
     pub fn ignored_directories_in_source_blocks(self, value: Vec<String>) -> Self {
         Self { ignored_directories_in_source_blocks: value, ..self }
     }
+
+    fn emit(&mut self, val: EmitTyped<'_>) -> io::Result<()> {
+        if self.pretty {
+            writeln!(self.dst, "{}", serde_json::to_string_pretty(&val).unwrap())
+        } else {
+            writeln!(self.dst, "{}", serde_json::to_string(&val).unwrap())
+        }
+        .and_then(|_| self.dst.flush())
+    }
+}
+
+#[derive(Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum EmitTyped<'a> {
+    Diagnostic(Diagnostic),
+    Artifact(ArtifactNotification<'a>),
+    FutureIncompat(FutureIncompatReport),
+    UnusedExtern(UnusedExterns<'a, 'a, 'a>),
 }
 
 impl Translate for JsonEmitter {
@@ -160,12 +178,7 @@ impl Translate for JsonEmitter {
 impl Emitter for JsonEmitter {
     fn emit_diagnostic(&mut self, diag: &crate::Diagnostic) {
         let data = Diagnostic::from_errors_diagnostic(diag, self);
-        let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&data).unwrap())
-        } else {
-            writeln!(&mut self.dst, "{}", serde_json::to_string(&data).unwrap())
-        }
-        .and_then(|_| self.dst.flush());
+        let result = self.emit(EmitTyped::Diagnostic(data));
         if let Err(e) = result {
             panic!("failed to print diagnostics: {e:?}");
         }
@@ -173,12 +186,7 @@ impl Emitter for JsonEmitter {
 
     fn emit_artifact_notification(&mut self, path: &Path, artifact_type: &str) {
         let data = ArtifactNotification { artifact: path, emit: artifact_type };
-        let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&data).unwrap())
-        } else {
-            writeln!(&mut self.dst, "{}", serde_json::to_string(&data).unwrap())
-        }
-        .and_then(|_| self.dst.flush());
+        let result = self.emit(EmitTyped::Artifact(data));
         if let Err(e) = result {
             panic!("failed to print notification: {e:?}");
         }
@@ -195,12 +203,7 @@ impl Emitter for JsonEmitter {
             })
             .collect();
         let report = FutureIncompatReport { future_incompat_report: data };
-        let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&report).unwrap())
-        } else {
-            writeln!(&mut self.dst, "{}", serde_json::to_string(&report).unwrap())
-        }
-        .and_then(|_| self.dst.flush());
+        let result = self.emit(EmitTyped::FutureIncompat(report));
         if let Err(e) = result {
             panic!("failed to print future breakage report: {e:?}");
         }
@@ -209,12 +212,7 @@ impl Emitter for JsonEmitter {
     fn emit_unused_externs(&mut self, lint_level: rustc_lint_defs::Level, unused_externs: &[&str]) {
         let lint_level = lint_level.as_str();
         let data = UnusedExterns { lint_level, unused_extern_names: unused_externs };
-        let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&data).unwrap())
-        } else {
-            writeln!(&mut self.dst, "{}", serde_json::to_string(&data).unwrap())
-        }
-        .and_then(|_| self.dst.flush());
+        let result = self.emit(EmitTyped::UnusedExtern(data));
         if let Err(e) = result {
             panic!("failed to print unused externs: {e:?}");
         }
