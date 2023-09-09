@@ -87,18 +87,21 @@
 //! atomic `load`s might be implemented using compare-exchange operations, even a `load` can fault
 //! on read-only memory.
 //!
-//! For the purpose of this section, "read-only memory" is defined as memory that is read-only in
+//! (For the purpose of this section, "read-only memory" is defined as memory that is read-only in
 //! the underlying target, i.e., the pages are mapped with a read-only flag and any attempt to write
 //! will cause a page fault. In particular, an `&u128` reference that points to memory that is
 //! read-write mapped is *not* considered to point to "read-only memory". In Rust, almost all memory
 //! is read-write; the only exceptions are memory created by `const` items or `static` items without
-//! interior mutability.
+//! interior mutability, and memory that was specifically marked as read-only by the operating
+//! system via platform-specific APIs.)
 //!
-//! However, as an exception from this general rule, Rust guarantees that "sufficiently small"
-//! atomic loads are implemented in a way that works on read-only memory. This threshold of
-//! "sufficiently small" depends on the architecture:
+//! However, as an exception from this general rule, "sufficiently small" atomic loads are
+//! implemented in a way that works on read-only memory. The exact threshold for what makes a load
+//! "sufficiently small" varies depending on the architecture and feature flags, but Rust guarantees
+//! that atomic loads that do not exceed the size documented in the following table are guaranteed
+//! to be read-only:
 //!
-//! | Target architecture | Maximal atomic `load` size that is guaranteed read-only |
+//! | Target architecture | Atomic loads no larger than this are guaranteed read-only |
 //! |---------------|---------|
 //! | `x86`         | 4 bytes |
 //! | `x86_64`      | 8 bytes |
@@ -106,10 +109,11 @@
 //! | `aarch64`     | 8 bytes |
 //! | `riscv32`     | 4 bytes |
 //! | `riscv64`     | 8 bytes |
-//! | `powerpc64le` | 8 bytes |
+//! | `powerpc64`   | 8 bytes |
 //!
-//! Any atomic `load` on read-only memory larger than the given size are Undefined Behavior. For
-//! architectures not listed above, all atomic `load` on read-only memory are Undefined Behavior.
+//! Atomics loads that are larger than this threshold (and *all* atomic loads on targets not listed
+//! in the table) might still be read-only under certain conditions, but that is not a stable
+//! guarantee and should not be relied upon.
 //!
 //! # Examples
 //!
