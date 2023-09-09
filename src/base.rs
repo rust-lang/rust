@@ -111,15 +111,13 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
         // TODO(antoyo): only set on x86 platforms.
         context.add_command_line_option("-masm=intel");
 
-        let features = ["64", "bmi", "sse2", "avx", "avx2", "sha", "fma", "fma4", "gfni", "f16c", "aes", "bmi2", "pclmul", "rtm",
+        let features = ["64", "avxvnni", "bmi", "sse2", "avx", "avx2", "sha", "fma", "fma4", "gfni", "f16c", "aes", "bmi2", "pclmul", "rtm",
             "vaes", "vpclmulqdq", "xsavec",
         ];
 
         for feature in &features {
             add_cpu_feature_flag(feature);
         }
-
-        //context.add_command_line_option("-mavxvnni"); // The CI doesn't support this option.
 
         for arg in &tcx.sess.opts.cg.llvm_args {
             context.add_command_line_option(arg);
