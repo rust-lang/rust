@@ -48,3 +48,6 @@ type TestAbiNeFloat = (fn(f32), fn(u32)); //~ ERROR: ABIs are not compatible
 // Sign matters on some targets (such as s390x), so let's make sure we never accept this.
 #[rustc_abi(assert_eq)]
 type TestAbiNeSign = (fn(i32), fn(u32)); //~ ERROR: ABIs are not compatible
+
+#[rustc_abi(assert_eq)]
+type TestAbiEqNonsense = (fn((str, str)), fn((str, str))); //~ ERROR: cannot be known at compilation time

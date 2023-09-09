@@ -7,6 +7,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_target::abi::call::FnAbi;
 
+use super::layout_test::ensure_wf;
 use crate::errors::{AbiInvalidAttribute, AbiNe, AbiOf, UnrecognizedField};
 
 pub fn test_abi(tcx: TyCtxt<'_>) {
@@ -131,6 +132,10 @@ fn test_abi_eq<'tcx>(abi1: &'tcx FnAbi<'tcx, Ty<'tcx>>, abi2: &'tcx FnAbi<'tcx, 
 fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: DefId, attr: &Attribute) {
     let param_env = tcx.param_env(item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
+    let span = tcx.def_span(item_def_id);
+    if !ensure_wf(tcx, param_env, ty, span) {
+        return;
+    }
     let meta_items = attr.meta_item_list().unwrap_or_default();
     for meta_item in meta_items {
         match meta_item.name_or_empty() {
@@ -148,11 +153,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: DefId, attr: &Attribute) {
                 );
 
                 let fn_name = tcx.item_name(item_def_id);
-                tcx.sess.emit_err(AbiOf {
-                    span: tcx.def_span(item_def_id),
-                    fn_name,
-                    fn_abi: format!("{:#?}", abi),
-                });
+                tcx.sess.emit_err(AbiOf { span, fn_name, fn_abi: format!("{:#?}", abi) });
             }
             sym::assert_eq => {
                 let ty::Tuple(fields) = ty.kind() else {
@@ -196,7 +197,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: DefId, attr: &Attribute) {
 
                 if !test_abi_eq(abi1, abi2) {
                     tcx.sess.emit_err(AbiNe {
-                        span: tcx.def_span(item_def_id),
+                        span,
                         left: format!("{:#?}", abi1),
                         right: format!("{:#?}", abi2),
                     });
