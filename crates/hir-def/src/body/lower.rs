@@ -446,7 +446,6 @@ impl ExprCollector<'_> {
                                 None => self.missing_expr(),
                             };
                             let src = self.expander.to_source(AstPtr::new(&field));
-                            self.source_map.field_map.insert(src.clone(), expr);
                             self.source_map.field_map_back.insert(expr, src);
                             Some(RecordLitField { name, expr })
                         })
@@ -1330,23 +1329,21 @@ impl ExprCollector<'_> {
             ast::Pat::RecordPat(p) => {
                 let path =
                     p.path().and_then(|path| self.expander.parse_path(self.db, path)).map(Box::new);
-                let args = p
-                    .record_pat_field_list()
-                    .expect("every struct should have a field list")
+                let record_pat_field_list =
+                    &p.record_pat_field_list().expect("every struct should have a field list");
+                let args = record_pat_field_list
                     .fields()
                     .filter_map(|f| {
                         let ast_pat = f.pat()?;
                         let pat = self.collect_pat(ast_pat, binding_list);
                         let name = f.field_name()?.as_name();
+                        let src = self.expander.to_source(AstPtr::new(&f));
+                        self.source_map.pat_field_map_back.insert(pat, src);
                         Some(RecordFieldPat { name, pat })
                     })
                     .collect();
 
-                let ellipsis = p
-                    .record_pat_field_list()
-                    .expect("every struct should have a field list")
-                    .rest_pat()
-                    .is_some();
+                let ellipsis = record_pat_field_list.rest_pat().is_some();
 
                 Pat::Record { path, args, ellipsis }
             }

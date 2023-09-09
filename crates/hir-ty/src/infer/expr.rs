@@ -527,7 +527,7 @@ impl InferenceContext<'_> {
                     self.write_variant_resolution(tgt_expr.into(), variant);
                 }
                 match def_id {
-                    Some(_) if fields.is_empty() => {}
+                    _ if fields.is_empty() => {}
                     Some(def) => {
                         let field_types = self.db.field_types(def);
                         let variant_data = def.variant_data(self.db.upcast());
@@ -542,16 +542,16 @@ impl InferenceContext<'_> {
                                         ) {
                                             self.push_diagnostic(
                                                 InferenceDiagnostic::NoSuchField {
-                                                    expr: field.expr,
+                                                    field: field.expr.into(),
                                                     private: true,
                                                 },
                                             );
                                         }
-                                        Some(FieldId { parent: def, local_id })
+                                        Some(local_id)
                                     }
                                     None => {
                                         self.push_diagnostic(InferenceDiagnostic::NoSuchField {
-                                            expr: field.expr,
+                                            field: field.expr.into(),
                                             private: false,
                                         });
                                         None
@@ -559,7 +559,7 @@ impl InferenceContext<'_> {
                                 }
                             };
                             let field_ty = field_def.map_or(self.err_ty(), |it| {
-                                field_types[it.local_id].clone().substitute(Interner, &substs)
+                                field_types[it].clone().substitute(Interner, &substs)
                             });
 
                             // Field type might have some unknown types
@@ -1154,7 +1154,7 @@ impl InferenceContext<'_> {
             Expr::Underscore => rhs_ty.clone(),
             _ => {
                 // `lhs` is a place expression, a unit struct, or an enum variant.
-                let lhs_ty = self.infer_expr(lhs, &Expectation::none());
+                let lhs_ty = self.infer_expr_inner(lhs, &Expectation::none());
 
                 // This is the only branch where this function may coerce any type.
                 // We are returning early to avoid the unifiability check below.

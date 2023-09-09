@@ -166,8 +166,8 @@ impl<V, T> ProjectionElem<V, T> {
                 TyKind::Adt(_, subst) => {
                     db.field_types(f.parent)[f.local_id].clone().substitute(Interner, subst)
                 }
-                _ => {
-                    never!("Only adt has field");
+                ty => {
+                    never!("Only adt has field, found {:?}", ty);
                     return TyKind::Error.intern(Interner);
                 }
             },

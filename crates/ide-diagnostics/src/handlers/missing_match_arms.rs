@@ -849,6 +849,7 @@ fn main() {
 struct Foo { }
 fn main(f: Foo) {
     match f { Foo { bar } => () }
+                 // ^^^ error: no such field
 }
 "#,
         );

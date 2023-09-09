@@ -1503,11 +1503,19 @@ impl DefWithBody {
         let infer = db.infer(self.into());
         let source_map = Lazy::new(|| db.body_with_source_map(self.into()).1);
         let expr_syntax = |expr| source_map.expr_syntax(expr).expect("unexpected synthetic");
+        let pat_syntax = |pat| source_map.pat_syntax(pat).expect("unexpected synthetic");
         for d in &infer.diagnostics {
             match d {
-                &hir_ty::InferenceDiagnostic::NoSuchField { expr, private } => {
-                    let field = source_map.field_syntax(expr);
-                    acc.push(NoSuchField { field, private }.into())
+                &hir_ty::InferenceDiagnostic::NoSuchField { field: expr, private } => {
+                    let expr_or_pat = match expr {
+                        ExprOrPatId::ExprId(expr) => {
+                            source_map.field_syntax(expr).map(Either::Left)
+                        }
+                        ExprOrPatId::PatId(pat) => {
+                            source_map.pat_field_syntax(pat).map(Either::Right)
+                        }
+                    };
+                    acc.push(NoSuchField { field: expr_or_pat, private }.into())
                 }
                 &hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
                     acc.push(
@@ -1523,10 +1531,7 @@ impl DefWithBody {
                 &hir_ty::InferenceDiagnostic::PrivateAssocItem { id, item } => {
                     let expr_or_pat = match id {
                         ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(Either::Left),
-                        ExprOrPatId::PatId(pat) => source_map
-                            .pat_syntax(pat)
-                            .expect("unexpected synthetic")
-                            .map(Either::Right),
+                        ExprOrPatId::PatId(pat) => pat_syntax(pat).map(Either::Right),
                     };
                     let item = item.into();
                     acc.push(PrivateAssocItem { expr_or_pat, item }.into())
