@@ -71,7 +71,7 @@ the standard library and functions that are included in the results list:
 | [`option -> default`][] | `Option::unwrap_or_default` |
 | [`stdout, [u8]`][stdoutu8] | `Stdout::write` |
 | [`any -> !`][] | `panic::panic_any` |
-| [`vec::intoiter<T> -> [T]`][iterasslice] | `IntoIter::as_slice` |
+| [`vec::intoiter<T> -> [T]`][iterasslice] | `IntoIter::as_slice` and `IntoIter::next_chunk` |
 
 [`usize -> vec`]: ../../std/vec/struct.Vec.html?search=usize%20-%3E%20vec&filter-crate=std
 [`vec, vec -> bool`]: ../../std/vec/struct.Vec.html?search=vec,%20vec%20-%3E%20bool&filter-crate=std
