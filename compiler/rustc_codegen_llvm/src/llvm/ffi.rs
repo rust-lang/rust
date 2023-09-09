@@ -2133,6 +2133,7 @@ extern "C" {
         RelaxELFRelocations: bool,
         UseInitArray: bool,
         SplitDwarfFile: *const c_char,
+        OutputObjFile: *const c_char,
         DebugInfoCompression: *const c_char,
         ForceEmulatedTls: bool,
         ArgsCstrBuff: *const c_char,
