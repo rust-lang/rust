@@ -16,7 +16,7 @@ use rustc_mir_dataflow::value_analysis::{
 };
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, Results, ResultsVisitor};
 use rustc_span::def_id::DefId;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, FieldIdx, VariantIdx};
 
 use crate::MirPass;
@@ -690,11 +690,6 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
     const PANIC_ON_ALLOC_FAIL: bool = true;
 
     #[inline(always)]
-    fn cur_span(_ecx: &InterpCx<'mir, 'tcx, Self>) -> Span {
-        DUMMY_SP
-    }
-
-    #[inline(always)]
     fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
         // We do not check for alignment to avoid having to carry an `Align`
         // in `ConstValue::ByRef`.
@@ -802,7 +797,8 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         _ecx: &'a InterpCx<'mir, 'tcx, Self>,
     ) -> &'a [rustc_const_eval::interpret::Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>]
     {
-        unimplemented!()
+        // Return an empty stack instead of panicking, as `cur_span` uses it to evaluate constants.
+        &[]
     }
 
     fn stack_mut<'a>(
