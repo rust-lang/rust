@@ -405,10 +405,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).ok(),
                 TrackElem::Discriminant => {
                     let variant = self.ecx.read_discriminant(op).ok()?;
-                    let scalar = self.ecx.discriminant_for_variant(op.layout, variant).ok()?;
-                    let discr_ty = op.layout.ty.discriminant_ty(self.tcx);
-                    let layout = self.tcx.layout_of(self.param_env.and(discr_ty)).ok()?;
-                    Some(ImmTy::from_scalar(scalar, layout).into())
+                    let discr_value = self.ecx.discriminant_for_variant(op.layout, variant).ok()?;
+                    Some(discr_value.into())
                 }
                 TrackElem::DerefLen => {
                     let op: OpTy<'_> = self.ecx.deref_pointer(op).ok()?.into();
@@ -505,10 +503,9 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         if !enum_ty.is_enum() {
             return None;
         }
-        let discr = enum_ty.discriminant_for_variant(self.tcx, variant_index)?;
-        let discr_layout = self.tcx.layout_of(self.param_env.and(discr.ty)).ok()?;
-        let discr_value = Scalar::try_from_uint(discr.val, discr_layout.size)?;
-        Some(discr_value)
+        let enum_ty_layout = self.tcx.layout_of(self.param_env.and(enum_ty)).ok()?;
+        let discr_value = self.ecx.discriminant_for_variant(enum_ty_layout, variant_index).ok()?;
+        Some(discr_value.to_scalar())
     }
 
     fn wrap_immediate(&self, imm: Immediate) -> FlatSet<Scalar> {

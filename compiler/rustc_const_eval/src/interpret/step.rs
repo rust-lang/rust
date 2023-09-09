@@ -301,7 +301,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let op = self.eval_place_to_op(place, None)?;
                 let variant = self.read_discriminant(&op)?;
                 let discr = self.discriminant_for_variant(op.layout, variant)?;
-                self.write_scalar(discr, &dest)?;
+                self.write_immediate(*discr, &dest)?;
             }
         }
 
