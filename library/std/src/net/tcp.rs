@@ -198,7 +198,7 @@ impl TcpStream {
     pub fn connect_from_timeout(
         from: &SocketAddr,
         addr: &SocketAddr,
-        timeout: Duration
+        timeout: Duration,
     ) -> io::Result<TcpStream> {
         net_imp::TcpStream::connect_from_timeout(from, addr, timeout).map(TcpStream)
     }
