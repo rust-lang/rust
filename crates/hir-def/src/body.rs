@@ -166,9 +166,10 @@ impl Body {
         };
         let module = def.module(db);
         let expander = Expander::new(db, file_id, module);
-        let (mut body, source_map) =
+        let (mut body, mut source_map) =
             Body::new(db, def, expander, params, body, module.krate, is_async_fn);
         body.shrink_to_fit();
+        source_map.shrink_to_fit();
 
         (Arc::new(body), Arc::new(source_map))
     }
@@ -389,5 +390,30 @@ impl BodySourceMap {
     /// Get a reference to the body source map's diagnostics.
     pub fn diagnostics(&self) -> &[BodyDiagnostic] {
         &self.diagnostics
+    }
+
+    fn shrink_to_fit(&mut self) {
+        let Self {
+            expr_map,
+            expr_map_back,
+            pat_map,
+            pat_map_back,
+            label_map,
+            label_map_back,
+            field_map_back,
+            pat_field_map_back,
+            expansions,
+            diagnostics,
+        } = self;
+        expr_map.shrink_to_fit();
+        expr_map_back.shrink_to_fit();
+        pat_map.shrink_to_fit();
+        pat_map_back.shrink_to_fit();
+        label_map.shrink_to_fit();
+        label_map_back.shrink_to_fit();
+        field_map_back.shrink_to_fit();
+        pat_field_map_back.shrink_to_fit();
+        expansions.shrink_to_fit();
+        diagnostics.shrink_to_fit();
     }
 }
