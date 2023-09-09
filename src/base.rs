@@ -103,9 +103,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
             .collect();
 
         let add_cpu_feature_flag = |feature: &str| {
-            // FIXME(antoyo): some tests cause a segfault in GCC when not enabling all these
-            // features.
-            if (true || target_info.cpu_supports(feature)) && !disabled_features.contains(feature) {
+            if target_info.cpu_supports(feature) && !disabled_features.contains(feature) {
                 context.add_command_line_option(&format!("-m{}", feature));
             }
         };
@@ -113,7 +111,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
         // TODO(antoyo): only set on x86 platforms.
         context.add_command_line_option("-masm=intel");
 
-        let features = ["sse2", "avx", "avx2", "sha", "fma", "gfni", "f16c", "aes", "bmi2", "rtm",
+        let features = ["64", "bmi", "sse2", "avx", "avx2", "sha", "fma", "fma4", "gfni", "f16c", "aes", "bmi2", "pclmul", "rtm",
             "vaes", "vpclmulqdq", "xsavec",
         ];
 
@@ -121,11 +119,6 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
             add_cpu_feature_flag(feature);
         }
 
-        // TODO(antoyo): only add the following cli arguments if the feature is supported.
-        context.add_command_line_option("-mpclmul");
-        context.add_command_line_option("-mfma4");
-        context.add_command_line_option("-m64");
-        context.add_command_line_option("-mbmi");
         //context.add_command_line_option("-mavxvnni"); // The CI doesn't support this option.
 
         for arg in &tcx.sess.opts.cg.llvm_args {

@@ -313,7 +313,7 @@ pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
 
         // Get the second TargetInfo with the correct CPU features by setting the arch.
         let context = Context::default();
-        context.add_driver_option(&format!("-march={}", arch.to_str().unwrap()));
+        context.add_command_line_option(&format!("-march={}", arch.to_str().unwrap()));
         Arc::new(context.get_target_info())
     };
     #[cfg(not(feature="master"))]
