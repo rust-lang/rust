@@ -6,6 +6,7 @@ use std::{
     intrinsics::likely,
     marker::PhantomData,
     ops::{Deref, DerefMut},
+    ptr::NonNull,
     sync::atomic::Ordering,
 };
 
@@ -79,7 +80,7 @@ impl<T> FreezeLock<T> {
             } else {
                 Some(self.lock.read())
             },
-            lock: self,
+            data: unsafe { NonNull::new_unchecked(self.data.get()) },
         }
     }
 
@@ -101,7 +102,12 @@ impl<T> FreezeLock<T> {
         if self.frozen.load(Ordering::Relaxed) {
             None
         } else {
-            Some(FreezeWriteGuard { _lock_guard, lock: self, marker: PhantomData })
+            Some(FreezeWriteGuard {
+                _lock_guard,
+                data: unsafe { NonNull::new_unchecked(self.data.get()) },
+                frozen: &self.frozen,
+                marker: PhantomData,
+            })
         }
     }
 
@@ -120,52 +126,75 @@ impl<T> FreezeLock<T> {
 
 /// A guard holding shared access to a `FreezeLock` which is in a locked state or frozen.
 #[must_use = "if unused the FreezeLock may immediately unlock"]
-pub struct FreezeReadGuard<'a, T> {
+pub struct FreezeReadGuard<'a, T: ?Sized> {
     _lock_guard: Option<ReadGuard<'a, ()>>,
-    lock: &'a FreezeLock<T>,
+    data: NonNull<T>,
 }
 
-impl<'a, T: 'a> Deref for FreezeReadGuard<'a, T> {
+impl<'a, T: ?Sized + 'a> Deref for FreezeReadGuard<'a, T> {
     type Target = T;
     #[inline]
     fn deref(&self) -> &T {
-        // SAFETY: If `lock` is not frozen, `_lock_guard` holds the lock to the `UnsafeCell` so
-        // this has shared access until the `FreezeReadGuard` is dropped. If `lock` is frozen,
+        // SAFETY: If the lock is not frozen, `_lock_guard` holds the lock to the `UnsafeCell` so
+        // this has shared access until the `FreezeReadGuard` is dropped. If the lock is frozen,
         // the data cannot be modified and shared access is sound.
-        unsafe { &*self.lock.data.get() }
+        unsafe { &*self.data.as_ptr() }
+    }
+}
+
+impl<'a, T: ?Sized> FreezeReadGuard<'a, T> {
+    #[inline]
+    pub fn map<U: ?Sized>(this: Self, f: impl FnOnce(&T) -> &U) -> FreezeReadGuard<'a, U> {
+        FreezeReadGuard { data: NonNull::from(f(&*this)), _lock_guard: this._lock_guard }
     }
 }
 
 /// A guard holding mutable access to a `FreezeLock` which is in a locked state or frozen.
 #[must_use = "if unused the FreezeLock may immediately unlock"]
-pub struct FreezeWriteGuard<'a, T> {
+pub struct FreezeWriteGuard<'a, T: ?Sized> {
     _lock_guard: WriteGuard<'a, ()>,
-    lock: &'a FreezeLock<T>,
+    frozen: &'a AtomicBool,
+    data: NonNull<T>,
     marker: PhantomData<&'a mut T>,
 }
 
 impl<'a, T> FreezeWriteGuard<'a, T> {
     pub fn freeze(self) -> &'a T {
-        self.lock.frozen.store(true, Ordering::Release);
+        self.frozen.store(true, Ordering::Release);
 
         // SAFETY: This is frozen so the data cannot be modified and shared access is sound.
-        unsafe { &*self.lock.data.get() }
+        unsafe { &*self.data.as_ptr() }
     }
 }
 
-impl<'a, T: 'a> Deref for FreezeWriteGuard<'a, T> {
+impl<'a, T: ?Sized> FreezeWriteGuard<'a, T> {
+    #[inline]
+    pub fn map<U: ?Sized>(
+        mut this: Self,
+        f: impl FnOnce(&mut T) -> &mut U,
+    ) -> FreezeWriteGuard<'a, U> {
+        FreezeWriteGuard {
+            data: NonNull::from(f(&mut *this)),
+            _lock_guard: this._lock_guard,
+            frozen: this.frozen,
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<'a, T: ?Sized + 'a> Deref for FreezeWriteGuard<'a, T> {
     type Target = T;
     #[inline]
     fn deref(&self) -> &T {
         // SAFETY: `self._lock_guard` holds the lock to the `UnsafeCell` so this has shared access.
-        unsafe { &*self.lock.data.get() }
+        unsafe { &*self.data.as_ptr() }
     }
 }
 
-impl<'a, T: 'a> DerefMut for FreezeWriteGuard<'a, T> {
+impl<'a, T: ?Sized + 'a> DerefMut for FreezeWriteGuard<'a, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
         // SAFETY: `self._lock_guard` holds the lock to the `UnsafeCell` so this has mutable access.
-        unsafe { &mut *self.lock.data.get() }
+        unsafe { &mut *self.data.as_ptr() }
     }
 }
