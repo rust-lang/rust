@@ -11,7 +11,7 @@ use rustc_middle::{
     },
 };
 use rustc_span::sym;
-use rustc_target::abi::FieldIdx;
+use rustc_target::abi::{self, FieldIdx};
 use rustc_target::abi::{
     call::{ArgAbi, FnAbi, PassMode},
     Integer,
@@ -289,39 +289,40 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Unwrap types that are guaranteed a null-pointer-optimization
-    fn unfold_npo(&self, ty: Ty<'tcx>) -> InterpResult<'tcx, Ty<'tcx>> {
+    fn unfold_npo(&self, layout: TyAndLayout<'tcx>) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         // Check if this is `Option` wrapping some type.
-        let inner = match ty.kind() {
+        let inner = match layout.ty.kind() {
             ty::Adt(def, args) if self.tcx.is_diagnostic_item(sym::Option, def.did()) => {
                 args[0].as_type().unwrap()
             }
             _ => {
                 // Not an `Option`.
-                return Ok(ty);
+                return Ok(layout);
             }
         };
+        let inner = self.layout_of(inner)?;
         // Check if the inner type is one of the NPO-guaranteed ones.
         // For that we first unpeel transparent *structs* (but not unions).
         let is_npo = |def: AdtDef<'tcx>| {
             self.tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed)
         };
-        let inner = self.unfold_transparent(self.layout_of(inner)?, /* may_unfold */ |def| {
+        let inner = self.unfold_transparent(inner, /* may_unfold */ |def| {
             // Stop at NPO tpyes so that we don't miss that attribute in the check below!
             def.is_struct() && !is_npo(def)
         });
         Ok(match inner.ty.kind() {
             ty::Ref(..) | ty::FnPtr(..) => {
                 // Option<&T> behaves like &T, and same for fn()
-                inner.ty
+                inner
             }
             ty::Adt(def, _) if is_npo(*def) => {
                 // Once we found a `nonnull_optimization_guaranteed` type, further strip off
                 // newtype structs from it to find the underlying ABI type.
-                self.unfold_transparent(inner, /* may_unfold */ |def| def.is_struct()).ty
+                self.unfold_transparent(inner, /* may_unfold */ |def| def.is_struct())
             }
             _ => {
                 // Everything else we do not unfold.
-                ty
+                layout
             }
         })
     }
@@ -331,28 +332,44 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// that only checking the `PassMode` is insufficient.)
     fn layout_compat(
         &self,
-        caller_layout: TyAndLayout<'tcx>,
-        callee_layout: TyAndLayout<'tcx>,
+        caller: TyAndLayout<'tcx>,
+        callee: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, bool> {
         // Fast path: equal types are definitely compatible.
-        if caller_layout.ty == callee_layout.ty {
+        if caller.ty == callee.ty {
             return Ok(true);
         }
         // 1-ZST are compatible with all 1-ZST (and with nothing else).
-        if caller_layout.is_1zst() || callee_layout.is_1zst() {
-            return Ok(caller_layout.is_1zst() && callee_layout.is_1zst());
+        if caller.is_1zst() || callee.is_1zst() {
+            return Ok(caller.is_1zst() && callee.is_1zst());
         }
         // Unfold newtypes and NPO optimizations.
-        let caller_ty =
-            self.unfold_npo(self.unfold_transparent(caller_layout, /* may_unfold */ |_| true).ty)?;
-        let callee_ty =
-            self.unfold_npo(self.unfold_transparent(callee_layout, /* may_unfold */ |_| true).ty)?;
+        let unfold = |layout: TyAndLayout<'tcx>| {
+            self.unfold_npo(self.unfold_transparent(layout, /* may_unfold */ |_def| true))
+        };
+        let caller = unfold(caller)?;
+        let callee = unfold(callee)?;
         // Now see if these inner types are compatible.
 
-        // Compatible pointer types.
-        let pointee_ty = |ty: Ty<'tcx>| {
+        // Compatible pointer types. For thin pointers, we have to accept even non-`repr(transparent)`
+        // things as compatible due to `DispatchFromDyn`. For instance, `Rc<i32>` and `*mut i32`
+        // must be compatible. So we just accept everything with Pointer ABI as compatible,
+        // even if this will accept some code that is not stably guaranteed to work.
+        // This also handles function pointers.
+        let thin_pointer = |layout: TyAndLayout<'tcx>| match layout.abi {
+            abi::Abi::Scalar(s) => match s.primitive() {
+                abi::Primitive::Pointer(addr_space) => Some(addr_space),
+                _ => None,
+            },
+            _ => None,
+        };
+        if let (Some(caller), Some(callee)) = (thin_pointer(caller), thin_pointer(callee)) {
+            return Ok(caller == callee);
+        }
+        // For wide pointers we have to get the pointee type.
+        let pointee_ty = |ty: Ty<'tcx>| -> InterpResult<'tcx, Option<Ty<'tcx>>> {
             // We cannot use `builtin_deref` here since we need to reject `Box<T, MyAlloc>`.
-            Some(match ty.kind() {
+            Ok(Some(match ty.kind() {
                 ty::Ref(_, ty, _) => *ty,
                 ty::RawPtr(mt) => mt.ty,
                 // We should only accept `Box` with the default allocator.
@@ -363,10 +380,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 {
                     args[0].expect_ty()
                 }
-                _ => return None,
-            })
+                _ => return Ok(None),
+            }))
         };
-        if let (Some(left), Some(right)) = (pointee_ty(caller_ty), pointee_ty(callee_ty)) {
+        if let (Some(caller), Some(callee)) = (pointee_ty(caller.ty)?, pointee_ty(callee.ty)?) {
             // This is okay if they have the same metadata type.
             let meta_ty = |ty: Ty<'tcx>| {
                 let (meta, only_if_sized) = ty.ptr_metadata_ty(*self.tcx, |ty| ty);
@@ -376,12 +393,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 );
                 meta
             };
-            return Ok(meta_ty(left) == meta_ty(right));
-        }
-
-        // Compatible function pointer types.
-        if let (ty::FnPtr(..), ty::FnPtr(..)) = (caller_ty.kind(), callee_ty.kind()) {
-            return Ok(true);
+            return Ok(meta_ty(caller) == meta_ty(callee));
         }
 
         // Compatible integer types (in particular, usize vs ptr-sized-u32/u64).
@@ -392,14 +404,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 _ => return None,
             })
         };
-        if let (Some(left), Some(right)) = (int_ty(caller_ty), int_ty(callee_ty)) {
+        if let (Some(caller), Some(callee)) = (int_ty(caller.ty), int_ty(callee.ty)) {
             // This is okay if they are the same integer type.
-            return Ok(left == right);
+            return Ok(caller == callee);
         }
 
         // Fall back to exact equality.
         // FIXME: We are missing the rules for "repr(C) wrapping compatible types".
-        Ok(caller_ty == callee_ty)
+        Ok(caller == callee)
     }
 
     fn check_argument_compat(
