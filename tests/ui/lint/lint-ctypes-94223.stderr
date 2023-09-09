@@ -66,8 +66,17 @@ LL | type Foo = extern "C" fn([u8]);
    = help: consider using a raw pointer instead
    = note: slices have no C equivalent
 
+error: `extern` fn uses type `Option<&<T as FooTrait>::FooType>`, which is not FFI-safe
+  --> $DIR/lint-ctypes-94223.rs:31:20
+   |
+LL | pub type Foo2<T> = extern "C" fn(Option<&<T as FooTrait>::FooType>);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
 error: `extern` fn uses type `FfiUnsafe`, which is not FFI-safe
-  --> $DIR/lint-ctypes-94223.rs:34:17
+  --> $DIR/lint-ctypes-94223.rs:41:17
    |
 LL | pub static BAD: extern "C" fn(FfiUnsafe) = f;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -75,13 +84,13 @@ LL | pub static BAD: extern "C" fn(FfiUnsafe) = f;
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
-  --> $DIR/lint-ctypes-94223.rs:27:1
+  --> $DIR/lint-ctypes-94223.rs:34:1
    |
 LL | pub struct FfiUnsafe;
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: `extern` fn uses type `FfiUnsafe`, which is not FFI-safe
-  --> $DIR/lint-ctypes-94223.rs:37:30
+  --> $DIR/lint-ctypes-94223.rs:44:30
    |
 LL | pub static BAD_TWICE: Result<extern "C" fn(FfiUnsafe), extern "C" fn(FfiUnsafe)> = Ok(f);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -89,13 +98,13 @@ LL | pub static BAD_TWICE: Result<extern "C" fn(FfiUnsafe), extern "C" fn(FfiUns
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
-  --> $DIR/lint-ctypes-94223.rs:27:1
+  --> $DIR/lint-ctypes-94223.rs:34:1
    |
 LL | pub struct FfiUnsafe;
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: `extern` fn uses type `FfiUnsafe`, which is not FFI-safe
-  --> $DIR/lint-ctypes-94223.rs:37:56
+  --> $DIR/lint-ctypes-94223.rs:44:56
    |
 LL | pub static BAD_TWICE: Result<extern "C" fn(FfiUnsafe), extern "C" fn(FfiUnsafe)> = Ok(f);
    |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -103,13 +112,13 @@ LL | pub static BAD_TWICE: Result<extern "C" fn(FfiUnsafe), extern "C" fn(FfiUns
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
-  --> $DIR/lint-ctypes-94223.rs:27:1
+  --> $DIR/lint-ctypes-94223.rs:34:1
    |
 LL | pub struct FfiUnsafe;
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: `extern` fn uses type `FfiUnsafe`, which is not FFI-safe
-  --> $DIR/lint-ctypes-94223.rs:41:22
+  --> $DIR/lint-ctypes-94223.rs:48:22
    |
 LL | pub const BAD_CONST: extern "C" fn(FfiUnsafe) = f;
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -117,10 +126,10 @@ LL | pub const BAD_CONST: extern "C" fn(FfiUnsafe) = f;
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
-  --> $DIR/lint-ctypes-94223.rs:27:1
+  --> $DIR/lint-ctypes-94223.rs:34:1
    |
 LL | pub struct FfiUnsafe;
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 
