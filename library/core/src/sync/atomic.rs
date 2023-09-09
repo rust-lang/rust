@@ -346,9 +346,17 @@ impl AtomicBool {
     ///
     /// # Safety
     ///
-    /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that on some platforms this can be bigger than `align_of::<bool>()`).
+    /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that on some platforms this can
+    ///   be bigger than `align_of::<bool>()`).
     /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
-    /// * The value behind `ptr` must not be accessed through non-atomic operations for the whole lifetime `'a`.
+    /// * Non-atomic accesses to the value behind `ptr` must have a happens-before relationship
+    ///   with atomic accesses via the returned value (or vice-versa).
+    ///   * In other words, time periods where the value is accessed atomically may not overlap
+    ///     with periods where the value is accessed non-atomically.
+    ///   * This requirement is trivially satisfied if `ptr` is never used non-atomically for the
+    ///     duration of lifetime `'a`. Most use cases should be able to follow this guideline.
+    ///   * This requirement is also trivially satisfied if all accesses (atomic or not) are done
+    ///     from the same thread.
     ///
     /// [valid]: crate::ptr#safety
     #[unstable(feature = "atomic_from_ptr", issue = "108652")]
@@ -1140,9 +1148,19 @@ impl<T> AtomicPtr<T> {
     ///
     /// # Safety
     ///
-    /// * `ptr` must be aligned to `align_of::<AtomicPtr<T>>()` (note that on some platforms this can be bigger than `align_of::<*mut T>()`).
+    /// * `ptr` must be aligned to `align_of::<AtomicPtr<T>>()` (note that on some platforms this
+    ///   can be bigger than `align_of::<*mut T>()`).
     /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
-    /// * The value behind `ptr` must not be accessed through non-atomic operations for the whole lifetime `'a`.
+    /// * Non-atomic accesses to the value behind `ptr` must have a happens-before relationship
+    ///   with atomic accesses via the returned value (or vice-versa).
+    ///   * In other words, time periods where the value is accessed atomically may not overlap
+    ///     with periods where the value is accessed non-atomically.
+    ///   * This requirement is trivially satisfied if `ptr` is never used non-atomically for the
+    ///     duration of lifetime `'a`. Most use cases should be able to follow this guideline.
+    ///   * This requirement is also trivially satisfied if all accesses (atomic or not) are done
+    ///     from the same thread.
+    /// * This method should not be used to create overlapping or mixed-size atomic accesses, as
+    ///   these are not supported by the memory model.
     ///
     /// [valid]: crate::ptr#safety
     #[unstable(feature = "atomic_from_ptr", issue = "108652")]
@@ -2111,10 +2129,21 @@ macro_rules! atomic_int {
             ///
             /// # Safety
             ///
-            /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that on some platforms this can be bigger than `align_of::<bool>()`).
-            #[doc = concat!(" * `ptr` must be aligned to `align_of::<", stringify!($atomic_type), ">()` (note that on some platforms this can be bigger than `align_of::<", stringify!($int_type), ">()`).")]
+            #[doc = concat!(" * `ptr` must be aligned to \
+                `align_of::<", stringify!($atomic_type), ">()` (note that on some platforms this \
+                can be bigger than `align_of::<", stringify!($int_type), ">()`).")]
             /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
-            /// * The value behind `ptr` must not be accessed through non-atomic operations for the whole lifetime `'a`.
+            /// * Non-atomic accesses to the value behind `ptr` must have a happens-before
+            ///   relationship with atomic accesses via the returned value (or vice-versa).
+            ///   * In other words, time periods where the value is accessed atomically may not
+            ///     overlap with periods where the value is accessed non-atomically.
+            ///   * This requirement is trivially satisfied if `ptr` is never used non-atomically
+            ///     for the duration of lifetime `'a`. Most use cases should be able to follow
+            ///     this guideline.
+            ///   * This requirement is also trivially satisfied if all accesses (atomic or not) are
+            ///     done from the same thread.
+            /// * This method should not be used to create overlapping or mixed-size atomic
+            ///   accesses, as these are not supported by the memory model.
             ///
             /// [valid]: crate::ptr#safety
             #[unstable(feature = "atomic_from_ptr", issue = "108652")]
