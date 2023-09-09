@@ -161,7 +161,7 @@ impl JsonEmitter {
 enum EmitTyped<'a> {
     Diagnostic(Diagnostic),
     Artifact(ArtifactNotification<'a>),
-    FutureIncompat(FutureIncompatReport),
+    FutureIncompat(FutureIncompatReport<'a>),
     UnusedExtern(UnusedExterns<'a, 'a, 'a>),
 }
 
@@ -193,13 +193,17 @@ impl Emitter for JsonEmitter {
     }
 
     fn emit_future_breakage_report(&mut self, diags: Vec<crate::Diagnostic>) {
-        let data: Vec<FutureBreakageItem> = diags
+        let data: Vec<FutureBreakageItem<'_>> = diags
             .into_iter()
             .map(|mut diag| {
                 if diag.level == crate::Level::Allow {
                     diag.level = crate::Level::Warning(None);
                 }
-                FutureBreakageItem { diagnostic: Diagnostic::from_errors_diagnostic(&diag, self) }
+                FutureBreakageItem {
+                    diagnostic: EmitTyped::Diagnostic(Diagnostic::from_errors_diagnostic(
+                        &diag, self,
+                    )),
+                }
             })
             .collect();
         let report = FutureIncompatReport { future_incompat_report: data };
@@ -311,13 +315,14 @@ struct ArtifactNotification<'a> {
 }
 
 #[derive(Serialize)]
-struct FutureBreakageItem {
-    diagnostic: Diagnostic,
+struct FutureBreakageItem<'a> {
+    // Actually Diagnostic, but we want to make sure it gets serialized with `type`.
+    diagnostic: EmitTyped<'a>,
 }
 
 #[derive(Serialize)]
-struct FutureIncompatReport {
-    future_incompat_report: Vec<FutureBreakageItem>,
+struct FutureIncompatReport<'a> {
+    future_incompat_report: Vec<FutureBreakageItem<'a>>,
 }
 
 // NOTE: Keep this in sync with the equivalent structs in rustdoc's
