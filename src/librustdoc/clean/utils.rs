@@ -77,9 +77,10 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 pub(crate) fn ty_args_to_args<'tcx>(
     cx: &mut DocContext<'tcx>,
     args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
-    mut skip_first: bool,
+    has_self: bool,
     container: Option<DefId>,
 ) -> Vec<GenericArg> {
+    let mut skip_first = has_self;
     let mut ret_val =
         Vec::with_capacity(args.skip_binder().len().saturating_sub(if skip_first { 1 } else { 0 }));
 
@@ -99,6 +100,7 @@ pub(crate) fn ty_args_to_args<'tcx>(
                 container.map(|container| crate::clean::ContainerTy::Regular {
                     ty: container,
                     args,
+                    has_self,
                     arg: index,
                 }),
             ))),
