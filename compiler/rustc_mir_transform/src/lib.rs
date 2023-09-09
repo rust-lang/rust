@@ -2,6 +2,7 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![feature(box_patterns)]
+#![feature(decl_macro)]
 #![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]

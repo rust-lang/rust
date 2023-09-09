@@ -684,34 +684,6 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
 
 struct DummyMachine;
 
-/// Macro for machine-specific `InterpError` without allocation.
-/// (These will never be shown to the user, but they help diagnose ICEs.)
-macro_rules! throw_machine_stop_str {
-    ($($tt:tt)*) => {{
-        // We make a new local type for it. The type itself does not carry any information,
-        // but its vtable (for the `MachineStopType` trait) does.
-        #[derive(Debug)]
-        struct Zst;
-        // Printing this type shows the desired string.
-        impl std::fmt::Display for Zst {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, $($tt)*)
-            }
-        }
-        impl rustc_middle::mir::interpret::MachineStopType for Zst {
-            fn diagnostic_message(&self) -> rustc_errors::DiagnosticMessage {
-                self.to_string().into()
-            }
-
-            fn add_args(
-                self: Box<Self>,
-                _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagnosticArgValue<'static>),
-            ) {}
-        }
-        throw_machine_stop!(Zst)
-    }};
-}
-
 impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachine {
     rustc_const_eval::interpret::compile_time_machine!(<'mir, 'tcx>);
     type MemoryKind = !;
@@ -750,13 +722,13 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         is_write: bool,
     ) -> InterpResult<'tcx> {
         if is_write {
-            throw_machine_stop_str!("can't write to global");
+            crate::const_prop::throw_machine_stop_str!("can't write to global");
         }
 
         // If the static allocation is mutable, then we can't const prop it as its content
         // might be different at runtime.
         if alloc.inner().mutability.is_mut() {
-            throw_machine_stop_str!("can't access mutable globals in ConstProp");
+            crate::const_prop::throw_machine_stop_str!("can't access mutable globals in ConstProp");
         }
 
         Ok(())
