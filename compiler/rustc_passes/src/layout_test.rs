@@ -20,21 +20,13 @@ pub fn test_layout(tcx: TyCtxt<'_>) {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
         return;
     }
-    for id in tcx.hir().items() {
-        for attr in tcx.get_attrs(id.owner_id, sym::rustc_layout) {
-            match tcx.def_kind(id.owner_id) {
+    for id in tcx.hir_crate_items(()).definitions() {
+        for attr in tcx.get_attrs(id, sym::rustc_layout) {
+            match tcx.def_kind(id) {
                 DefKind::TyAlias { .. } | DefKind::Enum | DefKind::Struct | DefKind::Union => {
-                    dump_layout_of(tcx, id.owner_id.def_id, attr);
+                    dump_layout_of(tcx, id, attr);
                 }
                 _ => {
-                    tcx.sess.emit_err(LayoutInvalidAttribute { span: tcx.def_span(id.owner_id) });
-                }
-            }
-        }
-        if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. }) {
-            // To find associated functions we need to go into the child items here.
-            for &id in tcx.associated_item_def_ids(id.owner_id) {
-                for _attr in tcx.get_attrs(id, sym::rustc_layout) {
                     tcx.sess.emit_err(LayoutInvalidAttribute { span: tcx.def_span(id) });
                 }
             }

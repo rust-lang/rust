@@ -557,12 +557,6 @@ error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarat
 LL | const C: () = ();
    | ^^^^^^^^^^^
 
-error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
-  --> $DIR/debug.rs:74:5
-   |
-LL |     const C: () = ();
-   |     ^^^^^^^^^^^
-
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/debug.rs:78:1
    |
@@ -571,6 +565,12 @@ LL | type Impossible = (str, str);
    |
    = help: the trait `Sized` is not implemented for `str`
    = note: only the last element of a tuple may have a dynamically sized type
+
+error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
+  --> $DIR/debug.rs:74:5
+   |
+LL |     const C: () = ();
+   |     ^^^^^^^^^^^
 
 error: aborting due to 17 previous errors
 

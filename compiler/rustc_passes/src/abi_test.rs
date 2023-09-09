@@ -1,6 +1,6 @@
 use rustc_ast::Attribute;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::layout::{FnAbiError, LayoutError};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
 use rustc_span::source_map::Spanned;
@@ -15,32 +15,17 @@ pub fn test_abi(tcx: TyCtxt<'_>) {
         // if the `rustc_attrs` feature is not enabled, don't bother testing ABI
         return;
     }
-    for id in tcx.hir().items() {
-        for attr in tcx.get_attrs(id.owner_id, sym::rustc_abi) {
-            match tcx.def_kind(id.owner_id) {
-                DefKind::Fn => {
-                    dump_abi_of_fn_item(tcx, id.owner_id.def_id.into(), attr);
+    for id in tcx.hir_crate_items(()).definitions() {
+        for attr in tcx.get_attrs(id, sym::rustc_abi) {
+            match tcx.def_kind(id) {
+                DefKind::Fn | DefKind::AssocFn => {
+                    dump_abi_of_fn_item(tcx, id, attr);
                 }
                 DefKind::TyAlias { .. } => {
-                    dump_abi_of_fn_type(tcx, id.owner_id.def_id.into(), attr);
+                    dump_abi_of_fn_type(tcx, id, attr);
                 }
                 _ => {
-                    tcx.sess.emit_err(AbiInvalidAttribute { span: tcx.def_span(id.owner_id) });
-                }
-            }
-        }
-        if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. }) {
-            // To find associated functions we need to go into the child items here.
-            for &id in tcx.associated_item_def_ids(id.owner_id) {
-                for attr in tcx.get_attrs(id, sym::rustc_abi) {
-                    match tcx.def_kind(id) {
-                        DefKind::AssocFn => {
-                            dump_abi_of_fn_item(tcx, id, attr);
-                        }
-                        _ => {
-                            tcx.sess.emit_err(AbiInvalidAttribute { span: tcx.def_span(id) });
-                        }
-                    }
+                    tcx.sess.emit_err(AbiInvalidAttribute { span: tcx.def_span(id) });
                 }
             }
         }
@@ -50,7 +35,7 @@ pub fn test_abi(tcx: TyCtxt<'_>) {
 fn unwrap_fn_abi<'tcx>(
     abi: Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>>,
     tcx: TyCtxt<'tcx>,
-    item_def_id: DefId,
+    item_def_id: LocalDefId,
 ) -> &'tcx FnAbi<'tcx, Ty<'tcx>> {
     match abi {
         Ok(abi) => abi,
@@ -72,10 +57,10 @@ fn unwrap_fn_abi<'tcx>(
     }
 }
 
-fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: DefId, attr: &Attribute) {
+fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
     let param_env = tcx.param_env(item_def_id);
     let args = GenericArgs::identity_for_item(tcx, item_def_id);
-    let instance = match Instance::resolve(tcx, param_env, item_def_id, args) {
+    let instance = match Instance::resolve(tcx, param_env, item_def_id.into(), args) {
         Ok(Some(instance)) => instance,
         Ok(None) => {
             // Not sure what to do here, but `LayoutError::Unknown` seems reasonable?
@@ -100,7 +85,7 @@ fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: DefId, attr: &Attribute) {
     for meta_item in meta_items {
         match meta_item.name_or_empty() {
             sym::debug => {
-                let fn_name = tcx.item_name(item_def_id);
+                let fn_name = tcx.item_name(item_def_id.into());
                 tcx.sess.emit_err(AbiOf {
                     span: tcx.def_span(item_def_id),
                     fn_name,
@@ -129,7 +114,7 @@ fn test_abi_eq<'tcx>(abi1: &'tcx FnAbi<'tcx, Ty<'tcx>>, abi2: &'tcx FnAbi<'tcx, 
         && abi1.args.iter().zip(abi2.args.iter()).all(|(arg1, arg2)| arg1.eq_abi(arg2))
 }
 
-fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: DefId, attr: &Attribute) {
+fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
     let param_env = tcx.param_env(item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
     let span = tcx.def_span(item_def_id);
@@ -152,7 +137,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: DefId, attr: &Attribute) {
                     item_def_id,
                 );
 
-                let fn_name = tcx.item_name(item_def_id);
+                let fn_name = tcx.item_name(item_def_id.into());
                 tcx.sess.emit_err(AbiOf { span, fn_name, fn_abi: format!("{:#?}", abi) });
             }
             sym::assert_eq => {
