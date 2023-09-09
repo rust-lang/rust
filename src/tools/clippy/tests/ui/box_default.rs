@@ -36,7 +36,7 @@ fn main() {
     issue_10381();
 
     // `Box::<Option<_>>::default()` would be valid here, but not `Box::default()` or
-    // `Box::<Option<[closure@...]>::default()`
+    // `Box::<Option<{closure@...}>::default()`
     //
     // Would have a suggestion after https://github.com/rust-lang/rust/blob/fdd030127cc68afec44a8d3f6341525dd34e50ae/compiler/rustc_middle/src/ty/diagnostics.rs#L554-L563
     let mut unnameable = Box::new(Option::default());

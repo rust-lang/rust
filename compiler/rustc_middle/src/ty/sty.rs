@@ -2550,7 +2550,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Checks whether a type recursively contains any closure
     ///
-    /// Example: `Option<[closure@file.rs:4:20]>` returns true
+    /// Example: `Option<{closure@file.rs:4:20}>` returns true
     pub fn contains_closure(self) -> bool {
         struct ContainsClosureVisitor;
 

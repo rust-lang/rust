@@ -7,7 +7,7 @@ LL |     let bar: fn() -> u8 = || { a; b; c; d; e };
    |              expected due to this
    |
    = note: expected fn pointer `fn() -> u8`
-                 found closure `[closure@$DIR/closure-no-fn-5.rs:10:27: 10:29]`
+                 found closure `{closure@$DIR/closure-no-fn-5.rs:10:27: 10:29}`
 note: closures can only be coerced to `fn` types if they do not capture any variables
   --> $DIR/closure-no-fn-5.rs:10:32
    |

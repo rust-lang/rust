@@ -18,7 +18,7 @@ LL | |         }
 LL | |     });
    | |______^
    |
-   = note: could not prove `[async block@$DIR/issue-110963-early.rs:15:11: 20:6]: Send`
+   = note: could not prove `{async block@$DIR/issue-110963-early.rs:15:11: 20:6}: Send`
 
 error: higher-ranked lifetime error
   --> $DIR/issue-110963-early.rs:15:5
@@ -31,7 +31,7 @@ LL | |         }
 LL | |     });
    | |______^
    |
-   = note: could not prove `[async block@$DIR/issue-110963-early.rs:15:11: 20:6]: Send`
+   = note: could not prove `{async block@$DIR/issue-110963-early.rs:15:11: 20:6}: Send`
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

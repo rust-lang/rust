@@ -10,7 +10,7 @@ LL | |         yield;
 LL | |     });
    | |_____^ generator is not `Send`
    |
-   = help: within `[generator@$DIR/partial-drop.rs:17:17: 17:19]`, the trait `Send` is not implemented for `Foo`
+   = help: within `{generator@$DIR/partial-drop.rs:17:17: 17:19}`, the trait `Send` is not implemented for `Foo`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/partial-drop.rs:21:9
    |
@@ -40,7 +40,7 @@ LL | |         yield;
 LL | |     });
    | |_____^ generator is not `Send`
    |
-   = help: within `[generator@$DIR/partial-drop.rs:24:17: 24:19]`, the trait `Send` is not implemented for `Foo`
+   = help: within `{generator@$DIR/partial-drop.rs:24:17: 24:19}`, the trait `Send` is not implemented for `Foo`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/partial-drop.rs:29:9
    |

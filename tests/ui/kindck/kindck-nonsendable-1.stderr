@@ -5,10 +5,10 @@ LL |     bar(move|| foo(x));
    |     --- ------^^^^^^^
    |     |   |
    |     |   `Rc<usize>` cannot be sent between threads safely
-   |     |   within this `[closure@$DIR/kindck-nonsendable-1.rs:9:9: 9:15]`
+   |     |   within this `{closure@$DIR/kindck-nonsendable-1.rs:9:9: 9:15}`
    |     required by a bound introduced by this call
    |
-   = help: within `[closure@$DIR/kindck-nonsendable-1.rs:9:9: 9:15]`, the trait `Send` is not implemented for `Rc<usize>`
+   = help: within `{closure@$DIR/kindck-nonsendable-1.rs:9:9: 9:15}`, the trait `Send` is not implemented for `Rc<usize>`
 note: required because it's used within this closure
   --> $DIR/kindck-nonsendable-1.rs:9:9
    |
