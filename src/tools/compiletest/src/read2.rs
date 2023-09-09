@@ -9,7 +9,16 @@ use std::io::{self, Write};
 use std::mem::replace;
 use std::process::{Child, Output};
 
-pub fn read2_abbreviated(mut child: Child, filter_paths_from_len: &[String]) -> io::Result<Output> {
+#[derive(Copy, Clone, Debug)]
+pub enum Truncated {
+    Yes,
+    No,
+}
+
+pub fn read2_abbreviated(
+    mut child: Child,
+    filter_paths_from_len: &[String],
+) -> io::Result<(Output, Truncated)> {
     let mut stdout = ProcOutput::new();
     let mut stderr = ProcOutput::new();
 
@@ -24,7 +33,9 @@ pub fn read2_abbreviated(mut child: Child, filter_paths_from_len: &[String]) -> 
     )?;
     let status = child.wait()?;
 
-    Ok(Output { status, stdout: stdout.into_bytes(), stderr: stderr.into_bytes() })
+    let truncated =
+        if stdout.truncated() || stderr.truncated() { Truncated::Yes } else { Truncated::No };
+    Ok((Output { status, stdout: stdout.into_bytes(), stderr: stderr.into_bytes() }, truncated))
 }
 
 const MAX_OUT_LEN: usize = 512 * 1024;
@@ -44,6 +55,10 @@ enum ProcOutput {
 impl ProcOutput {
     fn new() -> Self {
         ProcOutput::Full { bytes: Vec::new(), filtered_len: 0 }
+    }
+
+    fn truncated(&self) -> bool {
+        matches!(self, Self::Abbreviated { .. })
     }
 
     fn extend(&mut self, data: &[u8], filter_paths_from_len: &[String]) {
