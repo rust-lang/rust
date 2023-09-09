@@ -157,6 +157,21 @@ impl TcpStream {
         super::each_addr(addr, net_imp::TcpStream::connect).map(TcpStream)
     }
 
+    /// Opens a TCP connection to a remote host using the specified local address.
+    ///
+    /// `addr` is an address of the remote host. Anything which implements
+    /// [`ToSocketAddrs`] trait can be supplied for the address; see this trait
+    /// documentation for concrete examples.
+    ///
+    /// If `addr` yields multiple addresses, `connect_from` will be attempted with
+    /// each of the addresses until a connection is successful. If none of
+    /// the addresses result in a successful connection, the error returned from
+    /// the last connection attempt (the last address) is returned.
+    #[unstable(feature = "tcpstream_connect_from", issue = "none")]
+    pub fn connect_from<A: ToSocketAddrs>(from: &SocketAddr, addr: A) -> io::Result<TcpStream> {
+        super::each_addr(addr, |addr| net_imp::TcpStream::connect_from(from, addr)).map(TcpStream)
+    }
+
     /// Opens a TCP connection to a remote host with a timeout.
     ///
     /// Unlike `connect`, `connect_timeout` takes a single [`SocketAddr`] since
@@ -171,6 +186,17 @@ impl TcpStream {
     #[stable(feature = "tcpstream_connect_timeout", since = "1.21.0")]
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         net_imp::TcpStream::connect_timeout(addr, timeout).map(TcpStream)
+    }
+
+    /// Opens a TCP connection to a remote host using the specified local address with a timeout.
+    ///
+    /// Unlike `connect_from`, `connect_from_timeout` takes a single [`SocketAddr`] since
+    /// timeout must be applied to individual addresses.
+    ///
+    /// It is an error to pass a zero `Duration` to this function.
+    #[unstable(feature = "tcpstream_connect_from", issue = "none")]
+    pub fn connect_from_timeout(from: &SocketAddr, addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
+        net_imp::TcpStream::connect_from_timeout(from, addr, timeout).map(TcpStream)
     }
 
     /// Returns the socket address of the remote peer of this TCP connection.

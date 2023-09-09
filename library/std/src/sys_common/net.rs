@@ -231,10 +231,37 @@ impl TcpStream {
         Ok(TcpStream { inner: sock })
     }
 
+    pub fn connect_from(from: &SocketAddr, addr: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
+        let addr = addr?;
+
+        init();
+
+        let sock = Socket::new(addr, c::SOCK_STREAM)?;
+
+        let (from, len) = from.into_inner();
+        cvt(unsafe { c::bind(sock.as_raw(), from.as_ptr(), len as _) })?;
+
+        let (addr, len) = addr.into_inner();
+        cvt_r(|| unsafe { c::connect(sock.as_raw(), addr.as_ptr(), len) })?;
+        Ok(TcpStream { inner: sock })
+    }
+
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         init();
 
         let sock = Socket::new(addr, c::SOCK_STREAM)?;
+        sock.connect_timeout(addr, timeout)?;
+        Ok(TcpStream { inner: sock })
+    }
+
+    pub fn connect_from_timeout(from: &SocketAddr, addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
+        init();
+
+        let sock = Socket::new(addr, c::SOCK_STREAM)?;
+
+        let (from, len) = from.into_inner();
+        cvt(unsafe { c::bind(sock.as_raw(), from.as_ptr(), len as _) })?;
+
         sock.connect_timeout(addr, timeout)?;
         Ok(TcpStream { inner: sock })
     }
