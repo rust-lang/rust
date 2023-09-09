@@ -5206,6 +5206,8 @@ Released 2018-09-13
 [`no_effect_underscore_binding`]: https://rust-lang.github.io/rust-clippy/master/index.html#no_effect_underscore_binding
 [`no_mangle_with_rust_abi`]: https://rust-lang.github.io/rust-clippy/master/index.html#no_mangle_with_rust_abi
 [`non_ascii_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#non_ascii_literal
+[`non_canonical_clone_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#non_canonical_clone_impl
+[`non_canonical_partial_ord_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#non_canonical_partial_ord_impl
 [`non_minimal_cfg`]: https://rust-lang.github.io/rust-clippy/master/index.html#non_minimal_cfg
 [`non_octal_unix_permissions`]: https://rust-lang.github.io/rust-clippy/master/index.html#non_octal_unix_permissions
 [`non_send_fields_in_send_ty`]: https://rust-lang.github.io/rust-clippy/master/index.html#non_send_fields_in_send_ty
