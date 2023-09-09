@@ -105,15 +105,18 @@
 
 use crate::errors;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::stable_hasher::{Hash64, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_data_structures::{base_n, flock};
 use rustc_errors::ErrorGuaranteed;
 use rustc_fs_util::{link_or_copy, try_canonicalize, LinkOrCopy};
+use rustc_session::config::{CrateType, Input};
 use rustc_session::{Session, StableCrateId};
-use rustc_span::Symbol;
+use rustc_span::symbol;
 
 use std::fs as std_fs;
+use std::hash::Hash;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -202,11 +205,7 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// The garbage collection will take care of it.
 ///
 /// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
-pub fn prepare_session_directory(
-    sess: &Session,
-    crate_name: Symbol,
-    stable_crate_id: StableCrateId,
-) -> Result<(), ErrorGuaranteed> {
+pub fn prepare_session_directory(sess: &Session) -> Result<(), ErrorGuaranteed> {
     if sess.opts.incremental.is_none() {
         return Ok(());
     }
@@ -216,7 +215,7 @@ pub fn prepare_session_directory(
     debug!("prepare_session_directory");
 
     // {incr-comp-dir}/{crate-name-and-disambiguator}
-    let crate_dir = crate_path(sess, crate_name, stable_crate_id);
+    let crate_dir = crate_path(sess);
     debug!("crate-dir: {}", crate_dir.display());
     create_dir(sess, &crate_dir, "crate")?;
 
@@ -601,12 +600,39 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, &'static str> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session, crate_name: Symbol, stable_crate_id: StableCrateId) -> PathBuf {
+fn crate_path(sess: &Session) -> PathBuf {
+    // Use the crate name from the command line if available and valid
+    let crate_name = sess.opts.crate_name.as_ref().and_then(|name| {
+        name.as_str().chars().all(|c| c.is_alphanumeric() || c == '_').then_some(&name[..])
+    });
+
+    // Create a hash for metadata and the rust version
+    let metadata_and_version = StableCrateId::new(
+        symbol::kw::Empty,
+        // JUSTIFICATION: before wrapper fn is available
+        #[allow(rustc::bad_opt_access)]
+        sess.opts.crate_types.contains(&CrateType::Executable),
+        sess.opts.cg.metadata.clone(),
+        sess.cfg_version,
+    );
+
+    // Find a file path to differentiate crates if crate name is missing
+    let canonical_file_path = crate_name.is_none().then(|| match &sess.io.input {
+        Input::File(file) => try_canonicalize(file).ok(),
+        Input::Str { .. } => None,
+    });
+
+    let mut hasher = StableHasher::new();
+    crate_name.hash(&mut hasher);
+    metadata_and_version.hash(&mut hasher);
+    canonical_file_path.hash(&mut hasher);
+    let stable_crate_id: Hash64 = hasher.finish();
+
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
     let stable_crate_id = base_n::encode(stable_crate_id.as_u64() as u128, INT_ENCODE_BASE);
 
-    let crate_name = format!("{crate_name}-{stable_crate_id}");
+    let crate_name = format!("{}-{stable_crate_id}", crate_name.unwrap_or("unknown.crate"));
     incr_dir.join(crate_name)
 }
 

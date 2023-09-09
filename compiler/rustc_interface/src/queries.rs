@@ -21,7 +21,6 @@ use rustc_session::config::{self, CrateType, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::{output::find_crate_name, Session};
 use rustc_span::symbol::sym;
-use rustc_span::Symbol;
 use std::any::Any;
 use std::cell::{RefCell, RefMut};
 use std::sync::Arc;
@@ -85,6 +84,7 @@ pub struct Queries<'tcx> {
     arena: WorkerLocal<Arena<'tcx>>,
     hir_arena: WorkerLocal<rustc_hir::Arena<'tcx>>,
 
+    dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
     pre_configure: Query<(ast::Crate, ast::AttrVec)>,
     // This just points to what's in `gcx_cell`.
@@ -98,6 +98,7 @@ impl<'tcx> Queries<'tcx> {
             gcx_cell: OnceLock::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
+            dep_graph_future: Default::default(),
             parse: Default::default(),
             pre_configure: Default::default(),
             gcx: Default::default(),
@@ -112,8 +113,13 @@ impl<'tcx> Queries<'tcx> {
     }
 
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
-        self.parse
-            .compute(|| passes::parse(self.session()).map_err(|mut parse_error| parse_error.emit()))
+        self.parse.compute(|| {
+            // Compute the dependency graph (in the background). We want to do this as early as
+            // possible, to give the DepGraph maximum time to load before `dep_graph` is called.
+            self.dep_graph_future()?;
+
+            passes::parse(self.session()).map_err(|mut parse_error| parse_error.emit())
+        })
     }
 
     pub fn pre_configure(&self) -> Result<QueryResult<'_, (ast::Crate, ast::AttrVec)>> {
@@ -133,41 +139,41 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    fn dep_graph_future(
-        &self,
-        crate_name: Symbol,
-        stable_crate_id: StableCrateId,
-    ) -> Result<Option<DepGraphFuture>> {
-        let sess = self.session();
+    fn dep_graph_future(&self) -> Result<QueryResult<'_, Option<DepGraphFuture>>> {
+        self.dep_graph_future.compute(|| {
+            let sess = self.session();
 
-        // `load_dep_graph` can only be called after `prepare_session_directory`.
-        rustc_incremental::prepare_session_directory(sess, crate_name, stable_crate_id)?;
-        let res = sess.opts.build_dep_graph().then(|| rustc_incremental::load_dep_graph(sess));
+            // `load_dep_graph` can only be called after `prepare_session_directory`.
+            rustc_incremental::prepare_session_directory(sess)?;
+            let res = sess.opts.build_dep_graph().then(|| rustc_incremental::load_dep_graph(sess));
 
-        if sess.opts.incremental.is_some() {
-            sess.time("incr_comp_garbage_collect_session_directories", || {
-                if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
-                    warn!(
-                        "Error while trying to garbage collect incremental \
-                         compilation cache directory: {}",
-                        e
-                    );
-                }
-            });
-        }
+            if sess.opts.incremental.is_some() {
+                sess.time("incr_comp_garbage_collect_session_directories", || {
+                    if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
+                        warn!(
+                            "Error while trying to garbage collect incremental \
+                            compilation cache directory: {}",
+                            e
+                        );
+                    }
+                });
+            }
 
-        Ok(res)
+            Ok(res)
+        })
     }
 
-    fn dep_graph(&self, dep_graph_future: Option<DepGraphFuture>) -> DepGraph {
-        dep_graph_future
+    fn dep_graph(&self) -> Result<DepGraph> {
+        Ok(self
+            .dep_graph_future()?
+            .steal()
             .and_then(|future| {
                 let sess = self.session();
                 let (prev_graph, prev_work_products) =
                     sess.time("blocked_on_dep_graph_loading", || future.open().open(sess));
                 rustc_incremental::build_dep_graph(sess, prev_graph, prev_work_products)
             })
-            .unwrap_or_else(DepGraph::new_disabled)
+            .unwrap_or_else(DepGraph::new_disabled))
     }
 
     pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
@@ -184,10 +190,6 @@ impl<'tcx> Queries<'tcx> {
                 sess.opts.cg.metadata.clone(),
                 sess.cfg_version,
             );
-
-            // Compute the dependency graph (in the background). We want to do this as early as
-            // possible, to give the DepGraph maximum time to load before `dep_graph` is called.
-            let dep_graph_future = self.dep_graph_future(crate_name, stable_crate_id)?;
 
             let lint_store = Lrc::new(passes::create_lint_store(
                 sess,
@@ -210,7 +212,7 @@ impl<'tcx> Queries<'tcx> {
                 crate_types,
                 stable_crate_id,
                 lint_store,
-                self.dep_graph(dep_graph_future),
+                self.dep_graph()?,
                 untracked,
                 &self.gcx_cell,
                 &self.arena,
