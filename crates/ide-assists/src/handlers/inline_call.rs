@@ -117,7 +117,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                     .map(|(call_info, mut_node)| {
                         let replacement =
                             inline(&ctx.sema, def_file, function, &func_body, &params, &call_info)
-                                .unwrap();
+                                .expect("inline() should return an Expr");
                         ted::replace(mut_node, replacement.syntax());
                     })
                     .count();
@@ -363,17 +363,23 @@ fn inline(
         .collect();
 
     if function.self_param(sema.db).is_some() {
-        let this = || make::name_ref("this").syntax().clone_for_update().first_token();
+        let this = || {
+            make::name_ref("this")
+                .syntax()
+                .clone_for_update()
+                .first_token()
+                .expect("NameRef should have had a token.")
+        };
         if let Some(self_local) = params[0].2.as_local(sema.db) {
-            let usages = usages_for_locals(self_local).filter_map(
-                |FileReference { name, range, .. }| match name {
+            usages_for_locals(self_local)
+                .filter_map(|FileReference { name, range, .. }| match name {
                     ast::NameLike::NameRef(_) => Some(body.syntax().covering_element(range)),
                     _ => None,
-                },
-            );
-            for usage in usages {
-                ted::replace(usage, &this()?);
-            }
+                })
+                .into_iter()
+                .for_each(|usage| {
+                    ted::replace(usage, &this());
+                });
         }
     }
 
@@ -471,7 +477,9 @@ fn inline(
         }
     } else if let Some(stmt_list) = body.stmt_list() {
         ted::insert_all(
-            ted::Position::after(stmt_list.l_curly_token()?),
+            ted::Position::after(
+                stmt_list.l_curly_token().expect("L_CURLY for StatementList is missing."),
+            ),
             let_stmts.into_iter().map(|stmt| stmt.syntax().clone().into()).collect(),
         );
     }
