@@ -264,8 +264,8 @@ pub fn run_tests<F>(
 where
     F: FnMut(TestEvent) -> io::Result<()>,
 {
-    use std::collections::{self, HashMap};
-    use std::hash::BuildHasherDefault;
+    use std::collections::HashMap;
+    use std::hash::{DefaultHasher, BuildHasherDefault};
     use std::sync::mpsc::RecvTimeoutError;
 
     struct RunningTest {
@@ -287,7 +287,7 @@ where
 
     // Use a deterministic hasher
     type TestMap =
-        HashMap<TestId, RunningTest, BuildHasherDefault<collections::hash_map::DefaultHasher>>;
+        HashMap<TestId, RunningTest, BuildHasherDefault<DefaultHasher>>;
 
     struct TimeoutEntry {
         id: TestId,
