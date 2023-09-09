@@ -118,7 +118,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
     let param_env = tcx.param_env(item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
     let span = tcx.def_span(item_def_id);
-    if !ensure_wf(tcx, param_env, ty, span) {
+    if !ensure_wf(tcx, param_env, ty, item_def_id, span) {
         return;
     }
     let meta_items = attr.meta_item_list().unwrap_or_default();

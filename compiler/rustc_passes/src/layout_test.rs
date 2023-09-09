@@ -38,12 +38,17 @@ pub fn ensure_wf<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     ty: Ty<'tcx>,
+    def_id: LocalDefId,
     span: Span,
 ) -> bool {
     let pred = ty::ClauseKind::WellFormed(ty.into());
     let obligation = traits::Obligation::new(
         tcx,
-        traits::ObligationCause::dummy_with_span(span),
+        traits::ObligationCause::new(
+            span,
+            def_id,
+            traits::ObligationCauseCode::WellFormed(Some(traits::WellFormedLoc::Ty(def_id))),
+        ),
         param_env,
         pred,
     );
@@ -64,7 +69,7 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
     let param_env = tcx.param_env(item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
     let span = tcx.def_span(item_def_id.to_def_id());
-    if !ensure_wf(tcx, param_env, ty, span) {
+    if !ensure_wf(tcx, param_env, ty, item_def_id, span) {
         return;
     }
     match tcx.layout_of(param_env.and(ty)) {
