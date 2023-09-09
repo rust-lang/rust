@@ -148,11 +148,12 @@ impl JsonEmitter {
 
     fn emit(&mut self, val: EmitTyped<'_>) -> io::Result<()> {
         if self.pretty {
-            writeln!(self.dst, "{}", serde_json::to_string_pretty(&val).unwrap())
+            serde_json::to_writer_pretty(&mut *self.dst, &val)?
         } else {
-            writeln!(self.dst, "{}", serde_json::to_string(&val).unwrap())
-        }
-        .and_then(|_| self.dst.flush())
+            serde_json::to_writer(&mut *self.dst, &val)?
+        };
+        self.dst.write_all(b"\n")?;
+        self.dst.flush()
     }
 }
 
