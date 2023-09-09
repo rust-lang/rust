@@ -319,7 +319,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_from_ptr, pointer_is_aligned)]
+    /// #![feature(pointer_is_aligned)]
     /// use std::sync::atomic::{self, AtomicBool};
     /// use std::mem::align_of;
     ///
@@ -359,8 +359,8 @@ impl AtomicBool {
     ///     from the same thread.
     ///
     /// [valid]: crate::ptr#safety
-    #[unstable(feature = "atomic_from_ptr", issue = "108652")]
-    #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "108652")]
+    #[stable(feature = "atomic_from_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_atomic_from_ptr", issue = "108652")]
     pub const unsafe fn from_ptr<'a>(ptr: *mut bool) -> &'a AtomicBool {
         // SAFETY: guaranteed by the caller
         unsafe { &*ptr.cast() }
@@ -1121,7 +1121,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_from_ptr, pointer_is_aligned)]
+    /// #![feature(pointer_is_aligned)]
     /// use std::sync::atomic::{self, AtomicPtr};
     /// use std::mem::align_of;
     ///
@@ -1163,8 +1163,8 @@ impl<T> AtomicPtr<T> {
     ///   these are not supported by the memory model.
     ///
     /// [valid]: crate::ptr#safety
-    #[unstable(feature = "atomic_from_ptr", issue = "108652")]
-    #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "108652")]
+    #[stable(feature = "atomic_from_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_atomic_from_ptr", issue = "108652")]
     pub const unsafe fn from_ptr<'a>(ptr: *mut *mut T) -> &'a AtomicPtr<T> {
         // SAFETY: guaranteed by the caller
         unsafe { &*ptr.cast() }
@@ -2101,7 +2101,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            /// #![feature(atomic_from_ptr, pointer_is_aligned)]
+            /// #![feature(pointer_is_aligned)]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{self, ", stringify!($atomic_type), "};")]
             /// use std::mem::align_of;
             ///
@@ -2146,8 +2146,8 @@ macro_rules! atomic_int {
             ///   accesses, as these are not supported by the memory model.
             ///
             /// [valid]: crate::ptr#safety
-            #[unstable(feature = "atomic_from_ptr", issue = "108652")]
-            #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "108652")]
+            #[stable(feature = "atomic_from_ptr", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_unstable(feature = "const_atomic_from_ptr", issue = "108652")]
             pub const unsafe fn from_ptr<'a>(ptr: *mut $int_type) -> &'a $atomic_type {
                 // SAFETY: guaranteed by the caller
                 unsafe { &*ptr.cast() }
