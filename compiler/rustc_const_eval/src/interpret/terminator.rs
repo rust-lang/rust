@@ -7,7 +7,7 @@ use rustc_middle::{
     ty::{
         self,
         layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout},
-        Instance, Ty,
+        AdtDef, Instance, Ty,
     },
 };
 use rustc_span::sym;
@@ -261,9 +261,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Must not be called on 1-ZST (as they don't have a uniquely defined "wrapped field").
     ///
     /// We work with `TyAndLayout` here since that makes it much easier to iterate over all fields.
-    fn unfold_transparent(&self, layout: TyAndLayout<'tcx>) -> TyAndLayout<'tcx> {
+    fn unfold_transparent(
+        &self,
+        layout: TyAndLayout<'tcx>,
+        may_unfold: impl Fn(AdtDef<'tcx>) -> bool,
+    ) -> TyAndLayout<'tcx> {
         match layout.ty.kind() {
-            ty::Adt(adt_def, _) if adt_def.repr().transparent() => {
+            ty::Adt(adt_def, _) if adt_def.repr().transparent() && may_unfold(*adt_def) => {
                 assert!(!adt_def.is_enum());
                 // Find the non-1-ZST field.
                 let mut non_1zst_fields = (0..layout.fields.count()).filter_map(|idx| {
@@ -277,7 +281,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 );
 
                 // Found it!
-                self.unfold_transparent(first)
+                self.unfold_transparent(first, may_unfold)
             }
             // Not a transparent type, no further unfolding.
             _ => layout,
@@ -287,7 +291,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Unwrap types that are guaranteed a null-pointer-optimization
     fn unfold_npo(&self, ty: Ty<'tcx>) -> InterpResult<'tcx, Ty<'tcx>> {
         // Check if this is `Option` wrapping some type.
-        let inner_ty = match ty.kind() {
+        let inner = match ty.kind() {
             ty::Adt(def, args) if self.tcx.is_diagnostic_item(sym::Option, def.did()) => {
                 args[0].as_type().unwrap()
             }
@@ -297,16 +301,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
         // Check if the inner type is one of the NPO-guaranteed ones.
-        Ok(match inner_ty.kind() {
+        // For that we first unpeel transparent *structs* (but not unions).
+        let is_npo = |def: AdtDef<'tcx>| {
+            self.tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed)
+        };
+        let inner = self.unfold_transparent(self.layout_of(inner)?, /* may_unfold */ |def| {
+            // Stop at NPO tpyes so that we don't miss that attribute in the check below!
+            def.is_struct() && !is_npo(def)
+        });
+        Ok(match inner.ty.kind() {
             ty::Ref(..) | ty::FnPtr(..) => {
                 // Option<&T> behaves like &T, and same for fn()
-                inner_ty
+                inner.ty
             }
-            ty::Adt(def, _)
-                if self.tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed) =>
-            {
-                // For non-null-guaranteed structs, unwrap newtypes.
-                self.unfold_transparent(self.layout_of(inner_ty)?).ty
+            ty::Adt(def, _) if is_npo(*def) => {
+                // Once we found a `nonnull_optimization_guaranteed` type, further strip off
+                // newtype structs from it to find the underlying ABI type.
+                self.unfold_transparent(inner, /* may_unfold */ |def| def.is_struct()).ty
             }
             _ => {
                 // Everything else we do not unfold.
@@ -332,8 +343,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(caller_layout.is_1zst() && callee_layout.is_1zst());
         }
         // Unfold newtypes and NPO optimizations.
-        let caller_ty = self.unfold_npo(self.unfold_transparent(caller_layout).ty)?;
-        let callee_ty = self.unfold_npo(self.unfold_transparent(callee_layout).ty)?;
+        let caller_ty =
+            self.unfold_npo(self.unfold_transparent(caller_layout, /* may_unfold */ |_| true).ty)?;
+        let callee_ty =
+            self.unfold_npo(self.unfold_transparent(callee_layout, /* may_unfold */ |_| true).ty)?;
         // Now see if these inner types are compatible.
 
         // Compatible pointer types.

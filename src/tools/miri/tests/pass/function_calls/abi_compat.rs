@@ -5,6 +5,10 @@ use std::ptr;
 #[derive(Copy, Clone, Default)]
 struct Zst;
 
+#[repr(transparent)]
+#[derive(Copy, Clone)]
+struct Wrapper<T>(T);
+
 fn id<T>(x: T) -> T { x }
 
 fn test_abi_compat<T: Clone, U: Clone>(t: T, u: U) {
@@ -37,9 +41,6 @@ fn test_abi_compat<T: Clone, U: Clone>(t: T, u: U) {
 fn test_abi_newtype<T: Copy + Default>() {
     #[repr(transparent)]
     #[derive(Copy, Clone)]
-    struct Wrapper1<T>(T);
-    #[repr(transparent)]
-    #[derive(Copy, Clone)]
     struct Wrapper2<T>(T, ());
     #[repr(transparent)]
     #[derive(Copy, Clone)]
@@ -49,7 +50,7 @@ fn test_abi_newtype<T: Copy + Default>() {
     struct Wrapper3<T>(Zst, T, [u8; 0]);
 
     let t = T::default();
-    test_abi_compat(t, Wrapper1(t));
+    test_abi_compat(t, Wrapper(t));
     test_abi_compat(t, Wrapper2(t, ()));
     test_abi_compat(t, Wrapper2a((), t));
     test_abi_compat(t, Wrapper3(Zst, t, []));
@@ -66,6 +67,7 @@ fn main() {
         test_abi_compat(0usize, 0u64);
         test_abi_compat(0isize, 0i64);
     }
+    test_abi_compat(42u32, num::NonZeroU32::new(1).unwrap());
     // Reference/pointer types with the same pointee.
     test_abi_compat(&0u32, &0u32 as *const u32);
     test_abi_compat(&mut 0u32 as *mut u32, Box::new(0u32));
@@ -77,8 +79,9 @@ fn main() {
     // Guaranteed null-pointer-optimizations.
     test_abi_compat(&0u32 as *const u32, Some(&0u32));
     test_abi_compat(main as fn(), Some(main as fn()));
-    test_abi_compat(42u32, num::NonZeroU32::new(1).unwrap());
     test_abi_compat(0u32, Some(num::NonZeroU32::new(1).unwrap()));
+    test_abi_compat(&0u32 as *const u32, Some(Wrapper(&0u32)));
+    test_abi_compat(0u32, Some(Wrapper(num::NonZeroU32::new(1).unwrap())));
 
     // These must work for *any* type, since we guarantee that `repr(transparent)` is ABI-compatible
     // with the wrapped field.
