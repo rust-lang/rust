@@ -85,6 +85,11 @@ test_abi_compatible!(zst_unit, Zst, ());
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
 test_abi_compatible!(nonzero_int, NonZeroI32, i32);
 
+// `DispatchFromDyn` relies on ABI compatibility.
+// This is interesting since these types are not `repr(transparent)`.
+test_abi_compatible!(rc, std::rc::Rc<i32>, *mut i32);
+test_abi_compatible!(arc, std::sync::Arc<i32>, *mut i32);
+
 // `repr(transparent)` compatibility.
 #[repr(transparent)]
 struct Wrapper1<T: ?Sized>(T);
