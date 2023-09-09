@@ -441,6 +441,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         frame: Frame<'mir, 'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>>;
 
+    #[inline(always)]
     fn cur_span(ecx: &InterpCx<'mir, 'tcx, Self>) -> Span
     where
         'tcx: 'mir,
