@@ -51,9 +51,91 @@ use std::marker::PhantomData;
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
 // unused so that we can store multiple index types in `CompressedHybridIndex`,
 // and use those bits to encode which index type it contains.
+/*
 rustc_index::newtype_index! {
     #[max = 0x7FFF_FFFF]
     pub struct SerializedDepNodeIndex {}
+}
+*/
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[rustc_layout_scalar_valid_range_end(0x7FFF_FFFF_FFFF_FFFF)]
+#[rustc_pass_by_value]
+pub struct SerializedDepNodeIndex {
+    private: u64,
+}
+
+impl SerializedDepNodeIndex {
+    const MAX: u64 = 0x7FFF_FFFF_FFFF_FFFF;
+
+    #[inline]
+    pub fn from_u32(value: u32) -> Self {
+        //SAFETY: u32 keeps the value in range
+        unsafe { Self::from_u64_unchecked(value as u64) }
+    }
+
+    #[inline]
+    pub fn as_usize(self) -> usize {
+        self.private as usize
+    }
+
+    #[inline]
+    pub fn from_usize(value: usize) -> Self {
+        Self::from_u64(value as u64)
+    }
+
+    #[inline]
+    unsafe fn from_u64_unchecked(value: u64) -> Self {
+        Self { private: value }
+    }
+
+    #[inline]
+    fn from_u64(value: u64) -> Self {
+        assert!(value <= Self::MAX);
+        unsafe { Self { private: value } }
+    }
+
+    #[inline]
+    pub fn as_u64(self) -> u64 {
+        self.private
+    }
+}
+
+impl<D: rustc_serialize::Decoder> rustc_serialize::Decodable<D> for SerializedDepNodeIndex {
+    fn decode(d: &mut D) -> Self {
+        Self::from_u64(d.read_u64())
+    }
+}
+impl<E: rustc_serialize::Encoder> rustc_serialize::Encodable<E> for SerializedDepNodeIndex {
+    fn encode(&self, e: &mut E) {
+        e.emit_u64(self.private);
+    }
+}
+
+impl std::fmt::Debug for SerializedDepNodeIndex {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "{:?}", self.private)
+    }
+}
+
+impl rustc_index::Idx for SerializedDepNodeIndex {
+    #[inline]
+    fn new(value: usize) -> Self {
+        Self::from_u64(value as u64)
+    }
+
+    #[inline]
+    fn index(self) -> usize {
+        self.private as usize
+    }
+}
+
+impl std::ops::Add<usize> for SerializedDepNodeIndex {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, other: usize) -> Self {
+        Self::from_usize(self.index() + other)
+    }
 }
 
 const DEP_NODE_SIZE: usize = std::mem::size_of::<SerializedDepNodeIndex>();
@@ -125,8 +207,8 @@ impl<K: DepKind> SerializedDepGraph<K> {
             // all the others.
             let index = &raw[..DEP_NODE_SIZE];
             raw = &raw[bytes_per_index..];
-            let index = u32::from_le_bytes(index.try_into().unwrap()) & mask;
-            SerializedDepNodeIndex::from_u32(index)
+            let index = u64::from_le_bytes(index.try_into().unwrap()) & mask;
+            SerializedDepNodeIndex::from_u64(index)
         })
     }
 
@@ -172,8 +254,8 @@ impl EdgeHeader {
     }
 
     #[inline]
-    fn mask(self) -> u32 {
-        mask(self.bytes_per_index() * 8) as u32
+    fn mask(self) -> u64 {
+        mask(self.bytes_per_index() * 8) as u64
     }
 }
 
@@ -402,7 +484,7 @@ impl<K: DepKind> Encodable<FileEncoder> for NodeInfo<K> {
 
         let bytes_per_index = header.bytes_per_index();
         for node_index in self.edges.iter() {
-            let bytes = node_index.as_u32().to_le_bytes();
+            let bytes = node_index.as_u64().to_le_bytes();
             e.emit_raw_bytes(&bytes[..bytes_per_index]);
         }
     }

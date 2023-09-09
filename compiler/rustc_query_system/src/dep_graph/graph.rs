@@ -4,7 +4,7 @@ use rustc_data_structures::profiling::{EventId, QueryInvocationId, SelfProfilerR
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
+use rustc_data_structures::sync::{AtomicU64, Lock, Lrc, Ordering};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
@@ -33,11 +33,91 @@ pub struct DepGraph<K: DepKind> {
     /// non-incremental mode. Even in non-incremental mode we make sure that
     /// each task has a `DepNodeIndex` that uniquely identifies it. This unique
     /// ID is used for self-profiling.
-    virtual_dep_node_index: Lrc<AtomicU32>,
+    virtual_dep_node_index: Lrc<AtomicU64>,
 }
 
-rustc_index::newtype_index! {
-    pub struct DepNodeIndex {}
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[rustc_layout_scalar_valid_range_end(0x7FFF_FFFF_FFFF_FFFF)]
+#[rustc_pass_by_value]
+pub struct DepNodeIndex {
+    private: u64,
+}
+
+impl DepNodeIndex {
+    const MAX_U64: u64 = 0x7FFF_FFFF_FFFF_FFFF;
+    const MAX: DepNodeIndex = unsafe { DepNodeIndex { private: Self::MAX_U64 } };
+
+    #[inline]
+    pub const fn from_u32(value: u32) -> Self {
+        //SAFETY: u32 keeps the value in range
+        unsafe { Self::from_u64_unchecked(value as u64) }
+    }
+
+    #[inline]
+    pub fn as_usize(self) -> usize {
+        self.private as usize
+    }
+
+    #[inline]
+    pub fn from_usize(value: usize) -> Self {
+        Self::from_u64(value as u64)
+    }
+
+    #[inline]
+    const unsafe fn from_u64_unchecked(value: u64) -> Self {
+        Self { private: value }
+    }
+
+    #[inline]
+    fn from_u64(value: u64) -> Self {
+        assert!(value <= Self::MAX_U64);
+        unsafe { Self { private: value } }
+    }
+
+    #[inline]
+    pub fn as_u64(self) -> u64 {
+        self.private
+    }
+}
+
+impl<D: rustc_serialize::Decoder> rustc_serialize::Decodable<D> for DepNodeIndex {
+    fn decode(d: &mut D) -> Self {
+        Self::from_u64(d.read_u64())
+    }
+}
+impl<E: rustc_serialize::Encoder> rustc_serialize::Encodable<E> for DepNodeIndex {
+    fn encode(&self, e: &mut E) {
+        e.emit_u64(self.private);
+    }
+}
+
+impl std::fmt::Debug for DepNodeIndex {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "{:?}", self.private)
+    }
+}
+
+use rustc_index::Idx;
+
+impl Idx for DepNodeIndex {
+    #[inline]
+    fn new(value: usize) -> Self {
+        Self::from_u64(value as u64)
+    }
+
+    #[inline]
+    fn index(self) -> usize {
+        self.private as usize
+    }
+}
+
+impl std::ops::Add<usize> for DepNodeIndex {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, other: usize) -> Self {
+        Self::from_usize(self.index() + other)
+    }
 }
 
 impl DepNodeIndex {
@@ -49,7 +129,7 @@ impl DepNodeIndex {
 impl From<DepNodeIndex> for QueryInvocationId {
     #[inline(always)]
     fn from(dep_node_index: DepNodeIndex) -> Self {
-        QueryInvocationId(dep_node_index.as_u32())
+        QueryInvocationId(dep_node_index.as_u64())
     }
 }
 
@@ -177,12 +257,12 @@ impl<K: DepKind> DepGraph<K> {
                 colors,
                 debug_loaded_from_disk: Default::default(),
             })),
-            virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
+            virtual_dep_node_index: Lrc::new(AtomicU64::new(0)),
         }
     }
 
     pub fn new_disabled() -> DepGraph<K> {
-        DepGraph { data: None, virtual_dep_node_index: Lrc::new(AtomicU32::new(0)) }
+        DepGraph { data: None, virtual_dep_node_index: Lrc::new(AtomicU64::new(0)) }
     }
 
     #[inline]
@@ -1005,7 +1085,7 @@ impl<K: DepKind> DepGraph<K> {
     pub(crate) fn next_virtual_depnode_index(&self) -> DepNodeIndex {
         debug_assert!(self.data.is_none());
         let index = self.virtual_dep_node_index.fetch_add(1, Relaxed);
-        DepNodeIndex::from_u32(index)
+        DepNodeIndex::from_u64(index)
     }
 }
 
@@ -1149,7 +1229,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
         // We store a large collection of these in `prev_index_to_index` during
         // non-full incremental builds, and want to ensure that the element size
         // doesn't inadvertently increase.
-        static_assert_size!(Option<DepNodeIndex>, 4);
+        static_assert_size!(Option<DepNodeIndex>, 8);
 
         let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
 
@@ -1377,18 +1457,18 @@ impl<K: DepKind> Default for TaskDeps<K> {
 }
 
 // A data structure that stores Option<DepNodeColor> values as a contiguous
-// array, using one u32 per entry.
+// array, using one u64 per entry.
 struct DepNodeColorMap {
-    values: IndexVec<SerializedDepNodeIndex, AtomicU32>,
+    values: IndexVec<SerializedDepNodeIndex, AtomicU64>,
 }
 
-const COMPRESSED_NONE: u32 = 0;
-const COMPRESSED_RED: u32 = 1;
-const COMPRESSED_FIRST_GREEN: u32 = 2;
+const COMPRESSED_NONE: u64 = 0;
+const COMPRESSED_RED: u64 = 1;
+const COMPRESSED_FIRST_GREEN: u64 = 2;
 
 impl DepNodeColorMap {
     fn new(size: usize) -> DepNodeColorMap {
-        DepNodeColorMap { values: (0..size).map(|_| AtomicU32::new(COMPRESSED_NONE)).collect() }
+        DepNodeColorMap { values: (0..size).map(|_| AtomicU64::new(COMPRESSED_NONE)).collect() }
     }
 
     #[inline]
@@ -1397,7 +1477,7 @@ impl DepNodeColorMap {
             COMPRESSED_NONE => None,
             COMPRESSED_RED => Some(DepNodeColor::Red),
             value => {
-                Some(DepNodeColor::Green(DepNodeIndex::from_u32(value - COMPRESSED_FIRST_GREEN)))
+                Some(DepNodeColor::Green(DepNodeIndex::from_u64(value - COMPRESSED_FIRST_GREEN)))
             }
         }
     }
@@ -1407,7 +1487,7 @@ impl DepNodeColorMap {
         self.values[index].store(
             match color {
                 DepNodeColor::Red => COMPRESSED_RED,
-                DepNodeColor::Green(index) => index.as_u32() + COMPRESSED_FIRST_GREEN,
+                DepNodeColor::Green(index) => index.as_u64() + COMPRESSED_FIRST_GREEN,
             },
             Ordering::Release,
         )

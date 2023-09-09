@@ -6,7 +6,7 @@ use std::ops::Deref;
 
 #[derive(Default, Debug)]
 pub struct EdgesVec {
-    max: u32,
+    max: u64,
     edges: SmallVec<[DepNodeIndex; EdgesVec::INLINE_CAPACITY]>,
 }
 
@@ -27,12 +27,12 @@ impl EdgesVec {
 
     #[inline]
     pub fn push(&mut self, edge: DepNodeIndex) {
-        self.max = self.max.max(edge.as_u32());
+        self.max = self.max.max(edge.as_u64());
         self.edges.push(edge);
     }
 
     #[inline]
-    pub fn max_index(&self) -> u32 {
+    pub fn max_index(&self) -> u64 {
         self.max
     }
 }

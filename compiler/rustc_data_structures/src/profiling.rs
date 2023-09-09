@@ -144,7 +144,7 @@ const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
 ];
 
 /// Something that uniquely identifies a query invocation.
-pub struct QueryInvocationId(pub u32);
+pub struct QueryInvocationId(pub u64);
 
 /// Which format to use for `-Z time-passes`
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
@@ -464,7 +464,7 @@ impl SelfProfilerRef {
         event_kind: fn(&SelfProfiler) -> StringId,
         query_invocation_id: QueryInvocationId,
     ) {
-        let event_id = StringId::new_virtual(query_invocation_id.0);
+        let event_id = StringId::new_virtual(query_invocation_id.0 as u32);
         let thread_id = get_thread_id();
         let profiler = self.profiler.as_ref().unwrap();
         profiler.profiler.record_instant_event(
@@ -656,7 +656,7 @@ impl SelfProfiler {
     }
 
     pub fn map_query_invocation_id_to_string(&self, from: QueryInvocationId, to: StringId) {
-        let from = StringId::new_virtual(from.0);
+        let from = StringId::new_virtual(from.0 as u32);
         self.profiler.map_virtual_to_concrete_string(from, to);
     }
 
@@ -664,7 +664,7 @@ impl SelfProfiler {
     where
         I: Iterator<Item = QueryInvocationId> + ExactSizeIterator,
     {
-        let from = from.map(|qid| StringId::new_virtual(qid.0));
+        let from = from.map(|qid| StringId::new_virtual(qid.0 as u32));
         self.profiler.bulk_map_virtual_to_single_concrete_string(from, to);
     }
 
@@ -698,7 +698,7 @@ impl<'a> TimingGuard<'a> {
     pub fn finish_with_query_invocation_id(self, query_invocation_id: QueryInvocationId) {
         if let Some(guard) = self.0 {
             cold_path(|| {
-                let event_id = StringId::new_virtual(query_invocation_id.0);
+                let event_id = StringId::new_virtual(query_invocation_id.0 as u32);
                 let event_id = EventId::from_virtual(event_id);
                 guard.finish_with_override_event_id(event_id);
             });
