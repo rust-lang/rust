@@ -2630,13 +2630,6 @@ pub fn build_session_options(
 
     check_error_format_stability(handler, &unstable_opts, error_format, json_rendered);
 
-    if !unstable_opts.unstable_options && json_unused_externs.is_enabled() {
-        handler.early_error(
-            "the `-Z unstable-options` flag must also be passed to enable \
-            the flag `--json=unused-externs`",
-        );
-    }
-
     let output_types = parse_output_types(handler, &unstable_opts, matches);
 
     let mut cg = CodegenOptions::build(handler, matches);
