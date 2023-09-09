@@ -42,6 +42,10 @@ impl<'tcx> Context for Tables<'tcx> {
         self.tcx.def_path_str(self[def_id])
     }
 
+    fn span_of_an_item(&mut self, def_id: stable_mir::DefId) -> stable_mir::ty::Span {
+        self.tcx.def_span(self[def_id]).stable(self)
+    }
+
     fn all_local_items(&mut self) -> stable_mir::CrateItems {
         self.tcx.mir_keys(()).iter().map(|item| self.crate_item(item.to_def_id())).collect()
     }
