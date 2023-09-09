@@ -1,3 +1,5 @@
+// ignore-order
+
 const FILTER_CRATE = "std";
 
 const EXPECTED = [
@@ -36,8 +38,9 @@ const EXPECTED = [
         ],
     },
     {
-        'query': 'option<t>, option<u> -> option<t, u>',
+        'query': 'option<t>, option<u> -> option<t>',
         'others': [
+            { 'path': 'std::option::Option', 'name': 'and' },
             { 'path': 'std::option::Option', 'name': 'zip' },
         ],
     },
