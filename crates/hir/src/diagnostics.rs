@@ -173,7 +173,8 @@ pub struct MalformedDerive {
 
 #[derive(Debug)]
 pub struct NoSuchField {
-    pub field: InFile<AstPtr<ast::RecordExprField>>,
+    pub field: InFile<Either<AstPtr<ast::RecordExprField>, AstPtr<ast::RecordPatField>>>,
+    pub private: bool,
 }
 
 #[derive(Debug)]

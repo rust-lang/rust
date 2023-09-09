@@ -65,6 +65,8 @@ pub type LabelSource = InFile<LabelPtr>;
 
 pub type FieldPtr = AstPtr<ast::RecordExprField>;
 pub type FieldSource = InFile<FieldPtr>;
+pub type PatFieldPtr = AstPtr<ast::RecordPatField>;
+pub type PatFieldSource = InFile<PatFieldPtr>;
 
 /// An item body together with the mapping from syntax nodes to HIR expression
 /// IDs. This is needed to go from e.g. a position in a file to the HIR
@@ -90,8 +92,8 @@ pub struct BodySourceMap {
 
     /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
     /// Instead, we use id of expression (`92`) to identify the field.
-    field_map: FxHashMap<FieldSource, ExprId>,
     field_map_back: FxHashMap<ExprId, FieldSource>,
+    pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
 
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 
@@ -375,9 +377,8 @@ impl BodySourceMap {
         self.field_map_back[&expr].clone()
     }
 
-    pub fn node_field(&self, node: InFile<&ast::RecordExprField>) -> Option<ExprId> {
-        let src = node.map(AstPtr::new);
-        self.field_map.get(&src).cloned()
+    pub fn pat_field_syntax(&self, pat: PatId) -> PatFieldSource {
+        self.pat_field_map_back[&pat].clone()
     }
 
     pub fn macro_expansion_expr(&self, node: InFile<&ast::MacroExpr>) -> Option<ExprId> {
