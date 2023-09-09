@@ -27,6 +27,8 @@ pub struct StdioPipes {
     pub stderr: Option<AnonPipe>,
 }
 
+// FIXME: This should be a unit struct, so we can always construct it
+// The value here should be never used, since we cannot spawn processes.
 pub enum Stdio {
     Inherit,
     Null,
@@ -87,8 +89,26 @@ impl From<AnonPipe> for Stdio {
     }
 }
 
+impl From<io::Stdout> for Stdio {
+    fn from(_: io::Stdout) -> Stdio {
+        // FIXME: This is wrong.
+        // Instead, the Stdio we have here should be a unit struct.
+        panic!("unsupported")
+    }
+}
+
+impl From<io::Stderr> for Stdio {
+    fn from(_: io::Stderr) -> Stdio {
+        // FIXME: This is wrong.
+        // Instead, the Stdio we have here should be a unit struct.
+        panic!("unsupported")
+    }
+}
+
 impl From<File> for Stdio {
     fn from(_file: File) -> Stdio {
+        // FIXME: This is wrong.
+        // Instead, the Stdio we have here should be a unit struct.
         panic!("unsupported")
     }
 }
