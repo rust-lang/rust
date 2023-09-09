@@ -179,6 +179,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
             None => (),
         }
     }
+    result.shrink_to_fit();
     result
 }
 
