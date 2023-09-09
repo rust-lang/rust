@@ -482,6 +482,9 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
         use UndefinedBehaviorInfo::*;
         match self {
             Ub(msg) => msg.clone().into(),
+            Custom(x) => (x.msg)(),
+            ValidationError(e) => e.diagnostic_message(),
+
             Unreachable => const_eval_unreachable,
             BoundsCheckFailed { .. } => const_eval_bounds_check_failed,
             DivisionByZero => const_eval_division_by_zero,
@@ -513,8 +516,8 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             ScalarSizeMismatch(_) => const_eval_scalar_size_mismatch,
             UninhabitedEnumVariantWritten(_) => const_eval_uninhabited_enum_variant_written,
             UninhabitedEnumVariantRead(_) => const_eval_uninhabited_enum_variant_read,
-            ValidationError(e) => e.diagnostic_message(),
-            Custom(x) => (x.msg)(),
+            AbiMismatchArgument { .. } => const_eval_incompatible_types,
+            AbiMismatchReturn { .. } => const_eval_incompatible_return_types,
         }
     }
 
@@ -525,8 +528,15 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
     ) {
         use UndefinedBehaviorInfo::*;
         match self {
-            Ub(_)
-            | Unreachable
+            Ub(_) => {}
+            Custom(custom) => {
+                (custom.add_args)(&mut |name, value| {
+                    builder.set_arg(name, value);
+                });
+            }
+            ValidationError(e) => e.add_args(handler, builder),
+
+            Unreachable
             | DivisionByZero
             | RemainderByZero
             | DivisionOverflow
@@ -593,11 +603,10 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 builder.set_arg("target_size", info.target_size);
                 builder.set_arg("data_size", info.data_size);
             }
-            ValidationError(e) => e.add_args(handler, builder),
-            Custom(custom) => {
-                (custom.add_args)(&mut |name, value| {
-                    builder.set_arg(name, value);
-                });
+            AbiMismatchArgument { caller_ty, callee_ty }
+            | AbiMismatchReturn { caller_ty, callee_ty } => {
+                builder.set_arg("caller_ty", caller_ty.to_string());
+                builder.set_arg("callee_ty", callee_ty.to_string());
             }
         }
     }

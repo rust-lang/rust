@@ -439,13 +439,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Check compatibility
         if !self.check_argument_compat(caller_abi, callee_abi)? {
-            let callee_ty = format!("{}", callee_ty);
-            let caller_ty = format!("{}", caller_arg.layout().ty);
-            throw_ub_custom!(
-                fluent::const_eval_incompatible_types,
-                callee_ty = callee_ty,
-                caller_ty = caller_ty,
-            )
+            throw_ub!(AbiMismatchArgument {
+                caller_ty: caller_abi.layout.ty,
+                callee_ty: callee_abi.layout.ty
+            });
         }
         // We work with a copy of the argument for now; if this is in-place argument passing, we
         // will later protect the source it comes from. This means the callee cannot observe if we
@@ -712,13 +709,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     // Don't forget to check the return type!
                     if !self.check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret)? {
-                        let callee_ty = format!("{}", callee_fn_abi.ret.layout.ty);
-                        let caller_ty = format!("{}", caller_fn_abi.ret.layout.ty);
-                        throw_ub_custom!(
-                            fluent::const_eval_incompatible_return_types,
-                            callee_ty = callee_ty,
-                            caller_ty = caller_ty,
-                        )
+                        throw_ub!(AbiMismatchReturn {
+                            caller_ty: caller_fn_abi.ret.layout.ty,
+                            callee_ty: callee_fn_abi.ret.layout.ty
+                        });
                     }
                     // Ensure the return place is aligned and dereferenceable, and protect it for
                     // in-place return value passing.
