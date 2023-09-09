@@ -175,7 +175,7 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
             }
         }
     }
-
+    map.shrink_to_fit();
     map
 }
 
