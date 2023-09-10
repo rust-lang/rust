@@ -1,11 +1,11 @@
-error[E0401]: can't use generic parameters from outer function
+error[E0401]: can't use generic parameters from outer item
   --> $DIR/issue-65025-extern-static-parent-generics.rs:3:28
    |
 LL | unsafe fn foo<A>() {
-   |               - type parameter from outer function
+   |               - type parameter from outer item
 LL |     extern "C" {
 LL |         static baz: *const A;
-   |                            ^ use of generic parameter from outer function
+   |                            ^ use of generic parameter from outer item
 
 error: aborting due to previous error
 

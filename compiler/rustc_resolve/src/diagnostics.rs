@@ -553,14 +553,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         resolution_error: ResolutionError<'a>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         match resolution_error {
-            ResolutionError::GenericParamsFromOuterFunction(outer_res, has_generic_params) => {
+            ResolutionError::GenericParamsFromOuterItem(outer_res, has_generic_params) => {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
                     E0401,
-                    "can't use generic parameters from outer function",
+                    "can't use generic parameters from outer item",
                 );
-                err.span_label(span, "use of generic parameter from outer function");
+                err.span_label(span, "use of generic parameter from outer item");
 
                 let sm = self.tcx.sess.source_map();
                 let def_id = match outer_res {
@@ -573,23 +573,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             reduce_impl_span_to_impl_keyword(sm, self.def_span(def_id)),
                             "`Self` type implicitly declared here, by this `impl`",
                         );
-                        err.span_label(span, "use a type here instead");
+                        err.span_label(span, "refer to the type directly here instead");
                         return err;
                     }
                     Res::Def(DefKind::TyParam, def_id) => {
-                        err.span_label(self.def_span(def_id), "type parameter from outer function");
+                        err.span_label(self.def_span(def_id), "type parameter from outer item");
                         def_id
                     }
                     Res::Def(DefKind::ConstParam, def_id) => {
-                        err.span_label(
-                            self.def_span(def_id),
-                            "const parameter from outer function",
-                        );
+                        err.span_label(self.def_span(def_id), "const parameter from outer item");
                         def_id
                     }
                     _ => {
                         bug!(
-                            "GenericParamsFromOuterFunction should only be used with \
+                            "GenericParamsFromOuterItem should only be used with \
                             Res::SelfTyParam, Res::SelfTyAlias, DefKind::TyParam or \
                             DefKind::ConstParam"
                         );
@@ -597,9 +594,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 };
 
                 if let HasGenericParams::Yes(span) = has_generic_params {
-                    // Try to retrieve the span of the function signature and generate a new
-                    // message with a local type or const parameter.
-                    let sugg_msg = "try using a local generic parameter instead";
+                    let sugg_msg = "try introducing a local generic parameter here";
                     let name = self.tcx.item_name(def_id);
                     let (span, snippet) = if span.is_empty() {
                         let snippet = format!("<{name}>");
@@ -609,7 +604,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let snippet = format!("{name}, ");
                         (span, snippet)
                     };
-                    // Suggest the modification to the user
                     err.span_suggestion(span, sugg_msg, snippet, Applicability::MaybeIncorrect);
                 }
 
