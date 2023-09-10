@@ -578,6 +578,8 @@ pub struct TargetCfg {
     pub(crate) dynamic_linking: bool,
     #[serde(rename = "supported-sanitizers", default)]
     pub(crate) sanitizers: Vec<Sanitizer>,
+    #[serde(rename = "supports-xray", default)]
+    pub(crate) xray: bool,
 }
 
 impl TargetCfg {

@@ -1,6 +1,5 @@
 use crate::common::{Config, Debugger, Sanitizer};
 use crate::header::IgnoreDecision;
-use crate::util;
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
@@ -235,7 +234,7 @@ impl CachedNeedsConditions {
             sanitizer_shadow_call_stack: sanitizers.contains(&Sanitizer::ShadowCallStack),
             sanitizer_safestack: sanitizers.contains(&Sanitizer::Safestack),
             profiler_support: std::env::var_os("RUSTC_PROFILER_SUPPORT").is_some(),
-            xray: util::XRAY_SUPPORTED_TARGETS.contains(target),
+            xray: config.target_cfg().xray,
 
             // For tests using the `needs-rust-lld` directive (e.g. for `-Zgcc-ld=lld`), we need to find
             // whether `rust-lld` is present in the compiler under test.

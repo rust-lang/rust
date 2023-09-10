@@ -9,19 +9,6 @@ use tracing::*;
 #[cfg(test)]
 mod tests;
 
-pub const XRAY_SUPPORTED_TARGETS: &[&str] = &[
-    "aarch64-linux-android",
-    "aarch64-unknown-linux-gnu",
-    "aarch64-unknown-linux-musl",
-    "x86_64-linux-android",
-    "x86_64-unknown-freebsd",
-    "x86_64-unknown-linux-gnu",
-    "x86_64-unknown-linux-musl",
-    "x86_64-unknown-netbsd",
-    "x86_64-unknown-none-linuxkernel",
-    "x86_64-unknown-openbsd",
-];
-
 pub fn make_new_path(path: &str) -> String {
     assert!(cfg!(windows));
     // Windows just uses PATH as the library search path, so we have to
