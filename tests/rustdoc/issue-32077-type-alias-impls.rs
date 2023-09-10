@@ -29,6 +29,11 @@ impl Bar for GenericStruct<u32> {}
 // @!has - '//h3' 'impl Bar for GenericStruct<u32> {}'
 // Same goes for the `Deref` impl.
 // @!has - '//h2' 'Methods from Deref<Target = u32>'
+// @count - '//nav[@class="sidebar"]//a' 'on_alias' 1
+// @count - '//nav[@class="sidebar"]//a' 'on_gen' 1
+// @count - '//nav[@class="sidebar"]//a' 'Foo' 1
+// @!has - '//nav[@class="sidebar"]//a' 'Bar'
+// @!has - '//nav[@class="sidebar"]//a' 'on_u32'
 pub type TypedefStruct = GenericStruct<u8>;
 
 impl TypedefStruct {
