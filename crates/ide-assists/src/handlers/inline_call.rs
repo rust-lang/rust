@@ -116,8 +116,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                     .into_iter()
                     .map(|(call_info, mut_node)| {
                         let replacement =
-                            inline(&ctx.sema, def_file, function, &func_body, &params, &call_info)
-                                .expect("inline() should return an Expr");
+                            inline(&ctx.sema, def_file, function, &func_body, &params, &call_info);
                         ted::replace(mut_node, replacement.syntax());
                     })
                     .count();
@@ -219,7 +218,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     }
 
     let syntax = call_info.node.syntax().clone();
-    let replacement = inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info)?;
+    let replacement = inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info);
     acc.add(
         AssistId("inline_call", AssistKind::RefactorInline),
         label,
@@ -305,7 +304,7 @@ fn inline(
     fn_body: &ast::BlockExpr,
     params: &[(ast::Pat, Option<ast::Type>, hir::Param)],
     CallInfo { node, arguments, generic_arg_list }: &CallInfo,
-) -> Option<ast::Expr> {
+) -> ast::Expr {
     let mut body = if sema.hir_file_for(fn_body.syntax()).is_macro() {
         cov_mark::hit!(inline_call_defined_in_macro);
         if let Some(body) = ast::BlockExpr::cast(insert_ws_into(fn_body.syntax().clone())) {
@@ -376,7 +375,6 @@ fn inline(
                     ast::NameLike::NameRef(_) => Some(body.syntax().covering_element(range)),
                     _ => None,
                 })
-                .into_iter()
                 .for_each(|usage| {
                     ted::replace(usage, &this());
                 });
@@ -490,7 +488,7 @@ fn inline(
     };
     body.reindent_to(original_indentation);
 
-    Some(match body.tail_expr() {
+    match body.tail_expr() {
         Some(expr) if !is_async_fn && body.statements().next().is_none() => expr,
         _ => match node
             .syntax()
@@ -503,7 +501,7 @@ fn inline(
             }
             _ => ast::Expr::BlockExpr(body),
         },
-    })
+    }
 }
 
 fn path_expr_as_record_field(usage: &PathExpr) -> Option<ast::RecordExprField> {
