@@ -731,19 +731,53 @@ impl MetadataBlob {
         writeln!(out, "name {}{}", root.name(), root.extra_filename)?;
         writeln!(out, "hash {} stable_crate_id {:?}", root.hash(), root.stable_crate_id)?;
         writeln!(out, "proc_macro {:?}", root.proc_macro_data.is_some())?;
-        writeln!(out, "=External Dependencies=")?;
+        writeln!(out, "triple {}", root.header.triple.triple())?;
+        writeln!(out, "edition {}", root.edition)?;
+        writeln!(out, "symbol_mangling_version {:?}", root.symbol_mangling_version)?;
+        writeln!(
+            out,
+            "required_panic_strategy {:?} panic_in_drop_strategy {:?}",
+            root.required_panic_strategy, root.panic_in_drop_strategy
+        )?;
+        writeln!(
+            out,
+            "has_global_allocator {} has_alloc_error_handler {} has_panic_handler {} has_default_lib_allocator {}",
+            root.has_global_allocator,
+            root.has_alloc_error_handler,
+            root.has_panic_handler,
+            root.has_default_lib_allocator
+        )?;
+        writeln!(
+            out,
+            "compiler_builtins {} needs_allocator {} needs_panic_runtime {} no_builtins {} panic_runtime {} profiler_runtime {}",
+            root.compiler_builtins,
+            root.needs_allocator,
+            root.needs_panic_runtime,
+            root.no_builtins,
+            root.panic_runtime,
+            root.profiler_runtime
+        )?;
 
+        writeln!(out, "\n=External Dependencies=")?;
+        let dylib_dependency_formats =
+            root.dylib_dependency_formats.decode(self).collect::<Vec<_>>();
         for (i, dep) in root.crate_deps.decode(self).enumerate() {
             let CrateDep { name, extra_filename, hash, host_hash, kind, is_private } = dep;
             let number = i + 1;
 
             writeln!(
                 out,
-                "{number} {name}{extra_filename} hash {hash} host_hash {host_hash:?} kind {kind:?} {privacy}",
-                privacy = if is_private { "private" } else { "public" }
+                "{number} {name}{extra_filename} hash {hash} host_hash {host_hash:?} kind {kind:?} {privacy}{linkage}",
+                privacy = if is_private { "private" } else { "public" },
+                linkage = if dylib_dependency_formats.is_empty() {
+                    String::new()
+                } else {
+                    format!(" linkage {:?}", dylib_dependency_formats[i])
+                }
             )?;
         }
         write!(out, "\n")?;
+
         Ok(())
     }
 }
