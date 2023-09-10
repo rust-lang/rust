@@ -10,9 +10,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 
 /// Generates and exports the Coverage Map.
@@ -331,16 +330,14 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
     for non_codegenned_def_id in
         eligible_def_ids.into_iter().filter(|id| !codegenned_def_ids.contains(id))
     {
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(non_codegenned_def_id);
-
-        // If a function is marked `#[coverage(off)]`, then skip generating a
-        // dead code stub for it.
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
-            debug!("skipping unused fn marked #[coverage(off)]: {:?}", non_codegenned_def_id);
+        // Skip any function that didn't have coverage data added to it by the
+        // coverage instrumentor.
+        let body = tcx.instance_mir(ty::InstanceDef::Item(non_codegenned_def_id));
+        let Some(function_coverage_info) = body.function_coverage_info.as_deref() else {
             continue;
-        }
+        };
 
         debug!("generating unused fn: {:?}", non_codegenned_def_id);
-        cx.define_unused_fn(non_codegenned_def_id);
+        cx.define_unused_fn(non_codegenned_def_id, function_coverage_info);
     }
 }

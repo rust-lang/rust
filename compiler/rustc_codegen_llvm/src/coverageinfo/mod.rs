@@ -16,7 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
-use rustc_middle::mir::coverage::{CounterId, CoverageKind};
+use rustc_middle::mir::coverage::{CounterId, CoverageKind, FunctionCoverageInfo};
 use rustc_middle::mir::Coverage;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
@@ -91,31 +91,34 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// codegenned, collect the coverage `CodeRegion`s from the MIR and add
     /// them. Since the function is never called, all of its `CodeRegion`s can be
     /// added as `unreachable_region`s.
-    fn define_unused_fn(&self, def_id: DefId) {
+    fn define_unused_fn(&self, def_id: DefId, function_coverage_info: &'tcx FunctionCoverageInfo) {
         let instance = declare_unused_fn(self, def_id);
         codegen_unused_fn_and_counter(self, instance);
-        add_unused_function_coverage(self, instance, def_id);
+        add_unused_function_coverage(self, instance, def_id, function_coverage_info);
     }
 }
 
 impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
+    #[instrument(level = "debug", skip(self))]
     fn add_coverage(&mut self, instance: Instance<'tcx>, coverage: &Coverage) {
         let bx = self;
+
+        let Some(function_coverage_info) =
+            bx.tcx.instance_mir(instance.def).function_coverage_info.as_deref()
+        else {
+            debug!("function has a coverage statement but no coverage info");
+            return;
+        };
 
         let Some(coverage_context) = bx.coverage_context() else { return };
         let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
         let func_coverage = coverage_map
             .entry(instance)
-            .or_insert_with(|| FunctionCoverage::new(bx.tcx(), instance));
+            .or_insert_with(|| FunctionCoverage::new(bx.tcx(), instance, function_coverage_info));
 
         let Coverage { kind, code_regions } = coverage;
         match *kind {
-            CoverageKind::Counter { function_source_hash, id } => {
-                debug!(
-                    "ensuring function source hash is set for instance={:?}; function_source_hash={}",
-                    instance, function_source_hash,
-                );
-                func_coverage.set_function_source_hash(function_source_hash);
+            CoverageKind::Counter { id } => {
                 func_coverage.add_counter(id, code_regions);
                 // We need to explicitly drop the `RefMut` before calling into `instrprof_increment`,
                 // as that needs an exclusive borrow.
@@ -124,7 +127,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 let coverageinfo = bx.tcx().coverageinfo(instance.def);
 
                 let fn_name = bx.get_pgo_func_name_var(instance);
-                let hash = bx.const_u64(function_source_hash);
+                let hash = bx.const_u64(function_coverage_info.function_source_hash);
                 let num_counters = bx.const_u32(coverageinfo.num_counters);
                 let index = bx.const_u32(id.as_u32());
                 debug!(
@@ -201,10 +204,11 @@ fn add_unused_function_coverage<'tcx>(
     cx: &CodegenCx<'_, 'tcx>,
     instance: Instance<'tcx>,
     def_id: DefId,
+    function_coverage_info: &'tcx FunctionCoverageInfo,
 ) {
     let tcx = cx.tcx;
 
-    let mut function_coverage = FunctionCoverage::unused(tcx, instance);
+    let mut function_coverage = FunctionCoverage::unused(tcx, instance, function_coverage_info);
     for &code_region in tcx.covered_code_regions(def_id) {
         let code_region = std::slice::from_ref(code_region);
         function_coverage.add_unreachable_regions(code_region);

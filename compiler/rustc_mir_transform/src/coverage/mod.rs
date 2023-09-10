@@ -211,6 +211,10 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 self.make_mir_coverage_kind(intermediate_expression),
             );
         }
+
+        self.mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
+            function_source_hash: self.function_source_hash,
+        }));
     }
 
     /// Injects a single [`StatementKind::Coverage`] for each BCB that has one
@@ -323,9 +327,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
     fn make_mir_coverage_kind(&self, counter_kind: &BcbCounter) -> CoverageKind {
         match *counter_kind {
-            BcbCounter::Counter { id } => {
-                CoverageKind::Counter { function_source_hash: self.function_source_hash, id }
-            }
+            BcbCounter::Counter { id } => CoverageKind::Counter { id },
             BcbCounter::Expression { id, lhs, op, rhs } => {
                 CoverageKind::Expression { id, lhs, op, rhs }
             }

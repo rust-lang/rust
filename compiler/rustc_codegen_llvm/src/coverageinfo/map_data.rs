@@ -2,7 +2,9 @@ use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::IndexVec;
-use rustc_middle::mir::coverage::{CodeRegion, CounterId, ExpressionId, Op, Operand};
+use rustc_middle::mir::coverage::{
+    CodeRegion, CounterId, ExpressionId, FunctionCoverageInfo, Op, Operand,
+};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::TyCtxt;
 
@@ -27,8 +29,8 @@ pub struct Expression {
 /// line."
 #[derive(Debug)]
 pub struct FunctionCoverage<'tcx> {
-    instance: Instance<'tcx>,
-    source_hash: u64,
+    /// Coverage info that was attached to this function by the instrumentor.
+    function_coverage_info: &'tcx FunctionCoverageInfo,
     is_used: bool,
     counters: IndexVec<CounterId, Option<Vec<CodeRegion>>>,
     expressions: IndexVec<ExpressionId, Option<Expression>>,
@@ -37,24 +39,36 @@ pub struct FunctionCoverage<'tcx> {
 
 impl<'tcx> FunctionCoverage<'tcx> {
     /// Creates a new set of coverage data for a used (called) function.
-    pub fn new(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
-        Self::create(tcx, instance, true)
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+        function_coverage_info: &'tcx FunctionCoverageInfo,
+    ) -> Self {
+        Self::create(tcx, instance, function_coverage_info, true)
     }
 
     /// Creates a new set of coverage data for an unused (never called) function.
-    pub fn unused(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
-        Self::create(tcx, instance, false)
+    pub fn unused(
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+        function_coverage_info: &'tcx FunctionCoverageInfo,
+    ) -> Self {
+        Self::create(tcx, instance, function_coverage_info, false)
     }
 
-    fn create(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, is_used: bool) -> Self {
+    fn create(
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+        function_coverage_info: &'tcx FunctionCoverageInfo,
+        is_used: bool,
+    ) -> Self {
         let coverageinfo = tcx.coverageinfo(instance.def);
         debug!(
             "FunctionCoverage::create(instance={:?}) has coverageinfo={:?}. is_used={}",
             instance, coverageinfo, is_used
         );
         Self {
-            instance,
-            source_hash: 0, // will be set with the first `add_counter()`
+            function_coverage_info,
             is_used,
             counters: IndexVec::from_elem_n(None, coverageinfo.num_counters as usize),
             expressions: IndexVec::from_elem_n(None, coverageinfo.num_expressions as usize),
@@ -65,16 +79,6 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// Returns true for a used (called) function, and false for an unused function.
     pub fn is_used(&self) -> bool {
         self.is_used
-    }
-
-    /// Sets the function source hash value. If called multiple times for the same function, all
-    /// calls should have the same hash value.
-    pub fn set_function_source_hash(&mut self, source_hash: u64) {
-        if self.source_hash == 0 {
-            self.source_hash = source_hash;
-        } else {
-            debug_assert_eq!(source_hash, self.source_hash);
-        }
     }
 
     /// Adds code regions to be counted by an injected counter intrinsic.
@@ -195,7 +199,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// Return the source hash, generated from the HIR node structure, and used to indicate whether
     /// or not the source code structure changed between different compilations.
     pub fn source_hash(&self) -> u64 {
-        self.source_hash
+        if self.is_used { self.function_coverage_info.function_source_hash } else { 0 }
     }
 
     /// Generate an array of CounterExpressions, and an iterator over all `Counter`s and their
@@ -204,12 +208,6 @@ impl<'tcx> FunctionCoverage<'tcx> {
     pub fn get_expressions_and_counter_regions(
         &self,
     ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &CodeRegion)>) {
-        assert!(
-            self.source_hash != 0 || !self.is_used,
-            "No counters provided the source_hash for used function: {:?}",
-            self.instance
-        );
-
         let counter_expressions = self.counter_expressions();
         // Expression IDs are indices into `self.expressions`, and on the LLVM
         // side they will be treated as indices into `counter_expressions`, so

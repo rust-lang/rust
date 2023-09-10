@@ -60,7 +60,6 @@ impl Debug for Operand {
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum CoverageKind {
     Counter {
-        function_source_hash: u64,
         /// ID of this counter within its enclosing function.
         /// Expressions in the same function can refer to it as an operand.
         id: CounterId,
@@ -80,7 +79,7 @@ impl Debug for CoverageKind {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use CoverageKind::*;
         match self {
-            Counter { id, .. } => write!(fmt, "Counter({:?})", id.index()),
+            Counter { id } => write!(fmt, "Counter({:?})", id.index()),
             Expression { id, lhs, op, rhs } => write!(
                 fmt,
                 "Expression({:?}) = {:?} {} {:?}",
@@ -132,4 +131,13 @@ impl Op {
     pub fn is_subtract(&self) -> bool {
         matches!(self, Self::Subtract)
     }
+}
+
+/// Stores per-function coverage information attached to a `mir::Body`,
+/// to be used in conjunction with the individual coverage statements injected
+/// into the function's basic blocks.
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub struct FunctionCoverageInfo {
+    pub function_source_hash: u64,
 }
