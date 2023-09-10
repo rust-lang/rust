@@ -554,34 +554,34 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         match resolution_error {
             ResolutionError::GenericParamsFromOuterItem(outer_res, has_generic_params) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
+                use errs::GenericParamsFromOuterItemLabel as Label;
+                let mut err = errs::GenericParamsFromOuterItem {
                     span,
-                    E0401,
-                    "can't use generic parameters from outer item",
-                );
-                err.span_label(span, "use of generic parameter from outer item");
+                    label: None,
+                    refer_to_type_directly: None,
+                    sugg: None,
+                };
 
                 let sm = self.tcx.sess.source_map();
                 let def_id = match outer_res {
                     Res::SelfTyParam { .. } => {
-                        err.span_label(span, "can't use `Self` here");
-                        return err;
+                        err.label = Some(Label::SelfTyParam(span));
+                        return self.tcx.sess.create_err(err);
                     }
                     Res::SelfTyAlias { alias_to: def_id, .. } => {
-                        err.span_label(
-                            reduce_impl_span_to_impl_keyword(sm, self.def_span(def_id)),
-                            "`Self` type implicitly declared here, by this `impl`",
-                        );
-                        err.span_label(span, "refer to the type directly here instead");
-                        return err;
+                        err.label = Some(Label::SelfTyAlias(reduce_impl_span_to_impl_keyword(
+                            sm,
+                            self.def_span(def_id),
+                        )));
+                        err.refer_to_type_directly = Some(span);
+                        return self.tcx.sess.create_err(err);
                     }
                     Res::Def(DefKind::TyParam, def_id) => {
-                        err.span_label(self.def_span(def_id), "type parameter from outer item");
+                        err.label = Some(Label::TyParam(self.def_span(def_id)));
                         def_id
                     }
                     Res::Def(DefKind::ConstParam, def_id) => {
-                        err.span_label(self.def_span(def_id), "const parameter from outer item");
+                        err.label = Some(Label::ConstParam(self.def_span(def_id)));
                         def_id
                     }
                     _ => {
@@ -594,7 +594,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 };
 
                 if let HasGenericParams::Yes(span) = has_generic_params {
-                    let sugg_msg = "try introducing a local generic parameter here";
                     let name = self.tcx.item_name(def_id);
                     let (span, snippet) = if span.is_empty() {
                         let snippet = format!("<{name}>");
@@ -604,10 +603,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let snippet = format!("{name}, ");
                         (span, snippet)
                     };
-                    err.span_suggestion(span, sugg_msg, snippet, Applicability::MaybeIncorrect);
+                    err.sugg = Some(errs::GenericParamsFromOuterItemSugg { span, snippet });
                 }
 
-                err
+                self.tcx.sess.create_err(err)
             }
             ResolutionError::NameAlreadyUsedInParameterList(name, first_use_span) => self
                 .tcx
