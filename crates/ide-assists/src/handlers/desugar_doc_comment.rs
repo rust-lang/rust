@@ -33,9 +33,7 @@ pub(crate) fn desugar_doc_comment(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 
     // Only allow comments which are alone on their line
     if let Some(prev) = comment.syntax().prev_token() {
-        if Whitespace::cast(prev).filter(|w| w.text().contains('\n')).is_none() {
-            return None;
-        }
+        Whitespace::cast(prev).filter(|w| w.text().contains('\n'))?;
     }
 
     let indentation = IndentLevel::from_token(comment.syntax()).to_string();
@@ -69,7 +67,7 @@ pub(crate) fn desugar_doc_comment(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         Either::Right(comments) => comments
             .into_iter()
             .map(|cm| line_comment_text(IndentLevel(0), cm))
-            .collect::<Option<Vec<_>>>()?
+            .collect::<Vec<_>>()
             .join("\n"),
     };
 

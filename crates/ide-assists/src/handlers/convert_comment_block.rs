@@ -25,9 +25,7 @@ pub(crate) fn convert_comment_block(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let comment = ctx.find_token_at_offset::<ast::Comment>()?;
     // Only allow comments which are alone on their line
     if let Some(prev) = comment.syntax().prev_token() {
-        if Whitespace::cast(prev).filter(|w| w.text().contains('\n')).is_none() {
-            return None;
-        }
+        Whitespace::cast(prev).filter(|w| w.text().contains('\n'))?;
     }
 
     match comment.kind().shape {
@@ -86,10 +84,8 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
     // contents of each line comment when they're put into the block comment.
     let indentation = IndentLevel::from_token(comment.syntax());
 
-    let cms = comments
-        .into_iter()
-        .map(|c| line_comment_text(indentation, c))
-        .collect::<Option<Vec<String>>>()?;
+    let cms =
+        comments.into_iter().map(|c| line_comment_text(indentation, c)).collect::<Vec<String>>();
 
     acc.add(
         AssistId("line_to_block", AssistKind::RefactorRewrite),
@@ -163,16 +159,16 @@ pub(crate) fn relevant_line_comments(comment: &ast::Comment) -> Vec<Comment> {
 //              */
 //
 // But since such comments aren't idiomatic we're okay with this.
-pub(crate) fn line_comment_text(indentation: IndentLevel, comm: ast::Comment) -> Option<String> {
+pub(crate) fn line_comment_text(indentation: IndentLevel, comm: ast::Comment) -> String {
     let text = comm.text();
     let contents_without_prefix = text.strip_prefix(comm.prefix()).unwrap_or(text);
     let contents = contents_without_prefix.strip_prefix(' ').unwrap_or(contents_without_prefix);
 
     // Don't add the indentation if the line is empty
     if contents.is_empty() {
-        Some(contents.to_owned())
+        contents.to_owned()
     } else {
-        Some(indentation.to_string() + contents)
+        indentation.to_string() + contents
     }
 }
 
