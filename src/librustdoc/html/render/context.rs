@@ -159,8 +159,15 @@ impl SharedContext<'_> {
     ) -> Vec<&'a formats::Impl> {
         let tcx = self.tcx;
         let cache = &self.cache;
-        let mut v: Vec<&formats::Impl> =
-            cache.impls.get(&did).map(Vec::as_slice).unwrap_or(&[]).iter().collect();
+        let mut saw_impls = FxHashSet::default();
+        let mut v: Vec<&formats::Impl> = cache
+            .impls
+            .get(&did)
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
+            .iter()
+            .filter(|i| saw_impls.insert(i.def_id()))
+            .collect();
         if let TypeAliasItem(ait) = &*it.kind &&
             let aliased_clean_type = ait.item_type.as_ref().unwrap_or(&ait.type_) &&
             let Some(aliased_type_defid) = aliased_clean_type.def_id(cache) &&
@@ -181,13 +188,12 @@ impl SharedContext<'_> {
             v.extend(av.iter().filter(|impl_| {
                 if let Some(impl_def_id) = impl_.impl_item.item_id.as_def_id() {
                     reject_cx.types_may_unify(aliased_ty, tcx.type_of(impl_def_id).skip_binder())
+                        && saw_impls.insert(impl_def_id)
                 } else {
                     false
                 }
             }));
         }
-        let mut saw_impls = FxHashSet::default();
-        v.retain(|i| saw_impls.insert(i.def_id()));
         v
     }
 }
