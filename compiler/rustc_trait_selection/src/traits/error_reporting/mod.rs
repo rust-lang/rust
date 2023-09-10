@@ -1,3 +1,5 @@
+// ignore-tidy-filelength :(
+
 mod ambiguity;
 pub mod on_unimplemented;
 pub mod suggestions;
@@ -1943,6 +1945,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         other: bool,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
+        // If we have a single implementation, try to unify it with the trait ref
+        // that failed. This should uncover a better hint for what *is* implemented.
         if let [single] = &impl_candidates {
             if self.probe(|_| {
                 let ocx = ObligationCtxt::new(self);
@@ -1972,7 +1976,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     std::iter::zip(obligation_trait_ref.args, impl_trait_ref.args)
                 {
                     if let Err(terr) =
-                        ocx.eq(&ObligationCause::dummy(), param_env, obligation_arg, impl_arg)
+                        ocx.eq(&ObligationCause::dummy(), param_env, impl_arg, obligation_arg)
                     {
                         terrs.push(terr);
                     }
@@ -2000,6 +2004,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     (cand.self_ty().to_string(), Style::Highlight),
                     ("`".to_string(), Style::NoStyle),
                 ]);
+
+                if let [TypeError::Sorts(exp_found)] = &terrs[..] {
+                    let exp_found = self.resolve_vars_if_possible(*exp_found);
+                    err.help(format!(
+                        "for that trait implementation, expected `{}`, found `{}`",
+                        exp_found.expected, exp_found.found
+                    ));
+                }
+
                 true
             }) {
                 return true;

@@ -8,6 +8,7 @@ LL |     let _: u8 = s[4];
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
    = help: the trait `SliceIndex<[_]>` is implemented for `usize`
+   = help: for that trait implementation, expected `[_]`, found `str`
    = note: required for `str` to implement `Index<{integer}>`
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
@@ -22,6 +23,7 @@ LL |     let _ = s.get(4);
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
    = help: the trait `SliceIndex<[_]>` is implemented for `usize`
+   = help: for that trait implementation, expected `[_]`, found `str`
 note: required by a bound in `core::str::<impl str>::get`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
 
@@ -37,6 +39,7 @@ LL |     let _ = s.get_unchecked(4);
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
    = help: the trait `SliceIndex<[_]>` is implemented for `usize`
+   = help: for that trait implementation, expected `[_]`, found `str`
 note: required by a bound in `core::str::<impl str>::get_unchecked`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
 

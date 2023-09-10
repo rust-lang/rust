@@ -8,6 +8,7 @@ LL |     Trait::do_stuff({ fun(&mut *inner) });
    |     required by a bound introduced by this call
    |
    = help: the trait `Trait<'_>` is implemented for `()`
+   = help: for that trait implementation, expected `()`, found `*mut ()`
 
 error: aborting due to previous error
 

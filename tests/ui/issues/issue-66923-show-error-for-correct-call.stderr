@@ -6,6 +6,7 @@ LL |     let x2: Vec<f64> = x1.into_iter().collect();
    |
    = help: the trait `FromIterator<&f64>` is not implemented for `Vec<f64>`
    = help: the trait `FromIterator<f64>` is implemented for `Vec<f64>`
+   = help: for that trait implementation, expected `f64`, found `&f64`
 note: the method call chain might not have had the expected associated types
   --> $DIR/issue-66923-show-error-for-correct-call.rs:8:27
    |
@@ -26,6 +27,7 @@ LL |     let x3 = x1.into_iter().collect::<Vec<f64>>();
    |
    = help: the trait `FromIterator<&f64>` is not implemented for `Vec<f64>`
    = help: the trait `FromIterator<f64>` is implemented for `Vec<f64>`
+   = help: for that trait implementation, expected `f64`, found `&f64`
 note: the method call chain might not have had the expected associated types
   --> $DIR/issue-66923-show-error-for-correct-call.rs:12:17
    |

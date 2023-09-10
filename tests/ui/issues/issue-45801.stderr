@@ -5,6 +5,7 @@ LL |     req.get_ref::<Params>();
    |         ^^^^^^^ the trait `Plugin<i32>` is not implemented for `Params`
    |
    = help: the trait `Plugin<Foo>` is implemented for `Params`
+   = help: for that trait implementation, expected `Foo`, found `i32`
 
 error: aborting due to previous error
 
