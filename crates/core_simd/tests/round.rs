@@ -43,7 +43,7 @@ macro_rules! float_rounding_test {
                 }
 
                 fn fract<const LANES: usize>() {
-                    test_helpers::test_unary_elementwise(
+                    test_helpers::test_unary_elementwise_flush_subnormals(
                         &Vector::<LANES>::fract,
                         &Scalar::fract,
                         &|_| true,
