@@ -5,10 +5,10 @@ OUT=$(TMPDIR)/emit
 # --emit KIND=PATH should not affect crate hash vs --emit KIND
 all: $(OUT)/a/libfoo.rlib $(OUT)/b/libfoo.rlib $(OUT)/c/libfoo.rlib \
 		$(TMPDIR)/libfoo.rlib
-	$(RUSTC) -Zls $(TMPDIR)/libfoo.rlib > $(TMPDIR)/base.txt
-	$(RUSTC) -Zls $(OUT)/a/libfoo.rlib > $(TMPDIR)/a.txt
-	$(RUSTC) -Zls $(OUT)/b/libfoo.rlib > $(TMPDIR)/b.txt
-	$(RUSTC) -Zls $(OUT)/c/libfoo.rlib > $(TMPDIR)/c.txt
+	$(RUSTC) -Zls=root $(TMPDIR)/libfoo.rlib > $(TMPDIR)/base.txt
+	$(RUSTC) -Zls=root $(OUT)/a/libfoo.rlib > $(TMPDIR)/a.txt
+	$(RUSTC) -Zls=root $(OUT)/b/libfoo.rlib > $(TMPDIR)/b.txt
+	$(RUSTC) -Zls=root $(OUT)/c/libfoo.rlib > $(TMPDIR)/c.txt
 
 	diff $(TMPDIR)/base.txt $(TMPDIR)/a.txt
 	diff $(TMPDIR)/base.txt $(TMPDIR)/b.txt
