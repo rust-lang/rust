@@ -552,7 +552,9 @@ pub fn deadlock<D: DepKind>(query_map: QueryMap<D>, registry: &rayon_core::Regis
     // which in turn will wait on X causing a deadlock. We have a false dependency from
     // X to Y due to Rayon waiting and a true dependency from Y to X. The algorithm here
     // only considers the true dependency and won't detect a cycle.
-    assert!(found_cycle);
+    if !found_cycle {
+        panic!("deadlock detected");
+    }
 
     // FIXME: Ensure this won't cause a deadlock before we return
     for waiter in wakelist.into_iter() {
