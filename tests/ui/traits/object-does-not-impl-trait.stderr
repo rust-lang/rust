@@ -6,6 +6,11 @@ LL | fn take_object(f: Box<dyn Foo>) { take_foo(f); }
    |                                   |
    |                                   required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/object-does-not-impl-trait.rs:4:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
 note: required by a bound in `take_foo`
   --> $DIR/object-does-not-impl-trait.rs:5:15
    |

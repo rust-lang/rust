@@ -13,6 +13,11 @@ error[E0277]: the trait bound `T: Trait` is not satisfied
 LL |     fail();
    |     ^^^^ the trait `Trait` is not implemented for `T`
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/fail.rs:6:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
 note: required by a bound in `fail`
   --> $DIR/fail.rs:10:15
    |
