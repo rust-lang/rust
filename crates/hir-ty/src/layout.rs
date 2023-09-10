@@ -24,7 +24,7 @@ pub use self::{
 
 macro_rules! user_error {
     ($it: expr) => {
-        return Err(LayoutError::UserError(format!($it)))
+        return Err(LayoutError::UserError(format!($it).into()))
     };
 }
 
@@ -50,7 +50,7 @@ pub type Variants = hir_def::layout::Variants<RustcEnumVariantIdx>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum LayoutError {
-    UserError(String),
+    UserError(Box<str>),
     SizeOverflow,
     TargetLayoutNotAvailable,
     HasPlaceholder,
@@ -234,9 +234,9 @@ pub fn layout_of_ty_query(
             cx.univariant(dl, &fields, &ReprOptions::default(), kind).ok_or(LayoutError::Unknown)?
         }
         TyKind::Array(element, count) => {
-            let count = try_const_usize(db, &count).ok_or(LayoutError::UserError(
-                "unevaluated or mistyped const generic parameter".to_string(),
-            ))? as u64;
+            let count = try_const_usize(db, &count).ok_or(LayoutError::UserError(Box::from(
+                "unevaluated or mistyped const generic parameter",
+            )))? as u64;
             let element = db.layout_of_ty(element.clone(), trait_env.clone())?;
             let size = element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow)?;
 

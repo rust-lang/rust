@@ -71,7 +71,7 @@ struct MirLowerCtx<'a> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MirLowerError {
-    ConstEvalError(String, Box<ConstEvalError>),
+    ConstEvalError(Box<str>, Box<ConstEvalError>),
     LayoutError(LayoutError),
     IncompleteExpr,
     IncompletePattern,
@@ -84,7 +84,7 @@ pub enum MirLowerError {
     UnsizedTemporary(Ty),
     MissingFunctionDefinition(DefWithBodyId, ExprId),
     TypeMismatch(TypeMismatch),
-    /// This should be never happen. Type mismatch should catch everything.
+    /// This should never happen. Type mismatch should catch everything.
     TypeError(&'static str),
     NotSupported(String),
     ContinueWithoutLoop,
@@ -1456,7 +1456,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             let name = const_id.name(self.db.upcast());
             self.db
                 .const_eval(const_id.into(), subst, None)
-                .map_err(|e| MirLowerError::ConstEvalError(name, Box::new(e)))?
+                .map_err(|e| MirLowerError::ConstEvalError(name.into(), Box::new(e)))?
         };
         Ok(Operand::Constant(c))
     }
@@ -1853,7 +1853,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     data.name.display(self.db.upcast()),
                     data.variants[variant.local_id].name.display(self.db.upcast())
                 );
-                Err(MirLowerError::ConstEvalError(name, Box::new(e)))
+                Err(MirLowerError::ConstEvalError(name.into(), Box::new(e)))
             }
         }
     }

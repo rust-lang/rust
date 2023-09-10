@@ -339,7 +339,7 @@ pub enum MirEvalError {
     InvalidVTableId(usize),
     CoerceUnsizedError(Ty),
     LangItemNotFound(LangItem),
-    BrokenLayout(Layout),
+    BrokenLayout(Box<Layout>),
 }
 
 impl MirEvalError {
@@ -408,7 +408,7 @@ impl MirEvalError {
                 err.pretty_print(f, db, span_formatter)?;
             }
             MirEvalError::ConstEvalError(name, err) => {
-                MirLowerError::ConstEvalError(name.clone(), err.clone()).pretty_print(
+                MirLowerError::ConstEvalError((**name).into(), err.clone()).pretty_print(
                     f,
                     db,
                     span_formatter,
@@ -1632,7 +1632,7 @@ impl Evaluator<'_> {
         if let Some((offset, size, value)) = tag {
             match result.get_mut(offset..offset + size) {
                 Some(it) => it.copy_from_slice(&value.to_le_bytes()[0..size]),
-                None => return Err(MirEvalError::BrokenLayout(variant_layout.clone())),
+                None => return Err(MirEvalError::BrokenLayout(Box::new(variant_layout.clone()))),
             }
         }
         for (i, op) in values.enumerate() {
@@ -1640,7 +1640,7 @@ impl Evaluator<'_> {
             let op = op.get(&self)?;
             match result.get_mut(offset..offset + op.len()) {
                 Some(it) => it.copy_from_slice(op),
-                None => return Err(MirEvalError::BrokenLayout(variant_layout.clone())),
+                None => return Err(MirEvalError::BrokenLayout(Box::new(variant_layout.clone()))),
             }
         }
         Ok(result)
