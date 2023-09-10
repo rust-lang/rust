@@ -93,13 +93,7 @@ impl Definition {
                 bail!("Cannot rename a builtin attr.")
             }
             Definition::SelfType(_) => bail!("Cannot rename `Self`"),
-            Definition::Macro(mac) => {
-                if mac.is_builtin_derive(sema.db) {
-                    bail!("Cannot rename builtin derive")
-                }
-
-                rename_reference(sema, Definition::Macro(mac), new_name)
-            }
+            Definition::Macro(mac) => rename_reference(sema, Definition::Macro(mac), new_name),
             def => rename_reference(sema, def, new_name),
         }
     }
