@@ -213,7 +213,7 @@ macro_rules! impl_common_integer_tests {
             fn leading_zeros<const LANES: usize>() {
                 test_helpers::test_unary_elementwise(
                     &$vector::<LANES>::leading_zeros,
-                    &|x| x.leading_zeros() as $scalar,
+                    &|x| x.leading_zeros() as _,
                     &|_| true,
                 )
             }
@@ -221,7 +221,7 @@ macro_rules! impl_common_integer_tests {
             fn trailing_zeros<const LANES: usize>() {
                 test_helpers::test_unary_elementwise(
                     &$vector::<LANES>::trailing_zeros,
-                    &|x| x.trailing_zeros() as $scalar,
+                    &|x| x.trailing_zeros() as _,
                     &|_| true,
                 )
             }
@@ -229,7 +229,7 @@ macro_rules! impl_common_integer_tests {
             fn leading_ones<const LANES: usize>() {
                 test_helpers::test_unary_elementwise(
                     &$vector::<LANES>::leading_ones,
-                    &|x| x.leading_ones() as $scalar,
+                    &|x| x.leading_ones() as _,
                     &|_| true,
                 )
             }
@@ -237,7 +237,7 @@ macro_rules! impl_common_integer_tests {
             fn trailing_ones<const LANES: usize>() {
                 test_helpers::test_unary_elementwise(
                     &$vector::<LANES>::trailing_ones,
-                    &|x| x.trailing_ones() as $scalar,
+                    &|x| x.trailing_ones() as _,
                     &|_| true,
                 )
             }

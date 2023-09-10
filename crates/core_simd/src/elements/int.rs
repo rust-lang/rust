@@ -1,6 +1,7 @@
 use super::sealed::Sealed;
 use crate::simd::{
-    intrinsics, LaneCount, Mask, Simd, SimdCast, SimdElement, SimdPartialOrd, SupportedLaneCount,
+    intrinsics, LaneCount, Mask, Simd, SimdCast, SimdElement, SimdPartialOrd, SimdUint,
+    SupportedLaneCount,
 };
 
 /// Operations on SIMD vectors of signed integers.
@@ -10,6 +11,9 @@ pub trait SimdInt: Copy + Sealed {
 
     /// Scalar type contained by this SIMD vector type.
     type Scalar;
+
+    /// A SIMD vector of unsigned integers with the same element size.
+    type Unsigned;
 
     /// A SIMD vector with a different element type.
     type Cast<T: SimdElement>;
@@ -200,20 +204,20 @@ pub trait SimdInt: Copy + Sealed {
     fn reverse_bits(self) -> Self;
 
     /// Returns the number of leading zeros in the binary representation of each element.
-    fn leading_zeros(self) -> Self;
+    fn leading_zeros(self) -> Self::Unsigned;
 
     /// Returns the number of trailing zeros in the binary representation of each element.
-    fn trailing_zeros(self) -> Self;
+    fn trailing_zeros(self) -> Self::Unsigned;
 
     /// Returns the number of leading ones in the binary representation of each element.
-    fn leading_ones(self) -> Self;
+    fn leading_ones(self) -> Self::Unsigned;
 
     /// Returns the number of trailing ones in the binary representation of each element.
-    fn trailing_ones(self) -> Self;
+    fn trailing_ones(self) -> Self::Unsigned;
 }
 
 macro_rules! impl_trait {
-    { $($ty:ty),* } => {
+    { $($ty:ident ($unsigned:ident)),* } => {
         $(
         impl<const LANES: usize> Sealed for Simd<$ty, LANES>
         where
@@ -227,6 +231,7 @@ macro_rules! impl_trait {
         {
             type Mask = Mask<<$ty as SimdElement>::Mask, LANES>;
             type Scalar = $ty;
+            type Unsigned = Simd<$unsigned, LANES>;
             type Cast<T: SimdElement> = Simd<T, LANES>;
 
             #[inline]
@@ -340,29 +345,27 @@ macro_rules! impl_trait {
             }
 
             #[inline]
-            fn leading_zeros(self) -> Self {
-                // Safety: `self` is an integer vector
-                unsafe { intrinsics::simd_ctlz(self) }
+            fn leading_zeros(self) -> Self::Unsigned {
+                self.cast::<$unsigned>().leading_zeros()
             }
 
             #[inline]
-            fn trailing_zeros(self) -> Self {
-                // Safety: `self` is an integer vector
-                unsafe { intrinsics::simd_cttz(self) }
+            fn trailing_zeros(self) -> Self::Unsigned {
+                self.cast::<$unsigned>().trailing_zeros()
             }
 
             #[inline]
-            fn leading_ones(self) -> Self {
-                (!self).leading_zeros()
+            fn leading_ones(self) -> Self::Unsigned {
+                self.cast::<$unsigned>().leading_ones()
             }
 
             #[inline]
-            fn trailing_ones(self) -> Self {
-                (!self).trailing_zeros()
+            fn trailing_ones(self) -> Self::Unsigned {
+                self.cast::<$unsigned>().trailing_ones()
             }
         }
         )*
     }
 }
 
-impl_trait! { i8, i16, i32, i64, isize }
+impl_trait! { i8 (u8), i16 (u16), i32 (u32), i64 (u64), isize (usize) }
