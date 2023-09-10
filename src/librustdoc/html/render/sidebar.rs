@@ -3,12 +3,10 @@ use std::{borrow::Cow, rc::Rc};
 use askama::Template;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{def::CtorKind, def_id::DefIdSet};
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, TyCtxt};
 
 use crate::{
     clean,
-    clean::types::TypeAliasItem,
     formats::{item_type::ItemType, Impl},
     html::{format::Buffer, markdown::IdMap},
 };
@@ -280,40 +278,8 @@ fn sidebar_assoc_items<'a>(
     links: &mut Vec<LinkBlock<'a>>,
 ) {
     let did = it.item_id.expect_def_id();
-    let cache = cx.cache();
-    let tcx = cx.tcx();
-    let mut v: Vec<&Impl> =
-        cache.impls.get(&did).map(Vec::as_slice).unwrap_or(&[]).iter().collect();
-    if let TypeAliasItem(ait) = &*it.kind &&
-        let aliased_clean_type = ait.item_type.as_ref().unwrap_or(&ait.type_) &&
-        let Some(aliased_type_defid) = aliased_clean_type.def_id(cache) &&
-        let Some(av) = cache.impls.get(&aliased_type_defid) &&
-        let Some(alias_def_id) = it.item_id.as_def_id()
-    {
-        // This branch of the compiler compares types structually, but does
-        // not check trait bounds. That's probably fine, since type aliases
-        // don't normally constrain on them anyway.
-        // https://github.com/rust-lang/rust/issues/21903
-        //
-        // FIXME(lazy_type_alias): Once the feature is complete or stable, rewrite this to use type unification.
-        // Be aware of `tests/rustdoc/issue-112515-impl-ty-alias.rs` which might regress.
-        let aliased_ty = tcx.type_of(alias_def_id).skip_binder();
-        let reject_cx = DeepRejectCtxt {
-            treat_obligation_params: TreatParams::AsCandidateKey,
-        };
-        v.extend(av.iter().filter(|impl_| {
-            if let Some(impl_def_id) = impl_.impl_item.item_id.as_def_id() {
-                reject_cx.types_may_unify(aliased_ty, tcx.type_of(impl_def_id).skip_binder())
-            } else {
-                false
-            }
-        }));
-    }
-    let v = {
-        let mut saw_impls = FxHashSet::default();
-        v.retain(|i| saw_impls.insert(i.def_id()));
-        v.as_slice()
-    };
+    let v = cx.shared.all_impls_for_item(it, it.item_id.expect_def_id());
+    let v = v.as_slice();
 
     let mut assoc_consts = Vec::new();
     let mut methods = Vec::new();
