@@ -173,6 +173,7 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
             CanonicalVarKind::PlaceholderRegion(..) => false,
             CanonicalVarKind::Const(..) => true,
             CanonicalVarKind::PlaceholderConst(_, _) => false,
+            CanonicalVarKind::Effect => true,
         }
     }
 
@@ -182,7 +183,8 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
             CanonicalVarKind::Ty(_)
             | CanonicalVarKind::PlaceholderTy(_)
             | CanonicalVarKind::Const(_, _)
-            | CanonicalVarKind::PlaceholderConst(_, _) => false,
+            | CanonicalVarKind::PlaceholderConst(_, _)
+            | CanonicalVarKind::Effect => false,
         }
     }
 
@@ -190,7 +192,8 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
         match self.kind {
             CanonicalVarKind::Ty(_)
             | CanonicalVarKind::Region(_)
-            | CanonicalVarKind::Const(_, _) => bug!("expected placeholder: {self:?}"),
+            | CanonicalVarKind::Const(_, _)
+            | CanonicalVarKind::Effect => bug!("expected placeholder: {self:?}"),
 
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.bound.var.as_usize(),
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.bound.var.as_usize(),
@@ -222,6 +225,9 @@ pub enum CanonicalVarKind<'tcx> {
     /// Some kind of const inference variable.
     Const(ty::UniverseIndex, Ty<'tcx>),
 
+    /// Effect variable `'?E`.
+    Effect,
+
     /// A "placeholder" that represents "any const".
     PlaceholderConst(ty::PlaceholderConst<'tcx>, Ty<'tcx>),
 }
@@ -229,11 +235,11 @@ pub enum CanonicalVarKind<'tcx> {
 impl<'tcx> CanonicalVarKind<'tcx> {
     pub fn universe(self) -> ty::UniverseIndex {
         match self {
-            CanonicalVarKind::Ty(kind) => match kind {
-                CanonicalTyVarKind::General(ui) => ui,
-                CanonicalTyVarKind::Float | CanonicalTyVarKind::Int => ty::UniverseIndex::ROOT,
-            },
-
+            CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)) => ui,
+            CanonicalVarKind::Ty(CanonicalTyVarKind::Float | CanonicalTyVarKind::Int) => {
+                ty::UniverseIndex::ROOT
+            }
+            CanonicalVarKind::Effect => ty::UniverseIndex::ROOT,
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe,
             CanonicalVarKind::Region(ui) => ui,
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe,
@@ -248,15 +254,14 @@ impl<'tcx> CanonicalVarKind<'tcx> {
     /// the updated universe is not the root.
     pub fn with_updated_universe(self, ui: ty::UniverseIndex) -> CanonicalVarKind<'tcx> {
         match self {
-            CanonicalVarKind::Ty(kind) => match kind {
-                CanonicalTyVarKind::General(_) => {
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
-                }
-                CanonicalTyVarKind::Int | CanonicalTyVarKind::Float => {
-                    assert_eq!(ui, ty::UniverseIndex::ROOT);
-                    CanonicalVarKind::Ty(kind)
-                }
-            },
+            CanonicalVarKind::Ty(CanonicalTyVarKind::General(_)) => {
+                CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
+            }
+            CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float)
+            | CanonicalVarKind::Effect => {
+                assert_eq!(ui, ty::UniverseIndex::ROOT);
+                self
+            }
             CanonicalVarKind::PlaceholderTy(placeholder) => {
                 CanonicalVarKind::PlaceholderTy(ty::Placeholder { universe: ui, ..placeholder })
             }
@@ -443,6 +448,14 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                             };
                             ty::Region::new_late_bound(tcx, ty::INNERMOST, br).into()
                         }
+                        // todo eh?
+                        CanonicalVarKind::Effect => ty::Const::new_bound(
+                            tcx,
+                            ty::INNERMOST,
+                            ty::BoundVar::from_usize(i),
+                            tcx.types.bool,
+                        )
+                        .into(),
                         CanonicalVarKind::Const(_, ty)
                         | CanonicalVarKind::PlaceholderConst(_, ty) => ty::Const::new_bound(
                             tcx,

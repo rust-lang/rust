@@ -151,7 +151,11 @@ impl<'tcx> InferCtxt<'tcx> {
                     universe_map(ui),
                 )
                 .into(),
-
+            CanonicalVarKind::Effect => {
+                let vid = self.inner.borrow_mut().effect_unification_table().new_key(None);
+                ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(vid), self.tcx.types.bool)
+                    .into()
+            }
             CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, bound }, ty) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, bound };
