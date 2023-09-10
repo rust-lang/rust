@@ -162,9 +162,10 @@ pub fn abort_on_err<T>(result: Result<T, ErrorGuaranteed>, sess: &Session) -> T 
 pub trait Callbacks {
     /// Called before creating the compiler instance
     fn config(&mut self, _config: &mut interface::Config) {}
-    /// Called after parsing. Return value instructs the compiler whether to
+    /// Called after parsing the crate root. Submodules are not yet parsed when
+    /// this callback is called. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
-    fn after_parsing<'tcx>(
+    fn after_crate_root_parsing<'tcx>(
         &mut self,
         _compiler: &interface::Compiler,
         _queries: &'tcx Queries<'tcx>,
@@ -407,7 +408,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            if callbacks.after_parsing(compiler, queries) == Compilation::Stop {
+            if callbacks.after_crate_root_parsing(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
 
