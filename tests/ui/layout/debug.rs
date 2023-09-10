@@ -73,3 +73,6 @@ impl S {
     #[rustc_layout(debug)]
     const C: () = (); //~ ERROR: can only be applied to
 }
+
+#[rustc_layout(debug)]
+type Impossible = (str, str); //~ ERROR: cannot be known at compilation time

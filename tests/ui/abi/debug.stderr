@@ -268,100 +268,6 @@ error: `#[rustc_abi]` can only be applied to function items, type aliases, and a
 LL | const C: () = ();
    | ^^^^^^^^^^^
 
-error: `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
-  --> $DIR/debug.rs:28:5
-   |
-LL |     const C: () = ();
-   |     ^^^^^^^^^^^
-
-error: fn_abi_of(assoc_test) = FnAbi {
-           args: [
-               ArgAbi {
-                   layout: TyAndLayout {
-                       ty: &S,
-                       layout: Layout {
-                           size: $SOME_SIZE,
-                           align: AbiAndPrefAlign {
-                               abi: $SOME_ALIGN,
-                               pref: $SOME_ALIGN,
-                           },
-                           abi: Scalar(
-                               Initialized {
-                                   value: Pointer(
-                                       AddressSpace(
-                                           0,
-                                       ),
-                                   ),
-                                   valid_range: $NON_NULL,
-                               },
-                           ),
-                           fields: Primitive,
-                           largest_niche: Some(
-                               Niche {
-                                   offset: Size(0 bytes),
-                                   value: Pointer(
-                                       AddressSpace(
-                                           0,
-                                       ),
-                                   ),
-                                   valid_range: $NON_NULL,
-                               },
-                           ),
-                           variants: Single {
-                               index: 0,
-                           },
-                           max_repr_align: None,
-                           unadjusted_abi_align: $SOME_ALIGN,
-                       },
-                   },
-                   mode: Direct(
-                       ArgAttributes {
-                           regular: NoAlias | NonNull | ReadOnly | NoUndef,
-                           arg_ext: None,
-                           pointee_size: Size(2 bytes),
-                           pointee_align: Some(
-                               Align(2 bytes),
-                           ),
-                       },
-                   ),
-               },
-           ],
-           ret: ArgAbi {
-               layout: TyAndLayout {
-                   ty: (),
-                   layout: Layout {
-                       size: Size(0 bytes),
-                       align: AbiAndPrefAlign {
-                           abi: $SOME_ALIGN,
-                           pref: $SOME_ALIGN,
-                       },
-                       abi: Aggregate {
-                           sized: true,
-                       },
-                       fields: Arbitrary {
-                           offsets: [],
-                           memory_index: [],
-                       },
-                       largest_niche: None,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: $SOME_ALIGN,
-                   },
-               },
-               mode: Ignore,
-           },
-           c_variadic: false,
-           fixed_count: 1,
-           conv: Rust,
-           can_unwind: $SOME_BOOL,
-       }
-  --> $DIR/debug.rs:33:5
-   |
-LL |     fn assoc_test(&self) { }
-   |     ^^^^^^^^^^^^^^^^^^^^
-
 error: ABIs are not compatible
        left ABI = FnAbi {
            args: [
@@ -945,5 +851,109 @@ error: ABIs are not compatible
 LL | type TestAbiNeSign = (fn(i32), fn(u32));
    | ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 10 previous errors
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/debug.rs:53:46
+   |
+LL | type TestAbiEqNonsense = (fn((str, str)), fn((str, str)));
+   |                                              ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: only the last element of a tuple may have a dynamically sized type
 
+error: `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
+  --> $DIR/debug.rs:28:5
+   |
+LL |     const C: () = ();
+   |     ^^^^^^^^^^^
+
+error: fn_abi_of(assoc_test) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: &S,
+                       layout: Layout {
+                           size: $SOME_SIZE,
+                           align: AbiAndPrefAlign {
+                               abi: $SOME_ALIGN,
+                               pref: $SOME_ALIGN,
+                           },
+                           abi: Scalar(
+                               Initialized {
+                                   value: Pointer(
+                                       AddressSpace(
+                                           0,
+                                       ),
+                                   ),
+                                   valid_range: $NON_NULL,
+                               },
+                           ),
+                           fields: Primitive,
+                           largest_niche: Some(
+                               Niche {
+                                   offset: Size(0 bytes),
+                                   value: Pointer(
+                                       AddressSpace(
+                                           0,
+                                       ),
+                                   ),
+                                   valid_range: $NON_NULL,
+                               },
+                           ),
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: $SOME_ALIGN,
+                       },
+                   },
+                   mode: Direct(
+                       ArgAttributes {
+                           regular: NoAlias | NonNull | ReadOnly | NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(2 bytes),
+                           pointee_align: Some(
+                               Align(2 bytes),
+                           ),
+                       },
+                   ),
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: $SOME_ALIGN,
+                           pref: $SOME_ALIGN,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: $SOME_ALIGN,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: Rust,
+           can_unwind: $SOME_BOOL,
+       }
+  --> $DIR/debug.rs:33:5
+   |
+LL |     fn assoc_test(&self) { }
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

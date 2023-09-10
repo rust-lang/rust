@@ -2,6 +2,7 @@
 #![feature(rustc_attrs, transparent_unions)]
 #![allow(unused, improper_ctypes_definitions)]
 use std::marker::PhantomData;
+use std::mem::ManuallyDrop;
 use std::num::NonZeroI32;
 use std::ptr::NonNull;
 
@@ -37,9 +38,9 @@ enum ReprCEnum<T> {
     Variant2(T),
 }
 #[repr(C)]
-union ReprCUnion<T: Copy> {
+union ReprCUnion<T> {
     nothing: (),
-    something: T,
+    something: ManuallyDrop<T>,
 }
 
 macro_rules! test_abi_compatible {
@@ -82,9 +83,9 @@ struct Wrapper2<T>((), Zst, T);
 #[repr(transparent)]
 struct Wrapper3<T>(T, [u8; 0], PhantomData<u64>);
 #[repr(transparent)]
-union WrapperUnion<T: Copy> {
+union WrapperUnion<T> {
     nothing: (),
-    something: T,
+    something: ManuallyDrop<T>,
 }
 
 macro_rules! test_transparent {
