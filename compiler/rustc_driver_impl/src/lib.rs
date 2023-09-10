@@ -185,7 +185,6 @@ pub trait Callbacks {
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
     fn after_analysis<'tcx>(
         &mut self,
-        _handler: &EarlyErrorHandler,
         _compiler: &interface::Compiler,
         _queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
@@ -446,7 +445,7 @@ fn run_compiler(
 
             queries.global_ctxt()?.enter(|tcx| tcx.analysis(()))?;
 
-            if callbacks.after_analysis(&handler, compiler, queries) == Compilation::Stop {
+            if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
 

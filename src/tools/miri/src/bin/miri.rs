@@ -59,7 +59,6 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
     fn after_analysis<'tcx>(
         &mut self,
-        handler: &EarlyErrorHandler,
         _: &rustc_interface::interface::Compiler,
         queries: &'tcx rustc_interface::Queries<'tcx>,
     ) -> Compilation {
@@ -68,7 +67,8 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 tcx.sess.fatal("miri cannot be run on programs that fail compilation");
             }
 
-            init_late_loggers(handler, tcx);
+            let handler = EarlyErrorHandler::new(tcx.sess.opts.error_format);
+            init_late_loggers(&handler, tcx);
             if !tcx.crate_types().contains(&CrateType::Executable) {
                 tcx.sess.fatal("miri only makes sense on bin crates");
             }
