@@ -21,8 +21,9 @@ mod swizzle_dyn;
 mod vector;
 mod vendor;
 
-#[doc = include_str!("core_simd_docs.md")]
 pub mod simd {
+    #![doc = include_str!("core_simd_docs.md")]
+
     pub mod prelude;
 
     pub(crate) use crate::core_simd::intrinsics;
