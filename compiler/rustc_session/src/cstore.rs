@@ -7,7 +7,7 @@ use crate::utils::NativeLibKind;
 use crate::Session;
 use rustc_ast as ast;
 use rustc_data_structures::owned_slice::OwnedSlice;
-use rustc_data_structures::sync::{self, AppendOnlyIndexVec, FreezeLock, RwLock};
+use rustc_data_structures::sync::{self, AppendOnlyIndexVec, FreezeLock};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
@@ -258,7 +258,7 @@ pub trait CrateStore: std::fmt::Debug {
 pub type CrateStoreDyn = dyn CrateStore + sync::DynSync + sync::DynSend;
 
 pub struct Untracked {
-    pub cstore: RwLock<Box<CrateStoreDyn>>,
+    pub cstore: FreezeLock<Box<CrateStoreDyn>>,
     /// Reference span for definitions.
     pub source_span: AppendOnlyIndexVec<LocalDefId, Span>,
     pub definitions: FreezeLock<Definitions>,
