@@ -778,6 +778,26 @@ impl MetadataBlob {
         }
         write!(out, "\n")?;
 
+        writeln!(out, "\n=Lang items=")?;
+        for (id, lang_item) in root.lang_items.decode(self) {
+            writeln!(
+                out,
+                "{} = crate{}",
+                lang_item.name(),
+                DefPath::make(LOCAL_CRATE, id, |parent| root
+                    .tables
+                    .def_keys
+                    .get(self, parent)
+                    .unwrap()
+                    .decode(self))
+                .to_string_no_crate_verbose()
+            )?;
+        }
+        for lang_item in root.lang_items_missing.decode(self) {
+            writeln!(out, "{} = <missing>", lang_item.name())?;
+        }
+        write!(out, "\n")?;
+
         Ok(())
     }
 }
