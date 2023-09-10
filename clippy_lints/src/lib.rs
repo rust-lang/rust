@@ -386,6 +386,7 @@ mod write;
 mod zero_div_zero;
 mod zero_repeat_side_effects;
 mod zero_sized_map_values;
+mod zombie_processes;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
 use clippy_config::{get_configuration_metadata, Conf};
@@ -933,5 +934,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(set_contains_or_insert::SetContainsOrInsert));
     store.register_early_pass(|| Box::new(byte_char_slices::ByteCharSlice));
     store.register_early_pass(|| Box::new(cfg_not_test::CfgNotTest));
+    store.register_late_pass(|_| Box::new(zombie_processes::ZombieProcesses));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
