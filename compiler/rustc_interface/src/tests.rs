@@ -704,7 +704,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(keep_hygiene_data, true);
     untracked!(link_native_libraries, false);
     untracked!(llvm_time_trace, true);
-    untracked!(ls, true);
+    untracked!(ls, vec!["all".to_owned()]);
     untracked!(macro_backtrace, true);
     untracked!(meta_stats, true);
     untracked!(mir_include_spans, true);
