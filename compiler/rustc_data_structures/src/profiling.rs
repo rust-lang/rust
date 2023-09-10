@@ -223,25 +223,6 @@ impl SelfProfilerRef {
         VerboseTimingGuard::start(message_and_format, self.generic_activity(event_label))
     }
 
-    /// Like `verbose_generic_activity`, but with an extra arg.
-    pub fn verbose_generic_activity_with_arg<A>(
-        &self,
-        event_label: &'static str,
-        event_arg: A,
-    ) -> VerboseTimingGuard<'_>
-    where
-        A: Borrow<str> + Into<String>,
-    {
-        let message_and_format = self
-            .print_verbose_generic_activities
-            .map(|format| (format!("{}({})", event_label, event_arg.borrow()), format));
-
-        VerboseTimingGuard::start(
-            message_and_format,
-            self.generic_activity_with_arg(event_label, event_arg),
-        )
-    }
-
     /// Start profiling a generic activity. Profiling continues until the
     /// TimingGuard returned from this call is dropped.
     #[inline(always)]

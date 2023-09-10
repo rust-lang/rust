@@ -121,7 +121,10 @@ fn run_passes_inner<'tcx>(
                 validate_body(tcx, body, format!("before pass {name}"));
             }
 
-            tcx.sess.time(name, || pass.run_pass(tcx, body));
+            tcx.sess
+                .prof
+                .generic_activity_with_arg("mir_pass", name)
+                .run(|| pass.run_pass(tcx, body));
 
             if dump_enabled {
                 dump_mir_for_pass(tcx, body, &name, true);
