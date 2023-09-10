@@ -21,16 +21,16 @@ define-function: (
 
 call-function: ("check-no-result", {
     "theme": "ayu",
-    "link": "rgb(57, 175, 215)",
-    "link_hover": "rgb(57, 175, 215)",
+    "link": "#39afd7",
+    "link_hover": "#39afd7",
 })
 call-function: ("check-no-result", {
     "theme": "dark",
-    "link": "rgb(210, 153, 29)",
-    "link_hover": "rgb(210, 153, 29)",
+    "link": "#d2991d",
+    "link_hover": "#d2991d",
 })
 call-function: ("check-no-result", {
     "theme": "light",
-    "link": "rgb(56, 115, 173)",
-    "link_hover": "rgb(56, 115, 173)",
+    "link": "#3873ad",
+    "link_hover": "#3873ad",
 })
