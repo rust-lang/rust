@@ -46,6 +46,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_index::{Idx, IndexVec};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use std::iter;
 use std::marker::PhantomData;
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
@@ -81,8 +82,9 @@ pub struct SerializedDepGraph<K: DepKind> {
     /// A flattened list of all edge targets in the graph, stored in the same
     /// varint encoding that we use on disk. Edge sources are implicit in edge_list_indices.
     edge_list_data: Vec<u8>,
-    /// Reciprocal map to `nodes`.
-    index: FxHashMap<DepNode<K>, SerializedDepNodeIndex>,
+    /// Stores a map from fingerprints to nodes per dep node kind.
+    /// This is the reciprocal of `nodes`.
+    index: Vec<FxHashMap<PackedFingerprint, SerializedDepNodeIndex>>,
 }
 
 impl<K: DepKind> Default for SerializedDepGraph<K> {
@@ -137,7 +139,7 @@ impl<K: DepKind> SerializedDepGraph<K> {
 
     #[inline]
     pub fn node_to_index_opt(&self, dep_node: &DepNode<K>) -> Option<SerializedDepNodeIndex> {
-        self.index.get(dep_node).cloned()
+        self.index.get(dep_node.kind.to_u16() as usize)?.get(&dep_node.hash).cloned()
     }
 
     #[inline]
@@ -147,7 +149,7 @@ impl<K: DepKind> SerializedDepGraph<K> {
 
     #[inline]
     pub fn node_count(&self) -> usize {
-        self.index.len()
+        self.nodes.len()
     }
 }
 
@@ -220,7 +222,8 @@ impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> Decodable<MemDecoder<'a>>
         for _index in 0..node_count {
             // Decode the header for this edge; the header packs together as many of the fixed-size
             // fields as possible to limit the number of times we update decoder state.
-            let node_header = SerializedNodeHeader { bytes: d.read_array(), _marker: PhantomData };
+            let node_header =
+                SerializedNodeHeader::<K> { bytes: d.read_array(), _marker: PhantomData };
 
             let _i: SerializedDepNodeIndex = nodes.push(node_header.node());
             debug_assert_eq!(_i.index(), _index);
@@ -251,8 +254,12 @@ impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> Decodable<MemDecoder<'a>>
         // end of the array. This padding ensure it doesn't.
         edge_list_data.extend(&[0u8; DEP_NODE_PAD]);
 
-        let index: FxHashMap<_, _> =
-            nodes.iter_enumerated().map(|(idx, &dep_node)| (dep_node, idx)).collect();
+        let mut index: Vec<_> =
+            iter::repeat(FxHashMap::default()).take(K::MAX as usize + 1).collect();
+
+        for (idx, node) in nodes.iter_enumerated() {
+            index[node.kind.to_u16() as usize].insert(node.hash, idx);
+        }
 
         SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data, index }
     }
