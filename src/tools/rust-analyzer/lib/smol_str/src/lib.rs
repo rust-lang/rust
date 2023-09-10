@@ -334,10 +334,28 @@ impl From<Box<str>> for SmolStr {
     }
 }
 
+impl From<Arc<str>> for SmolStr {
+    #[inline]
+    fn from(s: Arc<str>) -> SmolStr {
+        let repr = Repr::new_on_stack(s.as_ref()).unwrap_or_else(|| Repr::Heap(s));
+        Self(repr)
+    }
+}
+
 impl<'a> From<Cow<'a, str>> for SmolStr {
     #[inline]
     fn from(s: Cow<'a, str>) -> SmolStr {
         SmolStr::new(s)
+    }
+}
+
+impl From<SmolStr> for Arc<str> {
+    #[inline(always)]
+    fn from(text: SmolStr) -> Self {
+        match text.0 {
+            Repr::Heap(data) => data,
+            _ => text.as_str().into(),
+        }
     }
 }
 
@@ -421,40 +439,45 @@ enum Repr {
 }
 
 impl Repr {
+    /// This function tries to create a new Repr::Inline or Repr::Substring
+    /// If it isn't possible, this function returns None
+    fn new_on_stack<T>(text: T) -> Option<Self>
+    where
+        T: AsRef<str>,
+    {
+        let text = text.as_ref();
+
+        let len = text.len();
+        if len <= INLINE_CAP {
+            let mut buf = [0; INLINE_CAP];
+            buf[..len].copy_from_slice(text.as_bytes());
+            return Some(Repr::Inline {
+                len: unsafe { transmute(len as u8) },
+                buf,
+            });
+        }
+
+        if len <= N_NEWLINES + N_SPACES {
+            let bytes = text.as_bytes();
+            let possible_newline_count = cmp::min(len, N_NEWLINES);
+            let newlines = bytes[..possible_newline_count]
+                .iter()
+                .take_while(|&&b| b == b'\n')
+                .count();
+            let possible_space_count = len - newlines;
+            if possible_space_count <= N_SPACES && bytes[newlines..].iter().all(|&b| b == b' ') {
+                let spaces = possible_space_count;
+                return Some(Repr::Substring { newlines, spaces });
+            }
+        }
+        None
+    }
+
     fn new<T>(text: T) -> Self
     where
         T: AsRef<str>,
     {
-        {
-            let text = text.as_ref();
-
-            let len = text.len();
-            if len <= INLINE_CAP {
-                let mut buf = [0; INLINE_CAP];
-                buf[..len].copy_from_slice(text.as_bytes());
-                return Repr::Inline {
-                    len: unsafe { transmute(len as u8) },
-                    buf,
-                };
-            }
-
-            if len <= N_NEWLINES + N_SPACES {
-                let bytes = text.as_bytes();
-                let possible_newline_count = cmp::min(len, N_NEWLINES);
-                let newlines = bytes[..possible_newline_count]
-                    .iter()
-                    .take_while(|&&b| b == b'\n')
-                    .count();
-                let possible_space_count = len - newlines;
-                if possible_space_count <= N_SPACES && bytes[newlines..].iter().all(|&b| b == b' ')
-                {
-                    let spaces = possible_space_count;
-                    return Repr::Substring { newlines, spaces };
-                }
-            }
-        }
-
-        Repr::Heap(text.as_ref().into())
+        Self::new_on_stack(text.as_ref()).unwrap_or_else(|| Repr::Heap(text.as_ref().into()))
     }
 
     #[inline(always)]

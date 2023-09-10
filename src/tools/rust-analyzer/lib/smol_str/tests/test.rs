@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use proptest::{prop_assert, prop_assert_eq, proptest};
 
 use smol_str::SmolStr;
@@ -21,7 +23,11 @@ fn assert_traits() {
 fn conversions() {
     let s: SmolStr = "Hello, World!".into();
     let s: String = s.into();
-    assert_eq!(s, "Hello, World!")
+    assert_eq!(s, "Hello, World!");
+
+    let s: SmolStr = Arc::<str>::from("Hello, World!").into();
+    let s: Arc<str> = s.into();
+    assert_eq!(s.as_ref(), "Hello, World!");
 }
 
 #[test]
