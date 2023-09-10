@@ -732,12 +732,13 @@ impl MetadataBlob {
     ) -> io::Result<()> {
         let root = self.get_root();
 
-        let all_ls_kinds = vec!["root".to_owned(), "lang_items".to_owned(), "features".to_owned()];
-        let ls_kinds = if ls_kinds.contains(&"all".to_owned()) {
-            &all_ls_kinds
-        } else {
-            ls_kinds
-        };
+        let all_ls_kinds = vec![
+            "root".to_owned(),
+            "lang_items".to_owned(),
+            "features".to_owned(),
+            "items".to_owned(),
+        ];
+        let ls_kinds = if ls_kinds.contains(&"all".to_owned()) { &all_ls_kinds } else { ls_kinds };
 
         for kind in ls_kinds {
             match &**kind {
@@ -778,7 +779,7 @@ impl MetadataBlob {
                         root.profiler_runtime
                     )?;
 
-                    writeln!(out, "\n=External Dependencies=")?;
+                    writeln!(out, "=External Dependencies=")?;
                     let dylib_dependency_formats =
                         root.dylib_dependency_formats.decode(self).collect::<Vec<_>>();
                     for (i, dep) in root.crate_deps.decode(self).enumerate() {
@@ -801,7 +802,7 @@ impl MetadataBlob {
                 }
 
                 "lang_items" => {
-                    writeln!(out, "\n=Lang items=")?;
+                    writeln!(out, "=Lang items=")?;
                     for (id, lang_item) in root.lang_items.decode(self) {
                         writeln!(
                             out,
@@ -823,7 +824,7 @@ impl MetadataBlob {
                 }
 
                 "features" => {
-                    writeln!(out, "\n=Lib features=")?;
+                    writeln!(out, "=Lib features=")?;
                     for (feature, since) in root.lib_features.decode(self) {
                         writeln!(
                             out,
@@ -839,8 +840,77 @@ impl MetadataBlob {
                     write!(out, "\n")?;
                 }
 
+                "items" => {
+                    writeln!(out, "=Items=")?;
+
+                    fn print_item(
+                        blob: &MetadataBlob,
+                        out: &mut dyn io::Write,
+                        item: DefIndex,
+                        indent: usize,
+                    ) -> io::Result<()> {
+                        let root = blob.get_root();
+
+                        let def_kind = root.tables.opt_def_kind.get(blob, item).unwrap();
+                        let def_key = root.tables.def_keys.get(blob, item).unwrap().decode(blob);
+                        let def_name = if item == CRATE_DEF_INDEX {
+                            rustc_span::symbol::kw::Crate
+                        } else {
+                            def_key
+                                .disambiguated_data
+                                .data
+                                .get_opt_name()
+                                .unwrap_or_else(|| Symbol::intern("???"))
+                        };
+                        let visibility =
+                            root.tables.visibility.get(blob, item).unwrap().decode(blob).map_id(
+                                |index| {
+                                    format!(
+                                        "crate{}",
+                                        DefPath::make(LOCAL_CRATE, index, |parent| root
+                                            .tables
+                                            .def_keys
+                                            .get(blob, parent)
+                                            .unwrap()
+                                            .decode(blob))
+                                        .to_string_no_crate_verbose()
+                                    )
+                                },
+                            );
+                        write!(
+                            out,
+                            "{nil: <indent$}{:?} {:?} {} {{",
+                            visibility,
+                            def_kind,
+                            def_name,
+                            nil = "",
+                        )?;
+
+                        if let Some(children) =
+                            root.tables.module_children_non_reexports.get(blob, item)
+                        {
+                            write!(out, "\n")?;
+                            for child in children.decode(blob) {
+                                print_item(blob, out, child, indent + 4)?;
+                            }
+                            writeln!(out, "{nil: <indent$}}}", nil = "")?;
+                        } else {
+                            writeln!(out, "}}")?;
+                        }
+
+                        Ok(())
+                    }
+
+                    print_item(self, out, CRATE_DEF_INDEX, 0)?;
+
+                    write!(out, "\n")?;
+                }
+
                 _ => {
-                    writeln!(out, "unknown -Zls kind. allowed values are: no, all, root, lang_items, features")?;
+                    writeln!(
+                        out,
+                        "unknown -Zls kind. allowed values are: no, all, root, lang_items, features, items"
+                    )?;
                 }
             }
         }
