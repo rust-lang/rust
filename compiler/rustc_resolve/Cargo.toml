@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 bitflags = "1.2.1"
-pulldown-cmark = { version = "0.9.3", default-features = false }
+pulldown-cmark = { default-features = false, git = "https://github.com/GuillaumeGomez/pulldown-cmark", branch = "parser-buffer" }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }

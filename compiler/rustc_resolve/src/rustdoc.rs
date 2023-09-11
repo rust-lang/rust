@@ -433,8 +433,8 @@ fn parse_links<'md>(doc: &'md str) -> Vec<Box<str>> {
 }
 
 /// Collects additional data of link.
-fn collect_link_data<'input, 'callback>(
-    event_iter: &mut Parser<'input, 'callback>,
+fn collect_link_data<'input, 'callback, 'tree>(
+    event_iter: &mut Parser<'input, 'callback, 'tree>,
 ) -> Option<Box<str>> {
     let mut display_text: Option<String> = None;
     let mut append_text = |text: CowStr<'_>| {
