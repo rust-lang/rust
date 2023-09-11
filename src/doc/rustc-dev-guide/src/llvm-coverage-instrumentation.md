@@ -87,7 +87,7 @@ physical counters (or any other executable instructions) in the final binary.
 Some of them will be (see [`CoverageKind::Counter`]),
 but other counters can be computed on the fly, when generating a coverage
 report, by mapping a `CodeRegion` to a
-`CoverageKind`::[`Expression`][expression-coverage-kind].
+[`CoverageKind::Expression`].
 
 As an example:
 
@@ -132,7 +132,7 @@ The `InstrumentCoverage` MIR pass is documented in
 [mir-instrument-coverage]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_mir_transform/src/coverage
 [code-region]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/coverage/struct.CodeRegion.html
 [`CoverageKind::Counter`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/coverage/enum.CoverageKind.html#variant.Counter
-[expression-coverage-kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/coverage/enum.CoverageKind.html#variant.Expression
+[`CoverageKind::Expression`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/coverage/enum.CoverageKind.html#variant.Expression
 [coverage-statement]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.StatementKind.html#variant.Coverage
 [instrument-coverage-pass-details]: #implementation-details-of-the-instrumentcoverage-mir-pass
 
