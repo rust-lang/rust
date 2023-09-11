@@ -254,8 +254,10 @@ impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> Decodable<MemDecoder<'a>>
         // end of the array. This padding ensure it doesn't.
         edge_list_data.extend(&[0u8; DEP_NODE_PAD]);
 
-        let mut index: Vec<_> =
-            iter::repeat(FxHashMap::default()).take(K::MAX as usize + 1).collect();
+        // Read the number of each dep kind and use it to create an hash map with a suitable size.
+        let mut index: Vec<_> = (0..(K::MAX as usize + 1))
+            .map(|_| FxHashMap::with_capacity_and_hasher(d.read_u32() as usize, Default::default()))
+            .collect();
 
         for (idx, node) in nodes.iter_enumerated() {
             index[node.kind.to_u16() as usize].insert(node.hash, idx);
@@ -426,6 +428,9 @@ struct EncoderState<K: DepKind> {
     total_node_count: usize,
     total_edge_count: usize,
     stats: Option<FxHashMap<K, Stat<K>>>,
+
+    /// Stores the number of times we've encoded each dep kind.
+    kind_stats: Vec<u32>,
 }
 
 impl<K: DepKind> EncoderState<K> {
@@ -435,6 +440,7 @@ impl<K: DepKind> EncoderState<K> {
             total_edge_count: 0,
             total_node_count: 0,
             stats: record_stats.then(FxHashMap::default),
+            kind_stats: iter::repeat(0).take(K::MAX as usize + 1).collect(),
         }
     }
 
@@ -445,6 +451,7 @@ impl<K: DepKind> EncoderState<K> {
     ) -> DepNodeIndex {
         let index = DepNodeIndex::new(self.total_node_count);
         self.total_node_count += 1;
+        self.kind_stats[node.node.kind.to_u16() as usize] += 1;
 
         let edge_count = node.edges.len();
         self.total_edge_count += edge_count;
@@ -470,10 +477,15 @@ impl<K: DepKind> EncoderState<K> {
     }
 
     fn finish(self, profiler: &SelfProfilerRef) -> FileEncodeResult {
-        let Self { mut encoder, total_node_count, total_edge_count, stats: _ } = self;
+        let Self { mut encoder, total_node_count, total_edge_count, stats: _, kind_stats } = self;
 
         let node_count = total_node_count.try_into().unwrap();
         let edge_count = total_edge_count.try_into().unwrap();
+
+        // Encode the number of each dep kind encountered
+        for count in kind_stats.iter() {
+            count.encode(&mut encoder);
+        }
 
         debug!(?node_count, ?edge_count);
         debug!("position: {:?}", encoder.position());
