@@ -9,3 +9,6 @@ allow-unauthenticated = [
 
 # Gives us the commands 'ready', 'author', 'blocked'
 [shortcut]
+
+[no-merges]
+exclude_labels = ["rollup", "subtree-sync"]
