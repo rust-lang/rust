@@ -662,12 +662,19 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let allow_unwrap_in_tests = conf.allow_unwrap_in_tests;
     let suppress_restriction_lint_in_const = conf.suppress_restriction_lint_in_const;
     store.register_late_pass(move |_| Box::new(approx_const::ApproxConstant::new(msrv())));
+    let allowed_dotfiles = conf
+        .allowed_dotfiles
+        .iter()
+        .cloned()
+        .chain(methods::DEFAULT_ALLOWED_DOTFILES.iter().copied().map(ToOwned::to_owned))
+        .collect::<FxHashSet<_>>();
     store.register_late_pass(move |_| {
         Box::new(methods::Methods::new(
             avoid_breaking_exported_api,
             msrv(),
             allow_expect_in_tests,
             allow_unwrap_in_tests,
+            allowed_dotfiles.clone(),
         ))
     });
     store.register_late_pass(move |_| Box::new(matches::Matches::new(msrv())));

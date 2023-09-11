@@ -751,6 +751,16 @@ Which crates to allow absolute paths from
 * [`absolute_paths`](https://rust-lang.github.io/rust-clippy/master/index.html#absolute_paths)
 
 
+## `allowed-dotfiles`
+Additional dotfiles (files or directories starting with a dot) to allow
+
+**Default Value:** `{}` (`rustc_data_structures::fx::FxHashSet<String>`)
+
+---
+**Affected lints:**
+* [`path_ends_with_ext`](https://rust-lang.github.io/rust-clippy/master/index.html#path_ends_with_ext)
+
+
 ## `enforce-iter-loop-reborrow`
 #### Example
 ```
