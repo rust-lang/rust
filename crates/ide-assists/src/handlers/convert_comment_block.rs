@@ -79,19 +79,21 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
         comments.last()?.syntax().text_range().end(),
     );
 
-    // We pick a single indentation level for the whole block comment based on the
-    // comment where the assist was invoked. This will be prepended to the
-    // contents of each line comment when they're put into the block comment.
-    let indentation = IndentLevel::from_token(comment.syntax());
-
-    let cms =
-        comments.into_iter().map(|c| line_comment_text(indentation, c)).collect::<Vec<String>>();
-
     acc.add(
         AssistId("line_to_block", AssistKind::RefactorRewrite),
         "Replace line comments with a single block comment",
         target,
         |edit| {
+            // We pick a single indentation level for the whole block comment based on the
+            // comment where the assist was invoked. This will be prepended to the
+            // contents of each line comment when they're put into the block comment.
+            let indentation = IndentLevel::from_token(comment.syntax());
+
+            let cms = comments
+                .into_iter()
+                .map(|c| line_comment_text(indentation, c))
+                .collect::<Vec<String>>();
+
             let block_comment_body = cms.into_iter().join("\n");
 
             let block_prefix =
