@@ -701,15 +701,15 @@ pub fn write_allocations<'tcx>(
     fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
         match val {
             ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
-                Either::Left(Either::Left(std::iter::once(ptr.provenance)))
+                Either::Left(std::iter::once(ptr.provenance))
             }
-            ConstValue::Scalar(interpret::Scalar::Int { .. }) => {
-                Either::Left(Either::Right(std::iter::empty()))
+            ConstValue::Scalar(interpret::Scalar::Int { .. }) => Either::Right(std::iter::empty()),
+            ConstValue::ZeroSized => Either::Right(std::iter::empty()),
+            ConstValue::Slice { .. } => {
+                // `u8`/`str` slices, shouldn't contain pointers that we want to print.
+                Either::Right(std::iter::empty())
             }
-            ConstValue::ZeroSized => Either::Left(Either::Right(std::iter::empty())),
-            ConstValue::ByRef { alloc, .. } | ConstValue::Slice { data: alloc, .. } => {
-                Either::Right(alloc_ids_from_alloc(alloc))
-            }
+            ConstValue::ByRef { alloc_id, .. } => Either::Left(std::iter::once(alloc_id)),
         }
     }
     struct CollectAllocIds(BTreeSet<AllocId>);

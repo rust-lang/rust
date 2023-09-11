@@ -756,11 +756,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         let layout = from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(ty))?;
         let op = match val_val {
-            ConstValue::ByRef { alloc, offset } => {
-                let id = self.tcx.create_memory_alloc(alloc);
+            ConstValue::ByRef { alloc_id, offset } => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.
-                let ptr = self.global_base_pointer(Pointer::new(id, offset))?;
+                let ptr = self.global_base_pointer(Pointer::new(alloc_id, offset))?;
                 Operand::Indirect(MemPlace::from_ptr(ptr.into()))
             }
             ConstValue::Scalar(x) => Operand::Immediate(adjust_scalar(x)?.into()),

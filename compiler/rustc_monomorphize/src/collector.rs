@@ -1470,8 +1470,9 @@ fn collect_const_value<'tcx>(
 ) {
     match value {
         ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => collect_alloc(tcx, ptr.provenance, output),
-        ConstValue::Slice { data: alloc, start: _, end: _ } | ConstValue::ByRef { alloc, .. } => {
-            for &id in alloc.inner().provenance().ptrs().values() {
+        ConstValue::ByRef { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
+        ConstValue::Slice { data, start: _, end: _ } => {
+            for &id in data.inner().provenance().ptrs().values() {
                 collect_alloc(tcx, id, output);
             }
         }

@@ -139,7 +139,6 @@ impl EnumSizeOpt {
 
                     let (adt_def, num_variants, alloc_id) =
                         self.candidate(tcx, param_env, ty, &mut alloc_cache)?;
-                    let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
 
                     let tmp_ty = Ty::new_array(tcx, tcx.types.usize, num_variants as u64);
 
@@ -154,7 +153,7 @@ impl EnumSizeOpt {
                         span,
                         user_ty: None,
                         literal: ConstantKind::Val(
-                            interpret::ConstValue::ByRef { alloc, offset: Size::ZERO },
+                            interpret::ConstValue::ByRef { alloc_id, offset: Size::ZERO },
                             tmp_ty,
                         ),
                     };

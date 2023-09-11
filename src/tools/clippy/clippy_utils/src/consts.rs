@@ -684,34 +684,37 @@ pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::ConstantKind<'t
             },
             _ => None,
         },
-        mir::ConstantKind::Val(ConstValue::ByRef { alloc, offset: _ }, _) => match result.ty().kind() {
-            ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),
-            ty::Array(sub_type, len) => match sub_type.kind() {
-                ty::Float(FloatTy::F32) => match len.try_to_target_usize(lcx.tcx) {
-                    Some(len) => alloc
-                        .inner()
-                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * usize::try_from(len).unwrap()))
-                        .to_owned()
-                        .array_chunks::<4>()
-                        .map(|&chunk| Some(Constant::F32(f32::from_le_bytes(chunk))))
-                        .collect::<Option<Vec<Constant<'tcx>>>>()
-                        .map(Constant::Vec),
-                    _ => None,
-                },
-                ty::Float(FloatTy::F64) => match len.try_to_target_usize(lcx.tcx) {
-                    Some(len) => alloc
-                        .inner()
-                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * usize::try_from(len).unwrap()))
-                        .to_owned()
-                        .array_chunks::<8>()
-                        .map(|&chunk| Some(Constant::F64(f64::from_le_bytes(chunk))))
-                        .collect::<Option<Vec<Constant<'tcx>>>>()
-                        .map(Constant::Vec),
+        mir::ConstantKind::Val(ConstValue::ByRef { alloc_id, offset: _ }, _) => {
+            let alloc = lcx.tcx.global_alloc(alloc_id).unwrap_memory();
+            match result.ty().kind() {
+                ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),
+                ty::Array(sub_type, len) => match sub_type.kind() {
+                    ty::Float(FloatTy::F32) => match len.try_to_target_usize(lcx.tcx) {
+                        Some(len) => alloc
+                            .inner()
+                            .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * usize::try_from(len).unwrap()))
+                            .to_owned()
+                            .array_chunks::<4>()
+                            .map(|&chunk| Some(Constant::F32(f32::from_le_bytes(chunk))))
+                            .collect::<Option<Vec<Constant<'tcx>>>>()
+                            .map(Constant::Vec),
+                        _ => None,
+                    },
+                    ty::Float(FloatTy::F64) => match len.try_to_target_usize(lcx.tcx) {
+                        Some(len) => alloc
+                            .inner()
+                            .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * usize::try_from(len).unwrap()))
+                            .to_owned()
+                            .array_chunks::<8>()
+                            .map(|&chunk| Some(Constant::F64(f64::from_le_bytes(chunk))))
+                            .collect::<Option<Vec<Constant<'tcx>>>>()
+                            .map(Constant::Vec),
+                        _ => None,
+                    },
                     _ => None,
                 },
                 _ => None,
-            },
-            _ => None,
+            }
         },
         _ => None,
     }

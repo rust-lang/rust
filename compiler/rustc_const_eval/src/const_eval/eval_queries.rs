@@ -148,10 +148,7 @@ pub(super) fn op_to_const<'tcx>(
     let to_const_value = |mplace: &MPlaceTy<'_>| {
         debug!("to_const_value(mplace: {:?})", mplace);
         match mplace.ptr().into_parts() {
-            (Some(alloc_id), offset) => {
-                let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
-                ConstValue::ByRef { alloc, offset }
-            }
+            (Some(alloc_id), offset) => ConstValue::ByRef { alloc_id, offset },
             (None, offset) => {
                 assert!(mplace.layout.is_zst());
                 assert_eq!(

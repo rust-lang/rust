@@ -43,9 +43,13 @@ pub enum ConstValue<'tcx> {
 
     /// A value not represented/representable by `Scalar` or `Slice`
     ByRef {
-        /// The backing memory of the value, may contain more memory than needed for just the value
-        /// in order to share `ConstAllocation`s between values
-        alloc: ConstAllocation<'tcx>,
+        /// The backing memory of the value. May contain more memory than needed for just the value
+        /// if this points into some other larger ConstValue.
+        ///
+        /// We use an `AllocId` here instead of a `ConstAllocation<'tcx>` to make sure that when a
+        /// raw constant (which is basically just an `AllocId`) is turned into a `ConstValue` and
+        /// back, we can preserve the original `AllocId`.
+        alloc_id: AllocId,
         /// Offset into `alloc`
         offset: Size,
     },

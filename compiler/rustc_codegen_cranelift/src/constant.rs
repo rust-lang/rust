@@ -200,11 +200,15 @@ pub(crate) fn codegen_const_value<'tcx>(
                 CValue::by_val(val, layout)
             }
         },
-        ConstValue::ByRef { alloc, offset } => CValue::by_ref(
-            pointer_for_allocation(fx, alloc)
-                .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
-            layout,
-        ),
+        ConstValue::ByRef { alloc_id, offset } => {
+            let alloc = fx.tcx.global_alloc(alloc_id).unwrap_memory();
+            // FIXME: avoid creating multiple allocations for the same AllocId?
+            CValue::by_ref(
+                pointer_for_allocation(fx, alloc)
+                    .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
+                layout,
+            )
+        }
         ConstValue::Slice { data, start, end } => {
             let ptr = pointer_for_allocation(fx, data)
                 .offset_i64(fx, i64::try_from(start).unwrap())
