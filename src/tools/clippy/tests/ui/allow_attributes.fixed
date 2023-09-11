@@ -22,6 +22,13 @@ struct T4;
 #[cfg_attr(panic = "unwind", expect(dead_code))]
 struct CfgT;
 
+#[allow(clippy::allow_attributes, unused)]
+struct Allowed;
+
+#[expect(clippy::allow_attributes)]
+#[allow(unused)]
+struct Expected;
+
 fn ignore_external() {
     external! {
         #[allow(clippy::needless_borrow)] // Should not lint
