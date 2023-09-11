@@ -233,8 +233,8 @@ target | std | host | notes
 `aarch64-unknown-redox` | ? |  | ARM64 Redox OS
 [`aarch64-uwp-windows-msvc`](platform-support/windows_msvc.md) | ? |  | ARM64 Universal Windows Platform (UWP) apps using MSVC
 [`aarch64-wrs-vxworks`](platform-support/vxworks.md) | ? |  | ARM64 VxWorks
-`aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
-`aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
+[`aarch64_be-unknown-linux-gnu_ilp32`](platform-support/aarch64_be-unknown-linux-gnu-ilp32.md) | ✓ | ✓ | ARM64 Linux (Big Endian, ILP32 ABI)
+[`aarch64_be-unknown-linux-gnu`](platform-support/aarch64_be_unknown_linux_gnu.md) | ✓ | ✓ | ARM64 Linux (Big Endian)
 [`aarch64_be-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD (big-endian)
 [`arm64_32-apple-watchos`](platform-support/apple_watchos.md) | ✓ | | ARM Apple WatchOS 64-bit with 32-bit pointers
 [`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | ARM BE8 the default ARM big-endian architecture since [ARMv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
