@@ -993,6 +993,46 @@ use foo::bar::qux;
     );
 }
 
+#[test]
+fn insert_with_renamed_import_simple_use() {
+    check_with_config(
+        "use self::foo::Foo",
+        r#"
+use self::foo::Foo as _;
+"#,
+        r#"
+use self::foo::Foo;
+"#,
+        &InsertUseConfig {
+            granularity: ImportGranularity::Crate,
+            prefix_kind: hir::PrefixKind::BySelf,
+            enforce_granularity: true,
+            group: true,
+            skip_glob_imports: true,
+        },
+    );
+}
+
+#[test]
+fn insert_with_renamed_import_complex_use() {
+    check_with_config(
+        "use self::foo::Foo;",
+        r#"
+use self::foo::{self, Foo as _, Bar};
+"#,
+        r#"
+use self::foo::{self, Foo, Bar};
+"#,
+        &InsertUseConfig {
+            granularity: ImportGranularity::Crate,
+            prefix_kind: hir::PrefixKind::BySelf,
+            enforce_granularity: true,
+            group: true,
+            skip_glob_imports: true,
+        },
+    );
+}
+
 fn check_with_config(
     path: &str,
     ra_fixture_before: &str,
