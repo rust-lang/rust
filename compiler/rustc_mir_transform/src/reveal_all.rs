@@ -8,10 +8,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 pub struct RevealAll;
 
 impl<'tcx> MirPass<'tcx> for RevealAll {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 3 || super::inline::Inline.is_enabled(sess)
-    }
-
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // Do not apply this transformation to generators.
         if body.generator.is_some() {
