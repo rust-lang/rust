@@ -237,6 +237,7 @@ fn sidebar_type_alias<'a>(
 ) -> Vec<LinkBlock<'a>> {
     let mut items = vec![];
     if let Some(inner_type) = &t.inner_type {
+        items.push(LinkBlock::forced(Link::new("aliased-type", "Aliased type")));
         match inner_type {
             clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive: _ } => {
                 let mut variants = variants
