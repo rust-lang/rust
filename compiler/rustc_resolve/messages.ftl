@@ -68,9 +68,6 @@ resolve_cannot_find_ident_in_this_scope =
 resolve_cannot_glob_import_possible_crates =
     cannot glob-import all possible crates
 
-resolve_cannot_use_self_type_here =
-    can't use `Self` here
-
 resolve_change_import_binding =
     you can use `as` to change the binding name of the import
 
@@ -89,9 +86,6 @@ resolve_consider_marking_as_pub =
 resolve_const_not_member_of_trait =
     const `{$const_}` is not a member of trait `{$trait_}`
     .label = not a member of trait `{$trait_}`
-
-resolve_const_param_from_outer_fn =
-    const parameter from outer function
 
 resolve_const_param_in_enum_discriminant =
     const parameters may not be used in enum discriminant values
@@ -119,10 +113,19 @@ resolve_forward_declared_generic_param =
     generic parameters with a default cannot use forward declared identifiers
     .label = defaulted generic parameters cannot be forward declared
 
-resolve_generic_params_from_outer_function =
-    can't use generic parameters from outer function
-    .label = use of generic parameter from outer function
-    .suggestion = try using a local generic parameter instead
+resolve_generic_params_from_outer_item =
+    can't use generic parameters from outer item
+    .label = use of generic parameter from outer item
+    .refer_to_type_directly = refer to the type directly here instead
+    .suggestion = try introducing a local generic parameter here
+
+resolve_generic_params_from_outer_item_const_param = const parameter from outer item
+
+resolve_generic_params_from_outer_item_self_ty_alias = `Self` type implicitly declared here, by this `impl`
+
+resolve_generic_params_from_outer_item_self_ty_param = can't use `Self` here
+
+resolve_generic_params_from_outer_item_ty_param = type parameter from outer item
 
 resolve_glob_import_doesnt_reexport =
     glob import doesn't reexport anything because no candidate is public enough
@@ -277,9 +280,6 @@ resolve_type_not_member_of_trait =
     type `{$type_}` is not a member of trait `{$trait_}`
     .label = not a member of trait `{$trait_}`
 
-resolve_type_param_from_outer_fn =
-    type parameter from outer function
-
 resolve_type_param_in_enum_discriminant =
     type parameters may not be used in enum discriminant values
 
@@ -314,9 +314,6 @@ resolve_unreachable_label_suggestion_use_similarly_named =
 
 resolve_unreachable_label_with_similar_name_exists =
     a label with a similar name exists but is unreachable
-
-resolve_use_a_type_here_instead =
-    use a type here instead
 
 resolve_variable_bound_with_different_mode =
     variable `{$variable_name}` is bound inconsistently across alternatives separated by `|`
