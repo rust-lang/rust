@@ -227,7 +227,7 @@ target | std | host | notes
 [`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS |
 [`aarch64-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | ARM64 FreeBSD
 [`aarch64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit
-`aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
+[`aarch64-unknown-linux-gnu_ilp32`](platform-support/aarch64_unknown_linux_gnu_ilp32.md) | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
 [`aarch64-unknown-redox`](platform-support/aarch64_unknown_redox.md) | ? |  | ARM64 Redox OS
