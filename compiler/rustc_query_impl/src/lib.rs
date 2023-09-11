@@ -209,6 +209,7 @@ pub fn query_system<'tcx>(
     on_disk_cache: Option<OnDiskCache<'tcx>>,
     incremental: bool,
 ) -> QuerySystem<'tcx> {
+    #[allow(large_assignments)]
     QuerySystem {
         states: Default::default(),
         arenas: Default::default(),

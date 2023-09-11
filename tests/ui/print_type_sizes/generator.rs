@@ -2,6 +2,7 @@
 // build-pass
 // ignore-pass
 
+#![allow(large_assignments)]
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;

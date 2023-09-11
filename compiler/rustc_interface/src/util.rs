@@ -126,6 +126,7 @@ pub fn create_session(
     sess.parse_sess.config = cfg;
     sess.parse_sess.check_config = check_cfg;
 
+    #[allow(large_assignments)]
     (sess, codegen_backend)
 }
 

@@ -93,6 +93,7 @@ pub struct Queries<'tcx> {
 
 impl<'tcx> Queries<'tcx> {
     pub fn new(compiler: &'tcx Compiler) -> Queries<'tcx> {
+        #[allow(large_assignments)]
         Queries {
             compiler,
             gcx_cell: OnceLock::new(),

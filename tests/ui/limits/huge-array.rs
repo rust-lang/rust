@@ -1,3 +1,4 @@
+#![allow(large_assignments)]
 // build-fail
 
 fn generic<T: Copy>(t: T) {

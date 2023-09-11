@@ -8,6 +8,7 @@
 #![feature(strict_provenance)]
 #![feature(test)]
 #![deny(fuzzy_provenance_casts)]
+#![allow(large_assignments)]
 
 extern crate test;
 

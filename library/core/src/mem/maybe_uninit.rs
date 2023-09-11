@@ -97,6 +97,7 @@ use crate::slice;
 /// unnecessary moves.
 ///
 /// ```
+/// ##![allow(large_assignments)]
 /// use std::mem::MaybeUninit;
 ///
 /// unsafe fn make_vec(out: *mut Vec<i32>) {
@@ -117,6 +118,7 @@ use crate::slice;
 /// `MaybeUninit<T>` can be used to initialize a large array element-by-element:
 ///
 /// ```
+/// ##![allow(large_assignments)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let data = {
@@ -145,6 +147,7 @@ use crate::slice;
 /// be found in low-level datastructures.
 ///
 /// ```
+/// ##![allow(large_assignments)]
 /// use std::mem::MaybeUninit;
 ///
 /// // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
