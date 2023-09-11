@@ -265,7 +265,7 @@ target | std | host | notes
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS
 [`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS |
-`i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
+[`i686-apple-darwin`](platform-support/i686_apple_darwin.md) | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
 [`i686-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
 [`i686-unknown-haiku`](platform-support/haiku.md) | ✓ | ✓ | 32-bit Haiku
 [`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 with SSE2
