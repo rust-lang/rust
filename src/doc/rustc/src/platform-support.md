@@ -179,7 +179,7 @@ target | std | notes
 `thumbv8m.main-none-eabi` | * | Bare ARMv8-M Mainline
 `thumbv8m.main-none-eabihf` | * | Bare ARMv8-M Mainline, hardfloat
 `wasm32-unknown-emscripten` | ✓ | WebAssembly via Emscripten
-`wasm32-unknown-unknown` | ✓ | WebAssembly
+[`wasm32-unknown-unknown`](platform-support/wasm32_unknown_unknown.md) | ✓ | WebAssembly
 [`wasm32-wasi`](platform-support/wasm32_wasi.md) | ✓ | WebAssembly with WASI
 [`wasm32-wasi-preview1-threads`](platform-support/wasm32-wasi-preview1-threads.md) | ✓ |  | WebAssembly with WASI Preview 1 and threads
 [`x86_64-apple-ios`](platform-support/x86_64_apple_ios.md) | ✓ | 64-bit x86 iOS
