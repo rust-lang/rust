@@ -2450,7 +2450,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             ItemKind::Const(box ast::ConstItem { ref generics, ref ty, ref expr, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
-                    RibKind::Item(HasGenericParams::Yes(generics.span)),
+                    RibKind::Item(if self.r.tcx.features().generic_const_items {
+                        HasGenericParams::Yes(generics.span)
+                    } else {
+                        HasGenericParams::No
+                    }),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::ConstItem,

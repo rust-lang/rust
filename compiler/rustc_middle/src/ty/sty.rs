@@ -1577,6 +1577,20 @@ pub struct ConstVid<'tcx> {
     pub phantom: PhantomData<&'tcx ()>,
 }
 
+/// An **effect** **v**ariable **ID**.
+///
+/// Handling effect infer variables happens separately from const infer variables
+/// because we do not want to reuse any of the const infer machinery. If we try to
+/// relate an effect variable with a normal one, we would ICE, which can catch bugs
+/// where we are not correctly using the effect var for an effect param. Fallback
+/// is also implemented on top of having separate effect and normal const variables.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(TyEncodable, TyDecodable)]
+pub struct EffectVid<'tcx> {
+    pub index: u32,
+    pub phantom: PhantomData<&'tcx ()>,
+}
+
 rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
     #[derive(HashStable)]

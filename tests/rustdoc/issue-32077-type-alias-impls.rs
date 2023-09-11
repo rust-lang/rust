@@ -19,6 +19,8 @@ impl<T> Foo for GenericStruct<T> {}
 impl Bar for GenericStruct<u32> {}
 
 // @has 'foo/type.TypedefStruct.html'
+// We check that "Aliased type" is also present as a title in the sidebar.
+// @has - '//*[@class="sidebar-elems"]//h3/a[@href="#aliased-type"]' 'Aliased type'
 // We check that we have the implementation of the type alias itself.
 // @has - '//*[@id="impl-TypedefStruct"]/h3' 'impl TypedefStruct'
 // @has - '//*[@id="method.on_alias"]/h4' 'pub fn on_alias()'

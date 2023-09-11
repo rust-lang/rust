@@ -4,6 +4,7 @@ use rustc_data_structures::{
     graph::{iterate::DepthFirstSearch, vec_graph::VecGraph},
     unord::{UnordBag, UnordMap, UnordSet},
 };
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::ty::{self, Ty};
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
@@ -23,20 +24,10 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             self.fulfillment_cx.borrow_mut().pending_obligations()
         );
 
-        // Check if we have any unsolved variables. If not, no need for fallback.
-        let unsolved_variables = self.unsolved_variables();
-        if unsolved_variables.is_empty() {
+        let fallback_occured = self.fallback_types() || self.fallback_effects();
+
+        if !fallback_occured {
             return;
-        }
-
-        let diverging_fallback = self.calculate_diverging_fallback(&unsolved_variables);
-
-        // We do fallback in two passes, to try to generate
-        // better error messages.
-        // The first time, we do *not* replace opaque types.
-        for ty in unsolved_variables {
-            debug!("unsolved_variable = {:?}", ty);
-            self.fallback_if_possible(ty, &diverging_fallback);
         }
 
         // We now see if we can make progress. This might cause us to
@@ -63,6 +54,53 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // we will generate a confusing type-check error that does not explicitly
         // refer to opaque types.
         self.select_obligations_where_possible(|_| {});
+    }
+
+    fn fallback_types(&self) -> bool {
+        // Check if we have any unsolved variables. If not, no need for fallback.
+        let unsolved_variables = self.unsolved_variables();
+
+        if unsolved_variables.is_empty() {
+            return false;
+        }
+
+        let diverging_fallback = self.calculate_diverging_fallback(&unsolved_variables);
+
+        // We do fallback in two passes, to try to generate
+        // better error messages.
+        // The first time, we do *not* replace opaque types.
+        for ty in unsolved_variables {
+            debug!("unsolved_variable = {:?}", ty);
+            self.fallback_if_possible(ty, &diverging_fallback);
+        }
+
+        true
+    }
+
+    fn fallback_effects(&self) -> bool {
+        let unsolved_effects = self.unsolved_effects();
+
+        if unsolved_effects.is_empty() {
+            return false;
+        }
+
+        // not setting `fallback_has_occured` here because that field is only used for type fallback
+        // diagnostics.
+
+        for effect in unsolved_effects {
+            let expected = self.tcx.consts.true_;
+            let cause = self.misc(rustc_span::DUMMY_SP);
+            match self.at(&cause, self.param_env).eq(DefineOpaqueTypes::Yes, expected, effect) {
+                Ok(InferOk { obligations, value: () }) => {
+                    self.register_predicates(obligations);
+                }
+                Err(e) => {
+                    bug!("cannot eq unsolved effect: {e:?}")
+                }
+            }
+        }
+
+        true
     }
 
     // Tries to apply a fallback to `ty` if it is an unsolved variable.

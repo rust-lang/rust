@@ -98,9 +98,9 @@ pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
     AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
     BoundVariableKind, CanonicalPolyFnSig, ClosureArgs, ClosureArgsParts, ConstKind, ConstVid,
-    EarlyBoundRegion, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
-    FreeRegion, GenSig, GeneratorArgs, GeneratorArgsParts, InlineConstArgs, InlineConstArgsParts,
-    ParamConst, ParamTy, PolyExistentialPredicate, PolyExistentialProjection,
+    EarlyBoundRegion, EffectVid, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef,
+    FnSig, FreeRegion, GenSig, GeneratorArgs, GeneratorArgsParts, InlineConstArgs,
+    InlineConstArgsParts, ParamConst, ParamTy, PolyExistentialPredicate, PolyExistentialProjection,
     PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef, Region, RegionKind, RegionVid,
     TraitRef, TyKind, TypeAndMut, UpvarArgs, VarianceDiagInfo,
 };
