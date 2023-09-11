@@ -629,12 +629,7 @@ impl<K: DepKind> DepGraphData<K> {
         if let Some(prev_index) = self.previous.node_to_index_opt(dep_node) {
             self.current.prev_index_to_index.lock()[prev_index]
         } else {
-            self.current
-                .new_node_to_index
-                .get_shard_by_value(dep_node)
-                .lock()
-                .get(dep_node)
-                .copied()
+            self.current.new_node_to_index.lock_shard_by_value(dep_node).get(dep_node).copied()
         }
     }
 
@@ -1201,8 +1196,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
         edges: EdgesVec,
         current_fingerprint: Fingerprint,
     ) -> DepNodeIndex {
-        let dep_node_index = match self.new_node_to_index.get_shard_by_value(&key).lock().entry(key)
-        {
+        let dep_node_index = match self.new_node_to_index.lock_shard_by_value(&key).entry(key) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
                 let dep_node_index =
@@ -1328,7 +1322,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
     ) {
         let node = &prev_graph.index_to_node(prev_index);
         debug_assert!(
-            !self.new_node_to_index.get_shard_by_value(node).lock().contains_key(node),
+            !self.new_node_to_index.lock_shard_by_value(node).contains_key(node),
             "node from previous graph present in new node collection"
         );
     }
