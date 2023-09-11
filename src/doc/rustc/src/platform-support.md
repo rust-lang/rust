@@ -241,7 +241,7 @@ target | std | host | notes
 [`armv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Bare ARMv4T
 `armv4t-unknown-linux-gnueabi` | ? |  | ARMv4T Linux
 [`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | Bare ARMv5TE
-`armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
+[`armv5te-unknown-linux-uclibceabi`](platform-support/armv5te_unknown_linux_uclibceabi.md) | ? |  | ARMv5TE Linux with uClibc
 [`armv6-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | ARMv6 FreeBSD
 [`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | ARMv6 NetBSD w/hard-float
 [`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | ARMv6K Nintendo 3DS, Horizon (Requires devkitARM toolchain)
