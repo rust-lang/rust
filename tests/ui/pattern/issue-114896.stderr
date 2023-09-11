@@ -1,0 +1,11 @@
+error[E0596]: cannot borrow `b` as mutable, as it is not declared as mutable
+  --> $DIR/issue-114896.rs:4:9
+   |
+LL |         let &b = a;
+   |             -- help: consider changing this to be mutable: `&(mut b)`
+LL |         b.make_ascii_uppercase();
+   |         ^ cannot borrow as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.
