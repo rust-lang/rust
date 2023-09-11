@@ -114,6 +114,7 @@ impl<'tcx> Queries<'tcx> {
             .compute(|| passes::parse(self.session()).map_err(|mut parse_error| parse_error.emit()))
     }
 
+    #[deprecated = "pre_configure may be made private in the future. If you need it please open an issue with your use case."]
     pub fn pre_configure(&self) -> Result<QueryResult<'_, (ast::Crate, ast::AttrVec)>> {
         self.pre_configure.compute(|| {
             let mut krate = self.parse()?.steal();
@@ -171,6 +172,7 @@ impl<'tcx> Queries<'tcx> {
     pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
         self.gcx.compute(|| {
             let sess = self.session();
+            #[allow(deprecated)]
             let (krate, pre_configured_attrs) = self.pre_configure()?.steal();
 
             // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
