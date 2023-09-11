@@ -688,6 +688,39 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
     }
 }
 
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn layout_of(
+        self,
+        query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+    ) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+        self.at(DUMMY_SP).layout_of(query)
+    }
+}
+
+impl<'tcx> TyCtxtAt<'tcx> {
+    pub fn layout_of(
+        self,
+        query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+    ) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+        let (param_env, ty) = query.into_parts();
+        let param_env = param_env.with_reveal_all_normalized(self.tcx);
+
+        // FIXME: We might want to have two different versions of `layout_of`:
+        // One that can be called after typecheck has completed and can use
+        // `normalize_erasing_regions` here and another one that can be called
+        // before typecheck has completed and uses `try_normalize_erasing_regions`.
+        let ty = match self.try_normalize_erasing_regions(param_env, ty) {
+            Ok(t) => t,
+            Err(normalization_error) => {
+                return Err(self
+                    .arena
+                    .alloc(LayoutError::NormalizationFailure(ty, normalization_error)));
+            }
+        };
+        self.layout_of_raw(param_env.and(ty))
+    }
+}
+
 impl<'tcx, C: LayoutOfHelpers<'tcx>> LayoutOf<'tcx> for C {}
 
 impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {

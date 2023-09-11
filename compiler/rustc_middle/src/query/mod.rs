@@ -1398,7 +1398,7 @@ rustc_queries! {
 
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode, and will normalize the input type.
-    query layout_of(
+    query layout_of_raw(
         key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
     ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
         depth_limit

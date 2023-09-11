@@ -24,37 +24,16 @@ use crate::errors::{
 use crate::layout_sanity_check::sanity_check_layout;
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { layout_of, ..*providers };
+    *providers = Providers { layout_of_raw, ..*providers };
 }
 
 #[instrument(skip(tcx, query), level = "debug")]
-fn layout_of<'tcx>(
+fn layout_of_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
     let (param_env, ty) = query.into_parts();
     debug!(?ty);
-
-    let param_env = param_env.with_reveal_all_normalized(tcx);
-    let unnormalized_ty = ty;
-
-    // FIXME: We might want to have two different versions of `layout_of`:
-    // One that can be called after typecheck has completed and can use
-    // `normalize_erasing_regions` here and another one that can be called
-    // before typecheck has completed and uses `try_normalize_erasing_regions`.
-    let ty = match tcx.try_normalize_erasing_regions(param_env, ty) {
-        Ok(t) => t,
-        Err(normalization_error) => {
-            return Err(tcx
-                .arena
-                .alloc(LayoutError::NormalizationFailure(ty, normalization_error)));
-        }
-    };
-
-    if ty != unnormalized_ty {
-        // Ensure this layout is also cached for the normalized type.
-        return tcx.layout_of(param_env.and(ty));
-    }
 
     let cx = LayoutCx { tcx, param_env };
 
