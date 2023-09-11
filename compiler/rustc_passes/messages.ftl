@@ -104,10 +104,6 @@ passes_collapse_debuginfo =
 passes_confusables = attribute should be applied to an inherent method
     .label = not an inherent method
 
-passes_const_impl_const_trait =
-    const `impl`s must be for traits marked with `#[const_trait]`
-    .note = this trait must be annotated with `#[const_trait]`
-
 passes_continue_labeled_block =
     `continue` pointing to a labeled block
     .label = labeled blocks cannot be `continue`'d

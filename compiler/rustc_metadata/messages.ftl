@@ -259,9 +259,6 @@ metadata_std_required =
 metadata_symbol_conflicts_current =
     the current crate is indistinguishable from one of its dependencies: it has the same crate-name `{$crate_name}` and was compiled with the same `-C metadata` arguments. This will result in symbol conflicts between the two.
 
-metadata_symbol_conflicts_others =
-    found two different crates with name `{$crate_name}` that are not distinguished by differing `-C metadata`. This will result in symbol conflicts between the two.
-
 metadata_target_no_std_support =
     the `{$locator_triple}` target may not support the standard library
 
