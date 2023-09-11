@@ -4,7 +4,7 @@ use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, IntoDiagnostic, IntoDi
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{layout::LayoutError, ConstInt};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, DUMMY_SP};
 
 use super::InterpCx;
 use crate::errors::{self, FrameNote, ReportErrorExt};
@@ -134,11 +134,11 @@ where
         // Don't emit a new diagnostic for these errors, they are already reported elsewhere or
         // should remain silent.
         err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
-            ErrorHandled::TooGeneric
+            ErrorHandled::TooGeneric(span.unwrap_or(DUMMY_SP))
         }
-        err_inval!(AlreadyReported(guar)) => ErrorHandled::Reported(guar),
+        err_inval!(AlreadyReported(guar)) => ErrorHandled::Reported(guar, span.unwrap_or(DUMMY_SP)),
         err_inval!(Layout(LayoutError::ReferencesError(guar))) => {
-            ErrorHandled::Reported(guar.into())
+            ErrorHandled::Reported(guar.into(), span.unwrap_or(DUMMY_SP))
         }
         // Report remaining errors.
         _ => {
@@ -152,7 +152,7 @@ where
 
             // Use *our* span to label the interp error
             err.span_label(our_span, msg);
-            ErrorHandled::Reported(err.emit().into())
+            ErrorHandled::Reported(err.emit().into(), span)
         }
     }
 }

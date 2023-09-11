@@ -560,30 +560,31 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                     let stalled_on = &mut pending_obligation.stalled_on;
 
-                    let mut evaluate =
-                        |c: Const<'tcx>| {
-                            if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
-                                match self.selcx.infcx.try_const_eval_resolve(
-                                    obligation.param_env,
-                                    unevaluated,
-                                    c.ty(),
-                                    Some(obligation.cause.span),
-                                ) {
-                                    Ok(val) => Ok(val),
-                                    Err(e) => match e {
-                                        ErrorHandled::TooGeneric => {
+                    let mut evaluate = |c: Const<'tcx>| {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
+                            match self.selcx.infcx.try_const_eval_resolve(
+                                obligation.param_env,
+                                unevaluated,
+                                c.ty(),
+                                Some(obligation.cause.span),
+                            ) {
+                                Ok(val) => Ok(val),
+                                Err(e) => {
+                                    match e {
+                                        ErrorHandled::TooGeneric(..) => {
                                             stalled_on.extend(unevaluated.args.iter().filter_map(
                                                 TyOrConstInferVar::maybe_from_generic_arg,
                                             ));
-                                            Err(ErrorHandled::TooGeneric)
                                         }
-                                        _ => Err(e),
-                                    },
+                                        _ => {}
+                                    }
+                                    Err(e)
                                 }
-                            } else {
-                                Ok(c)
                             }
-                        };
+                        } else {
+                            Ok(c)
+                        }
+                    };
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
@@ -603,13 +604,14 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 ),
                             }
                         }
-                        (Err(ErrorHandled::Reported(reported)), _)
-                        | (_, Err(ErrorHandled::Reported(reported))) => ProcessResult::Error(
+                        (Err(ErrorHandled::Reported(reported, _)), _)
+                        | (_, Err(ErrorHandled::Reported(reported, _))) => ProcessResult::Error(
                             CodeSelectionError(SelectionError::NotConstEvaluatable(
                                 NotConstEvaluatable::Error(reported.into()),
                             )),
                         ),
-                        (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
+                        (Err(ErrorHandled::TooGeneric(_)), _)
+                        | (_, Err(ErrorHandled::TooGeneric(_))) => {
                             if c1.has_non_region_infer() || c2.has_non_region_infer() {
                                 ProcessResult::Unchanged
                             } else {

@@ -11,7 +11,7 @@ use rustc_errors::{
 };
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
-use rustc_span::def_id::DefId;
+use rustc_span::{def_id::DefId, Span, DUMMY_SP};
 use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
 
 use std::borrow::Cow;
@@ -21,16 +21,25 @@ use std::{any::Any, backtrace::Backtrace, fmt};
 pub enum ErrorHandled {
     /// Already reported an error for this evaluation, and the compilation is
     /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
-    Reported(ReportedErrorInfo),
+    Reported(ReportedErrorInfo, Span),
     /// Don't emit an error, the evaluation failed because the MIR was generic
     /// and the args didn't fully monomorphize it.
-    TooGeneric,
+    TooGeneric(Span),
 }
 
 impl From<ErrorGuaranteed> for ErrorHandled {
     #[inline]
     fn from(error: ErrorGuaranteed) -> ErrorHandled {
-        ErrorHandled::Reported(error.into())
+        ErrorHandled::Reported(error.into(), DUMMY_SP)
+    }
+}
+
+impl ErrorHandled {
+    pub fn with_span(self, span: Span) -> Self {
+        match self {
+            ErrorHandled::Reported(err, _span) => ErrorHandled::Reported(err, span),
+            ErrorHandled::TooGeneric(_span) => ErrorHandled::TooGeneric(span),
+        }
     }
 }
 
@@ -159,6 +168,16 @@ fn print_backtrace(backtrace: &Backtrace) {
 impl From<ErrorGuaranteed> for InterpErrorInfo<'_> {
     fn from(err: ErrorGuaranteed) -> Self {
         InterpError::InvalidProgram(InvalidProgramInfo::AlreadyReported(err.into())).into()
+    }
+}
+
+impl From<ErrorHandled> for InterpErrorInfo<'_> {
+    fn from(err: ErrorHandled) -> Self {
+        InterpError::InvalidProgram(match err {
+            ErrorHandled::Reported(r, _span) => InvalidProgramInfo::AlreadyReported(r),
+            ErrorHandled::TooGeneric(_span) => InvalidProgramInfo::TooGeneric,
+        })
+        .into()
     }
 }
 

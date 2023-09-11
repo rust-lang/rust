@@ -61,8 +61,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 let cid = GlobalId { instance, promoted: ct.promoted };
                 self.const_eval_global_id(param_env, cid, span)
             }
-            Ok(None) => Err(ErrorHandled::TooGeneric),
-            Err(err) => Err(ErrorHandled::Reported(err.into())),
+            Ok(None) => Err(ErrorHandled::TooGeneric(span.unwrap_or(DUMMY_SP))),
+            Err(err) => Err(ErrorHandled::Reported(err.into(), span.unwrap_or(DUMMY_SP))),
         }
     }
 
@@ -117,8 +117,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 })
             }
-            Ok(None) => Err(ErrorHandled::TooGeneric),
-            Err(err) => Err(ErrorHandled::Reported(err.into())),
+            Ok(None) => Err(ErrorHandled::TooGeneric(span.unwrap_or(DUMMY_SP))),
+            Err(err) => Err(ErrorHandled::Reported(err.into(), span.unwrap_or(DUMMY_SP))),
         }
     }
 

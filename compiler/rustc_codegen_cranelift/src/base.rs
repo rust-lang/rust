@@ -2,6 +2,7 @@
 
 use rustc_ast::InlineAsmOptions;
 use rustc_index::IndexVec;
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -250,12 +251,21 @@ pub(crate) fn verify_func(
 }
 
 fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
-    if !crate::constant::check_constants(fx) {
-        fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
-        fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
-        // compilation should have been aborted
-        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
-        return;
+    match fx.mir.post_mono_checks(fx.tcx, ty::ParamEnv::reveal_all(), |c| Ok(fx.monomorphize(c))) {
+        Ok(()) => {}
+        Err(ErrorHandled::TooGeneric(span)) => {
+            span_bug!(span, "codegen encountered polymorphic constant");
+        }
+        Err(ErrorHandled::Reported(info, span)) => {
+            if !info.is_tainted_by_errors() {
+                fx.tcx.sess.span_err(span, "erroneous constant encountered");
+            }
+            fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
+            fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
+            // compilation should have been aborted
+            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+            return;
+        }
     }
 
     let arg_uninhabited = fx

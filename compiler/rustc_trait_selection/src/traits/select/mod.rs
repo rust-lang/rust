@@ -989,9 +989,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }
-                        (Err(ErrorHandled::Reported(_)), _)
-                        | (_, Err(ErrorHandled::Reported(_))) => Ok(EvaluatedToErr),
-                        (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
+                        (Err(ErrorHandled::Reported(..)), _)
+                        | (_, Err(ErrorHandled::Reported(..))) => Ok(EvaluatedToErr),
+                        (Err(ErrorHandled::TooGeneric(..)), _)
+                        | (_, Err(ErrorHandled::TooGeneric(..))) => {
                             if c1.has_non_region_infer() || c2.has_non_region_infer() {
                                 Ok(EvaluatedToAmbig)
                             } else {

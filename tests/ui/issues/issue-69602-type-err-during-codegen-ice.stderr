@@ -14,6 +14,12 @@ LL | impl TraitB for B {
    | ^^^^^^^^^^^^^^^^^ missing `MyA` in implementation
 
 note: erroneous constant used
+  --> $DIR/issue-69602-type-err-during-codegen-ice.rs:12:26
+   |
+LL |     const VALUE: usize = Self::MyA::VALUE;
+   |                          ^^^^^^^^^^^^^^^^
+
+note: erroneous constant used
   --> $DIR/issue-69602-type-err-during-codegen-ice.rs:21:17
    |
 LL |     let _ = [0; B::VALUE];
