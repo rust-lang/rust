@@ -188,3 +188,53 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
         })
     }
 }
+
+/// values for the effect inference variable
+#[derive(Clone, Copy, Debug)]
+pub enum EffectVarValue<'tcx> {
+    /// The host effect is on, enabling access to syscalls, filesystem access, etc.
+    Host,
+    /// The host effect is off. Execution is restricted to const operations only.
+    NoHost,
+    Const(ty::Const<'tcx>),
+}
+
+impl<'tcx> EffectVarValue<'tcx> {
+    pub fn as_const(self, tcx: TyCtxt<'tcx>) -> ty::Const<'tcx> {
+        match self {
+            EffectVarValue::Host => tcx.consts.true_,
+            EffectVarValue::NoHost => tcx.consts.false_,
+            EffectVarValue::Const(c) => c,
+        }
+    }
+}
+
+impl<'tcx> UnifyValue for EffectVarValue<'tcx> {
+    type Error = (EffectVarValue<'tcx>, EffectVarValue<'tcx>);
+    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
+        match (value1, value2) {
+            (EffectVarValue::Host, EffectVarValue::Host) => Ok(EffectVarValue::Host),
+            (EffectVarValue::NoHost, EffectVarValue::NoHost) => Ok(EffectVarValue::NoHost),
+            (EffectVarValue::NoHost | EffectVarValue::Host, _)
+            | (_, EffectVarValue::NoHost | EffectVarValue::Host) => Err((*value1, *value2)),
+            (EffectVarValue::Const(_), EffectVarValue::Const(_)) => {
+                bug!("equating two const variables, both of which have known values")
+            }
+        }
+    }
+}
+
+impl<'tcx> UnifyKey for ty::EffectVid<'tcx> {
+    type Value = Option<EffectVarValue<'tcx>>;
+    #[inline]
+    fn index(&self) -> u32 {
+        self.index
+    }
+    #[inline]
+    fn from_index(i: u32) -> Self {
+        ty::EffectVid { index: i, phantom: PhantomData }
+    }
+    fn tag() -> &'static str {
+        "EffectVid"
+    }
+}

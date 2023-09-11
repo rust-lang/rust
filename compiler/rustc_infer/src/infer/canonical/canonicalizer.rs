@@ -522,6 +522,17 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                     }
                 }
             }
+            ty::ConstKind::Infer(InferConst::EffectVar(vid)) => {
+                match self.infcx.probe_effect_var(vid) {
+                    Some(value) => return self.fold_const(value.as_const(self.infcx.tcx)),
+                    None => {
+                        return self.canonicalize_const_var(
+                            CanonicalVarInfo { kind: CanonicalVarKind::Effect },
+                            ct,
+                        );
+                    }
+                }
+            }
             ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                 bug!("encountered a fresh const during canonicalization")
             }
@@ -690,7 +701,8 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             .iter()
             .map(|v| CanonicalVarInfo {
                 kind: match v.kind {
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float) => {
+                    CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float)
+                    | CanonicalVarKind::Effect => {
                         return *v;
                     }
                     CanonicalVarKind::Ty(CanonicalTyVarKind::General(u)) => {

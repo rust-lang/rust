@@ -55,6 +55,11 @@ static_assert_size!(super::ConstKind<'_>, 32);
 pub enum InferConst<'tcx> {
     /// Infer the value of the const.
     Var(ty::ConstVid<'tcx>),
+    /// Infer the value of the effect.
+    ///
+    /// For why this is separate from the `Var` variant above, see the
+    /// documentation on `EffectVid`.
+    EffectVar(ty::EffectVid<'tcx>),
     /// A fresh const variable. See `infer::freshen` for more details.
     Fresh(u32),
 }
@@ -62,7 +67,9 @@ pub enum InferConst<'tcx> {
 impl<CTX> HashStable<CTX> for InferConst<'_> {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         match self {
-            InferConst::Var(_) => panic!("const variables should not be hashed: {self:?}"),
+            InferConst::Var(_) | InferConst::EffectVar(_) => {
+                panic!("const variables should not be hashed: {self:?}")
+            }
             InferConst::Fresh(i) => i.hash_stable(hcx, hasher),
         }
     }

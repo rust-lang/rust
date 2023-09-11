@@ -12,7 +12,7 @@ use super::{Clause, EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamT
 pub enum GenericParamDefKind {
     Lifetime,
     Type { has_default: bool, synthetic: bool },
-    Const { has_default: bool },
+    Const { has_default: bool, is_host_effect: bool },
 }
 
 impl GenericParamDefKind {
@@ -87,7 +87,7 @@ impl GenericParamDef {
             GenericParamDefKind::Type { has_default, .. } if has_default => {
                 Some(tcx.type_of(self.def_id).map_bound(|t| t.into()))
             }
-            GenericParamDefKind::Const { has_default } if has_default => {
+            GenericParamDefKind::Const { has_default, .. } if has_default => {
                 Some(tcx.const_param_default(self.def_id).map_bound(|c| c.into()))
             }
             _ => None,
@@ -187,7 +187,7 @@ impl<'tcx> Generics {
                 GenericParamDefKind::Type { has_default, .. } => {
                     own_defaults.types += has_default as usize;
                 }
-                GenericParamDefKind::Const { has_default } => {
+                GenericParamDefKind::Const { has_default, .. } => {
                     own_defaults.consts += has_default as usize;
                 }
             }
