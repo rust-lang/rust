@@ -239,7 +239,7 @@ target | std | host | notes
 [`arm64_32-apple-watchos`](platform-support/apple_watchos.md) | ✓ | | ARM Apple WatchOS 64-bit with 32-bit pointers
 [`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | ARM BE8 the default ARM big-endian architecture since [ARMv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
 [`armv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Bare ARMv4T
-`armv4t-unknown-linux-gnueabi` | ? |  | ARMv4T Linux
+[`armv4t-unknown-linux-gnueabi`](platform-support/armv4t_unknown_linux_gnueabi.md) | ? |  | ARMv4T Linux
 [`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | Bare ARMv5TE
 [`armv5te-unknown-linux-uclibceabi`](platform-support/armv5te_unknown_linux_uclibceabi.md) | ? |  | ARMv5TE Linux with uClibc
 [`armv6-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | ARMv6 FreeBSD
