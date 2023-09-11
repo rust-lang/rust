@@ -6,6 +6,11 @@ LL |     takes_t(t);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/coherence-unsafe-trait-object-impl.rs:6:1
+   |
+LL | trait Trait: Sized {
+   | ^^^^^^^^^^^^^^^^^^
 note: required by a bound in `takes_t`
   --> $DIR/coherence-unsafe-trait-object-impl.rs:10:15
    |

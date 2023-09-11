@@ -6,6 +6,11 @@ LL |     z(" ");
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-86530.rs:4:1
+   |
+LL | pub trait X {
+   | ^^^^^^^^^^^
 note: required by a bound in `z`
   --> $DIR/issue-86530.rs:10:8
    |

@@ -4,6 +4,11 @@ error[E0277]: the trait bound `isize: Clone2` is not satisfied
 LL | impl Getter<isize> for isize {
    |                        ^^^^^ the trait `Clone2` is not implemented for `isize`
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/impl-bounds-checking.rs:1:1
+   |
+LL | pub trait Clone2 {
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `Getter`
   --> $DIR/impl-bounds-checking.rs:6:17
    |
