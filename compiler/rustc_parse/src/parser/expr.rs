@@ -2485,9 +2485,6 @@ impl<'a> Parser<'a> {
         }
         let expr = self.parse_expr_assoc_with(1 + prec_let_scrutinee_needs_par(), None.into())?;
         let span = lo.to(expr.span);
-        if is_recovered.is_none() {
-            self.sess.gated_spans.gate(sym::let_chains, span);
-        }
         Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span, is_recovered)))
     }
 
@@ -3460,6 +3457,8 @@ impl MutVisitor for CondChecker<'_> {
                             .sess
                             .emit_err(errors::ExpectedExpressionFoundLet { span, reason }),
                     );
+                } else {
+                    self.parser.sess.gated_spans.gate(sym::let_chains, span);
                 }
             }
             ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, _, _) => {
