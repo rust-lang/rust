@@ -1,5 +1,5 @@
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::traits::solve::inspect::{self, CacheHit, CandidateKind};
+use rustc_middle::traits::solve::inspect::{self, CacheHit, ProbeKind};
 use rustc_middle::traits::solve::{
     CanonicalInput, Certainty, Goal, IsNormalizesToHack, QueryInput, QueryResult,
 };
@@ -9,7 +9,7 @@ use rustc_session::config::DumpSolverProofTree;
 use super::eval_ctxt::UseGlobalCache;
 use super::GenerateProofTree;
 
-#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+#[derive(Eq, PartialEq, Debug)]
 pub struct WipGoalEvaluation<'tcx> {
     pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
     pub evaluation: Option<WipCanonicalGoalEvaluation<'tcx>>,
@@ -28,7 +28,7 @@ impl<'tcx> WipGoalEvaluation<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+#[derive(Eq, PartialEq, Debug)]
 pub struct WipCanonicalGoalEvaluation<'tcx> {
     pub goal: CanonicalInput<'tcx>,
     pub cache_hit: Option<CacheHit>,
@@ -56,7 +56,7 @@ impl<'tcx> WipCanonicalGoalEvaluation<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+#[derive(Eq, PartialEq, Debug)]
 pub struct WipAddedGoalsEvaluation<'tcx> {
     pub evaluations: Vec<Vec<WipGoalEvaluation<'tcx>>>,
     pub result: Option<Result<Certainty, NoSolution>>,
@@ -77,7 +77,7 @@ impl<'tcx> WipAddedGoalsEvaluation<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+#[derive(Eq, PartialEq, Debug)]
 pub struct WipGoalEvaluationStep<'tcx> {
     pub instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
 
@@ -102,11 +102,11 @@ impl<'tcx> WipGoalEvaluationStep<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+#[derive(Eq, PartialEq, Debug)]
 pub struct WipGoalCandidate<'tcx> {
     pub added_goals_evaluations: Vec<WipAddedGoalsEvaluation<'tcx>>,
     pub candidates: Vec<WipGoalCandidate<'tcx>>,
-    pub kind: Option<CandidateKind<'tcx>>,
+    pub kind: Option<ProbeKind<'tcx>>,
 }
 
 impl<'tcx> WipGoalCandidate<'tcx> {
@@ -357,11 +357,11 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         })
     }
 
-    pub fn candidate_kind(&mut self, candidate_kind: CandidateKind<'tcx>) {
+    pub fn probe_kind(&mut self, probe_kind: ProbeKind<'tcx>) {
         if let Some(this) = self.as_mut() {
             match this {
                 DebugSolver::GoalCandidate(this) => {
-                    assert_eq!(this.kind.replace(candidate_kind), None)
+                    assert_eq!(this.kind.replace(probe_kind), None)
                 }
                 _ => unreachable!(),
             }
