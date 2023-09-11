@@ -643,17 +643,14 @@ fn check_must_not_suspend_ty<'tcx>(
         }
         ty::Array(ty, len) => {
             let descr_pre = &format!("{}array{} of ", data.descr_pre, plural_suffix);
+            let target_usize =
+                len.try_eval_target_usize(fcx.tcx, fcx.param_env).unwrap_or(0) as usize;
+            let plural_len = target_usize.saturating_add(1);
             check_must_not_suspend_ty(
                 fcx,
                 ty,
                 hir_id,
-                SuspendCheckData {
-                    descr_pre,
-                    plural_len: len.try_eval_target_usize(fcx.tcx, fcx.param_env).unwrap_or(0)
-                        as usize
-                        + 1,
-                    ..data
-                },
+                SuspendCheckData { descr_pre, plural_len, ..data },
             )
         }
         // If drop tracking is enabled, we want to look through references, since the referent
