@@ -20,7 +20,7 @@ use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKin
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
-use rustc_span::{self, sym, Span, DUMMY_SP};
+use rustc_span::{self, Span, DUMMY_SP};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use std::cell::{Cell, RefCell};
@@ -268,9 +268,12 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     ) -> Const<'tcx> {
         // FIXME ideally this shouldn't use unwrap
         match param {
-            Some(param) if self.tcx.has_attr(param.def_id, sym::rustc_host) => {
-                self.var_for_effect(param).as_const().unwrap()
-            }
+            Some(
+                param @ ty::GenericParamDef {
+                    kind: ty::GenericParamDefKind::Const { is_host_effect: true, .. },
+                    ..
+                },
+            ) => self.var_for_effect(param).as_const().unwrap(),
             Some(param) => self.var_for_def(span, param).as_const().unwrap(),
             None => self.next_const_var(
                 ty,

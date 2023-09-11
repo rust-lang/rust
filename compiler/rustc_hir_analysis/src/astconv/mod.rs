@@ -523,7 +523,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             Ty::new_misc_error(tcx).into()
                         }
                     }
-                    GenericParamDefKind::Const { has_default } => {
+                    GenericParamDefKind::Const { has_default, .. } => {
                         let ty = tcx
                             .at(self.span)
                             .type_of(param.def_id)

@@ -1295,10 +1295,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ty_infer(Some(param), inf.span).into()
                     }
-                    (&GenericParamDefKind::Const { has_default }, GenericArg::Infer(inf)) => {
+                    (
+                        &GenericParamDefKind::Const { has_default, is_host_effect },
+                        GenericArg::Infer(inf),
+                    ) => {
                         let tcx = self.fcx.tcx();
 
-                        if has_default && tcx.has_attr(param.def_id, sym::rustc_host) {
+                        if has_default && is_host_effect {
                             self.fcx.var_for_effect(param)
                         } else {
                             self.fcx
@@ -1341,7 +1344,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx.var_for_def(self.span, param)
                         }
                     }
-                    GenericParamDefKind::Const { has_default } => {
+                    GenericParamDefKind::Const { has_default, is_host_effect } => {
                         if has_default {
                             // N.B. this is a bit of a hack. `infer_args` is passed depending on
                             // whether the user has provided generic args. E.g. for `Vec::new`
@@ -1352,7 +1355,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // it before falling back to default, such that a `const fn` such as
                             // `needs_drop::<()>` can still be called in const contexts. (if we defaulted
                             // instead of inferred, typeck would error)
-                            if tcx.has_attr(param.def_id, sym::rustc_host) {
+                            if is_host_effect {
                                 return self.fcx.var_for_effect(param);
                             } else if !infer_args {
                                 return tcx

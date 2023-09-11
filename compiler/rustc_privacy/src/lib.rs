@@ -836,7 +836,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
                         self.visit(self.ev.tcx.type_of(param.def_id).instantiate_identity());
                     }
                 }
-                GenericParamDefKind::Const { has_default } => {
+                GenericParamDefKind::Const { has_default, .. } => {
                     self.visit(self.ev.tcx.type_of(param.def_id).instantiate_identity());
                     if has_default {
                         self.visit(

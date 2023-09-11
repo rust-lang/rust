@@ -328,7 +328,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 name: param.name.ident().name,
                 def_id: param.def_id.to_def_id(),
                 pure_wrt_drop: param.pure_wrt_drop,
-                kind: ty::GenericParamDefKind::Const { has_default: default.is_some() },
+                kind: ty::GenericParamDefKind::Const {
+                    has_default: default.is_some(),
+                    is_host_effect: is_host_param,
+                },
             })
         }
     }));

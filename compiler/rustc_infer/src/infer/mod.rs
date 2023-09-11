@@ -36,7 +36,7 @@ use rustc_middle::ty::{self, GenericParamDefKind, InferConst, InferTy, Ty, TyCtx
 use rustc_middle::ty::{ConstVid, EffectVid, FloatVid, IntVid, TyVid};
 use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgs, GenericArgsRef};
 use rustc_span::symbol::Symbol;
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 use std::cell::{Cell, RefCell};
 use std::fmt;
@@ -1181,9 +1181,8 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 Ty::new_var(self.tcx, ty_var_id).into()
             }
-            GenericParamDefKind::Const { .. } => {
-                // todo what about using effect var here
-                if self.tcx.has_attr(param.def_id, sym::rustc_host) {
+            GenericParamDefKind::Const { is_host_effect, .. } => {
+                if is_host_effect {
                     return self.var_for_effect(param);
                 }
                 let origin = ConstVariableOrigin {

@@ -546,9 +546,9 @@ fn float_unification_error<'tcx>(
 }
 
 fn effect_unification_error<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    a_is_expected: bool,
-    (a, b): (EffectVarValue<'tcx>, EffectVarValue<'tcx>),
+    _tcx: TyCtxt<'tcx>,
+    _a_is_expected: bool,
+    (_a, _b): (EffectVarValue<'tcx>, EffectVarValue<'tcx>),
 ) -> TypeError<'tcx> {
-    TypeError::ConstMismatch(ExpectedFound::new(a_is_expected, a.as_const(tcx), b.as_const(tcx)))
+    bug!("unexpected effect unification error")
 }

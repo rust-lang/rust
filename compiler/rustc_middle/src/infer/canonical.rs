@@ -448,7 +448,6 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                             };
                             ty::Region::new_late_bound(tcx, ty::INNERMOST, br).into()
                         }
-                        // todo eh?
                         CanonicalVarKind::Effect => ty::Const::new_bound(
                             tcx,
                             ty::INNERMOST,
