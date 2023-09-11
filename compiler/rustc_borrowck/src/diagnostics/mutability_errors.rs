@@ -371,12 +371,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     err.span_label(span, format!("cannot {act}"));
                 }
                 if suggest {
-                    err.span_suggestion_verbose(
-                        local_decl.source_info.span.shrink_to_lo(),
-                        "consider changing this to be mutable",
-                        "mut ",
-                        Applicability::MachineApplicable,
-                    );
+                    self.construct_mut_suggestion_for_local_binding_patterns(&mut err, local);
                     let tcx = self.infcx.tcx;
                     if let ty::Closure(id, _) = *the_place_err.ty(self.body, tcx).ty.kind() {
                         self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
@@ -710,6 +705,83 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 _ => None,
             }),
         )
+    }
+
+    fn construct_mut_suggestion_for_local_binding_patterns(
+        &self,
+        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        local: Local,
+    ) {
+        let local_decl = &self.body.local_decls[local];
+        debug!("local_decl: {:?}", local_decl);
+        let pat_span = match *local_decl.local_info() {
+            LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
+                binding_mode: ty::BindingMode::BindByValue(Mutability::Not),
+                opt_ty_info: _,
+                opt_match_place: _,
+                pat_span,
+            })) => pat_span,
+            _ => local_decl.source_info.span,
+        };
+
+        struct BindingFinder {
+            span: Span,
+            hir_id: Option<hir::HirId>,
+        }
+
+        impl<'tcx> Visitor<'tcx> for BindingFinder {
+            fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
+                if let hir::StmtKind::Local(local) = s.kind {
+                    if local.pat.span == self.span {
+                        self.hir_id = Some(local.hir_id);
+                    }
+                }
+                hir::intravisit::walk_stmt(self, s);
+            }
+        }
+
+        let hir_map = self.infcx.tcx.hir();
+        let def_id = self.body.source.def_id();
+        let hir_id = if let Some(local_def_id) = def_id.as_local()
+            && let Some(body_id) = hir_map.maybe_body_owned_by(local_def_id)
+        {
+            let body = hir_map.body(body_id);
+            let mut v = BindingFinder {
+                span: pat_span,
+                hir_id: None,
+            };
+            v.visit_body(body);
+            v.hir_id
+        } else {
+            None
+        };
+
+        // With ref-binding patterns, the mutability suggestion has to apply to
+        // the binding, not the reference (which would be a type error):
+        //
+        // `let &b = a;` -> `let &(mut b) = a;`
+        if let Some(hir_id) = hir_id
+            && let Some(hir::Node::Local(hir::Local {
+                pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
+                ..
+            })) = hir_map.find(hir_id)
+            && let Ok(name) = self.infcx.tcx.sess.source_map().span_to_snippet(local_decl.source_info.span)
+        {
+            err.span_suggestion(
+                pat_span,
+                "consider changing this to be mutable",
+                format!("&(mut {name})"),
+                Applicability::MachineApplicable,
+            );
+            return;
+        }
+
+        err.span_suggestion_verbose(
+            local_decl.source_info.span.shrink_to_lo(),
+            "consider changing this to be mutable",
+            "mut ",
+            Applicability::MachineApplicable,
+        );
     }
 
     // point to span of upvar making closure call require mutable borrow
