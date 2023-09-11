@@ -24,6 +24,7 @@ mod riscv;
 mod s390x;
 mod sparc;
 mod sparc64;
+mod v810;
 mod wasm;
 mod x86;
 mod x86_64;
@@ -855,6 +856,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 }
             }
             "bpf" => bpf::compute_abi_info(self),
+            "v810" => v810::compute_abi_info(self),
             arch => {
                 return Err(AdjustForForeignAbiError::Unsupported {
                     arch: Symbol::intern(arch),

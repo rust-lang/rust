@@ -145,6 +145,7 @@ static TARGETS: &[&str] = &[
     "thumbv8m.base-none-eabi",
     "thumbv8m.main-none-eabi",
     "thumbv8m.main-none-eabihf",
+    "v810-unknown-vb",
     "wasm32-unknown-emscripten",
     "wasm32-unknown-unknown",
     "wasm32-wasi",

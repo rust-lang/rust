@@ -157,6 +157,12 @@ extern "C" void LLVMRustTimeTraceProfilerFinish(const char* FileName) {
 #define SUBTARGET_SPARC
 #endif
 
+#ifdef LLVM_COMPONENT_V810
+#define SUBTARGET_V810 SUBTARGET(V810)
+#else
+#define SUBTARGET_V810
+#endif
+
 #ifdef LLVM_COMPONENT_HEXAGON
 #define SUBTARGET_HEXAGON SUBTARGET(Hexagon)
 #else

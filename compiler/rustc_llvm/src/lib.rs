@@ -174,6 +174,14 @@ pub fn initialize_available_targets() {
         LLVMInitializeSparcAsmParser
     );
     init_target!(
+        llvm_component = "v810",
+        LLVMInitializeV810TargetInfo,
+        LLVMInitializeV810Target,
+        LLVMInitializeV810TargetMC,
+        LLVMInitializeV810AsmPrinter,
+        LLVMInitializeV810AsmParser
+    );
+    init_target!(
         llvm_component = "nvptx",
         LLVMInitializeNVPTXTargetInfo,
         LLVMInitializeNVPTXTarget,

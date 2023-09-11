@@ -70,6 +70,7 @@ const KNOWN_ARCH: [&str; 20] = [
     "s390x",
     "sparc",
     "sparc64",
+    "v810",
     "wasm32",
     "wasm64",
     "x86",

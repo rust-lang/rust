@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Target {
     let base = opts();
@@ -13,6 +13,11 @@ pub fn target() -> Target {
 
 fn opts() -> TargetOptions {
     let mut options: TargetOptions = Default::default();
+    options.abi_return_struct_as_int = true;
     options.cpu = "vb".into();
+    options.crt_static_default = true;
+    options.linker_flavor = LinkerFlavor::Gnu(Cc::No, Lld::Yes);
+    options.linker = Some("rust-lld".into());
+    options.panic_strategy = PanicStrategy::Abort;
     options
 }

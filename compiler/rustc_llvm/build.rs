@@ -20,6 +20,7 @@ const OPTIONAL_COMPONENTS: &[&str] = &[
     "webassembly",
     "msp430",
     "sparc",
+    "v810",
     "nvptx",
     "hexagon",
     "riscv",
