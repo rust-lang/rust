@@ -1,9 +1,10 @@
+use hir::ExprKind;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt};
 use rustc_middle::{
     hir::place::PlaceBase,
     mir::{self, BindingForm, Local, LocalDecl, LocalInfo, LocalKind, Location},
@@ -491,6 +492,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             ),
                         );
 
+                        self.suggest_using_iter_mut(&mut err);
                         self.suggest_make_local_mut(&mut err, local, name);
                     }
                     _ => {
@@ -951,6 +953,44 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 _ => {}
             }
         }
+    }
+
+    fn suggest_using_iter_mut(&self, err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>) {
+        let source = self.body.source;
+        let hir = self.infcx.tcx.hir();
+        if let InstanceDef::Item(def_id) = source.instance
+            && let Some(Node::Expr(hir::Expr { hir_id, kind, ..})) = hir.get_if_local(def_id)
+            && let ExprKind::Closure(closure) = kind && closure.movability == None
+            && let Some(Node::Expr(expr)) = hir.find_parent(*hir_id) {
+                let mut cur_expr = expr;
+                while let ExprKind::MethodCall(path_segment, recv, _, _) = cur_expr.kind {
+                    if path_segment.ident.name == sym::iter {
+                        // check `_ty` has `iter_mut` method
+                        let res = self
+                            .infcx
+                            .tcx
+                            .typeck(path_segment.hir_id.owner.def_id)
+                            .type_dependent_def_id(cur_expr.hir_id)
+                            .and_then(|def_id| self.infcx.tcx.impl_of_method(def_id))
+                            .map(|def_id| self.infcx.tcx.associated_items(def_id))
+                            .map(|assoc_items| {
+                                assoc_items.filter_by_name_unhygienic(sym::iter_mut).peekable()
+                            });
+
+                        if let Some(mut res) = res && res.peek().is_some() {
+                            err.span_suggestion_verbose(
+                                path_segment.ident.span,
+                                "you may want to use `iter_mut` here",
+                                "iter_mut",
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        break;
+                    } else {
+                        cur_expr = recv;
+                    }
+                }
+            }
     }
 
     fn suggest_make_local_mut(
