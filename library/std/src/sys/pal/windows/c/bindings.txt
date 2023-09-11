@@ -2177,6 +2177,7 @@ GetSystemInfo
 GetSystemTimeAsFileTime
 GetSystemTimePreciseAsFileTime
 GetTempPathW
+GetThreadId
 GetUserProfileDirectoryW
 GetWindowsDirectoryW
 HANDLE
