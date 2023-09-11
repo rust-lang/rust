@@ -92,7 +92,7 @@ pub(crate) fn render<P: AsRef<Path>>(
             playground: &playground,
             heading_offset: HeadingOffset::H1,
         }
-        .into_string()
+        .into_string(&mut pulldown_cmark::BufferTree::with_capacity(4))
     };
 
     let err = write!(

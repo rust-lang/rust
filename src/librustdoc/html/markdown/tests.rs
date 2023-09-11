@@ -155,7 +155,7 @@ fn test_header() {
             playground: &None,
             heading_offset: HeadingOffset::H2,
         }
-        .into_string();
+        .into_string(&mut pulldown_cmark::BufferTree::with_capacity(4));
         assert_eq!(output, expect, "original: {}", input);
     }
 
@@ -194,7 +194,7 @@ fn test_header_ids_multiple_blocks() {
             playground: &None,
             heading_offset: HeadingOffset::H2,
         }
-        .into_string();
+        .into_string(&mut pulldown_cmark::BufferTree::with_capacity(4));
         assert_eq!(output, expect, "original: {}", input);
     }
 
@@ -209,7 +209,11 @@ fn test_header_ids_multiple_blocks() {
 #[test]
 fn test_short_markdown_summary() {
     fn t(input: &str, expect: &str) {
-        let output = short_markdown_summary(input, &[][..]);
+        let output = short_markdown_summary(
+            input,
+            &[][..],
+            &mut pulldown_cmark::BufferTree::with_capacity(4),
+        );
         assert_eq!(output, expect, "original: {}", input);
     }
 
@@ -249,7 +253,8 @@ fn test_short_markdown_summary() {
 #[test]
 fn test_plain_text_summary() {
     fn t(input: &str, expect: &str) {
-        let output = plain_text_summary(input, &[]);
+        let output =
+            plain_text_summary(input, &[], &mut pulldown_cmark::BufferTree::with_capacity(4));
         assert_eq!(output, expect, "original: {}", input);
     }
 
@@ -279,7 +284,8 @@ fn test_plain_text_summary() {
 fn test_markdown_html_escape() {
     fn t(input: &str, expect: &str) {
         let mut idmap = IdMap::new();
-        let output = MarkdownItemInfo(input, &mut idmap).into_string();
+        let output = MarkdownItemInfo(input, &mut idmap)
+            .into_string(&mut pulldown_cmark::BufferTree::with_capacity(4));
         assert_eq!(output, expect, "original: {}", input);
     }
 
@@ -323,7 +329,7 @@ fn test_ascii_with_prepending_hashtag() {
             playground: &None,
             heading_offset: HeadingOffset::H2,
         }
-        .into_string();
+        .into_string(&mut pulldown_cmark::BufferTree::with_capacity(4));
         assert_eq!(output, expect, "original: {}", input);
     }
 

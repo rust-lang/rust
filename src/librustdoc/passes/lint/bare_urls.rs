@@ -12,7 +12,11 @@ use rustc_errors::Applicability;
 use std::mem;
 use std::sync::LazyLock;
 
-pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item) {
+pub(super) fn visit_item(
+    cx: &DocContext<'_>,
+    item: &Item,
+    pulldown_cmark_buffer: &mut pulldown_cmark::BufferTree,
+) {
     let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id) else {
         // If non-local, no need to check anything.
         return;
@@ -34,7 +38,8 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                 });
             };
 
-        let mut p = Parser::new_ext(&dox, main_body_opts()).into_offset_iter();
+        let mut p = Parser::new_ext_with_tree(&dox, main_body_opts(), pulldown_cmark_buffer)
+            .into_offset_iter();
 
         while let Some((event, range)) = p.next() {
             match event {

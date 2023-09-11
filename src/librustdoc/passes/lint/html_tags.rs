@@ -10,7 +10,11 @@ use std::iter::Peekable;
 use std::ops::Range;
 use std::str::CharIndices;
 
-pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
+pub(crate) fn visit_item(
+    cx: &DocContext<'_>,
+    item: &Item,
+    pulldown_cmark_buffer: &mut pulldown_cmark::BufferTree,
+) {
     let tcx = cx.tcx;
     let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id)
     // If non-local, no need to check anything.
@@ -137,8 +141,13 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
             }
         };
 
-        let p = Parser::new_with_broken_link_callback(&dox, main_body_opts(), Some(&mut replacer))
-            .into_offset_iter();
+        let p = Parser::new_with_broken_link_callback_with_tree(
+            &dox,
+            main_body_opts(),
+            Some(&mut replacer),
+            pulldown_cmark_buffer,
+        )
+        .into_offset_iter();
 
         for (event, range) in p {
             match event {

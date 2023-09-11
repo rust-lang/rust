@@ -22,7 +22,11 @@ struct LinkData {
     display_link: String,
 }
 
-pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
+pub(crate) fn visit_item(
+    cx: &DocContext<'_>,
+    item: &Item,
+    pulldown_cmark_buffer: &mut pulldown_cmark::BufferTree,
+) {
     let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id) else {
         // If non-local, no need to check anything.
         return;
@@ -58,7 +62,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
         return;
     }
 
-    check_redundant_explicit_link(cx, item, hir_id, &doc);
+    check_redundant_explicit_link(cx, item, hir_id, &doc, pulldown_cmark_buffer);
 }
 
 fn check_redundant_explicit_link<'md>(
@@ -66,12 +70,14 @@ fn check_redundant_explicit_link<'md>(
     item: &Item,
     hir_id: HirId,
     doc: &'md str,
+    pulldown_cmark_buffer: &mut pulldown_cmark::BufferTree,
 ) -> Option<()> {
     let mut broken_line_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
-    let mut offset_iter = Parser::new_with_broken_link_callback(
+    let mut offset_iter = Parser::new_with_broken_link_callback_with_tree(
         &doc,
         main_body_opts(),
         Some(&mut broken_line_callback),
+        pulldown_cmark_buffer,
     )
     .into_offset_iter();
     let item_id = item.def_id()?;
@@ -239,7 +245,7 @@ fn find_resolution(resolutions: &DocLinkResMap, path: &str) -> Option<Res<NodeId
 }
 
 /// Collects all neccessary data of link.
-fn collect_link_data(offset_iter: &mut OffsetIter<'_, '_>) -> LinkData {
+fn collect_link_data(offset_iter: &mut OffsetIter<'_, '_, '_>) -> LinkData {
     let mut resolvable_link = None;
     let mut resolvable_link_range = None;
     let mut display_link = String::new();

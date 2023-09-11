@@ -36,6 +36,7 @@ impl ExternalHtml {
         let ih = load_external_files(in_header, diag)?;
         let bc = load_external_files(before_content, diag)?;
         let m_bc = load_external_files(md_before_content, diag)?;
+        let mut buffer = pulldown_cmark::BufferTree::with_capacity(4);
         let bc = format!(
             "{bc}{}",
             Markdown {
@@ -47,7 +48,7 @@ impl ExternalHtml {
                 playground,
                 heading_offset: HeadingOffset::H2,
             }
-            .into_string()
+            .into_string(&mut buffer)
         );
         let ac = load_external_files(after_content, diag)?;
         let m_ac = load_external_files(md_after_content, diag)?;
@@ -62,7 +63,7 @@ impl ExternalHtml {
                 playground,
                 heading_offset: HeadingOffset::H2,
             }
-            .into_string()
+            .into_string(&mut buffer)
         );
         Some(ExternalHtml { in_header: ih, before_content: bc, after_content: ac })
     }

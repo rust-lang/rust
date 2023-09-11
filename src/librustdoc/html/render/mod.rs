@@ -405,7 +405,7 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
             playground: &shared.playground,
             heading_offset: HeadingOffset::H1
         }
-        .into_string()
+        .into_string(&mut shared.pulldown_cmark_buffer.borrow_mut())
     )
 }
 
@@ -449,7 +449,7 @@ fn render_markdown<'a, 'cx: 'a>(
                 playground: &cx.shared.playground,
                 heading_offset,
             }
-            .into_string()
+            .into_string(&mut cx.shared.pulldown_cmark_buffer.borrow_mut())
         )
     })
 }
@@ -470,8 +470,10 @@ fn document_short<'a, 'cx: 'a>(
         }
         let s = item.doc_value();
         if !s.is_empty() {
-            let (mut summary_html, has_more_content) =
-                MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
+            let (mut summary_html, has_more_content) = MarkdownSummaryLine(&s, &item.links(cx))
+                .into_string_with_has_more_content(
+                    &mut cx.shared.pulldown_cmark_buffer.borrow_mut(),
+                );
 
             if has_more_content {
                 let link = format!(" <a{}>Read more</a>", assoc_href_attr(item, link, cx));
@@ -625,7 +627,7 @@ fn short_item_info(
             let note = note.as_str();
             let html = MarkdownItemInfo(note, &mut cx.id_map);
             message.push_str(": ");
-            message.push_str(&html.into_string());
+            message.push_str(&html.into_string(&mut cx.shared.pulldown_cmark_buffer.borrow_mut()));
         }
         extra_info.push(ShortItemInfo::Deprecation { message });
     }
@@ -1790,7 +1792,7 @@ fn render_impl(
                     playground: &cx.shared.playground,
                     heading_offset: HeadingOffset::H4
                 }
-                .into_string()
+                .into_string(&mut shared.pulldown_cmark_buffer.borrow_mut())
             );
         }
         if !default_impl_items.is_empty() || !impl_items.is_empty() {

@@ -133,6 +133,8 @@ pub(crate) struct SharedContext<'tcx> {
     pub(crate) cache: Cache,
 
     pub(crate) call_locations: AllCallLocations,
+
+    pub(crate) pulldown_cmark_buffer: RefCell<pulldown_cmark::BufferTree>,
 }
 
 impl SharedContext<'_> {
@@ -248,7 +250,11 @@ impl<'tcx> Context<'tcx> {
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = plain_text_summary(&it.doc_value(), &it.link_names(&self.cache()));
+        let desc = plain_text_summary(
+            &it.doc_value(),
+            &it.link_names(&self.cache()),
+            &mut self.shared.pulldown_cmark_buffer.borrow_mut(),
+        );
         let desc = if !desc.is_empty() {
             desc
         } else if it.is_crate() {
@@ -596,6 +602,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             span_correspondence_map: matches,
             cache,
             call_locations,
+            pulldown_cmark_buffer: RefCell::new(pulldown_cmark::BufferTree::with_capacity(4)),
         };
 
         let dst = output;

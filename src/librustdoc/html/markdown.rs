@@ -6,6 +6,7 @@
 //! #![feature(rustc_private)]
 //!
 //! extern crate rustc_span;
+//! extern crate pulldown_cmark;
 //!
 //! use rustc_span::edition::Edition;
 //! use rustdoc::html::markdown::{HeadingOffset, IdMap, Markdown, ErrorCodes};
@@ -21,7 +22,7 @@
 //!     playground: &None,
 //!     heading_offset: HeadingOffset::H2,
 //! };
-//! let html = md.into_string();
+//! let html = md.into_string(&mut pulldown_cmark::BufferTree::with_capacity(4));
 //! // ... something using html
 //! ```
 
@@ -982,7 +983,7 @@ impl LangString {
 }
 
 impl Markdown<'_> {
-    pub fn into_string(self) -> String {
+    pub fn into_string(self, buffer: &mut pulldown_cmark::BufferTree) -> String {
         let Markdown {
             content: md,
             links,
@@ -1004,7 +1005,12 @@ impl Markdown<'_> {
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
-        let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut replacer));
+        let p = Parser::new_with_broken_link_callback_with_tree(
+            md,
+            main_body_opts(),
+            Some(&mut replacer),
+            buffer,
+        );
         let p = p.into_offset_iter();
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
@@ -1043,14 +1049,14 @@ impl MarkdownWithToc<'_> {
 }
 
 impl MarkdownItemInfo<'_> {
-    pub(crate) fn into_string(self) -> String {
+    pub(crate) fn into_string(self, buffer: &mut pulldown_cmark::BufferTree) -> String {
         let MarkdownItemInfo(md, ids) = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
             return String::new();
         }
-        let p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
+        let p = Parser::new_ext_with_tree(md, main_body_opts(), buffer).into_offset_iter();
 
         // Treat inline HTML as plain text.
         let p = p.map(|event| match event.0 {
@@ -1073,7 +1079,10 @@ impl MarkdownItemInfo<'_> {
 }
 
 impl MarkdownSummaryLine<'_> {
-    pub(crate) fn into_string_with_has_more_content(self) -> (String, bool) {
+    pub(crate) fn into_string_with_has_more_content(
+        self,
+        buffer: &mut pulldown_cmark::BufferTree,
+    ) -> (String, bool) {
         let MarkdownSummaryLine(md, links) = self;
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1087,8 +1096,13 @@ impl MarkdownSummaryLine<'_> {
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
-        let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer))
-            .peekable();
+        let p = Parser::new_with_broken_link_callback_with_tree(
+            md,
+            summary_opts(),
+            Some(&mut replacer),
+            buffer,
+        )
+        .peekable();
         let mut summary = SummaryLine::new(p);
 
         let mut s = String::new();
@@ -1105,8 +1119,8 @@ impl MarkdownSummaryLine<'_> {
         (s, has_more_content)
     }
 
-    pub(crate) fn into_string(self) -> String {
-        self.into_string_with_has_more_content().0
+    pub(crate) fn into_string(self, buffer: &mut pulldown_cmark::BufferTree) -> String {
+        self.into_string_with_has_more_content(buffer).0
     }
 }
 
@@ -1122,6 +1136,7 @@ fn markdown_summary_with_limit(
     md: &str,
     link_names: &[RenderedLink],
     length_limit: usize,
+    buffer: &mut pulldown_cmark::BufferTree,
 ) -> (String, bool) {
     if md.is_empty() {
         return (String::new(), false);
@@ -1134,7 +1149,12 @@ fn markdown_summary_with_limit(
             .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 
-    let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
+    let p = Parser::new_with_broken_link_callback_with_tree(
+        md,
+        summary_opts(),
+        Some(&mut replacer),
+        buffer,
+    );
     let mut p = LinkReplacer::new(p, link_names);
 
     let mut buf = HtmlWithLimit::new(length_limit);
@@ -1185,8 +1205,12 @@ fn markdown_summary_with_limit(
 /// Will shorten to 59 or 60 characters, including an ellipsis (…) if it was shortened.
 ///
 /// See [`markdown_summary_with_limit`] for details about what is rendered and what is not.
-pub(crate) fn short_markdown_summary(markdown: &str, link_names: &[RenderedLink]) -> String {
-    let (mut s, was_shortened) = markdown_summary_with_limit(markdown, link_names, 59);
+pub(crate) fn short_markdown_summary(
+    markdown: &str,
+    link_names: &[RenderedLink],
+    buffer: &mut pulldown_cmark::BufferTree,
+) -> String {
+    let (mut s, was_shortened) = markdown_summary_with_limit(markdown, link_names, 59, buffer);
 
     if was_shortened {
         s.push('…');
@@ -1201,7 +1225,11 @@ pub(crate) fn short_markdown_summary(markdown: &str, link_names: &[RenderedLink]
 /// - Headings, links, and formatting are stripped.
 /// - Inline code is rendered as-is, surrounded by backticks.
 /// - HTML and code blocks are ignored.
-pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> String {
+pub(crate) fn plain_text_summary(
+    md: &str,
+    link_names: &[RenderedLink],
+    buffer: &mut pulldown_cmark::BufferTree,
+) -> String {
     if md.is_empty() {
         return String::new();
     }
@@ -1215,7 +1243,12 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
             .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 
-    let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
+    let p = Parser::new_with_broken_link_callback_with_tree(
+        md,
+        summary_opts(),
+        Some(&mut replacer),
+        buffer,
+    );
 
     for event in p {
         match &event {
@@ -1266,6 +1299,7 @@ impl MarkdownLinkRange {
 
 pub(crate) fn markdown_links<'md, R>(
     md: &'md str,
+    buffer: &mut pulldown_cmark::BufferTree,
     preprocess_link: impl Fn(MarkdownLink) -> Option<R>,
 ) -> Vec<R> {
     if md.is_empty() {
@@ -1377,10 +1411,11 @@ pub(crate) fn markdown_links<'md, R>(
     };
 
     let mut broken_link_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
-    let mut event_iter = Parser::new_with_broken_link_callback(
+    let mut event_iter = Parser::new_with_broken_link_callback_with_tree(
         md,
         main_body_opts(),
         Some(&mut broken_link_callback),
+        buffer,
     )
     .into_offset_iter();
     let mut links = Vec::new();
@@ -1432,8 +1467,8 @@ pub(crate) fn markdown_links<'md, R>(
 }
 
 /// Collects additional data of link.
-fn collect_link_data<'input, 'callback>(
-    event_iter: &mut OffsetIter<'input, 'callback>,
+fn collect_link_data<'input, 'callback, 'tree>(
+    event_iter: &mut OffsetIter<'input, 'callback, 'tree>,
 ) -> Option<String> {
     let mut display_text: Option<String> = None;
     let mut append_text = |text: CowStr<'_>| {
@@ -1475,14 +1510,18 @@ pub(crate) struct RustCodeBlock {
 
 /// Returns a range of bytes for each code block in the markdown that is tagged as `rust` or
 /// untagged (and assumed to be rust).
-pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeBlock> {
+pub(crate) fn rust_code_blocks(
+    md: &str,
+    extra_info: &ExtraInfo<'_>,
+    buffer: &mut pulldown_cmark::BufferTree,
+) -> Vec<RustCodeBlock> {
     let mut code_blocks = vec![];
 
     if md.is_empty() {
         return code_blocks;
     }
 
-    let mut p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
+    let mut p = Parser::new_ext_with_tree(md, main_body_opts(), buffer).into_offset_iter();
 
     while let Some((event, offset)) = p.next() {
         if let Event::Start(Tag::CodeBlock(syntax)) = event {

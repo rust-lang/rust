@@ -527,8 +527,8 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 };
 
                 w.write_str(ITEM_TABLE_ROW_OPEN);
-                let docs =
-                    MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx)).into_string();
+                let docs = MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx))
+                    .into_string(&mut cx.shared.pulldown_cmark_buffer.borrow_mut());
                 let (docs_before, docs_after) = if docs.is_empty() {
                     ("", "")
                 } else {

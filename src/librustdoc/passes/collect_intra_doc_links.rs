@@ -43,7 +43,11 @@ pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
 };
 
 fn collect_intra_doc_links(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    let mut collector = LinkCollector { cx, visited_links: FxHashMap::default() };
+    let mut collector = LinkCollector {
+        cx,
+        visited_links: FxHashMap::default(),
+        pulldown_cmark_buffer: pulldown_cmark::BufferTree::with_capacity(4),
+    };
     collector.visit_crate(&krate);
     krate
 }
@@ -256,6 +260,7 @@ struct LinkCollector<'a, 'tcx> {
     /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link.
     /// The link will be `None` if it could not be resolved (i.e. the error was cached).
     visited_links: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
+    pulldown_cmark_buffer: pulldown_cmark::BufferTree,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
@@ -959,8 +964,11 @@ fn preprocess_link(
     }))
 }
 
-fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
-    markdown_links(s, |link| {
+fn preprocessed_markdown_links(
+    s: &str,
+    pulldown_cmark_buffer: &mut pulldown_cmark::BufferTree,
+) -> Vec<PreprocessedMarkdownLink> {
+    markdown_links(s, pulldown_cmark_buffer, |link| {
         preprocess_link(&link, s).map(|pp_link| PreprocessedMarkdownLink(pp_link, link))
     })
 }
@@ -993,7 +1001,7 @@ impl LinkCollector<'_, '_> {
                 DefKind::Mod if item.inner_docs(self.cx.tcx) => item_id,
                 _ => find_nearest_parent_module(self.cx.tcx, item_id).unwrap(),
             };
-            for md_link in preprocessed_markdown_links(&doc) {
+            for md_link in preprocessed_markdown_links(&doc, &mut self.pulldown_cmark_buffer) {
                 let link = self.resolve_link(&doc, item, item_id, module_id, &md_link);
                 if let Some(link) = link {
                     self.cx.cache.intra_doc_links.entry(item.item_id).or_default().insert(link);

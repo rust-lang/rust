@@ -17,20 +17,22 @@ pub(crate) const RUN_LINTS: Pass =
 
 struct Linter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
+    pulldown_cmark_buffer: pulldown_cmark::BufferTree,
 }
 
 pub(crate) fn run_lints(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    Linter { cx }.visit_crate(&krate);
+    Linter { cx, pulldown_cmark_buffer: pulldown_cmark::BufferTree::with_capacity(4) }
+        .visit_crate(&krate);
     krate
 }
 
 impl<'a, 'tcx> DocVisitor for Linter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
-        bare_urls::visit_item(self.cx, item);
-        check_code_block_syntax::visit_item(self.cx, item);
-        html_tags::visit_item(self.cx, item);
-        unescaped_backticks::visit_item(self.cx, item);
-        redundant_explicit_links::visit_item(self.cx, item);
+        bare_urls::visit_item(self.cx, item, &mut self.pulldown_cmark_buffer);
+        check_code_block_syntax::visit_item(self.cx, item, &mut self.pulldown_cmark_buffer);
+        html_tags::visit_item(self.cx, item, &mut self.pulldown_cmark_buffer);
+        unescaped_backticks::visit_item(self.cx, item, &mut self.pulldown_cmark_buffer);
+        redundant_explicit_links::visit_item(self.cx, item, &mut self.pulldown_cmark_buffer);
 
         self.visit_item_recur(item)
     }

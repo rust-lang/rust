@@ -23,12 +23,14 @@ pub(crate) fn build_index<'tcx>(
     let mut itemid_to_pathid = FxHashMap::default();
     let mut primitives = FxHashMap::default();
     let mut crate_paths = vec![];
+    let mut buffer = pulldown_cmark::BufferTree::with_capacity(4);
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
     for &OrphanImplItem { parent, ref item, ref impl_generics } in &cache.orphan_impl_items {
         if let Some((fqp, _)) = cache.paths.get(&parent) {
-            let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
+            let desc =
+                short_markdown_summary(&item.doc_value(), &item.link_names(cache), &mut buffer);
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.unwrap(),
@@ -43,8 +45,11 @@ pub(crate) fn build_index<'tcx>(
         }
     }
 
-    let crate_doc =
-        short_markdown_summary(&krate.module.doc_value(), &krate.module.link_names(cache));
+    let crate_doc = short_markdown_summary(
+        &krate.module.doc_value(),
+        &krate.module.link_names(cache),
+        &mut buffer,
+    );
 
     // Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
     // we need the alias element to have an array of items.

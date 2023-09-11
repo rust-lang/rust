@@ -137,6 +137,7 @@ struct CacheBuilder<'a, 'tcx> {
     /// This field is used to prevent duplicated impl blocks.
     impl_ids: DefIdMap<DefIdSet>,
     tcx: TyCtxt<'tcx>,
+    pulldown_cmark_buffer: pulldown_cmark::BufferTree,
 }
 
 impl Cache {
@@ -180,8 +181,12 @@ impl Cache {
         }
 
         let (krate, mut impl_ids) = {
-            let mut cache_builder =
-                CacheBuilder { tcx, cache: &mut cx.cache, impl_ids: Default::default() };
+            let mut cache_builder = CacheBuilder {
+                tcx,
+                cache: &mut cx.cache,
+                impl_ids: Default::default(),
+                pulldown_cmark_buffer: pulldown_cmark::BufferTree::with_capacity(4),
+            };
             krate = cache_builder.fold_crate(krate);
             (krate, cache_builder.impl_ids)
         };
@@ -335,8 +340,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // which should not be indexed. The crate-item itself is
                     // inserted later on when serializing the search-index.
                     if item.item_id.as_def_id().map_or(false, |idx| !idx.is_crate_root()) {
-                        let desc =
-                            short_markdown_summary(&item.doc_value(), &item.link_names(self.cache));
+                        let desc = short_markdown_summary(
+                            &item.doc_value(),
+                            &item.link_names(self.cache),
+                            &mut self.pulldown_cmark_buffer,
+                        );
                         let ty = item.type_();
                         if ty != ItemType::StructField
                             || u16::from_str_radix(s.as_str(), 10).is_err()
