@@ -154,7 +154,7 @@ impl<'tcx> ty::DebugWithInfcx<TyCtxt<'tcx>> for Ty<'tcx> {
 }
 impl<'tcx> fmt::Debug for Ty<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths!(fmt::Display::fmt(self, f))
+        with_no_trimmed_paths!(fmt::Debug::fmt(self.kind(), f))
     }
 }
 

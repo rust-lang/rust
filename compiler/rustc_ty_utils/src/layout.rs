@@ -7,6 +7,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
 };
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, AdtDef, EarlyBinder, GenericArgsRef, ReprOptions, Ty, TyCtxt, TypeVisitableExt,
 };
@@ -937,7 +938,7 @@ fn record_layout_for_printing_outlined<'tcx>(
 
     // (delay format until we actually need it)
     let record = |kind, packed, opt_discr_size, variants| {
-        let type_desc = format!("{:?}", layout.ty);
+        let type_desc = with_no_trimmed_paths!(format!("{}", layout.ty));
         cx.tcx.sess.code_stats.record_type_size(
             kind,
             type_desc,
