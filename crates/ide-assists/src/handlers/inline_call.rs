@@ -218,12 +218,12 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     }
 
     let syntax = call_info.node.syntax().clone();
-    let replacement = inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info);
     acc.add(
         AssistId("inline_call", AssistKind::RefactorInline),
         label,
         syntax.text_range(),
         |builder| {
+            let replacement = inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info);
             builder.replace_ast(
                 match call_info.node {
                     ast::CallableExpr::Call(it) => ast::Expr::CallExpr(it),
