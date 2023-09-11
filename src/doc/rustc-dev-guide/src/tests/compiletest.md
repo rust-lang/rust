@@ -67,6 +67,12 @@ The following test suites are available, with links for more information:
 - `run-make-fulldeps` — `run-make` tests which require a linkable build of `rustc`,
   or the rust demangler
 - [`run-pass-valgrind`](#valgrind-tests) — tests run with Valgrind
+- [`coverage-map`](#coverage-tests) - tests for coverage maps produced by
+  coverage instrumentation
+- [`run-coverage`](#coverage-tests) - tests that run an instrumented program
+  and check its coverage report
+- [`run-coverage-rustdoc`](#coverage-tests) - coverage tests that also run
+  instrumented doctests
 - [Rustdoc tests](../rustdoc.md#tests):
     - `rustdoc` — tests for rustdoc, making sure that the generated files
       contain the expected documentation.
@@ -392,6 +398,55 @@ These may be removed in the future.
 
 [Valgrind]: https://valgrind.org/
 [`tests/run-pass-valgrind`]: https://github.com/rust-lang/rust/tree/master/tests/run-pass-valgrind
+
+
+### Coverage tests
+
+The tests in [`tests/coverage-map`] test the mappings between source code
+regions and coverage counters that are emitted by LLVM.
+They compile the test with `--emit=llvm-ir`,
+then use a custom tool ([`src/tools/coverage-dump`])
+to extract and pretty-print the coverage mappings embedded in the IR.
+These tests don't require the profiler runtime, so they run in PR CI jobs and
+are easy to run/bless locally.
+
+These coverage map tests can be sensitive to changes in MIR lowering or MIR
+optimizations, producing mappings that are different but produce identical
+coverage reports.
+
+As a rule of thumb, any PR that doesn't change coverage-specific
+code should **feel free to re-bless** the `coverage-map` tests as necessary,
+without worrying about the actual changes, as long as the `run-coverage` tests
+still pass.
+
+---
+
+The tests in [`tests/run-coverage`] perform an end-to-end test of coverage reporting.
+They compile a test program with coverage instrumentation, run that program to
+produce raw coverage data, and then use LLVM tools to process that data into a
+human-readable code coverage report.
+
+Instrumented binaries need to be linked against the LLVM profiler runtime,
+so `run-coverage` tests are **automatically skipped**
+unless the profiler runtime is enabled in `config.toml`:
+
+```toml
+# config.toml
+[build]
+profiler = true
+```
+
+This also means that they typically don't run in PR CI jobs,
+though they do run in the full set of CI jobs used for merging.
+
+The tests in [`tests/run-coverage-rustdoc`] also run instrumented doctests and
+include them in the coverage report. This avoids having to build rustdoc when
+only running the main `run-coverage` suite.
+
+[`tests/coverage-map`]: https://github.com/rust-lang/rust/tree/master/tests/coverage-map
+[`src/tools/coverage-dump`]: https://github.com/rust-lang/rust/tree/master/src/tools/coverage-dump
+[`tests/run-coverage`]: https://github.com/rust-lang/rust/tree/master/tests/run-coverage
+[`tests/run-coverage-rustdoc`]: https://github.com/rust-lang/rust/tree/master/tests/run-coverage-rustdoc
 
 
 ## Building auxiliary crates
