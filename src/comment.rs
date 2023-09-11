@@ -365,7 +365,11 @@ fn identify_comment(
             trim_left_preserve_layout(first_group, shape.indent, config)?
         } else if !config.normalize_comments()
             && !config.wrap_comments()
-            && !config.format_code_in_doc_comments()
+            && !(
+                // `format_code_in_doc_comments` should only take effect on doc comments,
+                // so we only consider it when this comment block is a doc comment block.
+                is_doc_comment && config.format_code_in_doc_comments()
+            )
         {
             light_rewrite_comment(first_group, shape.indent, config, is_doc_comment)
         } else {
