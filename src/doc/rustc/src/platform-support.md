@@ -255,7 +255,7 @@ target | std | host | notes
 [`armv7-wrs-vxworks-eabihf`](platform-support/vxworks.md) | ? |  | ARMv7-A VxWorks
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
-`armv7a-none-eabihf` | * | | Bare ARMv7-A, hardfloat
+[`armv7a-none-eabihf`](platform-support/armv7a_none_eabihf.md) | * | | Bare ARMv7-A, hardfloat
 [`armv7k-apple-watchos`](platform-support/apple_watchos.md) | ✓ | | ARMv7-A Apple WatchOS
 [`armv7s-apple-ios`](platform-support/applev7s-apple-ios.md) | ✓ |  | ARMv7-A Apple-A6 Apple iOS
 [`avr-unknown-gnu-atmega328`](platform-support/avr.md) | * |  | AVR. Requires `-Z build-std=core`
