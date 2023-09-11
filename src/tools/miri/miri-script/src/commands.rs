@@ -338,7 +338,11 @@ impl Command {
         println!(
             "Confirmed that the push round-trips back to Miri properly. Please create a rustc PR:"
         );
-        println!("    https://github.com/{github_user}/rust/pull/new/{branch}");
+        println!(
+            // Open PR with `subtree-sync` label to satisfy the `no-merges` triagebot check
+            // See https://github.com/rust-lang/rust/pull/114157
+            "    https://github.com/rust-lang/rust/compare/{github_user}:{branch}?quick_pull=1&labels=subtree-sync"
+        );
 
         drop(josh);
         Ok(())
