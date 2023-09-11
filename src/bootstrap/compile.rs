@@ -570,13 +570,14 @@ fn copy_sanitizers(
         let dst = libdir.join(&runtime.name);
         builder.copy(&runtime.path, &dst);
 
+        // The `aarch64-apple-ios-macabi` and `x86_64-apple-ios-macabi` are also supported for
+        // sanitizers, but they share a sanitizer runtime with `${arch}-apple-darwin`, so we do
+        // not list them here to rename and sign the runtime library.
         if target == "x86_64-apple-darwin"
             || target == "aarch64-apple-darwin"
             || target == "aarch64-apple-ios"
             || target == "aarch64-apple-ios-sim"
-            || target == "aarch64-apple-ios-catalyst"
             || target == "x86_64-apple-ios"
-            || target == "x86_64-apple-ios-catalyst"
         {
             // Update the library’s install name to reflect that it has been renamed.
             apple_darwin_update_library_name(&dst, &format!("@rpath/{}", &runtime.name));
