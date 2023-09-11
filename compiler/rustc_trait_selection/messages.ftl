@@ -40,5 +40,7 @@ trait_selection_no_value_in_rustc_on_unimplemented = this attribute must have a 
     .label = expected value here
     .note = eg `#[rustc_on_unimplemented(message="foo")]`
 
+trait_selection_trait_has_no_impls = this trait has no implementations, consider adding one
+
 trait_selection_ty_alias_overflow = in case this is a recursive type alias, consider using a struct, enum, or union instead
 trait_selection_unable_to_construct_constant_value = unable to construct a constant value for the unevaluated constant {$unevaluated}

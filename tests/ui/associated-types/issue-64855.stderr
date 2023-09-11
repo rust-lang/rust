@@ -3,6 +3,12 @@ error[E0277]: the trait bound `Bar<T>: Foo` is not satisfied
    |
 LL | pub struct Bar<T>(<Self as Foo>::Type) where Self: ;
    |                   ^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `Bar<T>`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-64855.rs:1:1
+   |
+LL | pub trait Foo {
+   | ^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

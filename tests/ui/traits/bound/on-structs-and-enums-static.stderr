@@ -4,6 +4,11 @@ error[E0277]: the trait bound `usize: Trait` is not satisfied
 LL | static X: Foo<usize> = Foo {
    |           ^^^^^^^^^^ the trait `Trait` is not implemented for `usize`
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/on-structs-and-enums-static.rs:1:1
+   |
+LL | trait Trait {
+   | ^^^^^^^^^^^
 note: required by a bound in `Foo`
   --> $DIR/on-structs-and-enums-static.rs:5:14
    |
