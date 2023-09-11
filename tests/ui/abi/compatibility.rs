@@ -106,6 +106,8 @@ test_transparent!(zst, Zst);
 test_transparent!(unit, ());
 test_transparent!(pair, (i32, f32)); // mixing in some floats since they often get special treatment
 test_transparent!(triple, (i8, i16, f32)); // chosen to fit into 64bit
+test_transparent!(triple_f32, (f32, f32, f32)); // homogeneous case
+test_transparent!(triple_f64, (f64, f64, f64));
 test_transparent!(tuple, (i32, f32, i64, f64));
 test_transparent!(empty_array, [u32; 0]);
 test_transparent!(empty_1zst_array, [u8; 0]);
@@ -113,14 +115,6 @@ test_transparent!(small_array, [i32; 2]); // chosen to fit into 64bit
 test_transparent!(large_array, [i32; 16]);
 test_transparent!(enum_, Option<i32>);
 test_transparent!(enum_niched, Option<&'static i32>);
-// Pure-float types that are not ScalarPair seem to be tricky.
-// FIXME: <https://github.com/rust-lang/rust/issues/115664>
-#[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
-mod tricky {
-    use super::*;
-    test_transparent!(triple_f32, (f32, f32, f32));
-    test_transparent!(triple_f64, (f64, f64, f64));
-}
 
 // RFC 3391 <https://rust-lang.github.io/rfcs/3391-result_ffi_guarantees.html>.
 macro_rules! test_nonnull {
