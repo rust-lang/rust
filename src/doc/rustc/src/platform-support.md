@@ -257,7 +257,7 @@ target | std | host | notes
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
 `armv7a-none-eabihf` | * | | Bare ARMv7-A, hardfloat
 [`armv7k-apple-watchos`](platform-support/apple_watchos.md) | ✓ | | ARMv7-A Apple WatchOS
-`armv7s-apple-ios` | ✓ |  | ARMv7-A Apple-A6 Apple iOS
+[`armv7s-apple-ios`](platform-support/applev7s-apple-ios.md) | ✓ |  | ARMv7-A Apple-A6 Apple iOS
 [`avr-unknown-gnu-atmega328`](platform-support/avr.md) | * |  | AVR. Requires `-Z build-std=core`
 [`bpfeb-unknown-none`](platform-support/bpf.md) | * |  | BPF (Big Endian)
 [`bpfel-unknown-none`](platform-support/bpf.md) | * |  | BPF (Little Endian)
