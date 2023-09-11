@@ -1399,6 +1399,13 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                 return;
             }
 
+            if let ExprKind::Field(parent_expr, _) = expr.kind
+                && let ty::Adt(adt, _) = cx.typeck_results().expr_ty(parent_expr).kind()
+                && adt.is_union()
+            {
+                // Auto deref does not apply on union field
+                return;
+            }
             span_lint_hir_and_then(
                 cx,
                 EXPLICIT_AUTO_DEREF,
