@@ -28,12 +28,60 @@ LL |     let _ = NotBox::new([0; 9999]);
    = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
 error: moving 9999 bytes
-  --> $DIR/large_moves.rs:41:13
+  --> $DIR/large_moves.rs:63:13
    |
 LL |             data,
    |             ^^^^ value moved from here
    |
    = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
-error: aborting due to 4 previous errors
+error: moving 1500 bytes
+  --> $DIR/large_moves.rs:37:13
+   |
+LL |     let _ = NotBox::new([0; 1500]);
+   |             ^^^^^^^^^^^^^^^^^^^^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+
+error: moving 2500 bytes
+  --> $DIR/large_moves.rs:41:13
+   |
+LL |     let _ = NotBox::new([0; 2500]);
+   |             ^^^^^^^^^^^^^^^^^^^^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+
+error: moving 5000 bytes
+  --> $DIR/large_moves.rs:47:13
+   |
+LL |     let _ = NotBox::new([0; 5000]);
+   |             ^^^^^^^^^^^^^^^^^^^^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+
+error: moving 1500 bytes
+  --> $DIR/large_moves.rs:63:13
+   |
+LL |             data,
+   |             ^^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+
+error: moving 2500 bytes
+  --> $DIR/large_moves.rs:63:13
+   |
+LL |             data,
+   |             ^^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+
+error: moving 5000 bytes
+  --> $DIR/large_moves.rs:63:13
+   |
+LL |             data,
+   |             ^^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+
+error: aborting due to 10 previous errors
 
