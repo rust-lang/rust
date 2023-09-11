@@ -531,7 +531,7 @@ impl FunctionBody {
 
     fn extracted_from_trait_impl(&self) -> bool {
         match self.node().ancestors().find_map(ast::Impl::cast) {
-            Some(c) => return c.trait_().is_some(),
+            Some(c) => c.trait_().is_some(),
             None => false,
         }
     }
@@ -1048,23 +1048,17 @@ impl GenericParent {
 fn generic_parents(parent: &SyntaxNode) -> Vec<GenericParent> {
     let mut list = Vec::new();
     if let Some(parent_item) = parent.ancestors().find_map(ast::Item::cast) {
-        match parent_item {
-            ast::Item::Fn(ref fn_) => {
-                if let Some(parent_parent) = parent_item
-                    .syntax()
-                    .parent()
-                    .and_then(|it| it.parent())
-                    .and_then(ast::Item::cast)
-                {
-                    match parent_parent {
-                        ast::Item::Impl(impl_) => list.push(GenericParent::Impl(impl_)),
-                        ast::Item::Trait(trait_) => list.push(GenericParent::Trait(trait_)),
-                        _ => (),
-                    }
+        if let ast::Item::Fn(ref fn_) = parent_item {
+            if let Some(parent_parent) =
+                parent_item.syntax().parent().and_then(|it| it.parent()).and_then(ast::Item::cast)
+            {
+                match parent_parent {
+                    ast::Item::Impl(impl_) => list.push(GenericParent::Impl(impl_)),
+                    ast::Item::Trait(trait_) => list.push(GenericParent::Trait(trait_)),
+                    _ => (),
                 }
-                list.push(GenericParent::Fn(fn_.clone()));
             }
-            _ => (),
+            list.push(GenericParent::Fn(fn_.clone()));
         }
     }
     list
@@ -1728,7 +1722,7 @@ fn make_body(
     let block = match &fun.body {
         FunctionBody::Expr(expr) => {
             let expr = rewrite_body_segment(ctx, &fun.params, &handler, expr.syntax());
-            let expr = ast::Expr::cast(expr).unwrap();
+            let expr = ast::Expr::cast(expr).expect("Body segment should be an expr");
             match expr {
                 ast::Expr::BlockExpr(block) => {
                     // If the extracted expression is itself a block, there is no need to wrap it inside another block.
@@ -1868,9 +1862,8 @@ fn with_tail_expr(block: ast::BlockExpr, tail_expr: ast::Expr) -> ast::BlockExpr
 
     if let Some(stmt_list) = block.stmt_list() {
         stmt_list.syntax().children_with_tokens().for_each(|node_or_token| {
-            match &node_or_token {
-                syntax::NodeOrToken::Token(_) => elements.push(node_or_token),
-                _ => (),
+            if let syntax::NodeOrToken::Token(_) = &node_or_token {
+                elements.push(node_or_token)
             };
         });
     }
@@ -1934,12 +1927,18 @@ fn fix_param_usages(ctx: &AssistContext<'_>, params: &[Param], syntax: &SyntaxNo
                 Some(ast::Expr::RefExpr(node))
                     if param.kind() == ParamKind::MutRef && node.mut_token().is_some() =>
                 {
-                    ted::replace(node.syntax(), node.expr().unwrap().syntax());
+                    ted::replace(
+                        node.syntax(),
+                        node.expr().expect("RefExpr::expr() cannot be None").syntax(),
+                    );
                 }
                 Some(ast::Expr::RefExpr(node))
                     if param.kind() == ParamKind::SharedRef && node.mut_token().is_none() =>
                 {
-                    ted::replace(node.syntax(), node.expr().unwrap().syntax());
+                    ted::replace(
+                        node.syntax(),
+                        node.expr().expect("RefExpr::expr() cannot be None").syntax(),
+                    );
                 }
                 Some(_) | None => {
                     let p = &make::expr_prefix(T![*], usage.clone()).clone_for_update();
