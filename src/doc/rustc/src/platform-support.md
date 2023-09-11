@@ -249,7 +249,7 @@ target | std | host | notes
 [`armv7-sony-vita-newlibeabihf`](platform-support/armv7-sony-vita-newlibeabihf.md) | ? |  | ARMv7-A Cortex-A9 Sony PlayStation Vita (requires VITASDK toolchain)
 [`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | ARMv7-A OpenHarmony |
 [`armv7-unknown-linux-uclibceabi`](platform-support/armv7-unknown-linux-uclibceabi.md) | ✓ | ✓ | ARMv7-A Linux with uClibc, softfloat
-[`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | ARMv7-A Linux with uClibc, hardfloat
+[`armv7-unknown-linux-uclibceabihf`](platform-support/armv7_unknown_linux_uclibceabihf.md) | ✓ | ? | ARMv7-A Linux with uClibc, hardfloat
 [`armv7-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | ARMv7-A FreeBSD
 [`armv7-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | ARMv7-A NetBSD w/hard-float
 [`armv7-wrs-vxworks-eabihf`](platform-support/vxworks.md) | ? |  | ARMv7-A VxWorks

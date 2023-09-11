@@ -1,4 +1,4 @@
-# armv7-unknown-linux-uclibceabihf
+# `armv7-unknown-linux-uclibceabihf`
 
 **Tier: 3**
 
