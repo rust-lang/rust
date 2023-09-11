@@ -154,6 +154,10 @@ fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
         }
     }
 
+    let foo_const = get_item(tcx, &items, (DefKind::Const, "FOO")).unwrap();
+    // Ensure we don't panic trying to get the body of a constant.
+    foo_const.body();
+
     ControlFlow::Continue(())
 }
 
@@ -191,6 +195,8 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     write!(
         file,
         r#"
+    pub const FOO: u32 = 1 + 2;
+
     fn generic<T, const U: usize>(t: T) -> [(); U] {{
         _ = t;
         [(); U]
