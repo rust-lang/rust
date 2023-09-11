@@ -230,7 +230,7 @@ target | std | host | notes
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
-`aarch64-unknown-redox` | ? |  | ARM64 Redox OS
+[`aarch64-unknown-redox`](platform-support/aarch64_unknown_redox.md) | ? |  | ARM64 Redox OS
 [`aarch64-uwp-windows-msvc`](platform-support/windows_msvc.md) | ? |  | ARM64 Universal Windows Platform (UWP) apps using MSVC
 [`aarch64-wrs-vxworks`](platform-support/vxworks.md) | ? |  | ARM64 VxWorks
 [`aarch64_be-unknown-linux-gnu_ilp32`](platform-support/aarch64_be-unknown-linux-gnu-ilp32.md) | ✓ | ✓ | ARM64 Linux (Big Endian, ILP32 ABI)
