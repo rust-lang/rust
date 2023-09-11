@@ -34,11 +34,11 @@ target | notes
 -------|-------
 `aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.1, glibc 2.17+) [^missing-stack-probes]
 `i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+) [^windows-support]
-`i686-pc-windows-msvc` | 32-bit MSVC (Windows 7+) [^windows-support]
+[`i686-pc-windows-msvc`](platform-support/windows_msvc.md) | 32-bit MSVC (Windows 7+) [^windows-support]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+)
 `x86_64-apple-darwin` | 64-bit macOS (10.7+, Lion+)
 `x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 7+) [^windows-support]
-`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 7+) [^windows-support]
+[`x86_64-pc-windows-msvc`](platform-support/windows_msvc.md) | 64-bit MSVC (Windows 7+) [^windows-support]
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
 
 [^missing-stack-probes]: Stack probes support is missing on
@@ -84,7 +84,7 @@ so Rustup may install the documentation for a similar tier 1 target instead.
 target | notes
 -------|-------
 `aarch64-apple-darwin` | ARM64 macOS (11.0+, Big Sur+)
-`aarch64-pc-windows-msvc` | ARM64 Windows MSVC
+[`aarch64-pc-windows-msvc`](platform-support/windows_msvc.md) | ARM64 Windows MSVC
 `aarch64-unknown-linux-musl` | ARM64 Linux with MUSL
 `arm-unknown-linux-gnueabi` | ARMv6 Linux (kernel 3.2, glibc 2.17)
 `arm-unknown-linux-gnueabihf` | ARMv6 Linux, hardfloat (kernel 3.2, glibc 2.17)
@@ -150,7 +150,7 @@ target | std | notes
 `armv7r-none-eabi` | * | Bare ARMv7-R
 `armv7r-none-eabihf` | * | Bare ARMv7-R, hardfloat
 `asmjs-unknown-emscripten` | ✓ | asm.js via Emscripten
-`i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE
+[`i586-pc-windows-msvc`](platform-support/windows_msvc.md) | * | 32-bit Windows w/o SSE
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17)
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android
@@ -231,7 +231,7 @@ target | std | host | notes
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
 `aarch64-unknown-redox` | ? |  | ARM64 Redox OS
-[`aarch64-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ? |  | ARM64 Universal Windows Platform (UWP) apps using MSVC
+[`aarch64-uwp-windows-msvc`](platform-support/windows_msvc.md) | ? |  | ARM64 Universal Windows Platform (UWP) apps using MSVC
 [`aarch64-wrs-vxworks`](platform-support/vxworks.md) | ? |  | ARM64 VxWorks
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
@@ -266,13 +266,12 @@ target | std | host | notes
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS
 [`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS |
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
-`i686-pc-windows-msvc` | * |  | 32-bit Windows XP support
 [`i686-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
 [`i686-unknown-haiku`](platform-support/haiku.md) | ✓ | ✓ | 32-bit Haiku
 [`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 with SSE2
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD
 [`i686-uwp-windows-gnu`](platform-support/uwp_windows_gnu.md) | ? |  | x86 Universal Windows Platform (UWP) apps using MinGW
-[`i686-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ? |  | x86 Universal Windows Platform (UWP) apps using MSVC
+[`i686-uwp-windows-msvc`](platform-support/windows_msvc.md) | ? |  | x86 Universal Windows Platform (UWP) apps using MSVC
 [`i686-wrs-vxworks`](platform-support/vxworks.md) | ? |  | i686 VxWorks
 [`loongarch64-unknown-none`](platform-support/loongarch-none.md) | * |  | LoongArch64 Bare-metal (LP64D ABI)
 [`loongarch64-unknown-none-softfloat`](platform-support/loongarch-none.md) | * |  | LoongArch64 Bare-metal (LP64S ABI)
@@ -322,8 +321,8 @@ target | std | host | notes
 [`sparc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/sparc64
 [`thumbv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Thumb-mode Bare ARMv4T
 [`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | Thumb-mode Bare ARMv5TE
-[`thumbv7a-pc-windows-msvc`](platform-support/thumbv7a-pc-windows-msvc.md) | ? |  | Thumb2-mode MSVC Windows
-[`thumbv7a-uwp-windows-msvc`](platform-support/usp-windows-msvc.md) | ✓ |  | Thumb2-mode Universal Windows Platform (UWP) apps using MSVC
+[`thumbv7a-pc-windows-msvc`](platform-support/windows_msvc.md) | ? |  | Thumb2-mode MSVC Windows
+[`thumbv7a-uwp-windows-msvc`](platform-support/windows_msvc.md) | ✓ |  | Thumb2-mode Universal Windows Platform (UWP) apps using MSVC
 [`thumbv7neon-unknown-linux-musleabihf`](platform-support/thumbv7neon_unknown_linux_musleabihf.md) | ? |  | Thumb2-mode ARMv7-A Linux with NEON, MUSL
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`x86_64-apple-ios-macabi`](platform-support/apple_ios_macabi.md) | ✓ |  | Apple Catalyst on x86_64
@@ -340,7 +339,7 @@ target | std | host | notes
 [`x86_64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | x86_64 OpenHarmony |
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
 [`x86_64-uwp-windows-gnu`](platform-support/uwp_windows_gnu.md) | ✓ |  | x86_64 Universal Windows Platform (UWP) apps using MinGW
-[`x86_64-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  | x86_64 Universal Windows Platform (UWP) apps using MSVC
+[`x86_64-uwp-windows-msvc`](platform-support/windows_msvc.md) | ✓ |  | x86_64 Universal Windows Platform (UWP) apps using MSVC
 [`x86_64-wrs-vxworks`](platform-support/vxworks.md) | ? |  | x86_64 VxWorks
 [`x86_64h-apple-darwin`](platform-support/x86_64h_apple_darwin.md) | ✓ | ✓ | macOS with late-gen Intel (at least Haswell)
 
