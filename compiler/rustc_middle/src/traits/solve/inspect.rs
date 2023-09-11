@@ -31,6 +31,7 @@ pub struct CanonicalGoalEvaluation<'tcx> {
 
 #[derive(Eq, PartialEq)]
 pub enum GoalEvaluationKind<'tcx> {
+    Overflow,
     CacheHit(CacheHit),
     Uncached { revisions: Vec<GoalEvaluationStep<'tcx>> },
 }
@@ -50,10 +51,8 @@ pub struct AddedGoalsEvaluation<'tcx> {
 pub struct GoalEvaluationStep<'tcx> {
     pub instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
 
-    pub added_goals_evaluations: Vec<AddedGoalsEvaluation<'tcx>>,
-    pub candidates: Vec<GoalCandidate<'tcx>>,
-
-    pub result: QueryResult<'tcx>,
+    /// The actual evaluation of the goal, always `ProbeKind::Root`.
+    pub evaluation: GoalCandidate<'tcx>,
 }
 
 #[derive(Eq, PartialEq)]
@@ -63,8 +62,16 @@ pub struct GoalCandidate<'tcx> {
     pub kind: ProbeKind<'tcx>,
 }
 
+impl Debug for GoalCandidate<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        ProofTreeFormatter::new(f).format_candidate(self)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ProbeKind<'tcx> {
+    /// The root inference context while proving a goal.
+    Root { result: QueryResult<'tcx> },
     /// Probe entered when normalizing the self ty during candidate assembly
     NormalizedSelfTyAssembly,
     /// Some candidate to prove the current goal.

@@ -68,6 +68,9 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         writeln!(self.f, "GOAL: {:?}", eval.goal)?;
 
         match &eval.kind {
+            GoalEvaluationKind::Overflow => {
+                writeln!(self.f, "OVERFLOW: {:?}", eval.result)
+            }
             GoalEvaluationKind::CacheHit(CacheHit::Global) => {
                 writeln!(self.f, "GLOBAL CACHE HIT: {:?}", eval.result)
             }
@@ -76,7 +79,7 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             }
             GoalEvaluationKind::Uncached { revisions } => {
                 for (n, step) in revisions.iter().enumerate() {
-                    writeln!(self.f, "REVISION {n}: {:?}", step.result)?;
+                    writeln!(self.f, "REVISION {n}")?;
                     self.nested(|this| this.format_evaluation_step(step))?;
                 }
                 writeln!(self.f, "RESULT: {:?}", eval.result)
@@ -89,19 +92,14 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         evaluation_step: &GoalEvaluationStep<'_>,
     ) -> std::fmt::Result {
         writeln!(self.f, "INSTANTIATED: {:?}", evaluation_step.instantiated_goal)?;
-
-        for candidate in &evaluation_step.candidates {
-            self.nested(|this| this.format_candidate(candidate))?;
-        }
-        for nested in &evaluation_step.added_goals_evaluations {
-            self.nested(|this| this.format_added_goals_evaluation(nested))?;
-        }
-
-        Ok(())
+        self.format_candidate(&evaluation_step.evaluation)
     }
 
     pub(super) fn format_candidate(&mut self, candidate: &GoalCandidate<'_>) -> std::fmt::Result {
         match &candidate.kind {
+            ProbeKind::Root { result } => {
+                writeln!(self.f, "ROOT RESULT: {result:?}")
+            }
             ProbeKind::NormalizedSelfTyAssembly => {
                 writeln!(self.f, "NORMALIZING SELF TY FOR ASSEMBLY:")
             }
