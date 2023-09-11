@@ -1229,10 +1229,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if let Some(span) = finalize {
                         self.report_error(
                             span,
-                            ResolutionError::GenericParamsFromOuterFunction(
-                                res,
-                                has_generic_params,
-                            ),
+                            ResolutionError::GenericParamsFromOuterItem(res, has_generic_params),
                         );
                     }
                     return Res::Err;
@@ -1296,10 +1293,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if let Some(span) = finalize {
                         self.report_error(
                             span,
-                            ResolutionError::GenericParamsFromOuterFunction(
-                                res,
-                                has_generic_params,
-                            ),
+                            ResolutionError::GenericParamsFromOuterItem(res, has_generic_params),
                         );
                     }
                     return Res::Err;

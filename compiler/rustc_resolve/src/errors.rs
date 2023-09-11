@@ -33,6 +33,40 @@ pub(crate) struct CrateRootNamesMustBeNamedExplicitly(#[primary_span] pub(crate)
 pub(crate) struct ResolutionError(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
+#[diag(resolve_generic_params_from_outer_item, code = "E0401")]
+pub(crate) struct GenericParamsFromOuterItem {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) label: Option<GenericParamsFromOuterItemLabel>,
+    #[label(resolve_refer_to_type_directly)]
+    pub(crate) refer_to_type_directly: Option<Span>,
+    #[subdiagnostic]
+    pub(crate) sugg: Option<GenericParamsFromOuterItemSugg>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum GenericParamsFromOuterItemLabel {
+    #[label(resolve_generic_params_from_outer_item_self_ty_param)]
+    SelfTyParam(#[primary_span] Span),
+    #[label(resolve_generic_params_from_outer_item_self_ty_alias)]
+    SelfTyAlias(#[primary_span] Span),
+    #[label(resolve_generic_params_from_outer_item_ty_param)]
+    TyParam(#[primary_span] Span),
+    #[label(resolve_generic_params_from_outer_item_const_param)]
+    ConstParam(#[primary_span] Span),
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(resolve_suggestion, code = "{snippet}", applicability = "maybe-incorrect")]
+pub(crate) struct GenericParamsFromOuterItemSugg {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) snippet: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(resolve_name_is_already_used_as_generic_parameter, code = "E0403")]
 pub(crate) struct NameAlreadyUsedInParameterList {
     #[primary_span]
