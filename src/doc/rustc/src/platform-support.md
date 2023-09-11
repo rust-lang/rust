@@ -259,8 +259,8 @@ target | std | host | notes
 [`armv7k-apple-watchos`](platform-support/apple_watchos.md) | ✓ | | ARMv7-A Apple WatchOS
 `armv7s-apple-ios` | ✓ |  | ARMv7-A Apple-A6 Apple iOS
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
-`bpfeb-unknown-none` | * |  | BPF (big endian)
-`bpfel-unknown-none` | * |  | BPF (little endian)
+[`bpfeb-unknown-none`](platform-support/bpf.md) | * |  | BPF (Big Endian)
+[`bpfel-unknown-none`](platform-support/bpf.md) | * |  | BPF (Little Endian)
 [`csky-unknown-linux-gnuabiv2`](platform-support/csky-unknown-linux-gnuabiv2.md) | ✓ |  | C-SKY abiv2 Linux (Little Endian)
 [`hexagon-unknown-linux-musl`](platform-support/hexagon_unknown_linux_musl.md) | ? |  | Hexagon Linux MUSL
 [`i386-apple-ios`](platform-support/i386_apple_ios.md) | ✓ |  | 32-bit x86 iOS
