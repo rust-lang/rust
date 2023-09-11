@@ -3009,10 +3009,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // Try to report a help message
         if is_fn_trait
             && let Ok((implemented_kind, params)) = self.type_implements_fn_trait(
-            obligation.param_env,
-            trait_ref.self_ty(),
-            trait_predicate.skip_binder().polarity,
-        )
+                obligation.param_env,
+                trait_ref.self_ty(),
+                trait_predicate.skip_binder().polarity,
+            )
         {
             self.add_help_message_for_fn_trait(trait_ref, err, implemented_kind, params);
         } else if !trait_ref.has_non_region_infer()
@@ -3031,6 +3031,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 None,
                 obligation.cause.body_id,
             );
+        } else if trait_ref.def_id().is_local()
+            && self.tcx.trait_impls_of(trait_ref.def_id()).is_empty()
+            && !self.tcx.trait_is_auto(trait_ref.def_id())
+            && !self.tcx.trait_is_alias(trait_ref.def_id())
+        {
+            err.span_help(
+                self.tcx.def_span(trait_ref.def_id()),
+                crate::fluent_generated::trait_selection_trait_has_no_impls,
+            );
         } else if !suggested && !unsatisfied_const {
             // Can't show anything else useful, try to find similar impls.
             let impl_candidates = self.find_similar_impl_candidates(*trait_predicate);
@@ -3041,7 +3050,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 err,
                 true,
             ) {
-                self.report_similar_impl_candidates_for_root_obligation(&obligation, *trait_predicate, body_def_id, err);
+                self.report_similar_impl_candidates_for_root_obligation(
+                    &obligation,
+                    *trait_predicate,
+                    body_def_id,
+                    err,
+                );
             }
 
             self.suggest_convert_to_slice(

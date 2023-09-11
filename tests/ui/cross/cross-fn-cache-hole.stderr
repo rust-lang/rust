@@ -4,6 +4,11 @@ error[E0277]: the trait bound `i32: Bar<u32>` is not satisfied
 LL |     where i32: Foo<u32, A>
    |           ^^^^^^^^^^^^^^^^ the trait `Bar<u32>` is not implemented for `i32`
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/cross-fn-cache-hole.rs:11:1
+   |
+LL | trait Bar<X> { }
+   | ^^^^^^^^^^^^
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
