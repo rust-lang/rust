@@ -262,7 +262,7 @@ target | std | host | notes
 `bpfeb-unknown-none` | * |  | BPF (big endian)
 `bpfel-unknown-none` | * |  | BPF (little endian)
 `csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux(little endian)
-`hexagon-unknown-linux-musl` | ? |  |
+[`hexagon-unknown-linux-musl`](platform-support/hexagon_unknown_linux_musl.md) | ? |  | Hexagon Linux MUSL
 [`i386-apple-ios`](platform-support/i386_apple_ios.md) | ✓ |  | 32-bit x86 iOS
 [`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS |
 [`i686-apple-darwin`](platform-support/i686_apple_darwin.md) | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
