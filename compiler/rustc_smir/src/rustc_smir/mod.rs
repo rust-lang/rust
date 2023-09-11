@@ -84,7 +84,7 @@ impl<'tcx> Context for Tables<'tcx> {
 
     fn mir_body(&mut self, item: stable_mir::DefId) -> stable_mir::mir::Body {
         let def_id = self[item];
-        let mir = self.tcx.optimized_mir(def_id);
+        let mir = self.tcx.instance_mir(ty::InstanceDef::Item(def_id));
         stable_mir::mir::Body {
             blocks: mir
                 .basic_blocks
