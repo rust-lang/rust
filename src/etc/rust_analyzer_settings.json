@@ -16,7 +16,7 @@
         "compiler/rustc_codegen_gcc/Cargo.toml"
     ],
     "rust-analyzer.rustfmt.overrideCommand": [
-        "./build/host/rustfmt/bin/rustfmt",
+        "${workspaceFolder}/build/host/rustfmt/bin/rustfmt",
         "--edition=2021"
     ],
     "rust-analyzer.procMacro.server": "./build/host/stage0/libexec/rust-analyzer-proc-macro-srv",
