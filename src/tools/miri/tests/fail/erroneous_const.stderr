@@ -6,7 +6,7 @@ LL |     const VOID: ! = panic!();
    |
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/erroneous_const.rs:LL:CC
    |
 LL |         let _ = PrintName::<T>::VOID;

@@ -588,10 +588,7 @@ impl<'tcx> Body<'tcx> {
         // the body successfully evaluate.
         for &const_ in &self.required_consts {
             let c = normalize_const(const_.literal)?;
-            c.eval(tcx, param_env, Some(const_.span)).map_err(|e| {
-                // The query results don't always have the span we want.
-                e.with_span(const_.span)
-            })?;
+            c.eval(tcx, param_env, Some(const_.span))?;
         }
 
         Ok(())

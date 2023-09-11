@@ -10,12 +10,6 @@ note: type in trait
 LL |     const VALUE: usize;
    |                  ^^^^^
 
-note: erroneous constant used
-  --> $DIR/issue-70942-trait-vs-impl-mismatch.rs:13:18
-   |
-LL |     let _: [i32; Zero::VALUE] = [];
-   |                  ^^^^^^^^^^^
-
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0326`.

@@ -19,8 +19,6 @@ codegen_ssa_copy_path_buf = unable to copy {$source_file} to {$output_path}: {$e
 
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
-codegen_ssa_erroneous_constant = erroneous constant encountered
-
 codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$error}
 
 codegen_ssa_expected_coverage_symbol = expected `coverage(off)` or `coverage(on)`
@@ -173,8 +171,6 @@ codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple time
 codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
 codegen_ssa_option_gcc_only = option `-Z gcc-ld` is used even though linker flavor is not gcc
-
-codegen_ssa_polymorphic_constant_too_generic = codegen encountered polymorphic constant: TooGeneric
 
 codegen_ssa_processing_dymutil_failed = processing debug info with `dsymutil` failed: {$status}
     .note = {$output}

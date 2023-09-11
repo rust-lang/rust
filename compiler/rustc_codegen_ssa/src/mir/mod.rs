@@ -1,10 +1,8 @@
 use crate::base;
-use crate::errors;
 use crate::traits::*;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::UnwindTerminateReason;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
@@ -214,20 +212,14 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info(&mut start_bx);
 
     // Rust post-monomorphization checks; we later rely on them.
-    match mir.post_mono_checks(cx.tcx(), ty::ParamEnv::reveal_all(), |c| Ok(fx.monomorphize(c))) {
-        Ok(()) => {}
-        Err(ErrorHandled::TooGeneric(span)) => {
-            cx.tcx().sess.diagnostic().emit_bug(errors::PolymorphicConstantTooGeneric { span });
-        }
-        Err(ErrorHandled::Reported(info, span)) => {
-            if !info.is_tainted_by_errors() {
-                cx.tcx().sess.emit_err(errors::ErroneousConstant { span });
-            }
-            // This IR shouldn't ever be emitted, but let's try to guard against any of this code
-            // ever running.
-            start_bx.abort();
-            return;
-        }
+    if let Err(err) =
+        mir.post_mono_checks(cx.tcx(), ty::ParamEnv::reveal_all(), |c| Ok(fx.monomorphize(c)))
+    {
+        err.emit_err(cx.tcx());
+        // This IR shouldn't ever be emitted, but let's try to guard against any of this code
+        // ever running.
+        start_bx.abort();
+        return;
     }
 
     let memory_locals = analyze::non_ssa_locals(&fx);

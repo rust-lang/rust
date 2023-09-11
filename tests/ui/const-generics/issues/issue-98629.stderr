@@ -1,9 +1,3 @@
-note: erroneous constant used
-  --> $DIR/issue-98629.rs:13:10
-   |
-LL |     [(); <i32 as Trait>::N]:,
-   |          ^^^^^^^^^^^^^^^^^
-
 error[E0046]: not all trait items implemented, missing: `N`
   --> $DIR/issue-98629.rs:8:1
    |

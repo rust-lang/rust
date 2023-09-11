@@ -1,8 +1,9 @@
 use super::{AllocId, AllocRange, ConstAlloc, Pointer, Scalar};
 
+use crate::error;
 use crate::mir::interpret::ConstValue;
 use crate::query::TyCtxtAt;
-use crate::ty::{layout, tls, Ty, ValTree};
+use crate::ty::{layout, tls, Ty, TyCtxt, ValTree};
 
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{
@@ -41,6 +42,32 @@ impl ErrorHandled {
             ErrorHandled::TooGeneric(_span) => ErrorHandled::TooGeneric(span),
         }
     }
+
+    pub fn emit_err(&self, tcx: TyCtxt<'_>) -> ErrorGuaranteed {
+        match self {
+            &ErrorHandled::Reported(err, span) => {
+                if !err.is_tainted_by_errors && !span.is_dummy() {
+                    tcx.sess.emit_err(error::ErroneousConstant { span });
+                }
+                err.error
+            }
+            &ErrorHandled::TooGeneric(span) => tcx.sess.delay_span_bug(
+                span,
+                "encountered TooGeneric error when monomorphic data was expected",
+            ),
+        }
+    }
+
+    pub fn emit_note(&self, tcx: TyCtxt<'_>) {
+        match self {
+            &ErrorHandled::Reported(err, span) => {
+                if !err.is_tainted_by_errors && !span.is_dummy() {
+                    tcx.sess.emit_note(error::ErroneousConstant { span });
+                }
+            }
+            &ErrorHandled::TooGeneric(_) => {}
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
@@ -53,12 +80,6 @@ impl ReportedErrorInfo {
     #[inline]
     pub fn tainted_by_errors(error: ErrorGuaranteed) -> ReportedErrorInfo {
         ReportedErrorInfo { is_tainted_by_errors: true, error }
-    }
-
-    /// Returns true if evaluation failed because MIR was tainted by errors.
-    #[inline]
-    pub fn is_tainted_by_errors(self) -> bool {
-        self.is_tainted_by_errors
     }
 }
 

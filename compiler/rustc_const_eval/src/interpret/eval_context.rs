@@ -24,7 +24,7 @@ use super::{
     MemPlaceMeta, Memory, MemoryKind, OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic,
     Projectable, Provenance, Scalar, StackPopJump,
 };
-use crate::errors::{self, ErroneousConstUsed};
+use crate::errors;
 use crate::util;
 use crate::{fluent_generated as fluent, ReportErrorExt};
 
@@ -1063,17 +1063,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> Result<T, ErrorHandled> {
         // Use a precise span for better cycle errors.
         query(self.tcx.at(span.unwrap_or_else(|| self.cur_span()))).map_err(|err| {
-            match err {
-                ErrorHandled::Reported(err, reported_span) => {
-                    // We trust the provided span more than the one that came out of the query.
-                    let span = span.unwrap_or(reported_span);
-                    if !err.is_tainted_by_errors() {
-                        // To make it easier to figure out where this error comes from, also add a note at the current location.
-                        self.tcx.sess.emit_note(ErroneousConstUsed { span });
-                    }
-                }
-                ErrorHandled::TooGeneric(_) => {}
-            }
+            err.emit_note(*self.tcx);
             err
         })
     }

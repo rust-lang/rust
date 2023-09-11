@@ -4,7 +4,7 @@ error[E0080]: evaluation of `PrintName::<i32>::VOID` failed
 LL |     const VOID: () = [()][2];
    |                      ^^^^^^^ index out of bounds: the length is 1 but the index is 2
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/erroneous-const.rs:13:13
    |
 LL |             PrintName::<T>::VOID;
