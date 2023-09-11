@@ -22,8 +22,11 @@ const BUF_SIZE: usize = 8192;
 /// size of the buffer, rather than the full length of the encoded data, and
 /// because it doesn't need to reallocate memory along the way.
 pub struct FileEncoder {
-    /// The input buffer. For adequate performance, we need to be able to write
-    /// directly to the unwritten region of the buffer, without calling copy_from_slice.
+    // The input buffer. For adequate performance, we need to be able to write
+    // directly to the unwritten region of the buffer, without calling copy_from_slice.
+    // Note that our buffer is always initialized so that we can do that direct access
+    // without unsafe code. Users of this type write many more than BUF_SIZE bytes, so the
+    // initialization is approximately free.
     buf: Box<[u8; BUF_SIZE]>,
     buffered: usize,
     flushed: usize,
@@ -54,13 +57,12 @@ impl FileEncoder {
 
     #[cold]
     #[inline(never)]
-    pub fn flush(&mut self) -> &mut [u8; BUF_SIZE] {
+    pub fn flush(&mut self) {
         if self.res.is_ok() {
             self.res = self.file.write_all(&self.buf[..self.buffered]);
         }
         self.flushed += self.buffered;
         self.buffered = 0;
-        &mut self.buf
     }
 
     pub fn file(&self) -> &File {
@@ -76,7 +78,8 @@ impl FileEncoder {
     #[cold]
     #[inline(never)]
     fn write_all_cold_path(&mut self, buf: &[u8]) {
-        if let Some(dest) = self.flush().get_mut(..buf.len()) {
+        self.flush();
+        if let Some(dest) = self.buf.get_mut(..buf.len()) {
             dest.copy_from_slice(buf);
             self.buffered += buf.len();
         } else {
@@ -99,13 +102,20 @@ impl FileEncoder {
 
     /// Write up to `N` bytes to this encoder.
     ///
-    /// Whenever possible, use this function to do writes whose length has a small and
-    /// compile-time constant upper bound.
+    /// This function can be used to avoid the overhead of calling memcpy for writes that
+    /// have runtime-variable length, but are small and have a small fixed upper bound.
+    ///
+    /// This can be used to do in-place encoding as is done for leb128 (without this function
+    /// we would need to write to a temporary buffer then memcpy into the encoder), and it can
+    /// also be used to implement the varint scheme we use for rmeta and dep graph encoding,
+    /// where we only want to encode the first few bytes of an integer. Copying in the whole
+    /// integer then only advancing the encoder state for the few bytes we care about is more
+    /// efficient than calling [`FileEncoder::write_all`], because variable-size copies are
+    /// always lowered to `memcpy`, which has overhead and contains a lot of logic we can bypass
+    /// with this function. Note that common architectures support fixed-size writes up to 8 bytes
+    /// with one instruction, so while this does in some sense do wasted work, we come out ahead.
     #[inline]
-    pub fn write_with<const N: usize, V>(&mut self, mut visitor: V)
-    where
-        V: FnMut(&mut [u8; N]) -> usize,
-    {
+    pub fn write_with<const N: usize>(&mut self, visitor: impl FnOnce(&mut [u8; N]) -> usize) {
         let flush_threshold = const { BUF_SIZE.checked_sub(N).unwrap() };
         if std::intrinsics::unlikely(self.buffered > flush_threshold) {
             self.flush();
@@ -115,17 +125,42 @@ impl FileEncoder {
         // We produce a post-mono error if N > BUF_SIZE.
         let buf = unsafe { self.buffer_empty().first_chunk_mut::<N>().unwrap_unchecked() };
         let written = visitor(buf);
-        debug_assert!(written <= N);
         // We have to ensure that an errant visitor cannot cause self.buffered to exeed BUF_SIZE.
-        self.buffered += written.min(N);
+        if written > N {
+            Self::panic_invalid_write::<N>(written);
+        }
+        self.buffered += written;
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn panic_invalid_write<const N: usize>(written: usize) {
+        panic!("FileEncoder::write_with::<{N}> cannot be used to write {written} bytes");
+    }
+
+    /// Helper for calls where [`FileEncoder::write_with`] always writes the whole array.
+    #[inline]
+    pub fn write_array<const N: usize>(&mut self, buf: [u8; N]) {
+        self.write_with(|dest| {
+            *dest = buf;
+            N
+        })
     }
 
     pub fn finish(mut self) -> Result<usize, io::Error> {
         self.flush();
-        match self.res {
+        match std::mem::replace(&mut self.res, Ok(())) {
             Ok(()) => Ok(self.position()),
             Err(e) => Err(e),
         }
+    }
+}
+
+impl Drop for FileEncoder {
+    fn drop(&mut self) {
+        // Likely to be a no-op, because `finish` should have been called and
+        // it also flushes. But do it just in case.
+        self.flush();
     }
 }
 
@@ -133,8 +168,7 @@ macro_rules! write_leb128 {
     ($this_fn:ident, $int_ty:ty, $write_leb_fn:ident) => {
         #[inline]
         fn $this_fn(&mut self, v: $int_ty) {
-            const MAX_ENCODED_LEN: usize = $crate::leb128::max_leb128_len::<$int_ty>();
-            self.write_with::<MAX_ENCODED_LEN, _>(|buf| leb128::$write_leb_fn(buf, v))
+            self.write_with(|buf| leb128::$write_leb_fn(buf, v))
         }
     };
 }
@@ -147,18 +181,12 @@ impl Encoder for FileEncoder {
 
     #[inline]
     fn emit_u16(&mut self, v: u16) {
-        self.write_with(|buf| {
-            *buf = v.to_le_bytes();
-            2
-        });
+        self.write_array(v.to_le_bytes());
     }
 
     #[inline]
     fn emit_u8(&mut self, v: u8) {
-        self.write_with(|buf: &mut [u8; 1]| {
-            buf[0] = v;
-            1
-        });
+        self.write_array([v]);
     }
 
     write_leb128!(emit_isize, isize, write_isize_leb128);
@@ -168,10 +196,7 @@ impl Encoder for FileEncoder {
 
     #[inline]
     fn emit_i16(&mut self, v: i16) {
-        self.write_with(|buf| {
-            *buf = v.to_le_bytes();
-            2
-        });
+        self.write_array(v.to_le_bytes());
     }
 
     #[inline]
@@ -370,10 +395,7 @@ impl Encodable<FileEncoder> for IntEncodedWithFixedSize {
     #[inline]
     fn encode(&self, e: &mut FileEncoder) {
         let _start_pos = e.position();
-        e.write_with(|buf| {
-            *buf = self.0.to_le_bytes();
-            buf.len()
-        });
+        e.write_array(self.0.to_le_bytes());
         let _end_pos = e.position();
         debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
     }
