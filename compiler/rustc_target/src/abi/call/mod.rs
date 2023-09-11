@@ -382,8 +382,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// only a single type (e.g., `(u32, u32)`). Such aggregates are often
     /// special-cased in ABIs.
     ///
-    /// Note: We generally ignore fields of zero-sized type when computing
-    /// this value (see #56877).
+    /// Note: We generally ignore 1-ZST fields when computing this value (see #56877).
     ///
     /// This is public so that it can be used in unit tests, but
     /// should generally only be relevant to the ABI details of
@@ -441,11 +440,17 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                         let mut total = start;
 
                         for i in 0..layout.fields.count() {
-                            if !is_union && total != layout.fields.offset(i) {
-                                return Err(Heterogeneous);
+                            let field = layout.field(cx, i);
+                            if field.is_1zst() {
+                                // No data here and no impact on layout, can be ignored.
+                                // (We might be able to also ignore all aligned ZST but that's less clear.)
+                                continue;
                             }
 
-                            let field = layout.field(cx, i);
+                            if !is_union && total != layout.fields.offset(i) {
+                                // This field isn't just after the previous one we considered, abort.
+                                return Err(Heterogeneous);
+                            }
 
                             result = result.merge(field.homogeneous_aggregate(cx)?)?;
 
