@@ -564,8 +564,8 @@ impl Module {
             emit_def_diagnostic(db, acc, diag);
         }
 
-        for decl in self.declarations(db) {
-            match decl {
+        for def in self.declarations(db) {
+            match def {
                 ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
                     if def_map[m.id.local_id].origin.is_inline() {
@@ -576,7 +576,7 @@ impl Module {
                     for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
                         emit_def_diagnostic(db, acc, diag);
                     }
-                    acc.extend(decl.diagnostics(db))
+                    acc.extend(def.diagnostics(db))
                 }
                 ModuleDef::Adt(adt) => {
                     match adt {
@@ -600,10 +600,10 @@ impl Module {
                             }
                         }
                     }
-                    acc.extend(decl.diagnostics(db))
+                    acc.extend(def.diagnostics(db))
                 }
                 ModuleDef::Macro(m) => emit_macro_def_diagnostics(db, acc, m),
-                _ => acc.extend(decl.diagnostics(db)),
+                _ => acc.extend(def.diagnostics(db)),
             }
         }
         self.legacy_macros(db).into_iter().for_each(|m| emit_macro_def_diagnostics(db, acc, m));
