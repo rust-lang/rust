@@ -157,10 +157,10 @@ target | std | notes
 [`i686-unknown-freebsd`](platform-support/freebsd.md) | ✓ | 32-bit FreeBSD
 `i686-unknown-linux-musl` | ✓ | 32-bit Linux with MUSL
 [`i686-unknown-uefi`](platform-support/unknown-uefi.md) | * | 32-bit UEFI
-`mips-unknown-linux-musl` | ✓ | MIPS Linux with MUSL
+[`mips-unknown-linux-musl`](platform-support/mips_unknown_linux_musl.md) | ✓ | MIPS Linux with MUSL
 `mips64-unknown-linux-muslabi64` | ✓ | MIPS64 Linux, n64 ABI, MUSL
 `mips64el-unknown-linux-muslabi64` | ✓ | MIPS64 (LE) Linux, n64 ABI, MUSL
-`mipsel-unknown-linux-musl` | ✓ | MIPS (LE) Linux with MUSL
+[`mipsel-unknown-linux-musl`](platform-support/mips-unknown-linux-musl.md) | ✓ | MIPS (LE) Linux with MUSL
 [`nvptx64-nvidia-cuda`](platform-support/nvptx64-nvidia-cuda.md) | * | --emit=asm generates PTX code that [runs on NVIDIA GPUs]
 [`riscv32i-unknown-none-elf`](platform-support/riscv32i_unknown_none_elf.md) | * | Bare RISC-V (RV32I ISA)
 [`riscv32imac-unknown-none-elf`](platform-support/riscv32imac_unknown_none_elf.md) | * | Bare RISC-V (RV32IMAC ISA)
