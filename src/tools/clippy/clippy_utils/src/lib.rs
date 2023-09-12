@@ -5,6 +5,7 @@
 #![feature(lint_reasons)]
 #![feature(never_type)]
 #![feature(rustc_private)]
+#![feature(assert_matches)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
@@ -110,6 +111,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, Span};
 use rustc_target::abi::Integer;
+use visitors::Visitable;
 
 use crate::consts::{constant, miri_to_const, Constant};
 use crate::higher::Range;
@@ -1286,7 +1288,7 @@ pub fn contains_name<'tcx>(name: Symbol, expr: &'tcx Expr<'_>, cx: &LateContext<
 }
 
 /// Returns `true` if `expr` contains a return expression
-pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
+pub fn contains_return<'tcx>(expr: impl Visitable<'tcx>) -> bool {
     for_each_expr(expr, |e| {
         if matches!(e.kind, hir::ExprKind::Ret(..)) {
             ControlFlow::Break(())

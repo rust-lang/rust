@@ -21,8 +21,6 @@ impl cmp::Ord for A {
 }
 
 impl PartialOrd for A {
-    //~^ ERROR: incorrect implementation of `partial_cmp` on an `Ord` type
-    //~| NOTE: `#[deny(clippy::incorrect_partial_ord_impl_on_ord_type)]` on by default
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         // NOTE: This suggestion is wrong, as `Ord` is not in scope. But this should be fine as it isn't
         // automatically applied
@@ -46,7 +44,6 @@ impl cmp::Ord for B {
 }
 
 impl PartialOrd for B {
-    //~^ ERROR: incorrect implementation of `partial_cmp` on an `Ord` type
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         // This calls `B.cmp`, not `Ord::cmp`!
         Some(self.cmp(other))

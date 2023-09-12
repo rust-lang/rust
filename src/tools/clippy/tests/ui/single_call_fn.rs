@@ -1,3 +1,4 @@
+//@ignore-32bit
 //@aux-build:proc_macros.rs
 #![allow(clippy::redundant_closure_call, unused)]
 #![warn(clippy::single_call_fn)]

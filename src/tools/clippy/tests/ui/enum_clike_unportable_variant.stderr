@@ -5,51 +5,52 @@ LL |     X = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::enum-clike-unportable-variant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::enum_clike_unportable_variant)]`
 
 error: C-like enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enum_clike_unportable_variant.rs:15:5
+  --> $DIR/enum_clike_unportable_variant.rs:17:5
    |
 LL |     X = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
 
 error: C-like enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enum_clike_unportable_variant.rs:18:5
+  --> $DIR/enum_clike_unportable_variant.rs:21:5
    |
 LL |     A = 0xFFFF_FFFF,
    |     ^^^^^^^^^^^^^^^
 
 error: C-like enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enum_clike_unportable_variant.rs:25:5
+  --> $DIR/enum_clike_unportable_variant.rs:29:5
    |
 LL |     Z = 0xFFFF_FFFF,
    |     ^^^^^^^^^^^^^^^
 
 error: C-like enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enum_clike_unportable_variant.rs:26:5
+  --> $DIR/enum_clike_unportable_variant.rs:31:5
    |
 LL |     A = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
 
 error: C-like enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enum_clike_unportable_variant.rs:28:5
+  --> $DIR/enum_clike_unportable_variant.rs:34:5
    |
 LL |     C = (i32::MIN as isize) - 1,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: C-like enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enum_clike_unportable_variant.rs:34:5
+  --> $DIR/enum_clike_unportable_variant.rs:41:5
    |
 LL |     Z = 0xFFFF_FFFF,
    |     ^^^^^^^^^^^^^^^
 
 error: C-like enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enum_clike_unportable_variant.rs:35:5
+  --> $DIR/enum_clike_unportable_variant.rs:43:5
    |
 LL |     A = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
 
 error: C-like enum variant discriminant is not portable to 32-bit targets
-  --> $DIR/enum_clike_unportable_variant.rs:40:5
+  --> $DIR/enum_clike_unportable_variant.rs:49:5
    |
 LL |     X = <usize as Trait>::Number,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

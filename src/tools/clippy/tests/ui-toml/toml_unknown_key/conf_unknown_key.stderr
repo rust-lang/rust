@@ -28,6 +28,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            disallowed-types
            doc-valid-idents
            enable-raw-pointer-heuristic-for-send
+           enforce-iter-loop-reborrow
            enforced-import-renames
            enum-variant-name-threshold
            enum-variant-size-threshold
@@ -99,6 +100,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            disallowed-types
            doc-valid-idents
            enable-raw-pointer-heuristic-for-send
+           enforce-iter-loop-reborrow
            enforced-import-renames
            enum-variant-name-threshold
            enum-variant-size-threshold

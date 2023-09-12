@@ -293,4 +293,32 @@ fn main() {
     fn return_dyn_assoc<'a>(x: &'a &'a u32) -> &'a <&'a u32 as WithAssoc>::Assoc {
         *x
     }
+
+    // Issue #11366
+    let _: &mut u32 = match &mut Some(&mut 0u32) {
+        Some(x) => &mut *x,
+        None => panic!(),
+    };
+
+    // Issue #11474
+    pub struct Variant {
+        pub anonymous: Variant0,
+    }
+
+    pub union Variant0 {
+        pub anonymous: std::mem::ManuallyDrop<Variant00>,
+    }
+
+    pub struct Variant00 {
+        pub anonymous: Variant000,
+    }
+
+    pub union Variant000 {
+        pub val: i32,
+    }
+
+    unsafe {
+        let mut p = core::mem::zeroed::<Variant>();
+        (*p.anonymous.anonymous).anonymous.val = 1;
+    }
 }
