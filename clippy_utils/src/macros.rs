@@ -389,7 +389,9 @@ thread_local! {
 /// `FormatArgsCollector`
 pub fn collect_ast_format_args(span: Span, format_args: &FormatArgs) {
     AST_FORMAT_ARGS.with(|ast_format_args| {
-        ast_format_args.borrow_mut().insert(span, format_args.clone());
+        ast_format_args
+            .borrow_mut()
+            .insert(span.with_parent(None), format_args.clone());
     });
 }
 
@@ -414,7 +416,7 @@ pub fn find_format_args(cx: &LateContext<'_>, start: &Expr<'_>, expn_id: ExpnId,
 
     if let Some(expr) = format_args_expr {
         AST_FORMAT_ARGS.with(|ast_format_args| {
-            ast_format_args.borrow().get(&expr.span).map(callback);
+            ast_format_args.borrow().get(&expr.span.with_parent(None)).map(callback);
         });
     }
 }
