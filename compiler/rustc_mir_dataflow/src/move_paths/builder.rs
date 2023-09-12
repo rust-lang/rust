@@ -115,44 +115,56 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             let body = self.builder.body;
             let tcx = self.builder.tcx;
             let place_ty = place_ref.ty(body, tcx).ty;
-            match place_ty.kind() {
-                ty::Ref(..) | ty::RawPtr(..) => {
-                    return Err(MoveError::cannot_move_out_of(
-                        self.loc,
-                        BorrowedContent { target_place: place_ref.project_deeper(&[elem], tcx) },
-                    ));
-                }
-                ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() => {
-                    return Err(MoveError::cannot_move_out_of(
-                        self.loc,
-                        InteriorOfTypeWithDestructor { container_ty: place_ty },
-                    ));
-                }
-                ty::Adt(adt, _) if adt.is_union() => {
-                    union_path.get_or_insert(base);
-                }
-                ty::Slice(_) => {
-                    return Err(MoveError::cannot_move_out_of(
-                        self.loc,
-                        InteriorOfSliceOrArray {
-                            ty: place_ty,
-                            is_index: matches!(elem, ProjectionElem::Index(..)),
-                        },
-                    ));
-                }
-
-                ty::Array(..) => {
-                    if let ProjectionElem::Index(..) = elem {
+            match elem {
+                ProjectionElem::Deref => match place_ty.kind() {
+                    ty::Ref(..) | ty::RawPtr(..) => {
                         return Err(MoveError::cannot_move_out_of(
                             self.loc,
-                            InteriorOfSliceOrArray { ty: place_ty, is_index: true },
+                            BorrowedContent {
+                                target_place: place_ref.project_deeper(&[elem], tcx),
+                            },
                         ));
                     }
-                }
+                    _ => (),
+                },
+                ProjectionElem::Field(_, _)
+                | ProjectionElem::OpaqueCast(_)
+                | ProjectionElem::Downcast(_, _) => match place_ty.kind() {
+                    ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() => {
+                        return Err(MoveError::cannot_move_out_of(
+                            self.loc,
+                            InteriorOfTypeWithDestructor { container_ty: place_ty },
+                        ));
+                    }
+                    ty::Adt(adt, _) if adt.is_union() => {
+                        union_path.get_or_insert(base);
+                    }
 
-                _ => {}
-            };
-
+                    _ => (),
+                },
+                ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Index(_)
+                | ProjectionElem::Subslice { .. } => match place_ty.kind() {
+                    ty::Slice(_) => {
+                        return Err(MoveError::cannot_move_out_of(
+                            self.loc,
+                            InteriorOfSliceOrArray {
+                                ty: place_ty,
+                                is_index: matches!(elem, ProjectionElem::Index(..)),
+                            },
+                        ));
+                    }
+                    ty::Array(..) => {
+                        if let ProjectionElem::Index(..) = elem {
+                            return Err(MoveError::cannot_move_out_of(
+                                self.loc,
+                                InteriorOfSliceOrArray { ty: place_ty, is_index: true },
+                            ));
+                        }
+                    }
+                    _ => (),
+                },
+            }
             if union_path.is_none() {
                 // inlined from add_move_path because of a borrowck conflict with the iterator
                 base =
