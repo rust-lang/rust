@@ -4,7 +4,6 @@ use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, IntoDiagnostic, IntoDi
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{layout::LayoutError, ConstInt};
-use rustc_span::source_map::Spanned;
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
 use super::InterpCx;
@@ -132,7 +131,8 @@ where
 {
     // Special handling for certain errors
     match error {
-        // Don't emit a new diagnostic for these errors
+        // Don't emit a new diagnostic for these errors, they are already reported elsewhere or
+        // should remain silent.
         err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
             ErrorHandled::TooGeneric
         }
@@ -140,27 +140,8 @@ where
         err_inval!(Layout(LayoutError::ReferencesError(guar))) => {
             ErrorHandled::Reported(guar.into())
         }
-        err_inval!(Layout(layout_error @ LayoutError::SizeOverflow(_))) => {
-            // We must *always* hard error on these, even if the caller wants just a lint.
-            // The `message` makes little sense here, this is a more serious error than the
-            // caller thinks anyway.
-            // See <https://github.com/rust-lang/rust/pull/63152>.
-            let (our_span, frames) = get_span_and_frames();
-            let span = span.unwrap_or(our_span);
-            let mut err =
-                tcx.sess.create_err(Spanned { span, node: layout_error.into_diagnostic() });
-            err.code(rustc_errors::error_code!(E0080));
-            let Some((mut err, handler)) = err.into_diagnostic() else {
-                panic!("did not emit diag");
-            };
-            for frame in frames {
-                err.eager_subdiagnostic(handler, frame);
-            }
-
-            ErrorHandled::Reported(handler.emit_diagnostic(&mut err).unwrap().into())
-        }
+        // Report remaining errors.
         _ => {
-            // Report as hard error.
             let (our_span, frames) = get_span_and_frames();
             let span = span.unwrap_or(our_span);
             let err = mk(span, frames);
