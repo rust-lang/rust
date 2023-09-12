@@ -1,0 +1,29 @@
+# `riscv32imc-unknown-none-elf`
+
+**Tier: 2**
+
+Bare RISC-V (RV32IMC ISA)
+
+## Target maintainers
+
+- Missing!
+
+## Requirements
+
+Missing!
+
+## Building the target
+
+Missing!
+
+## Building Rust programs
+
+Missing!
+
+## Testing
+
+Missing!
+
+## Cross-compilation toolchains and C code
+
+Missing!

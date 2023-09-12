@@ -162,10 +162,10 @@ target | std | notes
 `mips64el-unknown-linux-muslabi64` | ✓ | MIPS64 (LE) Linux, n64 ABI, MUSL
 `mipsel-unknown-linux-musl` | ✓ | MIPS (LE) Linux with MUSL
 [`nvptx64-nvidia-cuda`](platform-support/nvptx64-nvidia-cuda.md) | * | --emit=asm generates PTX code that [runs on NVIDIA GPUs]
-`riscv32i-unknown-none-elf` | * | Bare RISC-V (RV32I ISA)
-`riscv32imac-unknown-none-elf` | * | Bare RISC-V (RV32IMAC ISA)
-`riscv32imc-unknown-none-elf` | * | Bare RISC-V (RV32IMC ISA)
-`riscv64gc-unknown-none-elf` | * | Bare RISC-V (RV64IMAFDC ISA)
+[`riscv32i-unknown-none-elf`](platform-support/riscv32i_unknown_none_elf.md) | * | Bare RISC-V (RV32I ISA)
+[`riscv32imac-unknown-none-elf`](platform-support/riscv32imac_unknown_none_elf.md) | * | Bare RISC-V (RV32IMAC ISA)
+[`riscv32imc-unknown-none-elf`](platform-support/riscv32imc_unknown_none_elf.md) | * | Bare RISC-V (RV32IMC ISA)
+[`riscv64gc-unknown-none-elf`](platform-support/riscv64gc_unknown_none_elf.md) | * | Bare RISC-V (RV64IMAFDC ISA)
 [`riscv64imac-unknown-none-elf`](platform-support/riscv64imac_unknown_none_elf.md) | * | Bare RISC-V (RV64IMAC ISA)
 [`sparc64-unknown-linux-gnu`](platform-support/sparc64_unknown_linux_gnu.md) | ✓ | SPARC Linux (kernel 4.4, glibc 2.23)
 [`sparcv9-sun-solaris`](platform-support/sparcv9_sun_solaris.md) | ✓ | SPARC Solaris 10/11, illumos
