@@ -16,7 +16,6 @@ pub use int::*;
 pub use kind::*;
 use rustc_span::Span;
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::Size;
 pub use valtree::*;
 
 use super::sty::ConstKind;
@@ -155,7 +154,7 @@ impl<'tcx> Const<'tcx> {
 
         let ty = tcx.type_of(def).no_bound_vars().expect("const parameter types cannot be generic");
 
-        match Self::try_eval_lit_or_param(tcx, ty, expr) {
+        match Self::try_from_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
             None => ty::Const::new_unevaluated(
                 tcx,
@@ -169,7 +168,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[instrument(skip(tcx), level = "debug")]
-    fn try_eval_lit_or_param(
+    fn try_from_lit_or_param(
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
@@ -244,14 +243,6 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
-    /// Panics if self.kind != ty::ConstKind::Value
-    pub fn to_valtree(self) -> ty::ValTree<'tcx> {
-        match self.kind() {
-            ty::ConstKind::Value(valtree) => valtree,
-            _ => bug!("expected ConstKind::Value, got {:?}", self.kind()),
-        }
-    }
-
     #[inline]
     /// Creates a constant with the given integer value and interns it.
     pub fn from_bits(tcx: TyCtxt<'tcx>, bits: u128, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Self {
@@ -282,81 +273,6 @@ impl<'tcx> Const<'tcx> {
     /// Creates an interned usize constant.
     pub fn from_target_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
         Self::from_bits(tcx, n as u128, ParamEnv::empty().and(tcx.types.usize))
-    }
-
-    /// Attempts to convert to a `ValTree`
-    pub fn try_to_valtree(self) -> Option<ty::ValTree<'tcx>> {
-        match self.kind() {
-            ty::ConstKind::Value(valtree) => Some(valtree),
-            _ => None,
-        }
-    }
-
-    #[inline]
-    /// Attempts to evaluate the given constant to bits. Can fail to evaluate in the presence of
-    /// generics (or erroneous code) or if the value can't be represented as bits (e.g. because it
-    /// contains const generic parameters or pointers).
-    pub fn try_eval_scalar_int(
-        self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
-    ) -> Option<ScalarInt> {
-        self.eval(tcx, param_env, None).ok()?.try_to_scalar_int()
-    }
-
-    #[inline]
-    /// Attempts to evaluate the given constant to bits. Can fail to evaluate in the presence of
-    /// generics (or erroneous code) or if the value can't be represented as bits (e.g. because it
-    /// contains const generic parameters or pointers).
-    pub fn try_eval_bits(
-        self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Option<u128> {
-        let int = self.try_eval_scalar_int(tcx, param_env)?;
-        assert_eq!(self.ty(), ty);
-        let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
-        // if `ty` does not depend on generic parameters, use an empty param_env
-        int.to_bits(size).ok()
-    }
-
-    #[inline]
-    pub fn try_eval_bool(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
-        self.try_eval_scalar_int(tcx, param_env)?.try_into().ok()
-    }
-
-    #[inline]
-    pub fn try_eval_target_usize(
-        self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
-    ) -> Option<u64> {
-        self.try_eval_scalar_int(tcx, param_env)?.try_to_target_usize(tcx).ok()
-    }
-
-    /// Normalizes the constant to a value or an error if possible.
-    #[inline]
-    pub fn normalize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
-        match self.eval(tcx, param_env, None) {
-            Ok(val) => Self::new_value(tcx, val, self.ty()),
-            Err(ErrorHandled::Reported(r)) => Self::new_error(tcx, r.into(), self.ty()),
-            Err(ErrorHandled::TooGeneric) => self,
-        }
-    }
-
-    #[inline]
-    /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
-    pub fn eval_bits(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> u128 {
-        self.try_eval_bits(tcx, param_env, ty)
-            .unwrap_or_else(|| bug!("expected bits of {:#?}, got {:#?}", ty, self))
-    }
-
-    #[inline]
-    /// Panics if the value cannot be evaluated or doesn't contain a valid `usize`.
-    pub fn eval_target_usize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
-        self.try_eval_target_usize(tcx, param_env)
-            .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
     }
 
     /// Returns the evaluated constant
@@ -410,34 +326,106 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
+    /// Normalizes the constant to a value or an error if possible.
     #[inline]
-    pub fn try_to_value(self) -> Option<ty::ValTree<'tcx>> {
-        if let ConstKind::Value(val) = self.kind() { Some(val) } else { None }
+    pub fn normalize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
+        match self.eval(tcx, param_env, None) {
+            Ok(val) => Self::new_value(tcx, val, self.ty()),
+            Err(ErrorHandled::Reported(r)) => Self::new_error(tcx, r.into(), self.ty()),
+            Err(ErrorHandled::TooGeneric) => self,
+        }
+    }
+
+    #[inline]
+    pub fn try_eval_scalar(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Option<Scalar> {
+        self.eval(tcx, param_env, None).ok()?.try_to_scalar()
+    }
+
+    #[inline]
+    /// Attempts to evaluate the given constant to bits. Can fail to evaluate in the presence of
+    /// generics (or erroneous code) or if the value can't be represented as bits (e.g. because it
+    /// contains const generic parameters or pointers).
+    pub fn try_eval_scalar_int(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+    ) -> Option<ScalarInt> {
+        self.try_eval_scalar(tcx, param_env)?.try_to_int().ok()
+    }
+
+    #[inline]
+    /// Attempts to evaluate the given constant to bits. Can fail to evaluate in the presence of
+    /// generics (or erroneous code) or if the value can't be represented as bits (e.g. because it
+    /// contains const generic parameters or pointers).
+    pub fn try_eval_bits(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<u128> {
+        let int = self.try_eval_scalar_int(tcx, param_env)?;
+        assert_eq!(self.ty(), ty);
+        let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
+        // if `ty` does not depend on generic parameters, use an empty param_env
+        int.to_bits(size).ok()
+    }
+
+    #[inline]
+    /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
+    pub fn eval_bits(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> u128 {
+        self.try_eval_bits(tcx, param_env, ty)
+            .unwrap_or_else(|| bug!("expected bits of {:#?}, got {:#?}", ty, self))
+    }
+
+    #[inline]
+    pub fn try_eval_target_usize(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+    ) -> Option<u64> {
+        self.try_eval_scalar_int(tcx, param_env)?.try_to_target_usize(tcx).ok()
+    }
+
+    #[inline]
+    pub fn try_eval_bool(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
+        self.try_eval_scalar_int(tcx, param_env)?.try_into().ok()
+    }
+
+    #[inline]
+    /// Panics if the value cannot be evaluated or doesn't contain a valid `usize`.
+    pub fn eval_target_usize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
+        self.try_eval_target_usize(tcx, param_env)
+            .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
+    }
+
+    /// Panics if self.kind != ty::ConstKind::Value
+    pub fn to_valtree(self) -> ty::ValTree<'tcx> {
+        match self.kind() {
+            ty::ConstKind::Value(valtree) => valtree,
+            _ => bug!("expected ConstKind::Value, got {:?}", self.kind()),
+        }
+    }
+
+    /// Attempts to convert to a `ValTree`
+    pub fn try_to_valtree(self) -> Option<ty::ValTree<'tcx>> {
+        match self.kind() {
+            ty::ConstKind::Value(valtree) => Some(valtree),
+            _ => None,
+        }
     }
 
     #[inline]
     pub fn try_to_scalar(self) -> Option<Scalar<AllocId>> {
-        self.try_to_value()?.try_to_scalar()
-    }
-
-    #[inline]
-    pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
-        self.try_to_value()?.try_to_scalar_int()
-    }
-
-    #[inline]
-    pub fn try_to_bits(self, size: Size) -> Option<u128> {
-        self.try_to_scalar_int()?.to_bits(size).ok()
-    }
-
-    #[inline]
-    pub fn try_to_bool(self) -> Option<bool> {
-        self.try_to_scalar_int()?.try_into().ok()
+        self.try_to_valtree()?.try_to_scalar()
     }
 
     #[inline]
     pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        self.try_to_value()?.try_to_target_usize(tcx)
+        self.try_to_valtree()?.try_to_target_usize(tcx)
     }
 
     pub fn is_ct_infer(self) -> bool {

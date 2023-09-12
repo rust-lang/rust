@@ -2300,18 +2300,6 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_to_value(self, tcx: TyCtxt<'tcx>) -> Option<interpret::ConstValue<'tcx>> {
-        match self {
-            ConstantKind::Ty(c) => match c.kind() {
-                ty::ConstKind::Value(valtree) => Some(tcx.valtree_to_const_val((c.ty(), valtree))),
-                _ => None,
-            },
-            ConstantKind::Val(val, _) => Some(val),
-            ConstantKind::Unevaluated(..) => None,
-        }
-    }
-
-    #[inline]
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {
             ConstantKind::Ty(c) => match c.kind() {
@@ -2378,43 +2366,6 @@ impl<'tcx> ConstantKind<'tcx> {
         }
     }
 
-    /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
-    #[inline]
-    pub fn eval_bits(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> u128 {
-        self.try_eval_bits(tcx, param_env, ty)
-            .unwrap_or_else(|| bug!("expected bits of {:#?}, got {:#?}", ty, self))
-    }
-
-    #[inline]
-    pub fn try_eval_bits(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Option<u128> {
-        match self {
-            Self::Ty(ct) => ct.try_eval_bits(tcx, param_env, ty),
-            Self::Val(val, t) => {
-                assert_eq!(*t, ty);
-                let size =
-                    tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
-                val.try_to_bits(size)
-            }
-            Self::Unevaluated(uneval, ty) => {
-                match tcx.const_eval_resolve(param_env, *uneval, None) {
-                    Ok(val) => {
-                        let size = tcx
-                            .layout_of(param_env.with_reveal_all_normalized(tcx).and(*ty))
-                            .ok()?
-                            .size;
-                        val.try_to_bits(size)
-                    }
-                    Err(_) => None,
-                }
-            }
-        }
-    }
-
     #[inline]
     pub fn try_eval_scalar(
         self,
@@ -2434,8 +2385,23 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_eval_bool(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<bool> {
-        self.try_eval_scalar_int(tcx, param_env)?.try_into().ok()
+    pub fn try_eval_bits(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<u128> {
+        let int = self.try_eval_scalar_int(tcx, param_env)?;
+        assert_eq!(self.ty(), ty);
+        let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
+        int.to_bits(size).ok()
+    }
+
+    /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
+    #[inline]
+    pub fn eval_bits(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> u128 {
+        self.try_eval_bits(tcx, param_env, ty)
+            .unwrap_or_else(|| bug!("expected bits of {:#?}, got {:#?}", ty, self))
     }
 
     #[inline]
@@ -2445,6 +2411,18 @@ impl<'tcx> ConstantKind<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<u64> {
         self.try_eval_scalar_int(tcx, param_env)?.try_to_target_usize(tcx).ok()
+    }
+
+    #[inline]
+    /// Panics if the value cannot be evaluated or doesn't contain a valid `usize`.
+    pub fn eval_target_usize(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> u64 {
+        self.try_eval_target_usize(tcx, param_env)
+            .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
+    }
+
+    #[inline]
+    pub fn try_eval_bool(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<bool> {
+        self.try_eval_scalar_int(tcx, param_env)?.try_into().ok()
     }
 
     #[inline]
@@ -2586,7 +2564,7 @@ impl<'tcx> ConstantKind<'tcx> {
         }
     }
 
-    pub fn from_const(c: ty::Const<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+    pub fn from_ty_const(c: ty::Const<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         match c.kind() {
             ty::ConstKind::Value(valtree) => {
                 let const_val = tcx.valtree_to_const_val((c.ty(), valtree));
@@ -2899,7 +2877,7 @@ fn pretty_print_const_value<'tcx>(
                 }
             }
             (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
-                let n = n.try_to_bits(tcx.data_layout.pointer_size).unwrap();
+                let n = n.try_to_target_usize(tcx).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
                 let range = AllocRange { start: offset, size: Size::from_bytes(n) };
                 let byte_str = alloc.inner().get_bytes_strip_provenance(&tcx, range).unwrap();

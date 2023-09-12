@@ -136,7 +136,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                     return;
                 }
 
-                let literal = ConstantKind::from_const(len, self.tcx);
+                let literal = ConstantKind::from_ty_const(len, self.tcx);
                 let constant = Constant { span: source_info.span, literal, user_ty: None };
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
             }
