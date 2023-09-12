@@ -22,27 +22,28 @@ use clap::{CommandFactory, Parser};
 mod cargo_fmt_tests;
 
 #[derive(Parser)]
-#[clap(
+#[command(
     disable_version_flag = true,
     bin_name = "cargo fmt",
     about = "This utility formats all bin and lib files of \
              the current crate using rustfmt."
 )]
+#[command(styles = clap_cargo::style::CLAP_STYLING)]
 pub struct Opts {
     /// No output printed to stdout
-    #[clap(short = 'q', long = "quiet")]
+    #[arg(short = 'q', long = "quiet")]
     quiet: bool,
 
     /// Use verbose output
-    #[clap(short = 'v', long = "verbose")]
+    #[arg(short = 'v', long = "verbose")]
     verbose: bool,
 
     /// Print rustfmt version and exit
-    #[clap(long = "version")]
+    #[arg(long = "version")]
     version: bool,
 
     /// Specify package to format
-    #[clap(
+    #[arg(
         short = 'p',
         long = "package",
         value_name = "package",
@@ -51,24 +52,24 @@ pub struct Opts {
     packages: Vec<String>,
 
     /// Specify path to Cargo.toml
-    #[clap(long = "manifest-path", value_name = "manifest-path")]
+    #[arg(long = "manifest-path", value_name = "manifest-path")]
     manifest_path: Option<String>,
 
     /// Specify message-format: short|json|human
-    #[clap(long = "message-format", value_name = "message-format")]
+    #[arg(long = "message-format", value_name = "message-format")]
     message_format: Option<String>,
 
     /// Options passed to rustfmt
     // 'raw = true' to make `--` explicit.
-    #[clap(name = "rustfmt_options", raw(true))]
+    #[arg(name = "rustfmt_options", raw = true)]
     rustfmt_options: Vec<String>,
 
     /// Format all packages, and also their local path-based dependencies
-    #[clap(long = "all")]
+    #[arg(long = "all")]
     format_all: bool,
 
     /// Run rustfmt in check mode
-    #[clap(long = "check")]
+    #[arg(long = "check")]
     check: bool,
 }
 
