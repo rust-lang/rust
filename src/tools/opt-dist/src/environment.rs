@@ -7,7 +7,8 @@ pub struct Environment {
     python_binary: String,
     /// The rustc checkout, where the compiler source is located.
     checkout_dir: Utf8PathBuf,
-    /// The main directory where the build occurs.
+    /// The main directory where the build occurs. Stage0 rustc and cargo have to be available in
+    /// this directory before `opt-dist` is started.
     build_dir: Utf8PathBuf,
     /// Directory where the optimization artifacts (PGO/BOLT profiles, etc.)
     /// will be stored.
@@ -15,7 +16,7 @@ pub struct Environment {
     /// Path to the host LLVM used to compile LLVM in `src/llvm-project`.
     host_llvm_dir: Utf8PathBuf,
     /// List of test paths that should be skipped when testing the optimized artifacts.
-    skipped_tests: Vec<&'static str>,
+    skipped_tests: Vec<String>,
     use_bolt: bool,
     shared_llvm: bool,
 }
@@ -83,7 +84,7 @@ impl Environment {
         self.shared_llvm
     }
 
-    pub fn skipped_tests(&self) -> &[&'static str] {
+    pub fn skipped_tests(&self) -> &[String] {
         &self.skipped_tests
     }
 }

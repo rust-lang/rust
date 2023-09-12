@@ -42,10 +42,51 @@ struct SharedArgs {
 
 #[derive(clap::Parser, Clone, Debug)]
 enum EnvironmentCmd {
+    /// Perform a custom local PGO/BOLT optimized build.
+    Local {
+        /// Target triple of the host.
+        #[arg(long)]
+        target_triple: String,
+
+        /// Checkout directory of `rustc`.
+        #[arg(long)]
+        checkout_dir: Utf8PathBuf,
+
+        /// Host LLVM installation directory.
+        #[arg(long)]
+        llvm_dir: Utf8PathBuf,
+
+        /// Python binary to use in bootstrap invocations.
+        #[arg(long, default_value = "python3")]
+        python: String,
+
+        /// Directory where artifacts (like PGO profiles or rustc-perf) of this workflow
+        /// will be stored.
+        #[arg(long, default_value = "opt-artifacts")]
+        artifact_dir: Utf8PathBuf,
+
+        /// Is LLVM for `rustc` built in shared library mode?
+        #[arg(long, default_value_t = true)]
+        llvm_shared: bool,
+
+        /// Should BOLT optimization be used? If yes, host LLVM must have BOLT binaries
+        /// (`llvm-bolt` and `merge-fdata`) available.
+        #[arg(long, default_value_t = false)]
+        use_bolt: bool,
+
+        /// Tests that should be skipped when testing the optimized compiler.
+        #[arg(long)]
+        skipped_tests: Vec<String>,
+
+        #[clap(flatten)]
+        shared: SharedArgs,
+    },
+    /// Perform an optimized build on Linux CI, from inside Docker.
     LinuxCi {
         #[clap(flatten)]
         shared: SharedArgs,
     },
+    /// Perform an optimized build on Windows CI, directly inside Github Actions.
     WindowsCi {
         #[clap(flatten)]
         shared: SharedArgs,
@@ -58,6 +99,34 @@ fn is_try_build() -> bool {
 
 fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> {
     let (env, args) = match args.env {
+        EnvironmentCmd::Local {
+            target_triple,
+            checkout_dir,
+            llvm_dir,
+            python,
+            artifact_dir,
+            llvm_shared,
+            use_bolt,
+            skipped_tests,
+            shared,
+        } => {
+            let env = EnvironmentBuilder::default()
+                .host_triple(target_triple)
+                .python_binary(python)
+                .checkout_dir(checkout_dir.clone())
+                .host_llvm_dir(llvm_dir)
+                .artifact_dir(artifact_dir)
+                .build_dir(checkout_dir)
+                .shared_llvm(llvm_shared)
+                .use_bolt(use_bolt)
+                .skipped_tests(skipped_tests)
+                .build()?;
+            with_log_group("Building rustc-perf", || {
+                Ok::<(), anyhow::Error>(download_rustc_perf(&env)?)
+            })?;
+
+            (env, shared.build_args)
+        }
         EnvironmentCmd::LinuxCi { shared } => {
             let target_triple =
                 std::env::var("PGO_HOST").expect("PGO_HOST environment variable missing");
@@ -74,7 +143,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .use_bolt(true)
                 .skipped_tests(vec![
                     // Fails because of linker errors, as of June 2023.
-                    "tests/ui/process/nofile-limit.rs",
+                    "tests/ui/process/nofile-limit.rs".to_string(),
                 ])
                 .build()?;
             // /tmp/rustc-perf comes from the x64 dist Dockerfile
@@ -100,7 +169,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .use_bolt(false)
                 .skipped_tests(vec![
                     // Fails as of June 2023.
-                    "tests\\codegen\\vec-shrink-panik.rs",
+                    "tests\\codegen\\vec-shrink-panik.rs".to_string(),
                 ])
                 .build()?;
 
@@ -309,6 +378,8 @@ fn copy_rustc_perf(env: &Environment, dir: &Utf8Path) -> anyhow::Result<()> {
 
 // Download and build rustc-perf into the given environment.
 fn download_rustc_perf(env: &Environment) -> anyhow::Result<()> {
+    reset_directory(&env.rustc_perf_dir())?;
+
     // FIXME: add some mechanism for synchronization of this commit SHA with
     // Linux (which builds rustc-perf in a Dockerfile)
     // rustc-perf version from 2023-05-30
