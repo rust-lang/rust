@@ -86,8 +86,8 @@ target | notes
 `aarch64-apple-darwin` | ARM64 macOS (11.0+, Big Sur+)
 [`aarch64-pc-windows-msvc`](platform-support/windows_msvc.md) | ARM64 Windows MSVC
 `aarch64-unknown-linux-musl` | ARM64 Linux with MUSL
-`arm-unknown-linux-gnueabi` | ARMv6 Linux (kernel 3.2, glibc 2.17)
-`arm-unknown-linux-gnueabihf` | ARMv6 Linux, hardfloat (kernel 3.2, glibc 2.17)
+[`arm-unknown-linux-gnueabi`](platform-support/arm_unknown_linux.md) | ARMv6 Linux (kernel 3.2, glibc 2.17)
+[`arm-unknown-linux-gnueabihf`](platform-support/arm_unknown_linux.md) | ARMv6 Linux, hardfloat (kernel 3.2, glibc 2.17)
 [`armv7-unknown-linux-gnueabihf`](platform-support/armv7_unknown_linux_gnueabihf.md) | ARMv7-A Linux, hardfloat (kernel 3.2, glibc 2.17)
 [`loongarch64-unknown-linux-gnu`](platform-support/loongarch-linux.md) | LoongArch64 Linux, LP64D ABI (kernel 5.19, glibc 2.36)
 [`mips-unknown-linux-gnu`](platform-support/mips_unknown_linux_gnu.md) | MIPS Linux (kernel 4.4, glibc 2.23)
@@ -136,8 +136,8 @@ target | std | notes
 [`aarch64-unknown-none`](platform-support/aarch64_unknown_none.md) | * | Bare ARM64, hardfloat
 [`aarch64-unknown-uefi`](platform-support/unknown-uefi.md) | * | ARM64 UEFI
 [`arm-linux-androideabi`](platform-support/android.md) | ✓ | ARMv6 Android
-[`arm-unknown-linux-musleabi`](platform-support/arm-unknown-linux.md) | ✓ | ARMv6 Linux with MUSL
-[`arm-unknown-linux-musleabihf`](platform-support/arm-unknown-linux.md) | ✓ | ARMv6 Linux with MUSL, hardfloat
+[`arm-unknown-linux-musleabi`](platform-support/arm_unknown_linux.md) | ✓ | ARMv6 Linux with MUSL
+[`arm-unknown-linux-musleabihf`](platform-support/arm_unknown_linux.md) | ✓ | ARMv6 Linux with MUSL, hardfloat
 [`armebv7r-none-eabi`](platform-support/armv7r.md) | * | Bare ARMv7-R, big endian
 [`armebv7r-none-eabihf`](platform-support/armv7r.md) | * | Bare ARMv7-R, big endian, hardfloat
 [`armv5te-unknown-linux-gnueabi`](platform-support/armv5te_unknown_linux_gnueabi.md) | ✓ | ARMv5TE Linux (kernel 4.4, glibc 2.23)
