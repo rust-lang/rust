@@ -35,7 +35,16 @@ pub struct Const {
 
 type Ident = Opaque;
 pub(crate) type Region = Opaque;
-pub(crate) type Span = Opaque;
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Span(pub(crate) usize);
+
+impl Debug for Span {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut span = None;
+        with(|context| context.rustc_tables(&mut |tables| span = Some(tables.spans[self.0])));
+        f.write_fmt(format_args!("{:?}", &span.unwrap()))
+    }
+}
 
 #[derive(Clone, Debug)]
 pub enum TyKind {

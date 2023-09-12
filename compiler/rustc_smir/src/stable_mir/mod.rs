@@ -90,7 +90,7 @@ impl CrateItem {
         with(|cx| cx.mir_body(self.0))
     }
 
-    pub fn span(&self) -> ty::Span {
+    pub fn span(&self) -> Span {
         with(|cx| cx.span_of_an_item(self.0))
     }
 }
