@@ -146,7 +146,7 @@ target | std | notes
 `armv7-unknown-linux-gnueabi` | ✓ | ARMv7-A Linux (kernel 4.15, glibc 2.27)
 `armv7-unknown-linux-musleabi` | ✓ | ARMv7-A Linux with MUSL
 `armv7-unknown-linux-musleabihf` | ✓ | ARMv7-A Linux with MUSL, hardfloat
-`armv7a-none-eabi` | * | Bare ARMv7-A
+[`armv7a-none-eabi`](platform-support/armv7a_none_eabi.md) | * | Bare ARMv7-A
 [`armv7r-none-eabi`](platform-support/armv7r.md) | * | Bare ARMv7-R
 [`armv7r-none-eabihf`](platform-support/armv7r.md) | * | Bare ARMv7-R, hardfloat
 [`asmjs-unknown-emscripten`](platform-support/asmjs_unknown_emscripten.md) | ✓ | asm.js via Emscripten
