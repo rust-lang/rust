@@ -1152,6 +1152,9 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
         onEachLazy(document.querySelectorAll(".search-form .popover"), elem => {
             elem.style.display = "none";
         });
+        onEachLazy(document.querySelectorAll("#crate-search .popover"), elem => {
+            elem.style.display = "none";
+        });
     };
 
     /**

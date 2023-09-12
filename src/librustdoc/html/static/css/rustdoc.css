@@ -785,14 +785,19 @@ table,
 	border-radius: 4px;
 	outline: none;
 	cursor: pointer;
-	-moz-appearance: none;
-	-webkit-appearance: none;
-	/* Removes default arrow from firefox */
-	text-indent: 0.01px;
 	background-color: var(--main-background-color);
 	color: inherit;
 	line-height: 1.5;
 	font-weight: 500;
+}
+#crate-search-div .popover {
+	font-size: 1rem;
+	display: none;
+	max-width: 50vw;
+	min-width: 100px;
+}
+#crate-search-div .setting-line {
+	margin: 0.6em;
 }
 #crate-search:hover, #crate-search:focus {
 	border-color: var(--crate-search-hover-border);
@@ -823,8 +828,21 @@ so that we can apply CSS-filters to change the arrow color in themes */
 #crate-search-div:hover::after, #crate-search-div:focus-within::after {
 	filter: var(--crate-search-div-hover-filter);
 }
-#crate-search > option {
-	font-size: 1rem;
+.popover button {
+	border-radius: 2px;
+	outline: 0;
+	border: 1px solid var(--main-color);
+	padding: 3px 6px;
+	background: var(--main-background-color);
+	color: var(--main-color);
+}
+.popover button:hover:not(:disabled) {
+	border-color: var(--settings-button-border-focus);
+}
+.popover button:disabled {
+	cursor: initial;
+	color: var(--disabled-element-color);
+	border-color: var(--disabled-element-color);
 }
 .search-input {
 	/* Override Normalize.css: it has a rule that sets
@@ -899,7 +917,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	display: inline;
 }
 
-.popover {
+.popover, .popover-left {
 	position: absolute;
 	top: 100%;
 	right: 0;
@@ -911,9 +929,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	color: var(--main-color);
 	--popover-arrow-offset: 11px;
 }
+.popover-left {
+	left: 0;
+	right: initial;
+}
 
 /* This rule is to draw the little arrow connecting the settings menu to the gear icon. */
-.popover::before {
+.popover::before, .popover-left::before {
 	content: '';
 	position: absolute;
 	right: var(--popover-arrow-offset);
@@ -924,7 +946,10 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	transform: rotate(-45deg);
 	top: -5px;
 }
-
+.popover-left::before {
+	left: var(--popover-arrow-offset);
+	right: initial;
+}
 /* use larger max-width for help popover, but not for help.html */
 #help.popover {
 	max-width: 600px;

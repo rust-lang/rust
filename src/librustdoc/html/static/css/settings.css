@@ -17,6 +17,9 @@
 
 .setting-radio span, .setting-check span {
 	padding-bottom: 1px;
+	max-width: 100%;
+	overflow-x: hidden;
+	text-overflow: ellipsis;
 }
 
 .setting-radio {
@@ -33,7 +36,6 @@
 }
 
 .setting-check {
-	margin-right: 20px;
 	display: flex;
 	align-items: center;
 	cursor: pointer;
@@ -45,7 +47,7 @@
 }
 .setting-check input:checked {
 	background-color: var(--settings-input-color);
-	border-width: 1px;
+	border-width: 2px;
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">\
 		<path d="M7,25L17,32L33,12" fill="none" stroke="black" stroke-width="5"/>\
 		<path d="M7,23L17,30L33,10" fill="none" stroke="white" stroke-width="5"/></svg>');
