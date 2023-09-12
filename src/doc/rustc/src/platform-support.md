@@ -136,8 +136,8 @@ target | std | notes
 `aarch64-unknown-none` | * | Bare ARM64, hardfloat
 [`aarch64-unknown-uefi`](platform-support/unknown-uefi.md) | * | ARM64 UEFI
 [`arm-linux-androideabi`](platform-support/android.md) | ✓ | ARMv6 Android
-`arm-unknown-linux-musleabi` | ✓ | ARMv6 Linux with MUSL
-`arm-unknown-linux-musleabihf` | ✓ | ARMv6 Linux with MUSL, hardfloat
+[`arm-unknown-linux-musleabi`](platform-support/arm-unknown-linux.md) | ✓ | ARMv6 Linux with MUSL
+[`arm-unknown-linux-musleabihf`](platform-support/arm-unknown-linux.md) | ✓ | ARMv6 Linux with MUSL, hardfloat
 [`armebv7r-none-eabi`](platform-support/armv7r.md) | * | Bare ARMv7-R, big endian
 [`armebv7r-none-eabihf`](platform-support/armv7r.md) | * | Bare ARMv7-R, big endian, hardfloat
 [`armv5te-unknown-linux-gnueabi`](platform-support/armv5te_unknown_linux_gnueabi.md) | ✓ | ARMv5TE Linux (kernel 4.4, glibc 2.23)
