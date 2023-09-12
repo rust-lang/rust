@@ -1532,6 +1532,7 @@ impl Config {
         let mut debuginfo_level_tests = None;
         let mut optimize = None;
         let mut omit_git_hash = None;
+        let mut lld_enabled = None;
 
         if let Some(rust) = toml.rust {
             let Rust {
@@ -1565,7 +1566,7 @@ impl Config {
                 dist_src,
                 save_toolstates,
                 codegen_backends,
-                lld,
+                lld: lld_enabled_toml,
                 llvm_tools,
                 llvm_bitcode_linker,
                 deny_warnings,
@@ -1620,6 +1621,7 @@ impl Config {
             debuginfo_level_std = debuginfo_level_std_toml;
             debuginfo_level_tools = debuginfo_level_tools_toml;
             debuginfo_level_tests = debuginfo_level_tests_toml;
+            lld_enabled = lld_enabled_toml;
 
             config.rust_split_debuginfo_for_build_triple = split_debuginfo
                 .as_deref()
@@ -1653,17 +1655,7 @@ impl Config {
                 config.incremental = true;
             }
             set(&mut config.lld_mode, lld_mode);
-            set(&mut config.lld_enabled, lld);
             set(&mut config.llvm_bitcode_linker_enabled, llvm_bitcode_linker);
-
-            if matches!(config.lld_mode, LldMode::SelfContained)
-                && !config.lld_enabled
-                && flags.stage.unwrap_or(0) > 0
-            {
-                panic!(
-                    "Trying to use self-contained lld as a linker, but LLD is not being added to the sysroot. Enable it with rust.lld = true."
-                );
-            }
 
             config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
             config.rustc_parallel =
@@ -1953,6 +1945,43 @@ impl Config {
         config.llvm_tests = llvm_tests.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
         config.rust_optimize = optimize.unwrap_or(RustOptimize::Bool(true));
+
+        // We make `x86_64-unknown-linux-gnu` use the self-contained linker by default, so we will
+        // build our internal lld and use it as the default linker, by setting the `rust.lld` config
+        // to true by default:
+        // - on the `x86_64-unknown-linux-gnu` target
+        // - on the `dev` and `nightly` channels
+        // - when building our in-tree llvm (i.e. the target has not set an `llvm-config`), so that
+        //   we're also able to build the corresponding lld
+        // - or when using an external llvm that's downloaded from CI, which also contains our prebuilt
+        //   lld
+        // - otherwise, we'd be using an external llvm, and lld would not necessarily available and
+        //   thus, disabled
+        // - similarly, lld will not be built nor used by default when explicitly asked not to, e.g.
+        //   when the config sets `rust.lld = false`
+        if config.build.triple == "x86_64-unknown-linux-gnu"
+            && config.hosts == [config.build]
+            && (config.channel == "dev" || config.channel == "nightly")
+        {
+            let no_llvm_config = config
+                .target_config
+                .get(&config.build)
+                .is_some_and(|target_config| target_config.llvm_config.is_none());
+            let enable_lld = config.llvm_from_ci || no_llvm_config;
+            // Prefer the config setting in case an explicit opt-out is needed.
+            config.lld_enabled = lld_enabled.unwrap_or(enable_lld);
+        } else {
+            set(&mut config.lld_enabled, lld_enabled);
+        }
+
+        if matches!(config.lld_mode, LldMode::SelfContained)
+            && !config.lld_enabled
+            && flags.stage.unwrap_or(0) > 0
+        {
+            panic!(
+                "Trying to use self-contained lld as a linker, but LLD is not being added to the sysroot. Enable it with rust.lld = true."
+            );
+        }
 
         let default = debug == Some(true);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);
