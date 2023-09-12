@@ -5,7 +5,7 @@ use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
 
 /// Run tests on optimized dist artifacts.
-pub fn run_tests(env: &dyn Environment) -> anyhow::Result<()> {
+pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     // After `dist` is executed, we extract its archived components into a sysroot directory,
     // and then use that extracted rustc as a stage0 compiler.
     // Then we run a subset of tests using that compiler, to have a basic smoke test which checks

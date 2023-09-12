@@ -96,7 +96,7 @@ pub struct Bootstrap {
 }
 
 impl Bootstrap {
-    pub fn build(env: &dyn Environment) -> Self {
+    pub fn build(env: &Environment) -> Self {
         let metrics_path = env.build_root().join("build").join("metrics.json");
         let cmd = cmd(&[
             env.python_binary(),
@@ -114,7 +114,7 @@ impl Bootstrap {
         Self { cmd, metrics_path }
     }
 
-    pub fn dist(env: &dyn Environment, dist_args: &[String]) -> Self {
+    pub fn dist(env: &Environment, dist_args: &[String]) -> Self {
         let metrics_path = env.build_root().join("build").join("metrics.json");
         let cmd = cmd(&dist_args.iter().map(|arg| arg.as_str()).collect::<Vec<_>>())
             .env("RUST_BACKTRACE", "full");
