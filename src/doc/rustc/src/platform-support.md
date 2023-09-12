@@ -141,7 +141,7 @@ target | std | notes
 [`armebv7r-none-eabi`](platform-support/armv7r.md) | * | Bare ARMv7-R, big endian
 [`armebv7r-none-eabihf`](platform-support/armv7r.md) | * | Bare ARMv7-R, big endian, hardfloat
 `armv5te-unknown-linux-gnueabi` | ✓ | ARMv5TE Linux (kernel 4.4, glibc 2.23)
-`armv5te-unknown-linux-musleabi` | ✓ | ARMv5TE Linux with MUSL
+[`armv5te-unknown-linux-musleabi`](platform-support/armv5te_unknown_linux_musleabi.md) | ✓ | ARMv5TE Linux with MUSL
 [`armv7-linux-androideabi`](platform-support/android.md) | ✓ | ARMv7-A Android
 [`armv7-unknown-linux-gnueabi`](platform-support/armv7_unknown_linux.md) | ✓ | ARMv7-A Linux (kernel 4.15, glibc 2.27)
 [`armv7-unknown-linux-musleabi`](platform-support/armv7_unknown_linux.md) | ✓ | ARMv7-A Linux with MUSL
