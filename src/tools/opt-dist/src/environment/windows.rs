@@ -9,15 +9,20 @@ use zip::ZipArchive;
 
 pub(super) struct WindowsEnvironment {
     checkout_dir: Utf8PathBuf,
+    target_triple: String,
 }
 
 impl WindowsEnvironment {
-    pub fn new() -> Self {
-        Self { checkout_dir: std::env::current_dir().unwrap().try_into().unwrap() }
+    pub fn new(target_triple: String) -> Self {
+        Self { checkout_dir: std::env::current_dir().unwrap().try_into().unwrap(), target_triple }
     }
 }
 
 impl Environment for WindowsEnvironment {
+    fn host_triple(&self) -> &str {
+        &self.target_triple
+    }
+
     fn python_binary(&self) -> &'static str {
         "python"
     }

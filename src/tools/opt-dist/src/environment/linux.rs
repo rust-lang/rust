@@ -3,9 +3,21 @@ use crate::exec::cmd;
 use crate::utils::io::copy_directory;
 use camino::{Utf8Path, Utf8PathBuf};
 
-pub(super) struct LinuxEnvironment;
+pub(super) struct LinuxEnvironment {
+    target_triple: String,
+}
+
+impl LinuxEnvironment {
+    pub fn new(target_triple: String) -> Self {
+        Self { target_triple }
+    }
+}
 
 impl Environment for LinuxEnvironment {
+    fn host_triple(&self) -> &str {
+        &self.target_triple
+    }
+
     fn python_binary(&self) -> &'static str {
         "python3"
     }

@@ -6,9 +6,7 @@ mod linux;
 mod windows;
 
 pub trait Environment {
-    fn host_triple(&self) -> String {
-        std::env::var("PGO_HOST").expect("PGO_HOST environment variable missing")
-    }
+    fn host_triple(&self) -> &str;
 
     fn python_binary(&self) -> &'static str;
 
@@ -69,9 +67,9 @@ pub trait Environment {
     fn skipped_tests(&self) -> &'static [&'static str];
 }
 
-pub fn create_environment() -> Box<dyn Environment> {
+pub fn create_environment(target_triple: String) -> Box<dyn Environment> {
     #[cfg(target_family = "unix")]
-    return Box::new(linux::LinuxEnvironment);
+    return Box::new(linux::LinuxEnvironment::new(target_triple));
     #[cfg(target_family = "windows")]
-    return Box::new(windows::WindowsEnvironment::new());
+    return Box::new(windows::WindowsEnvironment::new(target_triple));
 }

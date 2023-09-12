@@ -171,6 +171,8 @@ fn main() -> anyhow::Result<()> {
         .parse_default_env()
         .init();
 
+    let target_triple = std::env::var("PGO_HOST").expect("PGO_HOST environment variable missing");
+
     let mut build_args: Vec<String> = std::env::args().skip(1).collect();
     println!("Running optimized build pipeline with args `{}`", build_args.join(" "));
 
@@ -202,7 +204,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     let mut timer = Timer::new();
-    let env = create_environment();
+    let env = create_environment(target_triple);
 
     let result = execute_pipeline(env.as_ref(), &mut timer, build_args);
     log::info!("Timer results\n{}", timer.format_stats());
