@@ -1,10 +1,8 @@
 use super::apple_base::{opts, tvos_sim_llvm_target, Arch};
-use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
+use crate::spec::{FramePointer, Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = Arch::Arm64_sim;
-    let mut base = opts("ios", arch);
-    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;
     Target {
         llvm_target: tvos_sim_llvm_target(arch).into(),
         pointer_width: 64,
@@ -20,14 +18,14 @@ pub fn target() -> Target {
             // These arguments are not actually invoked - they just have
             // to look right to pass App Store validation.
             bitcode_llvm_cmdline: "-triple\0\
-                arm64-apple-tvos14.0-simulator\0\
+                arm64-apple-tvos15.0-simulator\0\
                 -emit-obj\0\
                 -disable-llvm-passes\0\
                 -target-abi\0\
                 darwinpcs\0\
                 -Os\0"
                 .into(),
-            ..base
+            ..opts("tvos", arch)
         },
     }
 }
