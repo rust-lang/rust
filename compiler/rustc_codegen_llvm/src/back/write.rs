@@ -717,22 +717,6 @@ pub(crate) unsafe fn enzyme_ad(
     LLVMReplaceAllUsesWith(target_fnc, res);
     LLVMDeleteFunction(target_fnc);
 
-    let mut f = LLVMGetFirstFunction(llmod);
-    loop {
-        if let Some(lf) = f {
-        f = LLVMGetNextFunction(lf);
-        let myhwattr = "enzyme_hw";
-        let attr = LLVMGetStringAttributeAtIndex(lf, c_uint::MAX, myhwattr.as_ptr() as *const c_char, myhwattr.as_bytes().len() as c_uint);
-        if LLVMIsStringAttribute(attr) {
-            LLVMRemoveStringAttributeAtIndex(lf, c_uint::MAX, myhwattr.as_ptr() as *const c_char, myhwattr.as_bytes().len() as c_uint);
-            continue;
-        }
-        LLVMRemoveEnumAttributeAtIndex(lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
-        } else {
-            break;
-        }
-    }
-
     Ok(())
 }
 
@@ -753,12 +737,28 @@ pub(crate) unsafe fn differentiate(
     }
 
     llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), 0);
-    llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintType), 1);
-    // llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), 0);
 
     for item in diff_items {
         let res = enzyme_ad(llmod, llcx, item);
         assert!(res.is_ok());
+    }
+    
+    let mut f = LLVMGetFirstFunction(llmod);
+    loop {
+        if let Some(lf) = f {
+        f = LLVMGetNextFunction(lf);
+        let myhwattr = "enzyme_hw";
+        let attr = LLVMGetStringAttributeAtIndex(lf, c_uint::MAX, myhwattr.as_ptr() as *const c_char, myhwattr.as_bytes().len() as c_uint);
+        if LLVMIsStringAttribute(attr) {
+            LLVMRemoveStringAttributeAtIndex(lf, c_uint::MAX, myhwattr.as_ptr() as *const c_char, myhwattr.as_bytes().len() as c_uint);
+        } else {
+            LLVMRemoveEnumAttributeAtIndex(lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
+        }
+
+
+        } else {
+            break;
+        }
     }
 
     Ok(())
