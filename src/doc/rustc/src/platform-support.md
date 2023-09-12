@@ -176,8 +176,8 @@ target | std | notes
 [`thumbv7neon-linux-androideabi`](platform-support/android.md) | ✓ | Thumb2-mode ARMv7-A Android with NEON
 `thumbv7neon-unknown-linux-gnueabihf` | ✓ | Thumb2-mode ARMv7-A Linux with NEON (kernel 4.4, glibc 2.23)
 `thumbv8m.base-none-eabi` | * | Bare ARMv8-M Baseline
-`thumbv8m.main-none-eabi` | * | Bare ARMv8-M Mainline
-`thumbv8m.main-none-eabihf` | * | Bare ARMv8-M Mainline, hardfloat
+[`thumbv8m.main-none-eabi`](platform-support/thumbv8m.main.md) | * | Bare ARMv8-M Mainline
+[`thumbv8m.main-none-eabihf`](platform-support/thumbv8m.main.md) | * | Bare ARMv8-M Mainline, hardfloat
 [`wasm32-unknown-emscripten`](platform-support/wasm32_unknown_emscripten.md) | ✓ | WebAssembly via Emscripten
 [`wasm32-unknown-unknown`](platform-support/wasm32_unknown_unknown.md) | ✓ | WebAssembly
 [`wasm32-wasi`](platform-support/wasm32_wasi.md) | ✓ | WebAssembly with WASI
