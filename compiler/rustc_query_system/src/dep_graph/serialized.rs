@@ -43,6 +43,7 @@ use rustc_data_structures::fingerprint::PackedFingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
+use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::{Idx, IndexVec};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -84,7 +85,7 @@ pub struct SerializedDepGraph<K: DepKind> {
     edge_list_data: Vec<u8>,
     /// Stores a map from fingerprints to nodes per dep node kind.
     /// This is the reciprocal of `nodes`.
-    index: Vec<FxHashMap<PackedFingerprint, SerializedDepNodeIndex>>,
+    index: Vec<UnhashMap<PackedFingerprint, SerializedDepNodeIndex>>,
 }
 
 impl<K: DepKind> Default for SerializedDepGraph<K> {
@@ -256,7 +257,7 @@ impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> Decodable<MemDecoder<'a>>
 
         // Read the number of each dep kind and use it to create an hash map with a suitable size.
         let mut index: Vec<_> = (0..(K::MAX as usize + 1))
-            .map(|_| FxHashMap::with_capacity_and_hasher(d.read_u32() as usize, Default::default()))
+            .map(|_| UnhashMap::with_capacity_and_hasher(d.read_u32() as usize, Default::default()))
             .collect();
 
         for (idx, node) in nodes.iter_enumerated() {
