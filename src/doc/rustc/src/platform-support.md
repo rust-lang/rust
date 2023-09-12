@@ -151,8 +151,8 @@ target | std | notes
 `armv7r-none-eabihf` | * | Bare ARMv7-R, hardfloat
 `asmjs-unknown-emscripten` | ✓ | asm.js via Emscripten
 [`i586-pc-windows-msvc`](platform-support/windows_msvc.md) | * | 32-bit Windows w/o SSE
-`i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17)
-`i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL
+[`i586-unknown-linux-gnu`](platform-support/i586_unknown_linux_gnu.md) | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17)
+[`i586-unknown-linux-musl`](platform-support/i586_unknown_linux_musl.md) | ✓ | 32-bit Linux w/o SSE, MUSL
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android
 [`i686-unknown-freebsd`](platform-support/freebsd.md) | ✓ | 32-bit FreeBSD
 [`i686-unknown-linux-musl`](platform-support/i686_unknown_linux_musl.md) | ✓ | 32-bit Linux with MUSL
