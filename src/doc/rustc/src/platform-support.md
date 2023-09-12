@@ -168,7 +168,7 @@ target | std | notes
 `riscv64gc-unknown-none-elf` | * | Bare RISC-V (RV64IMAFDC ISA)
 `riscv64imac-unknown-none-elf` | * | Bare RISC-V (RV64IMAC ISA)
 `sparc64-unknown-linux-gnu` | ✓ | SPARC Linux (kernel 4.4, glibc 2.23)
-`sparcv9-sun-solaris` | ✓ | SPARC Solaris 10/11, illumos
+[`sparcv9-sun-solaris`](platform-support/sparcv9_sun_solaris.md) | ✓ | SPARC Solaris 10/11, illumos
 [`thumbv6m-none-eabi`](platform-support/thumbv6m_none_eabi.md) | * | Bare ARMv6-M
 [`thumbv7em-none-eabi`](platform-support/thumbv7_none.md) | * | Bare ARMv7E-M
 [`thumbv7em-none-eabihf`](platform-support/thumbv7_none.md) | * | Bare ARMV7E-M, hardfloat
