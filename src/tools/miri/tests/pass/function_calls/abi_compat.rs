@@ -1,6 +1,7 @@
 use std::mem;
 use std::num;
 use std::ptr;
+use std::rc::Rc;
 
 #[derive(Copy, Clone, Default)]
 struct Zst;
@@ -9,7 +10,9 @@ struct Zst;
 #[derive(Copy, Clone)]
 struct Wrapper<T>(T);
 
-fn id<T>(x: T) -> T { x }
+fn id<T>(x: T) -> T {
+    x
+}
 
 fn test_abi_compat<T: Clone, U: Clone>(t: T, u: U) {
     fn id<T>(x: T) -> T {
@@ -58,8 +61,8 @@ fn test_abi_newtype<T: Copy + Default>() {
 }
 
 fn main() {
-    // Here we check some of the guaranteed ABI compatibilities.
-    // Different integer types of the same size and sign.
+    // Here we check some of the guaranteed ABI compatibilities:
+    // - Different integer types of the same size and sign.
     if cfg!(target_pointer_width = "32") {
         test_abi_compat(0usize, 0u32);
         test_abi_compat(0isize, 0i32);
@@ -68,15 +71,17 @@ fn main() {
         test_abi_compat(0isize, 0i64);
     }
     test_abi_compat(42u32, num::NonZeroU32::new(1).unwrap());
-    // Reference/pointer types with the same pointee.
+    // - Reference/pointer types with the same pointee.
     test_abi_compat(&0u32, &0u32 as *const u32);
     test_abi_compat(&mut 0u32 as *mut u32, Box::new(0u32));
     test_abi_compat(&(), ptr::NonNull::<()>::dangling());
-    // Reference/pointer types with different but sized pointees.
+    // - Reference/pointer types with different but sized pointees.
     test_abi_compat(&0u32, &([true; 4], [0u32; 0]));
-    // `fn` types
+    // - `fn` types
     test_abi_compat(main as fn(), id::<i32> as fn(i32) -> i32);
-    // Guaranteed null-pointer-optimizations.
+    // - 1-ZST
+    test_abi_compat((), [0u8; 0]);
+    // - Guaranteed null-pointer-optimizations.
     test_abi_compat(&0u32 as *const u32, Some(&0u32));
     test_abi_compat(main as fn(), Some(main as fn()));
     test_abi_compat(0u32, Some(num::NonZeroU32::new(1).unwrap()));
@@ -94,4 +99,11 @@ fn main() {
     test_abi_newtype::<[u32; 0]>();
     test_abi_newtype::<[u32; 2]>();
     test_abi_newtype::<[u32; 32]>();
+    test_abi_newtype::<Option<i32>>();
+    test_abi_newtype::<Option<num::NonZeroU32>>();
+
+    // Extra test for assumptions made by arbitrary-self-dyn-receivers.
+    let rc = Rc::new(0);
+    let rc_ptr: *mut i32 = unsafe { mem::transmute_copy(&rc) };
+    test_abi_compat(rc, rc_ptr);
 }

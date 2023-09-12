@@ -102,8 +102,8 @@ impl Command {
         cmd.stdout(process::Stdio::null());
         cmd.stderr(process::Stdio::null());
         let josh = cmd.spawn().context("failed to start josh-proxy, make sure it is installed")?;
-        // Give it some time so hopefully the port is open. (10ms was not enough.)
-        thread::sleep(time::Duration::from_millis(100));
+        // Give it some time so hopefully the port is open. (100ms was not enough.)
+        thread::sleep(time::Duration::from_millis(200));
 
         // Create a wrapper that stops it on drop.
         struct Josh(process::Child);
@@ -338,7 +338,11 @@ impl Command {
         println!(
             "Confirmed that the push round-trips back to Miri properly. Please create a rustc PR:"
         );
-        println!("    https://github.com/{github_user}/rust/pull/new/{branch}");
+        println!(
+            // Open PR with `subtree-sync` label to satisfy the `no-merges` triagebot check
+            // See https://github.com/rust-lang/rust/pull/114157
+            "    https://github.com/rust-lang/rust/compare/{github_user}:{branch}?quick_pull=1&labels=subtree-sync"
+        );
 
         drop(josh);
         Ok(())

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 # Instead of doing just `cargo run --manifest-path .. $@`, we invoke miri-script binary directly. Invoking `cargo run` goes through
 # rustup (that sets it's own environmental variables), which is undesirable.
