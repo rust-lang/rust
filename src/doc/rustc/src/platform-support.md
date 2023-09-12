@@ -88,7 +88,7 @@ target | notes
 `aarch64-unknown-linux-musl` | ARM64 Linux with MUSL
 `arm-unknown-linux-gnueabi` | ARMv6 Linux (kernel 3.2, glibc 2.17)
 `arm-unknown-linux-gnueabihf` | ARMv6 Linux, hardfloat (kernel 3.2, glibc 2.17)
-`armv7-unknown-linux-gnueabihf` | ARMv7-A Linux, hardfloat (kernel 3.2, glibc 2.17)
+[`armv7-unknown-linux-gnueabihf`](platform-support/armv7_unknown_linux_gnueabihf.md) | ARMv7-A Linux, hardfloat (kernel 3.2, glibc 2.17)
 [`loongarch64-unknown-linux-gnu`](platform-support/loongarch-linux.md) | LoongArch64 Linux, LP64D ABI (kernel 5.19, glibc 2.36)
 [`mips-unknown-linux-gnu`](platform-support/mips_unknown_linux_gnu.md) | MIPS Linux (kernel 4.4, glibc 2.23)
 [`mips64-unknown-linux-gnuabi64`](platform-support/mips64-unknown-linux-gnuabi64.md) | MIPS64 Linux, n64 ABI (kernel 4.4, glibc 2.23)
