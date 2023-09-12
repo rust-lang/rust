@@ -247,9 +247,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         layout: TyAndLayout<'tcx>,
         variant: VariantIdx,
-    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
+    ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         let discr_layout = self.layout_of(layout.ty.discriminant_ty(*self.tcx))?;
-        Ok(match layout.ty.discriminant_for_variant(*self.tcx, variant) {
+        let discr_value = match layout.ty.discriminant_for_variant(*self.tcx, variant) {
             Some(discr) => {
                 // This type actually has discriminants.
                 assert_eq!(discr.ty, discr_layout.ty);
@@ -260,6 +260,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert_eq!(variant.as_u32(), 0);
                 Scalar::from_uint(variant.as_u32(), discr_layout.size)
             }
-        })
+        };
+        Ok(ImmTy::from_scalar(discr_value, discr_layout))
     }
 }

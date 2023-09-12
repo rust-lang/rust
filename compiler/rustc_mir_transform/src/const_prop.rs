@@ -32,32 +32,30 @@ const MAX_ALLOC_LIMIT: u64 = 1024;
 
 /// Macro for machine-specific `InterpError` without allocation.
 /// (These will never be shown to the user, but they help diagnose ICEs.)
-macro_rules! throw_machine_stop_str {
-    ($($tt:tt)*) => {{
-        // We make a new local type for it. The type itself does not carry any information,
-        // but its vtable (for the `MachineStopType` trait) does.
-        #[derive(Debug)]
-        struct Zst;
-        // Printing this type shows the desired string.
-        impl std::fmt::Display for Zst {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, $($tt)*)
-            }
+pub(crate) macro throw_machine_stop_str($($tt:tt)*) {{
+    // We make a new local type for it. The type itself does not carry any information,
+    // but its vtable (for the `MachineStopType` trait) does.
+    #[derive(Debug)]
+    struct Zst;
+    // Printing this type shows the desired string.
+    impl std::fmt::Display for Zst {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, $($tt)*)
+        }
+    }
+
+    impl rustc_middle::mir::interpret::MachineStopType for Zst {
+        fn diagnostic_message(&self) -> rustc_errors::DiagnosticMessage {
+            self.to_string().into()
         }
 
-        impl rustc_middle::mir::interpret::MachineStopType for Zst {
-            fn diagnostic_message(&self) -> rustc_errors::DiagnosticMessage {
-                self.to_string().into()
-            }
-
-            fn add_args(
-                self: Box<Self>,
-                _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagnosticArgValue<'static>),
-            ) {}
-        }
-        throw_machine_stop!(Zst)
-    }};
-}
+        fn add_args(
+            self: Box<Self>,
+            _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagnosticArgValue<'static>),
+        ) {}
+    }
+    throw_machine_stop!(Zst)
+}}
 
 pub struct ConstProp;
 
