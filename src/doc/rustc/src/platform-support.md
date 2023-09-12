@@ -174,7 +174,7 @@ target | std | notes
 `thumbv7em-none-eabihf` | * | Bare ARMV7E-M, hardfloat
 `thumbv7m-none-eabi` | * | Bare ARMv7-M
 [`thumbv7neon-linux-androideabi`](platform-support/android.md) | ✓ | Thumb2-mode ARMv7-A Android with NEON
-`thumbv7neon-unknown-linux-gnueabihf` | ✓ | Thumb2-mode ARMv7-A Linux with NEON (kernel 4.4, glibc 2.23)
+[`thumbv7neon-unknown-linux-gnueabihf`](platform-support/thumbv7neon_unknown_linux_gnueabihf.md) | ✓ | Thumb2-mode ARMv7-A Linux with NEON (kernel 4.4, glibc 2.23)
 [`thumbv8m.base-none-eabi`](platform-support/thumbv8m.base_none_eabi.md) | * | Bare ARMv8-M Baseline
 [`thumbv8m.main-none-eabi`](platform-support/thumbv8m.main.md) | * | Bare ARMv8-M Mainline
 [`thumbv8m.main-none-eabihf`](platform-support/thumbv8m.main.md) | * | Bare ARMv8-M Mainline, hardfloat
