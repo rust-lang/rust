@@ -1,4 +1,4 @@
-use crate::environment::Environment;
+use crate::environment::{executable_extension, Environment};
 use crate::exec::{cmd, CmdBuilder};
 use crate::utils::io::{count_files, delete_directory};
 use crate::utils::with_log_group;
@@ -86,7 +86,7 @@ fn merge_llvm_profiles(
             .build_artifacts()
             .join("llvm")
             .join("build")
-            .join(format!("bin/llvm-profdata{}", env.executable_extension())),
+            .join(format!("bin/llvm-profdata{}", executable_extension())),
     };
 
     cmd(&[llvm_profdata.as_str(), "merge", "-o", merged_path.as_str(), profile_dir.as_str()])

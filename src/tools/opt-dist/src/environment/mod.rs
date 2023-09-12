@@ -31,21 +31,21 @@ pub trait Environment {
         self.build_artifacts()
             .join("stage0")
             .join("bin")
-            .join(format!("cargo{}", self.executable_extension()))
+            .join(format!("cargo{}", executable_extension()))
     }
 
     fn rustc_stage_0(&self) -> Utf8PathBuf {
         self.build_artifacts()
             .join("stage0")
             .join("bin")
-            .join(format!("rustc{}", self.executable_extension()))
+            .join(format!("rustc{}", executable_extension()))
     }
 
     fn rustc_stage_2(&self) -> Utf8PathBuf {
         self.build_artifacts()
             .join("stage2")
             .join("bin")
-            .join(format!("rustc{}", self.executable_extension()))
+            .join(format!("rustc{}", executable_extension()))
     }
 
     /// Path to the built rustc-perf benchmark suite.
@@ -60,9 +60,6 @@ pub trait Environment {
 
     fn supports_shared_llvm(&self) -> bool;
 
-    /// What is the extension of binary executables in this environment?
-    fn executable_extension(&self) -> &'static str;
-
     /// List of test paths that should be skipped when testing the optimized artifacts.
     fn skipped_tests(&self) -> &'static [&'static str];
 }
@@ -72,4 +69,15 @@ pub fn create_environment(target_triple: String) -> Box<dyn Environment> {
     return Box::new(linux::LinuxEnvironment::new(target_triple));
     #[cfg(target_family = "windows")]
     return Box::new(windows::WindowsEnvironment::new(target_triple));
+}
+
+/// What is the extension of binary executables on this platform?
+#[cfg(target_family = "unix")]
+pub fn executable_extension() -> &'static str {
+    ""
+}
+
+#[cfg(target_family = "windows")]
+pub fn executable_extension() -> &'static str {
+    ".exe"
 }

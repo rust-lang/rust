@@ -84,10 +84,6 @@ impl Environment for WindowsEnvironment {
         false
     }
 
-    fn executable_extension(&self) -> &'static str {
-        ".exe"
-    }
-
     fn skipped_tests(&self) -> &'static [&'static str] {
         &[
             // Fails as of June 2023.
