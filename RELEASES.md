@@ -1,3 +1,13 @@
+Version 1.72.1 (2023-09-14)
+===========================
+
+- [Adjust codegen change to improve LLVM codegen](https://github.com/rust-lang/rust/pull/115236)
+- [rustdoc: Fix self ty params in objects with lifetimes](https://github.com/rust-lang/rust/pull/115276)
+- [Fix regression in compile times](https://github.com/rust-lang/rust/pull/114948)
+- Resolve some ICE regressions in the compiler:
+  - [#115215](https://github.com/rust-lang/rust/pull/115215)
+  - [#115559](https://github.com/rust-lang/rust/pull/115559)
+
 Version 1.72.0 (2023-08-24)
 ==========================
 
