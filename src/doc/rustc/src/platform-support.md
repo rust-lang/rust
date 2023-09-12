@@ -101,7 +101,7 @@ target | notes
 `s390x-unknown-linux-gnu` | S390x Linux (kernel 3.2, glibc 2.17)
 [`x86_64-unknown-freebsd`](platform-support/freebsd.md) | 64-bit FreeBSD
 `x86_64-unknown-illumos` | illumos
-`x86_64-unknown-linux-musl` | 64-bit Linux with MUSL
+[`x86_64-unknown-linux-musl`](platform-support/x86_64_unknown_linux_musl.md) | 64-bit Linux with MUSL
 [`x86_64-unknown-netbsd`](platform-support/netbsd.md) | NetBSD/amd64
 
 ## Tier 2 without Host Tools
