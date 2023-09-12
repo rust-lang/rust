@@ -758,7 +758,9 @@ impl Map {
             self.value_count += 1;
         }
 
-        if let Some(ref_ty) = ty.builtin_deref(true) && let ty::Slice(..) = ref_ty.ty.kind() {
+        if let ty::Ref(_, ref_ty, _) | ty::RawPtr(ty::TypeAndMut { ty: ref_ty, .. }) = ty.kind()
+            && let ty::Slice(..) = ref_ty.kind()
+        {
             assert!(self.places[place].value_index.is_none(), "slices are not scalars");
 
             // Prepend new child to the linked list.
