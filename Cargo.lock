@@ -531,7 +531,7 @@ dependencies = [
  "tester",
  "tokio",
  "toml 0.7.5",
- "ui_test 0.18.1",
+ "ui_test 0.20.0",
  "walkdir",
 ]
 
@@ -5596,9 +5596,9 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.18.1"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "640159421816683e558867ffc0e60ed3a3ed97ec6ccb22c03adb41bf87c5cfa4"
+checksum = "bfd8fb9b15c8332cf51bfc2dc4830063b2446a9c9d732421b56f2478024a3971"
 dependencies = [
  "annotate-snippets",
  "anyhow",
