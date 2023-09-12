@@ -169,10 +169,10 @@ target | std | notes
 `riscv64imac-unknown-none-elf` | * | Bare RISC-V (RV64IMAC ISA)
 `sparc64-unknown-linux-gnu` | ✓ | SPARC Linux (kernel 4.4, glibc 2.23)
 `sparcv9-sun-solaris` | ✓ | SPARC Solaris 10/11, illumos
-`thumbv6m-none-eabi` | * | Bare ARMv6-M
-`thumbv7em-none-eabi` | * | Bare ARMv7E-M
-`thumbv7em-none-eabihf` | * | Bare ARMV7E-M, hardfloat
-`thumbv7m-none-eabi` | * | Bare ARMv7-M
+[`thumbv6m-none-eabi`](platform-support/thumbv6m_none_eabi.md) | * | Bare ARMv6-M
+[`thumbv7em-none-eabi`](platform-support/thumbv7_none.md) | * | Bare ARMv7E-M
+[`thumbv7em-none-eabihf`](platform-support/thumbv7_none.md) | * | Bare ARMV7E-M, hardfloat
+[`thumbv7m-none-eabi`](platform-support/thumbv7_none.md) | * | Bare ARMv7-M
 [`thumbv7neon-linux-androideabi`](platform-support/android.md) | ✓ | Thumb2-mode ARMv7-A Android with NEON
 [`thumbv7neon-unknown-linux-gnueabihf`](platform-support/thumbv7neon_unknown_linux_gnueabihf.md) | ✓ | Thumb2-mode ARMv7-A Linux with NEON (kernel 4.4, glibc 2.23)
 [`thumbv8m.base-none-eabi`](platform-support/thumbv8m.base_none_eabi.md) | * | Bare ARMv8-M Baseline
