@@ -2342,29 +2342,39 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
-        match self {
-            Self::Ty(c) => {
-                if let Some(val) = c.try_eval_for_mir(tcx, param_env) {
-                    match val {
-                        Ok(val) => Self::Val(val, c.ty()),
-                        Err(guar) => Self::Ty(ty::Const::new_error(tcx, guar, self.ty())),
-                    }
+    pub fn eval(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Option<Span>,
+    ) -> Result<interpret::ConstValue<'tcx>, ErrorHandled> {
+        let uneval = match self {
+            ConstantKind::Ty(c) => {
+                if let ty::ConstKind::Unevaluated(uv) = c.kind() {
+                    // Avoid the round-trip via valtree, evaluate directly to ConstValue.
+                    uv.expand()
                 } else {
-                    self
+                    // It's already a valtree, or an error.
+                    let val = c.eval(tcx, param_env, span)?;
+                    return Ok(tcx.valtree_to_const_val((self.ty(), val)));
                 }
             }
-            Self::Val(_, _) => self,
-            Self::Unevaluated(uneval, ty) => {
-                // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
-                match tcx.const_eval_resolve(param_env, uneval, None) {
-                    Ok(val) => Self::Val(val, ty),
-                    Err(ErrorHandled::TooGeneric) => self,
-                    Err(ErrorHandled::Reported(guar)) => {
-                        Self::Ty(ty::Const::new_error(tcx, guar.into(), ty))
-                    }
-                }
+            ConstantKind::Unevaluated(uneval, _) => uneval,
+            ConstantKind::Val(val, _) => return Ok(val),
+        };
+        // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
+        tcx.const_eval_resolve(param_env, uneval, span)
+    }
+
+    /// Normalizes the constant to a value or an error if possible.
+    #[inline]
+    pub fn normalize(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
+        match self.eval(tcx, param_env, None) {
+            Ok(val) => Self::Val(val, self.ty()),
+            Err(ErrorHandled::Reported(guar)) => {
+                Self::Ty(ty::Const::new_error(tcx, guar.into(), self.ty()))
             }
+            Err(ErrorHandled::TooGeneric) => self,
         }
     }
 
@@ -2406,35 +2416,35 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<bool> {
-        match self {
-            Self::Ty(ct) => ct.try_eval_bool(tcx, param_env),
-            Self::Val(val, _) => val.try_to_bool(),
-            Self::Unevaluated(uneval, _) => {
-                match tcx.const_eval_resolve(param_env, *uneval, None) {
-                    Ok(val) => val.try_to_bool(),
-                    Err(_) => None,
-                }
-            }
-        }
+    pub fn try_eval_scalar(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Option<Scalar> {
+        self.eval(tcx, param_env, None).ok()?.try_to_scalar()
+    }
+
+    #[inline]
+    pub fn try_eval_scalar_int(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Option<ScalarInt> {
+        self.try_eval_scalar(tcx, param_env)?.try_to_int().ok()
+    }
+
+    #[inline]
+    pub fn try_eval_bool(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<bool> {
+        self.try_eval_scalar_int(tcx, param_env)?.try_into().ok()
     }
 
     #[inline]
     pub fn try_eval_target_usize(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<u64> {
-        match self {
-            Self::Ty(ct) => ct.try_eval_target_usize(tcx, param_env),
-            Self::Val(val, _) => val.try_to_target_usize(tcx),
-            Self::Unevaluated(uneval, _) => {
-                match tcx.const_eval_resolve(param_env, *uneval, None) {
-                    Ok(val) => val.try_to_target_usize(tcx),
-                    Err(_) => None,
-                }
-            }
-        }
+        self.try_eval_scalar_int(tcx, param_env)?.try_to_target_usize(tcx).ok()
     }
 
     #[inline]
@@ -2609,6 +2619,11 @@ impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
     pub fn new(def: DefId, args: GenericArgsRef<'tcx>) -> UnevaluatedConst<'tcx> {
         UnevaluatedConst { def, args, promoted: Default::default() }
+    }
+
+    #[inline]
+    pub fn from_instance(instance: ty::Instance<'tcx>) -> Self {
+        UnevaluatedConst::new(instance.def_id(), instance.args)
     }
 }
 

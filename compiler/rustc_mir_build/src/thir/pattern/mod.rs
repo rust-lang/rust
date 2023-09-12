@@ -626,6 +626,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args: args };
         // First try using a valtree in order to destructure the constant into a pattern.
+        // FIXME: replace "try to do a thing, then fall back to another thing"
+        // but something more principled, like a trait query checking whether this can be turned into a valtree.
         if let Ok(Some(valtree)) =
             self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
         {

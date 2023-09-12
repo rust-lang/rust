@@ -24,43 +24,31 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &self,
         constant: &mir::Constant<'tcx>,
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
-        let ct = self.monomorphize(constant.literal);
-        let uv = match ct {
-            mir::ConstantKind::Ty(ct) => match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => uv.expand(),
-                ty::ConstKind::Value(val) => {
-                    return Ok(self.cx.tcx().valtree_to_const_val((ct.ty(), val)));
+        self.monomorphize(constant.literal)
+            .eval(self.cx.tcx(), ty::ParamEnv::reveal_all(), Some(constant.span))
+            .map_err(|err| {
+                match err {
+                    ErrorHandled::Reported(_) => {
+                        self.cx
+                            .tcx()
+                            .sess
+                            .emit_err(errors::ErroneousConstant { span: constant.span });
+                    }
+                    ErrorHandled::TooGeneric => {
+                        self.cx.tcx().sess.diagnostic().emit_bug(
+                            errors::PolymorphicConstantTooGeneric { span: constant.span },
+                        );
+                    }
                 }
-                err => span_bug!(
-                    constant.span,
-                    "encountered bad ConstKind after monomorphizing: {:?}",
-                    err
-                ),
-            },
-            mir::ConstantKind::Unevaluated(uv, _) => uv,
-            mir::ConstantKind::Val(val, _) => return Ok(val),
-        };
-
-        self.cx.tcx().const_eval_resolve(ty::ParamEnv::reveal_all(), uv, None).map_err(|err| {
-            match err {
-                ErrorHandled::Reported(_) => {
-                    self.cx.tcx().sess.emit_err(errors::ErroneousConstant { span: constant.span });
-                }
-                ErrorHandled::TooGeneric => {
-                    self.cx
-                        .tcx()
-                        .sess
-                        .diagnostic()
-                        .emit_bug(errors::PolymorphicConstantTooGeneric { span: constant.span });
-                }
-            }
-            err
-        })
+                err
+            })
     }
 
     /// This is a convenience helper for `simd_shuffle_indices`. It has the precondition
     /// that the given `constant` is an `ConstantKind::Unevaluated` and must be convertible to
     /// a `ValTree`. If you want a more general version of this, talk to `wg-const-eval` on zulip.
+    ///
+    /// Note that this function is cursed, since usually MIR consts should not be evaluated to valtrees!
     pub fn eval_unevaluated_mir_constant_to_valtree(
         &self,
         constant: &mir::Constant<'tcx>,
@@ -80,7 +68,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // `simd_shuffle` call without wrapping the constant argument in a `const {}` block, but
             // the user pass through arbitrary expressions.
             // FIXME(oli-obk): replace the magic const generic argument of `simd_shuffle` with a real
-            // const generic.
+            // const generic, and get rid of this entire function.
             other => span_bug!(constant.span, "{other:#?}"),
         };
         let uv = self.monomorphize(uv);

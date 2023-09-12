@@ -71,6 +71,8 @@ TrivialTypeTraversalAndLiftImpls! { ErrorHandled }
 
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
+/// `Ok(None)` indicates the constant was fine, but the valtree couldn't be constructed.
+/// This is needed in `thir::pattern::lower_inline_const`.
 pub type EvalToValTreeResult<'tcx> = Result<Option<ValTree<'tcx>>, ErrorHandled>;
 
 pub fn struct_error<'tcx>(

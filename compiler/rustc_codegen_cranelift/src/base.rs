@@ -723,11 +723,8 @@ fn codegen_stmt<'tcx>(
                 }
                 Rvalue::Repeat(ref operand, times) => {
                     let operand = codegen_operand(fx, operand);
-                    let times = fx
-                        .monomorphize(times)
-                        .eval(fx.tcx, ParamEnv::reveal_all())
-                        .try_to_bits(fx.tcx.data_layout.pointer_size)
-                        .unwrap();
+                    let times =
+                        fx.monomorphize(times).eval_target_usize(fx.tcx, ParamEnv::reveal_all());
                     if operand.layout().size.bytes() == 0 {
                         // Do nothing for ZST's
                     } else if fx.clif_type(operand.layout().ty) == Some(types::I8) {
