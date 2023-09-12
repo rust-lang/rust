@@ -155,7 +155,7 @@ target | std | notes
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android
 [`i686-unknown-freebsd`](platform-support/freebsd.md) | ✓ | 32-bit FreeBSD
-`i686-unknown-linux-musl` | ✓ | 32-bit Linux with MUSL
+[`i686-unknown-linux-musl`](platform-support/i686_unknown_linux_musl.md) | ✓ | 32-bit Linux with MUSL
 [`i686-unknown-uefi`](platform-support/unknown-uefi.md) | * | 32-bit UEFI
 [`mips-unknown-linux-musl`](platform-support/mips_unknown_linux_musl.md) | ✓ | MIPS Linux with MUSL
 [`mips64-unknown-linux-muslabi64`](platform-support/mips64-unknown-linux-muslabi64.md) | ✓ | MIPS64 Linux, n64 ABI, MUSL
