@@ -127,7 +127,7 @@ so Rustup may install the documentation for a similar tier 1 target instead.
 
 target | std | notes
 -------|:---:|-------
-`aarch64-apple-ios` | ✓ | ARM64 iOS
+[`aarch64-apple-ios`](platform-support/aarch64_apple_ios.md) | ✓ | ARM64 iOS
 [`aarch64-apple-ios-sim`](platform-support/aarch64-apple-ios-sim.md) | ✓ | Apple iOS Simulator on ARM64
 [`aarch64-fuchsia`](platform-support/fuchsia.md) | ✓ | Alias for `aarch64-unknown-fuchsia`
 [`aarch64-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ | ARM64 Fuchsia
