@@ -557,11 +557,102 @@ impl<'tcx, 'locals> Collector<'tcx, 'locals> {
         state: &State<FlatSet<Scalar>>,
         map: &Map,
     ) -> Option<Const<'tcx>> {
-        let FlatSet::Elem(Scalar::Int(value)) = state.get(place.as_ref(), &map) else {
-            return None;
-        };
         let ty = place.ty(self.local_decls, self.patch.tcx).ty;
-        Some(Const::Val(ConstValue::Scalar(value.into()), ty))
+        let place = map.find(place.as_ref())?;
+        if let FlatSet::Elem(Scalar::Int(value)) = state.get_idx(place, map) {
+            Some(Const::Val(ConstValue::Scalar(value.into()), ty))
+        } else {
+            let valtree = self.try_make_valtree(place, ty, state, map)?;
+            let constant = ty::Const::new_value(self.patch.tcx, valtree, ty);
+            Some(Const::Ty(constant))
+        }
+    }
+
+    fn try_make_valtree(
+        &self,
+        place: PlaceIndex,
+        ty: Ty<'tcx>,
+        state: &State<FlatSet<Scalar>>,
+        map: &Map,
+    ) -> Option<ty::ValTree<'tcx>> {
+        let tcx = self.patch.tcx;
+        match ty.kind() {
+            // ZSTs.
+            ty::FnDef(..) => Some(ty::ValTree::zst()),
+
+            // Scalars.
+            ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
+                if let FlatSet::Elem(Scalar::Int(value)) = state.get_idx(place, map) {
+                    Some(ty::ValTree::Leaf(value))
+                } else {
+                    None
+                }
+            }
+
+            // Unsupported for now.
+            ty::Array(_, _) => None,
+
+            ty::Tuple(elem_tys) => {
+                let branches = elem_tys
+                    .iter()
+                    .enumerate()
+                    .map(|(i, ty)| {
+                        let field = map.apply(place, TrackElem::Field(FieldIdx::from_usize(i)))?;
+                        self.try_make_valtree(field, ty, state, map)
+                    })
+                    .collect::<Option<Vec<_>>>()?;
+                Some(ty::ValTree::Branch(tcx.arena.alloc_from_iter(branches.into_iter())))
+            }
+
+            ty::Adt(def, args) => {
+                if def.is_union() {
+                    return None;
+                }
+
+                let (variant_idx, variant_def, variant_place) = if def.is_enum() {
+                    let discr = map.apply(place, TrackElem::Discriminant)?;
+                    let FlatSet::Elem(Scalar::Int(discr)) = state.get_idx(discr, map) else {
+                        return None;
+                    };
+                    let discr_bits = discr.assert_bits(discr.size());
+                    let (variant, _) =
+                        def.discriminants(tcx).find(|(_, var)| discr_bits == var.val)?;
+                    let variant_place = map.apply(place, TrackElem::Variant(variant))?;
+                    let variant_int = ty::ValTree::Leaf(variant.as_u32().into());
+                    (Some(variant_int), def.variant(variant), variant_place)
+                } else {
+                    (None, def.non_enum_variant(), place)
+                };
+
+                let branches = variant_def
+                    .fields
+                    .iter_enumerated()
+                    .map(|(i, field)| {
+                        let ty = field.ty(tcx, args);
+                        let field = map.apply(variant_place, TrackElem::Field(i))?;
+                        self.try_make_valtree(field, ty, state, map)
+                    })
+                    .collect::<Option<Vec<_>>>()?;
+                Some(ty::ValTree::Branch(
+                    tcx.arena.alloc_from_iter(variant_idx.into_iter().chain(branches)),
+                ))
+            }
+
+            // Do not attempt to support indirection in constants.
+            ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..) | ty::Str | ty::Slice(_) => None,
+
+            ty::Never
+            | ty::Foreign(..)
+            | ty::Alias(..)
+            | ty::Param(_)
+            | ty::Bound(..)
+            | ty::Placeholder(..)
+            | ty::Closure(..)
+            | ty::Coroutine(..)
+            | ty::Dynamic(..) => None,
+
+            ty::Error(_) | ty::Infer(..) | ty::CoroutineWitness(..) => bug!(),
+        }
     }
 }
 

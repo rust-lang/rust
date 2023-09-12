@@ -23,7 +23,8 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = E::V1(const 0_i32);
+-         _1 = E::V1(const 0_i32);
++         _1 = const E::V1(0);
           StorageLive(_2);
 -         _3 = discriminant(_1);
 -         switchInt(move _3) -> [0: bb3, 1: bb1, otherwise: bb2];

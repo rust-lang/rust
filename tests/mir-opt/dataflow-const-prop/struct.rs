@@ -20,4 +20,6 @@ fn main() {
 
     static STAT: &BigStruct = &BigStruct(S(1), 5, 7., S(13));
     let BigStruct(a, b, c, d) = *STAT;
+
+    let bs = BigStruct(a, b, c, d);
 }

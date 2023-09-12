@@ -17,7 +17,8 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = I32(const 0_i32);
+-         _1 = I32(const 0_i32);
++         _1 = const I32(0);
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
@@ -31,7 +32,7 @@
           StorageDead(_5);
           StorageDead(_4);
 -         _2 = I32(move _3);
-+         _2 = I32(const 0_i32);
++         _2 = const I32(0);
           StorageDead(_3);
           _0 = const ();
           StorageDead(_2);

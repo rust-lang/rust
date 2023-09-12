@@ -44,7 +44,8 @@
           StorageLive(_1);
           StorageLive(_2);
           _2 = const {ALLOC1: &E};
-          _1 = (*_2);
+-         _1 = (*_2);
++         _1 = const E::V1(0);
           StorageDead(_2);
           StorageLive(_3);
 -         _4 = discriminant(_1);
