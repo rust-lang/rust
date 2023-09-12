@@ -85,7 +85,7 @@ target | notes
 -------|-------
 `aarch64-apple-darwin` | ARM64 macOS (11.0+, Big Sur+)
 [`aarch64-pc-windows-msvc`](platform-support/windows_msvc.md) | ARM64 Windows MSVC
-`aarch64-unknown-linux-musl` | ARM64 Linux with MUSL
+[`aarch64-unknown-linux-musl`](platform-support/aarch64_unknown_linux_musl.md) | ARM64 Linux with MUSL
 [`arm-unknown-linux-gnueabi`](platform-support/arm_unknown_linux.md) | ARMv6 Linux (kernel 3.2, glibc 2.17)
 [`arm-unknown-linux-gnueabihf`](platform-support/arm_unknown_linux.md) | ARMv6 Linux, hardfloat (kernel 3.2, glibc 2.17)
 [`armv7-unknown-linux-gnueabihf`](platform-support/armv7_unknown_linux_gnueabihf.md) | ARMv7-A Linux, hardfloat (kernel 3.2, glibc 2.17)
