@@ -1,7 +1,7 @@
-// check-pass
+// revisions: rpass1
 //
-// The corresponding incremental compilation test can be found in
-// `tests/incremental/issue-114416-expect-unused-inside-impl-block.rs`
+// The corresponding ui test can be found in
+// `tests/ui/lint/rfc-2383-lint-reason/expect_unused_inside_impl_block.rs`
 
 #![feature(lint_reasons)]
 #![warn(unused)]

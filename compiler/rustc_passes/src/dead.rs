@@ -723,6 +723,12 @@ impl<'tcx> DeadVisitor<'tcx> {
         ShouldWarnAboutField::Yes(is_positional)
     }
 
+    // # Panics
+    // All `dead_codes` must have the same lint level, otherwise we will intentionally ICE.
+    // This is because we emit a multi-spanned lint using the lint level of the `dead_codes`'s
+    // first local def id.
+    // Prefer calling `Self.warn_dead_code` or `Self.warn_dead_code_grouped_by_lint_level`
+    // since those methods group by lint level before calling this method.
     fn warn_multiple_dead_codes(
         &self,
         dead_codes: &[LocalDefId],
@@ -734,6 +740,15 @@ impl<'tcx> DeadVisitor<'tcx> {
             return;
         };
         let tcx = self.tcx;
+
+        let first_hir_id = tcx.hir().local_def_id_to_hir_id(first_id);
+        let first_lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, first_hir_id).0;
+        assert!(dead_codes.iter().skip(1).all(|id| {
+            let hir_id = tcx.hir().local_def_id_to_hir_id(*id);
+            let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
+            level == first_lint_level
+        }));
+
         let names: Vec<_> =
             dead_codes.iter().map(|&def_id| tcx.item_name(def_id.to_def_id())).collect();
         let spans: Vec<_> = dead_codes
@@ -814,18 +829,9 @@ impl<'tcx> DeadVisitor<'tcx> {
             }
         };
 
-        // FIXME: Remove this before landing the PR.
-        //  Just keeping it around so that I remember how to get the expectation id.
-        // for id in &dead_codes[1..] {
-        //     let hir = self.tcx.hir().local_def_id_to_hir_id(*id);
-        //     let lint_level = self.tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir).0;
-        //     if let Some(expectation_id) = lint_level.get_expectation_id() {
-        //         self.tcx.sess.diagnostic().insert_fulfilled_expectation(expectation_id);
-        //     }
-        // }
         self.tcx.emit_spanned_lint(
             lint,
-            tcx.hir().local_def_id_to_hir_id(first_id),
+            first_hir_id,
             MultiSpan::from_spans(spans),
             diag,
         );
@@ -903,14 +909,14 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
         if let hir::ItemKind::Impl(impl_item) = tcx.hir().item(item).kind {
             let mut dead_items = Vec::new();
             for item in impl_item.items {
-                let did = item.id.owner_id.def_id;
-                if !visitor.is_live_code(did) {
+                let def_id = item.id.owner_id.def_id;
+                if !visitor.is_live_code(def_id) {
                     let name = tcx.item_name(def_id.to_def_id());
-                    let hir = tcx.hir().local_def_id_to_hir_id(did);
+                    let hir = tcx.hir().local_def_id_to_hir_id(def_id);
                     let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir).0;
 
                     dead_items.push(DeadVariant {
-                        def_id: did,
+                        def_id,
                         name,
                         level,
                     })
