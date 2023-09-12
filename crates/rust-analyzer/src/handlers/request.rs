@@ -4,6 +4,7 @@
 use std::{
     fs,
     io::Write as _,
+    path::PathBuf,
     process::{self, Stdio},
 };
 
@@ -1995,13 +1996,51 @@ fn run_rustfmt(
             cmd
         }
         RustfmtConfig::CustomCommand { command, args } => {
-            let mut cmd = process::Command::new(command);
+            let cmd = PathBuf::from(&command);
+            let mut components = cmd.components();
+
+            // to support rustc's suggested, default configuration
+            let mut cmd = match components.next() {
+                Some(std::path::Component::CurDir) => {
+                    let rest = components.as_path();
+
+                    let roots = snap
+                        .workspaces
+                        .iter()
+                        .flat_map(|ws| ws.workspace_definition_path())
+                        .collect::<Vec<&AbsPath>>();
+
+                    let abs: Option<AbsPathBuf> = roots.into_iter().find_map(|base| {
+                        let abs = base.join(rest);
+                        std::fs::metadata(&abs).ok().map(|_| abs)
+                    });
+
+                    let command = match abs {
+                        Some(cmd) => cmd,
+                        None => {
+                            tracing::error!(
+                                rustfmt = ?command,
+                                "Unable to make the format command an absolute path"
+                            );
+                            anyhow::bail!(
+                                "Unable to make the format command an absolute path: {}",
+                                command
+                            );
+                        }
+                    };
+
+                    process::Command::new(&command.as_os_str())
+                }
+                _ => process::Command::new(command),
+            };
 
             cmd.envs(snap.config.extra_env());
             cmd.args(args);
             cmd
         }
     };
+
+    tracing::debug!(?command, "created format command");
 
     // try to chdir to the file so we can respect `rustfmt.toml`
     // FIXME: use `rustfmt --config-path` once
