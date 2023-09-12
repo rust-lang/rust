@@ -9,7 +9,9 @@ struct Zst;
 #[derive(Copy, Clone)]
 struct Wrapper<T>(T);
 
-fn id<T>(x: T) -> T { x }
+fn id<T>(x: T) -> T {
+    x
+}
 
 fn test_abi_compat<T: Clone, U: Clone>(t: T, u: U) {
     fn id<T>(x: T) -> T {
