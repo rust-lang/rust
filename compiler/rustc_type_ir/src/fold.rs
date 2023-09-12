@@ -51,6 +51,12 @@ use crate::{visit::TypeVisitable, Interner};
 ///
 /// To implement this conveniently, use the derive macro located in
 /// `rustc_macros`.
+///
+/// This trait is a sub-trait of `TypeVisitable`. This is because many
+/// `TypeFolder` instances use the methods in `TypeVisitableExt` while folding,
+/// which means in practice almost every foldable type needs to also be
+/// visitable. (However, there are some types that are visitable without being
+/// foldable.)
 pub trait TypeFoldable<I: Interner>: TypeVisitable<I> {
     /// The entry point for folding. To fold a value `t` with a folder `f`
     /// call: `t.try_fold_with(f)`.
