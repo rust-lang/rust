@@ -437,7 +437,7 @@ profiler = true
 ```
 
 This also means that they typically don't run in PR CI jobs,
-though they do run in the full set of CI jobs used for merging.
+though they do run as part of the full set of CI jobs used for merging.
 
 The tests in [`tests/run-coverage-rustdoc`] also run instrumented doctests and
 include them in the coverage report. This avoids having to build rustdoc when
