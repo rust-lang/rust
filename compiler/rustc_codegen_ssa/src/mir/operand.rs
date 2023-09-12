@@ -116,7 +116,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let b_llval = bx.const_usize((end - start) as u64);
                 OperandValue::Pair(a_llval, b_llval)
             }
-            ConstValue::ByRef { alloc_id, offset } => {
+            ConstValue::Indirect { alloc_id, offset } => {
                 let alloc = bx.tcx().global_alloc(alloc_id).unwrap_memory();
                 // FIXME: should we attempt to avoid building the same AllocId multiple times?
                 return Self::from_const_alloc(bx, layout, alloc, offset);

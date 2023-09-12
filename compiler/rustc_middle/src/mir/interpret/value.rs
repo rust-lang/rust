@@ -30,19 +30,21 @@ pub struct ConstAlloc<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable, Lift)]
 pub enum ConstValue<'tcx> {
-    /// Used only for types with `layout::abi::Scalar` ABI.
+    /// Used for types with `layout::abi::Scalar` ABI.
     ///
     /// Not using the enum `Value` to encode that this must not be `Uninit`.
     Scalar(Scalar),
 
-    /// Only used for ZSTs.
+    /// Only for ZSTs.
     ZeroSized,
 
-    /// Used only for `&[u8]` and `&str`
+    /// Used for `&[u8]` and `&str`.
+    ///
+    /// This is worth the optimization since Rust has literals of that type.
     Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
 
-    /// A value not represented/representable by `Scalar` or `Slice`
-    ByRef {
+    /// A value not representable by the other variants; needs to be stored in-memory.
+    Indirect {
         /// The backing memory of the value. May contain more memory than needed for just the value
         /// if this points into some other larger ConstValue.
         ///
@@ -62,7 +64,7 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar<AllocId>> {
         match *self {
-            ConstValue::ByRef { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized => None,
+            ConstValue::Indirect { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized => None,
             ConstValue::Scalar(val) => Some(val),
         }
     }

@@ -460,7 +460,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 ConstValue::ZeroSized => "<ZST>".to_string(),
                 ConstValue::Scalar(s) => format!("Scalar({s:?})"),
                 ConstValue::Slice { .. } => "Slice(..)".to_string(),
-                ConstValue::ByRef { .. } => "ByRef(..)".to_string(),
+                ConstValue::Indirect { .. } => "ByRef(..)".to_string(),
             };
 
             let fmt_valtree = |valtree: &ty::ValTree<'tcx>| match valtree {
@@ -709,7 +709,11 @@ pub fn write_allocations<'tcx>(
                 // `u8`/`str` slices, shouldn't contain pointers that we want to print.
                 Either::Right(std::iter::empty())
             }
-            ConstValue::ByRef { alloc_id, .. } => Either::Left(std::iter::once(alloc_id)),
+            ConstValue::Indirect { alloc_id, .. } => {
+                // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.
+                // Really we'd want `pretty_print_const_value` to decide which allocations to print, instead of having a separate visitor.
+                Either::Left(std::iter::once(alloc_id))
+            }
         }
     }
     struct CollectAllocIds(BTreeSet<AllocId>);

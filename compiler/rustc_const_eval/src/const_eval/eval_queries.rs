@@ -112,13 +112,13 @@ pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: &OpTy<'tcx>,
 ) -> ConstValue<'tcx> {
+    // Handle ZST consistently and early.
+    if op.layout.is_zst() {
+        return ConstValue::ZeroSized;
+    }
+
     // We do not have value optimizations for everything.
     // Only scalars and slices, since they are very common.
-    // Note that further down we turn scalars of uninitialized bits back to `ByRef`. These can result
-    // from scalar unions that are initialized with one of their zero sized variants. We could
-    // instead allow `ConstValue::Scalar` to store `ScalarMaybeUninit`, but that would affect all
-    // the usual cases of extracting e.g. a `usize`, without there being a real use case for the
-    // `Undef` situation.
     let try_as_immediate = match op.layout.abi {
         Abi::Scalar(abi::Scalar::Initialized { .. }) => true,
         Abi::ScalarPair(..) => match op.layout.ty.kind() {
@@ -134,7 +134,7 @@ pub(super) fn op_to_const<'tcx>(
     let immediate = if try_as_immediate {
         Right(ecx.read_immediate(op).expect("normalization works on validated constants"))
     } else {
-        // It is guaranteed that any non-slice scalar pair is actually ByRef here.
+        // It is guaranteed that any non-slice scalar pair is actually `Indirect` here.
         // When we come back from raw const eval, we are always by-ref. The only way our op here is
         // by-val is if we are in destructure_mir_constant, i.e., if this is (a field of) something that we
         // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
@@ -144,28 +144,15 @@ pub(super) fn op_to_const<'tcx>(
 
     debug!(?immediate);
 
-    // We know `offset` is relative to the allocation, so we can use `into_parts`.
-    let to_const_value = |mplace: &MPlaceTy<'_>| {
-        debug!("to_const_value(mplace: {:?})", mplace);
-        match mplace.ptr().into_parts() {
-            (Some(alloc_id), offset) => ConstValue::ByRef { alloc_id, offset },
-            (None, offset) => {
-                assert!(mplace.layout.is_zst());
-                assert_eq!(
-                    offset.bytes() % mplace.layout.align.abi.bytes(),
-                    0,
-                    "this MPlaceTy must come from a validated constant, thus we can assume the \
-                alignment is correct",
-                );
-                ConstValue::ZeroSized
-            }
-        }
-    };
     match immediate {
-        Left(ref mplace) => to_const_value(mplace),
+        Left(ref mplace) => {
+            // We know `offset` is relative to the allocation, so we can use `into_parts`.
+            let (alloc_id, offset) = mplace.ptr().into_parts();
+            let alloc_id = alloc_id.expect("cannot have `fake` place fot non-ZST type");
+            ConstValue::Indirect { alloc_id, offset }
+        }
         // see comment on `let try_as_immediate` above
         Right(imm) => match *imm {
-            _ if imm.layout.is_zst() => ConstValue::ZeroSized,
             Immediate::Scalar(x) => ConstValue::Scalar(x),
             Immediate::ScalarPair(a, b) => {
                 debug!("ScalarPair(a: {:?}, b: {:?})", a, b);
@@ -186,7 +173,7 @@ pub(super) fn op_to_const<'tcx>(
                 let len: usize = len.try_into().unwrap();
                 ConstValue::Slice { data, start, end: start + len }
             }
-            Immediate::Uninit => to_const_value(&op.assert_mem_place()),
+            Immediate::Uninit => bug!("`Uninit` is not a valid value for {}", op.layout.ty),
         },
     }
 }

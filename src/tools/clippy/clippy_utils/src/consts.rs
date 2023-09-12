@@ -684,7 +684,7 @@ pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::ConstantKind<'t
             },
             _ => None,
         },
-        mir::ConstantKind::Val(ConstValue::ByRef { alloc_id, offset: _ }, _) => {
+        mir::ConstantKind::Val(ConstValue::Indirect { alloc_id, offset: _ }, _) => {
             let alloc = lcx.tcx.global_alloc(alloc_id).unwrap_memory();
             match result.ty().kind() {
                 ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),
