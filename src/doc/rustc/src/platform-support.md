@@ -36,7 +36,7 @@ target | notes
 `i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+) [^windows-support]
 [`i686-pc-windows-msvc`](platform-support/windows_msvc.md) | 32-bit MSVC (Windows 7+) [^windows-support]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+)
-`x86_64-apple-darwin` | 64-bit macOS (10.7+, Lion+)
+[`x86_64-apple-darwin`](platform-support/x86_64_apple_darwin.md) | 64-bit macOS (10.7+, Lion+)
 [`x86_64-pc-windows-gnu`](platform-support/x86_64_pc_windows_gnu.md) | 64-bit MinGW (Windows 7+) [^windows-support]
 [`x86_64-pc-windows-msvc`](platform-support/windows_msvc.md) | 64-bit MSVC (Windows 7+) [^windows-support]
 [`x86_64-unknown-linux-gnu`](platform-support/x86_64_unknown_linux_gnu.md) | 64-bit Linux (kernel 3.2+, glibc 2.17+)
