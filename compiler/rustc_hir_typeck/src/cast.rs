@@ -321,8 +321,13 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 .emit();
             }
             CastError::CastToBool => {
-                let mut err =
-                    struct_span_err!(fcx.tcx.sess, self.span, E0054, "cannot cast as `bool`");
+                let mut err = struct_span_err!(
+                    fcx.tcx.sess,
+                    self.span,
+                    E0054,
+                    "cannot cast `{}` as `bool`",
+                    self.expr_ty
+                );
 
                 if self.expr_ty.is_numeric() {
                     match fcx.tcx.sess.source_map().span_to_snippet(self.expr_span) {
