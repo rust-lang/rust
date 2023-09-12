@@ -343,6 +343,12 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
     pub split_dwarf_kind: rustc_session::config::SplitDwarfKind,
 
+    /// All commandline args used to invoke the compiler, with @file args fully expanded.
+    /// This will only be used within debug info, e.g. in the pdb file on windows
+    /// This is mainly useful for other tools that reads that debuginfo to figure out
+    /// how to call the compiler with the same arguments.
+    pub expanded_args: Vec<String>,
+
     /// Handler to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
     /// LLVM optimizations for which we want to print remarks.
@@ -1108,6 +1114,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
         cgu_reuse_tracker: sess.cgu_reuse_tracker.clone(),
         coordinator_send,
+        expanded_args: tcx.sess.expanded_args.clone(),
         diag_emitter: shared_emitter.clone(),
         output_filenames: tcx.output_filenames(()).clone(),
         regular_module_config: regular_config,

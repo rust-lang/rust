@@ -6,13 +6,7 @@ use rustc_index::IndexVec;
 use rustc_infer::traits::Reveal;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{
-    traversal, BasicBlock, BinOp, Body, BorrowKind, CastKind, CopyNonOverlapping, Local, Location,
-    MirPass, MirPhase, NonDivergingIntrinsic, NullOp, Operand, Place, PlaceElem, PlaceRef,
-    ProjectionElem, RetagKind, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind,
-    Terminator, TerminatorKind, UnOp, UnwindAction, UnwindTerminateReason, VarDebugInfo,
-    VarDebugInfoContents, START_BLOCK,
-};
+use rustc_middle::mir::*;
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
@@ -757,37 +751,37 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     }
 
     fn visit_var_debug_info(&mut self, debuginfo: &VarDebugInfo<'tcx>) {
-        let check_place = |this: &mut Self, place: Place<'_>| {
-            if place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
-                this.fail(
+        if let Some(box VarDebugInfoFragment { ty, ref projection }) = debuginfo.composite {
+            if ty.is_union() || ty.is_enum() {
+                self.fail(
                     START_BLOCK.start_location(),
-                    format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
+                    format!("invalid type {ty:?} in debuginfo for {:?}", debuginfo.name),
                 );
             }
-        };
+            if projection.is_empty() {
+                self.fail(
+                    START_BLOCK.start_location(),
+                    format!("invalid empty projection in debuginfo for {:?}", debuginfo.name),
+                );
+            }
+            if projection.iter().any(|p| !matches!(p, PlaceElem::Field(..))) {
+                self.fail(
+                    START_BLOCK.start_location(),
+                    format!(
+                        "illegal projection {:?} in debuginfo for {:?}",
+                        projection, debuginfo.name
+                    ),
+                );
+            }
+        }
         match debuginfo.value {
             VarDebugInfoContents::Const(_) => {}
             VarDebugInfoContents::Place(place) => {
-                check_place(self, place);
-            }
-            VarDebugInfoContents::Composite { ty, ref fragments } => {
-                for f in fragments {
-                    check_place(self, f.contents);
-                    if ty.is_union() || ty.is_enum() {
-                        self.fail(
-                            START_BLOCK.start_location(),
-                            format!("invalid type {ty:?} for composite debuginfo"),
-                        );
-                    }
-                    if f.projection.iter().any(|p| !matches!(p, PlaceElem::Field(..))) {
-                        self.fail(
-                            START_BLOCK.start_location(),
-                            format!(
-                                "illegal projection {:?} in debuginfo for {:?}",
-                                f.projection, debuginfo.name
-                            ),
-                        );
-                    }
+                if place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
+                    self.fail(
+                        START_BLOCK.start_location(),
+                        format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
+                    );
                 }
             }
         }

@@ -71,6 +71,7 @@ pub fn create_session(
     >,
     descriptions: Registry,
     ice_file: Option<PathBuf>,
+    expanded_args: Vec<String>,
 ) -> (Session, Box<dyn CodegenBackend>) {
     let codegen_backend = if let Some(make_codegen_backend) = make_codegen_backend {
         make_codegen_backend(&sopts)
@@ -113,6 +114,7 @@ pub fn create_session(
         target_override,
         rustc_version_str().unwrap_or("unknown"),
         ice_file,
+        expanded_args,
     );
 
     codegen_backend.init(&sess);

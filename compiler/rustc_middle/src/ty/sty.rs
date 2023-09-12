@@ -1577,6 +1577,20 @@ pub struct ConstVid<'tcx> {
     pub phantom: PhantomData<&'tcx ()>,
 }
 
+/// An **effect** **v**ariable **ID**.
+///
+/// Handling effect infer variables happens separately from const infer variables
+/// because we do not want to reuse any of the const infer machinery. If we try to
+/// relate an effect variable with a normal one, we would ICE, which can catch bugs
+/// where we are not correctly using the effect var for an effect param. Fallback
+/// is also implemented on top of having separate effect and normal const variables.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(TyEncodable, TyDecodable)]
+pub struct EffectVid<'tcx> {
+    pub index: u32,
+    pub phantom: PhantomData<&'tcx ()>,
+}
+
 rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
     #[derive(HashStable)]
@@ -2735,6 +2749,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             // Extern types have metadata = ().
             | ty::Foreign(..)
+            // `dyn*` has no metadata
+            | ty::Dynamic(_, _, DynKind::DynStar)
             // If returned by `struct_tail_without_normalization` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
@@ -2743,7 +2759,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Tuple(..) => (tcx.types.unit, false),
 
             ty::Str | ty::Slice(_) => (tcx.types.usize, false),
-            ty::Dynamic(..) => {
+            ty::Dynamic(_, _, DynKind::Dyn) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
                 (tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]), false)
             },
@@ -2857,7 +2873,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Uint(..)
             | ty::Float(..) => true,
 
-            // The voldemort ZSTs are fine.
+            // ZST which can't be named are fine.
             ty::FnDef(..) => true,
 
             ty::Array(element_ty, _len) => element_ty.is_trivially_pure_clone_copy(),

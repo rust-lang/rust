@@ -8,6 +8,11 @@ LL |     foo(panic!())
    |     |   this tail expression is of type `()`
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/feature-gate-never_type_fallback.rs:7:1
+   |
+LL | trait T {}
+   | ^^^^^^^
 note: required by a bound in `foo`
   --> $DIR/feature-gate-never_type_fallback.rs:13:16
    |

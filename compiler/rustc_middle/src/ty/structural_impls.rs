@@ -138,6 +138,12 @@ impl<'tcx> fmt::Debug for ty::ConstVid<'tcx> {
     }
 }
 
+impl fmt::Debug for ty::EffectVid<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "?{}e", self.index)
+    }
+}
+
 impl<'tcx> fmt::Debug for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         with_no_trimmed_paths!(fmt::Display::fmt(self, f))
@@ -154,7 +160,7 @@ impl<'tcx> ty::DebugWithInfcx<TyCtxt<'tcx>> for Ty<'tcx> {
 }
 impl<'tcx> fmt::Debug for Ty<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths!(fmt::Display::fmt(self, f))
+        with_no_trimmed_paths!(fmt::Debug::fmt(self.kind(), f))
     }
 }
 
@@ -253,6 +259,7 @@ impl<'tcx> fmt::Debug for ty::InferConst<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             InferConst::Var(var) => write!(f, "{var:?}"),
+            InferConst::EffectVar(var) => write!(f, "{var:?}"),
             InferConst::Fresh(var) => write!(f, "Fresh({var:?})"),
         }
     }
@@ -267,6 +274,7 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::InferConst<'tcx> {
             None => write!(f, "{:?}", this.data),
             Some(universe) => match *this.data {
                 Var(vid) => write!(f, "?{}_{}c", vid.index, universe.index()),
+                EffectVar(vid) => write!(f, "?{}_{}e", vid.index, universe.index()),
                 Fresh(_) => {
                     unreachable!()
                 }

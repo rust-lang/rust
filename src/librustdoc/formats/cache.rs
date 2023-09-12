@@ -457,6 +457,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::StructItem(..)
             | clean::UnionItem(..)
             | clean::VariantItem(..)
+            | clean::TypeAliasItem(..)
             | clean::ImplItem(..) => {
                 self.cache.parent_stack.push(ParentStackItem::new(&item));
                 (self.fold_item_recur(item), true)

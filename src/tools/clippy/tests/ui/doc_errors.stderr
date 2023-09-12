@@ -38,7 +38,7 @@ LL |     pub async fn async_pub_method_missing_errors_header() -> Result<(), ()>
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:92:5
+  --> $DIR/doc_errors.rs:108:5
    |
 LL |     fn trait_method_missing_errors_header() -> Result<(), ()>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

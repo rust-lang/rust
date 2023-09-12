@@ -2131,8 +2131,12 @@ extern "C" {
         RelaxELFRelocations: bool,
         UseInitArray: bool,
         SplitDwarfFile: *const c_char,
+        DebugInfoCompression: *const c_char,
         ForceEmulatedTls: bool,
+        ArgsCstrBuff: *const c_char,
+        ArgsCstrBuffLen: usize,
     ) -> Option<&'static mut TargetMachine>;
+
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
     pub fn LLVMRustAddLibraryInfo<'a>(
         PM: &PassManager<'a>,
@@ -2319,6 +2323,12 @@ extern "C" {
         len: usize,
         out_len: &mut usize,
     ) -> *const u8;
+    pub fn LLVMRustGetSliceFromObjectDataByName(
+        data: *const u8,
+        len: usize,
+        name: *const u8,
+        out_len: &mut usize,
+    ) -> *const u8;
 
     pub fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
     pub fn LLVMRustLinkerAdd(
@@ -2356,6 +2366,10 @@ extern "C" {
     pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
 
     pub fn LLVMRustIsBitcode(ptr: *const u8, len: usize) -> bool;
+
+    pub fn LLVMRustLLVMHasZlibCompressionForDebugSymbols() -> bool;
+
+    pub fn LLVMRustLLVMHasZstdCompressionForDebugSymbols() -> bool;
 
     pub fn LLVMRustGetSymbols(
         buf_ptr: *const u8,

@@ -16,10 +16,6 @@
 
 use self::TargetLint::*;
 
-use crate::errors::{
-    CheckNameDeprecated, CheckNameRemoved, CheckNameRenamed, CheckNameUnknown,
-    CheckNameUnknownTool, RequestedLevel, UnsupportedGroup,
-};
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
@@ -328,58 +324,6 @@ impl LintStore {
                 };
             },
         }
-    }
-
-    /// Checks the validity of lint names derived from the command line.
-    pub fn check_lint_name_cmdline(
-        &self,
-        sess: &Session,
-        lint_name: &str,
-        level: Level,
-        registered_tools: &RegisteredTools,
-    ) {
-        let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name);
-        if lint_name_only == crate::WARNINGS.name_lower() && matches!(level, Level::ForceWarn(_)) {
-            sess.emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
-            return;
-        }
-        match self.check_lint_name(lint_name_only, tool_name, registered_tools) {
-            CheckLintNameResult::Renamed(replace) => {
-                sess.emit_warning(CheckNameRenamed {
-                    lint_name,
-                    replace: &replace,
-                    sub: RequestedLevel { level, lint_name },
-                });
-            }
-            CheckLintNameResult::Removed(reason) => {
-                sess.emit_warning(CheckNameRemoved {
-                    lint_name,
-                    reason: &reason,
-                    sub: RequestedLevel { level, lint_name },
-                });
-            }
-            CheckLintNameResult::NoLint(suggestion) => {
-                sess.emit_err(CheckNameUnknown {
-                    lint_name,
-                    suggestion,
-                    sub: RequestedLevel { level, lint_name },
-                });
-            }
-            CheckLintNameResult::Tool(Err((Some(_), new_name))) => {
-                sess.emit_warning(CheckNameDeprecated {
-                    lint_name,
-                    new_name: &new_name,
-                    sub: RequestedLevel { level, lint_name },
-                });
-            }
-            CheckLintNameResult::NoTool => {
-                sess.emit_err(CheckNameUnknownTool {
-                    tool_name: tool_name.unwrap(),
-                    sub: RequestedLevel { level, lint_name },
-                });
-            }
-            _ => {}
-        };
     }
 
     /// True if this symbol represents a lint group name.
@@ -1400,16 +1344,5 @@ impl<'tcx> LayoutOfHelpers<'tcx> for LateContext<'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
         err
-    }
-}
-
-pub fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {
-    match lint_name.split_once("::") {
-        Some((tool_name, lint_name)) => {
-            let tool_name = Symbol::intern(tool_name);
-
-            (Some(tool_name), lint_name)
-        }
-        None => (None, lint_name),
     }
 }

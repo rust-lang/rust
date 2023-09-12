@@ -55,7 +55,7 @@ where
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
         let key_hash = sharded::make_hash(key);
-        let lock = self.cache.get_shard_by_hash(key_hash).lock();
+        let lock = self.cache.lock_shard_by_hash(key_hash);
         let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
         if let Some((_, value)) = result { Some(*value) } else { None }
@@ -63,7 +63,7 @@ where
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        let mut lock = self.cache.get_shard_by_value(&key).lock();
+        let mut lock = self.cache.lock_shard_by_value(&key);
         // We may be overwriting another value. This is all right, since the dep-graph
         // will check that the fingerprint matches.
         lock.insert(key, (value, index));
@@ -148,13 +148,13 @@ where
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
-        let lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
+        let lock = self.cache.lock_shard_by_hash(key.index() as u64);
         if let Some(Some(value)) = lock.get(*key) { Some(*value) } else { None }
     }
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        let mut lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
+        let mut lock = self.cache.lock_shard_by_hash(key.index() as u64);
         lock.insert(key, (value, index));
     }
 

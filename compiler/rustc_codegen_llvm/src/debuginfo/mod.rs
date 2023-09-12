@@ -263,7 +263,7 @@ impl CodegenCx<'_, '_> {
     pub fn lookup_debug_loc(&self, pos: BytePos) -> DebugLoc {
         let (file, line, col) = match self.sess().source_map().lookup_line(pos) {
             Ok(SourceFileAndLine { sf: file, line }) => {
-                let line_pos = file.lines(|lines| lines[line]);
+                let line_pos = file.lines()[line];
 
                 // Use 1-based indexing.
                 let line = (line + 1) as u32;
@@ -292,7 +292,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: &'ll Value,
         mir: &mir::Body<'tcx>,
-    ) -> Option<FunctionDebugContext<&'ll DIScope, &'ll DILocation>> {
+    ) -> Option<FunctionDebugContext<'tcx, &'ll DIScope, &'ll DILocation>> {
         if self.sess().opts.debuginfo == DebugInfo::None {
             return None;
         }
@@ -304,8 +304,10 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             file_start_pos: BytePos(0),
             file_end_pos: BytePos(0),
         };
-        let mut fn_debug_context =
-            FunctionDebugContext { scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes) };
+        let mut fn_debug_context = FunctionDebugContext {
+            scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes),
+            inlined_function_scopes: Default::default(),
+        };
 
         // Fill in all the scopes, with the information from the MIR body.
         compute_mir_scopes(self, instance, mir, &mut fn_debug_context);

@@ -1,0 +1,15 @@
+- // MIR for `invalid_char` before DataflowConstProp
++ // MIR for `invalid_char` after DataflowConstProp
+  
+  fn invalid_char() -> char {
+      let mut _0: char;
+      scope 1 {
+      }
+  
+      bb0: {
+-         _0 = const _ as char (Transmute);
++         _0 = const {transmute(0x7fffffff): char};
+          return;
+      }
+  }
+  

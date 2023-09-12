@@ -2,9 +2,9 @@
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
-use crate::passes::source_span_for_markdown_range;
 
 use pulldown_cmark::{BrokenLink, Event, LinkType, Parser, Tag};
+use rustc_resolve::rustdoc::source_span_for_markdown_range;
 
 use std::iter::Peekable;
 use std::ops::Range;
@@ -20,7 +20,8 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
     let dox = item.doc_value();
     if !dox.is_empty() {
         let report_diag = |msg: String, range: &Range<usize>, is_open_tag: bool| {
-            let sp = match source_span_for_markdown_range(tcx, &dox, range, &item.attrs) {
+            let sp = match source_span_for_markdown_range(tcx, &dox, range, &item.attrs.doc_strings)
+            {
                 Some(sp) => sp,
                 None => item.attr_span(tcx),
             };
@@ -60,7 +61,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                             tcx,
                             &dox,
                             &(generics_start..generics_end),
-                            &item.attrs,
+                            &item.attrs.doc_strings,
                         ) {
                             Some(sp) => sp,
                             None => item.attr_span(tcx),

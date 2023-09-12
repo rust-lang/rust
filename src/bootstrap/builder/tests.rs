@@ -136,9 +136,9 @@ fn test_exclude_kind() {
     let mut config = configure("test", &["A"], &["A"]);
     // Ensure our test is valid, and `test::Rustc` would be run without the exclude.
     assert!(run_build(&[], config.clone()).contains::<test::CrateLibrustc>());
-    // Ensure tests for rustc are skipped.
+    // Ensure tests for rustc are not skipped.
     config.skip = vec![path.clone()];
-    assert!(!run_build(&[], config.clone()).contains::<test::CrateLibrustc>());
+    assert!(run_build(&[], config.clone()).contains::<test::CrateLibrustc>());
     // Ensure builds for rustc are not skipped.
     assert!(run_build(&[], config).contains::<compile::Rustc>());
 }

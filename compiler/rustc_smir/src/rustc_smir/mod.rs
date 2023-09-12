@@ -42,6 +42,10 @@ impl<'tcx> Context for Tables<'tcx> {
         self.tcx.def_path_str(self[def_id])
     }
 
+    fn span_of_an_item(&mut self, def_id: stable_mir::DefId) -> stable_mir::ty::Span {
+        self.tcx.def_span(self[def_id]).stable(self)
+    }
+
     fn all_local_items(&mut self) -> stable_mir::CrateItems {
         self.tcx.mir_keys(()).iter().map(|item| self.crate_item(item.to_def_id())).collect()
     }
@@ -78,9 +82,9 @@ impl<'tcx> Context for Tables<'tcx> {
         impl_trait.stable(self)
     }
 
-    fn mir_body(&mut self, item: &stable_mir::CrateItem) -> stable_mir::mir::Body {
-        let def_id = self[item.0];
-        let mir = self.tcx.optimized_mir(def_id);
+    fn mir_body(&mut self, item: stable_mir::DefId) -> stable_mir::mir::Body {
+        let def_id = self[item];
+        let mir = self.tcx.instance_mir(ty::InstanceDef::Item(def_id));
         stable_mir::mir::Body {
             blocks: mir
                 .basic_blocks
@@ -103,8 +107,13 @@ impl<'tcx> Context for Tables<'tcx> {
     }
 
     fn ty_kind(&mut self, ty: crate::stable_mir::ty::Ty) -> TyKind {
-        let ty = self.types[ty.0];
-        ty.stable(self)
+        self.types[ty.0].clone().stable(self)
+    }
+
+    fn mk_ty(&mut self, kind: TyKind) -> stable_mir::ty::Ty {
+        let n = self.types.len();
+        self.types.push(MaybeStable::Stable(kind));
+        stable_mir::ty::Ty(n)
     }
 
     fn generics_of(&mut self, def_id: stable_mir::DefId) -> stable_mir::ty::Generics {
@@ -128,20 +137,47 @@ impl<'tcx> Context for Tables<'tcx> {
     }
 }
 
+#[derive(Clone)]
+pub enum MaybeStable<S, R> {
+    Stable(S),
+    Rustc(R),
+}
+
+impl<'tcx, S, R> MaybeStable<S, R> {
+    fn stable(self, tables: &mut Tables<'tcx>) -> S
+    where
+        R: Stable<'tcx, T = S>,
+    {
+        match self {
+            MaybeStable::Stable(s) => s,
+            MaybeStable::Rustc(r) => r.stable(tables),
+        }
+    }
+}
+
+impl<S, R: PartialEq> PartialEq<R> for MaybeStable<S, R> {
+    fn eq(&self, other: &R) -> bool {
+        match self {
+            MaybeStable::Stable(_) => false,
+            MaybeStable::Rustc(r) => r == other,
+        }
+    }
+}
+
 pub struct Tables<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub def_ids: Vec<DefId>,
     pub alloc_ids: Vec<AllocId>,
-    pub types: Vec<Ty<'tcx>>,
+    pub types: Vec<MaybeStable<stable_mir::ty::TyKind, Ty<'tcx>>>,
 }
 
 impl<'tcx> Tables<'tcx> {
     fn intern_ty(&mut self, ty: Ty<'tcx>) -> stable_mir::ty::Ty {
-        if let Some(id) = self.types.iter().position(|&t| t == ty) {
+        if let Some(id) = self.types.iter().position(|t| *t == ty) {
             return stable_mir::ty::Ty(id);
         }
         let id = self.types.len();
-        self.types.push(ty);
+        self.types.push(MaybeStable::Rustc(ty));
         stable_mir::ty::Ty(id)
     }
 }
@@ -1097,14 +1133,13 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                         tables,
                     ))
                 }
-                ty::ParamCt(param) => stable_mir::ty::ConstantKind::ParamCt(opaque(&param)),
+                ty::ParamCt(param) => stable_mir::ty::ConstantKind::Param(param.stable(tables)),
                 ty::ErrorCt(_) => unreachable!(),
                 ty::InferCt(_) => unreachable!(),
                 ty::BoundCt(_, _) => unimplemented!(),
                 ty::PlaceholderCt(_) => unimplemented!(),
                 ty::Unevaluated(uv) => {
                     stable_mir::ty::ConstantKind::Unevaluated(stable_mir::ty::UnevaluatedConst {
-                        ty: tables.intern_ty(self.ty()),
                         def: tables.const_def(uv.def),
                         args: uv.args.stable(tables),
                         promoted: None,
@@ -1112,7 +1147,16 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                 }
                 ty::ExprCt(_) => unimplemented!(),
             },
+            ty: tables.intern_ty(self.ty()),
         }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ParamConst {
+    type T = stable_mir::ty::ParamConst;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::ParamConst;
+        ParamConst { index: self.index, name: self.name.to_string() }
     }
 }
 
@@ -1184,22 +1228,27 @@ impl<'tcx> Stable<'tcx> for ty::TraitDef {
 }
 
 impl<'tcx> Stable<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
-    type T = stable_mir::ty::ConstantKind;
+    type T = stable_mir::ty::Const;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         match *self {
-            ConstantKind::Ty(c) => c.stable(tables).literal,
-            ConstantKind::Unevaluated(unev_const, ty) => {
-                stable_mir::ty::ConstantKind::Unevaluated(stable_mir::ty::UnevaluatedConst {
-                    ty: tables.intern_ty(ty),
-                    def: tables.const_def(unev_const.def),
-                    args: unev_const.args.stable(tables),
-                    promoted: unev_const.promoted.map(|u| u.as_u32()),
-                })
-            }
-            ConstantKind::Val(val, ty) => {
-                stable_mir::ty::ConstantKind::Allocated(alloc::new_allocation(ty, val, tables))
-            }
+            ConstantKind::Ty(c) => c.stable(tables),
+            ConstantKind::Unevaluated(unev_const, ty) => stable_mir::ty::Const {
+                literal: stable_mir::ty::ConstantKind::Unevaluated(
+                    stable_mir::ty::UnevaluatedConst {
+                        def: tables.const_def(unev_const.def),
+                        args: unev_const.args.stable(tables),
+                        promoted: unev_const.promoted.map(|u| u.as_u32()),
+                    },
+                ),
+                ty: tables.intern_ty(ty),
+            },
+            ConstantKind::Val(val, ty) => stable_mir::ty::Const {
+                literal: stable_mir::ty::ConstantKind::Allocated(alloc::new_allocation(
+                    ty, val, tables,
+                )),
+                ty: tables.intern_ty(ty),
+            },
         }
     }
 }
@@ -1248,7 +1297,7 @@ impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDefKind {
             ty::GenericParamDefKind::Type { has_default, synthetic } => {
                 GenericParamDefKind::Type { has_default: *has_default, synthetic: *synthetic }
             }
-            ty::GenericParamDefKind::Const { has_default } => {
+            ty::GenericParamDefKind::Const { has_default, is_host_effect: _ } => {
                 GenericParamDefKind::Const { has_default: *has_default }
             }
         }

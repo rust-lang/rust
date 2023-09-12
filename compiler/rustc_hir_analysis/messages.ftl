@@ -222,6 +222,12 @@ hir_analysis_return_type_notation_on_non_rpitit =
     .note = function returns `{$ty}`, which is not compatible with associated type return bounds
     .label = this function must be `async` or return `impl Trait`
 
+hir_analysis_rpitit_refined = impl trait in impl method signature does not match trait method signature
+    .suggestion = replace the return type so that it matches the trait
+    .label = return type from trait method defined here
+    .unmatched_bound_label = this bound is stronger than that defined on the trait
+    .note = add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+
 hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
     .note = replace `Self` with a different type

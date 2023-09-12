@@ -3,6 +3,8 @@ error: expected item, found reserved keyword `virtual`
    |
 LL | virtual struct SuperStruct {
    | ^^^^^^^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
 
 error: aborting due to previous error
 

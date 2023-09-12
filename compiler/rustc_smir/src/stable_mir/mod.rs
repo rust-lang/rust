@@ -20,6 +20,7 @@ use self::ty::{
 };
 use crate::rustc_smir::Tables;
 
+pub mod fold;
 pub mod mir;
 pub mod ty;
 pub mod visitor;
@@ -86,7 +87,11 @@ pub struct CrateItem(pub(crate) DefId);
 
 impl CrateItem {
     pub fn body(&self) -> mir::Body {
-        with(|cx| cx.mir_body(self))
+        with(|cx| cx.mir_body(self.0))
+    }
+
+    pub fn span(&self) -> ty::Span {
+        with(|cx| cx.span_of_an_item(self.0))
     }
 }
 
@@ -137,7 +142,7 @@ pub trait Context {
     fn entry_fn(&mut self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.
     fn all_local_items(&mut self) -> CrateItems;
-    fn mir_body(&mut self, item: &CrateItem) -> mir::Body;
+    fn mir_body(&mut self, item: DefId) -> mir::Body;
     fn all_trait_decls(&mut self) -> TraitDecls;
     fn trait_decl(&mut self, trait_def: &TraitDef) -> TraitDecl;
     fn all_trait_impls(&mut self) -> ImplTraitDecls;
@@ -155,8 +160,14 @@ pub trait Context {
     /// Prints the name of given `DefId`
     fn name_of_def_id(&self, def_id: DefId) -> String;
 
+    /// `Span` of an item
+    fn span_of_an_item(&mut self, def_id: DefId) -> Span;
+
     /// Obtain the representation of a type.
     fn ty_kind(&mut self, ty: Ty) -> TyKind;
+
+    /// Create a new `Ty` from scratch without information from rustc.
+    fn mk_ty(&mut self, kind: TyKind) -> Ty;
 
     /// HACK: Until we have fully stable consumers, we need an escape hatch
     /// to get `DefId`s out of `CrateItem`s.

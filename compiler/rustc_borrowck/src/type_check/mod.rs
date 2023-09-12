@@ -50,7 +50,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::ResultsCursor;
 
-use crate::session_diagnostics::MoveUnsized;
+use crate::session_diagnostics::{MoveUnsized, SimdShuffleLastConst};
 use crate::{
     borrow_set::BorrowSet,
     constraints::{OutlivesConstraint, OutlivesConstraintSet},
@@ -1426,7 +1426,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         .add_element(region_vid, term_location);
                 }
 
-                self.check_call_inputs(body, term, &sig, args, term_location, *call_source);
+                self.check_call_inputs(body, term, func, &sig, args, term_location, *call_source);
             }
             TerminatorKind::Assert { cond, msg, .. } => {
                 self.check_operand(cond, term_location);
@@ -1546,25 +1546,36 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, body, term, func, term_location, call_source))]
     fn check_call_inputs(
         &mut self,
         body: &Body<'tcx>,
         term: &Terminator<'tcx>,
+        func: &Operand<'tcx>,
         sig: &ty::FnSig<'tcx>,
         args: &[Operand<'tcx>],
         term_location: Location,
         call_source: CallSource,
     ) {
-        debug!("check_call_inputs({:?}, {:?})", sig, args);
         if args.len() < sig.inputs().len() || (args.len() > sig.inputs().len() && !sig.c_variadic) {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
 
-        let func_ty = if let TerminatorKind::Call { func, .. } = &term.kind {
-            Some(func.ty(body, self.infcx.tcx))
-        } else {
-            None
-        };
+        let func_ty = func.ty(body, self.infcx.tcx);
+        if let ty::FnDef(def_id, _) = *func_ty.kind() {
+            if self.tcx().is_intrinsic(def_id) {
+                match self.tcx().item_name(def_id) {
+                    sym::simd_shuffle => {
+                        if !matches!(args[2], Operand::Constant(_)) {
+                            self.tcx()
+                                .sess
+                                .emit_err(SimdShuffleLastConst { span: term.source_info.span });
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
         debug!(?func_ty);
 
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
@@ -1572,7 +1583,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if call_source.from_hir_call() {
-                ConstraintCategory::CallArgument(self.infcx.tcx.erase_regions(func_ty))
+                ConstraintCategory::CallArgument(Some(self.infcx.tcx.erase_regions(func_ty)))
             } else {
                 ConstraintCategory::Boring
             };

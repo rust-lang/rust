@@ -1117,13 +1117,13 @@ pub(crate) fn render_all_impls(
 fn render_assoc_items<'a, 'cx: 'a>(
     cx: &'a mut Context<'cx>,
     containing_item: &'a clean::Item,
-    it: DefId,
+    did: DefId,
     what: AssocItemRender<'a>,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     let mut derefs = DefIdSet::default();
-    derefs.insert(it);
+    derefs.insert(did);
     display_fn(move |f| {
-        render_assoc_items_inner(f, cx, containing_item, it, what, &mut derefs);
+        render_assoc_items_inner(f, cx, containing_item, did, what, &mut derefs);
         Ok(())
     })
 }
@@ -1132,15 +1132,17 @@ fn render_assoc_items_inner(
     mut w: &mut dyn fmt::Write,
     cx: &mut Context<'_>,
     containing_item: &clean::Item,
-    it: DefId,
+    did: DefId,
     what: AssocItemRender<'_>,
     derefs: &mut DefIdSet,
 ) {
     info!("Documenting associated items of {:?}", containing_item.name);
     let shared = Rc::clone(&cx.shared);
-    let cache = &shared.cache;
-    let Some(v) = cache.impls.get(&it) else { return };
-    let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
+    let v = shared.all_impls_for_item(containing_item, did);
+    let v = v.as_slice();
+    let (non_trait, traits): (Vec<&Impl>, _) =
+        v.iter().partition(|i| i.inner_impl().trait_.is_none());
+    let mut saw_impls = FxHashSet::default();
     if !non_trait.is_empty() {
         let mut tmp_buf = Buffer::html();
         let (render_mode, id, class_html) = match what {
@@ -1169,6 +1171,9 @@ fn render_assoc_items_inner(
         };
         let mut impls_buf = Buffer::html();
         for i in &non_trait {
+            if !saw_impls.insert(i.def_id()) {
+                continue;
+            }
             render_impl(
                 &mut impls_buf,
                 cx,
@@ -1214,8 +1219,10 @@ fn render_assoc_items_inner(
 
         let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
             traits.into_iter().partition(|t| t.inner_impl().kind.is_auto());
-        let (blanket_impl, concrete): (Vec<&Impl>, _) =
-            concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
+        let (blanket_impl, concrete): (Vec<&Impl>, _) = concrete
+            .into_iter()
+            .filter(|t| saw_impls.insert(t.def_id()))
+            .partition(|t| t.inner_impl().kind.is_blanket());
 
         render_all_impls(w, cx, containing_item, &concrete, &synthetic, &blanket_impl);
     }

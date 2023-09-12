@@ -109,7 +109,7 @@ impl<T: ?Sized> *mut T {
     /// with [`cast_mut`] on `*const T` and may have documentation value if used instead of implicit
     /// coercion.
     ///
-    /// [`cast_mut`]: #method.cast_mut
+    /// [`cast_mut`]: pointer::cast_mut
     #[stable(feature = "ptr_const_cast", since = "1.65.0")]
     #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
     #[rustc_diagnostic_item = "ptr_cast_const"]
@@ -121,7 +121,7 @@ impl<T: ?Sized> *mut T {
     /// Casts a pointer to its raw bits.
     ///
     /// This is equivalent to `as usize`, but is more specific to enhance readability.
-    /// The inverse method is [`from_bits`](#method.from_bits-1).
+    /// The inverse method is [`from_bits`](pointer#method.from_bits-1).
     ///
     /// In particular, `*p as usize` and `p as usize` will both compile for
     /// pointers to numeric types but do very different things, so using this
@@ -157,7 +157,7 @@ impl<T: ?Sized> *mut T {
     /// Creates a pointer from its raw bits.
     ///
     /// This is equivalent to `as *mut T`, but is more specific to enhance readability.
-    /// The inverse method is [`to_bits`](#method.to_bits-1).
+    /// The inverse method is [`to_bits`](pointer#method.to_bits-1).
     ///
     /// # Examples
     ///
@@ -307,7 +307,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// For the mutable counterpart see [`as_mut`].
     ///
-    /// [`as_uninit_ref`]: #method.as_uninit_ref-1
+    /// [`as_uninit_ref`]: pointer#method.as_uninit_ref-1
     /// [`as_mut`]: #method.as_mut
     ///
     /// # Safety
@@ -373,7 +373,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// For the mutable counterpart see [`as_uninit_mut`].
     ///
-    /// [`as_ref`]: #method.as_ref-1
+    /// [`as_ref`]: pointer#method.as_ref-1
     /// [`as_uninit_mut`]: #method.as_uninit_mut
     ///
     /// # Safety
@@ -628,7 +628,7 @@ impl<T: ?Sized> *mut T {
     /// For the shared counterpart see [`as_ref`].
     ///
     /// [`as_uninit_mut`]: #method.as_uninit_mut
-    /// [`as_ref`]: #method.as_ref-1
+    /// [`as_ref`]: pointer#method.as_ref-1
     ///
     /// # Safety
     ///
@@ -693,7 +693,7 @@ impl<T: ?Sized> *mut T {
     /// For the shared counterpart see [`as_uninit_ref`].
     ///
     /// [`as_mut`]: #method.as_mut
-    /// [`as_uninit_ref`]: #method.as_uninit_ref-1
+    /// [`as_uninit_ref`]: pointer#method.as_uninit_ref-1
     ///
     /// # Safety
     ///
@@ -783,7 +783,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// This function is the inverse of [`offset`].
     ///
-    /// [`offset`]: #method.offset-1
+    /// [`offset`]: pointer#method.offset-1
     ///
     /// # Safety
     ///
@@ -2064,7 +2064,7 @@ impl<T> *mut [T] {
     ///
     /// For the mutable counterpart see [`as_uninit_slice_mut`].
     ///
-    /// [`as_ref`]: #method.as_ref-1
+    /// [`as_ref`]: pointer#method.as_ref-1
     /// [`as_uninit_slice_mut`]: #method.as_uninit_slice_mut
     ///
     /// # Safety

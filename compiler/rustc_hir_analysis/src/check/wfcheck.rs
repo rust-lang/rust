@@ -1255,7 +1255,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
     let is_our_default = |def: &ty::GenericParamDef| match def.kind {
         GenericParamDefKind::Type { has_default, .. }
-        | GenericParamDefKind::Const { has_default } => {
+        | GenericParamDefKind::Const { has_default, .. } => {
             has_default && def.index >= generics.parent_count as u32
         }
         GenericParamDefKind::Lifetime => unreachable!(),

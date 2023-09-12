@@ -25,7 +25,9 @@ use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
-use rustc_resolve::rustdoc::{add_doc_fragment, attrs_to_doc_fragments, inner_docs, DocFragment};
+use rustc_resolve::rustdoc::{
+    add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments, DocFragment,
+};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -397,7 +399,7 @@ impl Item {
     }
 
     pub(crate) fn attr_span(&self, tcx: TyCtxt<'_>) -> rustc_span::Span {
-        crate::passes::span_of_attrs(&self.attrs)
+        span_of_fragments(&self.attrs.doc_strings)
             .unwrap_or_else(|| self.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner()))
     }
 
@@ -2231,9 +2233,19 @@ pub(crate) struct PathSegment {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) enum TypeAliasInnerType {
+    Enum { variants: IndexVec<VariantIdx, Item>, is_non_exhaustive: bool },
+    Union { fields: Vec<Item> },
+    Struct { ctor_kind: Option<CtorKind>, fields: Vec<Item> },
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct TypeAlias {
     pub(crate) type_: Type,
     pub(crate) generics: Generics,
+    /// Inner `AdtDef` type, ie `type TyKind = IrTyKind<Adt, Ty>`,
+    /// to be shown directly on the typedef page.
+    pub(crate) inner_type: Option<TypeAliasInnerType>,
     /// `type_` can come from either the HIR or from metadata. If it comes from HIR, it may be a type
     /// alias instead of the final type. This will always have the final type, regardless of whether
     /// `type_` came from HIR or from metadata.

@@ -2,7 +2,14 @@
 /* generator_layout = GeneratorLayout {
     field_tys: {
         _0: GeneratorSavedTy {
-            ty: impl std::future::Future<Output = ()>,
+            ty: Alias(
+                Opaque,
+                AliasTy {
+                    args: [
+                    ],
+                    def_id: DefId(0:7 ~ async_await[ccf8]::a::{opaque#0}),
+                },
+            ),
             source_info: SourceInfo {
                 span: $DIR/async_await.rs:15:9: 15:14 (#8),
                 scope: scope[0],
@@ -10,7 +17,14 @@
             ignore_for_traits: false,
         },
         _1: GeneratorSavedTy {
-            ty: impl std::future::Future<Output = ()>,
+            ty: Alias(
+                Opaque,
+                AliasTy {
+                    args: [
+                    ],
+                    def_id: DefId(0:7 ~ async_await[ccf8]::a::{opaque#0}),
+                },
+            ),
             source_info: SourceInfo {
                 span: $DIR/async_await.rs:16:9: 16:14 (#10),
                 scope: scope[0],

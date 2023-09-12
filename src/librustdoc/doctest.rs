@@ -10,6 +10,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_parse::parser::attr::InnerAttrPolicy;
+use rustc_resolve::rustdoc::span_of_fragments;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::parse::ParseSess;
 use rustc_session::{lint, EarlyErrorHandler, Session};
@@ -33,7 +34,6 @@ use crate::clean::{types::AttributesExt, Attributes};
 use crate::config::Options as RustdocOptions;
 use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
 use crate::lint::init_lints;
-use crate::passes::span_of_attrs;
 
 /// Options that apply to all doctests in a crate or Markdown file (for `rustdoc foo.md`).
 #[derive(Clone, Default)]
@@ -109,6 +109,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
+        expanded_args: options.expanded_args.clone(),
     };
 
     let test_args = options.test_args.clone();
@@ -1240,7 +1241,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
                 Some(&crate::html::markdown::ExtraInfo::new(
                     self.tcx,
                     def_id.to_def_id(),
-                    span_of_attrs(&attrs).unwrap_or(sp),
+                    span_of_fragments(&attrs.doc_strings).unwrap_or(sp),
                 )),
             );
         }

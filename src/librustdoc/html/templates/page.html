@@ -15,8 +15,7 @@
     <link rel="stylesheet" {#+ #}
           href="{{static_root_path|safe}}{{files.normalize_css}}"> {# #}
     <link rel="stylesheet" {#+ #}
-          href="{{static_root_path|safe}}{{files.rustdoc_css}}" {#+ #}
-          id="mainThemeStyle"> {# #}
+          href="{{static_root_path|safe}}{{files.rustdoc_css}}"> {# #}
     {% if !layout.default_settings.is_empty() %}
     <script id="default-settings" {#+ #}
       {%~ for (k, v) in layout.default_settings ~%}

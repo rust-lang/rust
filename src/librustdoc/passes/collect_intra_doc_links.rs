@@ -16,7 +16,9 @@ use rustc_hir::Mutability;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::rustdoc::{has_primitive_or_keyword_docs, prepare_to_doc_link_resolution};
-use rustc_resolve::rustdoc::{strip_generics_from_path, MalformedGenerics};
+use rustc_resolve::rustdoc::{
+    source_span_for_markdown_range, strip_generics_from_path, MalformedGenerics,
+};
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -1211,11 +1213,11 @@ impl LinkCollector<'_, '_> {
         ori_link: &MarkdownLinkRange,
         item: &Item,
     ) {
-        let span = super::source_span_for_markdown_range(
+        let span = source_span_for_markdown_range(
             self.cx.tcx,
             dox,
             ori_link.inner_range(),
-            &item.attrs,
+            &item.attrs.doc_strings,
         )
         .unwrap_or_else(|| item.attr_span(self.cx.tcx));
         rustc_session::parse::feature_err(
@@ -1702,26 +1704,27 @@ fn report_diagnostic(
         let (span, link_range) = match link_range {
             MarkdownLinkRange::Destination(md_range) => {
                 let mut md_range = md_range.clone();
-                let sp = super::source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs)
-                    .map(|mut sp| {
-                        while dox.as_bytes().get(md_range.start) == Some(&b' ')
-                            || dox.as_bytes().get(md_range.start) == Some(&b'`')
-                        {
-                            md_range.start += 1;
-                            sp = sp.with_lo(sp.lo() + BytePos(1));
-                        }
-                        while dox.as_bytes().get(md_range.end - 1) == Some(&b' ')
-                            || dox.as_bytes().get(md_range.end - 1) == Some(&b'`')
-                        {
-                            md_range.end -= 1;
-                            sp = sp.with_hi(sp.hi() - BytePos(1));
-                        }
-                        sp
-                    });
+                let sp =
+                    source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs.doc_strings)
+                        .map(|mut sp| {
+                            while dox.as_bytes().get(md_range.start) == Some(&b' ')
+                                || dox.as_bytes().get(md_range.start) == Some(&b'`')
+                            {
+                                md_range.start += 1;
+                                sp = sp.with_lo(sp.lo() + BytePos(1));
+                            }
+                            while dox.as_bytes().get(md_range.end - 1) == Some(&b' ')
+                                || dox.as_bytes().get(md_range.end - 1) == Some(&b'`')
+                            {
+                                md_range.end -= 1;
+                                sp = sp.with_hi(sp.hi() - BytePos(1));
+                            }
+                            sp
+                        });
                 (sp, MarkdownLinkRange::Destination(md_range))
             }
             MarkdownLinkRange::WholeLink(md_range) => (
-                super::source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs),
+                source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs.doc_strings),
                 link_range.clone(),
             ),
         };

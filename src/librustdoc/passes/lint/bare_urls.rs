@@ -4,11 +4,11 @@
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
-use crate::passes::source_span_for_markdown_range;
 use core::ops::Range;
 use pulldown_cmark::{Event, Parser, Tag};
 use regex::Regex;
 use rustc_errors::Applicability;
+use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use std::mem;
 use std::sync::LazyLock;
 
@@ -21,8 +21,9 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item) {
     if !dox.is_empty() {
         let report_diag =
             |cx: &DocContext<'_>, msg: &'static str, url: &str, range: Range<usize>| {
-                let sp = source_span_for_markdown_range(cx.tcx, &dox, &range, &item.attrs)
-                    .unwrap_or_else(|| item.attr_span(cx.tcx));
+                let sp =
+                    source_span_for_markdown_range(cx.tcx, &dox, &range, &item.attrs.doc_strings)
+                        .unwrap_or_else(|| item.attr_span(cx.tcx));
                 cx.tcx.struct_span_lint_hir(crate::lint::BARE_URLS, hir_id, sp, msg, |lint| {
                     lint.note("bare URLs are not automatically turned into clickable links")
                         .span_suggestion(

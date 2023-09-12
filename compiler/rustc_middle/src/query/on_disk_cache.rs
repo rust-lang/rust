@@ -692,7 +692,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
         let len = BytePos::decode(decoder);
 
         let file_lo = decoder.file_index_to_file(file_lo_index);
-        let lo = file_lo.lines(|lines| lines[line_lo - 1] + col_lo);
+        let lo = file_lo.lines()[line_lo - 1] + col_lo;
         let lo = file_lo.absolute_position(lo);
         let hi = lo + len;
 
@@ -896,7 +896,7 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for Span {
         }
 
         if let Some(parent) = span_data.parent {
-            let enclosing = s.tcx.source_span(parent).data_untracked();
+            let enclosing = s.tcx.source_span_untracked(parent).data_untracked();
             if enclosing.contains(span_data) {
                 TAG_RELATIVE_SPAN.encode(s);
                 (span_data.lo - enclosing.lo).to_u32().encode(s);

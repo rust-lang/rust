@@ -381,6 +381,24 @@ pub enum DebugInfo {
     Full,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum DebugInfoCompression {
+    None,
+    Zlib,
+    Zstd,
+}
+
+impl ToString for DebugInfoCompression {
+    fn to_string(&self) -> String {
+        match self {
+            DebugInfoCompression::None => "none",
+            DebugInfoCompression::Zlib => "zlib",
+            DebugInfoCompression::Zstd => "zstd",
+        }
+        .to_owned()
+    }
+}
+
 /// Split debug-information is enabled by `-C split-debuginfo`, this enum is only used if split
 /// debug-information is enabled (in either `Packed` or `Unpacked` modes), and the platform
 /// uses DWARF for debug-information.
@@ -1015,6 +1033,7 @@ impl Default for Options {
             crate_types: Vec::new(),
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
+            debuginfo_compression: DebugInfoCompression::None,
             lint_opts: Vec::new(),
             lint_cap: None,
             describe_lints: false,
@@ -1083,12 +1102,6 @@ impl Options {
 
     pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
         self.cg.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
-    }
-
-    #[allow(rustc::bad_opt_access)]
-    pub fn incremental_relative_spans(&self) -> bool {
-        self.unstable_opts.incremental_relative_spans
-            || (self.unstable_features.is_nightly_build() && self.incremental.is_some())
     }
 }
 
@@ -2160,12 +2173,6 @@ fn collect_print_requests(
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
         let (req, out) = split_out_file_name(&req);
 
-        if out.is_some() && !unstable_opts.unstable_options {
-            handler.early_error(
-                "the `-Z unstable-options` flag must also be passed to \
-                 enable the path print option",
-            );
-        }
         let kind = match PRINT_KINDS.iter().find(|&&(name, _)| name == req) {
             Some((_, PrintKind::TargetSpec)) => {
                 if unstable_opts.unstable_options {
@@ -2281,6 +2288,13 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
         })
         .max();
     if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
+}
+
+fn select_debuginfo_compression(
+    _handler: &EarlyErrorHandler,
+    unstable_opts: &UnstableOptions,
+) -> DebugInfoCompression {
+    unstable_opts.debuginfo_compression
 }
 
 pub(crate) fn parse_assert_incr_state(
@@ -2758,6 +2772,8 @@ pub fn build_session_options(
     // for more details.
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
     let debuginfo = select_debuginfo(matches, &cg);
+    let debuginfo_compression: DebugInfoCompression =
+        select_debuginfo_compression(handler, &unstable_opts);
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
@@ -2834,6 +2850,7 @@ pub fn build_session_options(
         crate_types,
         optimize: opt_level,
         debuginfo,
+        debuginfo_compression,
         lint_opts,
         lint_cap,
         describe_lints,
@@ -2959,6 +2976,7 @@ pub mod nightly_options {
     ) {
         let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
         let really_allows_unstable_options = match_is_nightly_build(matches);
+        let mut nightly_options_on_stable = 0;
 
         for opt in flags.iter() {
             if opt.stability == OptionStability::Stable {
@@ -2979,19 +2997,26 @@ pub mod nightly_options {
             }
             match opt.stability {
                 OptionStability::Unstable => {
+                    nightly_options_on_stable += 1;
                     let msg = format!(
                         "the option `{}` is only accepted on the nightly compiler",
                         opt.name
                     );
                     let _ = handler.early_error_no_abort(msg);
-                    handler.early_note("selecting a toolchain with `+toolchain` arguments require a rustup proxy; see <https://rust-lang.github.io/rustup/concepts/index.html>");
-                    handler.early_help(
-                        "consider switching to a nightly toolchain: `rustup default nightly`",
-                    );
-                    handler.early_note("for more information about Rust's stability policy, see <https://doc.rust-lang.org/book/appendix-07-nightly-rust.html#unstable-features>");
                 }
                 OptionStability::Stable => {}
             }
+        }
+        if nightly_options_on_stable > 0 {
+            handler
+                .early_help("consider switching to a nightly toolchain: `rustup default nightly`");
+            handler.early_note("selecting a toolchain with `+toolchain` arguments require a rustup proxy; see <https://rust-lang.github.io/rustup/concepts/index.html>");
+            handler.early_note("for more information about Rust's stability policy, see <https://doc.rust-lang.org/book/appendix-07-nightly-rust.html#unstable-features>");
+            handler.early_error(format!(
+                "{} nightly option{} were parsed",
+                nightly_options_on_stable,
+                if nightly_options_on_stable > 1 { "s" } else { "" }
+            ));
         }
     }
 }
@@ -3119,11 +3144,11 @@ impl PpMode {
 /// how the hash should be calculated when adding a new command-line argument.
 pub(crate) mod dep_tracking {
     use super::{
-        BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
-        InstrumentCoverage, InstrumentXRay, LdImpl, LinkerPluginLto, LocationDetail, LtoCli,
-        OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Passes, ResolveDocLinks,
-        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
-        TraitSolver, TrimmedDefPaths,
+        BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
+        ErrorOutputType, InstrumentCoverage, InstrumentXRay, LdImpl, LinkerPluginLto,
+        LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
+        Passes, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
+        SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -3201,6 +3226,7 @@ pub(crate) mod dep_tracking {
         OptLevel,
         LtoCli,
         DebugInfo,
+        DebugInfoCompression,
         UnstableFeatures,
         NativeLib,
         NativeLibKind,

@@ -3,6 +3,12 @@ error[E0277]: the trait bound `(): T` is not satisfied
    |
 LL | fn foo() -> impl T {
    |             ^^^^^^ the trait `T` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/impl_trait_fallback4.rs:3:1
+   |
+LL | trait T {
+   | ^^^^^^^
 
 error: aborting due to previous error
 

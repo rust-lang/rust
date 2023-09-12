@@ -308,5 +308,16 @@ help: try
 LL | /// An iterator over `mycrate::Collection`'s values.
    |                      ~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 28 previous errors
+error: item in documentation is missing backticks
+  --> $DIR/doc-fixable.rs:208:34
+   |
+LL | /// Foo \[bar\] \[baz\] \[qux\]. DocMarkdownLint
+   |                                  ^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// Foo \[bar\] \[baz\] \[qux\]. `DocMarkdownLint`
+   |                                  ~~~~~~~~~~~~~~~~~
+
+error: aborting due to 29 previous errors
 

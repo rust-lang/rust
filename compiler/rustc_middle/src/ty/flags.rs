@@ -324,7 +324,9 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
                     InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
-                    InferConst::Var(_) => self.add_flags(TypeFlags::HAS_CT_INFER),
+                    InferConst::Var(_) | InferConst::EffectVar(_) => {
+                        self.add_flags(TypeFlags::HAS_CT_INFER)
+                    }
                 }
             }
             ty::ConstKind::Bound(debruijn, _) => {

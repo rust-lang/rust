@@ -1295,17 +1295,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ty_infer(Some(param), inf.span).into()
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
+                    (
+                        &GenericParamDefKind::Const { has_default, is_host_effect },
+                        GenericArg::Infer(inf),
+                    ) => {
                         let tcx = self.fcx.tcx();
-                        self.fcx
-                            .ct_infer(
-                                tcx.type_of(param.def_id)
-                                    .no_bound_vars()
-                                    .expect("const parameter types cannot be generic"),
-                                Some(param),
-                                inf.span,
-                            )
-                            .into()
+
+                        if has_default && is_host_effect {
+                            self.fcx.var_for_effect(param)
+                        } else {
+                            self.fcx
+                                .ct_infer(
+                                    tcx.type_of(param.def_id)
+                                        .no_bound_vars()
+                                        .expect("const parameter types cannot be generic"),
+                                    Some(param),
+                                    inf.span,
+                                )
+                                .into()
+                        }
                     }
                     _ => unreachable!(),
                 }
@@ -1324,7 +1332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_args && has_default {
-                            // If we have a default, then we it doesn't matter that we're not
+                            // If we have a default, then it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.
                             tcx.type_of(param.def_id).instantiate(tcx, args.unwrap()).into()
@@ -1336,17 +1344,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx.var_for_def(self.span, param)
                         }
                     }
-                    GenericParamDefKind::Const { has_default } => {
-                        if !infer_args
-                            && has_default
-                            && !tcx.has_attr(param.def_id, sym::rustc_host)
-                        {
-                            tcx.const_param_default(param.def_id)
-                                .instantiate(tcx, args.unwrap())
-                                .into()
-                        } else {
-                            self.fcx.var_for_def(self.span, param)
+                    GenericParamDefKind::Const { has_default, is_host_effect } => {
+                        if has_default {
+                            // N.B. this is a bit of a hack. `infer_args` is passed depending on
+                            // whether the user has provided generic args. E.g. for `Vec::new`
+                            // we would have to infer the generic types. However, for `Vec::<T>::new`
+                            // where the allocator param `A` has a default we will *not* infer. But
+                            // for effect params this is a different story: if the user has not written
+                            // anything explicit for the effect param, we always need to try to infer
+                            // it before falling back to default, such that a `const fn` such as
+                            // `needs_drop::<()>` can still be called in const contexts. (if we defaulted
+                            // instead of inferred, typeck would error)
+                            if is_host_effect {
+                                return self.fcx.var_for_effect(param);
+                            } else if !infer_args {
+                                return tcx
+                                    .const_param_default(param.def_id)
+                                    .instantiate(tcx, args.unwrap())
+                                    .into();
+                            }
                         }
+
+                        self.fcx.var_for_def(self.span, param)
                     }
                 }
             }

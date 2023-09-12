@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include <cstddef>
 #include <iomanip>
 #include <vector>
 #include <set>
@@ -9,6 +10,7 @@
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/CodeGen/CommandFlags.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
@@ -49,6 +51,8 @@
 #include "llvm/Transforms/Utils.h"
 
 using namespace llvm;
+
+static codegen::RegisterCodeGenFlags CGF;
 
 typedef struct LLVMOpaquePass *LLVMPassRef;
 typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
@@ -406,7 +410,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool RelaxELFRelocations,
     bool UseInitArray,
     const char *SplitDwarfFile,
-    bool ForceEmulatedTls) {
+    const char *DebugInfoCompression,
+    bool ForceEmulatedTls,
+    const char *ArgsCstrBuff, size_t ArgsCstrBuffLen) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -421,7 +427,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     return nullptr;
   }
 
-  TargetOptions Options;
+  TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
 
   Options.FloatABIType = FloatABI::Default;
   if (UseSoftFloat) {
@@ -436,6 +442,16 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   if (SplitDwarfFile) {
       Options.MCOptions.SplitDwarfFile = SplitDwarfFile;
   }
+#if LLVM_VERSION_GE(16, 0)
+  if (!strcmp("zlib", DebugInfoCompression) && llvm::compression::zlib::isAvailable()) {
+    Options.CompressDebugSections = DebugCompressionType::Zlib;
+  } else if (!strcmp("zstd", DebugInfoCompression) && llvm::compression::zstd::isAvailable()) {
+    Options.CompressDebugSections = DebugCompressionType::Zstd;
+  } else if (!strcmp("none", DebugInfoCompression)) {
+    Options.CompressDebugSections = DebugCompressionType::None;
+  }
+#endif
+
   Options.RelaxELFRelocations = RelaxELFRelocations;
   Options.UseInitArray = UseInitArray;
 
@@ -462,12 +478,48 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
+
+  if (ArgsCstrBuff != nullptr)
+  {
+    int buffer_offset = 0;
+    assert(ArgsCstrBuff[ArgsCstrBuffLen - 1] == '\0');
+
+    const size_t arg0_len = std::strlen(ArgsCstrBuff);
+    char* arg0 = new char[arg0_len + 1];
+    memcpy(arg0, ArgsCstrBuff, arg0_len);
+    arg0[arg0_len] = '\0';
+    buffer_offset += arg0_len + 1;
+
+    const int num_cmd_arg_strings =
+      std::count(&ArgsCstrBuff[buffer_offset], &ArgsCstrBuff[ArgsCstrBuffLen], '\0');
+
+    std::string* cmd_arg_strings = new std::string[num_cmd_arg_strings];
+    for (int i = 0; i < num_cmd_arg_strings; ++i)
+    {
+      assert(buffer_offset < ArgsCstrBuffLen);
+      const int len = std::strlen(ArgsCstrBuff + buffer_offset);
+      cmd_arg_strings[i] = std::string(&ArgsCstrBuff[buffer_offset], len);
+      buffer_offset += len + 1;
+    }
+
+    assert(buffer_offset == ArgsCstrBuffLen);
+
+    Options.MCOptions.Argv0 = arg0;
+    Options.MCOptions.CommandLineArgs =
+      llvm::ArrayRef<std::string>(cmd_arg_strings, num_cmd_arg_strings);
+  }
+
   TargetMachine *TM = TheTarget->createTargetMachine(
       Trip.getTriple(), CPU, Feature, Options, RM, CM, OptLevel);
   return wrap(TM);
 }
 
 extern "C" void LLVMRustDisposeTargetMachine(LLVMTargetMachineRef TM) {
+
+  MCTargetOptions& MCOptions = unwrap(TM)->Options.MCOptions;
+  delete[] MCOptions.Argv0;
+  delete[] MCOptions.CommandLineArgs.data();
+
   delete unwrap(TM);
 }
 
@@ -1058,6 +1110,13 @@ extern "C" void LLVMRustPrintPasses() {
 extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
                                            size_t Len) {
   auto PreserveFunctions = [=](const GlobalValue &GV) {
+    // Preserve LLVM-injected, ASAN-related symbols.
+    // See also https://github.com/rust-lang/rust/issues/113404.
+    if (GV.getName() == "___asan_globals_registered") {
+      return true;
+    }
+
+    // Preserve symbols exported from Rust modules.
     for (size_t I = 0; I < Len; I++) {
       if (GV.getName() == Symbols[I]) {
         return true;
@@ -1509,6 +1568,38 @@ LLVMRustGetBitcodeSliceFromObjectData(const char *data,
 
   *out_len = BitcodeOrError->getBufferSize();
   return BitcodeOrError->getBufferStart();
+}
+
+// Find a section of an object file by name. Fail if the section is missing or
+// empty.
+extern "C" const char *LLVMRustGetSliceFromObjectDataByName(const char *data,
+                                                            size_t len,
+                                                            const char *name,
+                                                            size_t *out_len) {
+  *out_len = 0;
+  StringRef Data(data, len);
+  MemoryBufferRef Buffer(Data, ""); // The id is unused.
+  file_magic Type = identify_magic(Buffer.getBuffer());
+  Expected<std::unique_ptr<object::ObjectFile>> ObjFileOrError =
+      object::ObjectFile::createObjectFile(Buffer, Type);
+  if (!ObjFileOrError) {
+    LLVMRustSetLastError(toString(ObjFileOrError.takeError()).c_str());
+    return nullptr;
+  }
+  for (const object::SectionRef &Sec : (*ObjFileOrError)->sections()) {
+    Expected<StringRef> Name = Sec.getName();
+    if (Name && *Name == name) {
+      Expected<StringRef> SectionOrError = Sec.getContents();
+      if (!SectionOrError) {
+        LLVMRustSetLastError(toString(SectionOrError.takeError()).c_str());
+        return nullptr;
+      }
+      *out_len = SectionOrError->size();
+      return SectionOrError->data();
+    }
+  }
+  LLVMRustSetLastError("could not find requested section");
+  return nullptr;
 }
 
 // Computes the LTO cache key for the provided 'ModId' in the given 'Data',

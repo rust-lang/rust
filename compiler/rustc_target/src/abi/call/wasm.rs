@@ -61,6 +61,10 @@ where
 /// The purpose of this ABI is for matching the WebAssembly standard. This
 /// intentionally diverges from the C ABI and is specifically crafted to take
 /// advantage of LLVM's support of multiple returns in WebAssembly.
+///
+/// This ABI is *bad*! It uses `PassMode::Direct` for `abi::Aggregate` types, which leaks LLVM
+/// implementation details into the ABI. It's just hard to fix because ABIs are hard to change.
+/// Also see <https://github.com/rust-lang/rust/issues/115666>.
 pub fn compute_wasm_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);

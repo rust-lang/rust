@@ -4,6 +4,7 @@
 #![feature(min_specialization)]
 #![feature(extern_types)]
 #![feature(let_chains)]
+#![feature(inline_const)]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]

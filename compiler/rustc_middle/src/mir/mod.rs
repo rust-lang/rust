@@ -8,6 +8,7 @@ use crate::mir::interpret::{
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
+use crate::ty::print::with_no_trimmed_paths;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, List, Ty, TyCtxt};
@@ -1028,19 +1029,6 @@ pub enum VarDebugInfoContents<'tcx> {
     /// This `Place` only contains projection which satisfy `can_use_in_debuginfo`.
     Place(Place<'tcx>),
     Const(Constant<'tcx>),
-    /// The user variable's data is split across several fragments,
-    /// each described by a `VarDebugInfoFragment`.
-    /// See DWARF 5's "2.6.1.2 Composite Location Descriptions"
-    /// and LLVM's `DW_OP_LLVM_fragment` for more details on
-    /// the underlying debuginfo feature this relies on.
-    Composite {
-        /// Type of the original user variable.
-        /// This cannot contain a union or an enum.
-        ty: Ty<'tcx>,
-        /// All the parts of the original user variable, which ended
-        /// up in disjoint places, due to optimizations.
-        fragments: Vec<VarDebugInfoFragment<'tcx>>,
-    },
 }
 
 impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
@@ -1048,19 +1036,16 @@ impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
         match self {
             VarDebugInfoContents::Const(c) => write!(fmt, "{c}"),
             VarDebugInfoContents::Place(p) => write!(fmt, "{p:?}"),
-            VarDebugInfoContents::Composite { ty, fragments } => {
-                write!(fmt, "{ty:?}{{ ")?;
-                for f in fragments.iter() {
-                    write!(fmt, "{f:?}, ")?;
-                }
-                write!(fmt, "}}")
-            }
         }
     }
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct VarDebugInfoFragment<'tcx> {
+    /// Type of the original user variable.
+    /// This cannot contain a union or an enum.
+    pub ty: Ty<'tcx>,
+
     /// Where in the composite user variable this fragment is,
     /// represented as a "projection" into the composite variable.
     /// At lower levels, this corresponds to a byte/bit range.
@@ -1071,29 +1056,10 @@ pub struct VarDebugInfoFragment<'tcx> {
     // to match on the discriminant, or by using custom type debuginfo
     // with non-overlapping variants for the composite variable.
     pub projection: Vec<PlaceElem<'tcx>>,
-
-    /// Where the data for this fragment can be found.
-    /// This `Place` only contains projection which satisfy `can_use_in_debuginfo`.
-    pub contents: Place<'tcx>,
-}
-
-impl Debug for VarDebugInfoFragment<'_> {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        for elem in self.projection.iter() {
-            match elem {
-                ProjectionElem::Field(field, _) => {
-                    write!(fmt, ".{:?}", field.index())?;
-                }
-                _ => bug!("unsupported fragment projection `{:?}`", elem),
-            }
-        }
-
-        write!(fmt, " => {:?}", self.contents)
-    }
 }
 
 /// Debug information pertaining to a user variable.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct VarDebugInfo<'tcx> {
     pub name: Symbol,
 
@@ -1102,6 +1068,13 @@ pub struct VarDebugInfo<'tcx> {
     /// (see `LocalDecl`'s `source_info` field for more details).
     pub source_info: SourceInfo,
 
+    /// The user variable's data is split across several fragments,
+    /// each described by a `VarDebugInfoFragment`.
+    /// See DWARF 5's "2.6.1.2 Composite Location Descriptions"
+    /// and LLVM's `DW_OP_LLVM_fragment` for more details on
+    /// the underlying debuginfo feature this relies on.
+    pub composite: Option<Box<VarDebugInfoFragment<'tcx>>>,
+
     /// Where the data for this user variable is to be found.
     pub value: VarDebugInfoContents<'tcx>,
 
@@ -1109,6 +1082,20 @@ pub struct VarDebugInfo<'tcx> {
     /// originated from (starting from 1). Note, if MIR inlining is enabled, then this is the
     /// argument number in the original function before it was inlined.
     pub argument_index: Option<u16>,
+}
+
+impl Debug for VarDebugInfo<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        if let Some(box VarDebugInfoFragment { ty, ref projection }) = self.composite {
+            pre_fmt_projection(&projection[..], fmt)?;
+            write!(fmt, "({}: {})", self.name, ty)?;
+            post_fmt_projection(&projection[..], fmt)?;
+        } else {
+            write!(fmt, "{}", self.name)?;
+        }
+
+        write!(fmt, " => {:?}", self.value)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1575,7 +1562,7 @@ impl<V, T> ProjectionElem<V, T> {
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
 pub type ProjectionKind = ProjectionElem<(), ()>;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PlaceRef<'tcx> {
     pub local: Local,
     pub projection: &'tcx [PlaceElem<'tcx>],
@@ -1751,69 +1738,90 @@ impl<'tcx> PlaceRef<'tcx> {
     }
 }
 
+impl From<Local> for PlaceRef<'_> {
+    #[inline]
+    fn from(local: Local) -> Self {
+        PlaceRef { local, projection: &[] }
+    }
+}
+
 impl Debug for Place<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        for elem in self.projection.iter().rev() {
-            match elem {
-                ProjectionElem::OpaqueCast(_)
-                | ProjectionElem::Downcast(_, _)
-                | ProjectionElem::Field(_, _) => {
-                    write!(fmt, "(").unwrap();
-                }
-                ProjectionElem::Deref => {
-                    write!(fmt, "(*").unwrap();
-                }
-                ProjectionElem::Index(_)
-                | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. } => {}
-            }
-        }
-
-        write!(fmt, "{:?}", self.local)?;
-
-        for elem in self.projection.iter() {
-            match elem {
-                ProjectionElem::OpaqueCast(ty) => {
-                    write!(fmt, " as {ty})")?;
-                }
-                ProjectionElem::Downcast(Some(name), _index) => {
-                    write!(fmt, " as {name})")?;
-                }
-                ProjectionElem::Downcast(None, index) => {
-                    write!(fmt, " as variant#{index:?})")?;
-                }
-                ProjectionElem::Deref => {
-                    write!(fmt, ")")?;
-                }
-                ProjectionElem::Field(field, ty) => {
-                    write!(fmt, ".{:?}: {:?})", field.index(), ty)?;
-                }
-                ProjectionElem::Index(ref index) => {
-                    write!(fmt, "[{index:?}]")?;
-                }
-                ProjectionElem::ConstantIndex { offset, min_length, from_end: false } => {
-                    write!(fmt, "[{offset:?} of {min_length:?}]")?;
-                }
-                ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
-                    write!(fmt, "[-{offset:?} of {min_length:?}]")?;
-                }
-                ProjectionElem::Subslice { from, to, from_end: true } if to == 0 => {
-                    write!(fmt, "[{from:?}:]")?;
-                }
-                ProjectionElem::Subslice { from, to, from_end: true } if from == 0 => {
-                    write!(fmt, "[:-{to:?}]")?;
-                }
-                ProjectionElem::Subslice { from, to, from_end: true } => {
-                    write!(fmt, "[{from:?}:-{to:?}]")?;
-                }
-                ProjectionElem::Subslice { from, to, from_end: false } => {
-                    write!(fmt, "[{from:?}..{to:?}]")?;
-                }
-            }
-        }
-
-        Ok(())
+        self.as_ref().fmt(fmt)
     }
+}
+
+impl Debug for PlaceRef<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        pre_fmt_projection(self.projection, fmt)?;
+        write!(fmt, "{:?}", self.local)?;
+        post_fmt_projection(self.projection, fmt)
+    }
+}
+
+fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> fmt::Result {
+    for &elem in projection.iter().rev() {
+        match elem {
+            ProjectionElem::OpaqueCast(_)
+            | ProjectionElem::Downcast(_, _)
+            | ProjectionElem::Field(_, _) => {
+                write!(fmt, "(").unwrap();
+            }
+            ProjectionElem::Deref => {
+                write!(fmt, "(*").unwrap();
+            }
+            ProjectionElem::Index(_)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. } => {}
+        }
+    }
+
+    Ok(())
+}
+
+fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> fmt::Result {
+    for &elem in projection.iter() {
+        match elem {
+            ProjectionElem::OpaqueCast(ty) => {
+                write!(fmt, " as {ty})")?;
+            }
+            ProjectionElem::Downcast(Some(name), _index) => {
+                write!(fmt, " as {name})")?;
+            }
+            ProjectionElem::Downcast(None, index) => {
+                write!(fmt, " as variant#{index:?})")?;
+            }
+            ProjectionElem::Deref => {
+                write!(fmt, ")")?;
+            }
+            ProjectionElem::Field(field, ty) => {
+                with_no_trimmed_paths!(write!(fmt, ".{:?}: {})", field.index(), ty)?);
+            }
+            ProjectionElem::Index(ref index) => {
+                write!(fmt, "[{index:?}]")?;
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end: false } => {
+                write!(fmt, "[{offset:?} of {min_length:?}]")?;
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
+                write!(fmt, "[-{offset:?} of {min_length:?}]")?;
+            }
+            ProjectionElem::Subslice { from, to, from_end: true } if to == 0 => {
+                write!(fmt, "[{from:?}:]")?;
+            }
+            ProjectionElem::Subslice { from, to, from_end: true } if from == 0 => {
+                write!(fmt, "[:-{to:?}]")?;
+            }
+            ProjectionElem::Subslice { from, to, from_end: true } => {
+                write!(fmt, "[{from:?}:-{to:?}]")?;
+            }
+            ProjectionElem::Subslice { from, to, from_end: false } => {
+                write!(fmt, "[{from:?}..{to:?}]")?;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -2070,7 +2078,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
             Len(ref a) => write!(fmt, "Len({a:?})"),
             Cast(ref kind, ref place, ref ty) => {
-                write!(fmt, "{place:?} as {ty:?} ({kind:?})")
+                with_no_trimmed_paths!(write!(fmt, "{place:?} as {ty} ({kind:?})"))
             }
             BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             CheckedBinaryOp(ref op, box (ref a, ref b)) => {
@@ -2078,11 +2086,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
-            NullaryOp(ref op, ref t) => match op {
-                NullOp::SizeOf => write!(fmt, "SizeOf({t:?})"),
-                NullOp::AlignOf => write!(fmt, "AlignOf({t:?})"),
-                NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t:?}, {fields:?})"),
-            },
+            NullaryOp(ref op, ref t) => {
+                let t = with_no_trimmed_paths!(format!("{}", t));
+                match op {
+                    NullOp::SizeOf => write!(fmt, "SizeOf({t})"),
+                    NullOp::AlignOf => write!(fmt, "AlignOf({t})"),
+                    NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
+                }
+            }
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
@@ -2218,7 +2229,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
 
             ShallowInitBox(ref place, ref ty) => {
-                write!(fmt, "ShallowInitBox({place:?}, {ty:?})")
+                with_no_trimmed_paths!(write!(fmt, "ShallowInitBox({place:?}, {ty})"))
             }
         }
     }
@@ -2317,7 +2328,7 @@ impl<'tcx> ConstantKind<'tcx> {
 
     #[inline]
     pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
-        Some(self.try_to_scalar()?.assert_int())
+        self.try_to_scalar()?.try_to_int().ok()
     }
 
     #[inline]
@@ -3056,6 +3067,6 @@ mod size_asserts {
     static_assert_size!(StatementKind<'_>, 16);
     static_assert_size!(Terminator<'_>, 104);
     static_assert_size!(TerminatorKind<'_>, 88);
-    static_assert_size!(VarDebugInfo<'_>, 80);
+    static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end
 }

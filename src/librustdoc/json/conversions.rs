@@ -789,7 +789,7 @@ pub(crate) fn from_macro_kind(kind: rustc_span::hygiene::MacroKind) -> MacroKind
 
 impl FromWithTcx<Box<clean::TypeAlias>> for TypeAlias {
     fn from_tcx(type_alias: Box<clean::TypeAlias>, tcx: TyCtxt<'_>) -> Self {
-        let clean::TypeAlias { type_, generics, item_type: _ } = *type_alias;
+        let clean::TypeAlias { type_, generics, item_type: _, inner_type: _ } = *type_alias;
         TypeAlias { type_: type_.into_tcx(tcx), generics: generics.into_tcx(tcx) }
     }
 }

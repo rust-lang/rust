@@ -796,6 +796,13 @@ where
         dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
     ) -> InterpResult<'tcx> {
+        // Generally for transmutation, data must be valid both at the old and new type.
+        // But if the types are the same, the 2nd validation below suffices.
+        if src.layout().ty != dest.layout().ty && M::enforce_validity(self, src.layout()) {
+            self.validate_operand(&src.to_op(self)?)?;
+        }
+
+        // Do the actual copy.
         self.copy_op_no_validate(src, dest, allow_transmute)?;
 
         if M::enforce_validity(self, dest.layout()) {

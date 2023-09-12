@@ -917,13 +917,18 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
         // At this point, the field's type is known to be nonnull and the parent enum is Option-like.
         // If the computed size for the field and the enum are different, the nonnull optimization isn't
         // being applied (and we've got a problem somewhere).
-        let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, param_env).unwrap();
-        if !compute_size_skeleton(ty).same_size(compute_size_skeleton(field_ty)) {
+        let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, param_env).ok();
+        if !compute_size_skeleton(ty)?.same_size(compute_size_skeleton(field_ty)?) {
             bug!("improper_ctypes: Option nonnull optimization not applied?");
         }
 
         // Return the nullable type this Option-like enum can be safely represented with.
-        let field_ty_abi = &tcx.layout_of(param_env.and(field_ty)).unwrap().abi;
+        let field_ty_layout = tcx.layout_of(param_env.and(field_ty));
+        if field_ty_layout.is_err() && !field_ty.has_non_region_param() {
+            bug!("should be able to compute the layout of non-polymorphic type");
+        }
+
+        let field_ty_abi = &field_ty_layout.ok()?.abi;
         if let Abi::Scalar(field_ty_scalar) = field_ty_abi {
             match field_ty_scalar.valid_range(&tcx) {
                 WrappingRange { start: 0, end }

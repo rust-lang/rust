@@ -3,6 +3,12 @@ error[E0277]: the trait bound `Result<(), _>: Future` is not satisfied
    |
 LL | fn foo() -> impl Future<Item=(), Error=Box<dyn Error>> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Future` is not implemented for `Result<(), _>`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/lifetime-elision-return-type-trait.rs:1:1
+   |
+LL | trait Future {
+   | ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

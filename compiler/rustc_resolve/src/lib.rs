@@ -34,7 +34,7 @@ use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArg
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{Lrc, MappedReadGuard};
+use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
 use rustc_errors::{
     Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, SubdiagnosticMessage,
 };
@@ -186,8 +186,8 @@ struct BindingError {
 
 #[derive(Debug)]
 enum ResolutionError<'a> {
-    /// Error E0401: can't use type or const parameters from outer function.
-    GenericParamsFromOuterFunction(Res, HasGenericParams),
+    /// Error E0401: can't use type or const parameters from outer item.
+    GenericParamsFromOuterItem(Res, HasGenericParams),
     /// Error E0403: the name is already used for a type or const parameter in this generic
     /// parameter list.
     NameAlreadyUsedInParameterList(Symbol, Span),
@@ -1544,7 +1544,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ))
     }
 
-    fn cstore(&self) -> MappedReadGuard<'_, CStore> {
+    fn cstore(&self) -> FreezeReadGuard<'_, CStore> {
         CStore::from_tcx(self.tcx)
     }
 
@@ -1599,7 +1599,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         });
 
         // Make sure we don't mutate the cstore from here on.
-        self.tcx.untracked().cstore.leak();
+        self.tcx.untracked().cstore.freeze();
     }
 
     fn traits_in_scope(
