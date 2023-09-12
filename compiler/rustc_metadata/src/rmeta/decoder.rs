@@ -909,7 +909,7 @@ impl MetadataBlob {
                 _ => {
                     writeln!(
                         out,
-                        "unknown -Zls kind. allowed values are: no, all, root, lang_items, features, items"
+                        "unknown -Zls kind. allowed values are: all, root, lang_items, features, items"
                     )?;
                 }
             }

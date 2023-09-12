@@ -1598,7 +1598,7 @@ options! {
         `none`, or a comma separated list of location details, for which \
         valid options are `file`, `line`, and `column` (default: `file,line,column`)"),
     ls: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
-        "decode and print various part of the crate metadata for a library crate \
+        "decode and print various parts of the crate metadata for a library crate \
         (space separated)"),
     macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
         "show macro backtraces (default: no)"),
