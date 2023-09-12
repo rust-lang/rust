@@ -132,8 +132,8 @@ target | std | notes
 [`aarch64-fuchsia`](platform-support/fuchsia.md) | ✓ | Alias for `aarch64-unknown-fuchsia`
 [`aarch64-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ | ARM64 Fuchsia
 [`aarch64-linux-android`](platform-support/android.md) | ✓ | ARM64 Android
-`aarch64-unknown-none-softfloat` | * | Bare ARM64, softfloat
-`aarch64-unknown-none` | * | Bare ARM64, hardfloat
+[`aarch64-unknown-none-softfloat`](platform-support/aarch64-unknown-none-softfloat.md) | * | Bare ARM64, softfloat
+[`aarch64-unknown-none`](platform-support/aarch64_unknown_none.md) | * | Bare ARM64, hardfloat
 [`aarch64-unknown-uefi`](platform-support/unknown-uefi.md) | * | ARM64 UEFI
 [`arm-linux-androideabi`](platform-support/android.md) | ✓ | ARMv6 Android
 [`arm-unknown-linux-musleabi`](platform-support/arm-unknown-linux.md) | ✓ | ARMv6 Linux with MUSL
