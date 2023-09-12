@@ -7,7 +7,7 @@ use std::path::Path;
 /// Delete and re-create the directory.
 pub fn reset_directory(path: &Utf8Path) -> anyhow::Result<()> {
     log::info!("Resetting directory {path}");
-    let _ = std::fs::remove_dir(path);
+    let _ = std::fs::remove_dir_all(path);
     std::fs::create_dir_all(path)?;
     Ok(())
 }
