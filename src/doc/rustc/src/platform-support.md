@@ -138,8 +138,8 @@ target | std | notes
 [`arm-linux-androideabi`](platform-support/android.md) | ✓ | ARMv6 Android
 `arm-unknown-linux-musleabi` | ✓ | ARMv6 Linux with MUSL
 `arm-unknown-linux-musleabihf` | ✓ | ARMv6 Linux with MUSL, hardfloat
-`armebv7r-none-eabi` | * | Bare ARMv7-R, Big Endian
-`armebv7r-none-eabihf` | * | Bare ARMv7-R, Big Endian, hardfloat
+[`armebv7r-none-eabi`](platform-support/armv7r.md) | * | Bare ARMv7-R, big endian
+[`armebv7r-none-eabihf`](platform-support/armv7r.md) | * | Bare ARMv7-R, big endian, hardfloat
 `armv5te-unknown-linux-gnueabi` | ✓ | ARMv5TE Linux (kernel 4.4, glibc 2.23)
 `armv5te-unknown-linux-musleabi` | ✓ | ARMv5TE Linux with MUSL
 [`armv7-linux-androideabi`](platform-support/android.md) | ✓ | ARMv7-A Android
@@ -147,8 +147,8 @@ target | std | notes
 `armv7-unknown-linux-musleabi` | ✓ | ARMv7-A Linux with MUSL
 `armv7-unknown-linux-musleabihf` | ✓ | ARMv7-A Linux with MUSL, hardfloat
 `armv7a-none-eabi` | * | Bare ARMv7-A
-`armv7r-none-eabi` | * | Bare ARMv7-R
-`armv7r-none-eabihf` | * | Bare ARMv7-R, hardfloat
+[`armv7r-none-eabi`](platform-support/armv7r.md) | * | Bare ARMv7-R
+[`armv7r-none-eabihf`](platform-support/armv7r.md) | * | Bare ARMv7-R, hardfloat
 [`asmjs-unknown-emscripten`](platform-support/asmjs_unknown_emscripten.md) | ✓ | asm.js via Emscripten
 [`i586-pc-windows-msvc`](platform-support/windows_msvc.md) | * | 32-bit Windows w/o SSE
 [`i586-unknown-linux-gnu`](platform-support/i586_unknown_linux_gnu.md) | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17)
