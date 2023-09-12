@@ -829,12 +829,7 @@ impl<'tcx> DeadVisitor<'tcx> {
             }
         };
 
-        self.tcx.emit_spanned_lint(
-            lint,
-            first_hir_id,
-            MultiSpan::from_spans(spans),
-            diag,
-        );
+        self.tcx.emit_spanned_lint(lint, first_hir_id, MultiSpan::from_spans(spans), diag);
     }
 
     fn warn_dead_code_grouped_by_lint_level(
@@ -915,11 +910,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                     let hir = tcx.hir().local_def_id_to_hir_id(def_id);
                     let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir).0;
 
-                    dead_items.push(DeadVariant {
-                        def_id,
-                        name,
-                        level,
-                    })
+                    dead_items.push(DeadVariant { def_id, name, level })
                 }
             }
             visitor.warn_dead_code_grouped_by_lint_level(
@@ -982,7 +973,12 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                         }
                     })
                     .collect();
-                visitor.warn_dead_code_grouped_by_lint_level(def_id, "read", dead_fields, is_positional)
+                visitor.warn_dead_code_grouped_by_lint_level(
+                    def_id,
+                    "read",
+                    dead_fields,
+                    is_positional,
+                )
             }
 
             visitor.warn_dead_code_grouped_by_lint_level(
