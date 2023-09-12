@@ -197,12 +197,10 @@ fn try_get_option_occurrence<'tcx>(
 
 /// Gets the call expr iff it does not have any args and was not from macro expansion.
 fn try_get_argless_call_expr<'tcx>(expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    if !expr.span.from_expansion() &&
-        let ExprKind::Call(call_expr, []) = expr.kind
-    {
-        return Some(call_expr);
+    match expr.kind {
+        ExprKind::Call(call_expr, []) if !expr.span.from_expansion() => Some(call_expr),
+        _ => None,
     }
-    None
 }
 
 fn try_get_inner_pat_and_is_result<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<(&'tcx Pat<'tcx>, bool)> {
