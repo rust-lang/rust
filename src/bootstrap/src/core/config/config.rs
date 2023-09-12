@@ -1372,6 +1372,7 @@ impl Config {
         let mut debuginfo_level_tests = None;
         let mut optimize = None;
         let mut omit_git_hash = None;
+        let mut lld_enabled = None;
 
         if let Some(rust) = toml.rust {
             set(&mut config.channel, rust.channel);
@@ -1404,6 +1405,7 @@ impl Config {
             debuginfo_level_std = rust.debuginfo_level_std;
             debuginfo_level_tools = rust.debuginfo_level_tools;
             debuginfo_level_tests = rust.debuginfo_level_tests;
+            lld_enabled = rust.lld;
 
             config.rust_split_debuginfo = rust
                 .split_debuginfo
@@ -1428,7 +1430,6 @@ impl Config {
                 config.incremental = true;
             }
             set(&mut config.use_lld, rust.use_lld);
-            set(&mut config.lld_enabled, rust.lld);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
             config.rustc_parallel = rust
                 .parallel_compiler
@@ -1664,6 +1665,26 @@ impl Config {
         config.llvm_tests = llvm_tests.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
         config.rust_optimize = optimize.unwrap_or(RustOptimize::Bool(true));
+
+        // `x86_64-unknown-linux-gnu` now uses the self-contained linker, so we have to build
+        // our internal lld by default:
+        // - when building our in-tree llvm (the target has not set an `llvm-config`), we're able to
+        //   build rust-lld as well
+        // - when using an external llvm that's downloaded from CI, rust-lld is also packaged there
+        // - otherwise, we're using an external llvm and lld is not available and thus, disabled
+        // - similarly, it's not built or used by this target when asked not to (when the config
+        //   sets `rust.lld = false`)
+        if config.build.triple == "x86_64-unknown-linux-gnu" && config.hosts == &[config.build] {
+            let no_llvm_config = config
+                .target_config
+                .get(&config.build)
+                .is_some_and(|target_config| target_config.llvm_config.is_none());
+            let enable_lld = config.llvm_from_ci || no_llvm_config;
+            // Prefer the config setting in case an explicit opt-out is needed.
+            config.lld_enabled = lld_enabled.unwrap_or(enable_lld);
+        } else {
+            set(&mut config.lld_enabled, lld_enabled);
+        }
 
         let default = debug == Some(true);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);
