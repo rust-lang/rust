@@ -187,7 +187,7 @@ pub enum AttributeKind {
     OptimizeNone = 24,
     ReturnsTwice = 25,
     ReadNone = 26,
-    SanitizeHWAddress = 28,
+    SanitizeHWAddress = 51,
     WillReturn = 29,
     StackProtectReq = 30,
     StackProtectStrong = 31,
@@ -1155,6 +1155,13 @@ extern "C" {
     pub fn LLVMDumpModule(M: &Module);
     pub fn LLVMCountStructElementTypes(T: &Type) -> c_uint;
     pub fn LLVMDeleteFunction(V: &Value);
+    pub fn LLVMRemoveStringAttributeAtIndex(F : &Value, Idx: c_uint, K: *const c_char, KLen : c_uint);
+    pub fn LLVMGetStringAttributeAtIndex(F : &Value, Idx: c_uint, K: *const c_char, KLen : c_uint) -> &Attribute;
+    pub fn LLVMRemoveEnumAttributeAtIndex(F : &Value, Idx: c_uint, K: AttributeKind);
+    pub fn LLVMGetEnumAttributeAtIndex(F : &Value, Idx: c_uint, K: AttributeKind) -> &Attribute;
+    pub fn LLVMIsEnumAttribute(A : &Attribute) -> bool;
+    pub fn LLVMCreateEnumAttribute(C : &Context, Kind: AttributeKind, val:u64) -> &Attribute;
+    pub fn LLVMIsStringAttribute(A : &Attribute) -> bool;
     pub fn LLVMVerifyFunction(V: &Value, action: LLVMVerifierFailureAction) -> bool;
     pub fn LLVMGetParams(Fnc: &Value, parms: *mut &Value);
     pub fn LLVMBuildCall2<'a>(
