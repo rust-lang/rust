@@ -1,18 +1,16 @@
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_then};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
-use clippy_utils::source::{first_line_of_span, snippet_with_applicability};
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{is_entrypoint_fn, method_chain_args, return_ty};
 use if_chain::if_chain;
-use itertools::Itertools;
 use pulldown_cmark::Event::{
     Code, End, FootnoteReference, HardBreak, Html, Rule, SoftBreak, Start, TaskListMarker, Text,
 };
 use pulldown_cmark::Tag::{CodeBlock, Heading, Item, Link, Paragraph};
 use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options};
-use rustc_ast::ast::{Async, AttrKind, Attribute, Fn, FnRetTy, ItemKind};
-use rustc_ast::token::CommentKind;
+use rustc_ast::ast::{Async, Attribute, Fn, FnRetTy, ItemKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
@@ -26,6 +24,9 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_parse::parser::ForceCollect;
+use rustc_resolve::rustdoc::{
+    add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range, DocFragment,
+};
 use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::edition::Edition;
@@ -450,53 +451,16 @@ fn lint_for_missing_headers(
     }
 }
 
-/// Cleanup documentation decoration.
-///
-/// We can't use `rustc_ast::attr::AttributeMethods::with_desugared_doc` or
-/// `rustc_ast::parse::lexer::comments::strip_doc_comment_decoration` because we
-/// need to keep track of
-/// the spans but this function is inspired from the later.
-#[expect(clippy::cast_possible_truncation)]
-#[must_use]
-pub fn strip_doc_comment_decoration(doc: &str, comment_kind: CommentKind, span: Span) -> (String, Vec<(usize, Span)>) {
-    // one-line comments lose their prefix
-    if comment_kind == CommentKind::Line {
-        let mut doc = doc.to_owned();
-        doc.push('\n');
-        let len = doc.len();
-        // +3 skips the opening delimiter
-        return (doc, vec![(len, span.with_lo(span.lo() + BytePos(3)))]);
-    }
+#[derive(Copy, Clone)]
+struct Fragments<'a> {
+    doc: &'a str,
+    fragments: &'a [DocFragment],
+}
 
-    let mut sizes = vec![];
-    let mut contains_initial_stars = false;
-    for line in doc.lines() {
-        let offset = line.as_ptr() as usize - doc.as_ptr() as usize;
-        debug_assert_eq!(offset as u32 as usize, offset);
-        contains_initial_stars |= line.trim_start().starts_with('*');
-        // +1 adds the newline, +3 skips the opening delimiter
-        sizes.push((line.len() + 1, span.with_lo(span.lo() + BytePos(3 + offset as u32))));
+impl Fragments<'_> {
+    fn span(self, cx: &LateContext<'_>, range: Range<usize>) -> Option<Span> {
+        source_span_for_markdown_range(cx.tcx, &self.doc, &range, &self.fragments)
     }
-    if !contains_initial_stars {
-        return (doc.to_string(), sizes);
-    }
-    // remove the initial '*'s if any
-    let mut no_stars = String::with_capacity(doc.len());
-    for line in doc.lines() {
-        let mut chars = line.chars();
-        for c in &mut chars {
-            if c.is_whitespace() {
-                no_stars.push(c);
-            } else {
-                no_stars.push(if c == '*' { ' ' } else { c });
-                break;
-            }
-        }
-        no_stars.push_str(chars.as_str());
-        no_stars.push('\n');
-    }
-
-    (no_stars, sizes)
 }
 
 #[derive(Copy, Clone, Default)]
@@ -515,27 +479,12 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         Some(("fake".into(), "fake".into()))
     }
 
+    let (fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
     let mut doc = String::new();
-    let mut spans = vec![];
-
-    for attr in attrs {
-        if let AttrKind::DocComment(comment_kind, comment) = attr.kind {
-            let (comment, current_spans) = strip_doc_comment_decoration(comment.as_str(), comment_kind, attr.span);
-            spans.extend_from_slice(&current_spans);
-            doc.push_str(&comment);
-        } else if attr.has_name(sym::doc) {
-            // ignore mix of sugared and non-sugared doc
-            // don't trigger the safety or errors check
-            return None;
-        }
+    for fragment in &fragments {
+        add_doc_fragment(&mut doc, fragment);
     }
-
-    let mut current = 0;
-    for &mut (ref mut offset, _) in &mut spans {
-        let offset_copy = *offset;
-        *offset = current;
-        current += offset_copy;
-    }
+    doc.pop();
 
     if doc.is_empty() {
         return Some(DocHeaders::default());
@@ -543,23 +492,19 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
 
     let mut cb = fake_broken_link_callback;
 
-    let parser =
-        pulldown_cmark::Parser::new_with_broken_link_callback(&doc, Options::empty(), Some(&mut cb)).into_offset_iter();
-    // Iterate over all `Events` and combine consecutive events into one
-    let events = parser.coalesce(|previous, current| {
-        let previous_range = previous.1;
-        let current_range = current.1;
+    // disable smart punctuation to pick up ['link'] more easily
+    let opts = main_body_opts() - Options::ENABLE_SMART_PUNCTUATION;
+    let parser = pulldown_cmark::Parser::new_with_broken_link_callback(&doc, opts, Some(&mut cb));
 
-        match (previous.0, current.0) {
-            (Text(previous), Text(current)) => {
-                let mut previous = previous.to_string();
-                previous.push_str(&current);
-                Ok((Text(previous.into()), previous_range))
-            },
-            (previous, current) => Err(((previous, previous_range), (current, current_range))),
-        }
-    });
-    Some(check_doc(cx, valid_idents, events, &spans))
+    Some(check_doc(
+        cx,
+        valid_idents,
+        parser.into_offset_iter(),
+        Fragments {
+            fragments: &fragments,
+            doc: &doc,
+        },
+    ))
 }
 
 const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail"];
@@ -568,7 +513,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     cx: &LateContext<'_>,
     valid_idents: &FxHashSet<String>,
     events: Events,
-    spans: &[(usize, Span)],
+    fragments: Fragments<'_>,
 ) -> DocHeaders {
     // true if a safety header was found
     let mut headers = DocHeaders::default();
@@ -579,8 +524,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut no_test = false;
     let mut edition = None;
     let mut ticks_unbalanced = false;
-    let mut text_to_check: Vec<(CowStr<'_>, Span)> = Vec::new();
-    let mut paragraph_span = spans.get(0).expect("function isn't called if doc comment is empty").1;
+    let mut text_to_check: Vec<(CowStr<'_>, Range<usize>)> = Vec::new();
+    let mut paragraph_range = 0..0;
     for (event, range) in events {
         match event {
             Start(CodeBlock(ref kind)) => {
@@ -613,25 +558,28 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     in_heading = true;
                 }
                 ticks_unbalanced = false;
-                let (_, span) = get_current_span(spans, range.start);
-                paragraph_span = first_line_of_span(cx, span);
+                paragraph_range = range;
             },
             End(Heading(_, _, _) | Paragraph | Item) => {
                 if let End(Heading(_, _, _)) = event {
                     in_heading = false;
                 }
-                if ticks_unbalanced {
+                if ticks_unbalanced
+                    && let Some(span) = fragments.span(cx, paragraph_range.clone())
+                {
                     span_lint_and_help(
                         cx,
                         DOC_MARKDOWN,
-                        paragraph_span,
+                        span,
                         "backticks are unbalanced",
                         None,
                         "a backtick may be missing a pair",
                     );
                 } else {
-                    for (text, span) in text_to_check {
-                        check_text(cx, valid_idents, &text, span);
+                    for (text, range) in text_to_check {
+                        if let Some(span) = fragments.span(cx, range) {
+                            check_text(cx, valid_idents, &text, span);
+                        }
                     }
                 }
                 text_to_check = Vec::new();
@@ -640,8 +588,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             Html(_html) => (),             // HTML is weird, just ignore it
             SoftBreak | HardBreak | TaskListMarker(_) | Code(_) | Rule => (),
             FootnoteReference(text) | Text(text) => {
-                let (begin, span) = get_current_span(spans, range.start);
-                paragraph_span = paragraph_span.with_hi(span.hi());
+                paragraph_range.end = range.end;
                 ticks_unbalanced |= text.contains('`') && !in_code;
                 if Some(&text) == in_link.as_ref() || ticks_unbalanced {
                     // Probably a link of the form `<http://example.com>`
@@ -658,19 +605,19 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 if in_code {
                     if is_rust && !no_test {
                         let edition = edition.unwrap_or_else(|| cx.tcx.sess.edition());
-                        check_code(cx, &text, edition, span);
+                        check_code(cx, &text, edition, range.clone(), fragments);
                     }
                 } else {
-                    check_link_quotes(cx, in_link.is_some(), trimmed_text, span, &range, begin, text.len());
-                    // Adjust for the beginning of the current `Event`
-                    let span = span.with_lo(span.lo() + BytePos::from_usize(range.start - begin));
+                    if in_link.is_some() {
+                        check_link_quotes(cx, trimmed_text, range.clone(), fragments);
+                    }
                     if let Some(link) = in_link.as_ref()
                       && let Ok(url) = Url::parse(link)
                       && (url.scheme() == "https" || url.scheme() == "http") {
                         // Don't check the text associated with external URLs
                         continue;
                     }
-                    text_to_check.push((text, span));
+                    text_to_check.push((text, range));
                 }
             },
         }
@@ -678,36 +625,21 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     headers
 }
 
-fn check_link_quotes(
-    cx: &LateContext<'_>,
-    in_link: bool,
-    trimmed_text: &str,
-    span: Span,
-    range: &Range<usize>,
-    begin: usize,
-    text_len: usize,
-) {
-    if in_link && trimmed_text.starts_with('\'') && trimmed_text.ends_with('\'') {
-        // fix the span to only point at the text within the link
-        let lo = span.lo() + BytePos::from_usize(range.start - begin);
+fn check_link_quotes(cx: &LateContext<'_>, trimmed_text: &str, range: Range<usize>, fragments: Fragments<'_>) {
+    if trimmed_text.starts_with('\'')
+        && trimmed_text.ends_with('\'')
+        && let Some(span) = fragments.span(cx, range)
+    {
         span_lint(
             cx,
             DOC_LINK_WITH_QUOTES,
-            span.with_lo(lo).with_hi(lo + BytePos::from_usize(text_len)),
+            span,
             "possible intra-doc link using quotes instead of backticks",
         );
     }
 }
 
-fn get_current_span(spans: &[(usize, Span)], idx: usize) -> (usize, Span) {
-    let index = match spans.binary_search_by(|c| c.0.cmp(&idx)) {
-        Ok(o) => o,
-        Err(e) => e - 1,
-    };
-    spans[index]
-}
-
-fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
+fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, range: Range<usize>, fragments: Fragments<'_>) {
     fn has_needless_main(code: String, edition: Edition) -> bool {
         rustc_driver::catch_fatal_errors(|| {
             rustc_span::create_session_globals_then(edition, || {
@@ -774,12 +706,13 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
         .unwrap_or_default()
     }
 
+    let trailing_whitespace = text.len() - text.trim_end().len();
+
     // Because of the global session, we need to create a new session in a different thread with
     // the edition we need.
     let text = text.to_owned();
-    if thread::spawn(move || has_needless_main(text, edition))
-        .join()
-        .expect("thread::spawn failed")
+    if thread::spawn(move || has_needless_main(text, edition)).join().expect("thread::spawn failed")
+        && let Some(span) = fragments.span(cx, range.start..range.end - trailing_whitespace)
     {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
     }

@@ -85,6 +85,22 @@ impl Struct1 {
     async fn async_priv_method_missing_errors_header() -> Result<(), ()> {
         unimplemented!();
     }
+
+    /**
+    # Errors
+    A description of the errors goes here.
+    */
+    fn block_comment() -> Result<(), ()> {
+        unimplemented!();
+    }
+
+    /**
+     * # Errors
+     * A description of the errors goes here.
+     */
+    fn block_comment_leading_asterisks() -> Result<(), ()> {
+        unimplemented!();
+    }
 }
 
 pub trait Trait1 {

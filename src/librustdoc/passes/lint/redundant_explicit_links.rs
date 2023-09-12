@@ -6,6 +6,7 @@ use rustc_errors::SuggestionStyle;
 use rustc_hir::def::{DefKind, DocLinkResMap, Namespace, Res};
 use rustc_hir::HirId;
 use rustc_lint_defs::Applicability;
+use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use rustc_span::Symbol;
 
 use crate::clean::utils::find_nearest_parent_module;
@@ -13,7 +14,6 @@ use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::Item;
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
-use crate::passes::source_span_for_markdown_range;
 
 #[derive(Debug)]
 struct LinkData {
@@ -160,16 +160,21 @@ fn check_inline_or_reference_unknown_redundancy(
         (find_resolution(resolutions, &dest)?, find_resolution(resolutions, resolvable_link)?);
 
     if dest_res == display_res {
-        let link_span = source_span_for_markdown_range(cx.tcx, &doc, &link_range, &item.attrs)
-            .unwrap_or(item.attr_span(cx.tcx));
+        let link_span =
+            source_span_for_markdown_range(cx.tcx, &doc, &link_range, &item.attrs.doc_strings)
+                .unwrap_or(item.attr_span(cx.tcx));
         let explicit_span = source_span_for_markdown_range(
             cx.tcx,
             &doc,
             &offset_explicit_range(doc, link_range, open, close),
-            &item.attrs,
+            &item.attrs.doc_strings,
         )?;
-        let display_span =
-            source_span_for_markdown_range(cx.tcx, &doc, &resolvable_link_range, &item.attrs)?;
+        let display_span = source_span_for_markdown_range(
+            cx.tcx,
+            &doc,
+            &resolvable_link_range,
+            &item.attrs.doc_strings,
+        )?;
 
         cx.tcx.struct_span_lint_hir(crate::lint::REDUNDANT_EXPLICIT_LINKS, hir_id, explicit_span, "redundant explicit link target", |lint| {
             lint.span_label(explicit_span, "explicit target is redundant")
@@ -201,21 +206,26 @@ fn check_reference_redundancy(
         (find_resolution(resolutions, &dest)?, find_resolution(resolutions, resolvable_link)?);
 
     if dest_res == display_res {
-        let link_span = source_span_for_markdown_range(cx.tcx, &doc, &link_range, &item.attrs)
-            .unwrap_or(item.attr_span(cx.tcx));
+        let link_span =
+            source_span_for_markdown_range(cx.tcx, &doc, &link_range, &item.attrs.doc_strings)
+                .unwrap_or(item.attr_span(cx.tcx));
         let explicit_span = source_span_for_markdown_range(
             cx.tcx,
             &doc,
             &offset_explicit_range(doc, link_range.clone(), b'[', b']'),
-            &item.attrs,
+            &item.attrs.doc_strings,
         )?;
-        let display_span =
-            source_span_for_markdown_range(cx.tcx, &doc, &resolvable_link_range, &item.attrs)?;
+        let display_span = source_span_for_markdown_range(
+            cx.tcx,
+            &doc,
+            &resolvable_link_range,
+            &item.attrs.doc_strings,
+        )?;
         let def_span = source_span_for_markdown_range(
             cx.tcx,
             &doc,
             &offset_reference_def_range(doc, dest, link_range),
-            &item.attrs,
+            &item.attrs.doc_strings,
         )?;
 
         cx.tcx.struct_span_lint_hir(crate::lint::REDUNDANT_EXPLICIT_LINKS, hir_id, explicit_span, "redundant explicit link target", |lint| {
