@@ -199,6 +199,7 @@ pub fn report_error<'tcx, 'mir>(
     e: InterpErrorInfo<'tcx>,
 ) -> Option<(i64, bool)> {
     use InterpError::*;
+    use UndefinedBehaviorInfo::*;
 
     let mut msg = vec![];
 
@@ -271,7 +272,7 @@ pub fn report_error<'tcx, 'mir>(
         (title, helps)
     } else {
         let title = match e.kind() {
-            UndefinedBehavior(UndefinedBehaviorInfo::ValidationError(validation_err))
+            UndefinedBehavior(ValidationError(validation_err))
                 if matches!(
                     validation_err.kind,
                     ValidationErrorKind::PointerAsInt { .. } | ValidationErrorKind::PartialPointer
@@ -299,7 +300,7 @@ pub fn report_error<'tcx, 'mir>(
         let helps = match e.kind() {
             Unsupported(_) =>
                 vec![(None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"))],
-            UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed { .. })
+            UndefinedBehavior(AlignmentCheckFailed { .. })
                 if ecx.machine.check_alignment == AlignmentCheck::Symbolic
             =>
                 vec![
@@ -311,13 +312,20 @@ pub fn report_error<'tcx, 'mir>(
                     (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
                     (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
                 ];
-                if let UndefinedBehaviorInfo::PointerUseAfterFree(alloc_id, _) | UndefinedBehaviorInfo::PointerOutOfBounds { alloc_id, .. } = info {
-                    if let Some(span) = ecx.machine.allocated_span(*alloc_id) {
-                        helps.push((Some(span), format!("{:?} was allocated here:", alloc_id)));
+                match info {
+                    PointerUseAfterFree(alloc_id, _) | PointerOutOfBounds { alloc_id, .. } => {
+                        if let Some(span) = ecx.machine.allocated_span(*alloc_id) {
+                            helps.push((Some(span), format!("{:?} was allocated here:", alloc_id)));
+                        }
+                        if let Some(span) = ecx.machine.deallocated_span(*alloc_id) {
+                            helps.push((Some(span), format!("{:?} was deallocated here:", alloc_id)));
+                        }
                     }
-                    if let Some(span) = ecx.machine.deallocated_span(*alloc_id) {
-                        helps.push((Some(span), format!("{:?} was deallocated here:", alloc_id)));
+                    AbiMismatchArgument { .. } | AbiMismatchReturn { .. } => {
+                        helps.push((None, format!("this means these two types are not *guaranteed* to be ABI-compatible across all targets")));
+                        helps.push((None, format!("if you think this code should be accepted anyway, please report an issue")));
                     }
+                    _ => {},
                 }
                 helps
             }
@@ -339,7 +347,7 @@ pub fn report_error<'tcx, 'mir>(
     // We want to dump the allocation if this is `InvalidUninitBytes`. Since `format_error` consumes `e`, we compute the outut early.
     let mut extra = String::new();
     match e.kind() {
-        UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(Some((alloc_id, access)))) => {
+        UndefinedBehavior(InvalidUninitBytes(Some((alloc_id, access)))) => {
             writeln!(
                 extra,
                 "Uninitialized memory occurred at {alloc_id:?}{range:?}, in this allocation:",
