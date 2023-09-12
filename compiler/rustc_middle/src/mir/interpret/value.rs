@@ -9,7 +9,10 @@ use rustc_apfloat::{
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
+use crate::{
+    mir::interpret::alloc_range,
+    ty::{ParamEnv, ScalarInt, Ty, TyCtxt},
+};
 
 use super::{
     AllocId, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
@@ -113,6 +116,54 @@ impl<'tcx> ConstValue<'tcx> {
 
     pub fn from_target_usize(i: u64, cx: &impl HasDataLayout) -> Self {
         ConstValue::Scalar(Scalar::from_target_usize(i, cx))
+    }
+
+    /// Must only be called on constants of type `&str` or `&[u8]`!
+    pub fn try_get_slice_bytes_for_diagnostics(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx [u8]> {
+        let (data, start, end) = match self {
+            ConstValue::Scalar(_) | ConstValue::ZeroSized => {
+                bug!("`try_get_slice_bytes` on non-slice constant")
+            }
+            &ConstValue::Slice { data, start, end } => (data, start, end),
+            &ConstValue::Indirect { alloc_id, offset } => {
+                // The reference itself is stored behind an indirection.
+                // Load the reference, and then load the actual slice contents.
+                let a = tcx.global_alloc(alloc_id).unwrap_memory().inner();
+                let ptr_size = tcx.data_layout.pointer_size;
+                if a.size() < offset + 2 * ptr_size {
+                    // (partially) dangling reference
+                    return None;
+                }
+                // Read the wide pointer components.
+                let ptr = a
+                    .read_scalar(
+                        &tcx,
+                        alloc_range(offset, ptr_size),
+                        /* read_provenance */ true,
+                    )
+                    .ok()?;
+                let ptr = ptr.to_pointer(&tcx).ok()?;
+                let len = a
+                    .read_scalar(
+                        &tcx,
+                        alloc_range(offset + ptr_size, ptr_size),
+                        /* read_provenance */ false,
+                    )
+                    .ok()?;
+                let len = len.to_target_usize(&tcx).ok()?;
+                let len: usize = len.try_into().ok()?;
+                if len == 0 {
+                    return Some(&[]);
+                }
+                // Non-empty slice, must have memory. We know this is a relative pointer.
+                let (inner_alloc_id, offset) = ptr.into_parts();
+                let data = tcx.global_alloc(inner_alloc_id?).unwrap_memory();
+                (data, offset.bytes_usize(), offset.bytes_usize() + len)
+            }
+        };
+
+        // This is for diagnostics only, so we are okay to use `inspect_with_uninit_and_ptr_outside_interpreter`.
+        Some(data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end))
     }
 }
 

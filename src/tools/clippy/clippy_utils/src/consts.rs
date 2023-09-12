@@ -671,19 +671,10 @@ pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::ConstantKind<'t
             ty::RawPtr(_) => Some(Constant::RawPtr(int.assert_bits(int.size()))),
             _ => None,
         },
-        mir::ConstantKind::Val(ConstValue::Slice { data, start, end }, _) => match result.ty().kind() {
-            ty::Ref(_, tam, _) => match tam.kind() {
-                ty::Str => String::from_utf8(
-                    data.inner()
-                        .inspect_with_uninit_and_ptr_outside_interpreter(start..end)
-                        .to_owned(),
-                )
-                .ok()
-                .map(Constant::Str),
-                _ => None,
-            },
-            _ => None,
-        },
+        mir::ConstantKind::Val(cv, _) if matches!(result.ty().kind(), ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), ty::Str)) => {
+            let data = cv.try_get_slice_bytes_for_diagnostics(lcx.tcx)?;
+            String::from_utf8(data.to_owned()).ok().map(Constant::Str)
+        }
         mir::ConstantKind::Val(ConstValue::Indirect { alloc_id, offset: _ }, _) => {
             let alloc = lcx.tcx.global_alloc(alloc_id).unwrap_memory();
             match result.ty().kind() {
