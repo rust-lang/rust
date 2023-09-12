@@ -204,6 +204,12 @@ pub struct Session {
 
     /// The version of the rustc process, possibly including a commit hash and description.
     pub cfg_version: &'static str,
+
+    /// All commandline args used to invoke the compiler, with @file args fully expanded.
+    /// This will only be used within debug info, e.g. in the pdb file on windows
+    /// This is mainly useful for other tools that reads that debuginfo to figure out
+    /// how to call the compiler with the same arguments.
+    pub expanded_args: Vec<String>,
 }
 
 pub struct PerfStats {
@@ -1325,6 +1331,7 @@ pub fn build_session(
     target_override: Option<Target>,
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
+    expanded_args: Vec<String>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1467,6 +1474,7 @@ pub fn build_session(
         target_features: Default::default(),
         unstable_target_features: Default::default(),
         cfg_version,
+        expanded_args,
     };
 
     validate_commandline_args_with_session_available(&sess);

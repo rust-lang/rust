@@ -20,10 +20,10 @@ mod m {
     }
 }
 
-pub trait Voldemort<T> {}
+pub trait Unnameable<T> {}
 
-impl Voldemort<m::PubStruct> for i32 {}
-impl Voldemort<m::PubE> for i32 {}
-impl<T> Voldemort<T> for u32 where T: m::PubTr {}
+impl Unnameable<m::PubStruct> for i32 {}
+impl Unnameable<m::PubE> for i32 {}
+impl<T> Unnameable<T> for u32 where T: m::PubTr {}
 
 fn main() {}

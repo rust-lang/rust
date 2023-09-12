@@ -36,6 +36,10 @@ unsafe fn ref_to_mut() {
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     let _num = &mut *std::mem::transmute::<_, *mut i32>(num);
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    let _num = &mut *std::cell::UnsafeCell::raw_get(
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+        num as *const i32 as *const std::cell::UnsafeCell<i32>
+    );
 
     let deferred = num as *const i32 as *mut i32;
     let _num = &mut *deferred;
@@ -48,6 +52,16 @@ unsafe fn ref_to_mut() {
 
     unsafe fn generic_ref_cast_mut<T>(this: &T) -> &mut T {
         &mut *((this as *const _) as *mut _)
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    fn as_mut<T>(x: &T) -> &mut T {
+        unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    fn as_mut_i32(x: &i32) -> &mut i32 {
+        unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
         //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     }
 }
@@ -111,6 +125,20 @@ unsafe fn no_warn() {
     let mut value = 3;
     let value: *const i32 = &mut value;
     *(value as *const i16 as *mut i16) = 42;
+
+    fn safe_as_mut<T>(x: &std::cell::UnsafeCell<T>) -> &mut T {
+        unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
+    }
+
+    fn cell_as_mut(x: &std::cell::Cell<i32>) -> &mut i32 {
+        unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
+    }
+
+    #[repr(transparent)]
+    struct DoesContainUnsafeCell(std::cell::UnsafeCell<i32>);
+    fn safe_as_mut2(x: &DoesContainUnsafeCell) -> &mut DoesContainUnsafeCell {
+        unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
+    }
 }
 
 fn main() {}

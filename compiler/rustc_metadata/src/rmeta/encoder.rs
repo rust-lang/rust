@@ -14,7 +14,8 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{
-    CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE,
+    CrateNum, DefId, DefIndex, LocalDefId, LocalDefIdSet, CRATE_DEF_ID, CRATE_DEF_INDEX,
+    LOCAL_CRATE,
 };
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::lang_items::LangItem;
@@ -50,7 +51,6 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::FileEncoder,
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
-
     tables: TableBuilders,
 
     lazy_state: LazyState,
@@ -280,8 +280,8 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
             // All of this logic ensures that the final result of deserialization is a 'normal'
             // Span that can be used without any additional trouble.
             let metadata_index = {
-                // Introduce a new scope so that we drop the 'lock()' temporary
-                match &*source_file.external_src.lock() {
+                // Introduce a new scope so that we drop the 'read()' temporary
+                match &*source_file.external_src.read() {
                     ExternalSource::Foreign { metadata_index, .. } => *metadata_index,
                     src => panic!("Unexpected external source {src:?}"),
                 }
@@ -1002,15 +1002,31 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
     }
 }
 
-/// Whether we should encode MIR.
+/// Whether we should encode MIR. Return a pair, resp. for CTFE and for LLVM.
 ///
 /// Computing, optimizing and encoding the MIR is a relatively expensive operation.
 /// We want to avoid this work when not required. Therefore:
 /// - we only compute `mir_for_ctfe` on items with const-eval semantics;
 /// - we skip `optimized_mir` for check runs.
+/// - we only encode `optimized_mir` that could be generated in other crates, that is, a code that
+///   is either generic or has inline hint, and is reachable from the other crates (contained
+///   in reachable set).
 ///
-/// Return a pair, resp. for CTFE and for LLVM.
-fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
+/// Note: Reachable set describes definitions that might be generated or referenced from other
+/// crates and it can be used to limit optimized MIR that needs to be encoded. On the other hand,
+/// the reachable set doesn't have much to say about which definitions might be evaluated at compile
+/// time in other crates, so it cannot be used to omit CTFE MIR. For example, `f` below is
+/// unreachable and yet it can be evaluated in other crates:
+///
+/// ```
+/// const fn f() -> usize { 0 }
+/// pub struct S { pub a: [usize; f()] }
+/// ```
+fn should_encode_mir(
+    tcx: TyCtxt<'_>,
+    reachable_set: &LocalDefIdSet,
+    def_id: LocalDefId,
+) -> (bool, bool) {
     match tcx.def_kind(def_id) {
         // Constructors
         DefKind::Ctor(_, _) => {
@@ -1027,14 +1043,15 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let generics = tcx.generics_of(def_id);
-            let needs_inline = (generics.requires_monomorphization(tcx)
-                || tcx.codegen_fn_attrs(def_id).requests_inline())
-                && tcx.sess.opts.output_types.should_codegen();
+            let opt = tcx.sess.opts.unstable_opts.always_encode_mir
+                || (tcx.sess.opts.output_types.should_codegen()
+                    && reachable_set.contains(&def_id)
+                    && (generics.requires_monomorphization(tcx)
+                        || tcx.codegen_fn_attrs(def_id).requests_inline()));
             // The function has a `const` modifier or is in a `#[const_trait]`.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
                 || tcx.is_const_default_method(def_id.to_def_id());
-            let always_encode_mir = tcx.sess.opts.unstable_opts.always_encode_mir;
-            (is_const_fn, needs_inline || always_encode_mir)
+            (is_const_fn, opt)
         }
         // Generators require optimized MIR to compute layout.
         DefKind::Generator => (false, true),
@@ -1580,9 +1597,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
 
         let tcx = self.tcx;
+        let reachable_set = tcx.reachable_set(());
 
         let keys_and_jobs = tcx.mir_keys(()).iter().filter_map(|&def_id| {
-            let (encode_const, encode_opt) = should_encode_mir(tcx, def_id);
+            let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
             if encode_const || encode_opt { Some((def_id, encode_const, encode_opt)) } else { None }
         });
         for (def_id, encode_const, encode_opt) in keys_and_jobs {
@@ -2067,8 +2085,9 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
         return;
     }
 
+    let reachable_set = tcx.reachable_set(());
     par_for_each_in(tcx.mir_keys(()), |&def_id| {
-        let (encode_const, encode_opt) = should_encode_mir(tcx, def_id);
+        let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
 
         if encode_const {
             tcx.ensure_with_value().mir_for_ctfe(def_id);

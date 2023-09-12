@@ -8,7 +8,6 @@ use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
-use smallvec::{smallvec, SmallVec};
 use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
@@ -19,6 +18,7 @@ use std::sync::atomic::Ordering::Relaxed;
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
+use crate::dep_graph::EdgesVec;
 use crate::ich::StableHashingContext;
 use crate::query::{QueryContext, QuerySideEffects};
 
@@ -137,7 +137,7 @@ impl<K: DepKind> DepGraph<K> {
         let _green_node_index = current.intern_new_node(
             profiler,
             DepNode { kind: DepKind::NULL, hash: current.anon_id_seed.into() },
-            smallvec![],
+            EdgesVec::new(),
             Fingerprint::ZERO,
         );
         assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
@@ -147,7 +147,7 @@ impl<K: DepKind> DepGraph<K> {
             profiler,
             &prev_graph,
             DepNode { kind: DepKind::RED, hash: Fingerprint::ZERO.into() },
-            smallvec![],
+            EdgesVec::new(),
             None,
             false,
         );
@@ -356,12 +356,12 @@ impl<K: DepKind> DepGraphData<K> {
 
         let with_deps = |task_deps| K::with_deps(task_deps, || task(cx, arg));
         let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
-            (with_deps(TaskDepsRef::EvalAlways), smallvec![])
+            (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
         } else {
             let task_deps = Lock::new(TaskDeps {
                 #[cfg(debug_assertions)]
                 node: Some(key),
-                reads: SmallVec::new(),
+                reads: EdgesVec::new(),
                 read_set: Default::default(),
                 phantom_data: PhantomData,
             });
@@ -486,14 +486,14 @@ impl<K: DepKind> DepGraph<K> {
 
                 // As long as we only have a low number of reads we can avoid doing a hash
                 // insert and potentially allocating/reallocating the hashmap
-                let new_read = if task_deps.reads.len() < TASK_DEPS_READS_CAP {
+                let new_read = if task_deps.reads.len() < EdgesVec::INLINE_CAPACITY {
                     task_deps.reads.iter().all(|other| *other != dep_node_index)
                 } else {
                     task_deps.read_set.insert(dep_node_index)
                 };
                 if new_read {
                     task_deps.reads.push(dep_node_index);
-                    if task_deps.reads.len() == TASK_DEPS_READS_CAP {
+                    if task_deps.reads.len() == EdgesVec::INLINE_CAPACITY {
                         // Fill `read_set` with what we have so far so we can use the hashset
                         // next time
                         task_deps.read_set.extend(task_deps.reads.iter().copied());
@@ -572,7 +572,7 @@ impl<K: DepKind> DepGraph<K> {
                 }
             }
 
-            let mut edges = SmallVec::new();
+            let mut edges = EdgesVec::new();
             K::read_deps(|task_deps| match task_deps {
                 TaskDepsRef::Allow(deps) => edges.extend(deps.lock().reads.iter().copied()),
                 TaskDepsRef::EvalAlways => {
@@ -629,12 +629,7 @@ impl<K: DepKind> DepGraphData<K> {
         if let Some(prev_index) = self.previous.node_to_index_opt(dep_node) {
             self.current.prev_index_to_index.lock()[prev_index]
         } else {
-            self.current
-                .new_node_to_index
-                .get_shard_by_value(dep_node)
-                .lock()
-                .get(dep_node)
-                .copied()
+            self.current.new_node_to_index.lock_shard_by_value(dep_node).get(dep_node).copied()
         }
     }
 
@@ -872,7 +867,7 @@ impl<K: DepKind> DepGraphData<K> {
 
         let prev_deps = self.previous.edge_targets_from(prev_dep_node_index);
 
-        for &dep_dep_node_index in prev_deps {
+        for dep_dep_node_index in prev_deps {
             self.try_mark_parent_green(qcx, dep_dep_node_index, dep_node, Some(&frame))?;
         }
 
@@ -1201,8 +1196,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
         edges: EdgesVec,
         current_fingerprint: Fingerprint,
     ) -> DepNodeIndex {
-        let dep_node_index = match self.new_node_to_index.get_shard_by_value(&key).lock().entry(key)
-        {
+        let dep_node_index = match self.new_node_to_index.lock_shard_by_value(&key).entry(key) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
                 let dep_node_index =
@@ -1308,8 +1302,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 let key = prev_graph.index_to_node(prev_index);
                 let edges = prev_graph
                     .edge_targets_from(prev_index)
-                    .iter()
-                    .map(|i| prev_index_to_index[*i].unwrap())
+                    .map(|i| prev_index_to_index[i].unwrap())
                     .collect();
                 let fingerprint = prev_graph.fingerprint_by_index(prev_index);
                 let dep_node_index = self.encoder.borrow().send(profiler, key, fingerprint, edges);
@@ -1329,15 +1322,11 @@ impl<K: DepKind> CurrentDepGraph<K> {
     ) {
         let node = &prev_graph.index_to_node(prev_index);
         debug_assert!(
-            !self.new_node_to_index.get_shard_by_value(node).lock().contains_key(node),
+            !self.new_node_to_index.lock_shard_by_value(node).contains_key(node),
             "node from previous graph present in new node collection"
         );
     }
 }
-
-/// The capacity of the `reads` field `SmallVec`
-const TASK_DEPS_READS_CAP: usize = 8;
-type EdgesVec = SmallVec<[DepNodeIndex; TASK_DEPS_READS_CAP]>;
 
 #[derive(Debug, Clone, Copy)]
 pub enum TaskDepsRef<'a, K: DepKind> {

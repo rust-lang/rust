@@ -162,7 +162,7 @@ error: layout_of(U) = Layout {
 LL | union U { f1: (i32, i32), f3: i32 }
    | ^^^^^^^
 
-error: layout_of(std::result::Result<i32, i32>) = Layout {
+error: layout_of(Result<i32, i32>) = Layout {
            size: Size(8 bytes),
            align: AbiAndPrefAlign {
                abi: Align(4 bytes),
@@ -344,7 +344,7 @@ error: layout_of(V) = Layout {
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
        }
-  --> $DIR/debug.rs:22:1
+  --> $DIR/debug.rs:25:1
    |
 LL | pub union V {
    | ^^^^^^^^^^^
@@ -368,7 +368,7 @@ error: layout_of(W) = Layout {
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
        }
-  --> $DIR/debug.rs:28:1
+  --> $DIR/debug.rs:31:1
    |
 LL | pub union W {
    | ^^^^^^^^^^^
@@ -392,7 +392,7 @@ error: layout_of(Y) = Layout {
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
        }
-  --> $DIR/debug.rs:34:1
+  --> $DIR/debug.rs:37:1
    |
 LL | pub union Y {
    | ^^^^^^^^^^^
@@ -416,7 +416,7 @@ error: layout_of(P1) = Layout {
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
        }
-  --> $DIR/debug.rs:41:1
+  --> $DIR/debug.rs:44:1
    |
 LL | union P1 { x: u32 }
    | ^^^^^^^^
@@ -440,7 +440,7 @@ error: layout_of(P2) = Layout {
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
        }
-  --> $DIR/debug.rs:45:1
+  --> $DIR/debug.rs:48:1
    |
 LL | union P2 { x: (u32, u32) }
    | ^^^^^^^^
@@ -464,7 +464,7 @@ error: layout_of(P3) = Layout {
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
        }
-  --> $DIR/debug.rs:53:1
+  --> $DIR/debug.rs:56:1
    |
 LL | union P3 { x: F32x4 }
    | ^^^^^^^^
@@ -488,7 +488,7 @@ error: layout_of(P4) = Layout {
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
        }
-  --> $DIR/debug.rs:57:1
+  --> $DIR/debug.rs:60:1
    |
 LL | union P4 { x: E }
    | ^^^^^^^^
@@ -517,12 +517,12 @@ error: layout_of(P5) = Layout {
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
        }
-  --> $DIR/debug.rs:61:1
+  --> $DIR/debug.rs:64:1
    |
 LL | union P5 { zst: [u16; 0], byte: u8 }
    | ^^^^^^^^
 
-error: layout_of(std::mem::MaybeUninit<u8>) = Layout {
+error: layout_of(MaybeUninit<u8>) = Layout {
            size: Size(1 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
@@ -546,10 +546,32 @@ error: layout_of(std::mem::MaybeUninit<u8>) = Layout {
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
        }
-  --> $DIR/debug.rs:64:1
+  --> $DIR/debug.rs:67:1
    |
 LL | type X = std::mem::MaybeUninit<u8>;
    | ^^^^^^
 
-error: aborting due to 14 previous errors
+error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
+  --> $DIR/debug.rs:70:1
+   |
+LL | const C: () = ();
+   | ^^^^^^^^^^^
 
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/debug.rs:78:19
+   |
+LL | type Impossible = (str, str);
+   |                   ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: only the last element of a tuple may have a dynamically sized type
+
+error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
+  --> $DIR/debug.rs:74:5
+   |
+LL |     const C: () = ();
+   |     ^^^^^^^^^^^
+
+error: aborting due to 17 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

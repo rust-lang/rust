@@ -722,3 +722,14 @@ pub enum UserType<'tcx> {
     /// given substitutions applied.
     TypeOf(DefId, UserArgs<'tcx>),
 }
+
+impl<'tcx> std::fmt::Display for UserType<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ty(arg0) => {
+                ty::print::with_no_trimmed_paths!(write!(f, "Ty({})", arg0))
+            }
+            Self::TypeOf(arg0, arg1) => write!(f, "TypeOf({:?}, {:?})", arg0, arg1),
+        }
+    }
+}

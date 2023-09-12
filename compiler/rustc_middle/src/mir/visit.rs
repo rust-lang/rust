@@ -838,12 +838,20 @@ macro_rules! make_mir_visitor {
                 let VarDebugInfo {
                     name: _,
                     source_info,
+                    composite,
                     value,
                     argument_index: _,
                 } = var_debug_info;
 
                 self.visit_source_info(source_info);
                 let location = Location::START;
+                if let Some(box VarDebugInfoFragment { ref $($mutability)? ty, ref $($mutability)? projection }) = composite {
+                    self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                    for elem in projection {
+                        let ProjectionElem::Field(_, ty) = elem else { bug!() };
+                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                    }
+                }
                 match value {
                     VarDebugInfoContents::Const(c) => self.visit_constant(c, location),
                     VarDebugInfoContents::Place(place) =>
@@ -852,17 +860,6 @@ macro_rules! make_mir_visitor {
                             PlaceContext::NonUse(NonUseContext::VarDebugInfo),
                             location
                         ),
-                    VarDebugInfoContents::Composite { ty, fragments } => {
-                        // FIXME(eddyb) use a better `TyContext` here.
-                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
-                        for VarDebugInfoFragment { projection: _, contents } in fragments {
-                            self.visit_place(
-                                contents,
-                                PlaceContext::NonUse(NonUseContext::VarDebugInfo),
-                                location,
-                            );
-                        }
-                    }
                 }
             }
 

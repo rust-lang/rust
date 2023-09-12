@@ -21,7 +21,6 @@ use rustc_data_structures::sync::join;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit as hir_visit;
-use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::LintPass;
@@ -61,6 +60,9 @@ impl<'tcx, T: LateLintPass<'tcx>> LateContextAndPass<'tcx, T> {
         self.context.last_node_with_lint_attrs = id;
         debug!("late context: enter_attrs({:?})", attrs);
         lint_callback!(self, enter_lint_attrs, attrs);
+        for attr in attrs {
+            lint_callback!(self, check_attribute, attr);
+        }
         f(self);
         debug!("late context: exit_attrs({:?})", attrs);
         lint_callback!(self, exit_lint_attrs, attrs);
@@ -377,20 +379,18 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 
     let (module, _span, hir_id) = tcx.hir().get_module(module_def_id);
 
-    // There is no module lint that will have the crate itself as an item, so check it here.
-    if hir_id == hir::CRATE_HIR_ID {
-        lint_callback!(cx, check_crate,);
-    }
-
-    cx.process_mod(module, hir_id);
-
-    // Visit the crate attributes
-    if hir_id == hir::CRATE_HIR_ID {
-        for attr in tcx.hir().attrs(hir::CRATE_HIR_ID).iter() {
-            cx.visit_attribute(attr)
+    cx.with_lint_attrs(hir_id, |cx| {
+        // There is no module lint that will have the crate itself as an item, so check it here.
+        if hir_id == hir::CRATE_HIR_ID {
+            lint_callback!(cx, check_crate,);
         }
-        lint_callback!(cx, check_crate_post,);
-    }
+
+        cx.process_mod(module, hir_id);
+
+        if hir_id == hir::CRATE_HIR_ID {
+            lint_callback!(cx, check_crate_post,);
+        }
+    });
 }
 
 fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
@@ -431,7 +431,6 @@ fn late_lint_crate_inner<'tcx, T: LateLintPass<'tcx>>(
         // item), warn for it here.
         lint_callback!(cx, check_crate,);
         tcx.hir().walk_toplevel_module(cx);
-        tcx.hir().walk_attributes(cx);
         lint_callback!(cx, check_crate_post,);
     })
 }

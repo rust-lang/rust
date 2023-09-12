@@ -1126,6 +1126,11 @@ impl<T> fmt::Debug for Discriminant<T> {
 ///
 /// [Reference]: ../../reference/items/enumerations.html#custom-discriminant-values-for-fieldless-enumerations
 ///
+/// The value of a [`Discriminant<T>`] is independent of any *lifetimes* in `T`. As such, reading
+/// or writing a `Discriminant<Foo<'a>>` as a `Discriminant<Foo<'b>>` (whether via [`transmute`] or
+/// otherwise) is always sound. Note that this is **not** true for other kinds of generic
+/// parameters; `Discriminant<Foo<A>>` and `Discriminant<Foo<B>>` might be incompatible.
+///
 /// # Examples
 ///
 /// This can be used to compare enums that carry data, while disregarding

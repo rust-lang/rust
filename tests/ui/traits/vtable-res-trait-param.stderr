@@ -6,6 +6,11 @@ LL |     b.gimme_an_a(y)
    |       |
    |       required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/vtable-res-trait-param.rs:1:1
+   |
+LL | trait TraitA {
+   | ^^^^^^^^^^^^
 note: required by a bound in `TraitB::gimme_an_a`
   --> $DIR/vtable-res-trait-param.rs:6:21
    |

@@ -48,18 +48,6 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
 
         join(
             move || {
-                sess.time("incr_comp_persist_result_cache", || {
-                    // Drop the memory map so that we can remove the file and write to it.
-                    if let Some(odc) = &tcx.query_system.on_disk_cache {
-                        odc.drop_serialized_data(tcx);
-                    }
-
-                    file_format::save_in(sess, query_cache_path, "query cache", |e| {
-                        encode_query_cache(tcx, e)
-                    });
-                });
-            },
-            move || {
                 sess.time("incr_comp_persist_dep_graph", || {
                     if let Err(err) = tcx.dep_graph.encode(&tcx.sess.prof) {
                         sess.emit_err(errors::WriteDepGraph { path: &staging_dep_graph_path, err });
@@ -71,6 +59,20 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
                             err,
                         });
                     }
+                });
+            },
+            move || {
+                // We execute this after `incr_comp_persist_dep_graph` for the serial compiler
+                // to catch any potential query execution writing to the dep graph.
+                sess.time("incr_comp_persist_result_cache", || {
+                    // Drop the memory map so that we can remove the file and write to it.
+                    if let Some(odc) = &tcx.query_system.on_disk_cache {
+                        odc.drop_serialized_data(tcx);
+                    }
+
+                    file_format::save_in(sess, query_cache_path, "query cache", |e| {
+                        encode_query_cache(tcx, e)
+                    });
                 });
             },
         );

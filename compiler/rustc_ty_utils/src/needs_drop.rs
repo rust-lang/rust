@@ -19,11 +19,30 @@ fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>
     // needs drop.
     let adt_has_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.destructor(tcx).map(|_| DtorType::Significant);
-    let res =
-        drop_tys_helper(tcx, query.value, query.param_env, adt_has_dtor, false).next().is_some();
+    let res = drop_tys_helper(tcx, query.value, query.param_env, adt_has_dtor, false)
+        .filter(filter_array_elements(tcx, query.param_env))
+        .next()
+        .is_some();
 
     debug!("needs_drop_raw({:?}) = {:?}", query, res);
     res
+}
+
+/// HACK: in order to not mistakenly assume that `[PhantomData<T>; N]` requires drop glue
+/// we check the element type for drop glue. The correct fix would be looking at the
+/// entirety of the code around `needs_drop_components` and this file and come up with
+/// logic that is easier to follow while not repeating any checks that may thus diverge.
+fn filter_array_elements<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> impl Fn(&Result<Ty<'tcx>, AlwaysRequiresDrop>) -> bool {
+    move |ty| match ty {
+        Ok(ty) => match *ty.kind() {
+            ty::Array(elem, _) => tcx.needs_drop_raw(param_env.and(elem)),
+            _ => true,
+        },
+        Err(AlwaysRequiresDrop) => true,
+    }
 }
 
 fn has_significant_drop_raw<'tcx>(
@@ -37,6 +56,7 @@ fn has_significant_drop_raw<'tcx>(
         adt_consider_insignificant_dtor(tcx),
         true,
     )
+    .filter(filter_array_elements(tcx, query.param_env))
     .next()
     .is_some();
     debug!("has_significant_drop_raw({:?}) = {:?}", query, res);

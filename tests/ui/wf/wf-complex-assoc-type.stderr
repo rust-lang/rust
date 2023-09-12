@@ -4,6 +4,11 @@ error[E0277]: the trait bound `bool: MyTrait` is not satisfied
 LL |     type MyItem = Option<((AssertMyTrait<bool>, u8))>;
    |                            ^^^^^^^^^^^^^^^^^^^ the trait `MyTrait` is not implemented for `bool`
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/wf-complex-assoc-type.rs:1:1
+   |
+LL | trait MyTrait {}
+   | ^^^^^^^^^^^^^
 note: required by a bound in `AssertMyTrait`
   --> $DIR/wf-complex-assoc-type.rs:2:25
    |

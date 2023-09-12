@@ -37,6 +37,7 @@ use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::traits::TraitObligation;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::relate::TypeRelation;
@@ -1000,9 +1001,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                 }
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used for new solver")
+                ty::PredicateKind::AliasRelate(..)
+                    if matches!(self.infcx.defining_use_anchor, DefiningAnchor::Bubble) =>
+                {
+                    Ok(EvaluatedToAmbig)
                 }
+                ty::PredicateKind::AliasRelate(a, b, relate) => match relate {
+                    ty::AliasRelationDirection::Equate => match self
+                        .infcx
+                        .at(&obligation.cause, obligation.param_env)
+                        .eq(DefineOpaqueTypes::Yes, a, b)
+                    {
+                        Ok(inf_ok) => self.evaluate_predicates_recursively(
+                            previous_stack,
+                            inf_ok.into_obligations(),
+                        ),
+                        Err(_) => Ok(EvaluatedToErr),
+                    },
+                    ty::AliasRelationDirection::Subtype => {
+                        bug!("AliasRelate subtyping is only used for new solver")
+                    }
+                },
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     match self.infcx.at(&obligation.cause, obligation.param_env).eq(

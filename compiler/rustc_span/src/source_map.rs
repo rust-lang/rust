@@ -328,7 +328,7 @@ impl SourceMap {
         name_hash: Hash128,
         source_len: u32,
         cnum: CrateNum,
-        file_local_lines: Lock<SourceFileLines>,
+        file_local_lines: FreezeLock<SourceFileLines>,
         multibyte_chars: Vec<MultiByteChar>,
         non_narrow_chars: Vec<NonNarrowChar>,
         normalized_pos: Vec<NormalizedPos>,
@@ -340,7 +340,7 @@ impl SourceMap {
             name: filename,
             src: None,
             src_hash,
-            external_src: Lock::new(ExternalSource::Foreign {
+            external_src: FreezeLock::new(ExternalSource::Foreign {
                 kind: ExternalSourceKind::AbsentOk,
                 metadata_index,
             }),
@@ -564,7 +564,7 @@ impl SourceMap {
                 end: (local_end.sf.name.clone(), local_end.sf.start_pos),
             })))
         } else {
-            self.ensure_source_file_source_present(local_begin.sf.clone());
+            self.ensure_source_file_source_present(&local_begin.sf);
 
             let start_index = local_begin.pos.to_usize();
             let end_index = local_end.pos.to_usize();
@@ -581,7 +581,7 @@ impl SourceMap {
 
             if let Some(ref src) = local_begin.sf.src {
                 extract_source(src, start_index, end_index)
-            } else if let Some(src) = local_begin.sf.external_src.borrow().get_source() {
+            } else if let Some(src) = local_begin.sf.external_src.read().get_source() {
                 extract_source(src, start_index, end_index)
             } else {
                 Err(SpanSnippetError::SourceNotAvailable { filename: local_begin.sf.name.clone() })
@@ -873,7 +873,7 @@ impl SourceMap {
             let sp = sp.data();
             let local_begin = self.lookup_byte_offset(sp.lo);
             let start_index = local_begin.pos.to_usize();
-            let src = local_begin.sf.external_src.borrow();
+            let src = local_begin.sf.external_src.read();
 
             let snippet = if let Some(ref src) = local_begin.sf.src {
                 Some(&src[start_index..])
@@ -983,7 +983,7 @@ impl SourceMap {
             return 1;
         }
 
-        let src = local_begin.sf.external_src.borrow();
+        let src = local_begin.sf.external_src.read();
 
         let snippet = if let Some(src) = &local_begin.sf.src {
             src
@@ -1030,7 +1030,7 @@ impl SourceMap {
         self.files().iter().fold(0, |a, f| a + f.count_lines())
     }
 
-    pub fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool {
+    pub fn ensure_source_file_source_present(&self, source_file: &SourceFile) -> bool {
         source_file.add_external_src(|| {
             let FileName::Real(ref name) = source_file.name else {
                 return None;

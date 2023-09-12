@@ -6,7 +6,11 @@ LL |     writes_to_specific_path(&cap);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Delegates<U>` is implemented for `T`
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-85848.rs:4:1
+   |
+LL | trait _Contains<T> {
+   | ^^^^^^^^^^^^^^^^^^
 note: required for `&C` to implement `Contains<(), true>`
   --> $DIR/issue-85848.rs:21:12
    |

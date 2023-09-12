@@ -226,3 +226,9 @@ pub(crate) struct WriteBytecode<'a> {
 pub(crate) struct CopyBitcode {
     pub err: std::io::Error,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_unknown_debuginfo_compression)]
+pub struct UnknownCompression {
+    pub algorithm: &'static str,
+}

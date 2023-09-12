@@ -33,7 +33,7 @@ extern crate rustc_macros;
 #[macro_use]
 extern crate tracing;
 
-use rustc_data_structures::AtomicRef;
+use rustc_data_structures::{cold_path, AtomicRef};
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
@@ -64,7 +64,7 @@ pub mod fatal_error;
 pub mod profiling;
 
 use rustc_data_structures::stable_hasher::{Hash128, Hash64, HashStable, StableHasher};
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
 
 use std::borrow::Cow;
 use std::cmp::{self, Ordering};
@@ -510,10 +510,6 @@ impl SpanData {
     pub fn is_dummy(self) -> bool {
         self.lo.0 == 0 && self.hi.0 == 0
     }
-    #[inline]
-    pub fn is_visible(self, sm: &SourceMap) -> bool {
-        !self.is_dummy() && sm.is_span_accessible(self.span())
-    }
     /// Returns `true` if `self` fully encloses `other`.
     pub fn contains(self, other: Self) -> bool {
         self.lo <= other.lo && other.hi <= self.hi
@@ -573,15 +569,9 @@ impl Span {
         self.data().with_parent(ctxt)
     }
 
-    /// Returns `true` if this is a dummy span with any hygienic context.
-    #[inline]
-    pub fn is_dummy(self) -> bool {
-        self.data_untracked().is_dummy()
-    }
-
     #[inline]
     pub fn is_visible(self, sm: &SourceMap) -> bool {
-        self.data_untracked().is_visible(sm)
+        !self.is_dummy() && sm.is_span_accessible(self)
     }
 
     /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.
@@ -1206,7 +1196,6 @@ pub enum ExternalSourceKind {
     AbsentOk,
     /// A failed attempt has been made to load the external source.
     AbsentErr,
-    Unneeded,
 }
 
 impl ExternalSource {
@@ -1343,13 +1332,13 @@ pub struct SourceFile {
     pub src_hash: SourceFileHash,
     /// The external source code (used for external crates, which will have a `None`
     /// value as `self.src`.
-    pub external_src: Lock<ExternalSource>,
+    pub external_src: FreezeLock<ExternalSource>,
     /// The start position of this source in the `SourceMap`.
     pub start_pos: BytePos,
     /// The byte length of this source.
     pub source_len: RelativeBytePos,
     /// Locations of lines beginnings in the source code.
-    pub lines: Lock<SourceFileLines>,
+    pub lines: FreezeLock<SourceFileLines>,
     /// Locations of multi-byte characters in the source code.
     pub multibyte_chars: Vec<MultiByteChar>,
     /// Width of characters that are not narrow in the source code.
@@ -1368,10 +1357,10 @@ impl Clone for SourceFile {
             name: self.name.clone(),
             src: self.src.clone(),
             src_hash: self.src_hash,
-            external_src: Lock::new(self.external_src.borrow().clone()),
+            external_src: self.external_src.clone(),
             start_pos: self.start_pos,
             source_len: self.source_len,
-            lines: Lock::new(self.lines.borrow().clone()),
+            lines: self.lines.clone(),
             multibyte_chars: self.multibyte_chars.clone(),
             non_narrow_chars: self.non_narrow_chars.clone(),
             normalized_pos: self.normalized_pos.clone(),
@@ -1389,64 +1378,63 @@ impl<S: Encoder> Encodable<S> for SourceFile {
         self.source_len.encode(s);
 
         // We are always in `Lines` form by the time we reach here.
-        assert!(self.lines.borrow().is_lines());
-        self.lines(|lines| {
-            // Store the length.
-            s.emit_u32(lines.len() as u32);
+        assert!(self.lines.read().is_lines());
+        let lines = self.lines();
+        // Store the length.
+        s.emit_u32(lines.len() as u32);
 
-            // Compute and store the difference list.
-            if lines.len() != 0 {
-                let max_line_length = if lines.len() == 1 {
-                    0
-                } else {
-                    lines
-                        .array_windows()
-                        .map(|&[fst, snd]| snd - fst)
-                        .map(|bp| bp.to_usize())
-                        .max()
-                        .unwrap()
-                };
+        // Compute and store the difference list.
+        if lines.len() != 0 {
+            let max_line_length = if lines.len() == 1 {
+                0
+            } else {
+                lines
+                    .array_windows()
+                    .map(|&[fst, snd]| snd - fst)
+                    .map(|bp| bp.to_usize())
+                    .max()
+                    .unwrap()
+            };
 
-                let bytes_per_diff: usize = match max_line_length {
-                    0..=0xFF => 1,
-                    0x100..=0xFFFF => 2,
-                    _ => 4,
-                };
+            let bytes_per_diff: usize = match max_line_length {
+                0..=0xFF => 1,
+                0x100..=0xFFFF => 2,
+                _ => 4,
+            };
 
-                // Encode the number of bytes used per diff.
-                s.emit_u8(bytes_per_diff as u8);
+            // Encode the number of bytes used per diff.
+            s.emit_u8(bytes_per_diff as u8);
 
-                // Encode the first element.
-                assert_eq!(lines[0], RelativeBytePos(0));
+            // Encode the first element.
+            assert_eq!(lines[0], RelativeBytePos(0));
 
-                // Encode the difference list.
-                let diff_iter = lines.array_windows().map(|&[fst, snd]| snd - fst);
-                let num_diffs = lines.len() - 1;
-                let mut raw_diffs;
-                match bytes_per_diff {
-                    1 => {
-                        raw_diffs = Vec::with_capacity(num_diffs);
-                        for diff in diff_iter {
-                            raw_diffs.push(diff.0 as u8);
-                        }
+            // Encode the difference list.
+            let diff_iter = lines.array_windows().map(|&[fst, snd]| snd - fst);
+            let num_diffs = lines.len() - 1;
+            let mut raw_diffs;
+            match bytes_per_diff {
+                1 => {
+                    raw_diffs = Vec::with_capacity(num_diffs);
+                    for diff in diff_iter {
+                        raw_diffs.push(diff.0 as u8);
                     }
-                    2 => {
-                        raw_diffs = Vec::with_capacity(bytes_per_diff * num_diffs);
-                        for diff in diff_iter {
-                            raw_diffs.extend_from_slice(&(diff.0 as u16).to_le_bytes());
-                        }
-                    }
-                    4 => {
-                        raw_diffs = Vec::with_capacity(bytes_per_diff * num_diffs);
-                        for diff in diff_iter {
-                            raw_diffs.extend_from_slice(&(diff.0).to_le_bytes());
-                        }
-                    }
-                    _ => unreachable!(),
                 }
-                s.emit_raw_bytes(&raw_diffs);
+                2 => {
+                    raw_diffs = Vec::with_capacity(bytes_per_diff * num_diffs);
+                    for diff in diff_iter {
+                        raw_diffs.extend_from_slice(&(diff.0 as u16).to_le_bytes());
+                    }
+                }
+                4 => {
+                    raw_diffs = Vec::with_capacity(bytes_per_diff * num_diffs);
+                    for diff in diff_iter {
+                        raw_diffs.extend_from_slice(&(diff.0).to_le_bytes());
+                    }
+                }
+                _ => unreachable!(),
             }
-        });
+            s.emit_raw_bytes(&raw_diffs);
+        }
 
         self.multibyte_chars.encode(s);
         self.non_narrow_chars.encode(s);
@@ -1488,8 +1476,8 @@ impl<D: Decoder> Decodable<D> for SourceFile {
             src_hash,
             // Unused - the metadata decoder will construct
             // a new SourceFile, filling in `external_src` properly
-            external_src: Lock::new(ExternalSource::Unneeded),
-            lines: Lock::new(lines),
+            external_src: FreezeLock::frozen(ExternalSource::Unneeded),
+            lines: FreezeLock::new(lines),
             multibyte_chars,
             non_narrow_chars,
             normalized_pos,
@@ -1530,10 +1518,10 @@ impl SourceFile {
             name,
             src: Some(Lrc::new(src)),
             src_hash,
-            external_src: Lock::new(ExternalSource::Unneeded),
+            external_src: FreezeLock::frozen(ExternalSource::Unneeded),
             start_pos: BytePos::from_u32(0),
             source_len: RelativeBytePos::from_u32(source_len),
-            lines: Lock::new(SourceFileLines::Lines(lines)),
+            lines: FreezeLock::frozen(SourceFileLines::Lines(lines)),
             multibyte_chars,
             non_narrow_chars,
             normalized_pos,
@@ -1542,65 +1530,82 @@ impl SourceFile {
         })
     }
 
-    pub fn lines<F, R>(&self, f: F) -> R
-    where
-        F: FnOnce(&[RelativeBytePos]) -> R,
-    {
-        let mut guard = self.lines.borrow_mut();
-        match &*guard {
-            SourceFileLines::Lines(lines) => f(lines),
-            SourceFileLines::Diffs(SourceFileDiffs { bytes_per_diff, num_diffs, raw_diffs }) => {
-                // Convert from "diffs" form to "lines" form.
-                let num_lines = num_diffs + 1;
-                let mut lines = Vec::with_capacity(num_lines);
-                let mut line_start = RelativeBytePos(0);
-                lines.push(line_start);
+    /// This converts the `lines` field to contain `SourceFileLines::Lines` if needed and freezes it.
+    fn convert_diffs_to_lines_frozen(&self) {
+        let mut guard = if let Some(guard) = self.lines.try_write() { guard } else { return };
 
-                assert_eq!(*num_diffs, raw_diffs.len() / bytes_per_diff);
-                match bytes_per_diff {
-                    1 => {
-                        lines.extend(raw_diffs.into_iter().map(|&diff| {
-                            line_start = line_start + RelativeBytePos(diff as u32);
-                            line_start
-                        }));
-                    }
-                    2 => {
-                        lines.extend((0..*num_diffs).map(|i| {
-                            let pos = bytes_per_diff * i;
-                            let bytes = [raw_diffs[pos], raw_diffs[pos + 1]];
-                            let diff = u16::from_le_bytes(bytes);
-                            line_start = line_start + RelativeBytePos(diff as u32);
-                            line_start
-                        }));
-                    }
-                    4 => {
-                        lines.extend((0..*num_diffs).map(|i| {
-                            let pos = bytes_per_diff * i;
-                            let bytes = [
-                                raw_diffs[pos],
-                                raw_diffs[pos + 1],
-                                raw_diffs[pos + 2],
-                                raw_diffs[pos + 3],
-                            ];
-                            let diff = u32::from_le_bytes(bytes);
-                            line_start = line_start + RelativeBytePos(diff);
-                            line_start
-                        }));
-                    }
-                    _ => unreachable!(),
-                }
-                let res = f(&lines);
-                *guard = SourceFileLines::Lines(lines);
-                res
+        let SourceFileDiffs { bytes_per_diff, num_diffs, raw_diffs } = match &*guard {
+            SourceFileLines::Diffs(diffs) => diffs,
+            SourceFileLines::Lines(..) => {
+                FreezeWriteGuard::freeze(guard);
+                return;
             }
+        };
+
+        // Convert from "diffs" form to "lines" form.
+        let num_lines = num_diffs + 1;
+        let mut lines = Vec::with_capacity(num_lines);
+        let mut line_start = RelativeBytePos(0);
+        lines.push(line_start);
+
+        assert_eq!(*num_diffs, raw_diffs.len() / bytes_per_diff);
+        match bytes_per_diff {
+            1 => {
+                lines.extend(raw_diffs.into_iter().map(|&diff| {
+                    line_start = line_start + RelativeBytePos(diff as u32);
+                    line_start
+                }));
+            }
+            2 => {
+                lines.extend((0..*num_diffs).map(|i| {
+                    let pos = bytes_per_diff * i;
+                    let bytes = [raw_diffs[pos], raw_diffs[pos + 1]];
+                    let diff = u16::from_le_bytes(bytes);
+                    line_start = line_start + RelativeBytePos(diff as u32);
+                    line_start
+                }));
+            }
+            4 => {
+                lines.extend((0..*num_diffs).map(|i| {
+                    let pos = bytes_per_diff * i;
+                    let bytes = [
+                        raw_diffs[pos],
+                        raw_diffs[pos + 1],
+                        raw_diffs[pos + 2],
+                        raw_diffs[pos + 3],
+                    ];
+                    let diff = u32::from_le_bytes(bytes);
+                    line_start = line_start + RelativeBytePos(diff);
+                    line_start
+                }));
+            }
+            _ => unreachable!(),
         }
+
+        *guard = SourceFileLines::Lines(lines);
+
+        FreezeWriteGuard::freeze(guard);
+    }
+
+    pub fn lines(&self) -> &[RelativeBytePos] {
+        if let Some(SourceFileLines::Lines(lines)) = self.lines.get() {
+            return &lines[..];
+        }
+
+        cold_path(|| {
+            self.convert_diffs_to_lines_frozen();
+            if let Some(SourceFileLines::Lines(lines)) = self.lines.get() {
+                return &lines[..];
+            }
+            unreachable!()
+        })
     }
 
     /// Returns the `BytePos` of the beginning of the current line.
     pub fn line_begin_pos(&self, pos: BytePos) -> BytePos {
         let pos = self.relative_position(pos);
         let line_index = self.lookup_line(pos).unwrap();
-        let line_start_pos = self.lines(|lines| lines[line_index]);
+        let line_start_pos = self.lines()[line_index];
         self.absolute_position(line_start_pos)
     }
 
@@ -1612,35 +1617,37 @@ impl SourceFile {
     where
         F: FnOnce() -> Option<String>,
     {
-        if matches!(
-            *self.external_src.borrow(),
-            ExternalSource::Foreign { kind: ExternalSourceKind::AbsentOk, .. }
-        ) {
+        if !self.external_src.is_frozen() {
             let src = get_src();
-            let mut external_src = self.external_src.borrow_mut();
-            // Check that no-one else have provided the source while we were getting it
-            if let ExternalSource::Foreign {
-                kind: src_kind @ ExternalSourceKind::AbsentOk, ..
-            } = &mut *external_src
-            {
-                if let Some(mut src) = src {
-                    // The src_hash needs to be computed on the pre-normalized src.
-                    if self.src_hash.matches(&src) {
-                        normalize_src(&mut src);
-                        *src_kind = ExternalSourceKind::Present(Lrc::new(src));
-                        return true;
-                    }
+            let src = src.and_then(|mut src| {
+                // The src_hash needs to be computed on the pre-normalized src.
+                self.src_hash.matches(&src).then(|| {
+                    normalize_src(&mut src);
+                    src
+                })
+            });
+
+            self.external_src.try_write().map(|mut external_src| {
+                if let ExternalSource::Foreign {
+                    kind: src_kind @ ExternalSourceKind::AbsentOk,
+                    ..
+                } = &mut *external_src
+                {
+                    *src_kind = if let Some(src) = src {
+                        ExternalSourceKind::Present(Lrc::new(src))
+                    } else {
+                        ExternalSourceKind::AbsentErr
+                    };
                 } else {
-                    *src_kind = ExternalSourceKind::AbsentErr;
+                    panic!("unexpected state {:?}", *external_src)
                 }
 
-                false
-            } else {
-                self.src.is_some() || external_src.get_source().is_some()
-            }
-        } else {
-            self.src.is_some() || self.external_src.borrow().get_source().is_some()
+                // Freeze this so we don't try to load the source again.
+                FreezeWriteGuard::freeze(external_src)
+            });
         }
+
+        self.src.is_some() || self.external_src.read().get_source().is_some()
     }
 
     /// Gets a line from the list of pre-computed line-beginnings.
@@ -1658,7 +1665,7 @@ impl SourceFile {
         }
 
         let begin = {
-            let line = self.lines(|lines| lines.get(line_number).copied())?;
+            let line = self.lines().get(line_number).copied()?;
             line.to_usize()
         };
 
@@ -1682,7 +1689,7 @@ impl SourceFile {
     }
 
     pub fn count_lines(&self) -> usize {
-        self.lines(|lines| lines.len())
+        self.lines().len()
     }
 
     #[inline]
@@ -1705,7 +1712,7 @@ impl SourceFile {
     /// number. If the source_file is empty or the position is located before the
     /// first line, `None` is returned.
     pub fn lookup_line(&self, pos: RelativeBytePos) -> Option<usize> {
-        self.lines(|lines| lines.partition_point(|x| x <= &pos).checked_sub(1))
+        self.lines().partition_point(|x| x <= &pos).checked_sub(1)
     }
 
     pub fn line_bounds(&self, line_index: usize) -> Range<BytePos> {
@@ -1713,15 +1720,13 @@ impl SourceFile {
             return self.start_pos..self.start_pos;
         }
 
-        self.lines(|lines| {
-            assert!(line_index < lines.len());
-            if line_index == (lines.len() - 1) {
-                self.absolute_position(lines[line_index])..self.end_position()
-            } else {
-                self.absolute_position(lines[line_index])
-                    ..self.absolute_position(lines[line_index + 1])
-            }
-        })
+        let lines = self.lines();
+        assert!(line_index < lines.len());
+        if line_index == (lines.len() - 1) {
+            self.absolute_position(lines[line_index])..self.end_position()
+        } else {
+            self.absolute_position(lines[line_index])..self.absolute_position(lines[line_index + 1])
+        }
     }
 
     /// Returns whether or not the file contains the given `SourceMap` byte
@@ -1807,7 +1812,7 @@ impl SourceFile {
         match self.lookup_line(pos) {
             Some(a) => {
                 let line = a + 1; // Line numbers start at 1
-                let linebpos = self.lines(|lines| lines[a]);
+                let linebpos = self.lines()[a];
                 let linechpos = self.bytepos_to_file_charpos(linebpos);
                 let col = chpos - linechpos;
                 debug!("byte pos {:?} is on the line at byte pos {:?}", pos, linebpos);
@@ -1827,7 +1832,7 @@ impl SourceFile {
         let (line, col_or_chpos) = self.lookup_file_pos(pos);
         if line > 0 {
             let col = col_or_chpos;
-            let linebpos = self.lines(|lines| lines[line - 1]);
+            let linebpos = self.lines()[line - 1];
             let col_display = {
                 let start_width_idx = self
                     .non_narrow_chars

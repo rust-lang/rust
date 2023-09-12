@@ -8,6 +8,7 @@
 
 #![feature(rustc_private)]
 #![feature(assert_matches)]
+#![feature(control_flow_enum)]
 
 extern crate rustc_hir;
 extern crate rustc_middle;
@@ -15,7 +16,10 @@ extern crate rustc_smir;
 
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::TyCtxt;
-use rustc_smir::{rustc_internal, stable_mir};
+use rustc_smir::{
+    rustc_internal,
+    stable_mir::{self, fold::Foldable},
+};
 use std::assert_matches::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -110,6 +114,50 @@ fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
         other => panic!("{other:?}"),
     }
 
+    let monomorphic = get_item(tcx, &items, (DefKind::Fn, "monomorphic")).unwrap();
+    for block in monomorphic.body().blocks {
+        match &block.terminator {
+            stable_mir::mir::Terminator::Call { func, .. } => match func {
+                stable_mir::mir::Operand::Constant(c) => match &c.literal.literal {
+                    stable_mir::ty::ConstantKind::Allocated(alloc) => {
+                        assert!(alloc.bytes.is_empty());
+                        match c.literal.ty.kind() {
+                            stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::FnDef(
+                                def,
+                                mut args,
+                            )) => {
+                                let func = def.body();
+                                match func.locals[1]
+                                    .fold(&mut args)
+                                    .continue_value()
+                                    .unwrap()
+                                    .kind()
+                                {
+                                    stable_mir::ty::TyKind::RigidTy(
+                                        stable_mir::ty::RigidTy::Uint(_),
+                                    ) => {}
+                                    stable_mir::ty::TyKind::RigidTy(
+                                        stable_mir::ty::RigidTy::Tuple(_),
+                                    ) => {}
+                                    other => panic!("{other:?}"),
+                                }
+                            }
+                            other => panic!("{other:?}"),
+                        }
+                    }
+                    other => panic!("{other:?}"),
+                },
+                other => panic!("{other:?}"),
+            },
+            stable_mir::mir::Terminator::Return => {}
+            other => panic!("{other:?}"),
+        }
+    }
+
+    let foo_const = get_item(tcx, &items, (DefKind::Const, "FOO")).unwrap();
+    // Ensure we don't panic trying to get the body of a constant.
+    foo_const.body();
+
     ControlFlow::Continue(())
 }
 
@@ -147,6 +195,18 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     write!(
         file,
         r#"
+    pub const FOO: u32 = 1 + 2;
+
+    fn generic<T, const U: usize>(t: T) -> [(); U] {{
+        _ = t;
+        [(); U]
+    }}
+
+    pub fn monomorphic() {{
+        generic::<(), 5>(());
+        generic::<u32, 0>(45);
+    }}
+
     mod foo {{
         pub fn bar(i: i32) -> i64 {{
             i as i64

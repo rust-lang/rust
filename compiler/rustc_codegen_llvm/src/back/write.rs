@@ -5,13 +5,17 @@ use crate::back::profiling::{
 use crate::base;
 use crate::common;
 use crate::errors::{
-    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, WithLlvmError, WriteBytecode,
+    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
+    WithLlvmError, WriteBytecode,
 };
 use crate::llvm::{self, DiagnosticInfo, PassManager};
 use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
+use llvm::{
+    LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
+};
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
@@ -216,6 +220,40 @@ pub fn target_machine_factory(
 
     let force_emulated_tls = sess.target.force_emulated_tls;
 
+    // copy the exe path, followed by path all into one buffer
+    // null terminating them so we can use them as null terminated strings
+    let args_cstr_buff = {
+        let mut args_cstr_buff: Vec<u8> = Vec::new();
+        let exe_path = std::env::current_exe().unwrap_or_default();
+        let exe_path_str = exe_path.into_os_string().into_string().unwrap_or_default();
+
+        args_cstr_buff.extend_from_slice(exe_path_str.as_bytes());
+        args_cstr_buff.push(0);
+
+        for arg in sess.expanded_args.iter() {
+            args_cstr_buff.extend_from_slice(arg.as_bytes());
+            args_cstr_buff.push(0);
+        }
+
+        args_cstr_buff
+    };
+
+    let debuginfo_compression = sess.opts.debuginfo_compression.to_string();
+    match sess.opts.debuginfo_compression {
+        rustc_session::config::DebugInfoCompression::Zlib => {
+            if !unsafe { LLVMRustLLVMHasZlibCompressionForDebugSymbols() } {
+                sess.emit_warning(UnknownCompression { algorithm: "zlib" });
+            }
+        }
+        rustc_session::config::DebugInfoCompression::Zstd => {
+            if !unsafe { LLVMRustLLVMHasZstdCompressionForDebugSymbols() } {
+                sess.emit_warning(UnknownCompression { algorithm: "zstd" });
+            }
+        }
+        rustc_session::config::DebugInfoCompression::None => {}
+    };
+    let debuginfo_compression = SmallCStr::new(&debuginfo_compression);
+
     Arc::new(move |config: TargetMachineFactoryConfig| {
         let split_dwarf_file =
             path_mapping.map_prefix(config.split_dwarf_file.unwrap_or_default()).0;
@@ -241,7 +279,10 @@ pub fn target_machine_factory(
                 relax_elf_relocations,
                 use_init_array,
                 split_dwarf_file.as_ptr(),
+                debuginfo_compression.as_ptr(),
                 force_emulated_tls,
+                args_cstr_buff.as_ptr() as *const c_char,
+                args_cstr_buff.len(),
             )
         };
 
@@ -853,6 +894,27 @@ fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: 
     asm
 }
 
+fn target_is_apple(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
+    cgcx.opts.target_triple.triple().contains("-ios")
+        || cgcx.opts.target_triple.triple().contains("-darwin")
+        || cgcx.opts.target_triple.triple().contains("-tvos")
+        || cgcx.opts.target_triple.triple().contains("-watchos")
+}
+
+fn target_is_aix(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
+    cgcx.opts.target_triple.triple().contains("-aix")
+}
+
+pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) -> &'static str {
+    if target_is_apple(cgcx) {
+        "__LLVM,__bitcode\0"
+    } else if target_is_aix(cgcx) {
+        ".ipa\0"
+    } else {
+        ".llvmbc\0"
+    }
+}
+
 /// Embed the bitcode of an LLVM module in the LLVM module itself.
 ///
 /// This is done primarily for iOS where it appears to be standard to compile C
@@ -913,11 +975,8 @@ unsafe fn embed_bitcode(
     // Unfortunately, LLVM provides no way to set custom section flags. For ELF
     // and COFF we emit the sections using module level inline assembly for that
     // reason (see issue #90326 for historical background).
-    let is_aix = cgcx.opts.target_triple.triple().contains("-aix");
-    let is_apple = cgcx.opts.target_triple.triple().contains("-ios")
-        || cgcx.opts.target_triple.triple().contains("-darwin")
-        || cgcx.opts.target_triple.triple().contains("-tvos")
-        || cgcx.opts.target_triple.triple().contains("-watchos");
+    let is_aix = target_is_aix(cgcx);
+    let is_apple = target_is_apple(cgcx);
     if is_apple
         || is_aix
         || cgcx.opts.target_triple.triple().starts_with("wasm")
@@ -932,13 +991,7 @@ unsafe fn embed_bitcode(
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
 
-        let section = if is_apple {
-            "__LLVM,__bitcode\0"
-        } else if is_aix {
-            ".ipa\0"
-        } else {
-            ".llvmbc\0"
-        };
+        let section = bitcode_section_name(cgcx);
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
         llvm::LLVMSetGlobalConstant(llglobal, llvm::True);

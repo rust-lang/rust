@@ -2,19 +2,17 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::definitions;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::*;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::span_bug;
-use rustc_session::Session;
-use rustc_span::source_map::SourceMap;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, DUMMY_SP};
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
-    /// Source map
-    source_map: &'a SourceMap,
+    tcx: TyCtxt<'hir>,
+
     bodies: &'a SortedMap<ItemLocalId, &'hir Body<'hir>>,
 
     /// Outputs
@@ -25,14 +23,11 @@ pub(super) struct NodeCollector<'a, 'hir> {
     parent_node: hir::ItemLocalId,
 
     owner: OwnerId,
-
-    definitions: &'a definitions::Definitions,
 }
 
-#[instrument(level = "debug", skip(sess, definitions, bodies))]
+#[instrument(level = "debug", skip(tcx, bodies))]
 pub(super) fn index_hir<'hir>(
-    sess: &Session,
-    definitions: &definitions::Definitions,
+    tcx: TyCtxt<'hir>,
     item: hir::OwnerNode<'hir>,
     bodies: &SortedMap<ItemLocalId, &'hir Body<'hir>>,
 ) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, FxHashMap<LocalDefId, ItemLocalId>) {
@@ -42,8 +37,7 @@ pub(super) fn index_hir<'hir>(
     // used.
     nodes.push(Some(ParentedNode { parent: ItemLocalId::INVALID, node: item.into() }));
     let mut collector = NodeCollector {
-        source_map: sess.source_map(),
-        definitions,
+        tcx,
         owner: item.def_id(),
         parent_node: ItemLocalId::new(0),
         nodes,
@@ -79,11 +73,17 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     span,
                     "inconsistent HirId at `{:?}` for `{:?}`: \
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
-                    self.source_map.span_to_diagnostic_string(span),
+                    self.tcx.sess.source_map().span_to_diagnostic_string(span),
                     node,
-                    self.definitions.def_path(self.owner.def_id).to_string_no_crate_verbose(),
+                    self.tcx
+                        .definitions_untracked()
+                        .def_path(self.owner.def_id)
+                        .to_string_no_crate_verbose(),
                     self.owner,
-                    self.definitions.def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
+                    self.tcx
+                        .definitions_untracked()
+                        .def_path(hir_id.owner.def_id)
+                        .to_string_no_crate_verbose(),
                     hir_id.owner,
                 )
             }

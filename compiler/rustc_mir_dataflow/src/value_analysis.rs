@@ -581,6 +581,14 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
         }
     }
 
+    /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
+    pub fn get_len(&self, place: PlaceRef<'_>, map: &Map) -> V {
+        match map.find_len(place) {
+            Some(place) => self.get_idx(place, map),
+            None => V::TOP,
+        }
+    }
+
     /// Retrieve the value stored for a place index, or ⊤ if it is not tracked.
     pub fn get_idx(&self, place: PlaceIndex, map: &Map) -> V {
         match &self.0 {
@@ -626,45 +634,36 @@ pub struct Map {
 }
 
 impl Map {
-    fn new() -> Self {
-        Self {
+    /// Returns a map that only tracks places whose type has scalar layout.
+    ///
+    /// This is currently the only way to create a [`Map`]. The way in which the tracked places are
+    /// chosen is an implementation detail and may not be relied upon (other than that their type
+    /// are scalars).
+    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, value_limit: Option<usize>) -> Self {
+        let mut map = Self {
             locals: IndexVec::new(),
             projections: FxHashMap::default(),
             places: IndexVec::new(),
             value_count: 0,
             inner_values: IndexVec::new(),
             inner_values_buffer: Vec::new(),
-        }
-    }
-
-    /// Returns a map that only tracks places whose type passes the filter.
-    ///
-    /// This is currently the only way to create a [`Map`]. The way in which the tracked places are
-    /// chosen is an implementation detail and may not be relied upon (other than that their type
-    /// passes the filter).
-    pub fn from_filter<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        body: &Body<'tcx>,
-        filter: impl Fn(Ty<'tcx>) -> bool,
-        value_limit: Option<usize>,
-    ) -> Self {
-        let mut map = Self::new();
+        };
         let exclude = excluded_locals(body);
-        map.register_with_filter(tcx, body, filter, exclude, value_limit);
+        map.register(tcx, body, exclude, value_limit);
         debug!("registered {} places ({} nodes in total)", map.value_count, map.places.len());
         map
     }
 
-    /// Register all non-excluded places that pass the filter.
-    fn register_with_filter<'tcx>(
+    /// Register all non-excluded places that have scalar layout.
+    fn register<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        filter: impl Fn(Ty<'tcx>) -> bool,
         exclude: BitSet<Local>,
         value_limit: Option<usize>,
     ) {
         let mut worklist = VecDeque::with_capacity(value_limit.unwrap_or(body.local_decls.len()));
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
 
         // Start by constructing the places for each bare local.
         self.locals = IndexVec::from_elem(None, &body.local_decls);
@@ -679,7 +678,7 @@ impl Map {
             self.locals[local] = Some(place);
 
             // And push the eventual children places to the worklist.
-            self.register_children(tcx, place, decl.ty, &filter, &mut worklist);
+            self.register_children(tcx, param_env, place, decl.ty, &mut worklist);
         }
 
         // `place.elem1.elem2` with type `ty`.
@@ -702,7 +701,7 @@ impl Map {
             }
 
             // And push the eventual children places to the worklist.
-            self.register_children(tcx, place, ty, &filter, &mut worklist);
+            self.register_children(tcx, param_env, place, ty, &mut worklist);
         }
 
         // Pre-compute the tree of ValueIndex nested in each PlaceIndex.
@@ -732,42 +731,52 @@ impl Map {
     fn register_children<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         place: PlaceIndex,
         ty: Ty<'tcx>,
-        filter: &impl Fn(Ty<'tcx>) -> bool,
         worklist: &mut VecDeque<(PlaceIndex, Option<TrackElem>, TrackElem, Ty<'tcx>)>,
     ) {
         // Allocate a value slot if it doesn't have one, and the user requested one.
-        if self.places[place].value_index.is_none() && filter(ty) {
+        assert!(self.places[place].value_index.is_none());
+        if tcx.layout_of(param_env.and(ty)).map_or(false, |layout| layout.abi.is_scalar()) {
             self.places[place].value_index = Some(self.value_count.into());
             self.value_count += 1;
         }
 
         // For enums, directly create the `Discriminant`, as that's their main use.
         if ty.is_enum() {
-            let discr_ty = ty.discriminant_ty(tcx);
-            if filter(discr_ty) {
-                let discr = *self
-                    .projections
-                    .entry((place, TrackElem::Discriminant))
-                    .or_insert_with(|| {
-                        // Prepend new child to the linked list.
-                        let next = self.places.push(PlaceInfo::new(Some(TrackElem::Discriminant)));
-                        self.places[next].next_sibling = self.places[place].first_child;
-                        self.places[place].first_child = Some(next);
-                        next
-                    });
+            // Prepend new child to the linked list.
+            let discr = self.places.push(PlaceInfo::new(Some(TrackElem::Discriminant)));
+            self.places[discr].next_sibling = self.places[place].first_child;
+            self.places[place].first_child = Some(discr);
+            let old = self.projections.insert((place, TrackElem::Discriminant), discr);
+            assert!(old.is_none());
 
-                // Allocate a value slot if it doesn't have one.
-                if self.places[discr].value_index.is_none() {
-                    self.places[discr].value_index = Some(self.value_count.into());
-                    self.value_count += 1;
-                }
-            }
+            // Allocate a value slot since it doesn't have one.
+            assert!(self.places[discr].value_index.is_none());
+            self.places[discr].value_index = Some(self.value_count.into());
+            self.value_count += 1;
+        }
+
+        if let Some(ref_ty) = ty.builtin_deref(true) && let ty::Slice(..) = ref_ty.ty.kind() {
+            assert!(self.places[place].value_index.is_none(), "slices are not scalars");
+
+            // Prepend new child to the linked list.
+            let len = self.places.push(PlaceInfo::new(Some(TrackElem::DerefLen)));
+            self.places[len].next_sibling = self.places[place].first_child;
+            self.places[place].first_child = Some(len);
+
+            let old = self.projections.insert((place, TrackElem::DerefLen), len);
+            assert!(old.is_none());
+
+            // Allocate a value slot since it doesn't have one.
+            assert!( self.places[len].value_index.is_none() );
+            self.places[len].value_index = Some(self.value_count.into());
+            self.value_count += 1;
         }
 
         // Recurse with all fields of this place.
-        iter_fields(ty, tcx, ty::ParamEnv::reveal_all(), |variant, field, ty| {
+        iter_fields(ty, tcx, param_env, |variant, field, ty| {
             worklist.push_back((
                 place,
                 variant.map(TrackElem::Variant),
@@ -832,6 +841,11 @@ impl Map {
     /// Locates the given place and applies `Discriminant`, if it exists in the tree.
     pub fn find_discr(&self, place: PlaceRef<'_>) -> Option<PlaceIndex> {
         self.find_extra(place, [TrackElem::Discriminant])
+    }
+
+    /// Locates the given place and applies `DerefLen`, if it exists in the tree.
+    pub fn find_len(&self, place: PlaceRef<'_>) -> Option<PlaceIndex> {
+        self.find_extra(place, [TrackElem::DerefLen])
     }
 
     /// Iterate over all direct children.
@@ -985,6 +999,8 @@ pub enum TrackElem {
     Field(FieldIdx),
     Variant(VariantIdx),
     Discriminant,
+    // Length of a slice.
+    DerefLen,
 }
 
 impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
@@ -1123,6 +1139,9 @@ fn debug_with_context_rec<V: Debug + Eq>(
                 } else {
                     format!("{}.{}", place_str, field.index())
                 }
+            }
+            TrackElem::DerefLen => {
+                format!("Len(*{})", place_str)
             }
         };
         debug_with_context_rec(child, &child_place_str, new, old, map, f)?;

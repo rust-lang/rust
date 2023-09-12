@@ -353,7 +353,7 @@ impl<'a> MemDecoder<'a> {
     }
 
     #[inline]
-    fn read_array<const N: usize>(&mut self) -> [u8; N] {
+    pub fn read_array<const N: usize>(&mut self) -> [u8; N] {
         self.read_raw_bytes(N).try_into().unwrap()
     }
 

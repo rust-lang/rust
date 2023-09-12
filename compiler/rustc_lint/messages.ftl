@@ -156,15 +156,6 @@ lint_builtin_unused_doc_comment = unused doc comment
 lint_builtin_while_true = denote infinite loops with `loop {"{"} ... {"}"}`
     .suggestion = use `loop`
 
-lint_check_name_deprecated = lint name `{$lint_name}` is deprecated and does not have an effect anymore. Use: {$new_name}
-
-lint_check_name_removed = lint `{$lint_name}` has been removed: {$reason}
-
-lint_check_name_renamed = lint `{$lint_name}` has been renamed to `{$replace}`
-
-lint_check_name_unknown = unknown lint: `{$lint_name}`
-    .help = did you mean: `{$suggestion}`
-
 lint_check_name_unknown_tool = unknown lint tool: `{$tool_name}`
 
 lint_command_line_source = `forbid` lint level was set on command line
@@ -187,6 +178,7 @@ lint_default_source = `forbid` lint level is the default for {$id}
 lint_deprecated_lint_name =
     lint name `{$name}` is deprecated and may not have an effect in the future.
     .suggestion = change it to
+    .help = change it to {$replace}
 
 lint_diag_out_of_impl =
     diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
@@ -528,6 +520,7 @@ lint_unknown_gated_lint =
 lint_unknown_lint =
     unknown lint: `{$name}`
     .suggestion = did you mean
+    .help = did you mean: `{$replace}`
 
 lint_unknown_tool_in_scoped_lint = unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`
     .help = add `#![register_tool({$tool_name})]` to the crate root

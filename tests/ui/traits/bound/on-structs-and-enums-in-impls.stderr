@@ -4,6 +4,11 @@ error[E0277]: the trait bound `u16: Trait` is not satisfied
 LL | impl PolyTrait<Foo<u16>> for Struct {
    |      ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `u16`
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/on-structs-and-enums-in-impls.rs:1:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
 note: required by a bound in `Foo`
   --> $DIR/on-structs-and-enums-in-impls.rs:3:14
    |

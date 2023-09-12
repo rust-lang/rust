@@ -8,7 +8,7 @@ trait Foo {
 }
 
 impl Foo for u32 {
-    fn baz(&self) -> u32 {
+    fn baz(&self) -> impl Debug {
         32
     }
 }

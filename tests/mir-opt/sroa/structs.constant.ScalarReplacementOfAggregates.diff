@@ -8,7 +8,8 @@
 +     let _5: u8;
       scope 1 {
 -         debug y => _1;
-+         debug y => (usize, u8){ .0 => _4, .1 => _5, };
++         debug ((y: (usize, u8)).0: usize) => _4;
++         debug ((y: (usize, u8)).1: u8) => _5;
           let _2: usize;
           scope 2 {
               debug t => _2;

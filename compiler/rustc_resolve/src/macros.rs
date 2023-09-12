@@ -2,7 +2,8 @@
 //! interface provided by `Resolver` to macro expander.
 
 use crate::errors::{
-    self, AddAsNonDerive, CannotFindIdentInThisScope, MacroExpectedFound, RemoveSurroundingDerive,
+    self, AddAsNonDerive, CannotDetermineMacroResolution, CannotFindIdentInThisScope,
+    MacroExpectedFound, RemoveSurroundingDerive,
 };
 use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
@@ -719,13 +720,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // even if speculative `resolve_path` returned nothing previously, so we skip this
                 // less informative error if the privacy error is reported elsewhere.
                 if this.privacy_errors.is_empty() {
-                    let msg = format!(
-                        "cannot determine resolution for the {} `{}`",
-                        kind.descr(),
-                        Segment::names_to_string(path)
-                    );
-                    let msg_note = "import resolution is stuck, try simplifying macro imports";
-                    this.tcx.sess.struct_span_err(span, msg).note(msg_note).emit();
+                    this.tcx.sess.emit_err(CannotDetermineMacroResolution {
+                        span,
+                        kind: kind.descr(),
+                        path: Segment::names_to_string(path),
+                    });
                 }
             }
         };

@@ -1300,10 +1300,16 @@ impl Abi {
         matches!(*self, Abi::Uninhabited)
     }
 
-    /// Returns `true` is this is a scalar type
+    /// Returns `true` if this is a scalar type
     #[inline]
     pub fn is_scalar(&self) -> bool {
         matches!(*self, Abi::Scalar(_))
+    }
+
+    /// Returns `true` if this is a bool
+    #[inline]
+    pub fn is_bool(&self) -> bool {
+        matches!(*self, Abi::Scalar(s) if s.is_bool())
     }
 
     /// Returns the fixed alignment of this ABI, if any is mandated.
@@ -1346,6 +1352,23 @@ impl Abi {
             Abi::ScalarPair(s1, s2) => Abi::ScalarPair(s1.to_union(), s2.to_union()),
             Abi::Vector { element, count } => Abi::Vector { element: element.to_union(), count },
             Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
+        }
+    }
+
+    pub fn eq_up_to_validity(&self, other: &Self) -> bool {
+        match (self, other) {
+            // Scalar, Vector, ScalarPair have `Scalar` in them where we ignore validity ranges.
+            // We do *not* ignore the sign since it matters for some ABIs (e.g. s390x).
+            (Abi::Scalar(l), Abi::Scalar(r)) => l.primitive() == r.primitive(),
+            (
+                Abi::Vector { element: element_l, count: count_l },
+                Abi::Vector { element: element_r, count: count_r },
+            ) => element_l.primitive() == element_r.primitive() && count_l == count_r,
+            (Abi::ScalarPair(l1, l2), Abi::ScalarPair(r1, r2)) => {
+                l1.primitive() == r1.primitive() && l2.primitive() == r2.primitive()
+            }
+            // Everything else must be strictly identical.
+            _ => self == other,
         }
     }
 }
@@ -1685,6 +1708,22 @@ impl LayoutS {
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }
+    }
+
+    /// Checks if these two `Layout` are equal enough to be considered "the same for all function
+    /// call ABIs". Note however that real ABIs depend on more details that are not reflected in the
+    /// `Layout`; the `PassMode` need to be compared as well.
+    pub fn eq_abi(&self, other: &Self) -> bool {
+        // The one thing that we are not capturing here is that for unsized types, the metadata must
+        // also have the same ABI, and moreover that the same metadata leads to the same size. The
+        // 2nd point is quite hard to check though.
+        self.size == other.size
+            && self.is_sized() == other.is_sized()
+            && self.abi.eq_up_to_validity(&other.abi)
+            && self.abi.is_bool() == other.abi.is_bool()
+            && self.align.abi == other.align.abi
+            && self.max_repr_align == other.max_repr_align
+            && self.unadjusted_abi_align == other.unadjusted_abi_align
     }
 }
 

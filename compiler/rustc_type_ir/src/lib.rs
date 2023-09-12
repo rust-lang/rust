@@ -574,16 +574,16 @@ rustc_index::newtype_index! {
     pub struct TyVid {}
 }
 
-/// An **int**egral (`u32`, `i32`, `usize`, etc.) type **v**ariable **ID**.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
-pub struct IntVid {
-    pub index: u32,
+rustc_index::newtype_index! {
+    /// An **int**egral (`u32`, `i32`, `usize`, etc.) type **v**ariable **ID**.
+    #[debug_format = "?{}i"]
+    pub struct IntVid {}
 }
 
-/// An **float**ing-point (`f32` or `f64`) type **v**ariable **ID**.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
-pub struct FloatVid {
-    pub index: u32,
+rustc_index::newtype_index! {
+    /// A **float**ing-point (`f32` or `f64`) type **v**ariable **ID**.
+    #[debug_format = "?{}f"]
+    pub struct FloatVid {}
 }
 
 /// A placeholder for a type that hasn't been inferred yet.
@@ -645,11 +645,11 @@ impl UnifyKey for IntVid {
     type Value = Option<IntVarValue>;
     #[inline] // make this function eligible for inlining - it is quite hot.
     fn index(&self) -> u32 {
-        self.index
+        self.as_u32()
     }
     #[inline]
     fn from_index(i: u32) -> IntVid {
-        IntVid { index: i }
+        IntVid::from_u32(i)
     }
     fn tag() -> &'static str {
         "IntVid"
@@ -662,11 +662,11 @@ impl UnifyKey for FloatVid {
     type Value = Option<FloatVarValue>;
     #[inline]
     fn index(&self) -> u32 {
-        self.index
+        self.as_u32()
     }
     #[inline]
     fn from_index(i: u32) -> FloatVid {
-        FloatVid { index: i }
+        FloatVid::from_u32(i)
     }
     fn tag() -> &'static str {
         "FloatVid"
@@ -767,18 +767,6 @@ impl fmt::Debug for IntVarValue {
 impl fmt::Debug for FloatVarValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
-    }
-}
-
-impl fmt::Debug for IntVid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "?{}i", self.index)
-    }
-}
-
-impl fmt::Debug for FloatVid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "?{}f", self.index)
     }
 }
 

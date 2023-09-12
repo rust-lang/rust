@@ -182,6 +182,9 @@ impl Thread {
         }
 
         if let Some(f) = pthread_setname_np.get() {
+            #[cfg(target_os = "nto")]
+            let name = truncate_cstr::<{ libc::_NTO_THREAD_NAME_MAX as usize }>(name);
+
             let res = unsafe { f(libc::pthread_self(), name.as_ptr()) };
             debug_assert_eq!(res, 0);
         }
@@ -290,6 +293,7 @@ impl Drop for Thread {
     target_os = "ios",
     target_os = "tvos",
     target_os = "watchos",
+    target_os = "nto",
 ))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
     let mut result = [0; MAX_WITH_NUL];

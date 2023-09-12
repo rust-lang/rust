@@ -169,7 +169,7 @@ impl AnnotateSnippetEmitterWriter {
                         .map(|line| {
                             // Ensure the source file is present before we try
                             // to load a string from it.
-                            source_map.ensure_source_file_source_present(file.clone());
+                            source_map.ensure_source_file_source_present(&file);
                             (
                                 format!("{}", source_map.filename_for_diagnostics(&file.name)),
                                 source_string(file.clone(), &line),

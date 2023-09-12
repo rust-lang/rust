@@ -255,9 +255,16 @@ impl_into_diagnostic_arg_through_debug! {
 
 /// Error information for when the program caused Undefined Behavior.
 #[derive(Debug)]
-pub enum UndefinedBehaviorInfo<'a> {
+pub enum UndefinedBehaviorInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught! Used by miri
     Ub(String),
+    // FIXME(fee1-dead) these should all be actual variants of the enum instead of dynamically
+    // dispatched
+    /// A custom (free-form) fluent-translated error, created by `err_ub_custom!`.
+    Custom(crate::error::CustomSubdiagnostic<'tcx>),
+    /// Validation error.
+    ValidationError(ValidationErrorInfo<'tcx>),
+
     /// Unreachable code was executed.
     Unreachable,
     /// A slice/array index projection went out-of-bounds.
@@ -319,12 +326,10 @@ pub enum UndefinedBehaviorInfo<'a> {
     UninhabitedEnumVariantWritten(VariantIdx),
     /// An uninhabited enum variant is projected.
     UninhabitedEnumVariantRead(VariantIdx),
-    /// Validation error.
-    ValidationError(ValidationErrorInfo<'a>),
-    // FIXME(fee1-dead) these should all be actual variants of the enum instead of dynamically
-    // dispatched
-    /// A custom (free-form) error, created by `err_ub_custom!`.
-    Custom(crate::error::CustomSubdiagnostic<'a>),
+    /// ABI-incompatible argument types.
+    AbiMismatchArgument { caller_ty: Ty<'tcx>, callee_ty: Ty<'tcx> },
+    /// ABI-incompatible return types.
+    AbiMismatchReturn { caller_ty: Ty<'tcx>, callee_ty: Ty<'tcx> },
 }
 
 #[derive(Debug, Clone, Copy)]

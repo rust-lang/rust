@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
             };
             let def_id = trait_predicate.trait_ref.def_id;
             if cx.tcx.lang_items().drop_trait() == Some(def_id) {
-                // Explicitly allow `impl Drop`, a drop-guards-as-Voldemort-type pattern.
+                // Explicitly allow `impl Drop`, a drop-guards-as-unnameable-type pattern.
                 if trait_predicate.trait_ref.self_ty().is_impl_trait() {
                     continue;
                 }

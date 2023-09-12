@@ -1,4 +1,6 @@
-use crate::back::write::{self, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers};
+use crate::back::write::{
+    self, bitcode_section_name, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers,
+};
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib,
 };
@@ -120,6 +122,7 @@ fn prepare_lto(
                 info!("adding bitcode from {}", name);
                 match get_bitcode_slice_from_object_data(
                     child.data(&*archive_data).expect("corrupt rlib"),
+                    cgcx,
                 ) {
                     Ok(data) => {
                         let module = SerializedModule::FromRlib(data.to_vec());
@@ -141,10 +144,29 @@ fn prepare_lto(
     Ok((symbols_below_threshold, upstream_modules))
 }
 
-fn get_bitcode_slice_from_object_data(obj: &[u8]) -> Result<&[u8], LtoBitcodeFromRlib> {
+fn get_bitcode_slice_from_object_data<'a>(
+    obj: &'a [u8],
+    cgcx: &CodegenContext<LlvmCodegenBackend>,
+) -> Result<&'a [u8], LtoBitcodeFromRlib> {
+    // We're about to assume the data here is an object file with sections, but if it's raw LLVM IR that
+    // won't work. Fortunately, if that's what we have we can just return the object directly, so we sniff
+    // the relevant magic strings here and return.
+    if obj.starts_with(b"\xDE\xC0\x17\x0B") || obj.starts_with(b"BC\xC0\xDE") {
+        return Ok(obj);
+    }
+    // We drop the "__LLVM," prefix here because on Apple platforms there's a notion of "segment name"
+    // which in the public API for sections gets treated as part of the section name, but internally
+    // in MachOObjectFile.cpp gets treated separately.
+    let section_name = bitcode_section_name(cgcx).trim_start_matches("__LLVM,");
     let mut len = 0;
-    let data =
-        unsafe { llvm::LLVMRustGetBitcodeSliceFromObjectData(obj.as_ptr(), obj.len(), &mut len) };
+    let data = unsafe {
+        llvm::LLVMRustGetSliceFromObjectDataByName(
+            obj.as_ptr(),
+            obj.len(),
+            section_name.as_ptr(),
+            &mut len,
+        )
+    };
     if !data.is_null() {
         assert!(len != 0);
         let bc = unsafe { slice::from_raw_parts(data, len) };

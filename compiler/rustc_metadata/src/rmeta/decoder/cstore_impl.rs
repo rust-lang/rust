@@ -131,7 +131,7 @@ macro_rules! provide_one {
                 $tcx.ensure().crate_hash($def_id.krate);
             }
 
-            let cdata = rustc_data_structures::sync::MappedReadGuard::map(CStore::from_tcx($tcx), |c| {
+            let cdata = rustc_data_structures::sync::FreezeReadGuard::map(CStore::from_tcx($tcx), |c| {
                 c.get_crate_data($def_id.krate).cdata
             });
             let $cdata = crate::creader::CrateMetadataRef {
@@ -510,7 +510,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         crates: |tcx, ()| {
             // The list of loaded crates is now frozen in query cache,
             // so make sure cstore is not mutably accessed from here on.
-            tcx.untracked().cstore.leak();
+            tcx.untracked().cstore.freeze();
             tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
         },
         ..*providers

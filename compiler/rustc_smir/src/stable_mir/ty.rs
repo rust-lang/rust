@@ -1,8 +1,19 @@
-use super::{mir::Mutability, mir::Safety, with, AllocId, DefId};
+use super::{
+    mir::Safety,
+    mir::{Body, Mutability},
+    with, AllocId, DefId,
+};
 use crate::rustc_internal::Opaque;
+use std::fmt::{self, Debug, Formatter};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct Ty(pub usize);
+
+impl Debug for Ty {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Ty").field("id", &self.0).field("kind", &self.kind()).finish()
+    }
+}
 
 impl Ty {
     pub fn kind(&self) -> TyKind {
@@ -10,9 +21,16 @@ impl Ty {
     }
 }
 
+impl From<TyKind> for Ty {
+    fn from(value: TyKind) -> Self {
+        with(|context| context.mk_ty(value))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Const {
     pub literal: ConstantKind,
+    pub ty: Ty,
 }
 
 type Ident = Opaque;
@@ -88,6 +106,12 @@ pub struct ForeignDef(pub(crate) DefId);
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct FnDef(pub(crate) DefId);
 
+impl FnDef {
+    pub fn body(&self) -> Body {
+        with(|ctx| ctx.mir_body(self.0))
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ClosureDef(pub(crate) DefId);
 
@@ -121,11 +145,49 @@ pub struct ImplDef(pub(crate) DefId);
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);
 
+impl std::ops::Index<ParamTy> for GenericArgs {
+    type Output = Ty;
+
+    fn index(&self, index: ParamTy) -> &Self::Output {
+        self.0[index.index as usize].expect_ty()
+    }
+}
+
+impl std::ops::Index<ParamConst> for GenericArgs {
+    type Output = Const;
+
+    fn index(&self, index: ParamConst) -> &Self::Output {
+        self.0[index.index as usize].expect_const()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum GenericArgKind {
     Lifetime(Region),
     Type(Ty),
     Const(Const),
+}
+
+impl GenericArgKind {
+    /// Panic if this generic argument is not a type, otherwise
+    /// return the type.
+    #[track_caller]
+    pub fn expect_ty(&self) -> &Ty {
+        match self {
+            GenericArgKind::Type(ty) => ty,
+            _ => panic!("{self:?}"),
+        }
+    }
+
+    /// Panic if this generic argument is not a const, otherwise
+    /// return the const.
+    #[track_caller]
+    pub fn expect_const(&self) -> &Const {
+        match self {
+            GenericArgKind::Const(c) => c,
+            _ => panic!("{self:?}"),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -287,12 +349,17 @@ pub struct Allocation {
 pub enum ConstantKind {
     Allocated(Allocation),
     Unevaluated(UnevaluatedConst),
-    ParamCt(Opaque),
+    Param(ParamConst),
+}
+
+#[derive(Clone, Debug)]
+pub struct ParamConst {
+    pub index: u32,
+    pub name: String,
 }
 
 #[derive(Clone, Debug)]
 pub struct UnevaluatedConst {
-    pub ty: Ty,
     pub def: ConstDef,
     pub args: GenericArgs,
     pub promoted: Option<Promoted>,

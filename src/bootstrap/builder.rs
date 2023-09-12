@@ -302,8 +302,10 @@ impl StepDescription {
         }
     }
 
-    fn maybe_run(&self, builder: &Builder<'_>, pathsets: Vec<PathSet>) {
-        if pathsets.iter().any(|set| self.is_excluded(builder, set)) {
+    fn maybe_run(&self, builder: &Builder<'_>, mut pathsets: Vec<PathSet>) {
+        pathsets.retain(|set| !self.is_excluded(builder, set));
+
+        if pathsets.is_empty() {
             return;
         }
 
@@ -735,6 +737,7 @@ impl<'a> Builder<'a> {
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
+                test::CodegenCranelift,
                 test::Rustdoc,
                 test::RunCoverageRustdoc,
                 test::Pretty,
