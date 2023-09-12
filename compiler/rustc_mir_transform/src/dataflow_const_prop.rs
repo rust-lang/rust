@@ -10,7 +10,7 @@ use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ConstValue, InterpR
 use rustc_middle::mir::visit::{MutVisitor, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{
     Map, PlaceIndex, State, TrackElem, ValueAnalysis, ValueAnalysisWrapper, ValueOrPlace,
 };
@@ -524,10 +524,10 @@ struct CollectAndPatch<'tcx, 'locals> {
     /// For a given MIR location, this stores the values of the operands used by that location. In
     /// particular, this is before the effect, such that the operands of `_1 = _1 + _2` are
     /// properly captured. (This may become UB soon, but it is currently emitted even by safe code.)
-    before_effect: FxHashMap<(Location, Place<'tcx>), ScalarInt>,
+    before_effect: FxHashMap<(Location, Place<'tcx>), ConstantKind<'tcx>>,
 
     /// Stores the assigned values for assignments where the Rvalue is constant.
-    assignments: FxHashMap<Location, ScalarInt>,
+    assignments: FxHashMap<Location, ConstantKind<'tcx>>,
 }
 
 impl<'tcx, 'locals> CollectAndPatch<'tcx, 'locals> {
@@ -540,12 +540,21 @@ impl<'tcx, 'locals> CollectAndPatch<'tcx, 'locals> {
         }
     }
 
-    fn make_operand(&self, scalar: ScalarInt, ty: Ty<'tcx>) -> Operand<'tcx> {
-        Operand::Constant(Box::new(Constant {
-            span: DUMMY_SP,
-            user_ty: None,
-            literal: ConstantKind::Val(ConstValue::Scalar(scalar.into()), ty),
-        }))
+    fn try_make_constant(
+        &self,
+        place: Place<'tcx>,
+        state: &State<FlatSet<Scalar>>,
+        map: &Map,
+    ) -> Option<ConstantKind<'tcx>> {
+        let FlatSet::Elem(Scalar::Int(value)) = state.get(place.as_ref(), &map) else {
+            return None;
+        };
+        let ty = place.ty(self.local_decls, self.tcx).ty;
+        Some(ConstantKind::Val(ConstValue::Scalar(value.into()), ty))
+    }
+
+    fn make_operand(&self, literal: ConstantKind<'tcx>) -> Operand<'tcx> {
+        Operand::Constant(Box::new(Constant { span: DUMMY_SP, user_ty: None, literal }))
     }
 }
 
@@ -583,9 +592,7 @@ impl<'mir, 'tcx>
                 // Don't overwrite the assignment if it already uses a constant (to keep the span).
             }
             StatementKind::Assign(box (place, _)) => {
-                if let FlatSet::Elem(Scalar::Int(value)) =
-                    state.get(place.as_ref(), &results.analysis.0.map)
-                {
+                if let Some(value) = self.try_make_constant(place, state, &results.analysis.0.map) {
                     self.assignments.insert(location, value);
                 }
             }
@@ -614,8 +621,7 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
         if let Some(value) = self.assignments.get(&location) {
             match &mut statement.kind {
                 StatementKind::Assign(box (_, rvalue)) => {
-                    let ty = rvalue.ty(self.local_decls, self.tcx);
-                    *rvalue = Rvalue::Use(self.make_operand(*value, ty));
+                    *rvalue = Rvalue::Use(self.make_operand(*value));
                 }
                 _ => bug!("found assignment info for non-assign statement"),
             }
@@ -628,8 +634,7 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
         match operand {
             Operand::Copy(place) | Operand::Move(place) => {
                 if let Some(value) = self.before_effect.get(&(location, *place)) {
-                    let ty = place.ty(self.local_decls, self.tcx).ty;
-                    *operand = self.make_operand(*value, ty);
+                    *operand = self.make_operand(*value);
                 } else if !place.projection.is_empty() {
                     self.super_operand(operand, location)
                 }
@@ -643,11 +648,11 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
         elem: PlaceElem<'tcx>,
         location: Location,
     ) -> Option<PlaceElem<'tcx>> {
-        if let PlaceElem::Index(local) = elem
-            && let Some(value) = self.before_effect.get(&(location, local.into()))
-            && let Ok(offset) = value.try_to_target_usize(self.tcx)
-            && let Some(min_length) = offset.checked_add(1)
-        {
+        if let PlaceElem::Index(local) = elem {
+            let offset = self.before_effect.get(&(location, local.into()))?;
+            let offset = offset.try_to_scalar()?;
+            let offset = offset.to_target_usize(&self.tcx).ok()?;
+            let min_length = offset.checked_add(1)?;
             Some(PlaceElem::ConstantIndex { offset, min_length, from_end: false })
         } else {
             None
@@ -664,7 +669,7 @@ struct OperandCollector<'tcx, 'map, 'locals, 'a> {
 impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         if let Some(place) = operand.place() {
-            if let FlatSet::Elem(Scalar::Int(value)) = self.state.get(place.as_ref(), self.map) {
+            if let Some(value) = self.visitor.try_make_constant(place, self.state, self.map) {
                 self.visitor.before_effect.insert((location, place), value);
             } else if !place.projection.is_empty() {
                 // Try to propagate into `Index` projections.
@@ -675,7 +680,7 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
 
     fn visit_local(&mut self, local: Local, ctxt: PlaceContext, location: Location) {
         if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy | NonMutatingUseContext::Move) = ctxt
-            && let FlatSet::Elem(Scalar::Int(value)) = self.state.get(local.into(), self.map)
+            && let Some(value) = self.visitor.try_make_constant(local.into(), self.state, self.map)
         {
             self.visitor.before_effect.insert((location, local.into()), value);
         }
