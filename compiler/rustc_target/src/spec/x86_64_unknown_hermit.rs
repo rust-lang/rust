@@ -1,4 +1,4 @@
-use crate::spec::{StackProbeType, Target, TargetOptions};
+use crate::spec::{base::hermit, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub fn target() -> Target {
             plt_by_default: false,
             max_atomic_width: Some(64),
             stack_probes: StackProbeType::X86,
-            ..super::hermit_base::opts()
+            ..hermit::opts()
         },
     }
 }

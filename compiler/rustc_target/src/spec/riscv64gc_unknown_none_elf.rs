@@ -1,5 +1,6 @@
-use crate::spec::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy};
-use crate::spec::{RelocModel, Target, TargetOptions};
+use crate::spec::{
+    Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions,
+};
 
 use super::SanitizerSet;
 

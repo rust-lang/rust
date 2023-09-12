@@ -1,6 +1,7 @@
-use super::apple_base::{macos_llvm_target, opts, Arch};
-use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, SanitizerSet};
-use crate::spec::{StackProbeType, Target, TargetOptions};
+use crate::spec::{
+    base::apple::{macos_llvm_target, opts, Arch},
+    Cc, FramePointer, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     let arch = Arch::X86_64h;

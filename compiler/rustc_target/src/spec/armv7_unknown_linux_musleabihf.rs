@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::linux_musl, Target, TargetOptions};
 
 // This target is for musl Linux on ARMv7 without thumb-mode or NEON.
 
@@ -19,7 +19,7 @@ pub fn target() -> Target {
             features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),
-            ..super::linux_musl_base::opts()
+            ..linux_musl::opts()
         },
     }
 }

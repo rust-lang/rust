@@ -1,4 +1,4 @@
-use crate::spec::{SanitizerSet, Target, TargetOptions};
+use crate::spec::{base::android, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -12,7 +12,7 @@ pub fn target() -> Target {
             features: "+strict-align,+v5te".into(),
             supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(32),
-            ..super::android_base::opts()
+            ..android::opts()
         },
     }
 }

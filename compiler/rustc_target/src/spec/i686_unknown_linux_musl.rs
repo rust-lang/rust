@@ -1,7 +1,7 @@
-use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, StackProbeType, Target};
+use crate::spec::{base::linux_musl, Cc, FramePointer, LinkerFlavor, Lld, StackProbeType, Target};
 
 pub fn target() -> Target {
-    let mut base = super::linux_musl_base::opts();
+    let mut base = linux_musl::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32", "-Wl,-melf_i386"]);

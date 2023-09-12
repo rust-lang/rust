@@ -1,4 +1,4 @@
-use crate::spec::{CodeModel, RelocModel, Target, TargetOptions, TlsModel};
+use crate::spec::{base::hermit, CodeModel, RelocModel, Target, TargetOptions, TlsModel};
 
 pub fn target() -> Target {
     Target {
@@ -14,7 +14,7 @@ pub fn target() -> Target {
             tls_model: TlsModel::LocalExec,
             max_atomic_width: Some(64),
             llvm_abiname: "lp64d".into(),
-            ..super::hermit_base::opts()
+            ..hermit::opts()
         },
     }
 }

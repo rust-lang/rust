@@ -1,4 +1,4 @@
-use crate::spec::{CodeModel, Target, TargetOptions};
+use crate::spec::{base::freebsd, CodeModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -12,7 +12,7 @@ pub fn target() -> Target {
             features: "+m,+a,+f,+d,+c".into(),
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
-            ..super::freebsd_base::opts()
+            ..freebsd::opts()
         },
     }
 }

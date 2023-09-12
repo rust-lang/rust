@@ -1,8 +1,10 @@
-use crate::abi::Endian;
-use crate::spec::{StackProbeType, Target};
+use crate::{
+    abi::Endian,
+    spec::{base::openbsd, StackProbeType, Target},
+};
 
 pub fn target() -> Target {
-    let mut base = super::openbsd_base::opts();
+    let mut base = openbsd::opts();
     base.endian = Endian::Big;
     base.max_atomic_width = Some(32);
     base.stack_probes = StackProbeType::Inline;

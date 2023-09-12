@@ -1,7 +1,7 @@
-use crate::spec::{LinkerFlavor, Lld, Target};
+use crate::spec::{base::windows_msvc, LinkerFlavor, Lld, Target};
 
 pub fn target() -> Target {
-    let mut base = super::windows_msvc_base::opts();
+    let mut base = windows_msvc::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
 

@@ -1,11 +1,10 @@
 // This defines the aarch64 target for UEFI systems as described in the UEFI specification. See the
 // uefi-base module for generic UEFI options.
 
-use super::uefi_msvc_base;
-use crate::spec::{LinkerFlavor, Lld, Target};
+use crate::spec::{base::uefi_msvc, LinkerFlavor, Lld, Target};
 
 pub fn target() -> Target {
-    let mut base = uefi_msvc_base::opts();
+    let mut base = uefi_msvc::opts();
 
     base.max_atomic_width = Some(128);
     base.add_pre_link_args(LinkerFlavor::Msvc(Lld::No), &["/machine:arm64"]);

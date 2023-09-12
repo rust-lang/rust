@@ -1,5 +1,7 @@
-use super::apple_base::{opts, watchos_sim_llvm_target, Arch};
-use crate::spec::{StackProbeType, Target, TargetOptions};
+use crate::spec::{
+    base::apple::{opts, watchos_sim_llvm_target, Arch},
+    StackProbeType, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     let arch = Arch::X86_64_sim;

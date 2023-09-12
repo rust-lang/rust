@@ -1,7 +1,7 @@
-use super::{RelocModel, Target, TargetOptions};
+use crate::spec::{base::solid, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = super::solid_base::opts("asp3");
+    let base = solid::opts("asp3");
     Target {
         llvm_target: "aarch64-unknown-none".into(),
         pointer_width: 64,

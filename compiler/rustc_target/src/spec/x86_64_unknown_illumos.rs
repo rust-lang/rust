@@ -1,7 +1,7 @@
-use crate::spec::{Cc, LinkerFlavor, SanitizerSet, Target};
+use crate::spec::{base::illumos, Cc, LinkerFlavor, SanitizerSet, Target};
 
 pub fn target() -> Target {
-    let mut base = super::illumos_base::opts();
+    let mut base = illumos::opts();
     base.add_pre_link_args(LinkerFlavor::Unix(Cc::Yes), &["-m64", "-std=c99"]);
     base.cpu = "x86-64".into();
     base.plt_by_default = false;

@@ -1,4 +1,4 @@
-use crate::spec::{SanitizerSet, Target, TargetOptions};
+use crate::spec::{base::fuchsia, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -12,7 +12,7 @@ pub fn target() -> Target {
             supported_sanitizers: SanitizerSet::ADDRESS
                 | SanitizerSet::CFI
                 | SanitizerSet::SHADOWCALLSTACK,
-            ..super::fuchsia_base::opts()
+            ..fuchsia::opts()
         },
     }
 }

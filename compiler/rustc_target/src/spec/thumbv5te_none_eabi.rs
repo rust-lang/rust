@@ -1,6 +1,6 @@
 //! Targets the ARMv5TE, with code as `t32` code by default.
 
-use crate::spec::{cvs, FramePointer, Target, TargetOptions};
+use crate::spec::{base::thumb, cvs, FramePointer, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -35,7 +35,7 @@ pub fn target() -> Target {
             atomic_cas: false,
             has_thumb_interworking: true,
 
-            ..super::thumb_base::opts()
+            ..thumb::opts()
         },
     }
 }

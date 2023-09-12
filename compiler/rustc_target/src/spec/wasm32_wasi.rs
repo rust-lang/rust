@@ -73,10 +73,10 @@
 //! you know what you're getting in to!
 
 use super::crt_objects::{self, LinkSelfContainedDefault};
-use super::{wasm_base, Cc, LinkerFlavor, Target};
+use super::{base::wasm, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
-    let mut options = wasm_base::options();
+    let mut options = wasm::options();
 
     options.os = "wasi".into();
     options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &["--target=wasm32-wasi"]);

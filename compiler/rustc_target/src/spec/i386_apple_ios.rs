@@ -1,5 +1,7 @@
-use super::apple_base::{ios_sim_llvm_target, opts, Arch};
-use crate::spec::{StackProbeType, Target, TargetOptions};
+use crate::spec::{
+    base::apple::{ios_sim_llvm_target, opts, Arch},
+    StackProbeType, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     let arch = Arch::I386;

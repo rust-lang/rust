@@ -1,5 +1,7 @@
-use super::apple_base::{opts, Arch};
-use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions};
+use crate::spec::{
+    base::apple::{opts, Arch},
+    Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     let llvm_target = "x86_64-apple-ios14.0-macabi";

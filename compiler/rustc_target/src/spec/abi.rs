@@ -4,9 +4,6 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 
-#[cfg(test)]
-mod tests;
-
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Debug)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum Abi {
@@ -339,3 +336,7 @@ impl fmt::Display for Abi {
         write!(f, "\"{}\"", self.name())
     }
 }
+
+#[cfg(test)]
+#[path = "tests/abi_tests.rs"]
+mod tests_api;

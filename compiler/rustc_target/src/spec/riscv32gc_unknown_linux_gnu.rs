@@ -1,4 +1,4 @@
-use crate::spec::{CodeModel, Target, TargetOptions};
+use crate::spec::{base::linux_gnu, CodeModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -12,7 +12,7 @@ pub fn target() -> Target {
             features: "+m,+a,+f,+d,+c".into(),
             llvm_abiname: "ilp32d".into(),
             max_atomic_width: Some(32),
-            ..super::linux_gnu_base::opts()
+            ..linux_gnu::opts()
         },
     }
 }

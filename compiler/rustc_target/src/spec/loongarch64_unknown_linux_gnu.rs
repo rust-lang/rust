@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::linux_gnu, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -11,7 +11,7 @@ pub fn target() -> Target {
             features: "+f,+d".into(),
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
-            ..super::linux_gnu_base::opts()
+            ..linux_gnu::opts()
         },
     }
 }

@@ -9,8 +9,9 @@
 //! The default link script is very likely wrong, so you should use
 //! `-Clink-arg=-Tmy_script.ld` to override that with a correct linker script.
 
-use crate::spec::{cvs, FramePointer};
-use crate::spec::{PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{
+    base::thumb, cvs, FramePointer, PanicStrategy, RelocModel, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     Target {
@@ -53,7 +54,7 @@ pub fn target() -> Target {
             atomic_cas: false,
             has_thumb_interworking: true,
 
-            ..super::thumb_base::opts()
+            ..thumb::opts()
         },
     }
 }

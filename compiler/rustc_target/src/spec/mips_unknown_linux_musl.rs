@@ -1,8 +1,10 @@
-use crate::abi::Endian;
-use crate::spec::{Target, TargetOptions};
+use crate::{
+    abi::Endian,
+    spec::{base::linux_musl, Target, TargetOptions},
+};
 
 pub fn target() -> Target {
-    let mut base = super::linux_musl_base::opts();
+    let mut base = linux_musl::opts();
     base.cpu = "mips32r2".into();
     base.features = "+mips32r2,+soft-float".into();
     base.max_atomic_width = Some(32);

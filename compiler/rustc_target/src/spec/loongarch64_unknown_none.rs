@@ -1,5 +1,4 @@
-use super::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel};
-use super::{Target, TargetOptions};
+use super::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {

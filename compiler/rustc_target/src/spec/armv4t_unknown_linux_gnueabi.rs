@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::linux_gnu, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -14,7 +14,7 @@ pub fn target() -> Target {
             mcount: "\u{1}__gnu_mcount_nc".into(),
             llvm_mcount_intrinsic: Some("llvm.arm.gnu.eabi.mcount".into()),
             has_thumb_interworking: true,
-            ..super::linux_gnu_base::opts()
+            ..linux_gnu::opts()
         },
     }
 }

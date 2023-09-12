@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::freebsd, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub fn target() -> Target {
             features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}__gnu_mcount_nc".into(),
-            ..super::freebsd_base::opts()
+            ..freebsd::opts()
         },
     }
 }

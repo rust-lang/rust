@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::linux_musl, Target, TargetOptions};
 
 // This target is for musl Linux on ARMv7 with thumb mode enabled
 // (for consistency with Android and Debian-based distributions)
@@ -23,7 +23,7 @@ pub fn target() -> Target {
             features: "+v7,+thumb-mode,+thumb2,+vfp3,+neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),
-            ..super::linux_musl_base::opts()
+            ..linux_musl::opts()
         },
     }
 }

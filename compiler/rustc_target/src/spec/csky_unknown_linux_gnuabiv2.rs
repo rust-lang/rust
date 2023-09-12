@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetOptions};
+use crate::spec::{base::linux_gnu, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 
 // This target is for glibc Linux on Csky
 
@@ -14,7 +14,7 @@ pub fn target() -> Target {
             features: "+2e3,+3e7,+7e10,+cache,+dsp1e2,+dspe60,+e1,+e2,+edsp,+elrw,+hard-tp,+high-registers,+hwdiv,+mp,+mp1e2,+nvic,+trust".into(),
             late_link_args_static: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-l:libatomic.a"]),
             max_atomic_width: Some(32),
-            ..super::linux_gnu_base::opts()
+            ..linux_gnu::opts()
         },
     }
 }

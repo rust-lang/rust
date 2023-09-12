@@ -1,5 +1,7 @@
-use crate::abi::Endian;
-use crate::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, TargetOptions};
+use crate::{
+    abi::Endian,
+    spec::{LinkerFlavor, MergeFunctions, PanicStrategy, TargetOptions},
+};
 
 pub fn opts(endian: Endian) -> TargetOptions {
     TargetOptions {

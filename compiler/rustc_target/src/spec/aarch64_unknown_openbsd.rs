@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::openbsd, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -9,7 +9,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v8a".into(),
             max_atomic_width: Some(128),
-            ..super::openbsd_base::opts()
+            ..openbsd::opts()
         },
     }
 }

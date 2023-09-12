@@ -8,7 +8,7 @@
 //
 // To opt into double precision hardware support, use the `-C target-feature=+fp64` flag.
 
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::thumb, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -30,7 +30,7 @@ pub fn target() -> Target {
             // ARMv7-M Architecture Reference Manual - A2.5 The optional floating-point extension
             features: "+vfp4,-d32,-fp64".into(),
             max_atomic_width: Some(32),
-            ..super::thumb_base::opts()
+            ..thumb::opts()
         },
     }
 }

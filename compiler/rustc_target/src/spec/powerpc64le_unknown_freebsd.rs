@@ -1,7 +1,7 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
+use crate::spec::{base::freebsd, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut base = super::freebsd_base::opts();
+    let mut base = freebsd::opts();
     base.cpu = "ppc64le".into();
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
     base.max_atomic_width = Some(64);

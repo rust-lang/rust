@@ -1,7 +1,7 @@
-use crate::spec::Target;
+use crate::spec::{base::windows_uwp_msvc, Target};
 
 pub fn target() -> Target {
-    let mut base = super::windows_uwp_msvc_base::opts();
+    let mut base = windows_uwp_msvc::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
 

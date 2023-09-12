@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::hermit, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -9,7 +9,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v8a,+strict-align,+neon,+fp-armv8".into(),
             max_atomic_width: Some(128),
-            ..super::hermit_base::opts()
+            ..hermit::opts()
         },
     }
 }

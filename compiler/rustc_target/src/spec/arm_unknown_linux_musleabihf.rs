@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::linux_musl, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -16,7 +16,7 @@ pub fn target() -> Target {
             features: "+strict-align,+v6,+vfp2,-d32".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),
-            ..super::linux_musl_base::opts()
+            ..linux_musl::opts()
         },
     }
 }

@@ -1,7 +1,7 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target};
+use crate::spec::{base::linux_musl, Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target};
 
 pub fn target() -> Target {
-    let mut base = super::linux_musl_base::opts();
+    let mut base = linux_musl::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     base.max_atomic_width = Some(64);

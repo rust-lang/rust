@@ -1,7 +1,7 @@
-use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, Target};
+use crate::spec::{base::windows_gnu, Cc, FramePointer, LinkerFlavor, Lld, Target};
 
 pub fn target() -> Target {
-    let mut base = super::windows_gnu_base::opts();
+    let mut base = windows_gnu::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.frame_pointer = FramePointer::Always; // Required for backtraces

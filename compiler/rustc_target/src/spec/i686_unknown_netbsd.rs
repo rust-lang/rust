@@ -1,7 +1,7 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
+use crate::spec::{base::netbsd, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut base = super::netbsd_base::opts();
+    let mut base = netbsd::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);

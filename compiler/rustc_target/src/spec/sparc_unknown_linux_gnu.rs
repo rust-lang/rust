@@ -1,8 +1,10 @@
-use crate::abi::Endian;
-use crate::spec::{Cc, LinkerFlavor, Lld, Target};
+use crate::{
+    abi::Endian,
+    spec::{base::linux_gnu, Cc, LinkerFlavor, Lld, Target},
+};
 
 pub fn target() -> Target {
-    let mut base = super::linux_gnu_base::opts();
+    let mut base = linux_gnu::opts();
     base.endian = Endian::Big;
     base.cpu = "v9".into();
     base.max_atomic_width = Some(32);

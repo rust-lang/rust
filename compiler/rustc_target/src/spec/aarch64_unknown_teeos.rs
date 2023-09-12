@@ -1,7 +1,7 @@
-use crate::spec::Target;
+use crate::spec::{base::teeos, Target};
 
 pub fn target() -> Target {
-    let mut base = super::teeos_base::opts();
+    let mut base = teeos::opts();
     base.features = "+strict-align,+neon,+fp-armv8".into();
     base.max_atomic_width = Some(128);
     base.linker = Some("aarch64-linux-gnu-ld".into());

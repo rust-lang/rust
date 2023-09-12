@@ -1,5 +1,7 @@
-use super::apple_base::{opts, tvos_llvm_target, Arch};
-use crate::spec::{FramePointer, Target, TargetOptions};
+use crate::spec::{
+    base::apple::{opts, tvos_llvm_target, Arch},
+    FramePointer, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     let arch = Arch::Arm64;

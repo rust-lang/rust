@@ -1,7 +1,7 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, Target};
+use crate::spec::{base::windows_uwp_gnu, Cc, LinkerFlavor, Lld, Target};
 
 pub fn target() -> Target {
-    let mut base = super::windows_uwp_gnu_base::opts();
+    let mut base = windows_uwp_gnu::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     // Use high-entropy 64 bit address space for ASLR

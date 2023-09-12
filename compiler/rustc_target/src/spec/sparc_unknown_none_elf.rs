@@ -1,5 +1,7 @@
-use crate::abi::Endian;
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::{
+    abi::Endian,
+    spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions},
+};
 
 pub fn target() -> Target {
     let options = TargetOptions {

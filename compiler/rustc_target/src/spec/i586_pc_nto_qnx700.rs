@@ -1,5 +1,4 @@
-use super::nto_qnx_base;
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
+use crate::spec::{base::nto_qnx, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -18,7 +17,7 @@ pub fn target() -> Target {
             ),
             env: "nto70".into(),
             stack_probes: StackProbeType::X86,
-            ..nto_qnx_base::opts()
+            ..nto_qnx::opts()
         },
     }
 }

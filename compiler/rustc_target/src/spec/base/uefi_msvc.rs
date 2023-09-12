@@ -12,7 +12,7 @@
 use crate::spec::{LinkerFlavor, Lld, PanicStrategy, StackProbeType, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let mut base = super::msvc_base::opts();
+    let mut base = super::msvc::opts();
 
     base.add_pre_link_args(
         LinkerFlavor::Msvc(Lld::No),

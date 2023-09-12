@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::linux_gnu, Target, TargetOptions};
 
 // This target is for glibc Linux on ARMv7 without NEON or
 // thumb-mode. See the thumbv7neon variant for enabling both.
@@ -15,7 +15,7 @@ pub fn target() -> Target {
             features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}__gnu_mcount_nc".into(),
-            ..super::linux_gnu_base::opts()
+            ..linux_gnu::opts()
         },
     }
 }

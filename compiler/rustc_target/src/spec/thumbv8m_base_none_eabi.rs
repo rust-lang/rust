@@ -1,6 +1,6 @@
 // Targets the Cortex-M23 processor (Baseline ARMv8-M)
 
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::thumb, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -15,7 +15,7 @@ pub fn target() -> Target {
             // with +strict-align.
             features: "+strict-align".into(),
             max_atomic_width: Some(32),
-            ..super::thumb_base::opts()
+            ..thumb::opts()
         },
     }
 }

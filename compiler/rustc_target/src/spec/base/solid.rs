@@ -1,5 +1,4 @@
-use super::FramePointer;
-use crate::spec::TargetOptions;
+use crate::spec::{FramePointer, TargetOptions};
 
 pub fn opts(kernel: &str) -> TargetOptions {
     TargetOptions {

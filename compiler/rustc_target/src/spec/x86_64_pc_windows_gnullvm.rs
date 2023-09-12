@@ -1,7 +1,7 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, Target};
+use crate::spec::{base::windows_gnullvm, Cc, LinkerFlavor, Lld, Target};
 
 pub fn target() -> Target {
-    let mut base = super::windows_gnullvm_base::opts();
+    let mut base = windows_gnullvm::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);

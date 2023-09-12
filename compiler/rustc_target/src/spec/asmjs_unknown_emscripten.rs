@@ -1,4 +1,4 @@
-use super::{wasm32_unknown_emscripten, LinkerFlavor, Target};
+use crate::spec::{wasm32_unknown_emscripten, LinkerFlavor, Target};
 
 pub fn target() -> Target {
     let mut target = wasm32_unknown_emscripten::target();

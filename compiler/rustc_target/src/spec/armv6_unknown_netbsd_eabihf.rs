@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::netbsd, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub fn target() -> Target {
             features: "+v6,+vfp2,-d32".into(),
             max_atomic_width: Some(64),
             mcount: "__mcount".into(),
-            ..super::netbsd_base::opts()
+            ..netbsd::opts()
         },
     }
 }

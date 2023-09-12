@@ -1,4 +1,4 @@
-use crate::spec::{CodeModel, SanitizerSet, Target, TargetOptions};
+use crate::spec::{base::fuchsia, CodeModel, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub fn target() -> Target {
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
             supported_sanitizers: SanitizerSet::SHADOWCALLSTACK,
-            ..super::fuchsia_base::opts()
+            ..fuchsia::opts()
         },
     }
 }

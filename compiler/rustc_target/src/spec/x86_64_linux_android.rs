@@ -1,7 +1,9 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions};
+use crate::spec::{
+    base::android, Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
-    let mut base = super::android_base::opts();
+    let mut base = android::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     // https://developer.android.com/ndk/guides/abis.html#86-64

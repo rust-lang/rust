@@ -1,7 +1,9 @@
 // Targets the Cortex-R4F/R5F processor (ARMv7-R)
 
-use crate::abi::Endian;
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::{
+    abi::Endian,
+    spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions},
+};
 
 pub fn target() -> Target {
     Target {

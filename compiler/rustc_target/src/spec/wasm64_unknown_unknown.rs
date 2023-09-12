@@ -7,10 +7,10 @@
 //! the standard library is available, most of it returns an error immediately
 //! (e.g. trying to create a TCP stream or something like that).
 
-use super::{wasm_base, Cc, LinkerFlavor, Target};
+use super::{base::wasm, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
-    let mut options = wasm_base::options();
+    let mut options = wasm::options();
     options.os = "unknown".into();
 
     options.add_pre_link_args(

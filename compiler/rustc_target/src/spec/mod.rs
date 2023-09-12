@@ -54,48 +54,15 @@ use std::{fmt, io};
 
 use rustc_macros::HashStable_Generic;
 
+mod base;
+
 pub mod abi;
 pub mod crt_objects;
 
-mod aix_base;
-mod android_base;
-mod apple_base;
-pub use apple_base::deployment_target as current_apple_deployment_target;
-pub use apple_base::platform as current_apple_platform;
-pub use apple_base::sdk_version as current_apple_sdk_version;
-mod avr_gnu_base;
-pub use avr_gnu_base::ef_avr_arch;
-mod bpf_base;
-mod dragonfly_base;
-mod freebsd_base;
-mod fuchsia_base;
-mod haiku_base;
-mod hermit_base;
-mod illumos_base;
-mod l4re_base;
-mod linux_base;
-mod linux_gnu_base;
-mod linux_musl_base;
-mod linux_ohos_base;
-mod linux_uclibc_base;
-mod msvc_base;
-mod netbsd_base;
-mod nto_qnx_base;
-mod openbsd_base;
-mod redox_base;
-mod solaris_base;
-mod solid_base;
-mod teeos_base;
-mod thumb_base;
-mod uefi_msvc_base;
-mod unikraft_linux_musl_base;
-mod vxworks_base;
-mod wasm_base;
-mod windows_gnu_base;
-mod windows_gnullvm_base;
-mod windows_msvc_base;
-mod windows_uwp_gnu_base;
-mod windows_uwp_msvc_base;
+pub use base::apple::deployment_target as current_apple_deployment_target;
+pub use base::apple::platform as current_apple_platform;
+pub use base::apple::sdk_version as current_apple_sdk_version;
+pub use base::avr_gnu::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -1256,6 +1223,7 @@ macro_rules! supported_targets {
 
         #[cfg(test)]
         mod tests {
+            #[path = "impl_tests.rs"]
             mod tests_impl;
 
             // Cannot put this into a separate file without duplication, make an exception.
@@ -3298,3 +3266,7 @@ impl fmt::Display for TargetTriple {
         write!(f, "{}", self.debug_triple())
     }
 }
+
+#[cfg(test)]
+#[path = "tests/apple_tests.rs"]
+mod tests_apple {}

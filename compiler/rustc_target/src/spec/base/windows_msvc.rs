@@ -1,7 +1,7 @@
-use crate::spec::{cvs, TargetOptions};
+use crate::spec::{base::msvc, cvs, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let base = super::msvc_base::opts();
+    let base = msvc::opts();
 
     TargetOptions {
         os: "windows".into(),

@@ -4,8 +4,10 @@
 // `target-cpu` compiler flags to opt-in more hardware-specific
 // features.
 
-use super::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy};
-use super::{RelroLevel, SanitizerSet, StackProbeType, Target, TargetOptions};
+use crate::spec::{
+    Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelroLevel, SanitizerSet, StackProbeType,
+    Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     let opts = TargetOptions {

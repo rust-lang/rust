@@ -1,6 +1,6 @@
 // Targets the Cortex-M0, Cortex-M0+ and Cortex-M1 processors (ARMv6-M architecture)
 
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::thumb, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -19,7 +19,7 @@ pub fn target() -> Target {
             // There are no atomic CAS instructions available in the instruction set of the ARMv6-M
             // architecture
             atomic_cas: false,
-            ..super::thumb_base::opts()
+            ..thumb::opts()
         },
     }
 }

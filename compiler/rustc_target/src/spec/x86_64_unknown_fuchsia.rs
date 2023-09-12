@@ -1,7 +1,7 @@
-use crate::spec::{SanitizerSet, StackProbeType, Target};
+use crate::spec::{base::fuchsia, SanitizerSet, StackProbeType, Target};
 
 pub fn target() -> Target {
-    let mut base = super::fuchsia_base::opts();
+    let mut base = fuchsia::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     base.max_atomic_width = Some(64);

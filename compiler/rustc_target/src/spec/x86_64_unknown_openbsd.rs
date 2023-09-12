@@ -1,7 +1,7 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target};
+use crate::spec::{base::openbsd, Cc, LinkerFlavor, Lld, StackProbeType, Target};
 
 pub fn target() -> Target {
-    let mut base = super::openbsd_base::opts();
+    let mut base = openbsd::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     base.max_atomic_width = Some(64);

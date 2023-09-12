@@ -1,7 +1,7 @@
-use crate::spec::Target;
+use crate::spec::{base::redox, Target};
 
 pub fn target() -> Target {
-    let mut base = super::redox_base::opts();
+    let mut base = redox::opts();
     base.max_atomic_width = Some(128);
     base.features = "+v8a".into();
 

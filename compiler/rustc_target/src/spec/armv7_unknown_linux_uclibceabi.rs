@@ -1,10 +1,10 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::linux_uclibc, Target, TargetOptions};
 
 // This target is for uclibc Linux on ARMv7 without NEON,
 // thumb-mode or hardfloat.
 
 pub fn target() -> Target {
-    let base = super::linux_uclibc_base::opts();
+    let base = linux_uclibc::opts();
     Target {
         llvm_target: "armv7-unknown-linux-gnueabi".into(),
         pointer_width: 32,

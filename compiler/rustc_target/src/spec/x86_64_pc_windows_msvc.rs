@@ -1,7 +1,7 @@
-use crate::spec::Target;
+use crate::spec::{base::windows_msvc, Target};
 
 pub fn target() -> Target {
-    let mut base = super::windows_msvc_base::opts();
+    let mut base = windows_msvc::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     base.max_atomic_width = Some(64);

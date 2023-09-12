@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::linux_gnu, Target, TargetOptions};
 
 // This target is for glibc Linux on ARMv7 with thumb mode enabled
 // (for consistency with Android and Debian-based distributions)
@@ -17,7 +17,7 @@ pub fn target() -> Target {
             // Info about features at https://wiki.debian.org/ArmHardFloatPort
             features: "+v7,+thumb-mode,+thumb2,+vfp3,+neon".into(),
             max_atomic_width: Some(64),
-            ..super::linux_gnu_base::opts()
+            ..linux_gnu::opts()
         },
     }
 }

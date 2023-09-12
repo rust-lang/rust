@@ -1,5 +1,7 @@
-use crate::abi::Endian;
-use crate::spec::{cvs, Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
+use crate::{
+    abi::Endian,
+    spec::{cvs, Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions},
+};
 
 /// A base target for PlayStation Vita devices using the VITASDK toolchain (using newlib).
 ///

@@ -1,7 +1,7 @@
 // Targets the Cortex-M33 processor (Armv8-M Mainline architecture profile),
 // with the Floating Point extension.
 
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::thumb, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -19,7 +19,7 @@ pub fn target() -> Target {
             // These parameters map to the following LLVM features.
             features: "+fp-armv8,-fp64,-d32".into(),
             max_atomic_width: Some(32),
-            ..super::thumb_base::opts()
+            ..thumb::opts()
         },
     }
 }

@@ -1,7 +1,7 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target};
+use crate::spec::{base::linux_gnu, Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target};
 
 pub fn target() -> Target {
-    let mut base = super::linux_gnu_base::opts();
+    let mut base = linux_gnu::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.supported_sanitizers = SanitizerSet::ADDRESS;

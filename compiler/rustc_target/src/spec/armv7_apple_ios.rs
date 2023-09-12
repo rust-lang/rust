@@ -1,5 +1,7 @@
-use super::apple_base::{ios_llvm_target, opts, Arch};
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{
+    base::apple::{ios_llvm_target, opts, Arch},
+    Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     let arch = Arch::Armv7;

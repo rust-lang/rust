@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::linux_uclibc, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub fn target() -> Target {
             max_atomic_width: Some(32),
             mcount: "\u{1}__gnu_mcount_nc".into(),
             has_thumb_interworking: true,
-            ..super::linux_uclibc_base::opts()
+            ..linux_uclibc::opts()
         },
     }
 }

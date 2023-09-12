@@ -1,5 +1,7 @@
-use super::apple_base::{macos_llvm_target, opts, Arch};
-use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
+use crate::spec::{
+    base::apple::{macos_llvm_target, opts, Arch},
+    Cc, FramePointer, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     // ld64 only understands i386 and not i686

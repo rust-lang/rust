@@ -1,8 +1,10 @@
-use crate::spec::crt_objects::{self, LinkSelfContainedDefault};
-use crate::spec::TargetOptions;
+use crate::spec::{
+    crt_objects::{self, LinkSelfContainedDefault},
+    TargetOptions,
+};
 
 pub fn opts() -> TargetOptions {
-    let mut base = super::linux_base::opts();
+    let mut base = super::linux::opts();
 
     base.env = "musl".into();
     base.pre_link_objects_self_contained = crt_objects::pre_musl_self_contained();

@@ -1,5 +1,7 @@
-use crate::abi::Endian;
-use crate::spec::{crt_objects, cvs, Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions};
+use crate::{
+    abi::Endian,
+    spec::{crt_objects, cvs, Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions},
+};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {

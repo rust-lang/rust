@@ -1,7 +1,9 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions};
+use crate::spec::{
+    base::netbsd, Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
-    let mut base = super::netbsd_base::opts();
+    let mut base = netbsd::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     base.max_atomic_width = Some(64);

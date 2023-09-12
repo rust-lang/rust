@@ -1,5 +1,7 @@
-use crate::abi::Endian;
-use crate::spec::{Target, TargetOptions};
+use crate::{
+    abi::Endian,
+    spec::{base::linux_uclibc, Target, TargetOptions},
+};
 
 pub fn target() -> Target {
     Target {
@@ -14,7 +16,7 @@ pub fn target() -> Target {
             max_atomic_width: Some(32),
             mcount: "_mcount".into(),
 
-            ..super::linux_uclibc_base::opts()
+            ..linux_uclibc::opts()
         },
     }
 }

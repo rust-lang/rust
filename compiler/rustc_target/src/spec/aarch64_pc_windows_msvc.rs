@@ -1,7 +1,7 @@
-use crate::spec::Target;
+use crate::spec::{base::windows_msvc, Target};
 
 pub fn target() -> Target {
-    let mut base = super::windows_msvc_base::opts();
+    let mut base = windows_msvc::opts();
     base.max_atomic_width = Some(128);
     base.features = "+v8a,+neon,+fp-armv8".into();
 

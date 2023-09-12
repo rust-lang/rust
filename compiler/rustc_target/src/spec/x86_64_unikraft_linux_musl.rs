@@ -1,4 +1,6 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
+use crate::spec::{
+    base::unikraft_linux_musl, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     Target {
@@ -13,7 +15,7 @@ pub fn target() -> Target {
             pre_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]),
             max_atomic_width: Some(64),
             stack_probes: StackProbeType::X86,
-            ..super::unikraft_linux_musl_base::opts()
+            ..unikraft_linux_musl::opts()
         },
     }
 }

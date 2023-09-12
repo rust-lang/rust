@@ -1,5 +1,7 @@
-use super::apple_base::{ios_sim_llvm_target, opts, Arch};
-use crate::spec::{SanitizerSet, StackProbeType, Target, TargetOptions};
+use crate::spec::{
+    base::apple::{ios_sim_llvm_target, opts, Arch},
+    SanitizerSet, StackProbeType, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     let arch = Arch::X86_64_sim;

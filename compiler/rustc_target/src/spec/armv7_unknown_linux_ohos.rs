@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::linux_ohos, Target, TargetOptions};
 
 // This target is for OpenHarmony on ARMv7 Linux with thumb-mode, but no NEON or
 // hardfloat.
@@ -18,7 +18,7 @@ pub fn target() -> Target {
             features: "+v7,+thumb2,+soft-float,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),
-            ..super::linux_ohos_base::opts()
+            ..linux_ohos::opts()
         },
     }
 }

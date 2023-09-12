@@ -1,7 +1,7 @@
-use super::{RelocModel, Target, TargetOptions};
+use super::{base::solid, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = super::solid_base::opts("asp3");
+    let base = solid::opts("asp3");
     Target {
         llvm_target: "armv7a-none-eabi".into(),
         pointer_width: 32,

@@ -1,5 +1,7 @@
-use crate::abi::Endian;
-use crate::spec::{Target, TargetOptions};
+use crate::{
+    abi::Endian,
+    spec::{base::linux_gnu, Target, TargetOptions},
+};
 
 pub fn target() -> Target {
     Target {
@@ -13,8 +15,7 @@ pub fn target() -> Target {
             features: "+mips32r6".into(),
             max_atomic_width: Some(32),
             mcount: "_mcount".into(),
-
-            ..super::linux_gnu_base::opts()
+            ..linux_gnu::opts()
         },
     }
 }

@@ -1,4 +1,4 @@
-use crate::spec::{SanitizerSet, Target, TargetOptions};
+use crate::spec::{base::android, SanitizerSet, Target, TargetOptions};
 
 // See https://developer.android.com/ndk/guides/abis.html#arm64-v8a
 // for target ABI requirements.
@@ -20,7 +20,7 @@ pub fn target() -> Target {
                 | SanitizerSet::SHADOWCALLSTACK
                 | SanitizerSet::ADDRESS,
             supports_xray: true,
-            ..super::android_base::opts()
+            ..android::opts()
         },
     }
 }

@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::linux_gnu, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,8 +13,7 @@ pub fn target() -> Target {
             features: "+mips64r2,+xgot".into(),
             max_atomic_width: Some(64),
             mcount: "_mcount".into(),
-
-            ..super::linux_gnu_base::opts()
+            ..linux_gnu::opts()
         },
     }
 }

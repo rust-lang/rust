@@ -1,4 +1,4 @@
-use crate::spec::{CodeModel, Target, TargetOptions};
+use crate::spec::{base::netbsd, CodeModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub fn target() -> Target {
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
             mcount: "__mcount".into(),
-            ..super::netbsd_base::opts()
+            ..netbsd::opts()
         },
     }
 }

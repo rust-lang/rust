@@ -1,7 +1,7 @@
-use crate::spec::{Cc, LinkerFlavor, Target};
+use crate::spec::{base::linux_musl, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
-    let mut base = super::linux_musl_base::opts();
+    let mut base = linux_musl::opts();
     base.cpu = "hexagonv60".into();
     base.max_atomic_width = Some(32);
     // FIXME: HVX length defaults are per-CPU

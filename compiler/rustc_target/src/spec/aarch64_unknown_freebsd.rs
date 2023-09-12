@@ -1,4 +1,4 @@
-use crate::spec::{SanitizerSet, Target, TargetOptions};
+use crate::spec::{base::freebsd, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub fn target() -> Target {
                 | SanitizerSet::CFI
                 | SanitizerSet::MEMORY
                 | SanitizerSet::THREAD,
-            ..super::freebsd_base::opts()
+            ..freebsd::opts()
         },
     }
 }

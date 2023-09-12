@@ -1,5 +1,6 @@
-use super::{cvs, wasm_base};
-use super::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{
+    base::wasm, cvs, LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     // Reset flags for non-Em flavors back to empty to satisfy sanity checking tests.
@@ -22,7 +23,7 @@ pub fn target() -> Target {
         panic_strategy: PanicStrategy::Unwind,
         no_default_libraries: false,
         families: cvs!["unix", "wasm"],
-        ..wasm_base::options()
+        ..wasm::options()
     };
     Target {
         llvm_target: "wasm32-unknown-emscripten".into(),

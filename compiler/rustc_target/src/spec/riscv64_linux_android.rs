@@ -1,4 +1,4 @@
-use crate::spec::{CodeModel, SanitizerSet, Target, TargetOptions};
+use crate::spec::{base::android, CodeModel, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub fn target() -> Target {
             llvm_abiname: "lp64d".into(),
             supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(64),
-            ..super::android_base::opts()
+            ..android::opts()
         },
     }
 }

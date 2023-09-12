@@ -10,11 +10,10 @@
 //! This target is more or less managed by the Rust and WebAssembly Working
 //! Group nowadays at <https://github.com/rustwasm>.
 
-use super::{wasm_base, Cc, LinkerFlavor, Target};
-use crate::spec::abi::Abi;
+use crate::spec::{abi::Abi, base::wasm, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
-    let mut options = wasm_base::options();
+    let mut options = wasm::options();
     options.os = "unknown".into();
 
     // This is a default for backwards-compatibility with the original

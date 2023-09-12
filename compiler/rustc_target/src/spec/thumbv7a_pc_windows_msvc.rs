@@ -1,7 +1,7 @@
-use crate::spec::{LinkerFlavor, Lld, PanicStrategy, Target, TargetOptions};
+use crate::spec::{base::windows_msvc, LinkerFlavor, Lld, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut base = super::windows_msvc_base::opts();
+    let mut base = windows_msvc::opts();
     // Prevent error LNK2013: BRANCH24(T) fixup overflow
     // The LBR optimization tries to eliminate branch islands,
     // but if the displacement is larger than can fit

@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base::vxworks, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -11,7 +11,7 @@ pub fn target() -> Target {
             // Info about features at https://wiki.debian.org/ArmHardFloatPort
             features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
             max_atomic_width: Some(64),
-            ..super::vxworks_base::opts()
+            ..vxworks::opts()
         },
     }
 }

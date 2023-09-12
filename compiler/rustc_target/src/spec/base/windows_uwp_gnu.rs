@@ -1,7 +1,7 @@
-use crate::spec::{Cc, LinkArgs, LinkerFlavor, Lld, TargetOptions};
+use crate::spec::{add_link_args, Cc, LinkArgs, LinkerFlavor, Lld, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let base = super::windows_gnu_base::opts();
+    let base = super::windows_gnu::opts();
 
     // FIXME: This should be updated for the exception machinery changes from #67502
     // and inherit from `windows_gnu_base`, at least partially.
@@ -17,7 +17,7 @@ pub fn opts() -> TargetOptions {
     ];
     let mut late_link_args =
         TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
-    super::add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
+    add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
     // Reset the flags back to empty until the FIXME above is addressed.
     let late_link_args_dynamic = LinkArgs::new();
     let late_link_args_static = LinkArgs::new();

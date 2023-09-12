@@ -1,8 +1,10 @@
-use crate::abi::Endian;
-use crate::spec::{Cc, LinkerFlavor, Lld, Target};
+use crate::{
+    abi::Endian,
+    spec::{base::openbsd, Cc, LinkerFlavor, Lld, Target},
+};
 
 pub fn target() -> Target {
-    let mut base = super::openbsd_base::opts();
+    let mut base = openbsd::opts();
     base.endian = Endian::Big;
     base.cpu = "v9".into();
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);

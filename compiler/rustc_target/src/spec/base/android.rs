@@ -1,7 +1,7 @@
 use crate::spec::{SanitizerSet, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let mut base = super::linux_base::opts();
+    let mut base = super::linux::opts();
     base.os = "android".into();
     base.is_like_android = true;
     base.default_dwarf_version = 2;

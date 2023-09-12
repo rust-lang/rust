@@ -1,7 +1,7 @@
-use crate::spec::{Cc, LinkerFlavor, Target};
+use crate::spec::{base::aix, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
-    let mut base = super::aix_base::opts();
+    let mut base = aix::opts();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(
         LinkerFlavor::Unix(Cc::No),
