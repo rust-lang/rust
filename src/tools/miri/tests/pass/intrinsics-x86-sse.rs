@@ -1,5 +1,15 @@
-//@only-target-x86_64
+// Ignore everything except x86 and x86_64
+// Any additional target are added to CI should be ignored here
+//@ignore-target-aarch64
+//@ignore-target-arm
+//@ignore-target-avr
+//@ignore-target-s390x
+//@ignore-target-thumbv7em
+//@ignore-target-wasm32
 
+#[cfg(target_arch = "x86")]
+use std::arch::x86::*;
+#[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 use std::f32::NAN;
 use std::mem::transmute;
@@ -987,6 +997,8 @@ unsafe fn test_sse() {
     }
     test_mm_cvtsi32_ss();
 
+    // Intrinsic only available on x86_64
+    #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "sse")]
     unsafe fn test_mm_cvtss_si64() {
         let inputs = &[
@@ -1007,8 +1019,11 @@ unsafe fn test_sse() {
             assert_eq!(e, r, "TestCase #{} _mm_cvtss_si64({:?}) = {}, expected: {}", i, x, r, e);
         }
     }
+    #[cfg(target_arch = "x86_64")]
     test_mm_cvtss_si64();
 
+    // Intrinsic only available on x86_64
+    #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "sse")]
     unsafe fn test_mm_cvttss_si64() {
         let inputs = &[
@@ -1032,8 +1047,11 @@ unsafe fn test_sse() {
             assert_eq!(e, r, "TestCase #{} _mm_cvttss_si64({:?}) = {}, expected: {}", i, x, r, e);
         }
     }
+    #[cfg(target_arch = "x86_64")]
     test_mm_cvttss_si64();
 
+    // Intrinsic only available on x86_64
+    #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "sse")]
     unsafe fn test_mm_cvtsi64_ss() {
         let inputs = &[
@@ -1053,6 +1071,7 @@ unsafe fn test_sse() {
             assert_eq_m128(e, r);
         }
     }
+    #[cfg(target_arch = "x86_64")]
     test_mm_cvtsi64_ss();
 
     #[target_feature(enable = "sse")]
