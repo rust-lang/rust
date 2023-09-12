@@ -95,8 +95,8 @@ target | notes
 `mips64el-unknown-linux-gnuabi64` | MIPS64 (LE) Linux, n64 ABI (kernel 4.4, glibc 2.23)
 `mipsel-unknown-linux-gnu` | MIPS (LE) Linux (kernel 4.4, glibc 2.23)
 `powerpc-unknown-linux-gnu` | PowerPC Linux (kernel 3.2, glibc 2.17)
-`powerpc64-unknown-linux-gnu` | PPC64 Linux (kernel 3.2, glibc 2.17)
-`powerpc64le-unknown-linux-gnu` | PPC64LE Linux (kernel 3.10, glibc 2.17)
+[`powerpc64-unknown-linux-gnu`](platform-support/powerpc64_unknown_linux_gnu.md) | PPC64 Linux (kernel 3.2, glibc 2.17)
+[`powerpc64le-unknown-linux-gnu`](platform-support/powerpc64_unknown_linux_gnu.md) | PPC64LE Linux (kernel 3.10, glibc 2.17)
 [`riscv64gc-unknown-linux-gnu`](platform-support/riscv64gc_unknown_linux_gnu.md) | RISC-V Linux (kernel 4.20, glibc 2.29)
 [`s390x-unknown-linux-gnu`](platform-support/s390x_unknown_linux_gnu.md) | S390x Linux (kernel 3.2, glibc 2.17)
 [`x86_64-unknown-freebsd`](platform-support/freebsd.md) | 64-bit FreeBSD
