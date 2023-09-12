@@ -1037,6 +1037,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this, link_name, abi, args, dest,
                 );
             }
+            name if name.starts_with("llvm.x86.sse2.") => {
+                return shims::x86::sse2::EvalContextExt::emulate_x86_sse2_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
 
             // Platform-specific shims
             _ =>

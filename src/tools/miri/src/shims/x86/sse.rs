@@ -5,6 +5,7 @@ use rustc_target::spec::abi::Abi;
 
 use rand::Rng as _;
 
+use super::FloatCmpOp;
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 
@@ -78,7 +79,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 unary_op_ss(this, which, op, dest)?;
             }
-            // Used to implement _mm_{sqrt,rcp,rsqrt}_ss functions.
+            // Used to implement _mm_{sqrt,rcp,rsqrt}_ps functions.
             // Performs the operations on all components of `op`.
             "sqrt.ps" | "rcp.ps" | "rsqrt.ps" => {
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -100,22 +101,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = match this.read_scalar(imm)?.to_i8()? {
-                    0 => FloatBinOp::Cmp(FloatCmpOp::Eq),
-                    1 => FloatBinOp::Cmp(FloatCmpOp::Lt),
-                    2 => FloatBinOp::Cmp(FloatCmpOp::Le),
-                    3 => FloatBinOp::Cmp(FloatCmpOp::Unord),
-                    4 => FloatBinOp::Cmp(FloatCmpOp::Neq),
-                    5 => FloatBinOp::Cmp(FloatCmpOp::Nlt),
-                    6 => FloatBinOp::Cmp(FloatCmpOp::Nle),
-                    7 => FloatBinOp::Cmp(FloatCmpOp::Ord),
-                    imm => {
-                        throw_unsup_format!(
-                            "invalid 3rd parameter of llvm.x86.sse.cmp.ps: {}",
-                            imm
-                        );
-                    }
-                };
+                let which = FloatBinOp::Cmp(FloatCmpOp::from_intrinsic_imm(
+                    this.read_scalar(imm)?.to_i8()?,
+                    "llvm.x86.sse.cmp.ss",
+                )?);
 
                 bin_op_ss(this, which, left, right, dest)?;
             }
@@ -127,26 +116,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = match this.read_scalar(imm)?.to_i8()? {
-                    0 => FloatBinOp::Cmp(FloatCmpOp::Eq),
-                    1 => FloatBinOp::Cmp(FloatCmpOp::Lt),
-                    2 => FloatBinOp::Cmp(FloatCmpOp::Le),
-                    3 => FloatBinOp::Cmp(FloatCmpOp::Unord),
-                    4 => FloatBinOp::Cmp(FloatCmpOp::Neq),
-                    5 => FloatBinOp::Cmp(FloatCmpOp::Nlt),
-                    6 => FloatBinOp::Cmp(FloatCmpOp::Nle),
-                    7 => FloatBinOp::Cmp(FloatCmpOp::Ord),
-                    imm => {
-                        throw_unsup_format!(
-                            "invalid 3rd parameter of llvm.x86.sse.cmp.ps: {}",
-                            imm
-                        );
-                    }
-                };
+                let which = FloatBinOp::Cmp(FloatCmpOp::from_intrinsic_imm(
+                    this.read_scalar(imm)?.to_i8()?,
+                    "llvm.x86.sse.cmp.ps",
+                )?);
 
                 bin_op_ps(this, which, left, right, dest)?;
             }
-            // Used to implement _mm_{,u}comi{eq,lt,le,gt,ge,neq}_ps functions.
+            // Used to implement _mm_{,u}comi{eq,lt,le,gt,ge,neq}_ss functions.
             // Compares the first component of `left` and `right` and returns
             // a scalar value (0 or 1).
             "comieq.ss" | "comilt.ss" | "comile.ss" | "comigt.ss" | "comige.ss" | "comineq.ss"
@@ -292,6 +269,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let op = this.read_scalar(&this.project_index(&op, i)?)?;
                     let op = op.to_u32()?;
 
+                    // Extract the highest bit of `op` and place it in the `i`-th bit of `res`
                     res |= (op >> 31) << i;
                 }
 
@@ -301,25 +279,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
         Ok(EmulateByNameResult::NeedsJumping)
     }
-}
-
-/// Floating point comparison operation
-///
-/// <https://www.felixcloutier.com/x86/cmpss>
-/// <https://www.felixcloutier.com/x86/cmpps>
-#[derive(Copy, Clone)]
-enum FloatCmpOp {
-    Eq,
-    Lt,
-    Le,
-    Unord,
-    Neq,
-    /// Not less-than
-    Nlt,
-    /// Not less-or-equal
-    Nle,
-    /// Ordered, i.e. neither of them is NaN
-    Ord,
 }
 
 #[derive(Copy, Clone)]
@@ -436,8 +395,8 @@ fn bin_op_ss<'tcx>(
     Ok(())
 }
 
-/// Performs `which` operation on each component of `left`, and
-/// `right` storing the result is stored in `dest`.
+/// Performs `which` operation on each component of `left` and
+/// `right`, storing the result is stored in `dest`.
 fn bin_op_ps<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     which: FloatBinOp,
