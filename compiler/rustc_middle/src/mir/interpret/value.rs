@@ -12,7 +12,7 @@ use rustc_target::abi::{HasDataLayout, Size};
 use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{
-    AllocId, AllocRange, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
+    AllocId, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
     ScalarSizeMismatch,
 };
 
@@ -40,10 +40,14 @@ pub enum ConstValue<'tcx> {
 
     /// Used for `&[u8]` and `&str`.
     ///
-    /// This is worth the optimization since Rust has literals of that type.
+    /// This is worth an optimized representation since Rust has literals of these types.
+    /// Not having to indirect those through an `AllocId` (or two, if we used `Indirect`) has shown
+    /// measurable performance improvements on stress tests.
     Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
 
     /// A value not representable by the other variants; needs to be stored in-memory.
+    ///
+    /// Must *not* be used for scalars or ZST, but having `&str` or other slices in this variant is fine.
     Indirect {
         /// The backing memory of the value. May contain more memory than needed for just the value
         /// if this points into some other larger ConstValue.
@@ -509,20 +513,5 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     pub fn to_f64(self) -> InterpResult<'tcx, Double> {
         // Going through `u64` to check size and truncation.
         Ok(Double::from_bits(self.to_u64()?.into()))
-    }
-}
-
-/// Gets the bytes of a constant slice value.
-pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> &'tcx [u8] {
-    if let ConstValue::Slice { data, start, end } = val {
-        let len = end - start;
-        data.inner()
-            .get_bytes_strip_provenance(
-                cx,
-                AllocRange { start: Size::from_bytes(start), size: Size::from_bytes(len) },
-            )
-            .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
-    } else {
-        bug!("expected const slice, but found another const value");
     }
 }
