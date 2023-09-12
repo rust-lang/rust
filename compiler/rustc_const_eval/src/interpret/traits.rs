@@ -27,7 +27,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ensure_monomorphic_enough(*self.tcx, ty)?;
         ensure_monomorphic_enough(*self.tcx, poly_trait_ref)?;
 
-        let vtable_symbolic_allocation = self.tcx.create_vtable_alloc(ty, poly_trait_ref);
+        let vtable_symbolic_allocation = self.tcx.reserve_and_set_vtable_alloc(ty, poly_trait_ref);
         let vtable_ptr = self.global_base_pointer(Pointer::from(vtable_symbolic_allocation))?;
         Ok(vtable_ptr.into())
     }

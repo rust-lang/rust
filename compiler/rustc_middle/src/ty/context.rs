@@ -647,7 +647,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes);
         let alloc = self.mk_const_alloc(alloc);
-        self.create_memory_alloc(alloc)
+        self.reserve_and_set_memory_alloc(alloc)
     }
 
     /// Returns a range of the start/end indices specified with the

@@ -176,12 +176,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         M::adjust_alloc_base_pointer(self, ptr)
     }
 
-    pub fn create_fn_alloc_ptr(
-        &mut self,
-        fn_val: FnVal<'tcx, M::ExtraFnVal>,
-    ) -> Pointer<M::Provenance> {
+    pub fn fn_ptr(&mut self, fn_val: FnVal<'tcx, M::ExtraFnVal>) -> Pointer<M::Provenance> {
         let id = match fn_val {
-            FnVal::Instance(instance) => self.tcx.create_fn_alloc(instance),
+            FnVal::Instance(instance) => self.tcx.reserve_and_set_fn_alloc(instance),
             FnVal::Other(extra) => {
                 // FIXME(RalfJung): Should we have a cache here?
                 let id = self.tcx.reserve_alloc_id();

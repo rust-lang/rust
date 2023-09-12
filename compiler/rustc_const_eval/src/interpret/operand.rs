@@ -768,7 +768,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.
                 let ptr = Pointer::new(
-                    self.tcx.create_memory_alloc(data),
+                    self.tcx.reserve_and_set_memory_alloc(data),
                     Size::from_bytes(start), // offset: `start`
                 );
                 Operand::Immediate(Immediate::new_slice(
