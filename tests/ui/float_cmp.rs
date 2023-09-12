@@ -41,12 +41,25 @@ impl PartialEq for X {
     }
 }
 
+impl PartialEq<f32> for X {
+    fn eq(&self, o: &f32) -> bool {
+        if self.val.is_nan() {
+            o.is_nan()
+        } else {
+            self.val == *o // no error, inside "eq" fn
+        }
+    }
+}
+
 fn main() {
     ZERO == 0f32; //no error, comparison with zero is ok
     1.0f32 != f32::INFINITY; // also comparison with infinity
     1.0f32 != f32::NEG_INFINITY; // and negative infinity
     ZERO == 0.0; //no error, comparison with zero is ok
     ZERO + ZERO != 1.0; //no error, comparison with zero is ok
+
+    let x = X { val: 1.0 };
+    x == 1.0; // no error, custom type that implement PartialOrder for float is not checked
 
     ONE == 1f32;
     ONE == 1.0 + 0.0;

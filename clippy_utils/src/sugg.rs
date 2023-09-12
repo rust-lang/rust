@@ -88,7 +88,7 @@ impl<'a> Sugg<'a> {
     }
 
     /// Same as `hir`, but first walks the span up to the given context. This will result in the
-    /// macro call, rather then the expansion, if the span is from a child context. If the span is
+    /// macro call, rather than the expansion, if the span is from a child context. If the span is
     /// not from a child context, it will be used directly instead.
     ///
     /// e.g. Given the expression `&vec![]`, getting a snippet from the span for `vec![]` as a HIR

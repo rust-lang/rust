@@ -17,7 +17,6 @@ fn std_instead_of_core() {
     // Multiple imports
     use std::fmt::{Debug, Result};
     //~^ ERROR: used import from `std` instead of `core`
-    //~| ERROR: used import from `std` instead of `core`
 
     // Function calls
     let ptr = std::ptr::null::<u32>();

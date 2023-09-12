@@ -3,6 +3,7 @@
     unused,
     clippy::println_empty_string,
     clippy::empty_loop,
+    clippy::never_loop,
     clippy::diverging_sub_expression,
     clippy::let_unit_value
 )]

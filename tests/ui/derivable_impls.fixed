@@ -287,4 +287,17 @@ mod issue10158 {
     }
 }
 
+mod issue11368 {
+    pub struct A {
+        a: u32,
+    }
+
+    impl Default for A {
+        #[track_caller]
+        fn default() -> Self {
+            Self { a: 0 }
+        }
+    }
+}
+
 fn main() {}

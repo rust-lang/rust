@@ -1,6 +1,6 @@
 #![allow(clippy::needless_if)]
 #![warn(clippy::bool_comparison)]
-#![allow(clippy::incorrect_partial_ord_impl_on_ord_type)]
+#![allow(clippy::non_canonical_partial_ord_impl)]
 
 fn main() {
     let x = true;
