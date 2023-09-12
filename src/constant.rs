@@ -116,7 +116,7 @@ pub(crate) fn codegen_const_value<'tcx>(
     }
 
     match const_val {
-        ConstValue::ZeroSized => unreachable!(), // we already handles ZST above
+        ConstValue::ZeroSized => unreachable!(), // we already handled ZST above
         ConstValue::Scalar(x) => match x {
             Scalar::Int(int) => {
                 if fx.clif_type(layout.ty).is_some() {
@@ -200,7 +200,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                 CValue::by_val(val, layout)
             }
         },
-        ConstValue::ByRef { alloc_id, offset } => {
+        ConstValue::Indirect { alloc_id, offset } => {
             let alloc = fx.tcx.global_alloc(alloc_id).unwrap_memory();
             // FIXME: avoid creating multiple allocations for the same AllocId?
             CValue::by_ref(
