@@ -1000,15 +1000,20 @@ function initSearch(rawSearchIndex) {
      * @return {string|null}
      */
     function getFilterCrates() {
-        const elem = document.getElementById("crate-search");
-
-        if (elem &&
-            elem.value !== "all crates" &&
-            hasOwnPropertyRustdoc(rawSearchIndex, elem.value)
-        ) {
-            return elem.value;
+        const elem = document.getElementById("crate-search-div");
+        if (!elem) {
+            return null;
         }
-        return null;
+
+        const crates = Array.prototype.slice.call(elem.querySelectorAll("input"));
+        const filterCrates = crates.filter(c => c.checked).map(c => c.getAttribute("data-crate"));
+
+        if (filterCrates.length === crates.length) {
+            // No filtering
+            return null;
+        }
+
+        return filterCrates;
     }
 
     /**
@@ -1151,7 +1156,7 @@ function initSearch(rawSearchIndex) {
      *
      * @param  {ParsedQuery} parsedQuery - The parsed user query
      * @param  {Object} searchWords      - The list of search words to query against
-     * @param  {Object} [filterCrates]   - Crate to search in if defined
+     * @param  {Object} [filterCrates]   - Crates to search in if defined
      * @param  {Object} [currentCrate]   - Current crate, to rank results from this crate higher
      *
      * @return {ResultsTable}
@@ -1666,10 +1671,12 @@ function initSearch(rawSearchIndex) {
             const aliases = [];
             const crateAliases = [];
             if (filterCrates !== null) {
-                if (ALIASES.has(filterCrates) && ALIASES.get(filterCrates).has(lowerQuery)) {
-                    const query_aliases = ALIASES.get(filterCrates).get(lowerQuery);
-                    for (const alias of query_aliases) {
-                        aliases.push(createAliasFromItem(searchIndex[alias]));
+                for (const crate of filterCrates) {
+                    if (ALIASES.has(crate) && ALIASES.get(crate).has(lowerQuery)) {
+                        const query_aliases = ALIASES.get(crate).get(lowerQuery);
+                        for (const alias of query_aliases) {
+                            aliases.push(createAliasFromItem(searchIndex[alias]));
+                        }
                     }
                 }
             } else {
@@ -1778,7 +1785,7 @@ function initSearch(rawSearchIndex) {
             results_returned,
             maxEditDistance
         ) {
-            if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
+            if (!row || (filterCrates !== null && filterCrates.indexOf(row.crate) === -1)) {
                 return;
             }
             let index = -1, path_dist = 0;
@@ -1848,7 +1855,7 @@ function initSearch(rawSearchIndex) {
          * @param {Object} results
          */
         function handleArgs(row, pos, results) {
-            if (!row || (filterCrates !== null && row.crate !== filterCrates) || !row.type) {
+            if (!row || (filterCrates !== null && filterCrates.indexOf(row.crate) === -1) || !row.type) {
                 return;
             }
 
@@ -2184,6 +2191,17 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         return "<button>" + text + " <span class=\"count\">(" + nbElems + ")</span></button>";
     }
 
+    function getCrateFilterText(crateList, filterCrates) {
+        if (filterCrates.length === crateList.length) {
+            return "All crates";
+        } else if (filterCrates.length === 0) {
+            return "No crate";
+        } else if (filterCrates.length > 1) {
+            return `${filterCrates.length} crates`;
+        }
+        return "1 crate";
+    }
+
     /**
      * @param {ResultsTable} results
      * @param {boolean} go_to_first
@@ -2243,14 +2261,28 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
 
         let crates = "";
-        const crates_list = Object.keys(rawSearchIndex);
-        if (crates_list.length > 1) {
-            crates = " in&nbsp;<div id=\"crate-search-div\"><select id=\"crate-search\">" +
-                "<option value=\"all crates\">all crates</option>";
-            for (const c of crates_list) {
-                crates += `<option value="${c}" ${c === filterCrates && "selected"}>${c}</option>`;
+        const cratesList = Object.keys(rawSearchIndex);
+        if (cratesList.length > 1) {
+            const params = searchState.getQueryStringParams();
+            filterCrates = filterCrates === null ? cratesList : filterCrates;
+            const filterText = getCrateFilterText(cratesList, filterCrates);
+            crates = ` in&nbsp;<div id="crate-search-div">\
+<div id="crate-search">${filterText}</div>\
+    <div class="popover popover-left">`;
+            for (const c of cratesList) {
+                const checked = filterCrates.indexOf(c) === -1 ? "" : " checked";
+                crates += `\
+<div class="setting-line">\
+    <label class="setting-check">\
+        <input type="checkbox" data-crate="${c}"${checked}>\
+        <span>${c}</span>\
+    </label>
+</div>`;
             }
-            crates += "</select></div>";
+            crates += `\
+<div class="setting-line">\
+    <button type="button" disabled>Refresh search</button>\
+</div></div>`;
         }
 
         let output = `<h1 class="search-results-title">Results${crates}</h1>`;
@@ -2303,9 +2335,48 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         resultsElem.appendChild(ret_returned[0]);
 
         search.innerHTML = output;
-        const crateSearch = document.getElementById("crate-search");
-        if (crateSearch) {
-            crateSearch.addEventListener("input", updateCrate);
+        const crateSearchButton = document.getElementById("crate-search-div");
+        if (crateSearchButton) {
+            function searchBlurHandler(event) {
+                blurHandler(
+                    event, document.getElementById("crate-search-div"), window.hidePopoverMenus);
+            }
+
+            const crateListPopover = crateSearchButton.querySelector(".popover");
+            const refreshButton = crateListPopover.querySelector("button");
+            crateSearchButton.addEventListener("click", event => {
+                if (elemIsInParent(event.target, crateListPopover)) {
+                    return;
+                }
+                if (crateListPopover.style.display !== "block") {
+                    loadCss(getVar("static-root-path") + getVar("settings-css"));
+                    window.hideAllModals();
+                    crateListPopover.style.display = "block";
+                } else {
+                    crateListPopover.style.display = "none";
+                }
+            });
+            crateSearchButton.parentElement.onblur = searchBlurHandler;
+            onEachLazy(crateListPopover.querySelectorAll("input"), el => {
+                el.onblur = searchBlurHandler;
+                el.addEventListener("change", () => {
+                    const current = el.getAttribute("data-crate");
+                    let filter = getFilterCrates();
+                    filter = filter === null ? cratesList : filter;
+                    const currentFilter = filterCrates === null ? cratesList : filterCrates;
+
+                    refreshButton.disabled = currentFilter.join(",") === filter.join(",");
+                });
+            });
+            refreshButton.addEventListener("click", () => {
+                updateCrate(cratesList, getFilterCrates());
+            });
+            crateListPopover.onblur = searchBlurHandler;
+            crateListPopover.querySelector("button").addEventListener("click", () => {
+                const filter = getFilterCrates();
+                crateSearchButton.innerText = getCrateFilterText(cratesList, filter);
+                updateCrate(cratesList, filter);
+            });
         }
         search.appendChild(resultsElem);
         // Reset focused elements.
@@ -2345,7 +2416,6 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             e.preventDefault();
         }
         const query = parseQuery(searchState.input.value.trim());
-        let filterCrates = getFilterCrates();
 
         if (!forced && query.userQuery === currentResults) {
             if (query.userQuery.length > 0) {
@@ -2354,6 +2424,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             return;
         }
 
+        let filterCrates = getFilterCrates();
         searchState.setLoadingSearch();
 
         const params = searchState.getQueryStringParams();
@@ -2361,7 +2432,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         // In case we have no information about the saved crate and there is a URL query parameter,
         // we override it with the URL query parameter.
         if (filterCrates === null && params["filter-crate"] !== undefined) {
-            filterCrates = params["filter-crate"];
+            filterCrates = params["filter-crate"].split(",");
         }
 
         // Update document title to maintain a meaningful browser history
@@ -2369,7 +2440,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
         // Because searching is incremental by character, only the most
         // recent search query is added to the browser history.
-        updateSearchHistory(buildUrl(query.original, filterCrates));
+        updateSearchHistory(buildUrl(
+            query.original, filterCrates !== null ? filterCrates.join(",") : null));
 
         showResults(
             execQuery(query, searchWords, filterCrates, window.currentCrate),
@@ -2735,7 +2807,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             searchState.showResults();
             if (browserSupportsHistoryApi()) {
                 history.replaceState(null, "",
-                    buildUrl(search_input.value, getFilterCrates()));
+                    buildUrl(search_input.value, getFilterCrates().join(",")));
             }
             document.title = searchState.title;
         }
@@ -2878,8 +2950,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         };
     }
 
-    function updateCrate(ev) {
-        if (ev.target.value === "all crates") {
+    function updateCrate(cratesList, filterCrates) {
+        if (cratesList.length === filterCrates.length) {
             // If we don't remove it from the URL, it'll be picked up again by the search.
             const query = searchState.input.value.trim();
             updateSearchHistory(buildUrl(query, null));

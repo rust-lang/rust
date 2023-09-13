@@ -1,6 +1,7 @@
 :root {
 	--main-background-color: #353535;
 	--main-color: #ddd;
+	--disabled-element-color: #9b9797;
 	--settings-input-color: #2196f3;
 	--settings-input-border-color: #999;
 	--settings-button-color: #000;

@@ -6,6 +6,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 :root {
 	--main-background-color: #0f1419;
 	--main-color: #c5c5c5;
+	--disabled-element-color: #9b9797;
 	--settings-input-color: #ffb454;
 	--settings-input-border-color: #999;
 	--settings-button-color: #fff;
