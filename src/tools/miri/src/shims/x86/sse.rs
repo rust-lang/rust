@@ -204,12 +204,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 this.write_scalar(res, dest)?;
             }
-            // Used to implement the _mm_cvtsi32_ss function.
-            // Converts `right` from i32 to f32. Returns a SIMD vector with
+            // Used to implement the _mm_cvtsi32_ss and _mm_cvtsi64_ss functions.
+            // Converts `right` from i32/i64 to f32. Returns a SIMD vector with
             // the result in the first component and the remaining components
             // are copied from `left`.
             // https://www.felixcloutier.com/x86/cvtsi2ss
-            "cvtsi2ss" => {
+            "cvtsi2ss" | "cvtsi642ss" => {
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
@@ -218,42 +218,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 assert_eq!(dest_len, left_len);
 
-                let right = this.read_scalar(right)?.to_i32()?;
-
-                let res0 = Scalar::from_f32(Single::from_i128(right.into()).value);
-                this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
-
-                for i in 1..dest_len {
-                    let left = this.read_immediate(&this.project_index(&left, i)?)?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    this.write_immediate(*left, &dest)?;
-                }
-            }
-            // Used to implement the _mm_cvtsi64_ss function.
-            // Converts `right` from i64 to f32. Returns a SIMD vector with
-            // the result in the first component and the remaining components
-            // are copied from `left`.
-            // https://www.felixcloutier.com/x86/cvtsi2ss
-            "cvtsi642ss" => {
-                let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-
-                let right = this.read_scalar(right)?.to_i64()?;
-
-                let res0 = Scalar::from_f32(Single::from_i128(right.into()).value);
-                this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
+                let right = this.read_immediate(right)?;
+                let dest0 = this.project_index(&dest, 0)?;
+                let res0 = this.int_to_int_or_float(&right, dest0.layout.ty)?;
+                this.write_immediate(res0, &dest0)?;
 
                 for i in 1..dest_len {
-                    let left = this.read_immediate(&this.project_index(&left, i)?)?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    this.write_immediate(*left, &dest)?;
+                    this.copy_op(
+                        &this.project_index(&left, i)?,
+                        &this.project_index(&dest, i)?,
+                        /*allow_transmute*/ false,
+                    )?;
                 }
             }
             // Used to implement the _mm_movemask_ps function.
