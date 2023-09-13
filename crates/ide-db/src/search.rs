@@ -6,7 +6,7 @@
 
 use std::mem;
 
-use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
+use base_db::{salsa::Database, FileId, FileRange, SourceDatabase, SourceDatabaseExt};
 use hir::{
     AsAssocItem, DefWithBody, HasAttrs, HasSource, InFile, ModuleSource, Semantics, Visibility,
 };
@@ -470,6 +470,7 @@ impl<'a> FindUsages<'a> {
         };
 
         for (text, file_id, search_range) in scope_files(sema, &search_scope) {
+            self.sema.db.unwind_if_cancelled();
             let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
 
             // Search for occurrences of the items name
@@ -506,6 +507,7 @@ impl<'a> FindUsages<'a> {
             let finder = &Finder::new("super");
 
             for (text, file_id, search_range) in scope_files(sema, &scope) {
+                self.sema.db.unwind_if_cancelled();
                 let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
 
                 for offset in match_indices(&text, finder, search_range) {

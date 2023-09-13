@@ -1358,17 +1358,18 @@ pub(crate) fn code_lens(
                 })
             }
         }
-        AnnotationKind::HasImpls { pos: file_range, data } => {
+        AnnotationKind::HasImpls { pos, data } => {
             if !client_commands_config.show_reference {
                 return Ok(());
             }
-            let line_index = snap.file_line_index(file_range.file_id)?;
+            let line_index = snap.file_line_index(pos.file_id)?;
             let annotation_range = range(&line_index, annotation.range);
-            let url = url(snap, file_range.file_id);
+            let url = url(snap, pos.file_id);
+            let pos = position(&line_index, pos.offset);
 
             let id = lsp_types::TextDocumentIdentifier { uri: url.clone() };
 
-            let doc_pos = lsp_types::TextDocumentPositionParams::new(id, annotation_range.start);
+            let doc_pos = lsp_types::TextDocumentPositionParams::new(id, pos);
 
             let goto_params = lsp_types::request::GotoImplementationParams {
                 text_document_position_params: doc_pos,
@@ -1391,7 +1392,7 @@ pub(crate) fn code_lens(
                 command::show_references(
                     implementation_title(locations.len()),
                     &url,
-                    annotation_range.start,
+                    pos,
                     locations,
                 )
             });
@@ -1411,28 +1412,24 @@ pub(crate) fn code_lens(
                 })(),
             })
         }
-        AnnotationKind::HasReferences { pos: file_range, data } => {
+        AnnotationKind::HasReferences { pos, data } => {
             if !client_commands_config.show_reference {
                 return Ok(());
             }
-            let line_index = snap.file_line_index(file_range.file_id)?;
+            let line_index = snap.file_line_index(pos.file_id)?;
             let annotation_range = range(&line_index, annotation.range);
-            let url = url(snap, file_range.file_id);
+            let url = url(snap, pos.file_id);
+            let pos = position(&line_index, pos.offset);
 
             let id = lsp_types::TextDocumentIdentifier { uri: url.clone() };
 
-            let doc_pos = lsp_types::TextDocumentPositionParams::new(id, annotation_range.start);
+            let doc_pos = lsp_types::TextDocumentPositionParams::new(id, pos);
 
             let command = data.map(|ranges| {
                 let locations: Vec<lsp_types::Location> =
                     ranges.into_iter().filter_map(|range| location(snap, range).ok()).collect();
 
-                command::show_references(
-                    reference_title(locations.len()),
-                    &url,
-                    annotation_range.start,
-                    locations,
-                )
+                command::show_references(reference_title(locations.len()), &url, pos, locations)
             });
 
             acc.push(lsp_types::CodeLens {
