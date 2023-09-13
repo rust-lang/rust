@@ -343,10 +343,11 @@ fn unary_op_ss<'tcx>(
     this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
 
     for i in 1..dest_len {
-        let op = this.read_immediate(&this.project_index(&op, i)?)?;
-        let dest = this.project_index(&dest, i)?;
-
-        this.write_immediate(*op, &dest)?;
+        this.copy_op(
+            &this.project_index(&op, i)?,
+            &this.project_index(&dest, i)?,
+            /*allow_transmute*/ false,
+        )?;
     }
 
     Ok(())
