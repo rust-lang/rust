@@ -94,5 +94,41 @@ LL -         x if matches!(x, Some(0)) => ..,
 LL +         Some(0) => ..,
    |
 
-error: aborting due to 8 previous errors
+error: redundant guard
+  --> $DIR/redundant_guards.rs:160:28
+   |
+LL |             Some(ref x) if x == &1 => {},
+   |                            ^^^^^^^
+   |
+help: try
+   |
+LL -             Some(ref x) if x == &1 => {},
+LL +             Some(1) => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:161:28
+   |
+LL |             Some(ref x) if let &2 = x => {},
+   |                            ^^^^^^^^^^
+   |
+help: try
+   |
+LL -             Some(ref x) if let &2 = x => {},
+LL +             Some(2) => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:162:28
+   |
+LL |             Some(ref x) if matches!(x, &3) => {},
+   |                            ^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -             Some(ref x) if matches!(x, &3) => {},
+LL +             Some(3) => {},
+   |
+
+error: aborting due to 11 previous errors
 
