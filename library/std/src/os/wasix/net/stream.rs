@@ -1,5 +1,5 @@
 #![allow(unused_variables, dead_code)]
-use super::{SocketAddr};
+use super::SocketAddr;
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::Shutdown;
@@ -52,12 +52,10 @@ impl UnixStream {
         use crate::sys::err2io;
         use crate::sys::fd::WasiFd;
 
-        let (fd1, fd2) = unsafe {
-            wasi::fd_pipe().map_err(err2io)?
-        };
+        let (fd1, fd2) = unsafe { wasi::fd_pipe().map_err(err2io)? };
         unsafe {
-            let fd1 = UnixStream(crate::sys::fs::File { fd: WasiFd::from_raw_fd(fd1 as RawFd)});
-            let fd2 = UnixStream(crate::sys::fs::File { fd: WasiFd::from_raw_fd(fd2 as RawFd)});
+            let fd1 = UnixStream(crate::sys::fs::File { fd: WasiFd::from_raw_fd(fd1 as RawFd) });
+            let fd2 = UnixStream(crate::sys::fs::File { fd: WasiFd::from_raw_fd(fd2 as RawFd) });
             Ok((fd1, fd2))
         }
     }
@@ -143,9 +141,7 @@ impl UnixStream {
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         use crate::sys::err2io;
 
-        let fdstat = unsafe {
-            wasi::fd_fdstat_get(self.0.fd.as_raw_fd() as u32).map_err(err2io)?
-        };
+        let fdstat = unsafe { wasi::fd_fdstat_get(self.0.fd.as_raw_fd() as u32).map_err(err2io)? };
 
         let mut flags = fdstat.fs_flags;
 
@@ -156,8 +152,7 @@ impl UnixStream {
         }
 
         unsafe {
-            wasi::fd_fdstat_set_flags(self.0.fd.as_raw_fd() as u32, flags)
-                .map_err(err2io)?;
+            wasi::fd_fdstat_set_flags(self.0.fd.as_raw_fd() as u32, flags).map_err(err2io)?;
         }
 
         Ok(())
@@ -282,8 +277,8 @@ impl AsRawFd for UnixStream {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl FromRawFd for UnixStream {
     #[inline]
-    unsafe fn from_raw_fd(_fd: RawFd) -> UnixStream {
-        unimplemented!();
+    unsafe fn from_raw_fd(fd: RawFd) -> UnixStream {
+        Self(unsafe { FromRawFd::from_raw_fd(fd) })
     }
 }
 

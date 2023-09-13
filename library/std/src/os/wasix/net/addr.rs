@@ -1,12 +1,20 @@
 #![allow(unused_variables, dead_code)]
 use crate::path::Path;
-use crate::{fmt, io};
+use crate::sys::cvt;
+use crate::{fmt, io, mem};
 
 pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {
     Err(crate::io::const_io_error!(
         crate::io::ErrorKind::Unsupported,
         "unix sockets are not supported on this platform",
     ))
+}
+
+fn sun_path_offset(addr: &libc::sockaddr_un) -> usize {
+    // Work with an actual instance of the type since using a null pointer is UB
+    let base = (addr as *const libc::sockaddr_un).addr();
+    let path = (&addr.sun_path as *const libc::c_char).addr();
+    path - base
 }
 
 /// An address associated with a Unix socket.
@@ -20,6 +28,36 @@ pub struct SocketAddr {
 }
 
 impl SocketAddr {
+    pub(super) fn new<F>(f: F) -> io::Result<SocketAddr>
+    where
+        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
+    {
+        unsafe {
+            let mut addr: libc::sockaddr_un = mem::zeroed();
+            let mut len = mem::size_of::<libc::sockaddr_un>() as libc::socklen_t;
+            cvt(f(&mut addr as *mut _ as *mut _, &mut len))?;
+            SocketAddr::from_parts(addr, len)
+        }
+    }
+
+    pub(super) fn from_parts(
+        addr: libc::sockaddr_un,
+        mut len: libc::socklen_t,
+    ) -> io::Result<SocketAddr> {
+        if len == 0 {
+            // When there is a datagram from unnamed unix socket
+            // linux returns zero bytes of address
+            len = sun_path_offset(&addr) as libc::socklen_t; // i.e., zero-length address
+        } else if addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
+            return Err(io::const_io_error!(
+                io::ErrorKind::InvalidInput,
+                "file descriptor did not correspond to a Unix socket",
+            ));
+        }
+
+        Ok(SocketAddr { addr, len })
+    }
+
     /// Constructs a `SockAddr` with the family `AF_UNIX` and the provided path.
     ///
     /// Not currently supported on this platform
