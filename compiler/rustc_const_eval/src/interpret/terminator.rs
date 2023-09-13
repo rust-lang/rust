@@ -269,19 +269,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match layout.ty.kind() {
             ty::Adt(adt_def, _) if adt_def.repr().transparent() && may_unfold(*adt_def) => {
                 assert!(!adt_def.is_enum());
-                // Find the non-1-ZST field.
-                let mut non_1zst_fields = (0..layout.fields.count()).filter_map(|idx| {
-                    let field = layout.field(self, idx);
-                    if field.is_1zst() { None } else { Some(field) }
-                });
-                let first = non_1zst_fields.next().expect("`unfold_transparent` called on 1-ZST");
-                assert!(
-                    non_1zst_fields.next().is_none(),
-                    "more than one non-1-ZST field in a transparent type"
-                );
-
-                // Found it!
-                self.unfold_transparent(first, may_unfold)
+                // Find the non-1-ZST field, and recurse.
+                let (_, field) = layout.non_1zst_field(self).unwrap();
+                self.unfold_transparent(field, may_unfold)
             }
             // Not a transparent type, no further unfolding.
             _ => layout,
@@ -797,25 +787,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         _ => {
                             // Not there yet, search for the only non-ZST field.
                             // (The rules for `DispatchFromDyn` ensure there's exactly one such field.)
-                            let mut non_zst_field = None;
-                            for i in 0..receiver.layout.fields.count() {
-                                let field = self.project_field(&receiver, i)?;
-                                let zst = field.layout.is_1zst();
-                                if !zst {
-                                    assert!(
-                                        non_zst_field.is_none(),
-                                        "multiple non-1-ZST fields in dyn receiver type {}",
-                                        receiver.layout.ty
-                                    );
-                                    non_zst_field = Some(field);
-                                }
-                            }
-                            receiver = non_zst_field.unwrap_or_else(|| {
-                                panic!(
-                                    "no non-1-ZST fields in dyn receiver type {}",
-                                    receiver.layout.ty
-                                )
-                            });
+                            let (idx, _) = receiver.layout.non_1zst_field(self).expect(
+                                "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
+                            );
+                            receiver = self.project_field(&receiver, idx)?;
                         }
                     }
                 };
