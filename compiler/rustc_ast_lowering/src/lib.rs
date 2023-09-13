@@ -40,7 +40,7 @@
 #[macro_use]
 extern crate tracing;
 
-use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait, TraitFnAsync};
+use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit;
@@ -331,13 +331,6 @@ impl FnDeclKind {
     }
 
     fn return_impl_trait_allowed(&self) -> bool {
-        match self {
-            FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait => true,
-            _ => false,
-        }
-    }
-
-    fn async_fn_allowed(&self) -> bool {
         match self {
             FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait => true,
             _ => false,
@@ -1797,11 +1790,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.lower_ty_direct(&param.ty, &itctx)
         }));
 
-        let output = if let Some((ret_id, span)) = make_ret_async {
-            if !kind.async_fn_allowed() {
-                self.tcx.sess.emit_err(TraitFnAsync { fn_span, span });
-            }
-
+        let output = if let Some((ret_id, _span)) = make_ret_async {
             let fn_def_id = self.local_def_id(fn_node_id);
             self.lower_async_fn_ret_ty(&decl.output, fn_def_id, ret_id, kind, fn_span)
         } else {
