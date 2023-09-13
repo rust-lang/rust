@@ -269,7 +269,7 @@ fn module_codegen(
     ),
 ) -> OngoingModuleCodegen {
     let (cgu_name, mut cx, mut module, codegened_functions) =
-        tcx.prof.verbose_generic_activity_with_arg("codegen cgu", cgu_name.as_str()).run(|| {
+        tcx.prof.generic_activity_with_arg("codegen cgu", cgu_name.as_str()).run(|| {
             let cgu = tcx.codegen_unit(cgu_name);
             let mono_items = cgu.items_in_deterministic_order(tcx);
 
@@ -322,35 +322,24 @@ fn module_codegen(
         });
 
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
-        cx.profiler.clone().verbose_generic_activity_with_arg("compile functions", &*cgu_name).run(
-            || {
-                cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
-                    cx.profiler.clone(),
-                )));
+        cx.profiler.clone().generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
+            cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
+                cx.profiler.clone(),
+            )));
 
-                let mut cached_context = Context::new();
-                for codegened_func in codegened_functions {
-                    crate::base::compile_fn(
-                        &mut cx,
-                        &mut cached_context,
-                        &mut module,
-                        codegened_func,
-                    );
-                }
-            },
-        );
+            let mut cached_context = Context::new();
+            for codegened_func in codegened_functions {
+                crate::base::compile_fn(&mut cx, &mut cached_context, &mut module, codegened_func);
+            }
+        });
 
-        let global_asm_object_file = cx
-            .profiler
-            .verbose_generic_activity_with_arg("compile assembly", &*cgu_name)
-            .run(|| {
+        let global_asm_object_file =
+            cx.profiler.generic_activity_with_arg("compile assembly", &*cgu_name).run(|| {
                 crate::global_asm::compile_global_asm(&global_asm_config, &cgu_name, &cx.global_asm)
             })?;
 
-        let codegen_result = cx
-            .profiler
-            .verbose_generic_activity_with_arg("write object file", &*cgu_name)
-            .run(|| {
+        let codegen_result =
+            cx.profiler.generic_activity_with_arg("write object file", &*cgu_name).run(|| {
                 emit_cgu(
                     &global_asm_config.output_filenames,
                     &cx.profiler,

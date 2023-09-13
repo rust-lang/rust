@@ -94,6 +94,8 @@ fn run_passes_inner<'tcx>(
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
 
+    let prof_arg = tcx.sess.prof.enabled().then(|| format!("{:?}", body.source.def_id()));
+
     if !body.should_skip() {
         for pass in passes {
             let name = pass.name();
@@ -121,7 +123,14 @@ fn run_passes_inner<'tcx>(
                 validate_body(tcx, body, format!("before pass {name}"));
             }
 
-            tcx.sess.time(name, || pass.run_pass(tcx, body));
+            if let Some(prof_arg) = &prof_arg {
+                tcx.sess
+                    .prof
+                    .generic_activity_with_arg(pass.profiler_name(), &**prof_arg)
+                    .run(|| pass.run_pass(tcx, body));
+            } else {
+                pass.run_pass(tcx, body);
+            }
 
             if dump_enabled {
                 dump_mir_for_pass(tcx, body, &name, true);
