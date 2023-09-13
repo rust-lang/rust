@@ -2295,7 +2295,7 @@ pub struct Constant<'tcx> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
-#[derive(Lift, TypeFoldable, TypeVisitable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum ConstantKind<'tcx> {
     /// This constant came from the type system.
     ///
@@ -2615,7 +2615,7 @@ impl<'tcx> ConstantKind<'tcx> {
 }
 
 /// An unevaluated (potentially generic) constant used in MIR.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UnevaluatedConst<'tcx> {
     pub def: DefId,

@@ -8,7 +8,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 
 /// An unevaluated (potentially generic) constant used in the type-system.
-#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UnevaluatedConst<'tcx> {
     pub def: DefId,
