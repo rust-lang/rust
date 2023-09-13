@@ -700,12 +700,14 @@ pub fn list_metadata(
     sess: &Session,
     metadata_loader: &dyn MetadataLoader,
 ) -> Compilation {
-    if sess.opts.unstable_opts.ls {
+    let ls_kinds = &sess.opts.unstable_opts.ls;
+    if !ls_kinds.is_empty() {
         match sess.io.input {
             Input::File(ref ifile) => {
                 let path = &(*ifile);
                 let mut v = Vec::new();
-                locator::list_file_metadata(&sess.target, path, metadata_loader, &mut v).unwrap();
+                locator::list_file_metadata(&sess.target, path, metadata_loader, &mut v, ls_kinds)
+                    .unwrap();
                 safe_println!("{}", String::from_utf8(v).unwrap());
             }
             Input::Str { .. } => {

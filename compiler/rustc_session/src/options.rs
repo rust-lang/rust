@@ -1594,8 +1594,9 @@ options! {
         "what location details should be tracked when using caller_location, either \
         `none`, or a comma separated list of location details, for which \
         valid options are `file`, `line`, and `column` (default: `file,line,column`)"),
-    ls: bool = (false, parse_bool, [UNTRACKED],
-        "list the symbols defined by a library crate (default: no)"),
+    ls: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
+        "decode and print various parts of the crate metadata for a library crate \
+        (space separated)"),
     macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
         "show macro backtraces (default: no)"),
     maximal_hir_to_mir_coverage: bool = (false, parse_bool, [TRACKED],
