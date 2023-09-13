@@ -722,9 +722,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.write_scalar(Scalar::from_i32(0), &dest)?;
                 }
             }
-            // Use to implement the _mm_cvtsd_si32 and _mm_cvttsd_si32 functions.
-            // Converts the first component of `op` from f64 to i32.
-            "cvtsd2si" | "cvttsd2si" => {
+            // Use to implement the _mm_cvtsd_si32, _mm_cvttsd_si32,
+            // _mm_cvtsd_si64 and _mm_cvttsd_si64 functions.
+            // Converts the first component of `op` from f64 to i32/i64.
+            "cvtsd2si" | "cvttsd2si" | "cvtsd2si64" | "cvttsd2si64" => {
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let (op, _) = this.operand_to_simd(op)?;
 
@@ -733,41 +734,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let rnd = match unprefixed_name {
                     // "current SSE rounding mode", assume nearest
                     // https://www.felixcloutier.com/x86/cvtsd2si
-                    "cvtsd2si" => rustc_apfloat::Round::NearestTiesToEven,
+                    "cvtsd2si" | "cvtsd2si64" => rustc_apfloat::Round::NearestTiesToEven,
                     // always truncate
                     // https://www.felixcloutier.com/x86/cvttsd2si
-                    "cvttsd2si" => rustc_apfloat::Round::TowardZero,
+                    "cvttsd2si" | "cvttsd2si64" => rustc_apfloat::Round::TowardZero,
                     _ => unreachable!(),
                 };
 
                 let res = this.float_to_int_checked(op, dest.layout.ty, rnd).unwrap_or_else(|| {
                     // Fallback to minimum acording to SSE semantics.
-                    Scalar::from_i32(i32::MIN)
-                });
-
-                this.write_scalar(res, dest)?;
-            }
-            // Use to implement the _mm_cvtsd_si64 and _mm_cvttsd_si64 functions.
-            // Converts the first component of `op` from f64 to i64.
-            "cvtsd2si64" | "cvttsd2si64" => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let (op, _) = this.operand_to_simd(op)?;
-
-                let op = this.read_scalar(&this.project_index(&op, 0)?)?.to_f64()?;
-
-                let rnd = match unprefixed_name {
-                    // "current SSE rounding mode", assume nearest
-                    // https://www.felixcloutier.com/x86/cvtsd2si
-                    "cvtsd2si64" => rustc_apfloat::Round::NearestTiesToEven,
-                    // always truncate
-                    // https://www.felixcloutier.com/x86/cvttsd2si
-                    "cvttsd2si64" => rustc_apfloat::Round::TowardZero,
-                    _ => unreachable!(),
-                };
-
-                let res = this.float_to_int_checked(op, dest.layout.ty, rnd).unwrap_or_else(|| {
-                    // Fallback to minimum acording to SSE semantics.
-                    Scalar::from_i64(i64::MIN)
+                    Scalar::from_int(dest.layout.size.signed_int_min(), dest.layout.size)
                 });
 
                 this.write_scalar(res, dest)?;
