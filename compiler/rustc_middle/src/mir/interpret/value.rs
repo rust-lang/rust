@@ -267,6 +267,16 @@ impl<Prov> Scalar<Prov> {
     }
 
     #[inline]
+    pub fn from_i8(i: i8) -> Self {
+        Self::from_int(i, Size::from_bits(8))
+    }
+
+    #[inline]
+    pub fn from_i16(i: i16) -> Self {
+        Self::from_int(i, Size::from_bits(16))
+    }
+
+    #[inline]
     pub fn from_i32(i: i32) -> Self {
         Self::from_int(i, Size::from_bits(32))
     }

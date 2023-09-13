@@ -5,7 +5,6 @@ use rustc_apfloat::{
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
 use super::FloatCmpOp;
@@ -112,7 +111,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                     // Values are expanded from i16 to i32, so multiplication cannot overflow.
                     let res = i32::from(left).checked_mul(i32::from(right)).unwrap() >> 16;
-                    this.write_scalar(Scalar::from_int(res, Size::from_bits(16)), &dest)?;
+                    this.write_scalar(Scalar::from_i16(res.try_into().unwrap()), &dest)?;
                 }
             }
             // Used to implement the _mm_mulhi_epu16 function.
@@ -431,11 +430,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let right_res =
                         i8::try_from(right).unwrap_or(if right < 0 { i8::MIN } else { i8::MAX });
 
-                    this.write_scalar(Scalar::from_int(left_res, Size::from_bits(8)), &left_dest)?;
-                    this.write_scalar(
-                        Scalar::from_int(right_res, Size::from_bits(8)),
-                        &right_dest,
-                    )?;
+                    this.write_scalar(Scalar::from_i8(left_res.try_into().unwrap()), &left_dest)?;
+                    this.write_scalar(Scalar::from_i8(right_res.try_into().unwrap()), &right_dest)?;
                 }
             }
             // Used to implement the _mm_packus_epi16 function.
@@ -495,9 +491,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let right_res =
                         i16::try_from(right).unwrap_or(if right < 0 { i16::MIN } else { i16::MAX });
 
-                    this.write_scalar(Scalar::from_int(left_res, Size::from_bits(16)), &left_dest)?;
+                    this.write_scalar(Scalar::from_i16(left_res.try_into().unwrap()), &left_dest)?;
                     this.write_scalar(
-                        Scalar::from_int(right_res, Size::from_bits(16)),
+                        Scalar::from_i16(right_res.try_into().unwrap()),
                         &right_dest,
                     )?;
                 }
