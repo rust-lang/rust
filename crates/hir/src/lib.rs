@@ -4567,8 +4567,8 @@ impl Type {
 // FIXME: Document this
 #[derive(Debug)]
 pub struct Callable {
-    ty: Type,
-    sig: CallableSig,
+    pub ty: Type,
+    pub sig: CallableSig,
     callee: Callee,
     /// Whether this is a method that was called with method call syntax.
     pub(crate) is_bound_method: bool,

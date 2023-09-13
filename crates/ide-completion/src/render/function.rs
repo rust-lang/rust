@@ -1,6 +1,6 @@
 //! Renderer for function calls.
 
-use hir::{db::HirDatabase, AsAssocItem, HirDisplay};
+use hir::{db::HirDatabase, AsAssocItem, Callable, HirDisplay, Type};
 use ide_db::{SnippetCap, SymbolKind};
 use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
@@ -8,8 +8,14 @@ use syntax::{AstNode, SmolStr};
 
 use crate::{
     context::{CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind},
-    item::{Builder, CompletionItem, CompletionItemKind, CompletionRelevance},
-    render::{compute_exact_name_match, compute_ref_match, compute_type_match, RenderContext},
+    item::{
+        Builder, CompletionItem, CompletionItemKind, CompletionRelevance,
+        CompletionRelevanceTypeMatch,
+    },
+    render::{
+        compute_exact_name_match, compute_ref_match, compute_type_match, compute_type_match2,
+        RenderContext,
+    },
     CallableSnippets,
 };
 
@@ -62,6 +68,7 @@ fn render(
         ),
         _ => (name.unescaped().to_smol_str(), name.to_smol_str()),
     };
+
     let mut item = CompletionItem::new(
         if func.self_param(db).is_some() {
             CompletionItemKind::Method
@@ -77,8 +84,48 @@ fn render(
         .as_assoc_item(ctx.db())
         .and_then(|trait_| trait_.containing_trait_or_trait_impl(ctx.db()))
         .map_or(false, |trait_| completion.is_ops_trait(trait_));
+
+    // TODO next step figure out how to unify function typesk, we need to convert fndef to actual callable type
+
+    let type_match = if let Some(ref t) = completion.expected_type {
+        if let Some(t) = t.as_callable(db) {
+            let (mut param_types_exp, ret_type_exp) = (
+                t.params(db).into_iter().map(|(_, ty)| ty).collect::<Vec<Type>>(),
+                t.return_type(),
+            );
+
+            param_types_exp.push(ret_type_exp);
+
+            let mut param_types = func
+                .ty(db)
+                .as_callable(db)
+                .unwrap()
+                .params(db)
+                .into_iter()
+                .map(|(_, ty)| ty)
+                .collect::<Vec<Type>>();
+            param_types.push(ret_type.clone());
+
+            if param_types.len() != param_types_exp.len() {
+                None
+            } else {
+                if param_types_exp.iter().zip(param_types).all(|(expected_type, item_type)| {
+                    compute_type_match2(completion, &expected_type, &item_type).is_some()
+                }) {
+                    Some(CompletionRelevanceTypeMatch::CouldUnify)
+                } else {
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     item.set_relevance(CompletionRelevance {
-        type_match: compute_type_match(completion, &ret_type),
+        type_match,
         exact_name_match: compute_exact_name_match(completion, &call),
         is_op_method,
         ..ctx.completion_relevance()
