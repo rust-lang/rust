@@ -2098,3 +2098,413 @@ in src-script.js
 }
 
 /* End: styles for --scrape-examples feature */
+
+/* Begin: styles for themes
+
+	Keep the default light and dark themes synchronized with the ones
+	in noscript.css
+
+	The special "Begin theme" and "End theme" below are used by a lot of
+	tooling to ensure different themes all define all the variables. Do not
+	alter their formatting. */
+
+/* Begin theme: light */
+:root[data-theme="light"] {
+	--main-background-color: white;
+	--main-color: black;
+	--settings-input-color: #2196f3;
+	--settings-input-border-color: #717171;
+	--settings-button-color: #000;
+	--settings-button-border-focus: #717171;
+	--sidebar-background-color: #f5f5f5;
+	--sidebar-background-color-hover: #e0e0e0;
+	--code-block-background-color: #f5f5f5;
+	--scrollbar-track-background-color: #dcdcdc;
+	--scrollbar-thumb-background-color: rgba(36, 37, 39, 0.6);
+	--scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
+	--headings-border-bottom-color: #ddd;
+	--border-color: #e0e0e0;
+	--button-background-color: #fff;
+	--right-side-color: grey;
+	--code-attribute-color: #999;
+	--toggles-color: #999;
+	--toggle-filter: none;
+	--search-input-focused-border-color: #66afe9;
+	--copy-path-button-color: #999;
+	--copy-path-img-filter: invert(50%);
+	--copy-path-img-hover-filter: invert(35%);
+	--codeblock-error-hover-color: rgb(255, 0, 0);
+	--codeblock-error-color: rgba(255, 0, 0, .5);
+	--codeblock-ignore-hover-color: rgb(255, 142, 0);
+	--codeblock-ignore-color: rgba(255, 142, 0, .6);
+	--warning-border-color: #ff8e00;
+	--type-link-color: #ad378a;
+	--trait-link-color: #6e4fc9;
+	--assoc-item-link-color: #3873ad;
+	--function-link-color: #ad7c37;
+	--macro-link-color: #068000;
+	--keyword-link-color: #3873ad;
+	--mod-link-color: #3873ad;
+	--link-color: #3873ad;
+	--sidebar-link-color: #356da4;
+	--sidebar-current-link-background-color: #fff;
+	--search-result-link-focus-background-color: #ccc;
+	--search-result-border-color: #aaa3;
+	--search-color: #000;
+	--search-error-code-background-color: #d0cccc;
+	--search-results-alias-color: #000;
+	--search-results-grey-color: #999;
+	--search-tab-title-count-color: #888;
+	--search-tab-button-not-selected-border-top-color: #e6e6e6;
+	--search-tab-button-not-selected-background: #e6e6e6;
+	--search-tab-button-selected-border-top-color: #0089ff;
+	--search-tab-button-selected-background: #fff;
+	--stab-background-color: #fff5d6;
+	--stab-code-color: #000;
+	--code-highlight-kw-color: #8959a8;
+	--code-highlight-kw-2-color: #4271ae;
+	--code-highlight-lifetime-color: #b76514;
+	--code-highlight-prelude-color: #4271ae;
+	--code-highlight-prelude-val-color: #c82829;
+	--code-highlight-number-color: #718c00;
+	--code-highlight-string-color: #718c00;
+	--code-highlight-literal-color: #c82829;
+	--code-highlight-attribute-color: #c82829;
+	--code-highlight-self-color: #c82829;
+	--code-highlight-macro-color: #3e999f;
+	--code-highlight-question-mark-color: #ff9011;
+	--code-highlight-comment-color: #8e908c;
+	--code-highlight-doc-comment-color: #4d4d4c;
+	--src-line-numbers-span-color: #c67e2d;
+	--src-line-number-highlighted-background-color: #fdffd3;
+	--test-arrow-color: #f5f5f5;
+	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
+	--test-arrow-hover-color: #f5f5f5;
+	--test-arrow-hover-background-color: rgb(78, 139, 202);
+	--target-background-color: #fdffd3;
+	--target-border-color: #ad7c37;
+	--kbd-color: #000;
+	--kbd-background: #fafbfc;
+	--kbd-box-shadow-color: #c6cbd1;
+	--rust-logo-filter: initial;
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	--crate-search-div-filter: invert(100%) sepia(0%) saturate(4223%) hue-rotate(289deg)
+		brightness(114%) contrast(76%);
+	--crate-search-div-hover-filter: invert(44%) sepia(18%) saturate(23%) hue-rotate(317deg)
+		brightness(96%) contrast(93%);
+	--crate-search-hover-border: #717171;
+	--src-sidebar-background-selected: #fff;
+	--src-sidebar-background-hover: #e0e0e0;
+	--table-alt-row-background-color: #f5f5f5;
+	--codeblock-link-background: #eee;
+	--scrape-example-toggle-line-background: #ccc;
+	--scrape-example-toggle-line-hover-background: #999;
+	--scrape-example-code-line-highlight: #fcffd6;
+	--scrape-example-code-line-highlight-focus: #f6fdb0;
+	--scrape-example-help-border-color: #555;
+	--scrape-example-help-color: #333;
+	--scrape-example-help-hover-border-color: #000;
+	--scrape-example-help-hover-color: #000;
+	--scrape-example-code-wrapper-background-start: rgba(255, 255, 255, 1);
+	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
+}
+/* End theme: light */
+
+/* Begin theme: dark */
+:root[data-theme="dark"] {
+	--main-background-color: #353535;
+	--main-color: #ddd;
+	--settings-input-color: #2196f3;
+	--settings-input-border-color: #999;
+	--settings-button-color: #000;
+	--settings-button-border-focus: #ffb900;
+	--sidebar-background-color: #505050;
+	--sidebar-background-color-hover: #676767;
+	--code-block-background-color: #2A2A2A;
+	--scrollbar-track-background-color: #717171;
+	--scrollbar-thumb-background-color: rgba(32, 34, 37, .6);
+	--scrollbar-color: rgba(32,34,37,.6) #5a5a5a;
+	--headings-border-bottom-color: #d2d2d2;
+	--border-color: #e0e0e0;
+	--button-background-color: #f0f0f0;
+	--right-side-color: grey;
+	--code-attribute-color: #999;
+	--toggles-color: #999;
+	--toggle-filter: invert(100%);
+	--search-input-focused-border-color: #008dfd;
+	--copy-path-button-color: #999;
+	--copy-path-img-filter: invert(50%);
+	--copy-path-img-hover-filter: invert(65%);
+	--codeblock-error-hover-color: rgb(255, 0, 0);
+	--codeblock-error-color: rgba(255, 0, 0, .5);
+	--codeblock-ignore-hover-color: rgb(255, 142, 0);
+	--codeblock-ignore-color: rgba(255, 142, 0, .6);
+	--warning-border-color: #ff8e00;
+	--type-link-color: #2dbfb8;
+	--trait-link-color: #b78cf2;
+	--assoc-item-link-color: #d2991d;
+	--function-link-color: #2bab63;
+	--macro-link-color: #09bd00;
+	--keyword-link-color: #d2991d;
+	--mod-link-color:  #d2991d;
+	--link-color: #d2991d;
+	--sidebar-link-color: #fdbf35;
+	--sidebar-current-link-background-color: #444;
+	--search-result-link-focus-background-color: #616161;
+	--search-result-border-color: #aaa3;
+	--search-color: #111;
+	--search-error-code-background-color: #484848;
+	--search-results-alias-color: #fff;
+	--search-results-grey-color: #ccc;
+	--search-tab-title-count-color: #888;
+	--search-tab-button-not-selected-border-top-color: #252525;
+	--search-tab-button-not-selected-background: #252525;
+	--search-tab-button-selected-border-top-color: #0089ff;
+	--search-tab-button-selected-background: #353535;
+	--stab-background-color: #314559;
+	--stab-code-color: #e6e1cf;
+	--code-highlight-kw-color: #ab8ac1;
+	--code-highlight-kw-2-color: #769acb;
+	--code-highlight-lifetime-color: #d97f26;
+	--code-highlight-prelude-color: #769acb;
+	--code-highlight-prelude-val-color: #ee6868;
+	--code-highlight-number-color: #83a300;
+	--code-highlight-string-color: #83a300;
+	--code-highlight-literal-color: #ee6868;
+	--code-highlight-attribute-color: #ee6868;
+	--code-highlight-self-color: #ee6868;
+	--code-highlight-macro-color: #3e999f;
+	--code-highlight-question-mark-color: #ff9011;
+	--code-highlight-comment-color: #8d8d8b;
+	--code-highlight-doc-comment-color: #8ca375;
+	--src-line-numbers-span-color: #3b91e2;
+	--src-line-number-highlighted-background-color: #0a042f;
+	--test-arrow-color: #dedede;
+	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
+	--test-arrow-hover-color: #dedede;
+	--test-arrow-hover-background-color: #4e8bca;
+	--target-background-color: #494a3d;
+	--target-border-color: #bb7410;
+	--kbd-color: #000;
+	--kbd-background: #fafbfc;
+	--kbd-box-shadow-color: #c6cbd1;
+	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
+		drop-shadow(0 1px 0 #fff)
+		drop-shadow(-1px 0 0 #fff)
+		drop-shadow(0 -1px 0 #fff);
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	--crate-search-div-filter: invert(94%) sepia(0%) saturate(721%) hue-rotate(255deg)
+		brightness(90%) contrast(90%);
+	--crate-search-div-hover-filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg)
+		brightness(100%) contrast(91%);
+	--crate-search-hover-border: #2196f3;
+	--src-sidebar-background-selected: #333;
+	--src-sidebar-background-hover: #444;
+	--table-alt-row-background-color: #2a2a2a;
+	--codeblock-link-background: #333;
+	--scrape-example-toggle-line-background: #999;
+	--scrape-example-toggle-line-hover-background: #c5c5c5;
+	--scrape-example-code-line-highlight: #5b3b01;
+	--scrape-example-code-line-highlight-focus: #7c4b0f;
+	--scrape-example-help-border-color: #aaa;
+	--scrape-example-help-color: #eee;
+	--scrape-example-help-hover-border-color: #fff;
+	--scrape-example-help-hover-color: #fff;
+	--scrape-example-code-wrapper-background-start: rgba(53, 53, 53, 1);
+	--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
+}
+/* End theme: dark */
+
+/* Begin theme: ayu */
+/*
+Based off of the Ayu theme
+Original by Dempfi (https://github.com/dempfi/ayu)
+*/
+:root[data-theme="ayu"] {
+	--main-background-color: #0f1419;
+	--main-color: #c5c5c5;
+	--settings-input-color: #ffb454;
+	--settings-input-border-color: #999;
+	--settings-button-color: #fff;
+	--settings-button-border-focus: #e0e0e0;
+	--sidebar-background-color: #14191f;
+	--sidebar-background-color-hover: rgba(70, 70, 70, 0.33);
+	--code-block-background-color: #191f26;
+	--scrollbar-track-background-color: transparent;
+	--scrollbar-thumb-background-color: #5c6773;
+	--scrollbar-color: #5c6773 #24292f;
+	--headings-border-bottom-color: #5c6773;
+	--border-color: #5c6773;
+	--button-background-color: #141920;
+	--right-side-color: grey;
+	--code-attribute-color: #999;
+	--toggles-color: #999;
+	--toggle-filter: invert(100%);
+	--search-input-focused-border-color: #5c6773; /* Same as `--border-color`. */
+	--copy-path-button-color: #fff;
+	--copy-path-img-filter: invert(70%);
+	--copy-path-img-hover-filter: invert(100%);
+	--codeblock-error-hover-color: rgb(255, 0, 0);
+	--codeblock-error-color: rgba(255, 0, 0, .5);
+	--codeblock-ignore-hover-color: rgb(255, 142, 0);
+	--codeblock-ignore-color: rgba(255, 142, 0, .6);
+	--warning-border-color: #ff8e00;
+	--type-link-color: #ffa0a5;
+	--trait-link-color: #39afd7;
+	--assoc-item-link-color: #39afd7;
+	--function-link-color: #fdd687;
+	--macro-link-color: #a37acc;
+	--keyword-link-color: #39afd7;
+	--mod-link-color: #39afd7;
+	--link-color: #39afd7;
+	--sidebar-link-color: #53b1db;
+	--sidebar-current-link-background-color: transparent;
+	--search-result-link-focus-background-color: #3c3c3c;
+	--search-result-border-color: #aaa3;
+	--search-color: #fff;
+	--search-error-code-background-color: #4f4c4c;
+	--search-results-alias-color: #c5c5c5;
+	--search-results-grey-color: #999;
+	--search-tab-title-count-color: #888;
+	--search-tab-button-not-selected-border-top-color: none;
+	--search-tab-button-not-selected-background: transparent !important;
+	--search-tab-button-selected-border-top-color: none;
+	--search-tab-button-selected-background: #141920 !important;
+	--stab-background-color: #314559;
+	--stab-code-color: #e6e1cf;
+	--code-highlight-kw-color: #ff7733;
+	--code-highlight-kw-2-color: #ff7733;
+	--code-highlight-lifetime-color: #ff7733;
+	--code-highlight-prelude-color: #69f2df;
+	--code-highlight-prelude-val-color: #ff7733;
+	--code-highlight-number-color: #b8cc52;
+	--code-highlight-string-color: #b8cc52;
+	--code-highlight-literal-color: #ff7733;
+	--code-highlight-attribute-color: #e6e1cf;
+	--code-highlight-self-color: #36a3d9;
+	--code-highlight-macro-color: #a37acc;
+	--code-highlight-question-mark-color: #ff9011;
+	--code-highlight-comment-color: #788797;
+	--code-highlight-doc-comment-color: #a1ac88;
+	--src-line-numbers-span-color: #5c6773;
+	--src-line-number-highlighted-background-color: rgba(255, 236, 164, 0.06);
+	--test-arrow-color: #788797;
+	--test-arrow-background-color: rgba(57, 175, 215, 0.09);
+	--test-arrow-hover-color: #c5c5c5;
+	--test-arrow-hover-background-color: rgba(57, 175, 215, 0.368);
+	--target-background-color: rgba(255, 236, 164, 0.06);
+	--target-border-color: rgba(255, 180, 76, 0.85);
+	--kbd-color: #c5c5c5;
+	--kbd-background: #314559;
+	--kbd-box-shadow-color: #5c6773;
+	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
+		drop-shadow(0 1px 0 #fff)
+		drop-shadow(-1px 0 0 #fff)
+		drop-shadow(0 -1px 0 #fff);
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	--crate-search-div-filter: invert(41%) sepia(12%) saturate(487%) hue-rotate(171deg)
+		brightness(94%) contrast(94%);
+	--crate-search-div-hover-filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg)
+		brightness(113%) contrast(76%);
+	--crate-search-hover-border: #e0e0e0;
+	--src-sidebar-background-selected: #14191f;
+	--src-sidebar-background-hover: #14191f;
+	--table-alt-row-background-color: #191f26;
+	--codeblock-link-background: #333;
+	--scrape-example-toggle-line-background: #999;
+	--scrape-example-toggle-line-hover-background: #c5c5c5;
+	--scrape-example-code-line-highlight: #5b3b01;
+	--scrape-example-code-line-highlight-focus: #7c4b0f;
+	--scrape-example-help-border-color: #aaa;
+	--scrape-example-help-color: #eee;
+	--scrape-example-help-hover-border-color: #fff;
+	--scrape-example-help-hover-color: #fff;
+	--scrape-example-code-wrapper-background-start: rgba(15, 20, 25, 1);
+	--scrape-example-code-wrapper-background-end: rgba(15, 20, 25, 0);
+}
+
+:root[data-theme="ayu"] h1,
+:root[data-theme="ayu"] h2,
+:root[data-theme="ayu"] h3,
+:root[data-theme="ayu"] h4,
+:where(:root[data-theme="ayu"]) h1 a,
+:root[data-theme="ayu"] .sidebar h2 a,
+:root[data-theme="ayu"] .sidebar h3 a,
+:root[data-theme="ayu"] #source-sidebar > .title {
+	color: #fff;
+}
+
+:root[data-theme="ayu"] .docblock code {
+	color: #ffb454;
+}
+
+:root[data-theme="ayu"] .docblock a > code {
+	color: #39AFD7 !important;
+}
+
+:root[data-theme="ayu"] .code-header,
+:root[data-theme="ayu"] .docblock pre > code,
+:root[data-theme="ayu"] pre,
+:root[data-theme="ayu"] pre > code,
+:root[data-theme="ayu"] .item-info code,
+:root[data-theme="ayu"] .rustdoc.source .example-wrap {
+	color: #e6e1cf;
+}
+
+:root[data-theme="ayu"] .sidebar .current,
+:root[data-theme="ayu"] .sidebar a:hover,
+:root[data-theme="ayu"] #src-sidebar div.files > a:hover,
+:root[data-theme="ayu"] details.dir-entry summary:hover,
+:root[data-theme="ayu"] #src-sidebar div.files > a:focus,
+:root[data-theme="ayu"] details.dir-entry summary:focus,
+:root[data-theme="ayu"] #src-sidebar div.files > a.selected {
+	color: #ffb44c;
+}
+
+:root[data-theme="ayu"] .sidebar-elems .location {
+	color: #ff7733;
+}
+
+:root[data-theme="ayu"] .src-line-numbers .line-highlighted {
+	color: #708090;
+	padding-right: 7px;
+	border-right: 1px solid #ffb44c;
+}
+
+:root[data-theme="ayu"] .search-results a:hover,
+:root[data-theme="ayu"] .search-results a:focus {
+	color: #fff !important;
+	background-color: #3c3c3c;
+}
+
+:root[data-theme="ayu"] .search-results a {
+	color: #0096cf;
+}
+
+:root[data-theme="ayu"] .search-results a div.desc {
+	color: #c5c5c5;
+}
+
+:root[data-theme="ayu"] .result-name .primitive > i,
+:root[data-theme="ayu"] .result-name .keyword > i {
+	color: #788797;
+}
+
+:root[data-theme="ayu"] #search-tabs > button.selected {
+	border-bottom: 1px solid #ffb44c !important;
+	border-top: none;
+}
+:root[data-theme="ayu"] #search-tabs > button:not(.selected) {
+	border: none;
+	background-color: transparent !important;
+}
+:root[data-theme="ayu"] #search-tabs > button:hover {
+	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
+}
+
+:root[data-theme="ayu"] #settings-menu > a img {
+	filter: invert(100);
+}
+/* End theme: ayu */
+
+/* End: styles for themes */

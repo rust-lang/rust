@@ -64,6 +64,7 @@ pub mod fluent_alphabetical;
 pub mod mir_opt_tests;
 pub mod pal;
 pub mod primitive_docs;
+pub mod rustdoc_css_themes;
 pub mod rustdoc_gui_tests;
 pub mod style;
 pub mod target_specific_tests;

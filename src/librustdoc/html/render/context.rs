@@ -107,8 +107,8 @@ pub(crate) struct SharedContext<'tcx> {
     pub(super) module_sorting: ModuleSorting,
     /// Additional CSS files to be added to the generated docs.
     pub(crate) style_files: Vec<StylePath>,
-    /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
-    /// "light-v2.css").
+    /// Suffix to add on resource files (if suffix is "-v2" then "search-index.js" becomes
+    /// "search-index-v2.js").
     pub(crate) resource_suffix: String,
     /// Optional path string to be used to load static files on output pages. If not set, uses
     /// combinations of `../` to reach the documentation root.
@@ -714,18 +714,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                             You need to enable JavaScript be able to update your settings.\
                         </section>\
                      </noscript>\
-                     <script defer src=\"{static_root_path}{settings_js}\"></script>\
-                     <link rel=\"preload\" href=\"{static_root_path}{theme_light_css}\" \
-                         as=\"style\">\
-                     <link rel=\"preload\" href=\"{static_root_path}{theme_dark_css}\" \
-                         as=\"style\">\
-                     <link rel=\"preload\" href=\"{static_root_path}{theme_ayu_css}\" \
-                         as=\"style\">",
+                     <script defer src=\"{static_root_path}{settings_js}\"></script>",
                     static_root_path = page.get_static_root_path(),
                     settings_js = static_files::STATIC_FILES.settings_js,
-                    theme_light_css = static_files::STATIC_FILES.theme_light_css,
-                    theme_dark_css = static_files::STATIC_FILES.theme_dark_css,
-                    theme_ayu_css = static_files::STATIC_FILES.theme_ayu_css,
                 );
                 // Pre-load all theme CSS files, so that switching feels seamless.
                 //
