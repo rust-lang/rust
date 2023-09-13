@@ -34,9 +34,19 @@ pub fn filter_dirs(path: &Path) -> bool {
     skip.iter().any(|p| path.ends_with(p))
 }
 
+/// Filter for only files that end in `ext`.
+fn filter_not_ext(path: &Path, ext: &str) -> bool {
+    path.extension() != Some(OsStr::new(ext)) && !path.is_dir()
+}
+
 /// Filter for only files that end in `.rs`.
 pub fn filter_not_rust(path: &Path) -> bool {
-    path.extension() != Some(OsStr::new("rs")) && !path.is_dir()
+    filter_not_ext(path, "rs")
+}
+
+/// Filter for only files that end in `.md`.
+pub fn filter_not_markdown(path: &Path) -> bool {
+    filter_not_ext(path, "md")
 }
 
 pub fn walk(
