@@ -504,8 +504,11 @@ fn write_function_coverage_info(
     function_coverage_info: &coverage::FunctionCoverageInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::FunctionCoverageInfo { mappings, .. } = function_coverage_info;
+    let coverage::FunctionCoverageInfo { expressions, mappings, .. } = function_coverage_info;
 
+    for (id, expression) in expressions.iter_enumerated() {
+        writeln!(w, "{INDENT}coverage {id:?} => {expression:?};")?;
+    }
     for coverage::Mapping { term, code_region } in mappings {
         writeln!(w, "{INDENT}coverage {term:?} => {code_region:?};")?;
     }

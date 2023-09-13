@@ -1,5 +1,6 @@
 //! Metadata from source code coverage analysis and instrumentation.
 
+use rustc_index::IndexVec;
 use rustc_macros::HashStable;
 use rustc_span::Symbol;
 
@@ -68,14 +69,16 @@ pub enum CoverageKind {
     /// If this statement does not survive MIR optimizations, any mappings that
     /// refer to this counter can have those references simplified to zero.
     CounterIncrement { id: CounterId },
-    Expression {
-        /// ID of this coverage-counter expression within its enclosing function.
-        /// Other expressions in the same function can refer to it as an operand.
-        id: ExpressionId,
-        lhs: CovTerm,
-        op: Op,
-        rhs: CovTerm,
-    },
+
+    /// Marks the point in MIR control-flow represented by a coverage expression.
+    ///
+    /// If this statement does not survive MIR optimizations, any mappings that
+    /// refer to this expression can have those references simplified to zero.
+    ///
+    /// (This is only inserted for expression IDs that are directly used by
+    /// mappings. Intermediate expressions with no direct mappings are
+    /// retained/zeroed based on whether they are transitively used.)
+    ExpressionUsed { id: ExpressionId },
 }
 
 impl Debug for CoverageKind {
@@ -83,17 +86,7 @@ impl Debug for CoverageKind {
         use CoverageKind::*;
         match self {
             CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
-            Expression { id, lhs, op, rhs } => write!(
-                fmt,
-                "Expression({:?}) = {:?} {} {:?}",
-                id.index(),
-                lhs,
-                match op {
-                    Op::Add => "+",
-                    Op::Subtract => "-",
-                },
-                rhs,
-            ),
+            ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
         }
     }
 }
@@ -137,6 +130,14 @@ impl Op {
 
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub struct Expression {
+    pub lhs: CovTerm,
+    pub op: Op,
+    pub rhs: CovTerm,
+}
+
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Mapping {
     pub code_region: CodeRegion,
 
@@ -157,7 +158,7 @@ pub struct Mapping {
 pub struct FunctionCoverageInfo {
     pub function_source_hash: u64,
     pub num_counters: usize,
-    pub num_expressions: usize,
 
+    pub expressions: IndexVec<ExpressionId, Expression>,
     pub mappings: Vec<Mapping>,
 }

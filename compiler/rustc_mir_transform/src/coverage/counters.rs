@@ -19,7 +19,7 @@ const NESTED_INDENT: &str = "    ";
 #[derive(Clone)]
 pub(super) enum BcbCounter {
     Counter { id: CounterId },
-    Expression { id: ExpressionId, lhs: CovTerm, op: Op, rhs: CovTerm },
+    Expression { id: ExpressionId },
 }
 
 impl BcbCounter {
@@ -39,17 +39,7 @@ impl Debug for BcbCounter {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Counter { id, .. } => write!(fmt, "Counter({:?})", id.index()),
-            Self::Expression { id, lhs, op, rhs } => write!(
-                fmt,
-                "Expression({:?}) = {:?} {} {:?}",
-                id.index(),
-                lhs,
-                match op {
-                    Op::Add => "+",
-                    Op::Subtract => "-",
-                },
-                rhs,
-            ),
+            Self::Expression { id } => write!(fmt, "Expression({:?})", id.index()),
         }
     }
 }
@@ -58,7 +48,6 @@ impl Debug for BcbCounter {
 /// associated with nodes/edges in the BCB graph.
 pub(super) struct CoverageCounters {
     next_counter_id: CounterId,
-    next_expression_id: ExpressionId,
 
     /// Coverage counters/expressions that are associated with individual BCBs.
     bcb_counters: IndexVec<BasicCoverageBlock, Option<BcbCounter>>,
@@ -69,10 +58,9 @@ pub(super) struct CoverageCounters {
     /// Only used by debug assertions, to verify that BCBs with incoming edge
     /// counters do not have their own physical counters (expressions are allowed).
     bcb_has_incoming_edge_counters: BitSet<BasicCoverageBlock>,
-    /// Expression nodes that are not directly associated with any particular
-    /// BCB/edge, but are needed as operands to more complex expressions.
-    /// These are always [`BcbCounter::Expression`].
-    pub(super) intermediate_expressions: Vec<BcbCounter>,
+    /// Table of expression data, associating each expression ID with its
+    /// corresponding operator (+ or -) and its LHS/RHS operands.
+    expressions: IndexVec<ExpressionId, Expression>,
 }
 
 impl CoverageCounters {
@@ -81,12 +69,10 @@ impl CoverageCounters {
 
         Self {
             next_counter_id: CounterId::START,
-            next_expression_id: ExpressionId::START,
-
             bcb_counters: IndexVec::from_elem_n(None, num_bcbs),
             bcb_edge_counters: FxHashMap::default(),
             bcb_has_incoming_edge_counters: BitSet::new_empty(num_bcbs),
-            intermediate_expressions: Vec::new(),
+            expressions: IndexVec::new(),
         }
     }
 
@@ -107,8 +93,8 @@ impl CoverageCounters {
     }
 
     fn make_expression(&mut self, lhs: CovTerm, op: Op, rhs: CovTerm) -> BcbCounter {
-        let id = self.next_expression();
-        BcbCounter::Expression { id, lhs, op, rhs }
+        let id = self.expressions.push(Expression { lhs, op, rhs });
+        BcbCounter::Expression { id }
     }
 
     /// Counter IDs start from one and go up.
@@ -118,20 +104,13 @@ impl CoverageCounters {
         next
     }
 
-    /// Expression IDs start from 0 and go up.
-    /// (Counter IDs and Expression IDs are distinguished by the `Operand` enum.)
-    fn next_expression(&mut self) -> ExpressionId {
-        let next = self.next_expression_id;
-        self.next_expression_id = self.next_expression_id + 1;
-        next
-    }
-
     pub(super) fn num_counters(&self) -> usize {
         self.next_counter_id.as_usize()
     }
 
+    #[cfg(test)]
     pub(super) fn num_expressions(&self) -> usize {
-        self.next_expression_id.as_usize()
+        self.expressions.len()
     }
 
     fn set_bcb_counter(
@@ -206,6 +185,10 @@ impl CoverageCounters {
         &mut self,
     ) -> impl Iterator<Item = ((BasicCoverageBlock, BasicCoverageBlock), BcbCounter)> + '_ {
         self.bcb_edge_counters.drain()
+    }
+
+    pub(super) fn take_expressions(&mut self) -> IndexVec<ExpressionId, Expression> {
+        std::mem::take(&mut self.expressions)
     }
 }
 
@@ -333,7 +316,6 @@ impl<'a> MakeBcbCounters<'a> {
                     );
                     debug!("  [new intermediate expression: {:?}]", intermediate_expression);
                     let intermediate_expression_operand = intermediate_expression.as_term();
-                    self.coverage_counters.intermediate_expressions.push(intermediate_expression);
                     some_sumup_counter_operand.replace(intermediate_expression_operand);
                 }
             }
@@ -446,7 +428,6 @@ impl<'a> MakeBcbCounters<'a> {
                     intermediate_expression
                 );
                 let intermediate_expression_operand = intermediate_expression.as_term();
-                self.coverage_counters.intermediate_expressions.push(intermediate_expression);
                 some_sumup_edge_counter_operand.replace(intermediate_expression_operand);
             }
         }

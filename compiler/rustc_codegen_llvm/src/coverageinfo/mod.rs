@@ -145,8 +145,8 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 );
                 bx.instrprof_increment(fn_name, hash, num_counters, index);
             }
-            CoverageKind::Expression { id, lhs, op, rhs } => {
-                func_coverage.add_counter_expression(id, lhs, op, rhs);
+            CoverageKind::ExpressionUsed { id } => {
+                func_coverage.mark_expression_id_seen(id);
             }
         }
     }

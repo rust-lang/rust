@@ -167,9 +167,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // every coverage span has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
         // and all `Expression` dependencies (operands) are also generated, for any other
         // `BasicCoverageBlock`s not already associated with a coverage span.
-        //
-        // Intermediate expressions (used to compute other `Expression` values), which have no
-        // direct association with any `BasicCoverageBlock`, are accumulated inside `coverage_counters`.
         let bcb_has_coverage_spans = |bcb| coverage_spans.bcb_has_coverage_spans(bcb);
         let result = self
             .coverage_counters
@@ -195,29 +192,16 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             // are in fact counted, even though they don't directly contribute to counting
             // their own independent code region's coverage.
             self.inject_indirect_counters();
-
-            // Intermediate expressions will be injected as the final step, after generating
-            // debug output, if any.
-            ////////////////////////////////////////////////////
         };
 
         if let Err(e) = result {
             bug!("Error processing: {:?}: {:?}", self.mir_body.source.def_id(), e.message)
         };
 
-        ////////////////////////////////////////////////////
-        // Finally, inject the intermediate expressions collected along the way.
-        for intermediate_expression in &self.coverage_counters.intermediate_expressions {
-            inject_intermediate_expression(
-                self.mir_body,
-                self.make_mir_coverage_kind(intermediate_expression),
-            );
-        }
-
         self.mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
             function_source_hash: self.function_source_hash,
             num_counters: self.coverage_counters.num_counters(),
-            num_expressions: self.coverage_counters.num_expressions(),
+            expressions: self.coverage_counters.take_expressions(),
             mappings: std::mem::take(&mut self.mappings),
         }));
     }
@@ -304,10 +288,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                         inject_to_bb,
                     );
                 }
-                BcbCounter::Expression { .. } => inject_intermediate_expression(
-                    self.mir_body,
-                    self.make_mir_coverage_kind(&counter_kind),
-                ),
+                // Experessions with no associated spans don't need to inject a statement.
+                BcbCounter::Expression { .. } => {}
             }
         }
     }
@@ -330,9 +312,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn make_mir_coverage_kind(&self, counter_kind: &BcbCounter) -> CoverageKind {
         match *counter_kind {
             BcbCounter::Counter { id } => CoverageKind::CounterIncrement { id },
-            BcbCounter::Expression { id, lhs, op, rhs } => {
-                CoverageKind::Expression { id, lhs, op, rhs }
-            }
+            BcbCounter::Expression { id } => CoverageKind::ExpressionUsed { id },
         }
     }
 }
@@ -369,20 +349,6 @@ fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb
         kind: StatementKind::Coverage(Box::new(Coverage { kind: counter_kind })),
     };
     data.statements.insert(0, statement);
-}
-
-// Non-code expressions are injected into the coverage map, without generating executable code.
-fn inject_intermediate_expression(mir_body: &mut mir::Body<'_>, expression: CoverageKind) {
-    debug_assert!(matches!(expression, CoverageKind::Expression { .. }));
-    debug!("  injecting non-code expression {:?}", expression);
-    let inject_in_bb = mir::START_BLOCK;
-    let data = &mut mir_body[inject_in_bb];
-    let source_info = data.terminator().source_info;
-    let statement = Statement {
-        source_info,
-        kind: StatementKind::Coverage(Box::new(Coverage { kind: expression })),
-    };
-    data.statements.push(statement);
 }
 
 /// Convert the Span into its file name, start line and column, and end line and column

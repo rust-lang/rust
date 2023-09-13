@@ -2,18 +2,10 @@ use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::BitSet;
-use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{
-    CodeRegion, CounterId, CovTerm, ExpressionId, FunctionCoverageInfo, Mapping, Op,
+    CodeRegion, CounterId, CovTerm, Expression, ExpressionId, FunctionCoverageInfo, Mapping, Op,
 };
 use rustc_middle::ty::Instance;
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Expression {
-    lhs: CovTerm,
-    op: Op,
-    rhs: CovTerm,
-}
 
 /// Holds all of the coverage mapping data associated with a function instance,
 /// collected during traversal of `Coverage` statements in the function's MIR.
@@ -26,7 +18,12 @@ pub struct FunctionCoverage<'tcx> {
     /// Tracks which counters have been seen, so that we can identify mappings
     /// to counters that were optimized out, and set them to zero.
     counters_seen: BitSet<CounterId>,
-    expressions: IndexVec<ExpressionId, Option<Expression>>,
+    /// Contains all expression IDs that have been seen in an `ExpressionUsed`
+    /// coverage statement, plus all expression IDs that aren't directly used
+    /// by any mappings (and therefore do not have expression-used statements).
+    /// After MIR traversal is finished, we can conclude that any IDs missing
+    /// from this set must have had their statements deleted by MIR opts.
+    expressions_seen: BitSet<ExpressionId>,
 }
 
 impl<'tcx> FunctionCoverage<'tcx> {
@@ -52,16 +49,30 @@ impl<'tcx> FunctionCoverage<'tcx> {
         is_used: bool,
     ) -> Self {
         let num_counters = function_coverage_info.num_counters;
-        let num_expressions = function_coverage_info.num_expressions;
+        let num_expressions = function_coverage_info.expressions.len();
         debug!(
             "FunctionCoverage::create(instance={instance:?}) has \
             num_counters={num_counters}, num_expressions={num_expressions}, is_used={is_used}"
         );
+
+        // Create a filled set of expression IDs, so that expressions not
+        // directly used by mappings will be treated as "seen".
+        // (If they end up being unused, LLVM will delete them for us.)
+        let mut expressions_seen = BitSet::new_filled(num_expressions);
+        // For each expression ID that is directly used by one or more mappings,
+        // mark it as not-yet-seen. This indicates that we expect to see a
+        // corresponding `ExpressionUsed` statement during MIR traversal.
+        for Mapping { term, .. } in &function_coverage_info.mappings {
+            if let &CovTerm::Expression(id) = term {
+                expressions_seen.remove(id);
+            }
+        }
+
         Self {
             function_coverage_info,
             is_used,
             counters_seen: BitSet::new_empty(num_counters),
-            expressions: IndexVec::from_elem_n(None, num_expressions),
+            expressions_seen,
         }
     }
 
@@ -76,35 +87,10 @@ impl<'tcx> FunctionCoverage<'tcx> {
         self.counters_seen.insert(id);
     }
 
-    /// Adds information about a coverage expression.
+    /// Marks an expression ID as having been seen in an expression-used statement.
     #[instrument(level = "debug", skip(self))]
-    pub(crate) fn add_counter_expression(
-        &mut self,
-        expression_id: ExpressionId,
-        lhs: CovTerm,
-        op: Op,
-        rhs: CovTerm,
-    ) {
-        debug_assert!(
-            expression_id.as_usize() < self.expressions.len(),
-            "expression_id {} is out of range for expressions.len() = {}
-            for {:?}",
-            expression_id.as_usize(),
-            self.expressions.len(),
-            self,
-        );
-
-        let expression = Expression { lhs, op, rhs };
-        let slot = &mut self.expressions[expression_id];
-        match slot {
-            None => *slot = Some(expression),
-            // If this expression ID slot has already been filled, it should
-            // contain identical information.
-            Some(ref previous_expression) => assert_eq!(
-                previous_expression, &expression,
-                "add_counter_expression: expression for id changed"
-            ),
-        }
+    pub(crate) fn mark_expression_id_seen(&mut self, id: ExpressionId) {
+        self.expressions_seen.insert(id);
     }
 
     /// Identify expressions that will always have a value of zero, and note
@@ -125,13 +111,13 @@ impl<'tcx> FunctionCoverage<'tcx> {
         // and then update the set of always-zero expressions if necessary.
         // (By construction, expressions can only refer to other expressions
         // that have lower IDs, so one pass is sufficient.)
-        for (id, maybe_expression) in self.expressions.iter_enumerated() {
-            let Some(expression) = maybe_expression else {
-                // If an expression is missing, it must have been optimized away,
+        for (id, expression) in self.function_coverage_info.expressions.iter_enumerated() {
+            if !self.expressions_seen.contains(id) {
+                // If an expression was not seen, it must have been optimized away,
                 // so any operand that refers to it can be replaced with zero.
                 zero_expressions.insert(id);
                 continue;
-            };
+            }
 
             // We don't need to simplify the actual expression data in the
             // expressions list; we can just simplify a temporary copy and then
@@ -197,7 +183,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
         // Expression IDs are indices into `self.expressions`, and on the LLVM
         // side they will be treated as indices into `counter_expressions`, so
         // the two vectors should correspond 1:1.
-        assert_eq!(self.expressions.len(), counter_expressions.len());
+        assert_eq!(self.function_coverage_info.expressions.len(), counter_expressions.len());
 
         let counter_regions = self.counter_regions(zero_expressions);
 
@@ -217,27 +203,16 @@ impl<'tcx> FunctionCoverage<'tcx> {
             _ => Counter::from_term(operand),
         };
 
-        self.expressions
+        self.function_coverage_info
+            .expressions
             .iter()
-            .map(|expression| match expression {
-                None => {
-                    // This expression ID was allocated, but we never saw the
-                    // actual expression, so it must have been optimized out.
-                    // Replace it with a dummy expression, and let LLVM take
-                    // care of omitting it from the expression list.
-                    CounterExpression::DUMMY
-                }
-                &Some(Expression { lhs, op, rhs, .. }) => {
-                    // Convert the operands and operator as normal.
-                    CounterExpression::new(
-                        counter_from_operand(lhs),
-                        match op {
-                            Op::Add => ExprKind::Add,
-                            Op::Subtract => ExprKind::Subtract,
-                        },
-                        counter_from_operand(rhs),
-                    )
-                }
+            .map(|&Expression { lhs, op, rhs }| CounterExpression {
+                lhs: counter_from_operand(lhs),
+                kind: match op {
+                    Op::Add => ExprKind::Add,
+                    Op::Subtract => ExprKind::Subtract,
+                },
+                rhs: counter_from_operand(rhs),
             })
             .collect::<Vec<_>>()
     }

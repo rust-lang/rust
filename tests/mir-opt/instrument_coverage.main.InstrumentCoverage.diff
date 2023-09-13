@@ -7,6 +7,8 @@
       let mut _2: bool;
       let mut _3: !;
   
++     coverage ExpressionId(0) => Expression { lhs: Counter(0), op: Add, rhs: Counter(1) };
++     coverage ExpressionId(1) => Expression { lhs: Expression(0), op: Subtract, rhs: Counter(1) };
 +     coverage Counter(0) => /the/src/instrument_coverage.rs:11:1 - 11:11;
 +     coverage Expression(0) => /the/src/instrument_coverage.rs:12:5 - 13:17;
 +     coverage Expression(1) => /the/src/instrument_coverage.rs:14:13 - 14:18;
@@ -19,7 +21,7 @@
       }
   
       bb1: {
-+         Coverage::Expression(0) = Counter(0) + Counter(1);
++         Coverage::ExpressionUsed(0);
           falseUnwind -> [real: bb2, unwind: bb6];
       }
   
@@ -33,7 +35,7 @@
       }
   
       bb4: {
-+         Coverage::Expression(1) = Expression(0) - Counter(1);
++         Coverage::ExpressionUsed(1);
           _0 = const ();
           StorageDead(_2);
           return;

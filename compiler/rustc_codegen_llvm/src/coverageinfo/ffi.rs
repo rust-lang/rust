@@ -73,17 +73,6 @@ pub struct CounterExpression {
     pub rhs: Counter,
 }
 
-impl CounterExpression {
-    /// The dummy expression `(0 - 0)` has a representation of all zeroes,
-    /// making it marginally more efficient to initialize than `(0 + 0)`.
-    pub(crate) const DUMMY: Self =
-        Self { lhs: Counter::ZERO, kind: ExprKind::Subtract, rhs: Counter::ZERO };
-
-    pub fn new(lhs: Counter, kind: ExprKind, rhs: Counter) -> Self {
-        Self { kind, lhs, rhs }
-    }
-}
-
 /// Corresponds to enum `llvm::coverage::CounterMappingRegion::RegionKind`.
 ///
 /// Must match the layout of `LLVMRustCounterMappingRegionKind`.
