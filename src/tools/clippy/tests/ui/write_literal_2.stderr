@@ -2,7 +2,9 @@ error: unnecessary raw string literal
   --> $DIR/write_literal_2.rs:13:24
    |
 LL |     writeln!(v, r"{}", r"{hello}");
-   |                        ^^^^^^^^^^ help: try: `"{hello}"`
+   |                        -^^^^^^^^^
+   |                        |
+   |                        help: use a string literal instead: `"{hello}"`
    |
    = note: `-D clippy::needless-raw-strings` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_raw_strings)]`

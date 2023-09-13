@@ -4,6 +4,7 @@
 #![allow(clippy::disallowed_names)]
 #![allow(clippy::iter_nth)]
 #![allow(clippy::useless_vec)]
+#![allow(clippy::iter_out_of_bounds)]
 #![allow(unused_mut, dead_code)]
 
 extern crate option_helpers;

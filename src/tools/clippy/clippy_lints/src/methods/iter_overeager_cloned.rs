@@ -21,7 +21,7 @@ pub(super) enum Op<'a> {
     RmCloned,
 
     // rm `.cloned()`
-    // e.g. `map` `for_each`
+    // e.g. `map` `for_each` `all` `any`
     NeedlessMove(&'a str, &'a Expr<'a>),
 
     // later `.cloned()`
