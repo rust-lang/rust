@@ -385,7 +385,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
 
         let highlight_trait_ref = |trait_ref| Highlighted {
             tcx: self.tcx(),
-            highlight: RegionHighlightMode::new(self.tcx()),
+            highlight: RegionHighlightMode::default(),
             value: trait_ref,
         };
 

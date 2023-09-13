@@ -136,10 +136,8 @@ define_helper!(
 ///
 /// Regions not selected by the region highlight mode are presently
 /// unaffected.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct RegionHighlightMode<'tcx> {
-    tcx: TyCtxt<'tcx>,
-
     /// If enabled, when we see the selected region, use "`'N`"
     /// instead of the ordinary behavior.
     highlight_regions: [Option<(ty::Region<'tcx>, usize)>; 3],
@@ -155,14 +153,6 @@ pub struct RegionHighlightMode<'tcx> {
 }
 
 impl<'tcx> RegionHighlightMode<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
-        Self {
-            tcx,
-            highlight_regions: Default::default(),
-            highlight_bound_region: Default::default(),
-        }
-    }
-
     /// If `region` and `number` are both `Some`, invokes
     /// `highlighting_region`.
     pub fn maybe_highlighting_region(
@@ -188,8 +178,13 @@ impl<'tcx> RegionHighlightMode<'tcx> {
     }
 
     /// Convenience wrapper for `highlighting_region`.
-    pub fn highlighting_region_vid(&mut self, vid: ty::RegionVid, number: usize) {
-        self.highlighting_region(ty::Region::new_var(self.tcx, vid), number)
+    pub fn highlighting_region_vid(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        vid: ty::RegionVid,
+        number: usize,
+    ) {
+        self.highlighting_region(ty::Region::new_var(tcx, vid), number)
     }
 
     /// Returns `Some(n)` with the number to use for the given region, if any.
@@ -1778,7 +1773,7 @@ impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
             printed_type_count: 0,
             type_length_limit,
             truncated: false,
-            region_highlight_mode: RegionHighlightMode::new(tcx),
+            region_highlight_mode: RegionHighlightMode::default(),
             ty_infer_name_resolver: None,
             const_infer_name_resolver: None,
         }))
