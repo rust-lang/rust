@@ -714,8 +714,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                             You need to enable JavaScript be able to update your settings.\
                         </section>\
                      </noscript>\
-                     <link rel=\"stylesheet\" \
-                         href=\"{static_root_path}{settings_css}\">\
                      <script defer src=\"{static_root_path}{settings_js}\"></script>\
                      <link rel=\"preload\" href=\"{static_root_path}{theme_light_css}\" \
                          as=\"style\">\
@@ -724,7 +722,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      <link rel=\"preload\" href=\"{static_root_path}{theme_ayu_css}\" \
                          as=\"style\">",
                     static_root_path = page.get_static_root_path(),
-                    settings_css = static_files::STATIC_FILES.settings_css,
                     settings_js = static_files::STATIC_FILES.settings_js,
                     theme_light_css = static_files::STATIC_FILES.theme_light_css,
                     theme_dark_css = static_files::STATIC_FILES.theme_dark_css,

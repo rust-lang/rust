@@ -372,7 +372,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             };
             let alloc_id = mplace.ptr().provenance.unwrap();
 
-            // Validation failed, report an error. This is always a hard error.
+            // Validation failed, report an error.
             if let Err(error) = validation {
                 let (error, backtrace) = error.into_parts();
                 backtrace.print_backtrace();

@@ -928,21 +928,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // we get a value of a built-in pointer type.
                         //
                         // This is also relevant for `Pin<&mut Self>`, where we need to peel the `Pin`.
-                        'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
-                            && !op.layout.ty.is_ref()
-                        {
-                            for i in 0..op.layout.fields.count() {
-                                let field = op.extract_field(bx, i);
-                                if !field.layout.is_1zst() {
-                                    // we found the one non-1-ZST field that is allowed
-                                    // now find *its* non-zero-sized field, or stop if it's a
-                                    // pointer
-                                    op = field;
-                                    continue 'descend_newtypes;
-                                }
-                            }
-
-                            span_bug!(span, "receiver has no non-zero-sized fields {:?}", op);
+                        while !op.layout.ty.is_unsafe_ptr() && !op.layout.ty.is_ref() {
+                            let (idx, _) = op.layout.non_1zst_field(bx).expect(
+                                "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
+                            );
+                            op = op.extract_field(bx, idx);
                         }
 
                         // now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
@@ -970,22 +960,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     Immediate(_) => {
                         // See comment above explaining why we peel these newtypes
-                        'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
-                            && !op.layout.ty.is_ref()
-                        {
-                            for i in 0..op.layout.fields.count() {
-                                let field = op.extract_field(bx, i);
-                                if !field.layout.is_1zst() {
-                                    // We found the one non-1-ZST field that is allowed. (The rules
-                                    // for `DispatchFromDyn` ensure there's exactly one such field.)
-                                    // Now find *its* non-zero-sized field, or stop if it's a
-                                    // pointer.
-                                    op = field;
-                                    continue 'descend_newtypes;
-                                }
-                            }
-
-                            span_bug!(span, "receiver has no non-zero-sized fields {:?}", op);
+                        while !op.layout.ty.is_unsafe_ptr() && !op.layout.ty.is_ref() {
+                            let (idx, _) = op.layout.non_1zst_field(bx).expect(
+                                "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
+                            );
+                            op = op.extract_field(bx, idx);
                         }
 
                         // Make sure that we've actually unwrapped the rcvr down

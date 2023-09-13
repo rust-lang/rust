@@ -588,19 +588,11 @@ fn make_thin_self_ptr<'tcx>(
         // To get the type `*mut RcBox<Self>`, we just keep unwrapping newtypes until we
         // get a built-in pointer type
         let mut fat_pointer_layout = layout;
-        'descend_newtypes: while !fat_pointer_layout.ty.is_unsafe_ptr()
-            && !fat_pointer_layout.ty.is_ref()
-        {
-            for i in 0..fat_pointer_layout.fields.count() {
-                let field_layout = fat_pointer_layout.field(cx, i);
-
-                if !field_layout.is_1zst() {
-                    fat_pointer_layout = field_layout;
-                    continue 'descend_newtypes;
-                }
-            }
-
-            bug!("receiver has no non-1-ZST fields {:?}", fat_pointer_layout);
+        while !fat_pointer_layout.ty.is_unsafe_ptr() && !fat_pointer_layout.ty.is_ref() {
+            fat_pointer_layout = fat_pointer_layout
+                .non_1zst_field(cx)
+                .expect("not exactly one non-1-ZST field in a `DispatchFromDyn` type")
+                .1
         }
 
         fat_pointer_layout.ty
