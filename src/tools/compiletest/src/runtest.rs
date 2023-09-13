@@ -12,7 +12,7 @@ use crate::compute_diff::{write_diff, write_filtered_diff};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::json;
-use crate::read2::read2_abbreviated;
+use crate::read2::{read2_abbreviated, Truncated};
 use crate::util::{add_dylib_path, dylib_env_var, logv, PathBufExt};
 use crate::ColorConfig;
 use regex::{Captures, Regex};
@@ -701,6 +701,7 @@ impl<'test> TestCx<'test> {
             status: output.status,
             stdout: String::from_utf8(output.stdout).unwrap(),
             stderr: String::from_utf8(output.stderr).unwrap(),
+            truncated: Truncated::No,
             cmdline: format!("{cmd:?}"),
         };
         self.dump_output(&proc_res.stdout, &proc_res.stderr);
@@ -1275,6 +1276,7 @@ impl<'test> TestCx<'test> {
                 status,
                 stdout: String::from_utf8(stdout).unwrap(),
                 stderr: String::from_utf8(stderr).unwrap(),
+                truncated: Truncated::No,
                 cmdline,
             };
             if adb.kill().is_err() {
@@ -1566,7 +1568,13 @@ impl<'test> TestCx<'test> {
         };
 
         self.dump_output(&out, &err);
-        ProcRes { status, stdout: out, stderr: err, cmdline: format!("{:?}", cmd) }
+        ProcRes {
+            status,
+            stdout: out,
+            stderr: err,
+            truncated: Truncated::No,
+            cmdline: format!("{:?}", cmd),
+        }
     }
 
     fn cleanup_debug_info_options(&self, options: &Vec<String>) -> Vec<String> {
@@ -2227,7 +2235,7 @@ impl<'test> TestCx<'test> {
         dylib
     }
 
-    fn read2_abbreviated(&self, child: Child) -> Output {
+    fn read2_abbreviated(&self, child: Child) -> (Output, Truncated) {
         let mut filter_paths_from_len = Vec::new();
         let mut add_path = |path: &Path| {
             let path = path.display().to_string();
@@ -2274,12 +2282,13 @@ impl<'test> TestCx<'test> {
             child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
         }
 
-        let Output { status, stdout, stderr } = self.read2_abbreviated(child);
+        let (Output { status, stdout, stderr }, truncated) = self.read2_abbreviated(child);
 
         let result = ProcRes {
             status,
             stdout: String::from_utf8_lossy(&stdout).into_owned(),
             stderr: String::from_utf8_lossy(&stderr).into_owned(),
+            truncated,
             cmdline,
         };
 
@@ -3610,12 +3619,14 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let output = self.read2_abbreviated(cmd.spawn().expect("failed to spawn `make`"));
+        let (output, truncated) =
+            self.read2_abbreviated(cmd.spawn().expect("failed to spawn `make`"));
         if !output.status.success() {
             let res = ProcRes {
                 status: output.status,
                 stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
                 stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+                truncated,
                 cmdline: format!("{:?}", cmd),
             };
             self.fatal_proc_rec("make failed", &res);
@@ -3777,6 +3788,15 @@ impl<'test> TestCx<'test> {
         let emit_metadata = self.should_emit_metadata(pm);
         let proc_res = self.compile_test(should_run, emit_metadata);
         self.check_if_test_should_compile(&proc_res, pm);
+        if matches!(proc_res.truncated, Truncated::Yes)
+            && !self.props.dont_check_compiler_stdout
+            && !self.props.dont_check_compiler_stderr
+        {
+            self.fatal_proc_rec(
+                &format!("compiler output got truncated, cannot compare with reference file"),
+                &proc_res,
+            );
+        }
 
         // if the user specified a format in the ui test
         // print the output to the stderr file, otherwise extract
@@ -4468,6 +4488,7 @@ pub struct ProcRes {
     status: ExitStatus,
     stdout: String,
     stderr: String,
+    truncated: Truncated,
     cmdline: String,
 }
 
