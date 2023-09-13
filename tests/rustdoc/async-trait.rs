@@ -1,7 +1,6 @@
 // aux-build:async-trait-dep.rs
 // edition:2021
 
-#![feature(async_fn_in_trait)]
 #![allow(incomplete_features)]
 
 extern crate async_trait_dep;

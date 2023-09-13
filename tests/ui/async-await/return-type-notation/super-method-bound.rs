@@ -1,7 +1,7 @@
 // edition:2021
 // check-pass
 
-#![feature(async_fn_in_trait, return_type_notation)]
+#![feature(return_type_notation)]
 //~^ WARN the feature `return_type_notation` is incomplete
 
 trait Super<'a> {

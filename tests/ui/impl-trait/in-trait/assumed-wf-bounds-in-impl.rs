@@ -2,7 +2,6 @@
 // edition: 2021
 // issue: 113796
 
-#![feature(async_fn_in_trait)]
 
 trait AsyncLendingIterator {
     type Item<'a>

@@ -1,4 +1,4 @@
-#![feature(return_position_impl_trait_in_trait, lint_reasons)]
+#![feature(lint_reasons)]
 
 use std::ops::Deref;
 

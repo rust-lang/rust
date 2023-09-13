@@ -1,9 +1,10 @@
 // edition:2018
+// check-pass
 
 trait T {
-    async fn foo() {} //~ ERROR functions in traits cannot be declared `async`
-    async fn bar(&self) {} //~ ERROR functions in traits cannot be declared `async`
-    async fn baz() { //~ ERROR functions in traits cannot be declared `async`
+    async fn foo() {}
+    async fn bar(&self) {}
+    async fn baz() {
         // Nested item must not ICE.
         fn a() {}
     }

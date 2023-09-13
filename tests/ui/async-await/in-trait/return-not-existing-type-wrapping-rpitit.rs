@@ -1,6 +1,5 @@
 // edition:2021
 
-#![feature(return_position_impl_trait_in_trait)]
 
 struct Wrapper<T>(T);
 

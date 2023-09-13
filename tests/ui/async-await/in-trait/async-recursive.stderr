@@ -1,5 +1,5 @@
 error[E0733]: recursion in an `async fn` requires boxing
-  --> $DIR/async-recursive.rs:11:5
+  --> $DIR/async-recursive.rs:10:5
    |
 LL |     async fn foo_recursive(&self, n: usize) -> i32 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive `async fn`

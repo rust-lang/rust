@@ -633,8 +633,6 @@ fn compare_asyncness<'tcx>(
 /// For example, given the sample code:
 ///
 /// ```
-/// #![feature(return_position_impl_trait_in_trait)]
-///
 /// use std::ops::Deref;
 ///
 /// trait Foo {

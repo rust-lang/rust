@@ -67,6 +67,8 @@ declare_features! (
     (accepted, associated_types, "1.0.0", None, None),
     /// Allows free and inherent `async fn`s, `async` blocks, and `<expr>.await` expressions.
     (accepted, async_await, "1.39.0", Some(50547), None),
+    /// Allows async functions to be declared, implemented, and used in traits.
+    (accepted, async_fn_in_trait, "CURRENT_RUSTC_VERSION", Some(91611), None),
     /// Allows all literals in attribute lists and values of key-value pairs.
     (accepted, attr_literals, "1.30.0", Some(34981), None),
     /// Allows overloading augmented assignment operations like `a += b`.
@@ -306,6 +308,8 @@ declare_features! (
     (accepted, repr_packed, "1.33.0", Some(33158), None),
     /// Allows `#[repr(transparent)]` attribute on newtype structs.
     (accepted, repr_transparent, "1.28.0", Some(43036), None),
+    /// Allows return-position `impl Trait` in traits.
+    (accepted, return_position_impl_trait_in_trait, "CURRENT_RUSTC_VERSION", Some(91611), None),
     /// Allows code like `let x: &'static u32 = &42` to work (RFC 1414).
     (accepted, rvalue_static_promotion, "1.21.0", Some(38865), None),
     /// Allows `Self` in type definitions (RFC 2300).

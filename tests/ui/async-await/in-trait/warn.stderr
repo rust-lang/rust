@@ -1,12 +1,12 @@
 error: use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
-  --> $DIR/warn.rs:7:5
+  --> $DIR/warn.rs:6:5
    |
 LL |     async fn not_send();
    |     ^^^^^
    |
    = note: you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
 note: the lint level is defined here
-  --> $DIR/warn.rs:4:9
+  --> $DIR/warn.rs:3:9
    |
 LL | #![deny(async_fn_in_trait)]
    |         ^^^^^^^^^^^^^^^^^

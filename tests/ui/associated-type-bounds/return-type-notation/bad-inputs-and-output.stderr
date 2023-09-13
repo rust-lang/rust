@@ -25,7 +25,7 @@ LL | fn bar<T: Trait<method() -> (): Send>>() {}
 warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/bad-inputs-and-output.rs:3:12
    |
-LL | #![feature(return_type_notation, async_fn_in_trait)]
+LL | #![feature(return_type_notation)]
    |            ^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information

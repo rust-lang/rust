@@ -15,39 +15,12 @@ LL |     async fn inherent();
    |                        help: provide a definition for the function: `{ <body> }`
 
 error: associated function in `impl` without body
-  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:15:5
+  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:14:5
    |
 LL |     async fn associated();
    |     ^^^^^^^^^^^^^^^^^^^^^-
    |                          |
    |                          help: provide a definition for the function: `{ <body> }`
 
-error[E0706]: functions in traits cannot be declared `async`
-  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:11:5
-   |
-LL |     async fn associated();
-   |     -----^^^^^^^^^^^^^^^^^
-   |     |
-   |     `async` because of this
-   |
-   = note: `async` trait functions are not currently supported
-   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
-   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
-   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+error: aborting due to 3 previous errors
 
-error[E0706]: functions in traits cannot be declared `async`
-  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:15:5
-   |
-LL |     async fn associated();
-   |     -----^^^^^^^^^^^^^^^^^
-   |     |
-   |     `async` because of this
-   |
-   = note: `async` trait functions are not currently supported
-   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
-   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
-   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
-
-error: aborting due to 5 previous errors
-
-For more information about this error, try `rustc --explain E0706`.

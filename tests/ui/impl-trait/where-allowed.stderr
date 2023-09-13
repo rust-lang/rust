@@ -17,7 +17,7 @@ LL | fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic
    |                                                 outer `impl Trait`
 
 error[E0658]: `impl Trait` in associated types is unstable
-  --> $DIR/where-allowed.rs:120:16
+  --> $DIR/where-allowed.rs:119:16
    |
 LL |     type Out = impl Debug;
    |                ^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     type Out = impl Debug;
    = help: add `#![feature(impl_trait_in_assoc_type)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/where-allowed.rs:155:23
+  --> $DIR/where-allowed.rs:154:23
    |
 LL | type InTypeAlias<R> = impl Debug;
    |                       ^^^^^^^^^^
@@ -35,7 +35,7 @@ LL | type InTypeAlias<R> = impl Debug;
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/where-allowed.rs:158:39
+  --> $DIR/where-allowed.rs:157:39
    |
 LL | type InReturnInTypeAlias<R> = fn() -> impl Debug;
    |                                       ^^^^^^^^^^
@@ -145,146 +145,128 @@ error[E0562]: `impl Trait` only allowed in function and inherent method argument
 LL |     InTupleVariant(impl Debug),
    |                    ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in trait method return types
-  --> $DIR/where-allowed.rs:109:23
-   |
-LL |     fn in_return() -> impl Debug;
-   |                       ^^^^^^^^^^
-   |
-   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
-   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
-
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `impl` method return types
-  --> $DIR/where-allowed.rs:126:34
-   |
-LL |     fn in_trait_impl_return() -> impl Debug { () }
-   |                                  ^^^^^^^^^^
-   |
-   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
-   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
-
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `extern fn` params
-  --> $DIR/where-allowed.rs:139:33
+  --> $DIR/where-allowed.rs:138:33
    |
 LL |     fn in_foreign_parameters(_: impl Debug);
    |                                 ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `extern fn` return types
-  --> $DIR/where-allowed.rs:142:31
+  --> $DIR/where-allowed.rs:141:31
    |
 LL |     fn in_foreign_return() -> impl Debug;
    |                               ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `fn` pointer return types
-  --> $DIR/where-allowed.rs:158:39
+  --> $DIR/where-allowed.rs:157:39
    |
 LL | type InReturnInTypeAlias<R> = fn() -> impl Debug;
    |                                       ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in traits
-  --> $DIR/where-allowed.rs:163:16
+  --> $DIR/where-allowed.rs:162:16
    |
 LL | impl PartialEq<impl Debug> for () {
    |                ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in impl headers
-  --> $DIR/where-allowed.rs:168:24
+  --> $DIR/where-allowed.rs:167:24
    |
 LL | impl PartialEq<()> for impl Debug {
    |                        ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in impl headers
-  --> $DIR/where-allowed.rs:173:6
+  --> $DIR/where-allowed.rs:172:6
    |
 LL | impl impl Debug {
    |      ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in impl headers
-  --> $DIR/where-allowed.rs:179:24
+  --> $DIR/where-allowed.rs:178:24
    |
 LL | impl InInherentImplAdt<impl Debug> {
    |                        ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in bounds
-  --> $DIR/where-allowed.rs:185:11
+  --> $DIR/where-allowed.rs:184:11
    |
 LL |     where impl Debug: Debug
    |           ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in bounds
-  --> $DIR/where-allowed.rs:192:15
+  --> $DIR/where-allowed.rs:191:15
    |
 LL |     where Vec<impl Debug>: Debug
    |               ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in bounds
-  --> $DIR/where-allowed.rs:199:24
+  --> $DIR/where-allowed.rs:198:24
    |
 LL |     where T: PartialEq<impl Debug>
    |                        ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `Fn` trait params
-  --> $DIR/where-allowed.rs:206:17
+  --> $DIR/where-allowed.rs:205:17
    |
 LL |     where T: Fn(impl Debug)
    |                 ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `Fn` trait return types
-  --> $DIR/where-allowed.rs:213:22
+  --> $DIR/where-allowed.rs:212:22
    |
 LL |     where T: Fn() -> impl Debug
    |                      ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in generic parameter defaults
-  --> $DIR/where-allowed.rs:219:40
+  --> $DIR/where-allowed.rs:218:40
    |
 LL | struct InStructGenericParamDefault<T = impl Debug>(T);
    |                                        ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in generic parameter defaults
-  --> $DIR/where-allowed.rs:223:36
+  --> $DIR/where-allowed.rs:222:36
    |
 LL | enum InEnumGenericParamDefault<T = impl Debug> { Variant(T) }
    |                                    ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in generic parameter defaults
-  --> $DIR/where-allowed.rs:227:38
+  --> $DIR/where-allowed.rs:226:38
    |
 LL | trait InTraitGenericParamDefault<T = impl Debug> {}
    |                                      ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in generic parameter defaults
-  --> $DIR/where-allowed.rs:231:41
+  --> $DIR/where-allowed.rs:230:41
    |
 LL | type InTypeAliasGenericParamDefault<T = impl Debug> = T;
    |                                         ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in generic parameter defaults
-  --> $DIR/where-allowed.rs:235:11
+  --> $DIR/where-allowed.rs:234:11
    |
 LL | impl <T = impl Debug> T {}
    |           ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in generic parameter defaults
-  --> $DIR/where-allowed.rs:242:40
+  --> $DIR/where-allowed.rs:241:40
    |
 LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    |                                        ^^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in variable bindings
-  --> $DIR/where-allowed.rs:248:29
+  --> $DIR/where-allowed.rs:247:29
    |
 LL |     let _in_local_variable: impl Fn() = || {};
    |                             ^^^^^^^^^
 
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in closure return types
-  --> $DIR/where-allowed.rs:250:46
+  --> $DIR/where-allowed.rs:249:46
    |
 LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
    |                                              ^^^^^^^^^
 
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:235:7
+  --> $DIR/where-allowed.rs:234:7
    |
 LL | impl <T = impl Debug> T {}
    |       ^^^^^^^^^^^^^^
@@ -294,7 +276,7 @@ LL | impl <T = impl Debug> T {}
    = note: `#[deny(invalid_type_param_default)]` on by default
 
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:242:36
+  --> $DIR/where-allowed.rs:241:36
    |
 LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    |                                    ^^^^^^^^^^^^^^
@@ -303,14 +285,14 @@ LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
 
 error[E0118]: no nominal type found for inherent implementation
-  --> $DIR/where-allowed.rs:235:1
+  --> $DIR/where-allowed.rs:234:1
    |
 LL | impl <T = impl Debug> T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
    |
    = note: either implement a trait on it or create a newtype to wrap it instead
 
-error: aborting due to 47 previous errors
+error: aborting due to 45 previous errors
 
 Some errors have detailed explanations: E0118, E0562, E0658, E0666.
 For more information about an error, try `rustc --explain E0118`.

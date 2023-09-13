@@ -1,5 +1,5 @@
 error[E0277]: `impl Future<Output = ()>` cannot be sent between threads safely
-  --> $DIR/send-on-async-fn-in-trait.rs:14:16
+  --> $DIR/send-on-async-fn-in-trait.rs:13:16
    |
 LL |     needs_send(T::test());
    |     ---------- ^^^^^^^^^ `impl Future<Output = ()>` cannot be sent between threads safely
@@ -8,7 +8,7 @@ LL |     needs_send(T::test());
    |
    = help: the trait `Send` is not implemented for `impl Future<Output = ()>`
 note: required by a bound in `needs_send`
-  --> $DIR/send-on-async-fn-in-trait.rs:13:27
+  --> $DIR/send-on-async-fn-in-trait.rs:12:27
    |
 LL |     fn needs_send(_: impl Send) {}
    |                           ^^^^ required by this bound in `needs_send`
@@ -19,7 +19,7 @@ LL +     fn test() -> impl std::future::Future<Output = ()> + Send { async {} }
    |
 
 error[E0277]: `impl Future<Output = i32>` cannot be sent between threads safely
-  --> $DIR/send-on-async-fn-in-trait.rs:16:16
+  --> $DIR/send-on-async-fn-in-trait.rs:15:16
    |
 LL |     needs_send(T::test2());
    |     ---------- ^^^^^^^^^^ `impl Future<Output = i32>` cannot be sent between threads safely
@@ -28,7 +28,7 @@ LL |     needs_send(T::test2());
    |
    = help: the trait `Send` is not implemented for `impl Future<Output = i32>`
 note: required by a bound in `needs_send`
-  --> $DIR/send-on-async-fn-in-trait.rs:13:27
+  --> $DIR/send-on-async-fn-in-trait.rs:12:27
    |
 LL |     fn needs_send(_: impl Send) {}
    |                           ^^^^ required by this bound in `needs_send`
