@@ -830,7 +830,8 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, PatKind> {
         let ident = self.parse_ident()?;
 
-        if !matches!(syntax_loc, Some(PatternLocation::FunctionParameter))
+        if self.may_recover()
+            && !matches!(syntax_loc, Some(PatternLocation::FunctionParameter))
             && self.check_noexpect(&token::Lt)
             && self.look_ahead(1, |t| t.can_begin_type())
         {
