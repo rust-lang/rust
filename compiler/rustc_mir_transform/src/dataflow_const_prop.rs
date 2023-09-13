@@ -7,10 +7,10 @@ use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable}
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ConstValue, InterpResult, Scalar};
-use rustc_middle::mir::visit::{MutVisitor, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{
     Map, PlaceIndex, State, TrackElem, ValueAnalysis, ValueAnalysisWrapper, ValueOrPlace,
 };
@@ -60,13 +60,10 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
             .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint());
 
         // Collect results and patch the body afterwards.
-        let mut visitor = CollectAndPatch::new(tcx, &body.local_decls);
+        let mut visitor = Collector::new(tcx, &body.local_decls);
         debug_span!("collect").in_scope(|| results.visit_reachable_with(body, &mut visitor));
-        debug_span!("patch").in_scope(|| {
-            for (block, bbdata) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
-                visitor.visit_basic_block_data(block, bbdata);
-            }
-        })
+        let mut patch = visitor.patch;
+        debug_span!("patch").in_scope(|| patch.visit_body_preserves_cfg(body));
     }
 }
 
@@ -515,41 +512,55 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     }
 }
 
-struct CollectAndPatch<'tcx, 'locals> {
+pub(crate) struct Patch<'tcx> {
     tcx: TyCtxt<'tcx>,
-    local_decls: &'locals LocalDecls<'tcx>,
 
     /// For a given MIR location, this stores the values of the operands used by that location. In
     /// particular, this is before the effect, such that the operands of `_1 = _1 + _2` are
     /// properly captured. (This may become UB soon, but it is currently emitted even by safe code.)
-    before_effect: FxHashMap<(Location, Place<'tcx>), ScalarInt>,
+    pub(crate) before_effect: FxHashMap<(Location, Place<'tcx>), ConstantKind<'tcx>>,
 
     /// Stores the assigned values for assignments where the Rvalue is constant.
-    assignments: FxHashMap<Location, ScalarInt>,
+    pub(crate) assignments: FxHashMap<Location, ConstantKind<'tcx>>,
 }
 
-impl<'tcx, 'locals> CollectAndPatch<'tcx, 'locals> {
-    fn new(tcx: TyCtxt<'tcx>, local_decls: &'locals LocalDecls<'tcx>) -> Self {
-        Self {
-            tcx,
-            local_decls,
-            before_effect: FxHashMap::default(),
-            assignments: FxHashMap::default(),
-        }
+impl<'tcx> Patch<'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self { tcx, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
     }
 
-    fn make_operand(&self, scalar: ScalarInt, ty: Ty<'tcx>) -> Operand<'tcx> {
-        Operand::Constant(Box::new(Constant {
-            span: DUMMY_SP,
-            user_ty: None,
-            literal: ConstantKind::Val(ConstValue::Scalar(scalar.into()), ty),
-        }))
+    fn make_operand(&self, literal: ConstantKind<'tcx>) -> Operand<'tcx> {
+        Operand::Constant(Box::new(Constant { span: DUMMY_SP, user_ty: None, literal }))
+    }
+}
+
+struct Collector<'tcx, 'locals> {
+    patch: Patch<'tcx>,
+    local_decls: &'locals LocalDecls<'tcx>,
+}
+
+impl<'tcx, 'locals> Collector<'tcx, 'locals> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, local_decls: &'locals LocalDecls<'tcx>) -> Self {
+        Self { patch: Patch::new(tcx), local_decls }
+    }
+
+    fn try_make_constant(
+        &self,
+        place: Place<'tcx>,
+        state: &State<FlatSet<Scalar>>,
+        map: &Map,
+    ) -> Option<ConstantKind<'tcx>> {
+        let FlatSet::Elem(Scalar::Int(value)) = state.get(place.as_ref(), &map) else {
+            return None;
+        };
+        let ty = place.ty(self.local_decls, self.patch.tcx).ty;
+        Some(ConstantKind::Val(ConstValue::Scalar(value.into()), ty))
     }
 }
 
 impl<'mir, 'tcx>
     ResultsVisitor<'mir, 'tcx, Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>>
-    for CollectAndPatch<'tcx, '_>
+    for Collector<'tcx, '_>
 {
     type FlowState = State<FlatSet<Scalar>>;
 
@@ -581,10 +592,8 @@ impl<'mir, 'tcx>
                 // Don't overwrite the assignment if it already uses a constant (to keep the span).
             }
             StatementKind::Assign(box (place, _)) => {
-                if let FlatSet::Elem(Scalar::Int(value)) =
-                    state.get(place.as_ref(), &results.analysis.0.map)
-                {
-                    self.assignments.insert(location, value);
+                if let Some(value) = self.try_make_constant(place, state, &results.analysis.0.map) {
+                    self.patch.assignments.insert(location, value);
                 }
             }
             _ => (),
@@ -603,7 +612,7 @@ impl<'mir, 'tcx>
     }
 }
 
-impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
+impl<'tcx> MutVisitor<'tcx> for Patch<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -612,8 +621,7 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
         if let Some(value) = self.assignments.get(&location) {
             match &mut statement.kind {
                 StatementKind::Assign(box (_, rvalue)) => {
-                    let ty = rvalue.ty(self.local_decls, self.tcx);
-                    *rvalue = Rvalue::Use(self.make_operand(*value, ty));
+                    *rvalue = Rvalue::Use(self.make_operand(*value));
                 }
                 _ => bug!("found assignment info for non-assign statement"),
             }
@@ -626,8 +634,7 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
         match operand {
             Operand::Copy(place) | Operand::Move(place) => {
                 if let Some(value) = self.before_effect.get(&(location, *place)) {
-                    let ty = place.ty(self.local_decls, self.tcx).ty;
-                    *operand = self.make_operand(*value, ty);
+                    *operand = self.make_operand(*value);
                 } else if !place.projection.is_empty() {
                     self.super_operand(operand, location)
                 }
@@ -641,11 +648,11 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
         elem: PlaceElem<'tcx>,
         location: Location,
     ) -> Option<PlaceElem<'tcx>> {
-        if let PlaceElem::Index(local) = elem
-            && let Some(value) = self.before_effect.get(&(location, local.into()))
-            && let Ok(offset) = value.try_to_target_usize(self.tcx)
-            && let Some(min_length) = offset.checked_add(1)
-        {
+        if let PlaceElem::Index(local) = elem {
+            let offset = self.before_effect.get(&(location, local.into()))?;
+            let offset = offset.try_to_scalar()?;
+            let offset = offset.to_target_usize(&self.tcx).ok()?;
+            let min_length = offset.checked_add(1)?;
             Some(PlaceElem::ConstantIndex { offset, min_length, from_end: false })
         } else {
             None
@@ -655,27 +662,33 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
 
 struct OperandCollector<'tcx, 'map, 'locals, 'a> {
     state: &'a State<FlatSet<Scalar>>,
-    visitor: &'a mut CollectAndPatch<'tcx, 'locals>,
+    visitor: &'a mut Collector<'tcx, 'locals>,
     map: &'map Map,
 }
 
 impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
+    fn visit_projection_elem(
+        &mut self,
+        _: PlaceRef<'tcx>,
+        elem: PlaceElem<'tcx>,
+        _: PlaceContext,
+        location: Location,
+    ) {
+        if let PlaceElem::Index(local) = elem
+            && let Some(value) = self.visitor.try_make_constant(local.into(), self.state, self.map)
+        {
+            self.visitor.patch.before_effect.insert((location, local.into()), value);
+        }
+    }
+
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         if let Some(place) = operand.place() {
-            if let FlatSet::Elem(Scalar::Int(value)) = self.state.get(place.as_ref(), self.map) {
-                self.visitor.before_effect.insert((location, place), value);
+            if let Some(value) = self.visitor.try_make_constant(place, self.state, self.map) {
+                self.visitor.patch.before_effect.insert((location, place), value);
             } else if !place.projection.is_empty() {
                 // Try to propagate into `Index` projections.
                 self.super_operand(operand, location)
             }
-        }
-    }
-
-    fn visit_local(&mut self, local: Local, ctxt: PlaceContext, location: Location) {
-        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy | NonMutatingUseContext::Move) = ctxt
-            && let FlatSet::Elem(Scalar::Int(value)) = self.state.get(local.into(), self.map)
-        {
-            self.visitor.before_effect.insert((location, local.into()), value);
         }
     }
 }
