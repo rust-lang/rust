@@ -2336,18 +2336,19 @@ impl<'tcx> ConstantKind<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         span: Option<Span>,
     ) -> Result<interpret::ConstValue<'tcx>, ErrorHandled> {
-        let uneval = match self {
+        let (uneval, param_env) = match self {
             ConstantKind::Ty(c) => {
-                if let ty::ConstKind::Unevaluated(uv) = c.kind() {
+                if let ty::ConstKind::Unevaluated(uneval) = c.kind() {
                     // Avoid the round-trip via valtree, evaluate directly to ConstValue.
-                    uv.expand()
+                    let (param_env, uneval) = uneval.prepare_for_eval(tcx, param_env);
+                    (uneval.expand(), param_env)
                 } else {
                     // It's already a valtree, or an error.
                     let val = c.eval(tcx, param_env, span)?;
                     return Ok(tcx.valtree_to_const_val((self.ty(), val)));
                 }
             }
-            ConstantKind::Unevaluated(uneval, _) => uneval,
+            ConstantKind::Unevaluated(uneval, _) => (uneval, param_env),
             ConstantKind::Val(val, _) => return Ok(val),
         };
         // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`

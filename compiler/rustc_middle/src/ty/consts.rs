@@ -276,6 +276,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     /// Returns the evaluated constant
+    #[inline]
     pub fn eval(
         self,
         tcx: TyCtxt<'tcx>,
@@ -285,32 +286,9 @@ impl<'tcx> Const<'tcx> {
         assert!(!self.has_escaping_bound_vars(), "escaping vars in {self:?}");
         match self.kind() {
             ConstKind::Unevaluated(unevaluated) => {
-                // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
-                // also does later, but we want to do it before checking for
-                // inference variables.
-                // Note that we erase regions *before* calling `with_reveal_all_normalized`,
-                // so that we don't try to invoke this query with
-                // any region variables.
-
-                // HACK(eddyb) when the query key would contain inference variables,
-                // attempt using identity args and `ParamEnv` instead, that will succeed
-                // when the expression doesn't depend on any parameters.
-                // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
-                // we can call `infcx.const_eval_resolve` which handles inference variables.
-                let param_env_and = if (param_env, unevaluated).has_non_region_infer() {
-                    tcx.param_env(unevaluated.def).and(ty::UnevaluatedConst {
-                        def: unevaluated.def,
-                        args: GenericArgs::identity_for_item(tcx, unevaluated.def),
-                    })
-                } else {
-                    tcx.erase_regions(param_env)
-                        .with_reveal_all_normalized(tcx)
-                        .and(tcx.erase_regions(unevaluated))
-                };
-
                 // FIXME(eddyb) maybe the `const_eval_*` methods should take
                 // `ty::ParamEnvAnd` instead of having them separate.
-                let (param_env, unevaluated) = param_env_and.into_parts();
+                let (param_env, unevaluated) = unevaluated.prepare_for_eval(tcx, param_env);
                 // try to resolve e.g. associated constants to their definition on an impl, and then
                 // evaluate the const.
                 let c = tcx.const_eval_resolve_for_typeck(param_env, unevaluated, span)?;
