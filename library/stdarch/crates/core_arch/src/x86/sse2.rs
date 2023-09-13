@@ -4105,6 +4105,17 @@ mod tests {
         let b = _mm_setr_pd(5.0, 10.0);
         let r = _mm_max_pd(a, b);
         assert_eq_m128d(r, _mm_setr_pd(5.0, 10.0));
+
+        // Check SSE(2)-specific semantics for -0.0 handling.
+        let a = _mm_setr_pd(-0.0, 0.0);
+        let b = _mm_setr_pd(0.0, 0.0);
+        let r1: [u8; 16] = transmute(_mm_max_pd(a, b));
+        let r2: [u8; 16] = transmute(_mm_max_pd(b, a));
+        let a: [u8; 16] = transmute(a);
+        let b: [u8; 16] = transmute(b);
+        assert_eq!(r1, b);
+        assert_eq!(r2, a);
+        assert_ne!(a, b); // sanity check that -0.0 is actually present
     }
 
     #[simd_test(enable = "sse2")]
@@ -4121,6 +4132,17 @@ mod tests {
         let b = _mm_setr_pd(5.0, 10.0);
         let r = _mm_min_pd(a, b);
         assert_eq_m128d(r, _mm_setr_pd(1.0, 2.0));
+
+        // Check SSE(2)-specific semantics for -0.0 handling.
+        let a = _mm_setr_pd(-0.0, 0.0);
+        let b = _mm_setr_pd(0.0, 0.0);
+        let r1: [u8; 16] = transmute(_mm_min_pd(a, b));
+        let r2: [u8; 16] = transmute(_mm_min_pd(b, a));
+        let a: [u8; 16] = transmute(a);
+        let b: [u8; 16] = transmute(b);
+        assert_eq!(r1, b);
+        assert_eq!(r2, a);
+        assert_ne!(a, b); // sanity check that -0.0 is actually present
     }
 
     #[simd_test(enable = "sse2")]

@@ -2055,6 +2055,17 @@ mod tests {
         let b = _mm_setr_ps(-100.0, 20.0, 0.0, -5.0);
         let r = _mm_max_ps(a, b);
         assert_eq_m128(r, _mm_setr_ps(-1.0, 20.0, 0.0, -5.0));
+
+        // Check SSE-specific semantics for -0.0 handling.
+        let a = _mm_setr_ps(-0.0, 0.0, 0.0, 0.0);
+        let b = _mm_setr_ps(0.0, 0.0, 0.0, 0.0);
+        let r1: [u8; 16] = transmute(_mm_max_ps(a, b));
+        let r2: [u8; 16] = transmute(_mm_max_ps(b, a));
+        let a: [u8; 16] = transmute(a);
+        let b: [u8; 16] = transmute(b);
+        assert_eq!(r1, b);
+        assert_eq!(r2, a);
+        assert_ne!(a, b); // sanity check that -0.0 is actually present
     }
 
     #[simd_test(enable = "sse")]
