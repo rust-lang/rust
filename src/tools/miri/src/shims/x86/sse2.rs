@@ -1,6 +1,6 @@
 use rustc_apfloat::{
     ieee::{Double, Single},
-    Float as _, FloatConvert as _,
+    Float as _,
 };
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::Ty;
@@ -637,51 +637,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
                 this.write_scalar(Scalar::from_i32(i32::from(res)), dest)?;
             }
-            // Used to implement the _mm_cvtpd_ps function.
-            // Converts packed f32 to packed f64.
-            "cvtpd2ps" => {
+            // Used to implement the _mm_cvtpd_ps and _mm_cvtps_pd functions.
+            // Converts packed f32/f64 to packed f64/f32.
+            "cvtpd2ps" | "cvtps2pd" => {
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
                 let (op, op_len) = this.operand_to_simd(op)?;
                 let (dest, dest_len) = this.place_to_simd(dest)?;
 
-                // op is f64x2, dest is f32x4
-                assert_eq!(op_len, 2);
-                assert_eq!(dest_len, 4);
-
-                for i in 0..op_len {
-                    let op = this.read_scalar(&this.project_index(&op, i)?)?.to_f64()?;
+                // For cvtpd2ps: op is f64x2, dest is f32x4
+                // For cvtps2pd: op is f32x4, dest is f64x2
+                // In either case, the two first values are converted
+                for i in 0..op_len.min(dest_len) {
+                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
                     let dest = this.project_index(&dest, i)?;
 
-                    let res = op.convert(/*loses_info*/ &mut false).value;
-                    this.write_scalar(Scalar::from_f32(res), &dest)?;
+                    let res = this.float_to_float_or_int(&op, dest.layout.ty)?;
+                    this.write_immediate(res, &dest)?;
                 }
-                // Fill the remaining with zeros
+                // For f32 -> f64, ignore the remaining
+                // For f64 -> f32, fill the remaining with zeros
                 for i in op_len..dest_len {
                     let dest = this.project_index(&dest, i)?;
-                    this.write_scalar(Scalar::from_u32(0), &dest)?;
+                    this.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
                 }
-            }
-            // Used to implement the _mm_cvtps_pd function.
-            // Converts packed f64 to packed f32.
-            "cvtps2pd" => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                // op is f32x4, dest is f64x2
-                assert_eq!(op_len, 4);
-                assert_eq!(dest_len, 2);
-
-                for i in 0..dest_len {
-                    let op = this.read_scalar(&this.project_index(&op, i)?)?.to_f32()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    let res = op.convert(/*loses_info*/ &mut false).value;
-                    this.write_scalar(Scalar::from_f64(res), &dest)?;
-                }
-                // the two remaining f32 are ignored
             }
             // Used to implement the _mm_cvtpd_epi32 and _mm_cvttpd_epi32 functions.
             // Converts packed f64 to packed i32.
