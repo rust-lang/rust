@@ -1,5 +1,4 @@
 #![warn(clippy::unused_async)]
-#![feature(async_fn_in_trait)]
 #![allow(incomplete_features)]
 
 use std::future::Future;
