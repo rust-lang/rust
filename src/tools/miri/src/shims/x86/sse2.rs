@@ -465,7 +465,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
             // Used to implement the _mm_packs_epi32 function.
-            // Converts two 16-bit integer vectors to a single 8-bit integer
+            // Converts two 32-bit integer vectors to a single 16-bit integer
             // vector with signed saturation.
             "packssdw.128" => {
                 let [left, right] =
