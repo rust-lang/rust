@@ -2,6 +2,7 @@ use rustc_apfloat::{
     ieee::{Double, Single},
     Float as _,
 };
+use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
@@ -36,9 +37,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Intrinsincs sufixed with "epiX" or "epuX" operate with X-bit signed or unsigned
         // vectors.
         match unprefixed_name {
-            // Used to implement the _mm_avg_epu8 function.
-            // Averages packed unsigned 8-bit integers in `left` and `right`.
-            "pavg.b" => {
+            // Used to implement the _mm_avg_epu8 and _mm_avg_epu16 functions.
+            // Averages packed unsigned 8/16-bit integers in `left` and `right`.
+            "pavg.b" | "pavg.w" => {
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
@@ -50,46 +51,41 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 assert_eq!(dest_len, right_len);
 
                 for i in 0..dest_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_u8()?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_u8()?;
+                    let left = this.read_immediate(&this.project_index(&left, i)?)?;
+                    let right = this.read_immediate(&this.project_index(&right, i)?)?;
                     let dest = this.project_index(&dest, i)?;
 
-                    // Values are expanded from u8 to u16, so adds cannot overflow.
-                    let res = u16::from(left)
-                        .checked_add(u16::from(right))
-                        .unwrap()
-                        .checked_add(1)
-                        .unwrap()
-                        / 2;
-                    this.write_scalar(Scalar::from_u8(res.try_into().unwrap()), &dest)?;
-                }
-            }
-            // Used to implement the _mm_avg_epu16 function.
-            // Averages packed unsigned 16-bit integers in `left` and `right`.
-            "pavg.w" => {
-                let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                    // Widen the operands to avoid overflow
+                    let twice_wide_ty = this.get_twice_wide_int_ty(left.layout.ty);
+                    let twice_wide_layout = this.layout_of(twice_wide_ty)?;
+                    let left = this.int_to_int_or_float(&left, twice_wide_ty)?;
+                    let right = this.int_to_int_or_float(&right, twice_wide_ty)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
+                    // Calculate left + right + 1
+                    let (added, _overflow, _ty) = this.overflowing_binary_op(
+                        mir::BinOp::Add,
+                        &ImmTy::from_immediate(left, twice_wide_layout),
+                        &ImmTy::from_immediate(right, twice_wide_layout),
+                    )?;
+                    let (added, _overflow, _ty) = this.overflowing_binary_op(
+                        mir::BinOp::Add,
+                        &ImmTy::from_scalar(added, twice_wide_layout),
+                        &ImmTy::from_uint(1u32, twice_wide_layout),
+                    )?;
 
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
+                    // Calculate (left + right + 1) / 2
+                    let (divided, _overflow, _ty) = this.overflowing_binary_op(
+                        mir::BinOp::Div,
+                        &ImmTy::from_scalar(added, twice_wide_layout),
+                        &ImmTy::from_uint(2u32, twice_wide_layout),
+                    )?;
 
-                for i in 0..dest_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_u16()?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_u16()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    // Values are expanded from u16 to u32, so adds cannot overflow.
-                    let res = u32::from(left)
-                        .checked_add(u32::from(right))
-                        .unwrap()
-                        .checked_add(1)
-                        .unwrap()
-                        / 2;
-                    this.write_scalar(Scalar::from_u16(res.try_into().unwrap()), &dest)?;
+                    // Narrow back to the original type
+                    let res = this.int_to_int_or_float(
+                        &ImmTy::from_scalar(divided, twice_wide_layout),
+                        dest.layout.ty,
+                    )?;
+                    this.write_immediate(res, &dest)?;
                 }
             }
             // Used to implement the _mm_mulhi_epi16 function.
