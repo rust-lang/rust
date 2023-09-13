@@ -7,7 +7,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
-use super::FloatCmpOp;
+use super::{bin_op_simd_float_all, bin_op_simd_float_first, FloatBinOp, FloatCmpOp};
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 
@@ -513,7 +513,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => unreachable!(),
                 };
 
-                bin_op_sd(this, which, left, right, dest)?;
+                bin_op_simd_float_first::<Double>(this, which, left, right, dest)?;
             }
             // Used to implement _mm_min_pd and _mm_max_pd functions.
             // Note that the semantics are a bit different from Rust simd_min
@@ -530,7 +530,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => unreachable!(),
                 };
 
-                bin_op_pd(this, which, left, right, dest)?;
+                bin_op_simd_float_all::<Double>(this, which, left, right, dest)?;
             }
             // Used to implement _mm_sqrt_sd functions.
             // Performs the operations on the first component of `op` and
@@ -589,7 +589,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "llvm.x86.sse2.cmp.sd",
                 )?);
 
-                bin_op_sd(this, which, left, right, dest)?;
+                bin_op_simd_float_first::<Double>(this, which, left, right, dest)?;
             }
             // Used to implement the _mm_cmp*_pd functions.
             // Performs a comparison operation on each component of `left`
@@ -604,7 +604,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "llvm.x86.sse2.cmp.pd",
                 )?);
 
-                bin_op_pd(this, which, left, right, dest)?;
+                bin_op_simd_float_all::<Double>(this, which, left, right, dest)?;
             }
             // Used to implement _mm_{,u}comi{eq,lt,le,gt,ge,neq}_sd functions.
             // Compares the first component of `left` and `right` and returns
@@ -839,140 +839,4 @@ fn extract_first_u64<'tcx>(
 
     // Get the first u64 from the array
     this.read_scalar(&this.project_index(&op, 0)?)?.to_u64()
-}
-
-#[derive(Copy, Clone)]
-enum FloatBinOp {
-    /// Comparison
-    Cmp(FloatCmpOp),
-    /// Minimum value (with SSE semantics)
-    ///
-    /// <https://www.felixcloutier.com/x86/minsd>
-    /// <https://www.felixcloutier.com/x86/minpd>
-    Min,
-    /// Maximum value (with SSE semantics)
-    ///
-    /// <https://www.felixcloutier.com/x86/maxsd>
-    /// <https://www.felixcloutier.com/x86/maxpd>
-    Max,
-}
-
-/// Performs `which` scalar operation on `left` and `right` and returns
-/// the result.
-// FIXME make this generic over apfloat type to reduce code duplicaton with bin_op_f32
-fn bin_op_f64<'tcx>(
-    which: FloatBinOp,
-    left: &ImmTy<'tcx, Provenance>,
-    right: &ImmTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, Scalar<Provenance>> {
-    match which {
-        FloatBinOp::Cmp(which) => {
-            let left = left.to_scalar().to_f64()?;
-            let right = right.to_scalar().to_f64()?;
-            // FIXME: Make sure that these operations match the semantics of cmppd
-            let res = match which {
-                FloatCmpOp::Eq => left == right,
-                FloatCmpOp::Lt => left < right,
-                FloatCmpOp::Le => left <= right,
-                FloatCmpOp::Unord => left.is_nan() || right.is_nan(),
-                FloatCmpOp::Neq => left != right,
-                FloatCmpOp::Nlt => !(left < right),
-                FloatCmpOp::Nle => !(left <= right),
-                FloatCmpOp::Ord => !left.is_nan() && !right.is_nan(),
-            };
-            Ok(Scalar::from_u64(if res { u64::MAX } else { 0 }))
-        }
-        FloatBinOp::Min => {
-            let left = left.to_scalar().to_f64()?;
-            let right = right.to_scalar().to_f64()?;
-            // SSE semantics to handle zero and NaN. Note that `x == Single::ZERO`
-            // is true when `x` is either +0 or -0.
-            if (left == Double::ZERO && right == Double::ZERO)
-                || left.is_nan()
-                || right.is_nan()
-                || left >= right
-            {
-                Ok(Scalar::from_f64(right))
-            } else {
-                Ok(Scalar::from_f64(left))
-            }
-        }
-        FloatBinOp::Max => {
-            let left = left.to_scalar().to_f64()?;
-            let right = right.to_scalar().to_f64()?;
-            // SSE semantics to handle zero and NaN. Note that `x == Single::ZERO`
-            // is true when `x` is either +0 or -0.
-            if (left == Double::ZERO && right == Double::ZERO)
-                || left.is_nan()
-                || right.is_nan()
-                || left <= right
-            {
-                Ok(Scalar::from_f64(right))
-            } else {
-                Ok(Scalar::from_f64(left))
-            }
-        }
-    }
-}
-
-/// Performs `which` operation on the first component of `left` and `right`
-/// and copies the other components from `left`. The result is stored in `dest`.
-fn bin_op_sd<'tcx>(
-    this: &mut crate::MiriInterpCx<'_, 'tcx>,
-    which: FloatBinOp,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = this.operand_to_simd(left)?;
-    let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
-
-    assert_eq!(dest_len, left_len);
-    assert_eq!(dest_len, right_len);
-
-    let res0 = bin_op_f64(
-        which,
-        &this.read_immediate(&this.project_index(&left, 0)?)?,
-        &this.read_immediate(&this.project_index(&right, 0)?)?,
-    )?;
-    this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
-
-    for i in 1..dest_len {
-        this.copy_op(
-            &this.project_index(&left, i)?,
-            &this.project_index(&dest, i)?,
-            /*allow_transmute*/ false,
-        )?;
-    }
-
-    Ok(())
-}
-
-/// Performs `which` operation on each component of `left` and
-/// `right`, storing the result is stored in `dest`.
-fn bin_op_pd<'tcx>(
-    this: &mut crate::MiriInterpCx<'_, 'tcx>,
-    which: FloatBinOp,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = this.operand_to_simd(left)?;
-    let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
-
-    assert_eq!(dest_len, left_len);
-    assert_eq!(dest_len, right_len);
-
-    for i in 0..dest_len {
-        let left = this.read_immediate(&this.project_index(&left, i)?)?;
-        let right = this.read_immediate(&this.project_index(&right, i)?)?;
-        let dest = this.project_index(&dest, i)?;
-
-        let res = bin_op_f64(which, &left, &right)?;
-        this.write_scalar(res, &dest)?;
-    }
-
-    Ok(())
 }
