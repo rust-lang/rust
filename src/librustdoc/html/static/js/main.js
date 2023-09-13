@@ -176,13 +176,6 @@ function browserSupportsHistoryApi() {
     return window.history && typeof window.history.pushState === "function";
 }
 
-function loadCss(cssUrl) {
-    const link = document.createElement("link");
-    link.href = cssUrl;
-    link.rel = "stylesheet";
-    document.getElementsByTagName("head")[0].appendChild(link);
-}
-
 function preLoadCss(cssUrl) {
     // https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types/preload
     const link = document.createElement("link");
@@ -210,7 +203,6 @@ function preLoadCss(cssUrl) {
         event.preventDefault();
         // Sending request for the CSS and the JS files at the same time so it will
         // hopefully be loaded when the JS will generate the settings content.
-        loadCss(getVar("static-root-path") + getVar("settings-css"));
         loadScript(getVar("static-root-path") + getVar("settings-js"));
         preLoadCss(getVar("static-root-path") + getVar("theme-light-css"));
         preLoadCss(getVar("static-root-path") + getVar("theme-dark-css"));
