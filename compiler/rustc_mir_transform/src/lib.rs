@@ -606,6 +606,11 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     let body = tcx.mir_drops_elaborated_and_const_checked(did).steal();
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
     debug!("body: {:#?}", body);
+
+    if body.tainted_by_errors.is_some() {
+        return body;
+    }
+
     run_optimization_passes(tcx, &mut body);
 
     body
