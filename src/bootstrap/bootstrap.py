@@ -317,8 +317,8 @@ def default_build_triple(verbose):
         # so we are unable to use cputype to form triple. Since AIX 7.2 and
         # above supports 32-bit and 64-bit mode simultaneously and `uname -p`
         # returns `powerpc`. Currently we only supports `powerpc64-ibm-aix` in
-        # rust. For above reasons, kerneltype_mapper and cputype_mapper are not
-        # used to infer AIX's triple.
+        # rust on AIX. For above reasons, kerneltype_mapper and cputype_mapper
+        # are not used to infer AIX's triple.
         return 'powerpc64-ibm-aix'
     else:
         err = "unknown OS type: {}".format(kernel)
