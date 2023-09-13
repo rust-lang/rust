@@ -3417,7 +3417,10 @@ mod tests {
     unsafe fn test_mm_srai_epi16() {
         let a = _mm_setr_epi16(0xCC, -0xCC, 0xDD, -0xDD, 0xEE, -0xEE, 0xFF, -0xFF);
         let r = _mm_srai_epi16::<4>(a);
-        assert_eq_m128i(r, _mm_setr_epi16(0xC, -0xD, 0xD, -0xE, 0xE, -0xF, 0xF, -0x10));
+        assert_eq_m128i(
+            r,
+            _mm_setr_epi16(0xC, -0xD, 0xD, -0xE, 0xE, -0xF, 0xF, -0x10),
+        );
         let r = _mm_srai_epi16::<16>(a);
         assert_eq_m128i(r, _mm_setr_epi16(0, -1, 0, -1, 0, -1, 0, -1));
     }
@@ -3426,7 +3429,10 @@ mod tests {
     unsafe fn test_mm_sra_epi16() {
         let a = _mm_setr_epi16(0xCC, -0xCC, 0xDD, -0xDD, 0xEE, -0xEE, 0xFF, -0xFF);
         let r = _mm_sra_epi16(a, _mm_set_epi64x(0, 4));
-        assert_eq_m128i(r, _mm_setr_epi16(0xC, -0xD, 0xD, -0xE, 0xE, -0xF, 0xF, -0x10));
+        assert_eq_m128i(
+            r,
+            _mm_setr_epi16(0xC, -0xD, 0xD, -0xE, 0xE, -0xF, 0xF, -0x10),
+        );
         let r = _mm_sra_epi16(a, _mm_set_epi64x(4, 0));
         assert_eq_m128i(r, a);
         let r = _mm_sra_epi16(a, _mm_set_epi64x(0, 16));
@@ -3490,7 +3496,10 @@ mod tests {
     unsafe fn test_mm_srli_epi16() {
         let a = _mm_setr_epi16(0xCC, -0xCC, 0xDD, -0xDD, 0xEE, -0xEE, 0xFF, -0xFF);
         let r = _mm_srli_epi16::<4>(a);
-        assert_eq_m128i(r, _mm_setr_epi16(0xC, 0xFF3, 0xD, 0xFF2, 0xE, 0xFF1, 0xF, 0xFF0));
+        assert_eq_m128i(
+            r,
+            _mm_setr_epi16(0xC, 0xFF3, 0xD, 0xFF2, 0xE, 0xFF1, 0xF, 0xFF0),
+        );
         let r = _mm_srli_epi16::<16>(a);
         assert_eq_m128i(r, _mm_set1_epi16(0));
     }
@@ -3499,7 +3508,10 @@ mod tests {
     unsafe fn test_mm_srl_epi16() {
         let a = _mm_setr_epi16(0xCC, -0xCC, 0xDD, -0xDD, 0xEE, -0xEE, 0xFF, -0xFF);
         let r = _mm_srl_epi16(a, _mm_set_epi64x(0, 4));
-        assert_eq_m128i(r, _mm_setr_epi16(0xC, 0xFF3, 0xD, 0xFF2, 0xE, 0xFF1, 0xF, 0xFF0));
+        assert_eq_m128i(
+            r,
+            _mm_setr_epi16(0xC, 0xFF3, 0xD, 0xFF2, 0xE, 0xFF1, 0xF, 0xFF0),
+        );
         let r = _mm_srl_epi16(a, _mm_set_epi64x(4, 0));
         assert_eq_m128i(r, a);
         let r = _mm_srl_epi16(a, _mm_set_epi64x(0, 16));
