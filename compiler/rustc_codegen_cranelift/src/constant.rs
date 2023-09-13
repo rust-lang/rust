@@ -77,31 +77,9 @@ pub(crate) fn eval_mir_constant<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
     constant: &Constant<'tcx>,
 ) -> Option<(ConstValue<'tcx>, Ty<'tcx>)> {
-    let constant_kind = fx.monomorphize(constant.literal);
-    let uv = match constant_kind {
-        ConstantKind::Ty(const_) => match const_.kind() {
-            ty::ConstKind::Unevaluated(uv) => uv.expand(),
-            ty::ConstKind::Value(val) => {
-                return Some((fx.tcx.valtree_to_const_val((const_.ty(), val)), const_.ty()));
-            }
-            err => span_bug!(
-                constant.span,
-                "encountered bad ConstKind after monomorphizing: {:?}",
-                err
-            ),
-        },
-        ConstantKind::Unevaluated(mir::UnevaluatedConst { def, .. }, _)
-            if fx.tcx.is_static(def) =>
-        {
-            span_bug!(constant.span, "MIR constant refers to static");
-        }
-        ConstantKind::Unevaluated(uv, _) => uv,
-        ConstantKind::Val(val, _) => return Some((val, constant_kind.ty())),
-    };
-
-    let val = fx
-        .tcx
-        .const_eval_resolve(ty::ParamEnv::reveal_all(), uv, None)
+    let cv = fx.monomorphize(constant.literal);
+    let val = cv
+        .eval(fx.tcx, ty::ParamEnv::reveal_all(), Some(constant.span))
         .map_err(|err| match err {
             ErrorHandled::Reported(_) => {
                 fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
@@ -111,7 +89,7 @@ pub(crate) fn eval_mir_constant<'tcx>(
             }
         })
         .ok();
-    val.map(|val| (val, constant_kind.ty()))
+    val.map(|val| (val, cv.ty()))
 }
 
 pub(crate) fn codegen_constant_operand<'tcx>(

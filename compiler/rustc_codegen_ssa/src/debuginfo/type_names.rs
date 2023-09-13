@@ -670,10 +670,8 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                 // avoiding collisions and will make the emitted type names shorter.
                 let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
                     let mut hasher = StableHasher::new();
-                    let ct = ct.eval(tcx, ty::ParamEnv::reveal_all());
-                    hcx.while_hashing_spans(false, |hcx| {
-                        ct.to_valtree().hash_stable(hcx, &mut hasher)
-                    });
+                    let ct = ct.eval(tcx, ty::ParamEnv::reveal_all(), None).unwrap();
+                    hcx.while_hashing_spans(false, |hcx| ct.hash_stable(hcx, &mut hasher));
                     hasher.finish::<Hash64>()
                 });
 

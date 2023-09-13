@@ -2,7 +2,7 @@ use super::Const;
 use crate::mir;
 use crate::ty::abstract_const::CastKind;
 use crate::ty::GenericArgsRef;
-use crate::ty::{self, List, Ty};
+use crate::ty::{self, visit::TypeVisitableExt as _, List, Ty, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
@@ -25,6 +25,39 @@ impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
     pub fn expand(self) -> mir::UnevaluatedConst<'tcx> {
         mir::UnevaluatedConst { def: self.def, args: self.args, promoted: None }
+    }
+
+    /// FIXME(RalfJung): I cannot explain what this does or why it makes sense, but not doing this
+    /// hurts performance.
+    #[inline]
+    pub(crate) fn prepare_for_eval(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> (ty::ParamEnv<'tcx>, Self) {
+        // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
+        // also does later, but we want to do it before checking for
+        // inference variables.
+        // Note that we erase regions *before* calling `with_reveal_all_normalized`,
+        // so that we don't try to invoke this query with
+        // any region variables.
+
+        // HACK(eddyb) when the query key would contain inference variables,
+        // attempt using identity args and `ParamEnv` instead, that will succeed
+        // when the expression doesn't depend on any parameters.
+        // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
+        // we can call `infcx.const_eval_resolve` which handles inference variables.
+        if (param_env, self).has_non_region_infer() {
+            (
+                tcx.param_env(self.def),
+                ty::UnevaluatedConst {
+                    def: self.def,
+                    args: ty::GenericArgs::identity_for_item(tcx, self.def),
+                },
+            )
+        } else {
+            (tcx.erase_regions(param_env).with_reveal_all_normalized(tcx), tcx.erase_regions(self))
+        }
     }
 }
 
