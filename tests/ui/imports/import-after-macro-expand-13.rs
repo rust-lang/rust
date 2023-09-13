@@ -1,9 +1,7 @@
 // check-pass
-// https://github.com/rust-lang/rust/pull/113099#issuecomment-1633574396
+// similar as `import-after-macro-expand-6.rs`
 
-pub mod a {
-    pub use crate::b::*;
-}
+use crate::a::HeaderMap;
 
 mod b {
     pub mod http {
@@ -15,7 +13,9 @@ mod b {
     pub struct HeaderMap;
 }
 
-use crate::a::HeaderMap;
+mod a {
+    pub use crate::b::*;
+}
 
 fn main() {
     let h: crate::b::HeaderMap = HeaderMap;

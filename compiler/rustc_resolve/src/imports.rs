@@ -319,10 +319,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // We should replace the `old_binding` with `binding` regardless
                             // of whether they has same resolution or not when they are
                             // imported from the same glob-import statement.
-                            // However we currently using `Some(old_binding)` for back compact
-                            // purposes.
-                            // This case can be removed after once `Undetermined` is prepared
-                            // for glob-imports.
+                            resolution.binding = Some(binding);
                         } else if res != old_binding.res() {
                             let binding = if warn_ambiguity {
                                 this.warn_ambiguity(
@@ -805,13 +802,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // For better failure detection, pretend that the import will
                     // not define any names while resolving its module path.
                     let orig_vis = import.vis.take();
-                    let binding = this.resolve_ident_in_module(
+                    let binding = this.maybe_resolve_ident_in_module(
                         module,
                         source,
                         ns,
                         &import.parent_scope,
-                        None,
-                        None,
                     );
                     import.vis.set(orig_vis);
                     source_bindings[ns].set(binding);
