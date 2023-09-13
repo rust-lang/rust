@@ -312,6 +312,8 @@ def default_build_triple(verbose):
         # non-standard string (e.g. gnuwin32 tools returns `windows32`). In
         # these cases, fall back to using sys.platform.
         return 'x86_64-pc-windows-msvc'
+    elif kernel == 'AIX':
+        return 'powerpc64-ibm-aix'
     else:
         err = "unknown OS type: {}".format(kernel)
         sys.exit(err)
