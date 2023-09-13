@@ -4,12 +4,13 @@ use clippy_utils::source::snippet;
 use clippy_utils::{get_parent_node, inherits_cfg, is_from_proc_macro, is_self};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_qpath, FnKind, Visitor};
+use rustc_hir::intravisit::{walk_fn, walk_qpath, FnKind, Visitor};
 use rustc_hir::{
-    Body, Closure, Expr, ExprKind, FnDecl, HirId, HirIdMap, HirIdSet, Impl, ItemKind, Mutability, Node, PatKind, QPath,
+    Body, BodyId, Closure, Expr, ExprKind, FnDecl, HirId, HirIdMap, HirIdSet, Impl, ItemKind, Mutability, Node,
+    PatKind, QPath,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::associated_body;
 use rustc_middle::hir::nested_filter::OnlyBodies;
@@ -95,6 +96,30 @@ fn should_skip<'tcx>(
     is_from_proc_macro(cx, &input)
 }
 
+fn check_closures<'tcx>(
+    ctx: &mut MutablyUsedVariablesCtxt<'tcx>,
+    cx: &LateContext<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    checked_closures: &mut FxHashSet<LocalDefId>,
+    closures: FxHashSet<LocalDefId>,
+) {
+    let hir = cx.tcx.hir();
+    for closure in closures {
+        if !checked_closures.insert(closure) {
+            continue;
+        }
+        ctx.prev_bind = None;
+        ctx.prev_move_to_closure.clear();
+        if let Some(body) = hir
+            .find_by_def_id(closure)
+            .and_then(associated_body)
+            .map(|(_, body_id)| hir.body(body_id))
+        {
+            euv::ExprUseVisitor::new(ctx, infcx, closure, cx.param_env, cx.typeck_results()).consume_body(body);
+        }
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
     fn check_fn(
         &mut self,
@@ -161,25 +186,20 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             euv::ExprUseVisitor::new(&mut ctx, &infcx, fn_def_id, cx.param_env, cx.typeck_results()).consume_body(body);
             if is_async {
                 let mut checked_closures = FxHashSet::default();
+
+                // We retrieve all the closures declared in the async function because they will
+                // not be found by `euv::Delegate`.
+                let mut closures_retriever = ClosuresRetriever {
+                    cx,
+                    closures: FxHashSet::default(),
+                };
+                walk_fn(&mut closures_retriever, kind, decl, body.id(), fn_def_id);
+                check_closures(&mut ctx, cx, &infcx, &mut checked_closures, closures_retriever.closures);
+
                 while !ctx.async_closures.is_empty() {
                     let closures = ctx.async_closures.clone();
                     ctx.async_closures.clear();
-                    let hir = cx.tcx.hir();
-                    for closure in closures {
-                        if !checked_closures.insert(closure) {
-                            continue;
-                        }
-                        ctx.prev_bind = None;
-                        ctx.prev_move_to_closure.clear();
-                        if let Some(body) = hir
-                            .find_by_def_id(closure)
-                            .and_then(associated_body)
-                            .map(|(_, body_id)| hir.body(body_id))
-                        {
-                            euv::ExprUseVisitor::new(&mut ctx, &infcx, closure, cx.param_env, cx.typeck_results())
-                                .consume_body(body);
-                        }
-                    }
+                    check_closures(&mut ctx, cx, &infcx, &mut checked_closures, closures);
                 }
             }
             ctx
@@ -437,5 +457,32 @@ impl<'tcx> Visitor<'tcx> for FnNeedsMutVisitor<'_, 'tcx> {
             // argument entirely
             used_fn_def_ids.insert(def_id);
         }
+    }
+}
+
+struct ClosuresRetriever<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    closures: FxHashSet<LocalDefId>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for ClosuresRetriever<'a, 'tcx> {
+    type NestedFilter = OnlyBodies;
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
+    }
+
+    fn visit_fn(
+        &mut self,
+        kind: FnKind<'tcx>,
+        decl: &'tcx FnDecl<'tcx>,
+        body_id: BodyId,
+        _span: Span,
+        fn_def_id: LocalDefId,
+    ) {
+        if matches!(kind, FnKind::Closure) {
+            self.closures.insert(fn_def_id);
+        }
+        walk_fn(self, kind, decl, body_id, fn_def_id);
     }
 }
