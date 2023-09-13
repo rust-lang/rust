@@ -33,8 +33,8 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
 
     // We need to manually copy libstd to the extracted rustc sysroot
     copy_directory(
-        &libstd_dir.join("lib").join("rustlib").join(&host_triple).join("lib"),
-        &rustc_dir.join("lib").join("rustlib").join(&host_triple).join("lib"),
+        &libstd_dir.join("lib").join("rustlib").join(host_triple).join("lib"),
+        &rustc_dir.join("lib").join("rustlib").join(host_triple).join("lib"),
     )?;
 
     // Extract sources - they aren't in the `rustc-nightly-{host}` tarball, so we need to manually copy libstd
@@ -109,6 +109,6 @@ fn find_dist_version(directory: &Utf8Path) -> anyhow::Result<String> {
         .unwrap()
         .to_string();
     let (version, _) =
-        archive.strip_prefix("reproducible-artifacts-").unwrap().split_once("-").unwrap();
+        archive.strip_prefix("reproducible-artifacts-").unwrap().split_once('-').unwrap();
     Ok(version.to_string())
 }

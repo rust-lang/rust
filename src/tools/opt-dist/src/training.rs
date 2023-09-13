@@ -192,7 +192,7 @@ pub fn gather_llvm_bolt_profiles(env: &Environment) -> anyhow::Result<LlvmBoltPr
     log::info!("Merging LLVM BOLT profiles to {merged_profile}");
 
     let profiles: Vec<_> =
-        glob::glob(&format!("{profile_root}*"))?.into_iter().collect::<Result<Vec<_>, _>>()?;
+        glob::glob(&format!("{profile_root}*"))?.collect::<Result<Vec<_>, _>>()?;
 
     let mut merge_args = vec!["merge-fdata"];
     merge_args.extend(profiles.iter().map(|p| p.to_str().unwrap()));
