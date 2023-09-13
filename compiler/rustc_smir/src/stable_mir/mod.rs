@@ -149,6 +149,7 @@ pub trait Context {
     fn trait_impl(&mut self, trait_impl: &ImplDef) -> ImplTrait;
     fn generics_of(&mut self, def_id: DefId) -> Generics;
     fn predicates_of(&mut self, def_id: DefId) -> GenericPredicates;
+    fn explicit_predicates_of(&mut self, def_id: DefId) -> GenericPredicates;
     /// Get information about the local crate.
     fn local_crate(&self) -> Crate;
     /// Retrieve a list of all external crates.
