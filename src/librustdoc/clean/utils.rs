@@ -54,8 +54,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let primitives = local_crate.primitives(cx.tcx);
     let keywords = local_crate.keywords(cx.tcx);
     {
-        let ItemKind::ModuleItem(ref mut m) = *module.kind
-        else { unreachable!() };
+        let ItemKind::ModuleItem(ref mut m) = *module.kind else { unreachable!() };
         m.items.extend(primitives.iter().map(|&(def_id, prim)| {
             Item::from_def_id_and_parts(
                 def_id,
@@ -74,18 +73,15 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 
 pub(crate) fn substs_to_args<'tcx>(
     cx: &mut DocContext<'tcx>,
-    substs: ty::Binder<'tcx, &'tcx [ty::subst::GenericArg<'tcx>]>,
-    mut skip_first: bool,
+    args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
+    has_self: bool,
     container: Option<DefId>,
 ) -> Vec<GenericArg> {
+    let mut skip_first = has_self;
     let mut ret_val =
-        Vec::with_capacity(substs.skip_binder().len().saturating_sub(if skip_first {
-            1
-        } else {
-            0
-        }));
+        Vec::with_capacity(args.skip_binder().len().saturating_sub(if skip_first { 1 } else { 0 }));
 
-    ret_val.extend(substs.iter().enumerate().filter_map(|(index, kind)| {
+    ret_val.extend(args.iter().enumerate().filter_map(|(index, kind)| {
         match kind.skip_binder().unpack() {
             GenericArgKind::Lifetime(lt) => {
                 Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
@@ -100,7 +96,8 @@ pub(crate) fn substs_to_args<'tcx>(
                 None,
                 container.map(|container| crate::clean::ContainerTy::Regular {
                     ty: container,
-                    substs,
+                    args,
+                    has_self,
                     arg: index,
                 }),
             ))),
