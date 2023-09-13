@@ -17,6 +17,8 @@ pub struct Environment {
     host_llvm_dir: Utf8PathBuf,
     /// List of test paths that should be skipped when testing the optimized artifacts.
     skipped_tests: Vec<String>,
+    /// Directory containing a pre-built rustc-perf checkout.
+    prebuilt_rustc_perf: Option<Utf8PathBuf>,
     use_bolt: bool,
     shared_llvm: bool,
 }
@@ -65,6 +67,10 @@ impl Environment {
             .join("stage2")
             .join("bin")
             .join(format!("rustc{}", executable_extension()))
+    }
+
+    pub fn prebuilt_rustc_perf(&self) -> Option<Utf8PathBuf> {
+        self.prebuilt_rustc_perf.clone()
     }
 
     /// Path to the built rustc-perf benchmark suite.

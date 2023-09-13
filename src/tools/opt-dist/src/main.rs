@@ -121,9 +121,6 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .use_bolt(use_bolt)
                 .skipped_tests(skipped_tests)
                 .build()?;
-            with_log_group("Building rustc-perf", || {
-                Ok::<(), anyhow::Error>(download_rustc_perf(&env)?)
-            })?;
 
             (env, shared.build_args)
         }
@@ -139,6 +136,8 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .host_llvm_dir(Utf8PathBuf::from("/rustroot"))
                 .artifact_dir(Utf8PathBuf::from("/tmp/tmp-multistage/opt-artifacts"))
                 .build_dir(checkout_dir.join("obj"))
+                // /tmp/rustc-perf comes from the x64 dist Dockerfile
+                .prebuilt_rustc_perf(Some(Utf8PathBuf::from("/tmp/rustc-perf")))
                 .shared_llvm(true)
                 .use_bolt(true)
                 .skipped_tests(vec![
@@ -146,10 +145,6 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                     "tests/ui/process/nofile-limit.rs".to_string(),
                 ])
                 .build()?;
-            // /tmp/rustc-perf comes from the x64 dist Dockerfile
-            with_log_group("Building rustc-perf", || {
-                Ok::<(), anyhow::Error>(copy_rustc_perf(&env, Utf8Path::new("/tmp/rustc-perf"))?)
-            })?;
 
             (env, shared.build_args)
         }
@@ -173,10 +168,6 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 ])
                 .build()?;
 
-            with_log_group("Building rustc-perf", || {
-                Ok::<(), anyhow::Error>(download_rustc_perf(&env)?)
-            })?;
-
             (env, shared.build_args)
         }
     };
@@ -189,6 +180,11 @@ fn execute_pipeline(
     dist_args: Vec<String>,
 ) -> anyhow::Result<()> {
     reset_directory(&env.artifact_dir())?;
+
+    with_log_group("Building rustc-perf", || match env.prebuilt_rustc_perf() {
+        Some(dir) => copy_rustc_perf(env, &dir),
+        None => download_rustc_perf(env),
+    })?;
 
     // Stage 1: Build PGO instrumented rustc
     // We use a normal build of LLVM, because gathering PGO profiles for LLVM and `rustc` at the
