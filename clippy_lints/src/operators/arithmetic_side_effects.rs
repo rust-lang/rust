@@ -14,7 +14,12 @@ use {rustc_ast as ast, rustc_hir as hir};
 
 const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[["f32", "f32"], ["f64", "f64"], ["std::string::String", "str"]];
 const HARD_CODED_ALLOWED_UNARY: &[&str] = &["f32", "f64", "std::num::Saturating", "std::num::Wrapping"];
-const INTEGER_METHODS: &[Symbol] = &[sym::saturating_div, sym::wrapping_div, sym::wrapping_rem, sym::wrapping_rem_euclid];
+const INTEGER_METHODS: &[Symbol] = &[
+    sym::saturating_div,
+    sym::wrapping_div,
+    sym::wrapping_rem,
+    sym::wrapping_rem_euclid,
+];
 
 #[derive(Debug)]
 pub struct ArithmeticSideEffects {
@@ -93,7 +98,14 @@ impl ArithmeticSideEffects {
         let is_non_zero_u = |symbol: Option<Symbol>| {
             matches!(
                 symbol,
-                Some(sym::NonZeroU128 | sym::NonZeroU16 | sym::NonZeroU32 | sym::NonZeroU64 | sym::NonZeroU8 | sym::NonZeroUsize)
+                Some(
+                    sym::NonZeroU128
+                        | sym::NonZeroU16
+                        | sym::NonZeroU32
+                        | sym::NonZeroU64
+                        | sym::NonZeroU8
+                        | sym::NonZeroUsize
+                )
             )
         };
         let is_sat_or_wrap = |ty: Ty<'_>| {

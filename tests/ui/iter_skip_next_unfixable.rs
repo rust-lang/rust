@@ -1,5 +1,5 @@
 #![warn(clippy::iter_skip_next)]
-#![allow(dead_code)]
+#![allow(dead_code, clippy::iter_out_of_bounds)]
 //@no-rustfix
 /// Checks implementation of `ITER_SKIP_NEXT` lint
 fn main() {

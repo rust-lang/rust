@@ -751,3 +751,27 @@ Which crates to allow absolute paths from
 * [`absolute_paths`](https://rust-lang.github.io/rust-clippy/master/index.html#absolute_paths)
 
 
+## `enforce-iter-loop-reborrow`
+#### Example
+```
+let mut vec = vec![1, 2, 3];
+let rmvec = &mut vec;
+for _ in rmvec.iter() {}
+for _ in rmvec.iter_mut() {}
+```
+
+Use instead:
+```
+let mut vec = vec![1, 2, 3];
+let rmvec = &mut vec;
+for _ in &*rmvec {}
+for _ in &mut *rmvec {}
+```
+
+**Default Value:** `false` (`bool`)
+
+---
+**Affected lints:**
+* [`explicit_iter_loop`](https://rust-lang.github.io/rust-clippy/master/index.html#explicit_iter_loop)
+
+

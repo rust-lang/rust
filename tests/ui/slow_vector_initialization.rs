@@ -1,5 +1,5 @@
-use std::iter::repeat;
 //@no-rustfix
+use std::iter::repeat;
 fn main() {
     resize_vector();
     extend_vector();
@@ -86,6 +86,20 @@ fn from_empty_vec() {
     vec1 = Vec::new();
     vec1.resize(10, 0);
     //~^ ERROR: slow zero-filling initialization
+
+    vec1 = vec![];
+    vec1.resize(10, 0);
+    //~^ ERROR: slow zero-filling initialization
+
+    macro_rules! x {
+        () => {
+            vec![]
+        };
+    }
+
+    // `vec![]` comes from another macro, don't warn
+    vec1 = x!();
+    vec1.resize(10, 0);
 }
 
 fn do_stuff(vec: &mut [u8]) {}
