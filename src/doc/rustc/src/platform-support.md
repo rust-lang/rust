@@ -264,6 +264,8 @@ target | std | host | notes
 [`csky-unknown-linux-gnuabiv2`](platform-support/csky_unknown_linux_gnuabiv2.md) | ✓ |  | C-SKY abiv2 Linux (Little Endian)
 [`hexagon-unknown-linux-musl`](platform-support/hexagon_unknown_linux_musl.md) | ? |  | Hexagon Linux MUSL
 [`i386-apple-ios`](platform-support/i386_apple_ios.md) | ✓ |  | 32-bit x86 iOS
+[`i386-unknown-linux-gnu`](platform-support/i386_unknown_linux_gnu.md) | ✓ |  | ???
+[`i486-unknown-linux-gnu`](platform-support/i486_unknown_linux_gnu.md) | ✓ |  | ???
 [`i586-pc-nto-qnx700`](platform-support/i586_pc_nto_qnx700.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS |
 [`i686-apple-darwin`](platform-support/i686_apple_darwin.md) | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
 [`i686-pc-windows-gnullvm`](platform-support/i686_pc_windows_gnullvm.md) | ✓ | ✓ |
