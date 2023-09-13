@@ -2461,7 +2461,7 @@ impl<'a> Parser<'a> {
         let is_recovered = if !restrictions.contains(Restrictions::ALLOW_LET) {
             Some(self.sess.emit_err(errors::ExpectedExpressionFoundLet {
                 span: self.token.span,
-                reason: ForbiddenLetReason::GenericForbidden,
+                reason: ForbiddenLetReason::OtherForbidden,
             }))
         } else {
             None
@@ -3427,7 +3427,7 @@ impl<'a> Parser<'a> {
 #[derive(Clone, Copy, Subdiagnostic)]
 pub(crate) enum ForbiddenLetReason {
     /// `let` is not valid and the source environment is not important
-    GenericForbidden,
+    OtherForbidden,
     /// A let chain with the `||` operator
     #[note(parse_not_supported_or)]
     NotSupportedOr(#[primary_span] Span),
@@ -3439,6 +3439,15 @@ pub(crate) enum ForbiddenLetReason {
     NotSupportedParentheses(#[primary_span] Span),
 }
 
+/// Visitor to check for invalid/unstable use of `ExprKind::Let` that can't
+/// easily be caught in parsing. For example:
+///
+/// ```rust,ignore (example)
+/// // Only know that the let isn't allowed once the `||` token is reached
+/// if let Some(x) = y || true {}
+/// // Only know that the let isn't allowed once the second `=` token is reached.
+/// if let Some(x) = y && z = 1 {}
+/// ```
 struct CondChecker<'a> {
     parser: &'a Parser<'a>,
     forbid_let_reason: Option<ForbiddenLetReason>,
@@ -3495,14 +3504,14 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Tup(_)
             | ExprKind::Paren(_) => {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(GenericForbidden);
+                self.forbid_let_reason = Some(OtherForbidden);
                 noop_visit_expr(e, self);
                 self.forbid_let_reason = forbid_let_reason;
             }
             ExprKind::Cast(ref mut op, _)
             | ExprKind::Type(ref mut op, _) => {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(GenericForbidden);
+                self.forbid_let_reason = Some(OtherForbidden);
                 self.visit_expr(op);
                 self.forbid_let_reason = forbid_let_reason;
             }

@@ -3,6 +3,8 @@ error: expected expression, found `let` statement
    |
 LL | struct Bug<A = [(); (let a = (), 1).1]> {
    |                      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
 
 error: aborting due to previous error
 

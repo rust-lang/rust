@@ -14,6 +14,8 @@ error: expected expression, found `let` statement
    |
 LL |     let Some(n) = opt && let another = n else {
    |                          ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
 
 error: a `&&` expression cannot be directly assigned in `let...else`
   --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:15:19

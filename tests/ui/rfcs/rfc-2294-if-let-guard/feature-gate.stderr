@@ -4,6 +4,7 @@ error: expected expression, found `let` statement
 LL |         () if (let 0 = 1) => {}
    |                ^^^^^^^^^
    |
+   = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
   --> $DIR/feature-gate.rs:10:16
    |
@@ -16,6 +17,7 @@ error: expected expression, found `let` statement
 LL |         () if (((let 0 = 1))) => {}
    |                  ^^^^^^^^^
    |
+   = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
   --> $DIR/feature-gate.rs:13:18
    |
@@ -28,6 +30,7 @@ error: expected expression, found `let` statement
 LL |         () if (let 0 = 1) && true => {}
    |                ^^^^^^^^^
    |
+   = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
   --> $DIR/feature-gate.rs:24:16
    |
@@ -40,6 +43,7 @@ error: expected expression, found `let` statement
 LL |         () if true && (let 0 = 1) => {}
    |                        ^^^^^^^^^
    |
+   = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
   --> $DIR/feature-gate.rs:27:24
    |
@@ -52,6 +56,7 @@ error: expected expression, found `let` statement
 LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    |                ^^^^^^^^^
    |
+   = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
   --> $DIR/feature-gate.rs:30:16
    |
@@ -64,6 +69,7 @@ error: expected expression, found `let` statement
 LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    |                               ^^^^^^^^^
    |
+   = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
   --> $DIR/feature-gate.rs:30:31
    |
@@ -76,6 +82,7 @@ error: expected expression, found `let` statement
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                          ^^^^^^^^^
    |
+   = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
   --> $DIR/feature-gate.rs:34:42
    |
@@ -88,6 +95,7 @@ error: expected expression, found `let` statement
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                                       ^^^^^^^^^
    |
+   = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
   --> $DIR/feature-gate.rs:34:42
    |
@@ -100,6 +108,7 @@ error: expected expression, found `let` statement
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                                                    ^^^^^^^^^
    |
+   = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
   --> $DIR/feature-gate.rs:34:42
    |
@@ -111,12 +120,16 @@ error: expected expression, found `let` statement
    |
 LL |     use_expr!((let 0 = 1 && 0 == 0));
    |                ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
 
 error: expected expression, found `let` statement
   --> $DIR/feature-gate.rs:62:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
 
 error: no rules expected the token `let`
   --> $DIR/feature-gate.rs:70:15
