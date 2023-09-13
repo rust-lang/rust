@@ -134,8 +134,6 @@ impl<'tcx> FunctionCoverage<'tcx> {
     }
 
     pub(crate) fn finalize(&mut self) {
-        self.simplify_expressions();
-
         // Reorder the collected mappings so that counter mappings are first and
         // zero mappings are last, matching the historical order.
         self.mappings.sort_by_key(|mapping| match mapping.term {
@@ -145,25 +143,25 @@ impl<'tcx> FunctionCoverage<'tcx> {
         });
     }
 
-    /// Perform some simplifications to make the final coverage mappings
-    /// slightly smaller.
+    /// Identify expressions that will always have a value of zero, and note
+    /// their IDs in [`ZeroExpressions`]. Mappings that refer to a zero expression
+    /// can instead become mappings to a constant zero value.
     ///
     /// This method mainly exists to preserve the simplifications that were
     /// already being performed by the Rust-side expression renumbering, so that
     /// the resulting coverage mappings don't get worse.
-    fn simplify_expressions(&mut self) {
+    fn identify_zero_expressions(&self) -> ZeroExpressions {
         // The set of expressions that either were optimized out entirely, or
         // have zero as both of their operands, and will therefore always have
         // a value of zero. Other expressions that refer to these as operands
         // can have those operands replaced with `CovTerm::Zero`.
         let mut zero_expressions = FxIndexSet::default();
 
-        // For each expression, perform simplifications based on lower-numbered
-        // expressions, and then update the set of always-zero expressions if
-        // necessary.
+        // Simplify a copy of each expression based on lower-numbered expressions,
+        // and then update the set of always-zero expressions if necessary.
         // (By construction, expressions can only refer to other expressions
-        // that have lower IDs, so one simplification pass is sufficient.)
-        for (id, maybe_expression) in self.expressions.iter_enumerated_mut() {
+        // that have lower IDs, so one pass is sufficient.)
+        for (id, maybe_expression) in self.expressions.iter_enumerated() {
             let Some(expression) = maybe_expression else {
                 // If an expression is missing, it must have been optimized away,
                 // so any operand that refers to it can be replaced with zero.
@@ -171,30 +169,50 @@ impl<'tcx> FunctionCoverage<'tcx> {
                 continue;
             };
 
+            // We don't need to simplify the actual expression data in the
+            // expressions list; we can just simplify a temporary copy and then
+            // use that to update the set of always-zero expressions.
+            let Expression { mut lhs, op, mut rhs } = *expression;
+
+            // If an expression has an operand that is also an expression, the
+            // operand's ID must be strictly lower. This is what lets us find
+            // all zero expressions in one pass.
+            let assert_operand_expression_is_lower = |operand_id: ExpressionId| {
+                assert!(
+                    operand_id < id,
+                    "Operand {operand_id:?} should be less than {id:?} in {expression:?}",
+                )
+            };
+
             // If an operand refers to an expression that is always zero, then
             // that operand can be replaced with `CovTerm::Zero`.
-            let maybe_set_operand_to_zero = |operand: &mut CovTerm| match &*operand {
-                CovTerm::Expression(id) if zero_expressions.contains(id) => {
-                    *operand = CovTerm::Zero;
+            let maybe_set_operand_to_zero = |operand: &mut CovTerm| match *operand {
+                CovTerm::Expression(id) => {
+                    assert_operand_expression_is_lower(id);
+                    if zero_expressions.contains(&id) {
+                        *operand = CovTerm::Zero;
+                    }
                 }
                 _ => (),
             };
-            maybe_set_operand_to_zero(&mut expression.lhs);
-            maybe_set_operand_to_zero(&mut expression.rhs);
+            maybe_set_operand_to_zero(&mut lhs);
+            maybe_set_operand_to_zero(&mut rhs);
 
             // Coverage counter values cannot be negative, so if an expression
             // involves subtraction from zero, assume that its RHS must also be zero.
             // (Do this after simplifications that could set the LHS to zero.)
-            if let Expression { lhs: CovTerm::Zero, op: Op::Subtract, .. } = expression {
-                expression.rhs = CovTerm::Zero;
+            if lhs == CovTerm::Zero && op == Op::Subtract {
+                rhs = CovTerm::Zero;
             }
 
             // After the above simplifications, if both operands are zero, then
             // we know that this expression is always zero too.
-            if let Expression { lhs: CovTerm::Zero, rhs: CovTerm::Zero, .. } = expression {
+            if lhs == CovTerm::Zero && rhs == CovTerm::Zero {
                 zero_expressions.insert(id);
             }
         }
+
+        ZeroExpressions(zero_expressions)
     }
 
     /// Return the source hash, generated from the HIR node structure, and used to indicate whether
@@ -209,7 +227,9 @@ impl<'tcx> FunctionCoverage<'tcx> {
     pub fn get_expressions_and_counter_regions(
         &self,
     ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &CodeRegion)>) {
-        let counter_expressions = self.counter_expressions();
+        let zero_expressions = self.identify_zero_expressions();
+
+        let counter_expressions = self.counter_expressions(&zero_expressions);
         // Expression IDs are indices into `self.expressions`, and on the LLVM
         // side they will be treated as indices into `counter_expressions`, so
         // the two vectors should correspond 1:1.
@@ -222,11 +242,16 @@ impl<'tcx> FunctionCoverage<'tcx> {
 
     /// Convert this function's coverage expression data into a form that can be
     /// passed through FFI to LLVM.
-    fn counter_expressions(&self) -> Vec<CounterExpression> {
+    fn counter_expressions(&self, zero_expressions: &ZeroExpressions) -> Vec<CounterExpression> {
         // We know that LLVM will optimize out any unused expressions before
         // producing the final coverage map, so there's no need to do the same
         // thing on the Rust side unless we're confident we can do much better.
         // (See `CounterExpressionsMinimizer` in `CoverageMappingWriter.cpp`.)
+
+        let counter_from_operand = |operand: CovTerm| match operand {
+            CovTerm::Expression(id) if zero_expressions.contains(id) => Counter::ZERO,
+            _ => Counter::from_term(operand),
+        };
 
         self.expressions
             .iter()
@@ -241,12 +266,12 @@ impl<'tcx> FunctionCoverage<'tcx> {
                 &Some(Expression { lhs, op, rhs, .. }) => {
                     // Convert the operands and operator as normal.
                     CounterExpression::new(
-                        Counter::from_term(lhs),
+                        counter_from_operand(lhs),
                         match op {
                             Op::Add => ExprKind::Add,
                             Op::Subtract => ExprKind::Subtract,
                         },
-                        Counter::from_term(rhs),
+                        counter_from_operand(rhs),
                     )
                 }
             })
@@ -260,5 +285,16 @@ impl<'tcx> FunctionCoverage<'tcx> {
             let counter = Counter::from_term(term);
             (counter, code_region)
         })
+    }
+}
+
+/// Set of expression IDs that are known to always evaluate to zero.
+/// Any mapping or expression operand that refers to these expressions can have
+/// that reference replaced with a constant zero value.
+struct ZeroExpressions(FxIndexSet<ExpressionId>);
+
+impl ZeroExpressions {
+    fn contains(&self, id: ExpressionId) -> bool {
+        self.0.contains(&id)
     }
 }
