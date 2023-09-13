@@ -214,6 +214,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         self.mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
             function_source_hash: self.function_source_hash,
+            num_counters: self.coverage_counters.num_counters(),
+            num_expressions: self.coverage_counters.num_expressions(),
         }));
     }
 

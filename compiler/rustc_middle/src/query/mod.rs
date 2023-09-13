@@ -573,10 +573,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Returns coverage summary info for a function, after executing the `InstrumentCoverage`
-    /// MIR pass (assuming the -Cinstrument-coverage option is enabled).
-    query coverageinfo(key: ty::InstanceDef<'tcx>) -> &'tcx mir::CoverageInfo {
-        desc { |tcx| "retrieving coverage info from MIR for `{}`", tcx.def_path_str(key.def_id()) }
+    /// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
+    /// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
+    /// have had a chance to potentially remove some of them.
+    query coverage_ids_info(key: ty::InstanceDef<'tcx>) -> &'tcx mir::CoverageIdsInfo {
+        desc { |tcx| "retrieving coverage IDs info from MIR for `{}`", tcx.def_path_str(key.def_id()) }
         arena_cache
     }
 

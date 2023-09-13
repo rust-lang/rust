@@ -126,6 +126,14 @@ impl CoverageCounters {
         next
     }
 
+    pub(super) fn num_counters(&self) -> usize {
+        self.next_counter_id.as_usize()
+    }
+
+    pub(super) fn num_expressions(&self) -> usize {
+        self.next_expression_id.as_usize()
+    }
+
     fn set_bcb_counter(
         &mut self,
         bcb: BasicCoverageBlock,

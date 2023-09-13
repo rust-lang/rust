@@ -6,7 +6,6 @@ use rustc_middle::mir::coverage::{
     CodeRegion, CounterId, ExpressionId, FunctionCoverageInfo, Op, Operand,
 };
 use rustc_middle::ty::Instance;
-use rustc_middle::ty::TyCtxt;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Expression {
@@ -40,38 +39,36 @@ pub struct FunctionCoverage<'tcx> {
 impl<'tcx> FunctionCoverage<'tcx> {
     /// Creates a new set of coverage data for a used (called) function.
     pub fn new(
-        tcx: TyCtxt<'tcx>,
         instance: Instance<'tcx>,
         function_coverage_info: &'tcx FunctionCoverageInfo,
     ) -> Self {
-        Self::create(tcx, instance, function_coverage_info, true)
+        Self::create(instance, function_coverage_info, true)
     }
 
     /// Creates a new set of coverage data for an unused (never called) function.
     pub fn unused(
-        tcx: TyCtxt<'tcx>,
         instance: Instance<'tcx>,
         function_coverage_info: &'tcx FunctionCoverageInfo,
     ) -> Self {
-        Self::create(tcx, instance, function_coverage_info, false)
+        Self::create(instance, function_coverage_info, false)
     }
 
     fn create(
-        tcx: TyCtxt<'tcx>,
         instance: Instance<'tcx>,
         function_coverage_info: &'tcx FunctionCoverageInfo,
         is_used: bool,
     ) -> Self {
-        let coverageinfo = tcx.coverageinfo(instance.def);
+        let num_counters = function_coverage_info.num_counters;
+        let num_expressions = function_coverage_info.num_expressions;
         debug!(
-            "FunctionCoverage::create(instance={:?}) has coverageinfo={:?}. is_used={}",
-            instance, coverageinfo, is_used
+            "FunctionCoverage::create(instance={instance:?}) has \
+            num_counters={num_counters}, num_expressions={num_expressions}, is_used={is_used}"
         );
         Self {
             function_coverage_info,
             is_used,
-            counters: IndexVec::from_elem_n(None, coverageinfo.num_counters as usize),
-            expressions: IndexVec::from_elem_n(None, coverageinfo.num_expressions as usize),
+            counters: IndexVec::from_elem_n(None, num_counters),
+            expressions: IndexVec::from_elem_n(None, num_expressions),
             unreachable_regions: Vec::new(),
         }
     }

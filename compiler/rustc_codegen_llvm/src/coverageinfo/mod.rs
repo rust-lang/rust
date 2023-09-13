@@ -114,7 +114,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
         let func_coverage = coverage_map
             .entry(instance)
-            .or_insert_with(|| FunctionCoverage::new(bx.tcx(), instance, function_coverage_info));
+            .or_insert_with(|| FunctionCoverage::new(instance, function_coverage_info));
 
         let Coverage { kind, code_regions } = coverage;
         match *kind {
@@ -124,11 +124,21 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 // as that needs an exclusive borrow.
                 drop(coverage_map);
 
-                let coverageinfo = bx.tcx().coverageinfo(instance.def);
+                // The number of counters passed to `llvm.instrprof.increment` might
+                // be smaller than the number originally inserted by the instrumentor,
+                // if some high-numbered counters were removed by MIR optimizations.
+                // If so, LLVM's profiler runtime will use fewer physical counters.
+                let num_counters =
+                    bx.tcx().coverage_ids_info(instance.def).max_counter_id.as_u32() + 1;
+                assert!(
+                    num_counters as usize <= function_coverage_info.num_counters,
+                    "num_counters disagreement: query says {num_counters} but function info only has {}",
+                    function_coverage_info.num_counters
+                );
 
                 let fn_name = bx.get_pgo_func_name_var(instance);
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);
-                let num_counters = bx.const_u32(coverageinfo.num_counters);
+                let num_counters = bx.const_u32(num_counters);
                 let index = bx.const_u32(id.as_u32());
                 debug!(
                     "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
@@ -208,7 +218,7 @@ fn add_unused_function_coverage<'tcx>(
 ) {
     let tcx = cx.tcx;
 
-    let mut function_coverage = FunctionCoverage::unused(tcx, instance, function_coverage_info);
+    let mut function_coverage = FunctionCoverage::unused(instance, function_coverage_info);
     for &code_region in tcx.covered_code_regions(def_id) {
         let code_region = std::slice::from_ref(code_region);
         function_coverage.add_unreachable_regions(code_region);

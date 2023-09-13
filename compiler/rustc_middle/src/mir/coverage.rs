@@ -140,4 +140,6 @@ impl Op {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct FunctionCoverageInfo {
     pub function_source_hash: u64,
+    pub num_counters: usize,
+    pub num_expressions: usize,
 }
