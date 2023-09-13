@@ -95,7 +95,8 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
         unsafe {
             llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
-            let is_generic = instance.args.non_erasable_generics().next().is_some();
+            let is_generic =
+                instance.args.non_erasable_generics(tcx, instance.def_id()).next().is_some();
 
             if is_generic {
                 // This is a monomorphization. Its expected visibility depends

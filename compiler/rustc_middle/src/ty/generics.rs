@@ -212,10 +212,12 @@ impl<'tcx> Generics {
     pub fn own_requires_monomorphization(&self) -> bool {
         for param in &self.params {
             match param.kind {
-                GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+                GenericParamDefKind::Type { .. }
+                | GenericParamDefKind::Const { is_host_effect: false, .. } => {
                     return true;
                 }
-                GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Lifetime
+                | GenericParamDefKind::Const { is_host_effect: true, .. } => {}
             }
         }
         false

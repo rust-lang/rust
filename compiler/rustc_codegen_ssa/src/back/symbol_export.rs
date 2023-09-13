@@ -334,7 +334,7 @@ fn exported_symbols_provider_local(
 
             match *mono_item {
                 MonoItem::Fn(Instance { def: InstanceDef::Item(def), args }) => {
-                    if args.non_erasable_generics().next().is_some() {
+                    if args.non_erasable_generics(tcx, def).next().is_some() {
                         let symbol = ExportedSymbol::Generic(def, args);
                         symbols.push((
                             symbol,
@@ -346,10 +346,10 @@ fn exported_symbols_provider_local(
                         ));
                     }
                 }
-                MonoItem::Fn(Instance { def: InstanceDef::DropGlue(_, Some(ty)), args }) => {
+                MonoItem::Fn(Instance { def: InstanceDef::DropGlue(def_id, Some(ty)), args }) => {
                     // A little sanity-check
                     debug_assert_eq!(
-                        args.non_erasable_generics().next(),
+                        args.non_erasable_generics(tcx, def_id).next(),
                         Some(GenericArgKind::Type(ty))
                     );
                     symbols.push((
