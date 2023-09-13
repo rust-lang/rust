@@ -104,6 +104,7 @@ struct Instrumentor<'a, 'tcx> {
     function_source_hash: u64,
     basic_coverage_blocks: CoverageGraph,
     coverage_counters: CoverageCounters,
+    mappings: Vec<Mapping>,
 }
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
@@ -144,6 +145,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             function_source_hash,
             basic_coverage_blocks,
             coverage_counters,
+            mappings: Vec::new(),
         }
     }
 
@@ -216,6 +218,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             function_source_hash: self.function_source_hash,
             num_counters: self.coverage_counters.num_counters(),
             num_expressions: self.coverage_counters.num_expressions(),
+            mappings: std::mem::take(&mut self.mappings),
         }));
     }
 
@@ -232,18 +235,16 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 bug!("Every BasicCoverageBlock should have a Counter or Expression");
             });
 
-            // Convert the coverage spans into a vector of code regions to be
-            // associated with this BCB's coverage statement.
-            let code_regions = spans
-                .iter()
-                .map(|&span| make_code_region(source_map, file_name, span, body_span))
-                .collect::<Vec<_>>();
+            let term = counter_kind.as_term();
+            self.mappings.extend(spans.iter().map(|&span| {
+                let code_region = make_code_region(source_map, file_name, span, body_span);
+                Mapping { code_region, term }
+            }));
 
             inject_statement(
                 self.mir_body,
                 self.make_mir_coverage_kind(&counter_kind),
                 self.bcb_leader_bb(bcb),
-                code_regions,
             );
         }
     }
@@ -301,7 +302,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                         self.mir_body,
                         self.make_mir_coverage_kind(&counter_kind),
                         inject_to_bb,
-                        Vec::new(),
                     );
                 }
                 BcbCounter::Expression { .. } => inject_intermediate_expression(
@@ -329,7 +329,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
     fn make_mir_coverage_kind(&self, counter_kind: &BcbCounter) -> CoverageKind {
         match *counter_kind {
-            BcbCounter::Counter { id } => CoverageKind::Counter { id },
+            BcbCounter::Counter { id } => CoverageKind::CounterIncrement { id },
             BcbCounter::Expression { id, lhs, op, rhs } => {
                 CoverageKind::Expression { id, lhs, op, rhs }
             }
@@ -360,18 +360,13 @@ fn inject_edge_counter_basic_block(
     new_bb
 }
 
-fn inject_statement(
-    mir_body: &mut mir::Body<'_>,
-    counter_kind: CoverageKind,
-    bb: BasicBlock,
-    code_regions: Vec<CodeRegion>,
-) {
-    debug!("  injecting statement {counter_kind:?} for {bb:?} at code regions: {code_regions:?}");
+fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb: BasicBlock) {
+    debug!("  injecting statement {counter_kind:?} for {bb:?}");
     let data = &mut mir_body[bb];
     let source_info = data.terminator().source_info;
     let statement = Statement {
         source_info,
-        kind: StatementKind::Coverage(Box::new(Coverage { kind: counter_kind, code_regions })),
+        kind: StatementKind::Coverage(Box::new(Coverage { kind: counter_kind })),
     };
     data.statements.insert(0, statement);
 }
@@ -385,10 +380,7 @@ fn inject_intermediate_expression(mir_body: &mut mir::Body<'_>, expression: Cove
     let source_info = data.terminator().source_info;
     let statement = Statement {
         source_info,
-        kind: StatementKind::Coverage(Box::new(Coverage {
-            kind: expression,
-            code_regions: Vec::new(),
-        })),
+        kind: StatementKind::Coverage(Box::new(Coverage { kind: expression })),
     };
     data.statements.push(statement);
 }

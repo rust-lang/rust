@@ -2,15 +2,13 @@ use super::*;
 
 use rustc_data_structures::captures::Captures;
 use rustc_middle::mir::coverage::*;
-use rustc_middle::mir::{self, Body, Coverage, CoverageIdsInfo};
+use rustc_middle::mir::{Body, Coverage, CoverageIdsInfo};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::def_id::DefId;
 
 /// A `query` provider for retrieving coverage information injected into MIR.
 pub(crate) fn provide(providers: &mut Providers) {
     providers.coverage_ids_info = |tcx, def_id| coverage_ids_info(tcx, def_id);
-    providers.covered_code_regions = |tcx, def_id| covered_code_regions(tcx, def_id);
 }
 
 /// Query implementation for `coverage_ids_info`.
@@ -22,21 +20,13 @@ fn coverage_ids_info<'tcx>(
 
     let max_counter_id = all_coverage_in_mir_body(mir_body)
         .filter_map(|coverage| match coverage.kind {
-            CoverageKind::Counter { id } => Some(id),
+            CoverageKind::CounterIncrement { id } => Some(id),
             _ => None,
         })
         .max()
         .unwrap_or(CounterId::START);
 
     CoverageIdsInfo { max_counter_id }
-}
-
-fn covered_code_regions(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<&CodeRegion> {
-    let body = mir_body(tcx, def_id);
-    all_coverage_in_mir_body(body)
-        // Coverage statements have a list of code regions (possibly empty).
-        .flat_map(|coverage| coverage.code_regions.as_slice())
-        .collect()
 }
 
 fn all_coverage_in_mir_body<'a, 'tcx>(
@@ -55,12 +45,4 @@ fn all_coverage_in_mir_body<'a, 'tcx>(
 fn is_inlined(body: &Body<'_>, statement: &Statement<'_>) -> bool {
     let scope_data = &body.source_scopes[statement.source_info.scope];
     scope_data.inlined.is_some() || scope_data.inlined_parent_scope.is_some()
-}
-
-/// This function ensures we obtain the correct MIR for the given item irrespective of
-/// whether that means const mir or runtime mir. For `const fn` this opts for runtime
-/// mir.
-fn mir_body(tcx: TyCtxt<'_>, def_id: DefId) -> &mir::Body<'_> {
-    let def = ty::InstanceDef::Item(def_id);
-    tcx.instance_mir(def)
 }

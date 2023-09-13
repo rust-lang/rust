@@ -5,7 +5,7 @@
 
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 
-use crate::mir::coverage::{CodeRegion, CoverageKind};
+use crate::mir::coverage::CoverageKind;
 use crate::traits::Reveal;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::GenericArgsRef;
@@ -514,7 +514,6 @@ pub enum FakeReadCause {
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct Coverage {
     pub kind: CoverageKind,
-    pub code_regions: Vec<CodeRegion>,
 }
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]

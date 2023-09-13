@@ -23,11 +23,10 @@ pub struct FunctionCoverage<'tcx> {
     function_coverage_info: &'tcx FunctionCoverageInfo,
     is_used: bool,
 
-    /// Tracks which counters have been seen, to avoid duplicate mappings
-    /// that might be introduced by MIR inlining.
+    /// Tracks which counters have been seen, so that we can identify mappings
+    /// to counters that were optimized out, and set them to zero.
     counters_seen: BitSet<CounterId>,
     expressions: IndexVec<ExpressionId, Option<Expression>>,
-    mappings: Vec<Mapping>,
 }
 
 impl<'tcx> FunctionCoverage<'tcx> {
@@ -63,7 +62,6 @@ impl<'tcx> FunctionCoverage<'tcx> {
             is_used,
             counters_seen: BitSet::new_empty(num_counters),
             expressions: IndexVec::from_elem_n(None, num_expressions),
-            mappings: Vec::new(),
         }
     }
 
@@ -72,20 +70,13 @@ impl<'tcx> FunctionCoverage<'tcx> {
         self.is_used
     }
 
-    /// Adds code regions to be counted by an injected counter intrinsic.
+    /// Marks a counter ID as having been seen in a counter-increment statement.
     #[instrument(level = "debug", skip(self))]
-    pub(crate) fn add_counter(&mut self, id: CounterId, code_regions: &[CodeRegion]) {
-        if self.counters_seen.insert(id) {
-            self.add_mappings(CovTerm::Counter(id), code_regions);
-        }
+    pub(crate) fn mark_counter_id_seen(&mut self, id: CounterId) {
+        self.counters_seen.insert(id);
     }
 
-    /// Adds information about a coverage expression, along with zero or more
-    /// code regions mapped to that expression.
-    ///
-    /// Both counters and "counter expressions" (or simply, "expressions") can be operands in other
-    /// expressions. These are tracked as separate variants of `CovTerm`, so there is no ambiguity
-    /// between operands that are counter IDs and operands that are expression IDs.
+    /// Adds information about a coverage expression.
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn add_counter_expression(
         &mut self,
@@ -93,7 +84,6 @@ impl<'tcx> FunctionCoverage<'tcx> {
         lhs: CovTerm,
         op: Op,
         rhs: CovTerm,
-        code_regions: &[CodeRegion],
     ) {
         debug_assert!(
             expression_id.as_usize() < self.expressions.len(),
@@ -107,10 +97,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
         let expression = Expression { lhs, op, rhs };
         let slot = &mut self.expressions[expression_id];
         match slot {
-            None => {
-                *slot = Some(expression);
-                self.add_mappings(CovTerm::Expression(expression_id), code_regions);
-            }
+            None => *slot = Some(expression),
             // If this expression ID slot has already been filled, it should
             // contain identical information.
             Some(ref previous_expression) => assert_eq!(
@@ -118,29 +105,6 @@ impl<'tcx> FunctionCoverage<'tcx> {
                 "add_counter_expression: expression for id changed"
             ),
         }
-    }
-
-    /// Adds regions that will be marked as "unreachable", with a constant "zero counter".
-    #[instrument(level = "debug", skip(self))]
-    pub(crate) fn add_unreachable_regions(&mut self, code_regions: &[CodeRegion]) {
-        assert!(!code_regions.is_empty(), "unreachable regions always have code regions");
-        self.add_mappings(CovTerm::Zero, code_regions);
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn add_mappings(&mut self, term: CovTerm, code_regions: &[CodeRegion]) {
-        self.mappings
-            .extend(code_regions.iter().cloned().map(|code_region| Mapping { term, code_region }));
-    }
-
-    pub(crate) fn finalize(&mut self) {
-        // Reorder the collected mappings so that counter mappings are first and
-        // zero mappings are last, matching the historical order.
-        self.mappings.sort_by_key(|mapping| match mapping.term {
-            CovTerm::Counter(_) => 0,
-            CovTerm::Expression(_) => 1,
-            CovTerm::Zero => u8::MAX,
-        });
     }
 
     /// Identify expressions that will always have a value of zero, and note
@@ -235,7 +199,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
         // the two vectors should correspond 1:1.
         assert_eq!(self.expressions.len(), counter_expressions.len());
 
-        let counter_regions = self.counter_regions();
+        let counter_regions = self.counter_regions(zero_expressions);
 
         (counter_expressions, counter_regions)
     }
@@ -280,9 +244,26 @@ impl<'tcx> FunctionCoverage<'tcx> {
 
     /// Converts this function's coverage mappings into an intermediate form
     /// that will be used by `mapgen` when preparing for FFI.
-    fn counter_regions(&self) -> impl Iterator<Item = (Counter, &CodeRegion)> {
-        self.mappings.iter().map(|&Mapping { term, ref code_region }| {
-            let counter = Counter::from_term(term);
+    fn counter_regions(
+        &self,
+        zero_expressions: ZeroExpressions,
+    ) -> impl Iterator<Item = (Counter, &CodeRegion)> {
+        // Historically, mappings were stored directly in counter/expression
+        // statements in MIR, and MIR optimizations would sometimes remove them.
+        // That's mostly no longer true, so now we detect cases where that would
+        // have happened, and zero out the corresponding mappings here instead.
+        let counter_for_term = move |term: CovTerm| {
+            let force_to_zero = match term {
+                CovTerm::Counter(id) => !self.counters_seen.contains(id),
+                CovTerm::Expression(id) => zero_expressions.contains(id),
+                CovTerm::Zero => false,
+            };
+            if force_to_zero { Counter::ZERO } else { Counter::from_term(term) }
+        };
+
+        self.function_coverage_info.mappings.iter().map(move |mapping| {
+            let &Mapping { term, ref code_region } = mapping;
+            let counter = counter_for_term(term);
             (counter, code_region)
         })
     }

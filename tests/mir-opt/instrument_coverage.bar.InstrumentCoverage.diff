@@ -4,8 +4,10 @@
   fn bar() -> bool {
       let mut _0: bool;
   
++     coverage Counter(0) => /the/src/instrument_coverage.rs:20:1 - 22:2;
++ 
       bb0: {
-+         Coverage::Counter(0) for [/the/src/instrument_coverage.rs:20:1 - 22:2];
++         Coverage::CounterIncrement(0);
           _0 = const true;
           return;
       }

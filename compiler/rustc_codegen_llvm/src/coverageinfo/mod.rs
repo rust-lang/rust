@@ -88,13 +88,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// For used/called functions, the coverageinfo was already added to the
     /// `function_coverage_map` (keyed by function `Instance`) during codegen.
     /// But in this case, since the unused function was _not_ previously
-    /// codegenned, collect the coverage `CodeRegion`s from the MIR and add
-    /// them. Since the function is never called, all of its `CodeRegion`s can be
-    /// added as `unreachable_region`s.
+    /// codegenned, collect the function coverage info from MIR and add an
+    /// "unused" entry to the function coverage map.
     fn define_unused_fn(&self, def_id: DefId, function_coverage_info: &'tcx FunctionCoverageInfo) {
         let instance = declare_unused_fn(self, def_id);
         codegen_unused_fn_and_counter(self, instance);
-        add_unused_function_coverage(self, instance, def_id, function_coverage_info);
+        add_unused_function_coverage(self, instance, function_coverage_info);
     }
 }
 
@@ -116,10 +115,10 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             .entry(instance)
             .or_insert_with(|| FunctionCoverage::new(instance, function_coverage_info));
 
-        let Coverage { kind, code_regions } = coverage;
+        let Coverage { kind } = coverage;
         match *kind {
-            CoverageKind::Counter { id } => {
-                func_coverage.add_counter(id, code_regions);
+            CoverageKind::CounterIncrement { id } => {
+                func_coverage.mark_counter_id_seen(id);
                 // We need to explicitly drop the `RefMut` before calling into `instrprof_increment`,
                 // as that needs an exclusive borrow.
                 drop(coverage_map);
@@ -147,10 +146,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 bx.instrprof_increment(fn_name, hash, num_counters, index);
             }
             CoverageKind::Expression { id, lhs, op, rhs } => {
-                func_coverage.add_counter_expression(id, lhs, op, rhs, code_regions);
-            }
-            CoverageKind::Unreachable => {
-                func_coverage.add_unreachable_regions(code_regions);
+                func_coverage.add_counter_expression(id, lhs, op, rhs);
             }
         }
     }
@@ -213,16 +209,11 @@ fn codegen_unused_fn_and_counter<'tcx>(cx: &CodegenCx<'_, 'tcx>, instance: Insta
 fn add_unused_function_coverage<'tcx>(
     cx: &CodegenCx<'_, 'tcx>,
     instance: Instance<'tcx>,
-    def_id: DefId,
     function_coverage_info: &'tcx FunctionCoverageInfo,
 ) {
-    let tcx = cx.tcx;
-
-    let mut function_coverage = FunctionCoverage::unused(instance, function_coverage_info);
-    for &code_region in tcx.covered_code_regions(def_id) {
-        let code_region = std::slice::from_ref(code_region);
-        function_coverage.add_unreachable_regions(code_region);
-    }
+    // An unused function's mappings will automatically be rewritten to map to
+    // zero, because none of its counters/expressions are marked as seen.
+    let function_coverage = FunctionCoverage::unused(instance, function_coverage_info);
 
     if let Some(coverage_context) = cx.coverage_context() {
         coverage_context.function_coverage_map.borrow_mut().insert(instance, function_coverage);

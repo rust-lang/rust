@@ -61,11 +61,13 @@ impl Debug for CovTerm {
 
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum CoverageKind {
-    Counter {
-        /// ID of this counter within its enclosing function.
-        /// Expressions in the same function can refer to it as an operand.
-        id: CounterId,
-    },
+    /// Marks the point in MIR control flow represented by a coverage counter.
+    ///
+    /// This is eventually lowered to `llvm.instrprof.increment` in LLVM IR.
+    ///
+    /// If this statement does not survive MIR optimizations, any mappings that
+    /// refer to this counter can have those references simplified to zero.
+    CounterIncrement { id: CounterId },
     Expression {
         /// ID of this coverage-counter expression within its enclosing function.
         /// Other expressions in the same function can refer to it as an operand.
@@ -74,14 +76,13 @@ pub enum CoverageKind {
         op: Op,
         rhs: CovTerm,
     },
-    Unreachable,
 }
 
 impl Debug for CoverageKind {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use CoverageKind::*;
         match self {
-            Counter { id } => write!(fmt, "Counter({:?})", id.index()),
+            CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
             Expression { id, lhs, op, rhs } => write!(
                 fmt,
                 "Expression({:?}) = {:?} {} {:?}",
@@ -93,7 +94,6 @@ impl Debug for CoverageKind {
                 },
                 rhs,
             ),
-            Unreachable => write!(fmt, "Unreachable"),
         }
     }
 }
@@ -158,4 +158,6 @@ pub struct FunctionCoverageInfo {
     pub function_source_hash: u64,
     pub num_counters: usize,
     pub num_expressions: usize,
+
+    pub mappings: Vec<Mapping>,
 }
