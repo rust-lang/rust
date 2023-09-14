@@ -74,8 +74,12 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             };
             let x = codegen_operand(fx, x);
             let y = codegen_operand(fx, y);
-            let kind = crate::constant::mir_operand_get_const_val(fx, kind)
-                .expect("llvm.x86.sse2.cmp.* kind not const");
+            let kind = match kind {
+                Operand::Constant(const_) => {
+                    crate::constant::eval_mir_constant(fx, const_).unwrap().0
+                }
+                Operand::Copy(_) | Operand::Move(_) => unreachable!("{kind:?}"),
+            };
 
             let flt_cc = match kind
                 .try_to_bits(Size::from_bytes(1))

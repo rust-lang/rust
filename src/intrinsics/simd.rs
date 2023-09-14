@@ -168,8 +168,12 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let indexes = {
                 use rustc_middle::mir::interpret::*;
-                let idx_const = crate::constant::mir_operand_get_const_val(fx, idx)
-                    .expect("simd_shuffle idx not const");
+                let idx_const = match idx {
+                    Operand::Constant(const_) => {
+                        crate::constant::eval_mir_constant(fx, const_).unwrap().0
+                    }
+                    Operand::Copy(_) | Operand::Move(_) => unreachable!("{idx:?}"),
+                };
 
                 let idx_bytes = match idx_const {
                     ConstValue::ByRef { alloc, offset } => {
