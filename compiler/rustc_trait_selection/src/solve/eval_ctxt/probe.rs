@@ -24,13 +24,13 @@ where
             search_graph: outer_ecx.search_graph,
             nested_goals: outer_ecx.nested_goals.clone(),
             tainted: outer_ecx.tainted,
-            inspect: outer_ecx.inspect.new_goal_candidate(),
+            inspect: outer_ecx.inspect.new_probe(),
         };
         let r = nested_ecx.infcx.probe(|_| f(&mut nested_ecx));
         if !outer_ecx.inspect.is_noop() {
             let probe_kind = probe_kind(&r);
             nested_ecx.inspect.probe_kind(probe_kind);
-            outer_ecx.inspect.goal_candidate(nested_ecx.inspect);
+            outer_ecx.inspect.finish_probe(nested_ecx.inspect);
         }
         r
     }

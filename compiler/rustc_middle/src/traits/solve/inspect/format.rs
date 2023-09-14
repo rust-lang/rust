@@ -92,11 +92,11 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         evaluation_step: &GoalEvaluationStep<'_>,
     ) -> std::fmt::Result {
         writeln!(self.f, "INSTANTIATED: {:?}", evaluation_step.instantiated_goal)?;
-        self.format_candidate(&evaluation_step.evaluation)
+        self.format_probe(&evaluation_step.evaluation)
     }
 
-    pub(super) fn format_candidate(&mut self, candidate: &GoalCandidate<'_>) -> std::fmt::Result {
-        match &candidate.kind {
+    pub(super) fn format_probe(&mut self, probe: &Probe<'_>) -> std::fmt::Result {
+        match &probe.kind {
             ProbeKind::Root { result } => {
                 writeln!(self.f, "ROOT RESULT: {result:?}")
             }
@@ -118,10 +118,10 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         }?;
 
         self.nested(|this| {
-            for candidate in &candidate.candidates {
-                this.format_candidate(candidate)?;
+            for probe in &probe.nested_probes {
+                this.format_probe(probe)?;
             }
-            for nested in &candidate.added_goals_evaluations {
+            for nested in &probe.added_goals_evaluations {
                 this.format_added_goals_evaluation(nested)?;
             }
             Ok(())

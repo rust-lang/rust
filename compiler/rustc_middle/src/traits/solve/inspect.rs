@@ -52,19 +52,22 @@ pub struct GoalEvaluationStep<'tcx> {
     pub instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
 
     /// The actual evaluation of the goal, always `ProbeKind::Root`.
-    pub evaluation: GoalCandidate<'tcx>,
+    pub evaluation: Probe<'tcx>,
 }
 
+/// A self-contained computation during trait solving. This either
+/// corresponds to a `EvalCtxt::probe(_X)` call or the root evaluation
+/// of a goal.
 #[derive(Eq, PartialEq)]
-pub struct GoalCandidate<'tcx> {
+pub struct Probe<'tcx> {
     pub added_goals_evaluations: Vec<AddedGoalsEvaluation<'tcx>>,
-    pub candidates: Vec<GoalCandidate<'tcx>>,
+    pub nested_probes: Vec<Probe<'tcx>>,
     pub kind: ProbeKind<'tcx>,
 }
 
-impl Debug for GoalCandidate<'_> {
+impl Debug for Probe<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ProofTreeFormatter::new(f).format_candidate(self)
+        ProofTreeFormatter::new(f).format_probe(self)
     }
 }
 
