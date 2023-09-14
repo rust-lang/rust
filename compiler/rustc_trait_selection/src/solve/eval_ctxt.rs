@@ -85,7 +85,7 @@ pub struct EvalCtxt<'a, 'tcx> {
     // evaluation code.
     tainted: Result<(), NoSolution>,
 
-    inspect: ProofTreeBuilder<'tcx>,
+    pub(super) inspect: ProofTreeBuilder<'tcx>,
 }
 
 #[derive(Debug, Clone)]

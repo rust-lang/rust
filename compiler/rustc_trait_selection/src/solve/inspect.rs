@@ -118,6 +118,7 @@ impl<'tcx> WipProbe<'tcx> {
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum WipProbeStep<'tcx> {
+    AddGoal(Goal<'tcx, ty::Predicate<'tcx>>),
     EvaluateGoals(WipAddedGoalsEvaluation<'tcx>),
     NestedProbe(WipProbe<'tcx>),
 }
@@ -125,6 +126,7 @@ pub enum WipProbeStep<'tcx> {
 impl<'tcx> WipProbeStep<'tcx> {
     pub fn finalize(self) -> inspect::ProbeStep<'tcx> {
         match self {
+            WipProbeStep::AddGoal(goal) => inspect::ProbeStep::AddGoal(goal),
             WipProbeStep::EvaluateGoals(eval) => inspect::ProbeStep::EvaluateGoals(eval.finalize()),
             WipProbeStep::NestedProbe(probe) => inspect::ProbeStep::NestedProbe(probe.finalize()),
         }
@@ -364,6 +366,21 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
             match this {
                 DebugSolver::Probe(this) => {
                     assert_eq!(this.kind.replace(probe_kind), None)
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    pub fn add_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
+        if let Some(this) = self.as_mut() {
+            match this {
+                DebugSolver::GoalEvaluationStep(WipGoalEvaluationStep {
+                    evaluation: WipProbe { steps, .. },
+                    ..
+                })
+                | DebugSolver::Probe(WipProbe { steps, .. }) => {
+                    steps.push(WipProbeStep::AddGoal(goal))
                 }
                 _ => unreachable!(),
             }

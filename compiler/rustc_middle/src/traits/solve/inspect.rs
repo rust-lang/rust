@@ -72,6 +72,7 @@ impl Debug for Probe<'_> {
 
 #[derive(Eq, PartialEq)]
 pub enum ProbeStep<'tcx> {
+    AddGoal(Goal<'tcx, ty::Predicate<'tcx>>),
     EvaluateGoals(AddedGoalsEvaluation<'tcx>),
     NestedProbe(Probe<'tcx>),
 }
