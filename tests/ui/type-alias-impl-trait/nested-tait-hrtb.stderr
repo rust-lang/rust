@@ -17,19 +17,7 @@ LL |
 LL | fn with_lt() -> impl for<'a> Trait<'a, Assoc = WithLt<'a>> {}
    |                                                            ^^
 
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/nested-tait-hrtb.rs:10:19
-   |
-LL | type WithLt<'a> = impl Sized + 'a;
-   |                   ^^^^^^^^^^^^^^^ expected `&'a str`, got `{type error}`
-   |
-note: previous use here
-  --> $DIR/nested-tait-hrtb.rs:12:17
-   |
-LL | fn with_lt() -> impl for<'a> Trait<'a, Assoc = WithLt<'a>> {}
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0700, E0792.
 For more information about an error, try `rustc --explain E0700`.

@@ -9,7 +9,9 @@
 
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
-use crate::stable_mir::ty::{FloatTy, GenericParamDef, IntTy, Movability, RigidTy, TyKind, UintTy};
+use crate::stable_mir::ty::{
+    FloatTy, GenericParamDef, IntTy, Movability, RigidTy, Span, TyKind, UintTy,
+};
 use crate::stable_mir::{self, CompilerError, Context};
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
@@ -42,7 +44,7 @@ impl<'tcx> Context for Tables<'tcx> {
         self.tcx.def_path_str(self[def_id])
     }
 
-    fn span_of_an_item(&mut self, def_id: stable_mir::DefId) -> stable_mir::ty::Span {
+    fn span_of_an_item(&mut self, def_id: stable_mir::DefId) -> Span {
         self.tcx.def_span(self[def_id]).stable(self)
     }
 
@@ -185,6 +187,7 @@ pub struct Tables<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub def_ids: Vec<DefId>,
     pub alloc_ids: Vec<AllocId>,
+    pub spans: Vec<rustc_span::Span>,
     pub types: Vec<MaybeStable<stable_mir::ty::TyKind, Ty<'tcx>>>,
 }
 
@@ -1514,9 +1517,8 @@ impl<'tcx> Stable<'tcx> for ty::Region<'tcx> {
 impl<'tcx> Stable<'tcx> for rustc_span::Span {
     type T = stable_mir::ty::Span;
 
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        // FIXME: add a real implementation of stable spans
-        opaque(self)
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        tables.create_span(*self)
     }
 }
 

@@ -481,8 +481,32 @@ impl std::fmt::Debug for HasTypeFlagsVisitor {
 // `Ty`/`Const`/`Predicate`, but not within those types. This is because the
 // type flags at the outer layer are enough. So it's faster than it first
 // looks, particular for `Ty`/`Predicate` where it's just a field access.
+//
+// N.B. The only case where this isn't totally true is binders, which also
+// add `HAS_{RE,TY,CT}_LATE_BOUND` flag depending on the *bound variables* that
+// are present, regardless of whether those bound variables are used. This
+// is important for anonymization of binders in `TyCtxt::erase_regions`. We
+// specifically detect this case in `visit_binder`.
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasTypeFlagsVisitor {
     type BreakTy = FoundFlags;
+
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
+        &mut self,
+        t: &Binder<'tcx, T>,
+    ) -> ControlFlow<Self::BreakTy> {
+        // If we're looking for any of the HAS_*_LATE_BOUND flags, we need to
+        // additionally consider the bound vars on the binder itself, even if
+        // the contents of a the binder (e.g. a `TraitRef`) doesn't reference
+        // the bound vars.
+        if self.flags.intersects(TypeFlags::HAS_LATE_BOUND) {
+            let bound_var_flags = FlagComputation::bound_var_flags(t.bound_vars());
+            if bound_var_flags.flags.intersects(self.flags) {
+                return ControlFlow::Break(FoundFlags);
+            }
+        }
+
+        t.super_visit_with(self)
+    }
 
     #[inline]
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
