@@ -461,7 +461,15 @@ fn check_opaque_meets_bounds<'tcx>(
     }
     match origin {
         // Checked when type checking the function containing them.
-        hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {}
+        hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {
+            // HACK: this should also fall through to the hidden type check below, but the original
+            // implementation had a bug where equivalent lifetimes are not identical. This caused us
+            // to reject existing stable code that is otherwise completely fine. The real fix is to
+            // compare the hidden types via our type equivalence/relation infra instead of doing an
+            // identity check.
+            let _ = infcx.take_opaque_types();
+            return Ok(());
+        }
         // Nested opaque types occur only in associated types:
         // ` type Opaque<T> = impl Trait<&'static T, AssocTy = impl Nested>; `
         // They can only be referenced as `<Opaque<T> as Trait<&'static T>>::AssocTy`.
