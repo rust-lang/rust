@@ -131,8 +131,18 @@ function switchTheme(newThemeName, saveTheme) {
         const newHref = getVar("root-path") + newThemeName +
             getVar("resource-suffix") + ".css";
         if (!window.currentTheme) {
-            document.write(`<link rel="stylesheet" id="themeStyle" href="${newHref}">`);
-            window.currentTheme = document.getElementById("themeStyle");
+            // If we're in the middle of loading, document.write blocks
+            // rendering, but if we are done, it would blank the page.
+            if (document.readyState === "loading") {
+                document.write(`<link rel="stylesheet" id="themeStyle" href="${newHref}">`);
+                window.currentTheme = document.getElementById("themeStyle");
+            } else {
+                window.currentTheme = document.createElement("link");
+                window.currentTheme.rel = "stylesheet";
+                window.currentTheme.id = "themeStyle";
+                window.currentTheme.href = newHref;
+                document.documentElement.appendChild(window.currentTheme);
+            }
         } else if (newHref !== window.currentTheme.href) {
             window.currentTheme.href = newHref;
         }
