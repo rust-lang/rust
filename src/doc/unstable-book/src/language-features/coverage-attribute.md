@@ -1,4 +1,4 @@
-# `no_coverage`
+# `coverage_attribute`
 
 The tracking issue for this feature is: [#84605]
 
@@ -6,7 +6,7 @@ The tracking issue for this feature is: [#84605]
 
 ---
 
-The `no_coverage` attribute can be used to selectively disable coverage
+The `coverage` attribute can be used to selectively disable coverage
 instrumentation in an annotated function. This might be useful to:
 
 -   Avoid instrumentation overhead in a performance critical function
@@ -16,14 +16,14 @@ instrumentation in an annotated function. This might be useful to:
 ## Example
 
 ```rust
-#![feature(no_coverage)]
+#![feature(coverage_attribute)]
 
 // `foo()` will get coverage instrumentation (by default)
 fn foo() {
   // ...
 }
 
-#[no_coverage]
+#[coverage(off)]
 fn bar() {
   // ...
 }

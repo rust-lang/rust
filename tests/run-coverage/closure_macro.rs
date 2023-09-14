@@ -1,5 +1,5 @@
 // compile-flags: --edition=2018
-#![feature(no_coverage)]
+#![feature(coverage_attribute)]
 
 macro_rules! bail {
     ($msg:literal $(,)?) => {

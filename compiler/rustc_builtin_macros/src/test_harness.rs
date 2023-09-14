@@ -254,7 +254,7 @@ fn generate_test_harness(
     let expn_id = ext_cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::TestHarness,
-        &[sym::test, sym::rustc_attrs, sym::no_coverage],
+        &[sym::test, sym::rustc_attrs, sym::coverage_attribute],
         None,
     );
     let def_site = DUMMY_SP.with_def_site_ctxt(expn_id.to_expn_id());
@@ -335,8 +335,8 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     // #[rustc_main]
     let main_attr = ecx.attr_word(sym::rustc_main, sp);
-    // #[no_coverage]
-    let no_coverage_attr = ecx.attr_word(sym::no_coverage, sp);
+    // #[coverage(off)]
+    let coverage_attr = ecx.attr_nested_word(sym::coverage, sym::off, sp);
 
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(ThinVec::new()));
@@ -366,7 +366,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let main = P(ast::Item {
         ident: main_id,
-        attrs: thin_vec![main_attr, no_coverage_attr],
+        attrs: thin_vec![main_attr, coverage_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
         vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },
