@@ -15,9 +15,15 @@ pub enum CacheHit {
 }
 
 #[derive(Eq, PartialEq)]
+pub enum GoalEvaluationKind {
+    Root,
+    Nested { is_normalizes_to_hack: IsNormalizesToHack },
+}
+
+#[derive(Eq, PartialEq)]
 pub struct GoalEvaluation<'tcx> {
     pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    pub is_normalizes_to_hack: IsNormalizesToHack,
+    pub kind: GoalEvaluationKind,
     pub evaluation: CanonicalGoalEvaluation<'tcx>,
     pub returned_goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
@@ -25,12 +31,12 @@ pub struct GoalEvaluation<'tcx> {
 #[derive(Eq, PartialEq)]
 pub struct CanonicalGoalEvaluation<'tcx> {
     pub goal: CanonicalInput<'tcx>,
-    pub kind: GoalEvaluationKind<'tcx>,
+    pub kind: CanonicalGoalEvaluationKind<'tcx>,
     pub result: QueryResult<'tcx>,
 }
 
 #[derive(Eq, PartialEq)]
-pub enum GoalEvaluationKind<'tcx> {
+pub enum CanonicalGoalEvaluationKind<'tcx> {
     Overflow,
     CacheHit(CacheHit),
     Uncached { revisions: Vec<GoalEvaluationStep<'tcx>> },

@@ -40,9 +40,12 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
     }
 
     pub(super) fn format_goal_evaluation(&mut self, eval: &GoalEvaluation<'_>) -> std::fmt::Result {
-        let goal_text = match eval.is_normalizes_to_hack {
-            IsNormalizesToHack::Yes => "NORMALIZES-TO HACK GOAL",
-            IsNormalizesToHack::No => "GOAL",
+        let goal_text = match eval.kind {
+            GoalEvaluationKind::Root => "ROOT GOAL",
+            GoalEvaluationKind::Nested { is_normalizes_to_hack } => match is_normalizes_to_hack {
+                IsNormalizesToHack::No => "GOAL",
+                IsNormalizesToHack::Yes => "NORMALIZES-TO HACK GOAL",
+            },
         };
         writeln!(self.f, "{}: {:?}", goal_text, eval.uncanonicalized_goal)?;
         self.nested(|this| this.format_canonical_goal_evaluation(&eval.evaluation))?;
@@ -68,16 +71,16 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         writeln!(self.f, "GOAL: {:?}", eval.goal)?;
 
         match &eval.kind {
-            GoalEvaluationKind::Overflow => {
+            CanonicalGoalEvaluationKind::Overflow => {
                 writeln!(self.f, "OVERFLOW: {:?}", eval.result)
             }
-            GoalEvaluationKind::CacheHit(CacheHit::Global) => {
+            CanonicalGoalEvaluationKind::CacheHit(CacheHit::Global) => {
                 writeln!(self.f, "GLOBAL CACHE HIT: {:?}", eval.result)
             }
-            GoalEvaluationKind::CacheHit(CacheHit::Provisional) => {
+            CanonicalGoalEvaluationKind::CacheHit(CacheHit::Provisional) => {
                 writeln!(self.f, "PROVISIONAL CACHE HIT: {:?}", eval.result)
             }
-            GoalEvaluationKind::Uncached { revisions } => {
+            CanonicalGoalEvaluationKind::Uncached { revisions } => {
                 for (n, step) in revisions.iter().enumerate() {
                     writeln!(self.f, "REVISION {n}")?;
                     self.nested(|this| this.format_evaluation_step(step))?;

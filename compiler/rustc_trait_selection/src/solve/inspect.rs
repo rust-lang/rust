@@ -7,13 +7,13 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::DumpSolverProofTree;
 
 use super::eval_ctxt::UseGlobalCache;
-use super::GenerateProofTree;
+use super::{GenerateProofTree, GoalEvaluationKind};
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct WipGoalEvaluation<'tcx> {
     pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    pub kind: WipGoalEvaluationKind,
     pub evaluation: Option<WipCanonicalGoalEvaluation<'tcx>>,
-    pub is_normalizes_to_hack: IsNormalizesToHack,
     pub returned_goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
 
@@ -21,8 +21,13 @@ impl<'tcx> WipGoalEvaluation<'tcx> {
     pub fn finalize(self) -> inspect::GoalEvaluation<'tcx> {
         inspect::GoalEvaluation {
             uncanonicalized_goal: self.uncanonicalized_goal,
+            kind: match self.kind {
+                WipGoalEvaluationKind::Root => inspect::GoalEvaluationKind::Root,
+                WipGoalEvaluationKind::Nested { is_normalizes_to_hack } => {
+                    inspect::GoalEvaluationKind::Nested { is_normalizes_to_hack }
+                }
+            },
             evaluation: self.evaluation.unwrap().finalize(),
-            is_normalizes_to_hack: self.is_normalizes_to_hack,
             returned_goals: self.returned_goals,
         }
     }
@@ -30,6 +35,12 @@ impl<'tcx> WipGoalEvaluation<'tcx> {
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum WipGoalEvaluationKind {
+    Root,
+    Nested { is_normalizes_to_hack: IsNormalizesToHack },
+}
+
+#[derive(Eq, PartialEq, Debug)]
+pub enum WipCanonicalGoalEvaluationKind {
     Overflow,
     CacheHit(CacheHit),
 }
@@ -37,7 +48,7 @@ pub enum WipGoalEvaluationKind {
 #[derive(Eq, PartialEq, Debug)]
 pub struct WipCanonicalGoalEvaluation<'tcx> {
     pub goal: CanonicalInput<'tcx>,
-    pub kind: Option<WipGoalEvaluationKind>,
+    pub kind: Option<WipCanonicalGoalEvaluationKind>,
     pub revisions: Vec<WipGoalEvaluationStep<'tcx>>,
     pub result: Option<QueryResult<'tcx>>,
 }
@@ -45,11 +56,13 @@ pub struct WipCanonicalGoalEvaluation<'tcx> {
 impl<'tcx> WipCanonicalGoalEvaluation<'tcx> {
     pub fn finalize(self) -> inspect::CanonicalGoalEvaluation<'tcx> {
         let kind = match self.kind {
-            Some(WipGoalEvaluationKind::Overflow) => inspect::GoalEvaluationKind::Overflow,
-            Some(WipGoalEvaluationKind::CacheHit(hit)) => {
-                inspect::GoalEvaluationKind::CacheHit(hit)
+            Some(WipCanonicalGoalEvaluationKind::Overflow) => {
+                inspect::CanonicalGoalEvaluationKind::Overflow
             }
-            None => inspect::GoalEvaluationKind::Uncached {
+            Some(WipCanonicalGoalEvaluationKind::CacheHit(hit)) => {
+                inspect::CanonicalGoalEvaluationKind::CacheHit(hit)
+            }
+            None => inspect::CanonicalGoalEvaluationKind::Uncached {
                 revisions: self
                     .revisions
                     .into_iter()
@@ -260,15 +273,20 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         self.state.is_none()
     }
 
-    pub fn new_goal_evaluation(
+    pub(super) fn new_goal_evaluation(
         &mut self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
-        is_normalizes_to_hack: IsNormalizesToHack,
+        kind: GoalEvaluationKind,
     ) -> ProofTreeBuilder<'tcx> {
         self.nested(|| WipGoalEvaluation {
             uncanonicalized_goal: goal,
+            kind: match kind {
+                GoalEvaluationKind::Root => WipGoalEvaluationKind::Root,
+                GoalEvaluationKind::Nested { is_normalizes_to_hack } => {
+                    WipGoalEvaluationKind::Nested { is_normalizes_to_hack }
+                }
+            },
             evaluation: None,
-            is_normalizes_to_hack,
             returned_goals: vec![],
         })
     }
@@ -297,7 +315,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn goal_evaluation_kind(&mut self, kind: WipGoalEvaluationKind) {
+    pub fn goal_evaluation_kind(&mut self, kind: WipCanonicalGoalEvaluationKind) {
         if let Some(this) = self.as_mut() {
             match this {
                 DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation) => {
