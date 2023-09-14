@@ -65,6 +65,7 @@ mod coverageinfo;
 mod debuginfo;
 mod declare;
 mod errors;
+mod gcc_util;
 mod int;
 mod intrinsic;
 mod mono_item;
@@ -195,8 +196,8 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn provide(&self, providers: &mut Providers) {
-        // FIXME(antoyo) compute list of enabled features from cli flags
-        providers.global_backend_features = |_tcx, ()| vec![];
+        providers.global_backend_features =
+            |tcx, ()| gcc_util::global_gcc_features(tcx.sess, true)
     }
 
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>, metadata: EncodedMetadata, need_metadata_module: bool) -> Box<dyn Any> {
