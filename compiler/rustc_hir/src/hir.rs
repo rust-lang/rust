@@ -19,6 +19,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::ErrorGuaranteed;
 use rustc_span::{def_id::LocalDefId, BytePos, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
@@ -1415,6 +1416,9 @@ pub struct Let<'hir> {
     pub pat: &'hir Pat<'hir>,
     pub ty: Option<&'hir Ty<'hir>>,
     pub init: &'hir Expr<'hir>,
+    /// `Some` when this let expressions is not in a syntanctically valid location.
+    /// Used to prevent building MIR in such situations.
+    pub is_recovered: Option<ErrorGuaranteed>,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]

@@ -1,23 +1,5 @@
-// Here we test that `lowering` behaves correctly wrt. `let $pats = $expr` expressions.
-//
-// We want to make sure that `let` is banned in situations other than:
-//
-// expr =
-//   | ...
-//   | "if" expr_with_let block {"else" block}?
-//   | {label ":"}? while" expr_with_let block
-//   ;
-//
-// expr_with_let =
-//   | "let" top_pats "=" expr
-//   | expr_with_let "&&" expr_with_let
-//   | "(" expr_with_let ")"
-//   | expr
-//   ;
-//
-// To that end, we check some positions which is not part of the language above.
-
-#![feature(let_chains)] // Avoid inflating `.stderr` with overzealous gates in this test.
+// Check that we don't suggest enabling a feature for code that's
+// not accepted even with that feature.
 
 #![allow(irrefutable_let_patterns)]
 
@@ -42,7 +24,7 @@ fn _if() {
     //~^ ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
 
-    if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+    if (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
     //~^ ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
@@ -65,7 +47,7 @@ fn _while() {
     //~^ ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
 
-    while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+    while (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
     //~^ ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
@@ -232,6 +214,8 @@ fn outside_if_and_while_expr() {
     //~^ ERROR expected expression, found `let` statement
     -let 0 = 0;
     //~^ ERROR expected expression, found `let` statement
+    let _ = let _ = 3;
+    //~^ ERROR expected expression, found `let` statement
 
     fn _check_try_binds_tighter() -> Result<(), ()> {
         let 0 = 0?;
@@ -331,8 +315,6 @@ fn with_parenthesis() {
     //~^ ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
     }
-    if let Some(a) = opt && (true && true) {
-    }
 
     if (let Some(a) = opt && (let Some(b) = a)) && b == 1 {
     //~^ ERROR expected expression, found `let` statement
@@ -344,17 +326,6 @@ fn with_parenthesis() {
     }
     if (let Some(a) = opt && (true)) && true {
     //~^ ERROR expected expression, found `let` statement
-    }
-
-    if (true && (true)) && let Some(a) = opt {
-    }
-    if (true) && let Some(a) = opt {
-    }
-    if true && let Some(a) = opt {
-    }
-
-    let fun = || true;
-    if let true = (true && fun()) && (true) {
     }
 
     #[cfg(FALSE)]
