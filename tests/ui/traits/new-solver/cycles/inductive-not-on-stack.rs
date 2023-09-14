@@ -39,7 +39,7 @@ fn impls_ar<T: AR>() {}
 
 fn main() {
     impls_a::<()>();
-    // FIXME(-Ztrait-solver=next): This is broken and should error.
+    //~^ ERROR overflow evaluating the requirement `(): A`
 
     impls_ar::<()>();
     //~^ ERROR overflow evaluating the requirement `(): AR`
