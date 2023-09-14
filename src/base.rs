@@ -140,6 +140,11 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
         // NOTE: Rust relies on LLVM doing wrapping on overflow.
         context.add_command_line_option("-fwrapv");
 
+        if tcx.sess.opts.cg.relocation_model == Some(rustc_target::spec::RelocModel::Static) {
+            context.add_command_line_option("-mcmodel=kernel");
+            context.add_command_line_option("-fno-pie");
+        }
+
         if tcx.sess.opts.unstable_opts.function_sections.unwrap_or(tcx.sess.target.function_sections) {
             context.add_command_line_option("-ffunction-sections");
             context.add_command_line_option("-fdata-sections");
