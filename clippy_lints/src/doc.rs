@@ -479,6 +479,10 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         Some(("fake".into(), "fake".into()))
     }
 
+    if is_doc_hidden(attrs) {
+        return None;
+    }
+
     let (fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
     let mut doc = String::new();
     for fragment in &fragments {
