@@ -1085,6 +1085,159 @@ pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
     }
 }
 
+fn pretty_print_byte_str(fmt: &mut Formatter<'_>, byte_str: &[u8]) -> fmt::Result {
+    write!(fmt, "b\"{}\"", byte_str.escape_ascii())
+}
+
+fn comma_sep<'tcx>(
+    fmt: &mut Formatter<'_>,
+    elems: Vec<(ConstValue<'tcx>, Ty<'tcx>)>,
+) -> fmt::Result {
+    let mut first = true;
+    for (ct, ty) in elems {
+        if !first {
+            fmt.write_str(", ")?;
+        }
+        pretty_print_const_value(ct, ty, fmt)?;
+        first = false;
+    }
+    Ok(())
+}
+
+pub fn pretty_print_const_value<'tcx>(
+    ct: ConstValue<'tcx>,
+    ty: Ty<'tcx>,
+    fmt: &mut Formatter<'_>,
+) -> fmt::Result {
+    use crate::ty::print::PrettyPrinter;
+
+    ty::tls::with(|tcx| {
+        let ct = tcx.lift(ct).unwrap();
+        let ty = tcx.lift(ty).unwrap();
+
+        if tcx.sess.verbose() {
+            fmt.write_str(&format!("ConstValue({ct:?}: {ty})"))?;
+            return Ok(());
+        }
+
+        let u8_type = tcx.types.u8;
+        match (ct, ty.kind()) {
+            // Byte/string slices, printed as (byte) string literals.
+            (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Str) => {
+                if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
+                    fmt.write_str(&format!("{:?}", String::from_utf8_lossy(data)))?;
+                    return Ok(());
+                }
+            }
+            (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Slice(t) if *t == u8_type) => {
+                if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
+                    pretty_print_byte_str(fmt, data)?;
+                    return Ok(());
+                }
+            }
+            (ConstValue::Indirect { alloc_id, offset }, ty::Array(t, n)) if *t == u8_type => {
+                let n = n.try_to_target_usize(tcx).unwrap();
+                let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
+                // cast is ok because we already checked for pointer size (32 or 64 bit) above
+                let range = AllocRange { start: offset, size: Size::from_bytes(n) };
+                let byte_str = alloc.inner().get_bytes_strip_provenance(&tcx, range).unwrap();
+                fmt.write_str("*")?;
+                pretty_print_byte_str(fmt, byte_str)?;
+                return Ok(());
+            }
+            // Aggregates, printed as array/tuple/struct/variant construction syntax.
+            //
+            // NB: the `has_non_region_param` check ensures that we can use
+            // the `destructure_const` query with an empty `ty::ParamEnv` without
+            // introducing ICEs (e.g. via `layout_of`) from missing bounds.
+            // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
+            // to be able to destructure the tuple into `(0u8, *mut T)`
+            (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_non_region_param() => {
+                let ct = tcx.lift(ct).unwrap();
+                let ty = tcx.lift(ty).unwrap();
+                if let Some(contents) = tcx.try_destructure_mir_constant_for_diagnostics((ct, ty)) {
+                    let fields: Vec<(ConstValue<'_>, Ty<'_>)> = contents.fields.to_vec();
+                    match *ty.kind() {
+                        ty::Array(..) => {
+                            fmt.write_str("[")?;
+                            comma_sep(fmt, fields)?;
+                            fmt.write_str("]")?;
+                        }
+                        ty::Tuple(..) => {
+                            fmt.write_str("(")?;
+                            comma_sep(fmt, fields)?;
+                            if contents.fields.len() == 1 {
+                                fmt.write_str(",")?;
+                            }
+                            fmt.write_str(")")?;
+                        }
+                        ty::Adt(def, _) if def.variants().is_empty() => {
+                            fmt.write_str(&format!("{{unreachable(): {ty}}}"))?;
+                        }
+                        ty::Adt(def, args) => {
+                            let variant_idx = contents
+                                .variant
+                                .expect("destructed mir constant of adt without variant idx");
+                            let variant_def = &def.variant(variant_idx);
+                            let args = tcx.lift(args).unwrap();
+                            let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
+                            cx.print_alloc_ids = true;
+                            let cx = cx.print_value_path(variant_def.def_id, args)?;
+                            fmt.write_str(&cx.into_buffer())?;
+
+                            match variant_def.ctor_kind() {
+                                Some(CtorKind::Const) => {}
+                                Some(CtorKind::Fn) => {
+                                    fmt.write_str("(")?;
+                                    comma_sep(fmt, fields)?;
+                                    fmt.write_str(")")?;
+                                }
+                                None => {
+                                    fmt.write_str(" {{ ")?;
+                                    let mut first = true;
+                                    for (field_def, (ct, ty)) in
+                                        iter::zip(&variant_def.fields, fields)
+                                    {
+                                        if !first {
+                                            fmt.write_str(", ")?;
+                                        }
+                                        write!(fmt, "{}: ", field_def.name)?;
+                                        pretty_print_const_value(ct, ty, fmt)?;
+                                        first = false;
+                                    }
+                                    fmt.write_str(" }}")?;
+                                }
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                    return Ok(());
+                }
+            }
+            (ConstValue::Scalar(scalar), _) => {
+                let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
+                cx.print_alloc_ids = true;
+                let ty = tcx.lift(ty).unwrap();
+                cx = cx.pretty_print_const_scalar(scalar, ty)?;
+                fmt.write_str(&cx.into_buffer())?;
+                return Ok(());
+            }
+            (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
+                let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
+                cx.print_alloc_ids = true;
+                let cx = cx.print_value_path(*d, s)?;
+                fmt.write_str(&cx.into_buffer())?;
+                return Ok(());
+            }
+            // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
+            // their fields instead of just dumping the memory.
+            _ => {}
+        }
+        // Fall back to debug pretty printing for invalid constants.
+        write!(fmt, "{ct:?}: {ty}")
+    })
+}
+
 /// Calc converted u64 decimal into hex and return it's length in chars
 ///
 /// ```ignore (cannot-test-private-function)

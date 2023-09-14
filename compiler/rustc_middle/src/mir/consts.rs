@@ -7,8 +7,8 @@ use rustc_span::Span;
 use rustc_target::abi::Size;
 
 use crate::mir::interpret::{ConstValue, ErrorHandled, GlobalAlloc, Scalar};
-use crate::mir::{interpret, pretty_print_const, pretty_print_const_value, Promoted};
-use crate::ty::{self, List, Ty, TyCtxt};
+use crate::mir::{interpret, pretty_print_const_value, Promoted};
+use crate::ty::{self, print::pretty_print_const, List, Ty, TyCtxt};
 use crate::ty::{GenericArgs, GenericArgsRef};
 use crate::ty::{ScalarInt, UserTypeAnnotationIndex};
 
