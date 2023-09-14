@@ -130,5 +130,41 @@ LL -             Some(ref x) if matches!(x, &3) => {},
 LL +             Some(3) => {},
    |
 
-error: aborting due to 11 previous errors
+error: redundant guard
+  --> $DIR/redundant_guards.rs:180:32
+   |
+LL |             B { ref c, .. } if c == &1 => {},
+   |                                ^^^^^^^
+   |
+help: try
+   |
+LL -             B { ref c, .. } if c == &1 => {},
+LL +             B { c: 1, .. } => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:181:32
+   |
+LL |             B { ref c, .. } if let &1 = c => {},
+   |                                ^^^^^^^^^^
+   |
+help: try
+   |
+LL -             B { ref c, .. } if let &1 = c => {},
+LL +             B { c: 1, .. } => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:182:32
+   |
+LL |             B { ref c, .. } if matches!(c, &1) => {},
+   |                                ^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -             B { ref c, .. } if matches!(c, &1) => {},
+LL +             B { c: 1, .. } => {},
+   |
+
+error: aborting due to 14 previous errors
 

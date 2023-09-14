@@ -2,11 +2,12 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::path_to_local;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::visitors::{for_each_expr, is_local_used};
-use rustc_ast::LitKind;
+use rustc_ast::{BorrowKind, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, Guard, MatchSource, Node, Pat, PatKind};
 use rustc_lint::LateContext;
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use std::ops::ControlFlow;
 
@@ -34,45 +35,37 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
                 ],
                 MatchSource::Normal,
             ) = if_expr.kind
-            && let Some((binding_span, is_field, is_byref)) = get_pat_binding(cx, scrutinee, outer_arm)
+            && let Some(binding) = get_pat_binding(cx, scrutinee, outer_arm)
         {
-            if is_field && is_byref { return; }
-            let pat_span = if let PatKind::Ref(pat, _) = arm.pat.kind {
-                if is_byref { pat.span } else { continue; }
-            } else {
-                if is_byref { continue; }
-                arm.pat.span
+            let pat_span = match (arm.pat.kind, binding.byref_ident) {
+                (PatKind::Ref(pat, _), Some(_)) => pat.span,
+                (PatKind::Ref(..), None) | (_, Some(_)) => continue,
+                _ => arm.pat.span,
             };
-
             emit_redundant_guards(
                 cx,
                 outer_arm,
                 if_expr.span,
                 pat_span,
-                binding_span,
-                is_field,
+                &binding,
                 arm.guard,
             );
         }
         // `Some(x) if let Some(2) = x`
         else if let Guard::IfLet(let_expr) = guard
-            && let Some((binding_span, is_field, is_byref)) = get_pat_binding(cx, let_expr.init, outer_arm)
+            && let Some(binding) = get_pat_binding(cx, let_expr.init, outer_arm)
         {
-            if is_field && is_byref { return; }
-            let pat_span = if let PatKind::Ref(pat, _) = let_expr.pat.kind {
-                if is_byref && !is_field { pat.span } else { continue; }
-            } else {
-                if is_byref { continue; }
-                let_expr.pat.span
+            let pat_span = match (let_expr.pat.kind, binding.byref_ident) {
+                (PatKind::Ref(pat, _), Some(_)) => pat.span,
+                (PatKind::Ref(..), None) | (_, Some(_)) => continue,
+                _ => let_expr.pat.span,
             };
-
             emit_redundant_guards(
                 cx,
                 outer_arm,
                 let_expr.span,
                 pat_span,
-                binding_span,
-                is_field,
+                &binding,
                 None,
             );
         }
@@ -88,61 +81,63 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
             //
             // This isn't necessary in the other two checks, as they must be a pattern already.
             && cx.typeck_results().expr_ty(local) == cx.typeck_results().expr_ty(pat)
-            && let Some((binding_span, is_field, is_byref)) = get_pat_binding(cx, local, outer_arm)
+            && let Some(binding) = get_pat_binding(cx, local, outer_arm)
         {
-            if is_field && is_byref { return; }
-            let pat_span = if let ExprKind::AddrOf(rustc_ast::BorrowKind::Ref, _, expr) = pat.kind {
-                if is_byref { expr.span } else { continue; }
-            } else {
-                if is_byref { continue; }
-                pat.span
+            let pat_span = match (pat.kind, binding.byref_ident) {
+                (ExprKind::AddrOf(BorrowKind::Ref, _, expr), Some(_)) => expr.span,
+                (ExprKind::AddrOf(..), None) | (_, Some(_)) => continue,
+                _ => pat.span,
             };
-
             emit_redundant_guards(
                 cx,
                 outer_arm,
                 if_expr.span,
                 pat_span,
-                binding_span,
-                is_field,
+                &binding,
                 None,
             );
         }
     }
 }
 
+struct PatBindingInfo {
+    span: Span,
+    byref_ident: Option<Ident>,
+    is_field: bool,
+}
+
 fn get_pat_binding<'tcx>(
     cx: &LateContext<'tcx>,
     guard_expr: &Expr<'_>,
     outer_arm: &Arm<'tcx>,
-) -> Option<(Span, bool, bool)> {
+) -> Option<PatBindingInfo> {
     if let Some(local) = path_to_local(guard_expr) && !is_local_used(cx, outer_arm.body, local) {
         let mut span = None;
+        let mut byref_ident = None;
         let mut multiple_bindings = false;
-        let mut is_byref = false;
         // `each_binding` gives the `HirId` of the `Pat` itself, not the binding
         outer_arm.pat.walk(|pat| {
-            if let PatKind::Binding(bind_annot, hir_id, _, _) = pat.kind
+            if let PatKind::Binding(bind_annot, hir_id, ident, _) = pat.kind
                 && hir_id == local
             {
-                is_byref = matches!(bind_annot.0, rustc_ast::ByRef::Yes);
+                if matches!(bind_annot.0, rustc_ast::ByRef::Yes) {
+                    let _ = byref_ident.insert(ident);
+                }
+                // the second call of `replce()` returns a `Some(span)`, meaning a multi-binding pattern
                 if span.replace(pat.span).is_some() {
                     multiple_bindings = true;
                     return false;
                 }
             }
-
             true
         });
 
         // Ignore bindings from or patterns, like `First(x) | Second(x, _) | Third(x, _, _)`
         if !multiple_bindings {
-            return span.map(|span| {
-                (
-                    span,
-                    matches!(cx.tcx.hir().get_parent(local), Node::PatField(_)),
-                    is_byref,
-                )
+            return span.map(|span| PatBindingInfo {
+                span,
+                byref_ident,
+                is_field: matches!(cx.tcx.hir().get_parent(local), Node::PatField(_)),
             });
         }
     }
@@ -155,8 +150,7 @@ fn emit_redundant_guards<'tcx>(
     outer_arm: &Arm<'tcx>,
     guard_span: Span,
     pat_span: Span,
-    binding_span: Span,
-    field_binding: bool,
+    pat_binding: &PatBindingInfo,
     inner_guard: Option<Guard<'_>>,
 ) {
     let mut app = Applicability::MaybeIncorrect;
@@ -168,14 +162,21 @@ fn emit_redundant_guards<'tcx>(
         "redundant guard",
         |diag| {
             let binding_replacement = snippet_with_applicability(cx, pat_span, "<binding_repl>", &mut app);
+            let suggestion_span = match *pat_binding {
+                PatBindingInfo {
+                    span,
+                    byref_ident: Some(ident),
+                    is_field: true,
+                } => (span, format!("{ident}: {binding_replacement}")),
+                PatBindingInfo {
+                    span, is_field: true, ..
+                } => (span.shrink_to_hi(), format!(": {binding_replacement}")),
+                PatBindingInfo { span, .. } => (span, binding_replacement.into_owned()),
+            };
             diag.multipart_suggestion_verbose(
                 "try",
                 vec![
-                    if field_binding {
-                        (binding_span.shrink_to_hi(), format!(": {binding_replacement}"))
-                    } else {
-                        (binding_span, binding_replacement.into_owned())
-                    },
+                    suggestion_span,
                     (
                         guard_span.source_callsite().with_lo(outer_arm.pat.span.hi()),
                         inner_guard.map_or_else(String::new, |guard| {

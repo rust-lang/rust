@@ -177,9 +177,9 @@ mod issue11465 {
         };
         match struct_b {
             B { ref b, .. } if b == "bar" => {},
-            B { ref c, .. } if c == &1 => {},
-            B { ref c, .. } if let &1 = c => {},
-            B { ref c, .. } if matches!(c, &1) => {},
+            B { c: 1, .. } => {},
+            B { c: 1, .. } => {},
+            B { c: 1, .. } => {},
             _ => {},
         }
     }
