@@ -29,6 +29,8 @@ use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;
 
+use cranelift_codegen::isa::TargetIsa;
+use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -38,9 +40,6 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
 use rustc_span::Symbol;
-
-use cranelift_codegen::isa::TargetIsa;
-use cranelift_codegen::settings::{self, Configurable};
 
 pub use crate::config::*;
 use crate::prelude::*;
@@ -76,22 +75,6 @@ mod value_and_place;
 mod vtable;
 
 mod prelude {
-    pub(crate) use rustc_span::{FileNameDisplayPreference, Span};
-
-    pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-    pub(crate) use rustc_middle::bug;
-    pub(crate) use rustc_middle::mir::{self, *};
-    pub(crate) use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout};
-    pub(crate) use rustc_middle::ty::{
-        self, FloatTy, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut,
-        TypeFoldable, TypeVisitableExt, UintTy,
-    };
-    pub(crate) use rustc_target::abi::{Abi, FieldIdx, Scalar, Size, VariantIdx, FIRST_VARIANT};
-
-    pub(crate) use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-
-    pub(crate) use rustc_index::Idx;
-
     pub(crate) use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
     pub(crate) use cranelift_codegen::ir::function::Function;
     pub(crate) use cranelift_codegen::ir::types;
@@ -103,6 +86,18 @@ mod prelude {
     pub(crate) use cranelift_codegen::Context;
     pub(crate) use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
     pub(crate) use cranelift_module::{self, DataDescription, FuncId, Linkage, Module};
+    pub(crate) use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+    pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+    pub(crate) use rustc_index::Idx;
+    pub(crate) use rustc_middle::bug;
+    pub(crate) use rustc_middle::mir::{self, *};
+    pub(crate) use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout};
+    pub(crate) use rustc_middle::ty::{
+        self, FloatTy, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut,
+        TypeFoldable, TypeVisitableExt, UintTy,
+    };
+    pub(crate) use rustc_span::{FileNameDisplayPreference, Span};
+    pub(crate) use rustc_target::abi::{Abi, FieldIdx, Scalar, Size, VariantIdx, FIRST_VARIANT};
 
     pub(crate) use crate::abi::*;
     pub(crate) use crate::base::{codegen_operand, codegen_place};

@@ -1,9 +1,9 @@
 //! Emulate x86 LLVM intrinsics
 
+use rustc_middle::ty::GenericArgsRef;
+
 use crate::intrinsics::*;
 use crate::prelude::*;
-
-use rustc_middle::ty::GenericArgsRef;
 
 pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
