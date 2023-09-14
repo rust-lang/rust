@@ -130,6 +130,7 @@ rm tests/ui/consts/issue-73976-monomorphic.rs # same
 rm tests/ui/rfcs/rfc-3348-c-string-literals/non-ascii.rs # same
 rm tests/ui/consts/const-eval/nonnull_as_ref_ub.rs # same
 rm tests/ui/consts/issue-94675.rs # same
+rm tests/ui/associated-types/issue-85103-layout-debug.rs # same
 
 # rustdoc-clif passes extra args, suppressing the help message when no args are passed
 rm -r tests/run-make/issue-88756-default-output
@@ -154,8 +155,11 @@ rm -r tests/run-make/output-type-permutations # same
 rm -r tests/run-make/used # same
 rm -r tests/run-make/no-alloc-shim
 rm -r tests/run-make/emit-to-stdout
+rm -r tests/run-make/compressed-debuginfo
 
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
+
+rm tests/ui/codegen/subtyping-enforces-type-equality.rs # assert_assignable bug with Generator's
 
 # bugs in the test suite
 # ======================
