@@ -2741,20 +2741,14 @@ forward_display_to_print! {
 
     // HACK(eddyb) these are exhaustive instead of generic,
     // because `for<'tcx>` isn't possible yet.
-    ty::PolyExistentialPredicate<'tcx>,
     ty::PolyExistentialProjection<'tcx>,
     ty::PolyExistentialTraitRef<'tcx>,
     ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
-    ty::Binder<'tcx, TraitRefPrintOnlyTraitName<'tcx>>,
     ty::Binder<'tcx, ty::FnSig<'tcx>>,
     ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
     ty::Binder<'tcx, TraitPredPrintModifiersAndPath<'tcx>>,
-    ty::Binder<'tcx, ty::SubtypePredicate<'tcx>>,
     ty::Binder<'tcx, ty::ProjectionPredicate<'tcx>>,
-    ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>,
-    ty::Binder<'tcx, ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>>,
-
     ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>,
     ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
 }
