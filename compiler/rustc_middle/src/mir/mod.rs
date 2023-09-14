@@ -2373,23 +2373,19 @@ impl<'tcx> ConstantKind<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         span: Option<Span>,
     ) -> Result<interpret::ConstValue<'tcx>, ErrorHandled> {
-        let (uneval, param_env) = match self {
+        match self {
             ConstantKind::Ty(c) => {
-                if let ty::ConstKind::Unevaluated(uneval) = c.kind() {
-                    // Avoid the round-trip via valtree, evaluate directly to ConstValue.
-                    let (param_env, uneval) = uneval.prepare_for_eval(tcx, param_env);
-                    (uneval.expand(), param_env)
-                } else {
-                    // It's already a valtree, or an error.
-                    let val = c.eval(tcx, param_env, span)?;
-                    return Ok(tcx.valtree_to_const_val((self.ty(), val)));
-                }
+                // We want to consistently have a "clean" value for type system constants (i.e., no
+                // data hidden in the padding), so we always go through a valtree here.
+                let val = c.eval(tcx, param_env, span)?;
+                Ok(tcx.valtree_to_const_val((self.ty(), val)))
             }
-            ConstantKind::Unevaluated(uneval, _) => (uneval, param_env),
-            ConstantKind::Val(val, _) => return Ok(val),
-        };
-        // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
-        tcx.const_eval_resolve(param_env, uneval, span)
+            ConstantKind::Unevaluated(uneval, _) => {
+                // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
+                tcx.const_eval_resolve(param_env, uneval, span)
+            }
+            ConstantKind::Val(val, _) => Ok(val),
+        }
     }
 
     /// Normalizes the constant to a value or an error if possible.
@@ -2605,10 +2601,10 @@ impl<'tcx> ConstantKind<'tcx> {
     pub fn from_ty_const(c: ty::Const<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         match c.kind() {
             ty::ConstKind::Value(valtree) => {
+                // Make sure that if `c` is normalized, then the return value is normalized.
                 let const_val = tcx.valtree_to_const_val((c.ty(), valtree));
                 Self::Val(const_val, c.ty())
             }
-            ty::ConstKind::Unevaluated(uv) => Self::Unevaluated(uv.expand(), c.ty()),
             _ => Self::Ty(c),
         }
     }
