@@ -4,7 +4,7 @@ error[E0557]: feature has been removed
 LL | #![feature(no_coverage)]
    |            ^^^^^^^^^^^ feature has been removed
    |
-   = note: renamed to `coverage`
+   = note: renamed to `coverage_attribute`
 
 error[E0658]: the `#[coverage]` attribute is an experimental feature
   --> $DIR/feature-gate-coverage-attribute.rs:10:1
