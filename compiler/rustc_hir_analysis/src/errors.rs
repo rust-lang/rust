@@ -943,3 +943,75 @@ pub struct AssocBoundOnConst {
     pub span: Span,
     pub descr: &'static str,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_ty_outside, code = "E0390")]
+#[help]
+pub struct InherentTyOutside {
+    #[primary_span]
+    #[help(hir_analysis_span_help)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_ty_outside_relevant, code = "E0390")]
+#[help]
+pub struct InherentTyOutsideRelevant {
+    #[primary_span]
+    pub span: Span,
+    #[help(hir_analysis_span_help)]
+    pub help_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_ty_outside_new, code = "E0116")]
+#[note]
+pub struct InherentTyOutsideNew {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_ty_outside_primitive, code = "E0390")]
+#[help]
+pub struct InherentTyOutsidePrimitive {
+    #[primary_span]
+    pub span: Span,
+    #[help(hir_analysis_span_help)]
+    pub help_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_primitive_ty, code = "E0390")]
+#[help]
+pub struct InherentPrimitiveTy<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub note: Option<InherentPrimitiveTyNote<'a>>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_analysis_inherent_primitive_ty_note)]
+pub struct InherentPrimitiveTyNote<'a> {
+    pub subty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_dyn, code = "E0785")]
+#[note]
+pub struct InherentDyn {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_nominal, code = "E0118")]
+#[note]
+pub struct InherentNominal {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
