@@ -22,11 +22,6 @@ impl rustc_errors::IntoDiagnosticArg for UnevaluatedConst<'_> {
 }
 
 impl<'tcx> UnevaluatedConst<'tcx> {
-    #[inline]
-    pub fn expand(self) -> mir::UnevaluatedConst<'tcx> {
-        mir::UnevaluatedConst { def: self.def, args: self.args, promoted: None }
-    }
-
     /// FIXME(RalfJung): I cannot explain what this does or why it makes sense, but not doing this
     /// hurts performance.
     #[inline]

@@ -2297,7 +2297,11 @@ pub struct Constant<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
 #[derive(Lift, TypeFoldable, TypeVisitable)]
 pub enum ConstantKind<'tcx> {
-    /// This constant came from the type system
+    /// This constant came from the type system.
+    ///
+    /// Any way of turning `ty::Const` into `ConstValue` should go through `valtree_to_const_val`;
+    /// this ensures that we consistently produce "clean" values without data in the padding or
+    /// anything like that.
     Ty(ty::Const<'tcx>),
 
     /// An unevaluated mir constant which is not part of the type system.
