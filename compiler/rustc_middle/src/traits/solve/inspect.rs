@@ -60,8 +60,7 @@ pub struct GoalEvaluationStep<'tcx> {
 /// of a goal.
 #[derive(Eq, PartialEq)]
 pub struct Probe<'tcx> {
-    pub added_goals_evaluations: Vec<AddedGoalsEvaluation<'tcx>>,
-    pub nested_probes: Vec<Probe<'tcx>>,
+    pub steps: Vec<ProbeStep<'tcx>>,
     pub kind: ProbeKind<'tcx>,
 }
 
@@ -69,6 +68,12 @@ impl Debug for Probe<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         ProofTreeFormatter::new(f).format_probe(self)
     }
+}
+
+#[derive(Eq, PartialEq)]
+pub enum ProbeStep<'tcx> {
+    EvaluateGoals(AddedGoalsEvaluation<'tcx>),
+    NestedProbe(Probe<'tcx>),
 }
 
 #[derive(Debug, PartialEq, Eq)]

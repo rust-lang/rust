@@ -118,11 +118,11 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         }?;
 
         self.nested(|this| {
-            for probe in &probe.nested_probes {
-                this.format_probe(probe)?;
-            }
-            for nested in &probe.added_goals_evaluations {
-                this.format_added_goals_evaluation(nested)?;
+            for step in &probe.steps {
+                match step {
+                    ProbeStep::EvaluateGoals(eval) => this.format_added_goals_evaluation(eval)?,
+                    ProbeStep::NestedProbe(probe) => this.format_probe(probe)?,
+                }
             }
             Ok(())
         })
