@@ -8,7 +8,7 @@ fn without_lt() -> impl for<'a> Trait<'a, Assoc = WithoutLt> {}
 //~^ ERROR captures lifetime that does not appear in bounds
 
 type WithLt<'a> = impl Sized + 'a;
-//~^ ERROR concrete type differs from previous defining opaque type use
+
 fn with_lt() -> impl for<'a> Trait<'a, Assoc = WithLt<'a>> {}
 //~^ ERROR expected generic lifetime parameter, found `'a`
 
