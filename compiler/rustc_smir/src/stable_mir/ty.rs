@@ -40,9 +40,10 @@ pub struct Span(pub(crate) usize);
 
 impl Debug for Span {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let mut span = None;
-        with(|context| context.rustc_tables(&mut |tables| span = Some(tables.spans[self.0])));
-        f.write_fmt(format_args!("{:?}", &span.unwrap()))
+        f.debug_struct("Span")
+            .field("id", &self.0)
+            .field("repr", &with(|cx| cx.print_span(*self)))
+            .finish()
     }
 }
 

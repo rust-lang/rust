@@ -15,10 +15,11 @@ use std::cell::Cell;
 use std::fmt;
 use std::fmt::Debug;
 
+use crate::rustc_internal::Opaque;
+
 use self::ty::{
     GenericPredicates, Generics, ImplDef, ImplTrait, Span, TraitDecl, TraitDef, Ty, TyKind,
 };
-use crate::rustc_smir::Tables;
 
 pub mod fold;
 pub mod mir;
@@ -78,6 +79,8 @@ pub struct Crate {
     pub name: Symbol,
     pub is_local: bool,
 }
+
+pub type DefKind = Opaque;
 
 /// Holds information about an item in the crate.
 /// For now, it only stores the item DefId. Use functions inside `rustc_internal` module to
@@ -161,6 +164,7 @@ pub trait Context {
     /// Prints the name of given `DefId`
     fn name_of_def_id(&self, def_id: DefId) -> String;
 
+    fn print_span(&self, span: Span) -> String;
     /// `Span` of an item
     fn span_of_an_item(&mut self, def_id: DefId) -> Span;
 
@@ -169,10 +173,6 @@ pub trait Context {
 
     /// Create a new `Ty` from scratch without information from rustc.
     fn mk_ty(&mut self, kind: TyKind) -> Ty;
-
-    /// HACK: Until we have fully stable consumers, we need an escape hatch
-    /// to get `DefId`s out of `CrateItem`s.
-    fn rustc_tables(&mut self, f: &mut dyn FnMut(&mut Tables<'_>));
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt

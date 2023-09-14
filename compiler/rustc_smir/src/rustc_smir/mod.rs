@@ -44,6 +44,11 @@ impl<'tcx> Context for Tables<'tcx> {
         self.tcx.def_path_str(self[def_id])
     }
 
+    fn print_span(&self, span: stable_mir::ty::Span) -> String {
+        self.tcx.sess.source_map().span_to_diagnostic_string(self[span])
+    }
+
+
     fn span_of_an_item(&mut self, def_id: stable_mir::DefId) -> Span {
         self.tcx.def_span(self[def_id]).stable(self)
     }
@@ -102,10 +107,6 @@ impl<'tcx> Context for Tables<'tcx> {
                 .collect(),
             locals: mir.local_decls.iter().map(|decl| self.intern_ty(decl.ty)).collect(),
         }
-    }
-
-    fn rustc_tables(&mut self, f: &mut dyn FnMut(&mut Tables<'_>)) {
-        f(self)
     }
 
     fn ty_kind(&mut self, ty: crate::stable_mir::ty::Ty) -> TyKind {

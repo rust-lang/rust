@@ -25,6 +25,15 @@ impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
     }
 }
 
+impl<'tcx> Index<stable_mir::ty::Span> for Tables<'tcx> {
+    type Output = Span;
+
+    #[inline(always)]
+    fn index(&self, index: stable_mir::ty::Span) -> &Self::Output {
+        &self.spans[index.0]
+    }
+}
+
 impl<'tcx> Tables<'tcx> {
     pub fn crate_item(&mut self, did: DefId) -> stable_mir::CrateItem {
         stable_mir::CrateItem(self.create_def_id(did))
