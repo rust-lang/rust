@@ -3,7 +3,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
+    read_target_uint, AllocId, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
 };
 
 use cranelift_module::*;
@@ -116,7 +116,7 @@ pub(crate) fn codegen_const_value<'tcx>(
     }
 
     match const_val {
-        ConstValue::ZeroSized => unreachable!(), // we already handles ZST above
+        ConstValue::ZeroSized => unreachable!(), // we already handled ZST above
         ConstValue::Scalar(x) => match x {
             Scalar::Int(int) => {
                 if fx.clif_type(layout.ty).is_some() {
@@ -200,13 +200,14 @@ pub(crate) fn codegen_const_value<'tcx>(
                 CValue::by_val(val, layout)
             }
         },
-        ConstValue::ByRef { alloc, offset } => CValue::by_ref(
-            pointer_for_allocation(fx, alloc)
+        ConstValue::Indirect { alloc_id, offset } => CValue::by_ref(
+            pointer_for_allocation(fx, alloc_id)
                 .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
             layout,
         ),
         ConstValue::Slice { data, start, end } => {
-            let ptr = pointer_for_allocation(fx, data)
+            let alloc_id = fx.tcx.reserve_and_set_memory_alloc(data);
+            let ptr = pointer_for_allocation(fx, alloc_id)
                 .offset_i64(fx, i64::try_from(start).unwrap())
                 .get_addr(fx);
             let len = fx
@@ -220,9 +221,9 @@ pub(crate) fn codegen_const_value<'tcx>(
 
 fn pointer_for_allocation<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    alloc: ConstAllocation<'tcx>,
+    alloc_id: AllocId,
 ) -> crate::pointer::Pointer {
-    let alloc_id = fx.tcx.create_memory_alloc(alloc);
+    let alloc = fx.tcx.global_alloc(alloc_id).unwrap_memory();
     let data_id = data_id_for_alloc_id(
         &mut fx.constants_cx,
         &mut *fx.module,
@@ -353,6 +354,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                         unreachable!()
                     }
                 };
+                // FIXME: should we have a cache so we don't do this multiple times for the same `ConstAllocation`?
                 let data_id = *cx.anon_allocs.entry(alloc_id).or_insert_with(|| {
                     module.declare_anonymous_data(alloc.inner().mutability.is_mut(), false).unwrap()
                 });

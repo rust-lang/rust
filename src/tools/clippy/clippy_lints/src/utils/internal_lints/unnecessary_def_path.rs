@@ -232,7 +232,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
                 cx.tcx.type_of(def_id).instantiate_identity(),
             ),
             Res::Def(DefKind::Const, def_id) => match cx.tcx.const_eval_poly(def_id).ok()? {
-                ConstValue::ByRef { alloc, offset } if offset.bytes() == 0 => {
+                ConstValue::Indirect { alloc, offset } if offset.bytes() == 0 => {
                     read_mir_alloc_def_path(cx, alloc.inner(), cx.tcx.type_of(def_id).instantiate_identity())
                 },
                 _ => None,

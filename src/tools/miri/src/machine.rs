@@ -711,7 +711,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 let layout = this.machine.layouts.const_raw_ptr;
                 let dlsym = Dlsym::from_str("signal".as_bytes(), &this.tcx.sess.target.os)?
                     .expect("`signal` must be an actual dlsym on android");
-                let ptr = this.create_fn_alloc_ptr(FnVal::Other(dlsym));
+                let ptr = this.fn_ptr(FnVal::Other(dlsym));
                 let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
                 Self::alloc_extern_static(this, "signal", val)?;
                 // A couple zero-initialized pointer-sized extern statics.

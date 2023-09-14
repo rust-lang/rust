@@ -2887,35 +2887,21 @@ fn pretty_print_const_value<'tcx>(
         let u8_type = tcx.types.u8;
         match (ct, ty.kind()) {
             // Byte/string slices, printed as (byte) string literals.
-            (ConstValue::Slice { data, start, end }, ty::Ref(_, inner, _)) => {
-                match inner.kind() {
-                    ty::Slice(t) => {
-                        if *t == u8_type {
-                            // The `inspect` here is okay since we checked the bounds, and `u8` carries
-                            // no provenance (we have an active slice reference here). We don't use
-                            // this result to affect interpreter execution.
-                            let byte_str = data
-                                .inner()
-                                .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
-                            pretty_print_byte_str(fmt, byte_str)?;
-                            return Ok(());
-                        }
-                    }
-                    ty::Str => {
-                        // The `inspect` here is okay since we checked the bounds, and `str` carries
-                        // no provenance (we have an active `str` reference here). We don't use this
-                        // result to affect interpreter execution.
-                        let slice = data
-                            .inner()
-                            .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
-                        fmt.write_str(&format!("{:?}", String::from_utf8_lossy(slice)))?;
-                        return Ok(());
-                    }
-                    _ => {}
+            (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Str) => {
+                if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
+                    fmt.write_str(&format!("{:?}", String::from_utf8_lossy(data)))?;
+                    return Ok(());
                 }
             }
-            (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
+            (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Slice(t) if *t == u8_type) => {
+                if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
+                    pretty_print_byte_str(fmt, data)?;
+                    return Ok(());
+                }
+            }
+            (ConstValue::Indirect { alloc_id, offset }, ty::Array(t, n)) if *t == u8_type => {
                 let n = n.try_to_target_usize(tcx).unwrap();
+                let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
                 let range = AllocRange { start: offset, size: Size::from_bytes(n) };
                 let byte_str = alloc.inner().get_bytes_strip_provenance(&tcx, range).unwrap();

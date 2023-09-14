@@ -950,7 +950,7 @@ impl<'tcx> Cx<'tcx> {
                 let kind = if self.tcx.is_thread_local_static(id) {
                     ExprKind::ThreadLocalRef(id)
                 } else {
-                    let alloc_id = self.tcx.create_static_alloc(id);
+                    let alloc_id = self.tcx.reserve_and_set_static_alloc(id);
                     ExprKind::StaticRef { alloc_id, ty, def_id: id }
                 };
                 ExprKind::Deref {

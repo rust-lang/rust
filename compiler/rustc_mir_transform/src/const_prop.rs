@@ -143,7 +143,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     #[inline(always)]
     fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
         // We do not check for alignment to avoid having to carry an `Align`
-        // in `ConstValue::ByRef`.
+        // in `ConstValue::Indirect`.
         CheckAlignment::No
     }
 
@@ -535,7 +535,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
         trace!("replacing {:?} with {:?}", place, value);
 
-        // FIXME> figure out what to do when read_immediate_raw fails
+        // FIXME: figure out what to do when read_immediate_raw fails
         let imm = self.ecx.read_immediate_raw(&value).ok()?;
 
         let Right(imm) = imm else { return None };
@@ -544,7 +544,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 Some(ConstantKind::from_scalar(self.tcx, scalar, value.layout.ty))
             }
             Immediate::ScalarPair(l, r) if l.try_to_int().is_ok() && r.try_to_int().is_ok() => {
-                let alloc = self
+                let alloc_id = self
                     .ecx
                     .intern_with_temp_alloc(value.layout, |ecx, dest| {
                         ecx.write_immediate(*imm, dest)
@@ -552,7 +552,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     .ok()?;
 
                 Some(ConstantKind::Val(
-                    ConstValue::ByRef { alloc, offset: Size::ZERO },
+                    ConstValue::Indirect { alloc_id, offset: Size::ZERO },
                     value.layout.ty,
                 ))
             }

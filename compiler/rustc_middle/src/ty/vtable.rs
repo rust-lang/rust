@@ -84,7 +84,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
         let scalar = match entry {
             VtblEntry::MetadataDropInPlace => {
                 let instance = ty::Instance::resolve_drop_in_place(tcx, ty);
-                let fn_alloc_id = tcx.create_fn_alloc(instance);
+                let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance);
                 let fn_ptr = Pointer::from(fn_alloc_id);
                 Scalar::from_pointer(fn_ptr, &tcx)
             }
@@ -94,7 +94,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
             VtblEntry::Method(instance) => {
                 // Prepare the fn ptr we write into the vtable.
                 let instance = instance.polymorphize(tcx);
-                let fn_alloc_id = tcx.create_fn_alloc(instance);
+                let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance);
                 let fn_ptr = Pointer::from(fn_alloc_id);
                 Scalar::from_pointer(fn_ptr, &tcx)
             }
@@ -112,5 +112,5 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     }
 
     vtable.mutability = Mutability::Not;
-    tcx.create_memory_alloc(tcx.mk_const_alloc(vtable))
+    tcx.reserve_and_set_memory_alloc(tcx.mk_const_alloc(vtable))
 }

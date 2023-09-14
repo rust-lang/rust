@@ -84,7 +84,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         )
                         .ok_or_else(|| err_inval!(TooGeneric))?;
 
-                        let fn_ptr = self.create_fn_alloc_ptr(FnVal::Instance(instance));
+                        let fn_ptr = self.fn_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }
                     _ => span_bug!(self.cur_span(), "reify fn pointer on {:?}", src.layout.ty),
@@ -116,7 +116,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             ty::ClosureKind::FnOnce,
                         )
                         .ok_or_else(|| err_inval!(TooGeneric))?;
-                        let fn_ptr = self.create_fn_alloc_ptr(FnVal::Instance(instance));
+                        let fn_ptr = self.fn_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }
                     _ => span_bug!(self.cur_span(), "closure fn pointer on {:?}", src.layout.ty),
