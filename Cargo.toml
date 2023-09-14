@@ -38,7 +38,6 @@ itertools = "0.10.1"
 
 # UI test dependencies
 clippy_utils = { path = "clippy_utils" }
-derive-new = "0.5"
 if_chain = "1.0"
 quote = "1.0"
 serde = { version = "1.0.125", features = ["derive"] }
