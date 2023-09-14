@@ -166,10 +166,9 @@ fn try_get_option_occurrence<'tcx>(
 
             let mut app = Applicability::Unspecified;
 
-            let (none_body, is_argless_call) = if let Some(call_expr) = try_get_argless_call_expr(none_body) {
-                (call_expr, true)
-            } else {
-                (none_body, false)
+            let (none_body, is_argless_call) = match none_body.kind {
+                ExprKind::Call(call_expr, []) if !none_body.span.from_expansion() => (call_expr, true),
+                _ => (none_body, false),
             };
 
             return Some(OptionOccurrence {
@@ -193,14 +192,6 @@ fn try_get_option_occurrence<'tcx>(
     }
 
     None
-}
-
-/// Gets the call expr iff it does not have any args and was not from macro expansion.
-fn try_get_argless_call_expr<'tcx>(expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    match expr.kind {
-        ExprKind::Call(call_expr, []) if !expr.span.from_expansion() => Some(call_expr),
-        _ => None,
-    }
 }
 
 fn try_get_inner_pat_and_is_result<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<(&'tcx Pat<'tcx>, bool)> {
