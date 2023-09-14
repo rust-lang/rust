@@ -749,39 +749,15 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
         let literal = self.monomorphize(constant.literal);
-        let val = match literal {
-            mir::ConstantKind::Val(val, _) => val,
-            mir::ConstantKind::Ty(ct) => match ct.kind() {
-                ty::ConstKind::Value(val) => self.tcx.valtree_to_const_val((ct.ty(), val)),
-                ty::ConstKind::Unevaluated(ct) => {
-                    debug!(?ct);
-                    let param_env = ty::ParamEnv::reveal_all();
-                    match self.tcx.const_eval_resolve(param_env, ct.expand(), None) {
-                        // The `monomorphize` call should have evaluated that constant already.
-                        Ok(val) => val,
-                        Err(ErrorHandled::Reported(_)) => return,
-                        Err(ErrorHandled::TooGeneric) => span_bug!(
-                            self.body.source_info(location).span,
-                            "collection encountered polymorphic constant: {:?}",
-                            literal
-                        ),
-                    }
-                }
-                _ => return,
-            },
-            mir::ConstantKind::Unevaluated(uv, _) => {
-                let param_env = ty::ParamEnv::reveal_all();
-                match self.tcx.const_eval_resolve(param_env, uv, None) {
-                    // The `monomorphize` call should have evaluated that constant already.
-                    Ok(val) => val,
-                    Err(ErrorHandled::Reported(_)) => return,
-                    Err(ErrorHandled::TooGeneric) => span_bug!(
-                        self.body.source_info(location).span,
-                        "collection encountered polymorphic constant: {:?}",
-                        literal
-                    ),
-                }
-            }
+        let param_env = ty::ParamEnv::reveal_all();
+        let val = match literal.eval(self.tcx, param_env, None) {
+            Ok(v) => v,
+            Err(ErrorHandled::Reported(_)) => return,
+            Err(ErrorHandled::TooGeneric) => span_bug!(
+                self.body.source_info(location).span,
+                "collection encountered polymorphic constant: {:?}",
+                literal
+            ),
         };
         collect_const_value(self.tcx, val, self.output);
         MirVisitor::visit_ty(self, literal.ty(), TyContext::Location(location));
