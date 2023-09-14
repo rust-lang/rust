@@ -441,7 +441,7 @@ impl Config {
     }
 
     pub(crate) fn download_beta_toolchain(&self) {
-        self.verbose(&format!("downloading stage0 beta artifacts"));
+        self.verbose("downloading stage0 beta artifacts");
 
         let date = &self.stage0_metadata.compiler.date;
         let version = &self.stage0_metadata.compiler.version;

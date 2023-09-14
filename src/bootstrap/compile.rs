@@ -876,10 +876,8 @@ impl Step for Rustc {
                     cargo.rustflag("-Clto=off");
                 }
             }
-        } else {
-            if builder.config.rust_lto == RustcLto::Off {
-                cargo.rustflag("-Clto=off");
-            }
+        } else if builder.config.rust_lto == RustcLto::Off {
+            cargo.rustflag("-Clto=off");
         }
 
         for krate in &*self.crates {
