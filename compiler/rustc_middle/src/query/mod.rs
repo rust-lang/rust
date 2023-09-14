@@ -731,7 +731,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query asyncness(key: DefId) -> hir::IsAsync {
+    query asyncness(key: DefId) -> ty::Asyncness {
         desc { |tcx| "checking if the function is async: `{}`", tcx.def_path_str(key) }
         separate_provide_extern
     }

@@ -302,7 +302,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     if free_region.bound_region.is_named() {
                         // A named region that is actually named.
                         Some(RegionName { name, source: RegionNameSource::NamedFreeRegion(span) })
-                    } else if let hir::IsAsync::Async = tcx.asyncness(self.mir_hir_id().owner) {
+                    } else if tcx.asyncness(self.mir_hir_id().owner).is_async() {
                         // If we spuriously thought that the region is named, we should let the
                         // system generate a true name for error messages. Currently this can
                         // happen if we have an elided name in an async fn for example: the

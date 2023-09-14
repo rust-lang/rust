@@ -2853,13 +2853,13 @@ impl ImplicitSelfKind {
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
 #[derive(HashStable_Generic)]
 pub enum IsAsync {
-    Async,
+    Async(Span),
     NotAsync,
 }
 
 impl IsAsync {
     pub fn is_async(self) -> bool {
-        self == IsAsync::Async
+        matches!(self, IsAsync::Async(_))
     }
 }
 
@@ -3296,7 +3296,7 @@ pub struct FnHeader {
 
 impl FnHeader {
     pub fn is_async(&self) -> bool {
-        matches!(&self.asyncness, IsAsync::Async)
+        matches!(&self.asyncness, IsAsync::Async(_))
     }
 
     pub fn is_const(&self) -> bool {
@@ -4091,10 +4091,10 @@ mod size_asserts {
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
-    static_assert_size!(ImplItem<'_>, 80);
-    static_assert_size!(ImplItemKind<'_>, 32);
-    static_assert_size!(Item<'_>, 80);
-    static_assert_size!(ItemKind<'_>, 48);
+    static_assert_size!(ImplItem<'_>, 88);
+    static_assert_size!(ImplItemKind<'_>, 40);
+    static_assert_size!(Item<'_>, 88);
+    static_assert_size!(ItemKind<'_>, 56);
     static_assert_size!(Local<'_>, 64);
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 72);
@@ -4105,8 +4105,8 @@ mod size_asserts {
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
-    static_assert_size!(TraitItem<'_>, 80);
-    static_assert_size!(TraitItemKind<'_>, 40);
+    static_assert_size!(TraitItem<'_>, 88);
+    static_assert_size!(TraitItemKind<'_>, 48);
     static_assert_size!(Ty<'_>, 48);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end

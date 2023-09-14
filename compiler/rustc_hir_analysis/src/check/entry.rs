@@ -112,7 +112,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 
     let main_asyncness = tcx.asyncness(main_def_id);
-    if let hir::IsAsync::Async = main_asyncness {
+    if main_asyncness.is_async() {
         let asyncness_span = main_fn_asyncness_span(tcx, main_def_id);
         tcx.sess.emit_err(errors::MainFunctionAsync { span: main_span, asyncness: asyncness_span });
         error = true;
@@ -212,7 +212,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                         });
                         error = true;
                     }
-                    if let hir::IsAsync::Async = sig.header.asyncness {
+                    if sig.header.asyncness.is_async() {
                         let span = tcx.def_span(it.owner_id);
                         tcx.sess.emit_err(errors::StartAsync { span: span });
                         error = true;

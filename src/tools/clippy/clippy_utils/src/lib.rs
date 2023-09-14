@@ -90,7 +90,7 @@ use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
     self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Destination, Expr,
-    ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, IsAsync, Item,
+    ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item,
     ItemKind, LangItem, Local, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment, PrimTy,
     QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
 };
@@ -1958,8 +1958,8 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
 /// Checks if the given function kind is an async function.
 pub fn is_async_fn(kind: FnKind<'_>) -> bool {
     match kind {
-        FnKind::ItemFn(_, _, header) => header.asyncness == IsAsync::Async,
-        FnKind::Method(_, sig) => sig.header.asyncness == IsAsync::Async,
+        FnKind::ItemFn(_, _, header) => header.asyncness .is_async(),
+        FnKind::Method(_, sig) => sig.header.asyncness.is_async(),
         FnKind::Closure => false,
     }
 }

@@ -1599,7 +1599,7 @@ impl PrintWithSpace for hir::Unsafety {
 impl PrintWithSpace for hir::IsAsync {
     fn print_with_space(&self) -> &str {
         match self {
-            hir::IsAsync::Async => "async ",
+            hir::IsAsync::Async(_) => "async ",
             hir::IsAsync::NotAsync => "",
         }
     }

@@ -146,33 +146,33 @@ hir-stats - Trait                    192 ( 2.1%)             4
 hir-stats WherePredicate           192 ( 2.1%)             3            64
 hir-stats - BoundPredicate           192 ( 2.1%)             3
 hir-stats Block                    288 ( 3.2%)             6            48
-hir-stats Pat                      360 ( 4.0%)             5            72
+hir-stats Pat                      360 ( 3.9%)             5            72
 hir-stats - Wild                      72 ( 0.8%)             1
 hir-stats - Struct                    72 ( 0.8%)             1
 hir-stats - Binding                  216 ( 2.4%)             3
 hir-stats GenericParam             400 ( 4.4%)             5            80
-hir-stats Generics                 560 ( 6.2%)            10            56
-hir-stats Ty                       720 ( 8.0%)            15            48
+hir-stats Generics                 560 ( 6.1%)            10            56
+hir-stats Ty                       720 ( 7.9%)            15            48
 hir-stats - Ptr                       48 ( 0.5%)             1
 hir-stats - Ref                       48 ( 0.5%)             1
-hir-stats - Path                     624 ( 6.9%)            13
-hir-stats Expr                     768 ( 8.5%)            12            64
+hir-stats - Path                     624 ( 6.8%)            13
+hir-stats Expr                     768 ( 8.4%)            12            64
 hir-stats - Path                      64 ( 0.7%)             1
 hir-stats - Struct                    64 ( 0.7%)             1
 hir-stats - Match                     64 ( 0.7%)             1
 hir-stats - InlineAsm                 64 ( 0.7%)             1
 hir-stats - Lit                      128 ( 1.4%)             2
 hir-stats - Block                    384 ( 4.2%)             6
-hir-stats Item                     880 ( 9.7%)            11            80
-hir-stats - Trait                     80 ( 0.9%)             1
-hir-stats - Enum                      80 ( 0.9%)             1
-hir-stats - ExternCrate               80 ( 0.9%)             1
-hir-stats - ForeignMod                80 ( 0.9%)             1
-hir-stats - Impl                      80 ( 0.9%)             1
-hir-stats - Fn                       160 ( 1.8%)             2
-hir-stats - Use                      320 ( 3.5%)             4
-hir-stats Path                   1_240 (13.7%)            31            40
-hir-stats PathSegment            1_920 (21.2%)            40            48
+hir-stats Item                     968 (10.6%)            11            88
+hir-stats - Trait                     88 ( 1.0%)             1
+hir-stats - Enum                      88 ( 1.0%)             1
+hir-stats - ExternCrate               88 ( 1.0%)             1
+hir-stats - ForeignMod                88 ( 1.0%)             1
+hir-stats - Impl                      88 ( 1.0%)             1
+hir-stats - Fn                       176 ( 1.9%)             2
+hir-stats - Use                      352 ( 3.9%)             4
+hir-stats Path                   1_240 (13.6%)            31            40
+hir-stats PathSegment            1_920 (21.0%)            40            48
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  9_048
+hir-stats Total                  9_136
 hir-stats
