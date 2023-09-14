@@ -1,11 +1,10 @@
 use std::ops::ControlFlow;
 
-use super::{
-    ty::{
-        Allocation, Binder, Const, ConstDef, ExistentialPredicate, FnSig, GenericArgKind,
-        GenericArgs, Promoted, RigidTy, TermKind, Ty, UnevaluatedConst,
-    },
-    Opaque,
+use crate::Opaque;
+
+use super::ty::{
+    Allocation, Binder, Const, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,
+    Promoted, RigidTy, TermKind, Ty, UnevaluatedConst,
 };
 
 pub trait Visitor: Sized {

@@ -1,8 +1,9 @@
 use super::{
     mir::Safety,
     mir::{Body, Mutability},
-    with, AllocId, DefId, Opaque,
+    with, AllocId, DefId,
 };
+use crate::Opaque;
 use std::fmt::{self, Debug, Formatter};
 
 #[derive(Copy, Clone)]
@@ -33,9 +34,9 @@ pub struct Const {
 }
 
 type Ident = Opaque;
-pub(crate) type Region = Opaque;
+pub type Region = Opaque;
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Span(pub(crate) usize);
+pub struct Span(pub usize);
 
 impl Debug for Span {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -110,10 +111,10 @@ pub enum Movability {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ForeignDef(pub(crate) DefId);
+pub struct ForeignDef(pub DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct FnDef(pub(crate) DefId);
+pub struct FnDef(pub DefId);
 
 impl FnDef {
     pub fn body(&self) -> Body {
@@ -122,34 +123,34 @@ impl FnDef {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ClosureDef(pub(crate) DefId);
+pub struct ClosureDef(pub DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct GeneratorDef(pub(crate) DefId);
+pub struct GeneratorDef(pub DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ParamDef(pub(crate) DefId);
+pub struct ParamDef(pub DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct BrNamedDef(pub(crate) DefId);
+pub struct BrNamedDef(pub DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct AdtDef(pub(crate) DefId);
+pub struct AdtDef(pub DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct AliasDef(pub(crate) DefId);
+pub struct AliasDef(pub DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct TraitDef(pub(crate) DefId);
+pub struct TraitDef(pub DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct GenericDef(pub(crate) DefId);
+pub struct GenericDef(pub DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ConstDef(pub(crate) DefId);
+pub struct ConstDef(pub DefId);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct ImplDef(pub(crate) DefId);
+pub struct ImplDef(pub DefId);
 
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);
@@ -333,7 +334,7 @@ pub type Bytes = Vec<Option<u8>>;
 pub type Size = usize;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Prov(pub(crate) AllocId);
+pub struct Prov(pub AllocId);
 pub type Align = u64;
 pub type Promoted = u32;
 pub type InitMaskMaterialized = Vec<u64>;

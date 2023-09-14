@@ -6,14 +6,14 @@
 use std::ops::{ControlFlow, Index};
 
 use crate::rustc_internal;
-use crate::stable_mir::CompilerError;
-use crate::{rustc_smir::Tables, stable_mir};
+use crate::rustc_smir::Tables;
 use rustc_driver::{Callbacks, Compilation, RunCompiler};
 use rustc_interface::{interface, Queries};
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::TyCtxt;
 pub use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
+use stable_mir::CompilerError;
 
 impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
     type Output = DefId;
@@ -129,7 +129,7 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 }
 
 pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
-    crate::stable_mir::run(
+    stable_mir::run(
         Tables { tcx, def_ids: vec![], alloc_ids: vec![], spans: vec![], types: vec![] },
         f,
     );

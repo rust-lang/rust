@@ -13,13 +13,13 @@
 extern crate rustc_hir;
 extern crate rustc_middle;
 extern crate rustc_smir;
+extern crate stable_mir;
 
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::TyCtxt;
-use rustc_smir::{
-    rustc_internal,
-    stable_mir::{self, fold::Foldable},
-};
+use rustc_smir::rustc_internal;
+
+use stable_mir::fold::Foldable;
 use std::assert_matches::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;

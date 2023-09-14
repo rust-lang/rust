@@ -1,11 +1,10 @@
 use std::ops::ControlFlow;
 
-use super::{
-    ty::{
-        Allocation, Binder, Const, ConstDef, ConstantKind, ExistentialPredicate, FnSig,
-        GenericArgKind, GenericArgs, Promoted, RigidTy, TermKind, Ty, TyKind, UnevaluatedConst,
-    },
-    Opaque,
+use crate::Opaque;
+
+use super::ty::{
+    Allocation, Binder, Const, ConstDef, ConstantKind, ExistentialPredicate, FnSig, GenericArgKind,
+    GenericArgs, Promoted, RigidTy, TermKind, Ty, TyKind, UnevaluatedConst,
 };
 
 pub trait Folder: Sized {

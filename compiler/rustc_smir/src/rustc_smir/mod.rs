@@ -7,19 +7,16 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
-use crate::stable_mir::ty::{
-    FloatTy, GenericParamDef, IntTy, Movability, RigidTy, Span, TyKind, UintTy,
-};
-use crate::stable_mir::{self, opaque, CompilerError, Context};
 use hir::def::DefKind;
 use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
 use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_span::ErrorGuaranteed;
 use rustc_target::abi::FieldIdx;
+use stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
+use stable_mir::ty::{FloatTy, GenericParamDef, IntTy, Movability, RigidTy, Span, TyKind, UintTy};
+use stable_mir::{self, opaque, Context};
 use tracing::debug;
 
 mod alloc;
@@ -112,7 +109,7 @@ impl<'tcx> Context for Tables<'tcx> {
         }
     }
 
-    fn ty_kind(&mut self, ty: crate::stable_mir::ty::Ty) -> TyKind {
+    fn ty_kind(&mut self, ty: stable_mir::ty::Ty) -> TyKind {
         self.types[ty.0].clone().stable(self)
     }
 
@@ -1514,12 +1511,6 @@ impl<'tcx> Stable<'tcx> for rustc_span::Span {
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         tables.create_span(*self)
-    }
-}
-
-impl<T> From<ErrorGuaranteed> for CompilerError<T> {
-    fn from(_error: ErrorGuaranteed) -> Self {
-        CompilerError::CompilationFailed
     }
 }
 

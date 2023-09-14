@@ -10,26 +10,12 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]
-#![cfg_attr(not(feature = "default"), feature(rustc_private))]
+#![feature(rustc_private)]
 #![feature(ptr_metadata)]
 #![feature(type_alias_impl_trait)] // Used to define opaque types.
 #![feature(intra_doc_pointers)]
 
-// Declare extern rustc_* crates to enable building this crate separately from the compiler.
-#[cfg(not(feature = "default"))]
-extern crate rustc_hir;
-#[cfg(not(feature = "default"))]
-extern crate rustc_middle;
-#[cfg(not(feature = "default"))]
-extern crate rustc_span;
-#[cfg(not(feature = "default"))]
-extern crate rustc_target;
-
 pub mod rustc_internal;
-pub mod stable_mir;
 
 // Make this module private for now since external users should not call these directly.
 mod rustc_smir;
-
-#[macro_use]
-extern crate scoped_tls;

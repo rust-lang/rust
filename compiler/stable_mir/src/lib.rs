@@ -1,15 +1,21 @@
-//! Module that implements the public interface to the Stable MIR.
+//! The WIP stable interface to rustc internals.
 //!
-//! This module shall contain all type definitions and APIs that we expect third-party tools to invoke to
+//! For more information see <https://github.com/rust-lang/project-stable-mir>
+//!
+//! # Note
+//!
+//! This API is still completely unstable and subject to change.
+
+#![doc(
+    html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
+    test(attr(allow(unused_variables), deny(warnings)))
+)]
+//!
+//! This crate shall contain all type definitions and APIs that we expect third-party tools to invoke to
 //! interact with the compiler.
 //!
-//! The goal is to eventually move this module to its own crate which shall be published on
+//! The goal is to eventually be published on
 //! [crates.io](https://crates.io).
-//!
-//! ## Note:
-//!
-//! There shouldn't be any direct references to internal compiler constructs in this module.
-//! If you need an internal construct, consider using `rustc_internal` or `rustc_smir`.
 
 use std::cell::Cell;
 use std::fmt;
@@ -18,6 +24,9 @@ use std::fmt::Debug;
 use self::ty::{
     GenericPredicates, Generics, ImplDef, ImplTrait, Span, TraitDecl, TraitDef, Ty, TyKind,
 };
+
+#[macro_use]
+extern crate scoped_tls;
 
 pub mod fold;
 pub mod mir;
@@ -32,11 +41,11 @@ pub type CrateNum = usize;
 
 /// A unique identification number for each item accessible for the current compilation unit.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct DefId(pub(crate) usize);
+pub struct DefId(pub usize);
 
 impl Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DefId:")
+        f.debug_struct("DefId")
             .field("id", &self.0)
             .field("name", &with(|cx| cx.name_of_def_id(*self)))
             .finish()
@@ -45,7 +54,7 @@ impl Debug for DefId {
 
 /// A unique identification number for each provenance
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct AllocId(pub(crate) usize);
+pub struct AllocId(pub usize);
 
 /// A list of crate items.
 pub type CrateItems = Vec<CrateItem>;
@@ -73,7 +82,7 @@ pub enum CompilerError<T> {
 /// Holds information about a crate.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Crate {
-    pub(crate) id: CrateNum,
+    pub id: CrateNum,
     pub name: Symbol,
     pub is_local: bool,
 }
@@ -84,7 +93,7 @@ pub type DefKind = Opaque;
 /// For now, it only stores the item DefId. Use functions inside `rustc_internal` module to
 /// use this item.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct CrateItem(pub(crate) DefId);
+pub struct CrateItem(pub DefId);
 
 impl CrateItem {
     pub fn body(&self) -> mir::Body {
@@ -170,9 +179,12 @@ pub trait Context {
     /// Prints the name of given `DefId`
     fn name_of_def_id(&self, def_id: DefId) -> String;
 
+    /// Prints a human readable form of `Span`
     fn print_span(&self, span: Span) -> String;
 
+    /// Prints the kind of given `DefId`
     fn def_kind(&mut self, def_id: DefId) -> DefKind;
+
     /// `Span` of an item
     fn span_of_an_item(&mut self, def_id: DefId) -> Span;
 
@@ -200,7 +212,7 @@ pub fn run(mut context: impl Context, f: impl FnOnce()) {
 
 /// Loads the current context and calls a function with it.
 /// Do not nest these, as that will ICE.
-pub(crate) fn with<R>(f: impl FnOnce(&mut dyn Context) -> R) -> R {
+pub fn with<R>(f: impl FnOnce(&mut dyn Context) -> R) -> R {
     assert!(TLV.is_set());
     TLV.with(|tlv| {
         let ptr = tlv.get();
@@ -225,6 +237,6 @@ impl std::fmt::Debug for Opaque {
     }
 }
 
-pub(crate) fn opaque<T: Debug>(value: &T) -> Opaque {
+pub fn opaque<T: Debug>(value: &T) -> Opaque {
     Opaque(format!("{value:?}"))
 }
