@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::env;
-use std::sync::Arc;
 use std::time::Instant;
 
 use gccjit::{
@@ -8,8 +7,6 @@ use gccjit::{
     FunctionType,
     GlobalKind,
 };
-#[cfg(feature="master")]
-use gccjit::TargetInfo;
 use rustc_middle::dep_graph;
 use rustc_middle::ty::TyCtxt;
 #[cfg(feature="master")]
@@ -22,8 +19,7 @@ use rustc_codegen_ssa::traits::DebugInfoMethods;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
 
-#[cfg(not(feature="master"))]
-use crate::TargetInfo;
+use crate::LockedTargetInfo;
 use crate::GccContext;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -70,7 +66,7 @@ pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
     }
 }
 
-pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<TargetInfo>) -> (ModuleCodegen<GccContext>, u64) {
+pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: LockedTargetInfo) -> (ModuleCodegen<GccContext>, u64) {
     let prof_timer = tcx.prof.generic_activity("codegen_module");
     let start_time = Instant::now();
 
@@ -89,7 +85,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
     // the time we needed for codegenning it.
     let cost = time_to_codegen.as_secs() * 1_000_000_000 + time_to_codegen.subsec_nanos() as u64;
 
-    fn module_codegen(tcx: TyCtxt<'_>, (cgu_name, target_info): (Symbol, Arc<TargetInfo>)) -> ModuleCodegen<GccContext> {
+    fn module_codegen(tcx: TyCtxt<'_>, (cgu_name, target_info): (Symbol, LockedTargetInfo)) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
         let context = Context::default();
@@ -111,13 +107,19 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
         // TODO(antoyo): only set on x86 platforms.
         context.add_command_line_option("-masm=intel");
 
-        let features = ["64", "avxvnni", "bmi", "sse2", "avx", "avx2", "sha", "fma", "fma4", "gfni", "f16c", "aes", "bmi2", "pclmul", "rtm",
+        // TODO: instead of setting the features manually, set the correct -march flag.
+        /*let features = ["64", "avxvnni", "bmi", "sse2", "avx2", "sha", "fma", "fma4", "gfni", "f16c", "aes", "bmi2", "pclmul", "rtm",
             "vaes", "vpclmulqdq", "xsavec",
         ];
 
         for feature in &features {
             add_cpu_feature_flag(feature);
-        }
+        }*/
+
+        // NOTE: we always enable AVX because the equivalent of llvm.x86.sse2.cmp.pd in GCC for
+        // SSE2 is multiple builtins, so we use the AVX __builtin_ia32_cmppd instead.
+        // FIXME(antoyo): use the proper builtins for llvm.x86.sse2.cmp.pd and similar.
+        context.add_command_line_option("-mavx");
 
         for arg in &tcx.sess.opts.cg.llvm_args {
             context.add_command_line_option(arg);
