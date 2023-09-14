@@ -13,7 +13,7 @@ use crate::infer::canonical::Canonical;
 use crate::mir::ConstraintCategory;
 use crate::ty::abstract_const::NotConstEvaluatable;
 use crate::ty::GenericArgsRef;
-use crate::ty::{self, AdtKind, Ty, TyCtxt};
+use crate::ty::{self, AdtKind, Ty};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic};
@@ -524,13 +524,6 @@ pub enum StatementAsExpression {
     NeedsBoxing,
 }
 
-impl<'tcx> ty::Lift<'tcx> for StatementAsExpression {
-    type Lifted = StatementAsExpression;
-    fn lift_to_tcx(self, _tcx: TyCtxt<'tcx>) -> Option<StatementAsExpression> {
-        Some(self)
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct MatchExpressionArmCause<'tcx> {
@@ -736,7 +729,7 @@ pub enum BuiltinImplSource {
     TupleUnsizing,
 }
 
-TrivialTypeTraversalAndLiftImpls! { BuiltinImplSource }
+TrivialTypeTraversalImpls! { BuiltinImplSource }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
 pub enum ObjectSafetyViolation {
