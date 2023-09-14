@@ -7,7 +7,7 @@ use crate::interpret::{
     intern_const_alloc_recursive, ConstValue, ImmTy, Immediate, InternKind, MemPlaceMeta,
     MemoryKind, PlaceTy, Projectable, Scalar,
 };
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_target::abi::VariantIdx;
@@ -238,6 +238,21 @@ pub fn valtree_to_const_value<'tcx>(
             if layout.is_zst() {
                 // Fast path to avoid some allocations.
                 return ConstValue::ZeroSized;
+            }
+            if layout.abi.is_scalar()
+                && (matches!(ty.kind(), ty::Tuple(_))
+                    || matches!(ty.kind(), ty::Adt(def, _) if def.is_struct()))
+            {
+                // A Scalar tuple/struct; we can avoid creating an allocation.
+                let branches = valtree.unwrap_branch();
+                // Find the non-ZST field. (There can be aligned ZST!)
+                for (i, &inner_valtree) in branches.iter().enumerate() {
+                    let field = layout.field(&LayoutCx { tcx, param_env }, i);
+                    if !field.is_zst() {
+                        return valtree_to_const_value(tcx, param_env.and(field.ty), inner_valtree);
+                    }
+                }
+                bug!("could not find non-ZST field during in {layout:#?}");
             }
 
             let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessStatics::No);
