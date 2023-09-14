@@ -5,6 +5,7 @@ use clippy_utils::ty::{implements_trait, peel_mid_ty_refs};
 use clippy_utils::{
     expr_use_ctxt, get_parent_expr, get_parent_node, is_lint_allowed, path_to_local, DefinedTy, ExprUseNode,
 };
+use core::mem;
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
@@ -342,8 +343,24 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             TyCoercionStability::for_defined_ty(cx, ty, use_cx.node.is_return())
                         });
                         let can_auto_borrow = match use_cx.node {
-                            ExprUseNode::Callee => true,
-                            ExprUseNode::FieldAccess(_) => adjusted_ty.ty_adt_def().map_or(true, |adt| !adt.is_union()),
+                            ExprUseNode::FieldAccess(_)
+                                if !use_cx.moved_before_use && matches!(sub_expr.kind, ExprKind::Field(..)) =>
+                            {
+                                // `ManuallyDrop` fields of a union will not automatically call
+                                // `deref_mut` when accessing a field.
+                                // Note: if the `ManuallyDrop` value is not directly a field of a
+                                // union then `DerefMut` will work as normal.
+                                //
+                                // This means we need to not modify an expression such as `(&mut x.y).z`
+                                // if accessing `z` would require `DerefMut`.
+                                let mut ty = expr_ty;
+                                !use_cx.adjustments.iter().any(|a| {
+                                    let ty = mem::replace(&mut ty, a.target);
+                                    matches!(a.kind, Adjust::Deref(Some(ref op)) if op.mutbl == Mutability::Mut)
+                                        && ty.ty_adt_def().map_or(false, |def| def.is_manually_drop())
+                                })
+                            },
+                            ExprUseNode::Callee | ExprUseNode::FieldAccess(_) => true,
                             ExprUseNode::MethodArg(hir_id, _, 0) if !use_cx.moved_before_use => {
                                 // Check for calls to trait methods where the trait is implemented
                                 // on a reference.
