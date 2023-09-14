@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
+use cranelift_object::{ObjectBuilder, ObjectModule};
 use rustc_codegen_ssa::back::metadata::create_compressed_metadata_file;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -16,8 +17,6 @@ use rustc_middle::mir::mono::{CodegenUnit, MonoItem};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{DebugInfo, OutputFilenames, OutputType};
 use rustc_session::Session;
-
-use cranelift_object::{ObjectBuilder, ObjectModule};
 
 use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
 use crate::global_asm::GlobalAsmConfig;

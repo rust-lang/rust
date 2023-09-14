@@ -1,11 +1,10 @@
 //! Definition of [`CValue`] and [`CPlace`]
 
-use crate::prelude::*;
-
-use rustc_middle::ty::FnSig;
-
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::immediates::Offset32;
+use rustc_middle::ty::FnSig;
+
+use crate::prelude::*;
 
 fn codegen_field<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,

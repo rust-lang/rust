@@ -63,7 +63,6 @@ use cranelift_codegen::{
     ir::entities::AnyEntity,
     write::{FuncWriter, PlainWriter},
 };
-
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_session::config::{OutputFilenames, OutputType};
 
