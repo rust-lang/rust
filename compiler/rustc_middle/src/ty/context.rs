@@ -1259,7 +1259,7 @@ nop_list_lift! {bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariable
 // This is the impl for `&'a GenericArgs<'a>`.
 nop_list_lift! {args; GenericArg<'a> => GenericArg<'tcx>}
 
-CloneLiftImpls! {
+TrivialLiftImpls! {
     Constness,
     traits::WellFormedLoc,
     ImplPolarity,

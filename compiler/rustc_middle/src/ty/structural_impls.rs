@@ -456,7 +456,7 @@ impl<'tcx, T: DebugWithInfcx<TyCtxt<'tcx>>> DebugWithInfcx<TyCtxt<'tcx>> for ty:
 
 // For things for which the type library provides traversal implementations
 // for all Interners, we only need to provide a Lift implementation:
-CloneLiftImpls! {
+TrivialLiftImpls! {
     (),
     bool,
     usize,
