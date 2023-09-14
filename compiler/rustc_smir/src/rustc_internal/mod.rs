@@ -8,70 +8,13 @@ use std::ops::{ControlFlow, Index};
 
 use crate::rustc_internal;
 use crate::stable_mir::CompilerError;
-use crate::{
-    rustc_smir::Tables,
-    stable_mir::{self, with},
-};
+use crate::{rustc_smir::Tables, stable_mir};
 use rustc_driver::{Callbacks, Compilation, RunCompiler};
 use rustc_interface::{interface, Queries};
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::TyCtxt;
 pub use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
-
-fn with_tables<R>(mut f: impl FnMut(&mut Tables<'_>) -> R) -> R {
-    let mut ret = None;
-    with(|tables| tables.rustc_tables(&mut |t| ret = Some(f(t))));
-    ret.unwrap()
-}
-
-pub fn item_def_id(item: &stable_mir::CrateItem) -> DefId {
-    with_tables(|t| t[item.0])
-}
-
-pub fn crate_item(did: DefId) -> stable_mir::CrateItem {
-    with_tables(|t| t.crate_item(did))
-}
-
-pub fn adt_def(did: DefId) -> stable_mir::ty::AdtDef {
-    with_tables(|t| t.adt_def(did))
-}
-
-pub fn foreign_def(did: DefId) -> stable_mir::ty::ForeignDef {
-    with_tables(|t| t.foreign_def(did))
-}
-
-pub fn fn_def(did: DefId) -> stable_mir::ty::FnDef {
-    with_tables(|t| t.fn_def(did))
-}
-
-pub fn closure_def(did: DefId) -> stable_mir::ty::ClosureDef {
-    with_tables(|t| t.closure_def(did))
-}
-
-pub fn generator_def(did: DefId) -> stable_mir::ty::GeneratorDef {
-    with_tables(|t| t.generator_def(did))
-}
-
-pub fn alias_def(did: DefId) -> stable_mir::ty::AliasDef {
-    with_tables(|t| t.alias_def(did))
-}
-
-pub fn param_def(did: DefId) -> stable_mir::ty::ParamDef {
-    with_tables(|t| t.param_def(did))
-}
-
-pub fn br_named_def(did: DefId) -> stable_mir::ty::BrNamedDef {
-    with_tables(|t| t.br_named_def(did))
-}
-
-pub fn trait_def(did: DefId) -> stable_mir::ty::TraitDef {
-    with_tables(|t| t.trait_def(did))
-}
-
-pub fn impl_def(did: DefId) -> stable_mir::ty::ImplDef {
-    with_tables(|t| t.impl_def(did))
-}
 
 impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
     type Output = DefId;
