@@ -159,4 +159,9 @@ mod box_fat_ptr {
     //~| NOTE: `Box<Box<DynSized>>` is already on the heap, `Rc<Box<Box<DynSized>>>` makes
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/11417
+fn type_in_closure() {
+    let _ = |_: &mut Box<Box<dyn ToString>>| {};
+}
+
 fn main() {}
