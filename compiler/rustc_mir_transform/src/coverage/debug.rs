@@ -113,7 +113,7 @@ use std::ops::Deref;
 use std::sync::OnceLock;
 
 use itertools::Itertools;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::create_dump_file;
 use rustc_middle::mir::generic_graphviz::GraphvizWriter;
@@ -488,7 +488,7 @@ pub(super) struct UsedExpressions {
 
 #[derive(Default)]
 struct UsedExpressionsState {
-    used_expression_operands: FxHashMap<Operand, Vec<ExpressionId>>,
+    used_expression_operands: FxHashSet<Operand>,
     unused_expressions: Vec<(BcbCounter, Option<BasicCoverageBlock>, BasicCoverageBlock)>,
 }
 
@@ -509,16 +509,16 @@ impl UsedExpressions {
     pub fn add_expression_operands(&mut self, expression: &BcbCounter) {
         let Some(state) = &mut self.state else { return };
 
-        if let BcbCounter::Expression { id, lhs, rhs, .. } = *expression {
-            state.used_expression_operands.entry(lhs).or_insert_with(Vec::new).push(id);
-            state.used_expression_operands.entry(rhs).or_insert_with(Vec::new).push(id);
+        if let BcbCounter::Expression { lhs, rhs, .. } = *expression {
+            state.used_expression_operands.insert(lhs);
+            state.used_expression_operands.insert(rhs);
         }
     }
 
     pub fn expression_is_used(&self, expression: &BcbCounter) -> bool {
         let Some(state) = &self.state else { return false };
 
-        state.used_expression_operands.contains_key(&expression.as_operand())
+        state.used_expression_operands.contains(&expression.as_operand())
     }
 
     pub fn add_unused_expression_if_not_found(
@@ -529,7 +529,7 @@ impl UsedExpressions {
     ) {
         let Some(state) = &mut self.state else { return };
 
-        if !state.used_expression_operands.contains_key(&expression.as_operand()) {
+        if !state.used_expression_operands.contains(&expression.as_operand()) {
             state.unused_expressions.push((expression.clone(), edge_from_bcb, target_bcb));
         }
     }
