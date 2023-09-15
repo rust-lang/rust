@@ -55,3 +55,8 @@ fn main() {
 fn issue11309<'a>(iter: impl Iterator<Item = (&'a str, &'a str)>) -> Vec<&'a str> {
     iter.filter_map(|(_, s): (&str, _)| Some(s)).collect()
 }
+
+fn issue11503() {
+    let bools: &[bool] = &[true, false, false, true];
+    let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+}
