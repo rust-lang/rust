@@ -29,6 +29,8 @@ hir_typeck_convert_using_method = try using `{$sugg}` to convert `{$found}` to `
 
 hir_typeck_ctor_is_private = tuple struct constructor `{$def}` is private
 
+hir_typeck_deref_is_empty = this expression `Deref`s to `{$deref_ty}` which implements `is_empty`
+
 hir_typeck_expected_default_return_type = expected `()` because of default return type
 
 hir_typeck_expected_return_type = expected `{$expected}` because of return type
@@ -126,5 +128,9 @@ hir_typeck_suggest_ptr_null_mut = consider using `core::ptr::null_mut` instead
 hir_typeck_union_pat_dotdot = `..` cannot be used in union patterns
 
 hir_typeck_union_pat_multiple_fields = union patterns should have exactly one field
+
+hir_typeck_use_is_empty =
+    consider using the `is_empty` method on `{$expr_ty}` to determine if it contains anything
+
 hir_typeck_yield_expr_outside_of_generator =
     yield expression outside of generator literal

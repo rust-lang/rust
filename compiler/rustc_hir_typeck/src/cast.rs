@@ -1068,26 +1068,19 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             if let Some((deref_ty, _)) = derefed {
                 // Give a note about what the expr derefs to.
                 if deref_ty != self.expr_ty.peel_refs() {
-                    err.span_note(
-                        self.expr_span,
-                        format!(
-                            "this expression `Deref`s to `{}` which implements `is_empty`",
-                            fcx.ty_to_string(deref_ty)
-                        ),
-                    );
+                    err.subdiagnostic(errors::DerefImplsIsEmpty {
+                        span: self.expr_span,
+                        deref_ty: fcx.ty_to_string(deref_ty),
+                    });
                 }
 
                 // Create a multipart suggestion: add `!` and `.is_empty()` in
                 // place of the cast.
-                let suggestion = vec![
-                    (self.expr_span.shrink_to_lo(), "!".to_string()),
-                    (self.span.with_lo(self.expr_span.hi()), ".is_empty()".to_string()),
-                ];
-
-                err.multipart_suggestion_verbose(format!(
-                    "consider using the `is_empty` method on `{}` to determine if it contains anything",
-                    fcx.ty_to_string(self.expr_ty),
-                ),  suggestion, Applicability::MaybeIncorrect);
+                err.subdiagnostic(errors::UseIsEmpty {
+                    lo: self.expr_span.shrink_to_lo(),
+                    hi: self.span.with_lo(self.expr_span.hi()),
+                    expr_ty: fcx.ty_to_string(self.expr_ty),
+                });
             }
         }
     }

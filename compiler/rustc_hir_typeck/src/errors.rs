@@ -459,6 +459,20 @@ pub struct UnionPatDotDot {
     pub span: Span,
 }
 
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    hir_typeck_use_is_empty,
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub struct UseIsEmpty {
+    #[suggestion_part(code = "!")]
+    pub lo: Span,
+    #[suggestion_part(code = ".is_empty()")]
+    pub hi: Span,
+    pub expr_ty: String,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_typeck_arg_mismatch_indeterminate)]
 pub struct ArgMismatchIndeterminate {
@@ -533,6 +547,14 @@ pub struct CtorIsPrivate {
     #[primary_span]
     pub span: Span,
     pub def: String,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_typeck_deref_is_empty)]
+pub struct DerefImplsIsEmpty {
+    #[primary_span]
+    pub span: Span,
+    pub deref_ty: String,
 }
 
 #[derive(Subdiagnostic)]
