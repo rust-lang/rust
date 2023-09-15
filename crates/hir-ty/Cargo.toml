@@ -33,7 +33,7 @@ triomphe.workspace = true
 nohash-hasher.workspace = true
 typed-arena = "2.0.1"
 
-rustc_index.workspace = true
+rustc-dependencies.workspace = true
 
 # local deps
 stdx.workspace = true
@@ -56,3 +56,6 @@ project-model = { path = "../project-model" }
 
 # local deps
 test-utils.workspace = true
+
+[features]
+in-rust-tree = ["rustc-dependencies/in-rust-tree"]

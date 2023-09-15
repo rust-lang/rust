@@ -531,8 +531,6 @@ dependencies = [
  "fst",
  "hashbrown 0.12.3",
  "hir-expand",
- "hkalbasi-rustc-ap-rustc_abi",
- "hkalbasi-rustc-ap-rustc_index",
  "indexmap 2.0.0",
  "intern",
  "itertools",
@@ -541,7 +539,7 @@ dependencies = [
  "mbe",
  "once_cell",
  "profile",
- "ra-ap-rustc_parse_format",
+ "rustc-dependencies",
  "rustc-hash",
  "smallvec",
  "stdx",
@@ -594,7 +592,6 @@ dependencies = [
  "expect-test",
  "hir-def",
  "hir-expand",
- "hkalbasi-rustc-ap-rustc_index",
  "intern",
  "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -604,6 +601,7 @@ dependencies = [
  "oorandom",
  "profile",
  "project-model",
+ "rustc-dependencies",
  "rustc-hash",
  "scoped-tls",
  "smallvec",
@@ -1277,7 +1275,7 @@ dependencies = [
  "drop_bomb",
  "expect-test",
  "limit",
- "ra-ap-rustc_lexer",
+ "rustc-dependencies",
  "sourcegen",
  "stdx",
 ]
@@ -1594,10 +1592,12 @@ dependencies = [
  "oorandom",
  "parking_lot 0.12.1",
  "parking_lot_core 0.9.6",
+ "parser",
  "proc-macro-api",
  "profile",
  "project-model",
  "rayon",
+ "rustc-dependencies",
  "rustc-hash",
  "scip",
  "serde",
@@ -1625,6 +1625,16 @@ name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d626bb9dae77e28219937af045c257c28bfd3f69333c512553507f5f9798cb76"
+
+[[package]]
+name = "rustc-dependencies"
+version = "0.0.0"
+dependencies = [
+ "hkalbasi-rustc-ap-rustc_abi",
+ "hkalbasi-rustc-ap-rustc_index",
+ "ra-ap-rustc_lexer",
+ "ra-ap-rustc_parse_format",
+]
 
 [[package]]
 name = "rustc-hash"
@@ -1853,9 +1863,9 @@ dependencies = [
  "proc-macro2",
  "profile",
  "quote",
- "ra-ap-rustc_lexer",
  "rayon",
  "rowan",
+ "rustc-dependencies",
  "rustc-hash",
  "smol_str",
  "sourcegen",

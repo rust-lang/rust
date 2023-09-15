@@ -8,6 +8,7 @@
 //! actually true.
 
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[allow(unused)]
 macro_rules! eprintln {
@@ -48,7 +49,7 @@ pub mod visibility;
 pub mod find_path;
 pub mod import_map;
 
-pub use rustc_abi as layout;
+pub use rustc_dependencies::abi as layout;
 use triomphe::Arc;
 
 #[cfg(test)]
