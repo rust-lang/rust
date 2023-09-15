@@ -108,24 +108,23 @@
 //!         recursively, generating labels with nested operations, enclosed in parentheses
 //!         (for example: `bcb2 + (bcb0 - bcb1)`).
 
-use super::counters::{BcbCounter, CoverageCounters};
-use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
-use super::spans::CoverageSpan;
+use std::iter;
+use std::ops::Deref;
+use std::sync::OnceLock;
 
 use itertools::Itertools;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::create_dump_file;
 use rustc_middle::mir::generic_graphviz::GraphvizWriter;
 use rustc_middle::mir::spanview::{self, SpanViewable};
-
-use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-use std::iter;
-use std::ops::Deref;
-use std::sync::OnceLock;
+use super::counters::{BcbCounter, CoverageCounters};
+use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
+use super::spans::CoverageSpan;
 
 pub const NESTED_INDENT: &str = "    ";
 
