@@ -239,16 +239,22 @@ enum class LLVMRustCodeGenOptLevel {
   Aggressive,
 };
 
-static CodeGenOpt::Level fromRust(LLVMRustCodeGenOptLevel Level) {
+#if LLVM_VERSION_GE(18, 0)
+  using CodeGenOptLevelEnum = llvm::CodeGenOptLevel;
+#else
+  using CodeGenOptLevelEnum = llvm::CodeGenOpt::Level;
+#endif
+
+static CodeGenOptLevelEnum fromRust(LLVMRustCodeGenOptLevel Level) {
   switch (Level) {
   case LLVMRustCodeGenOptLevel::None:
-    return CodeGenOpt::None;
+    return CodeGenOptLevelEnum::None;
   case LLVMRustCodeGenOptLevel::Less:
-    return CodeGenOpt::Less;
+    return CodeGenOptLevelEnum::Less;
   case LLVMRustCodeGenOptLevel::Default:
-    return CodeGenOpt::Default;
+    return CodeGenOptLevelEnum::Default;
   case LLVMRustCodeGenOptLevel::Aggressive:
-    return CodeGenOpt::Aggressive;
+    return CodeGenOptLevelEnum::Aggressive;
   default:
     report_fatal_error("Bad CodeGenOptLevel.");
   }
@@ -554,9 +560,17 @@ enum class LLVMRustFileType {
 static CodeGenFileType fromRust(LLVMRustFileType Type) {
   switch (Type) {
   case LLVMRustFileType::AssemblyFile:
+#if LLVM_VERSION_GE(18, 0)
+    return CodeGenFileType::AssemblyFile;
+#else
     return CGFT_AssemblyFile;
+#endif
   case LLVMRustFileType::ObjectFile:
+#if LLVM_VERSION_GE(18, 0)
+    return CodeGenFileType::ObjectFile;
+#else
     return CGFT_ObjectFile;
+#endif
   default:
     report_fatal_error("Bad FileType.");
   }
