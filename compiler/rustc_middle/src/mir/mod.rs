@@ -70,7 +70,7 @@ pub use self::pretty::{
     create_dump_file, display_allocation, dump_enabled, dump_mir, write_mir_pretty, PassWhere,
 };
 pub use consts::*;
-pub use pretty::pretty_print_const_value;
+use pretty::pretty_print_const_value;
 pub use syntax::*;
 pub use terminator::*;
 

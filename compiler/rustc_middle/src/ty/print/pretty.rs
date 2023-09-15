@@ -1713,7 +1713,7 @@ pub trait PrettyPrinter<'tcx>:
     }
 }
 
-pub fn pretty_print_const<'tcx>(
+pub(crate) fn pretty_print_const<'tcx>(
     c: ty::Const<'tcx>,
     fmt: &mut fmt::Formatter<'_>,
     print_types: bool,
