@@ -94,14 +94,18 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         }))
         .collect::<Vec<_>>();
 
-    // TODO(antoyo): cg_llvm add global features to each function so that LTO keep them.
+    // TODO(antoyo): cg_llvm adds global features to each function so that LTO keep them.
     // Check if GCC requires the same.
     let mut global_features = cx.tcx.global_backend_features(()).iter().map(|s| s.as_str());
     function_features.extend(&mut global_features);
     let target_features = function_features
         .iter()
         .filter_map(|feature| {
-            if feature.contains("soft-float") || feature.contains("retpoline-external-thunk") {
+            // FIXME(antoyo): for some reasons, disabling SSE results in the following error when
+            // compiling Rust for Linux:
+            // SSE register return with SSE disabled
+            // TODO(antoyo): support soft-float and retpoline-external-thunk.
+            if feature.contains("soft-float") || feature.contains("retpoline-external-thunk") || *feature == "-sse" {
                 return None;
             }
 
@@ -118,7 +122,6 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         .collect::<Vec<_>>()
         .join(",");
     if !target_features.is_empty() {
-        println!("Function {:?}", function_features);
         #[cfg(feature="master")]
         func.add_attribute(FnAttribute::Target(&target_features));
     }

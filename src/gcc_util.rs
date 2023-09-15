@@ -100,7 +100,14 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
             Some(to_gcc_features(sess, feature)
                 .iter()
                 .flat_map(|feat| to_gcc_features(sess, feat).into_iter())
-                .map(String::from)
+                .map(|feature| {
+                    if enable_disable == '-' {
+                        format!("-{}", feature)
+                    }
+                    else {
+                        feature.to_string()
+                    }
+                })
                 .collect::<Vec<_>>(),
             )
         })

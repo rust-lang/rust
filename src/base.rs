@@ -98,32 +98,10 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Lock
             .map(|string| &string[1..])
             .collect();
 
-        let add_cpu_feature_flag = |feature: &str| {
-            if target_info.cpu_supports(feature) && !disabled_features.contains(feature) {
-                context.add_command_line_option(&format!("-m{}", feature));
-            }
-        };
-
-        let disable_cpu_feature = |feature: &str| {
-            if disabled_features.contains(feature) {
-                context.add_command_line_option(&format!("-mno-{}", feature));
-            }
-        };
-
         // TODO(antoyo): only set on x86 platforms.
         context.add_command_line_option("-masm=intel");
 
-        // TODO: instead of setting the features manually, set the correct -march flag.
-        let features = ["64", "avxvnni", "bmi", "sse2", "avx2", "sha", "fma", "fma4", "gfni", "f16c", "aes", "bmi2", "pclmul", "rtm",
-            "vaes", "vpclmulqdq", "xsavec",
-        ];
-
-
-        for feature in &features {
-            disable_cpu_feature(feature);
-
-            //add_cpu_feature_flag(feature);
-        }
+        // TODO(antoyo): set the correct -march flag.
 
         if !disabled_features.contains("avx") {
             // NOTE: we always enable AVX because the equivalent of llvm.x86.sse2.cmp.pd in GCC for
