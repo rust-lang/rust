@@ -2,11 +2,7 @@
 /* generator_layout = GeneratorLayout {
     field_tys: {
         _0: GeneratorSavedTy {
-            ty: Adt(
-                std::string::String,
-                [
-                ],
-            ),
+            ty: std::string::String,
             source_info: SourceInfo {
                 span: $DIR/generator_drop_cleanup.rs:11:13: 11:15 (#0),
                 scope: scope[0],
