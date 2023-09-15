@@ -12,7 +12,7 @@
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use termcolor::{ColorSpec, WriteColor};
 
-use crate::emitter::{Emitter, HumanReadableErrorType};
+use crate::emitter::{should_show_source_code, Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
 use crate::translation::{to_fluent_args, Translate};
 use crate::DiagnosticId;
@@ -45,6 +45,7 @@ pub struct JsonEmitter {
     fallback_bundle: LazyFallbackBundle,
     pretty: bool,
     ui_testing: bool,
+    ignored_directories_in_source_blocks: Vec<String>,
     json_rendered: HumanReadableErrorType,
     diagnostic_width: Option<usize>,
     macro_backtrace: bool,
@@ -73,6 +74,7 @@ impl JsonEmitter {
             fallback_bundle,
             pretty,
             ui_testing: false,
+            ignored_directories_in_source_blocks: Vec::new(),
             json_rendered,
             diagnostic_width,
             macro_backtrace,
@@ -127,6 +129,7 @@ impl JsonEmitter {
             fallback_bundle,
             pretty,
             ui_testing: false,
+            ignored_directories_in_source_blocks: Vec::new(),
             json_rendered,
             diagnostic_width,
             macro_backtrace,
@@ -137,6 +140,10 @@ impl JsonEmitter {
 
     pub fn ui_testing(self, ui_testing: bool) -> Self {
         Self { ui_testing, ..self }
+    }
+
+    pub fn ignored_directories_in_source_blocks(self, value: Vec<String>) -> Self {
+        Self { ignored_directories_in_source_blocks: value, ..self }
     }
 }
 
@@ -381,6 +388,7 @@ impl Diagnostic {
             .track_diagnostics(je.track_diagnostics)
             .terminal_url(je.terminal_url)
             .ui_testing(je.ui_testing)
+            .ignored_directories_in_source_blocks(je.ignored_directories_in_source_blocks.clone())
             .emit_diagnostic(diag);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
@@ -558,7 +566,11 @@ impl DiagnosticSpanLine {
             .span_to_lines(span)
             .map(|lines| {
                 // We can't get any lines if the source is unavailable.
-                if !je.sm.ensure_source_file_source_present(&lines.file) {
+                if !should_show_source_code(
+                    &je.ignored_directories_in_source_blocks,
+                    &je.sm,
+                    &lines.file,
+                ) {
                     return vec![];
                 }
 

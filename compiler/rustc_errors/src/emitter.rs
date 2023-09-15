@@ -8,7 +8,7 @@
 //! The output types are defined in `rustc_session::config::ErrorOutputType`.
 
 use rustc_span::source_map::SourceMap;
-use rustc_span::{FileLines, SourceFile, Span};
+use rustc_span::{FileLines, FileName, SourceFile, Span};
 
 use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
@@ -635,6 +635,7 @@ pub struct EmitterWriter {
     short_message: bool,
     teach: bool,
     ui_testing: bool,
+    ignored_directories_in_source_blocks: Vec<String>,
     diagnostic_width: Option<usize>,
 
     macro_backtrace: bool,
@@ -664,6 +665,7 @@ impl EmitterWriter {
             short_message: false,
             teach: false,
             ui_testing: false,
+            ignored_directories_in_source_blocks: Vec::new(),
             diagnostic_width: None,
             macro_backtrace: false,
             track_diagnostics: false,
@@ -1193,7 +1195,7 @@ impl EmitterWriter {
         let will_be_emitted = |span: Span| {
             !span.is_dummy() && {
                 let file = sm.lookup_source_file(span.hi());
-                sm.ensure_source_file_source_present(&file)
+                should_show_source_code(&self.ignored_directories_in_source_blocks, sm, &file)
             }
         };
 
@@ -1388,7 +1390,11 @@ impl EmitterWriter {
         // Print out the annotate source lines that correspond with the error
         for annotated_file in annotated_files {
             // we can't annotate anything if the source is unavailable.
-            if !sm.ensure_source_file_source_present(&annotated_file.file) {
+            if !should_show_source_code(
+                &self.ignored_directories_in_source_blocks,
+                sm,
+                &annotated_file.file,
+            ) {
                 if !self.short_message {
                     // We'll just print an unannotated message.
                     for (annotation_id, line) in annotated_file.lines.iter().enumerate() {
@@ -2736,4 +2742,19 @@ pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
             // FIXME: We sometimes suggest the same thing we already have, which is a
             //        bug, but be defensive against that here.
             && found != suggested
+}
+
+pub(crate) fn should_show_source_code(
+    ignored_directories: &[String],
+    sm: &SourceMap,
+    file: &SourceFile,
+) -> bool {
+    if !sm.ensure_source_file_source_present(file) {
+        return false;
+    }
+
+    let FileName::Real(name) = &file.name else { return true };
+    name.local_path()
+        .map(|path| ignored_directories.iter().all(|dir| !path.starts_with(dir)))
+        .unwrap_or(true)
 }
