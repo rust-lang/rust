@@ -282,6 +282,14 @@ impl HelpUseLatestEdition {
     }
 }
 
+#[derive(Diagnostic)]
+#[diag(hir_typeck_invalid_callee, code = "E0618")]
+pub struct InvalidCallee {
+    #[primary_span]
+    pub span: Span,
+    pub ty: String,
+}
+
 #[derive(Subdiagnostic)]
 pub enum OptionResultRefMismatch {
     #[suggestion(

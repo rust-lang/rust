@@ -56,8 +56,10 @@ hir_typeck_functional_record_update_on_non_struct =
 
 hir_typeck_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
 hir_typeck_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
-hir_typeck_lang_start_expected_sig_note = the `start` lang item should have the signature `fn(fn() -> T, isize, *const *const u8, u8) -> isize`
 
+hir_typeck_invalid_callee = expected function, found {$ty}
+
+hir_typeck_lang_start_expected_sig_note = the `start` lang item should have the signature `fn(fn() -> T, isize, *const *const u8, u8) -> isize`
 hir_typeck_lang_start_incorrect_number_params = incorrect number of parameters for the `start` lang item
 hir_typeck_lang_start_incorrect_number_params_note_expected_count = the `start` lang item should have four parameters, but found {$found_param_count}
 

@@ -3,7 +3,6 @@ use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 
 use crate::errors;
-use crate::type_error_struct;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
@@ -603,17 +602,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
-        let mut err = type_error_struct!(
-            self.tcx.sess,
-            callee_expr.span,
-            callee_ty,
-            E0618,
-            "expected function, found {}",
-            match &unit_variant {
+        let mut err = self.tcx.sess.create_err(errors::InvalidCallee {
+            span: callee_expr.span,
+            ty: match &unit_variant {
                 Some((_, kind, path)) => format!("{kind} `{path}`"),
                 None => format!("`{callee_ty}`"),
             }
-        );
+        });
+        if callee_ty.references_error() {
+            err.downgrade_to_delayed_bug();
+        }
 
         self.identify_bad_closure_def_and_call(
             &mut err,
