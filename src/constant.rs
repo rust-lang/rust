@@ -184,15 +184,11 @@ pub(crate) fn codegen_const_value<'tcx>(
                 .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
             layout,
         ),
-        ConstValue::Slice { data, start, end } => {
+        ConstValue::Slice { data, meta } => {
             let alloc_id = fx.tcx.reserve_and_set_memory_alloc(data);
-            let ptr = pointer_for_allocation(fx, alloc_id)
-                .offset_i64(fx, i64::try_from(start).unwrap())
-                .get_addr(fx);
-            let len = fx
-                .bcx
-                .ins()
-                .iconst(fx.pointer_type, i64::try_from(end.checked_sub(start).unwrap()).unwrap());
+            let ptr = pointer_for_allocation(fx, alloc_id).get_addr(fx);
+            // FIXME: the `try_from` here can actually fail, e.g. for very long ZST slices.
+            let len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(meta).unwrap());
             CValue::by_val_pair(ptr, len, layout)
         }
     }
