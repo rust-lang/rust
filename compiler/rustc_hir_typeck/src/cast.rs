@@ -1041,29 +1041,18 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn fuzzy_provenance_int2ptr_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
-        fcx.tcx.struct_span_lint_hir(
+        let sugg = errors::LossyProvenanceInt2PtrSuggestion {
+            lo: self.expr_span.shrink_to_lo(),
+            hi: self.expr_span.shrink_to_hi().to(self.cast_span),
+        };
+        let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+        let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
+        let lint = errors::LossyProvenanceInt2Ptr { expr_ty, cast_ty, sugg };
+        fcx.tcx.emit_spanned_lint(
             lint::builtin::FUZZY_PROVENANCE_CASTS,
             self.expr.hir_id,
             self.span,
-            DelayDm(|| format!(
-                "strict provenance disallows casting integer `{}` to pointer `{}`",
-                self.expr_ty, self.cast_ty
-            )),
-            |lint| {
-                let msg = "use `.with_addr()` to adjust a valid pointer in the same allocation, to this address";
-                let suggestions = vec![
-                    (self.expr_span.shrink_to_lo(), String::from("(...).with_addr(")),
-                    (self.expr_span.shrink_to_hi().to(self.cast_span), String::from(")")),
-                ];
-
-                lint.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
-                lint.help(
-                    "if you can't comply with strict provenance and don't have a pointer with \
-                    the correct provenance you can use `std::ptr::from_exposed_addr()` instead"
-                 );
-
-                lint
-            },
+            lint,
         );
     }
 

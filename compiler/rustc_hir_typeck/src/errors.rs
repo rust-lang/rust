@@ -270,6 +270,25 @@ pub struct LangStartIncorrectRetTy<'tcx> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(hir_typeck_lossy_provenance_int2ptr)]
+#[help]
+pub struct LossyProvenanceInt2Ptr<'tcx> {
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub sugg: LossyProvenanceInt2PtrSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(hir_typeck_suggestion, applicability = "has-placeholders")]
+pub struct LossyProvenanceInt2PtrSuggestion {
+    #[suggestion_part(code = "(...).with_addr(")]
+    pub lo: Span,
+    #[suggestion_part(code = ")")]
+    pub hi: Span,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(hir_typeck_lossy_provenance_ptr2int)]
 #[help]
 pub struct LossyProvenancePtr2Int<'tcx> {
