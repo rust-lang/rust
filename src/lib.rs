@@ -107,6 +107,7 @@ use rustc_span::fatal_error::FatalError;
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
+use crate::gcc_util::target_cpu;
 
 fluent_messages! { "../messages.ftl" }
 
@@ -363,21 +364,6 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
                 OptLevel::Size | OptLevel::SizeMin => OptimizationLevel::Limited,
             }
         },
-    }
-}
-
-fn handle_native(name: &str) -> &str {
-    if name != "native" {
-        return name;
-    }
-
-    unimplemented!();
-}
-
-pub fn target_cpu(sess: &Session) -> &str {
-    match sess.opts.cg.target_cpu {
-        Some(ref name) => handle_native(name),
-        None => handle_native(sess.target.cpu.as_ref()),
     }
 }
 

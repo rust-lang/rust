@@ -198,3 +198,18 @@ pub fn check_tied_features(sess: &Session, features: &FxHashMap<&str, bool>) -> 
     }
     None
 }
+
+fn handle_native(name: &str) -> &str {
+    if name != "native" {
+        return name;
+    }
+
+    unimplemented!();
+}
+
+pub fn target_cpu(sess: &Session) -> &str {
+    match sess.opts.cg.target_cpu {
+        Some(ref name) => handle_native(name),
+        None => handle_native(sess.target.cpu.as_ref()),
+    }
+}

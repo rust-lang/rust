@@ -19,7 +19,7 @@ use rustc_codegen_ssa::traits::DebugInfoMethods;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
 
-use crate::LockedTargetInfo;
+use crate::{LockedTargetInfo, gcc_util};
 use crate::GccContext;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -101,8 +101,6 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Lock
         // TODO(antoyo): only set on x86 platforms.
         context.add_command_line_option("-masm=intel");
 
-        // TODO(antoyo): set the correct -march flag.
-
         if !disabled_features.contains("avx") {
             // NOTE: we always enable AVX because the equivalent of llvm.x86.sse2.cmp.pd in GCC for
             // SSE2 is multiple builtins, so we use the AVX __builtin_ia32_cmppd instead.
@@ -125,6 +123,11 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Lock
         if tcx.sess.opts.cg.relocation_model == Some(rustc_target::spec::RelocModel::Static) {
             context.add_command_line_option("-mcmodel=kernel");
             context.add_command_line_option("-fno-pie");
+        }
+
+        let target_cpu = gcc_util::target_cpu(tcx.sess);
+        if target_cpu != "generic" {
+            context.add_command_line_option(&format!("-march={}", target_cpu));
         }
 
         if tcx.sess.opts.unstable_opts.function_sections.unwrap_or(tcx.sess.target.function_sections) {
