@@ -1803,7 +1803,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let mut candidates = self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod);
             candidates
                 .sort_by_cached_key(|c| (c.path.segments.len(), pprust::path_to_string(&c.path)));
-            if let Some(candidate) = candidates.get(0) {
+            if let Some(candidate) = candidates.get_mut(0) {
+                if path.get(0).map(|s| s.ident.name == kw::Crate).unwrap_or(false)
+                    && candidate
+                        .path
+                        .segments
+                        .get(0)
+                        .map(|s| s.ident.name == kw::Crate)
+                        .unwrap_or(false)
+                {
+                    candidate.path.segments.remove(0);
+                }
                 (
                     String::from("unresolved import"),
                     Some((
