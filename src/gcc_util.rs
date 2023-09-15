@@ -22,7 +22,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     // * function specific features.
     //
     // [^1]: target-cpu=native is handled here, other target-cpu values are handled implicitly
-    // through GCC TargetMachine implementation.
+    // through GCC march implementation.
     //
     // FIXME(nagisa): it isn't clear what's the best interaction between features implied by
     // `-Ctarget-cpu` and `--target` are. On one hand, you'd expect CLI arguments to always
@@ -32,8 +32,6 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     // flags are specified by the user on the CLI. It isn't as clear-cut which order of precedence
     // should be taken in cases like these.
     let mut features = vec![];
-
-    // TODO(antoyo): -Ctarget-cpu=native
 
     // Features implied by an implicit or explicit `--target`.
     features.extend(
@@ -144,7 +142,6 @@ fn backend_feature_name(s: &str) -> Option<&str> {
     Some(feature)
 }
 
-// TODO(antoyo): maybe move to a new module gcc_util.
 // To find a list of GCC's names, check https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
 pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]> {
     let arch = if sess.target.arch == "x86_64" { "x86" } else { &*sess.target.arch };

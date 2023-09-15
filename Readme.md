@@ -111,6 +111,8 @@ $ LIBRARY_PATH=$(cat gcc_path) LD_LIBRARY_PATH=$(cat gcc_path) rustc +$(cat $CG_
     object files when their content should have been changed by a change to cg_gccjit.</dd>
     <dt>CG_GCCJIT_DISPLAY_CG_TIME</dt>
     <dd>Display the time it took to perform codegen for a crate</dd>
+    <dt>CG_RUSTFLAGS</dt>
+    <dd>Send additional flags to rustc. Can be used to build the sysroot without unwinding by setting `CG_RUSTFLAGS=-Cpanic=abort`.</dd>
 </dl>
 
 ## Licensing
