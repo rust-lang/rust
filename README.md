@@ -37,9 +37,9 @@ cargo +enzyme test --examples
 ## Enzyme Config
 To help with debugging, Enzyme can be configured using three environment variables.
 ```bash
-export ENZYME_PRINT_TA
-export ENZYME_PRINT_AA
-export ENZYME_PRINT
+export ENZYME_PRINT_TA=1
+export ENZYME_PRINT_AA=1
+export ENZYME_PRINT=1
 ```
 These will print TypeAnalysis, ActivityAnalysis and the primal + generated function respectively.
 
