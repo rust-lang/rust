@@ -2,7 +2,7 @@ use std::any::{type_name, Any};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::env;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Write};
 use std::fs::{self, File};
 use std::hash::Hash;
@@ -1765,6 +1765,20 @@ impl<'a> Builder<'a> {
             // `rustc` needs to know the virtual `/rustc/$hash` we're mapping to,
             // in order to opportunistically reverse it later.
             cargo.env("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR", map_to);
+        }
+
+        if self.config.rust_remap_debuginfo {
+            // FIXME: handle vendored sources
+            let registry_src = t!(home::cargo_home()).join("registry").join("src");
+            let mut env_var = OsString::new();
+            for entry in t!(std::fs::read_dir(registry_src)) {
+                if !env_var.is_empty() {
+                    env_var.push("\t");
+                }
+                env_var.push(t!(entry).path());
+                env_var.push("=/rust/deps");
+            }
+            cargo.env("RUSTC_CARGO_REGISTRY_SRC_TO_REMAP", env_var);
         }
 
         // Enable usage of unstable features
