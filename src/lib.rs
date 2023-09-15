@@ -65,6 +65,7 @@ mod coverageinfo;
 mod debuginfo;
 mod declare;
 mod errors;
+mod gcc_util;
 mod int;
 mod intrinsic;
 mod mono_item;
@@ -73,6 +74,7 @@ mod type_of;
 
 use std::any::Any;
 use std::sync::Arc;
+use std::sync::Mutex;
 #[cfg(not(feature="master"))]
 use std::sync::atomic::AtomicBool;
 #[cfg(not(feature="master"))]
@@ -105,6 +107,7 @@ use rustc_span::fatal_error::FatalError;
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
+use crate::gcc_util::target_cpu;
 
 fluent_messages! { "../messages.ftl" }
 
@@ -135,9 +138,24 @@ impl TargetInfo {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct LockedTargetInfo {
+    info: Arc<Mutex<TargetInfo>>,
+}
+
+impl LockedTargetInfo {
+    fn cpu_supports(&self, feature: &str) -> bool {
+        self.info.lock().expect("lock").cpu_supports(feature)
+    }
+
+    fn supports_128bit_int(&self) -> bool {
+        self.info.lock().expect("lock").supports_128bit_int()
+    }
+}
+
 #[derive(Clone)]
 pub struct GccCodegenBackend {
-    target_info: Arc<TargetInfo>,
+    target_info: LockedTargetInfo,
 }
 
 impl CodegenBackend for GccCodegenBackend {
@@ -146,6 +164,19 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn init(&self, sess: &Session) {
+        #[cfg(feature="master")]
+        {
+            let target_cpu = target_cpu(sess);
+
+            // Get the second TargetInfo with the correct CPU features by setting the arch.
+            let context = Context::default();
+            if target_cpu != "generic" {
+                context.add_command_line_option(&format!("-march={}", target_cpu));
+            }
+
+            *self.target_info.info.lock().expect("lock") = context.get_target_info();
+        }
+
         #[cfg(feature="master")]
         gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
         if sess.lto() == Lto::Thin {
@@ -161,13 +192,13 @@ impl CodegenBackend for GccCodegenBackend {
             let _int128_ty = check_context.new_c_type(CType::UInt128t);
             // NOTE: we cannot just call compile() as this would require other files than libgccjit.so.
             check_context.compile_to_file(gccjit::OutputKind::Assembler, temp_file.to_str().expect("path to str"));
-            self.target_info.supports_128bit_integers.store(check_context.get_last_error() == Ok(None), Ordering::SeqCst);
+            self.target_info.info.lock().expect("lock").supports_128bit_integers.store(check_context.get_last_error() == Ok(None), Ordering::SeqCst);
         }
     }
 
     fn provide(&self, providers: &mut Providers) {
-        // FIXME(antoyo) compute list of enabled features from cli flags
-        providers.global_backend_features = |_tcx, ()| vec![];
+        providers.global_backend_features =
+            |tcx, ()| gcc_util::global_gcc_features(tcx.sess, true)
     }
 
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>, metadata: EncodedMetadata, need_metadata_module: bool) -> Box<dyn Any> {
@@ -217,7 +248,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
     }
 
     fn compile_codegen_unit(&self, tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen<Self::Module>, u64) {
-        base::compile_codegen_unit(tcx, cgu_name, Arc::clone(&self.target_info))
+        base::compile_codegen_unit(tcx, cgu_name, self.target_info.clone())
     }
 
     fn target_machine_factory(&self, _sess: &Session, _opt_level: OptLevel, _features: &[String]) -> TargetMachineFactoryFn<Self> {
@@ -306,23 +337,18 @@ impl WriteBackendMethods for GccCodegenBackend {
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     #[cfg(feature="master")]
-    let target_info = {
-        // Get the native arch and check whether the target supports 128-bit integers.
+    let info = {
+        // Check whether the target supports 128-bit integers.
         let context = Context::default();
-        let arch = context.get_target_info().arch().unwrap();
-
-        // Get the second TargetInfo with the correct CPU features by setting the arch.
-        let context = Context::default();
-        context.add_driver_option(&format!("-march={}", arch.to_str().unwrap()));
-        Arc::new(context.get_target_info())
+        Arc::new(Mutex::new(context.get_target_info()))
     };
     #[cfg(not(feature="master"))]
-    let target_info = Arc::new(TargetInfo {
+    let info = Arc::new(Mutex::new(TargetInfo {
         supports_128bit_integers: AtomicBool::new(false),
-    });
+    }));
 
     Box::new(GccCodegenBackend {
-        target_info,
+        target_info: LockedTargetInfo { info },
     })
 }
 
@@ -341,22 +367,7 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
     }
 }
 
-fn handle_native(name: &str) -> &str {
-    if name != "native" {
-        return name;
-    }
-
-    unimplemented!();
-}
-
-pub fn target_cpu(sess: &Session) -> &str {
-    match sess.opts.cg.target_cpu {
-        Some(ref name) => handle_native(name),
-        None => handle_native(sess.target.cpu.as_ref()),
-    }
-}
-
-pub fn target_features(sess: &Session, allow_unstable: bool, target_info: &Arc<TargetInfo>) -> Vec<Symbol> {
+pub fn target_features(sess: &Session, allow_unstable: bool, target_info: &LockedTargetInfo) -> Vec<Symbol> {
     supported_target_features(sess)
         .iter()
         .filter_map(

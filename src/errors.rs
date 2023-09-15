@@ -1,7 +1,35 @@
-use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
-use rustc_macros::Diagnostic;
+use rustc_errors::{
+    DiagnosticArgValue, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic, IntoDiagnosticArg,
+};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 use std::borrow::Cow;
+
+use crate::fluent_generated as fluent;
+
+#[derive(Diagnostic)]
+#[diag(codegen_gcc_unknown_ctarget_feature_prefix)]
+#[note]
+pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
+    pub feature: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_gcc_unknown_ctarget_feature)]
+#[note]
+pub(crate) struct UnknownCTargetFeature<'a> {
+    pub feature: &'a str,
+    #[subdiagnostic]
+    pub rust_feature: PossibleFeature<'a>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum PossibleFeature<'a> {
+    #[help(codegen_gcc_possible_feature)]
+    Some { rust_feature: &'a str },
+    #[help(codegen_gcc_consider_filing_feature_request)]
+    None,
+}
 
 struct ExitCode(Option<i32>);
 
@@ -70,4 +98,28 @@ pub(crate) struct LtoDylib;
 #[diag(codegen_gcc_lto_bitcode_from_rlib)]
 pub(crate) struct LtoBitcodeFromRlib {
     pub gcc_err: String,
+}
+
+pub(crate) struct TargetFeatureDisableOrEnable<'a> {
+    pub features: &'a [&'a str],
+    pub span: Option<Span>,
+    pub missing_features: Option<MissingFeatures>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(codegen_gcc_missing_features)]
+pub(crate) struct MissingFeatures;
+
+impl IntoDiagnostic<'_, ErrorGuaranteed> for TargetFeatureDisableOrEnable<'_> {
+    fn into_diagnostic(self, sess: &'_ Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = sess.struct_err(fluent::codegen_gcc_target_feature_disable_or_enable);
+        if let Some(span) = self.span {
+            diag.set_span(span);
+        };
+        if let Some(missing_features) = self.missing_features {
+            diag.subdiagnostic(missing_features);
+        }
+        diag.set_arg("features", self.features.join(", "));
+        diag
+    }
 }

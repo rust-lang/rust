@@ -236,6 +236,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 let arg2 = builder.context.new_cast(None, arg2, arg2_type);
                 args = vec![new_args[0], arg2].into();
             },
+            // These builtins are sent one more argument than needed.
             "__builtin_prefetch" => {
                 let mut new_args = args.to_vec();
                 new_args.pop();

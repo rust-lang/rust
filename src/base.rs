@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::env;
-use std::sync::Arc;
 use std::time::Instant;
 
 use gccjit::{
@@ -8,8 +7,6 @@ use gccjit::{
     FunctionType,
     GlobalKind,
 };
-#[cfg(feature="master")]
-use gccjit::TargetInfo;
 use rustc_middle::dep_graph;
 use rustc_middle::ty::TyCtxt;
 #[cfg(feature="master")]
@@ -22,8 +19,7 @@ use rustc_codegen_ssa::traits::DebugInfoMethods;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
 
-#[cfg(not(feature="master"))]
-use crate::TargetInfo;
+use crate::{LockedTargetInfo, gcc_util};
 use crate::GccContext;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -70,7 +66,7 @@ pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
     }
 }
 
-pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<TargetInfo>) -> (ModuleCodegen<GccContext>, u64) {
+pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: LockedTargetInfo) -> (ModuleCodegen<GccContext>, u64) {
     let prof_timer = tcx.prof.generic_activity("codegen_module");
     let start_time = Instant::now();
 
@@ -89,7 +85,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
     // the time we needed for codegenning it.
     let cost = time_to_codegen.as_secs() * 1_000_000_000 + time_to_codegen.subsec_nanos() as u64;
 
-    fn module_codegen(tcx: TyCtxt<'_>, (cgu_name, target_info): (Symbol, Arc<TargetInfo>)) -> ModuleCodegen<GccContext> {
+    fn module_codegen(tcx: TyCtxt<'_>, (cgu_name, target_info): (Symbol, LockedTargetInfo)) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
         let context = Context::default();
@@ -102,31 +98,15 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
             .map(|string| &string[1..])
             .collect();
 
-        let add_cpu_feature_flag = |feature: &str| {
-            // FIXME(antoyo): some tests cause a segfault in GCC when not enabling all these
-            // features.
-            if (true || target_info.cpu_supports(feature)) && !disabled_features.contains(feature) {
-                context.add_command_line_option(&format!("-m{}", feature));
-            }
-        };
-
         // TODO(antoyo): only set on x86 platforms.
         context.add_command_line_option("-masm=intel");
 
-        let features = ["sse2", "avx", "avx2", "sha", "fma", "gfni", "f16c", "aes", "bmi2", "rtm",
-            "vaes", "vpclmulqdq", "xsavec",
-        ];
-
-        for feature in &features {
-            add_cpu_feature_flag(feature);
+        if !disabled_features.contains("avx") {
+            // NOTE: we always enable AVX because the equivalent of llvm.x86.sse2.cmp.pd in GCC for
+            // SSE2 is multiple builtins, so we use the AVX __builtin_ia32_cmppd instead.
+            // FIXME(antoyo): use the proper builtins for llvm.x86.sse2.cmp.pd and similar.
+            context.add_command_line_option("-mavx");
         }
-
-        // TODO(antoyo): only add the following cli arguments if the feature is supported.
-        context.add_command_line_option("-mpclmul");
-        context.add_command_line_option("-mfma4");
-        context.add_command_line_option("-m64");
-        context.add_command_line_option("-mbmi");
-        //context.add_command_line_option("-mavxvnni"); // The CI doesn't support this option.
 
         for arg in &tcx.sess.opts.cg.llvm_args {
             context.add_command_line_option(arg);
@@ -143,6 +123,11 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
         if tcx.sess.opts.cg.relocation_model == Some(rustc_target::spec::RelocModel::Static) {
             context.add_command_line_option("-mcmodel=kernel");
             context.add_command_line_option("-fno-pie");
+        }
+
+        let target_cpu = gcc_util::target_cpu(tcx.sess);
+        if target_cpu != "generic" {
+            context.add_command_line_option(&format!("-march={}", target_cpu));
         }
 
         if tcx.sess.opts.unstable_opts.function_sections.unwrap_or(tcx.sess.target.function_sections) {
