@@ -351,6 +351,11 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     // guarnateeing that we generate ABI-compatible LLVM IR. Things get tricky for
                     // aggregates...
                     if matches!(arg.layout.abi, abi::Abi::Aggregate { .. }) {
+                        assert!(
+                            arg.layout.is_sized(),
+                            "`PassMode::Direct` for unsized type: {}",
+                            arg.layout.ty
+                        );
                         // This really shouldn't happen, since `immediate_llvm_type` will use
                         // `layout.fields` to turn this Rust type into an LLVM type. This means all
                         // sorts of Rust type details leak into the ABI. However wasm sadly *does*
