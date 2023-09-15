@@ -12,7 +12,6 @@ use hir::def::DefKind;
 use hir::MatchSource;
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::graph::iterate::{CycleDetector, TriColorDepthFirstSearch};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -1172,8 +1171,6 @@ fn referent_used_exactly_once<'tcx>(
         && let Some(statement) = mir.basic_blocks[location.block].statements.get(location.statement_index)
         && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
         && !place.is_indirect_first_projection()
-        // Ensure not in a loop (https://github.com/rust-lang/rust-clippy/issues/9710)
-        && TriColorDepthFirstSearch::new(&mir.basic_blocks).run_from(location.block, &mut CycleDetector).is_none()
     {
         let body_owner_local_def_id = cx.tcx.hir().enclosing_body_owner(reference.hir_id);
         if possible_borrowers
