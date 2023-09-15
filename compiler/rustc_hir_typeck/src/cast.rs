@@ -324,7 +324,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             CastError::CastToBool => {
                 let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                 let help = if self.expr_ty.is_numeric() {
-                    errors::CannotCastToBoolHelp::Numeric(self.expr_span.shrink_to_hi().with_hi(self.span.hi()))
+                    errors::CannotCastToBoolHelp::Numeric(
+                        self.expr_span.shrink_to_hi().with_hi(self.span.hi()),
+                    )
                 } else {
                     errors::CannotCastToBoolHelp::Unsupported(self.span)
                 };
@@ -517,33 +519,20 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 .emit();
             }
             CastError::IntToFatCast(known_metadata) => {
-                let mut err = struct_span_err!(
-                    fcx.tcx.sess,
-                    self.cast_span,
-                    E0606,
-                    "cannot cast `{}` to a pointer that {} wide",
-                    fcx.ty_to_string(self.expr_ty),
-                    if known_metadata.is_some() { "is" } else { "may be" }
-                );
-
-                err.span_label(
-                    self.cast_span,
-                    format!(
-                        "creating a `{}` requires both an address and {}",
-                        self.cast_ty,
-                        known_metadata.unwrap_or("type-specific metadata"),
-                    ),
-                );
-
-                if fcx.tcx.sess.is_nightly_build() {
-                    err.span_label(
-                        self.expr_span,
-                        "consider casting this expression to `*const ()`, \
-                        then using `core::ptr::from_raw_parts`",
-                    );
-                }
-
-                err.emit();
+                let expr_if_nightly = fcx.tcx.sess.is_nightly_build().then_some(self.expr_span);
+                let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
+                let expr_ty = fcx.ty_to_string(self.expr_ty);
+                let metadata = known_metadata.unwrap_or("type-specific metadata");
+                let known_wide = known_metadata.is_some();
+                let span = self.cast_span;
+                fcx.tcx.sess.emit_err(errors::IntToWide {
+                    span,
+                    metadata,
+                    expr_ty,
+                    cast_ty,
+                    expr_if_nightly,
+                    known_wide,
+                });
             }
             CastError::UnknownCastPtrKind | CastError::UnknownExprPtrKind => {
                 let unknown_cast_to = match e {
