@@ -55,6 +55,13 @@ impl IntoDiagnosticArg for ReturnLikeStatementKind {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_typeck_rustcall_incorrect_args)]
+pub struct RustCallIncorrectArgs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_typeck_yield_expr_outside_of_generator, code = "E0627")]
 pub struct YieldExprOutsideOfGenerator {
     #[primary_span]

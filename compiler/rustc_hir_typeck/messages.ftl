@@ -90,6 +90,9 @@ hir_typeck_return_stmt_outside_of_fn_body =
     .encl_body_label = the {$statement_kind} is part of this body...
     .encl_fn_label = ...not the enclosing function body
 
+hir_typeck_rustcall_incorrect_args =
+    functions with the "rust-call" ABI must take a single non-self tuple argument
+
 hir_typeck_struct_expr_non_exhaustive =
     cannot create non-exhaustive {$what} using struct expression
 
